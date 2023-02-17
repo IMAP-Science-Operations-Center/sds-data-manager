@@ -13,5 +13,6 @@
 			"version": "latest" 
 		}
 	},
-	"forwardPorts": [6080]
+	"forwardPorts": [6080],
+    "postCreateCommand": "pip install ."
 }
