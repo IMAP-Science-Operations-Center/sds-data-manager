@@ -21,7 +21,7 @@ from aws_cdk.aws_lambda_event_sources import S3EventSource, SnsEventSource
 
 class SdsInABoxStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, SDSID: str, initial_email: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
 ########### INIT
@@ -30,8 +30,8 @@ class SdsInABoxStack(Stack):
         #SDS_ID = SDS_ID.value_as_string
         #initial_user = cdk.CfnParameter(self, "initialuser", type="String", description="The email address of the initial user of the stack")
         #initial_user = initial_user.value_as_string
-        SDS_ID = self.node.try_get_context("SDSID")
-        initial_user_context = self.node.try_get_context("initial_user")
+        SDS_ID = SDSID
+        initial_user_context = initial_email
 ########### DATA STORAGE 
         # This is the S3 bucket where the data will be stored
         data_bucket = s3.Bucket(self, "DATA-BUCKET",
@@ -212,7 +212,7 @@ class SdsInABoxStack(Stack):
                                                    "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
                                                    "COGNITO_USERPOOL_ID": userpool.user_pool_id, 
                                                    "COGNITO_APP_ID": command_line_client.user_pool_client_id,
-                                                   "S3_BUCKET": data_bucket.s3_url_for_object()}},
+                                                   "S3_BUCKET": data_bucket.s3_url_for_object()},
         )
         # Adding S3 Permissions 
         upload_api_lambda.add_to_role_policy(
