@@ -20,5 +20,5 @@ elif SDS_ID=="random":
     SDS_ID = "".join( [random.choice(string.ascii_lowercase) for i in range(8)] )
     
 
-SdsInABoxStack(app, f"SdsInABoxStack-{SDS_ID}", SDSID=SDS_ID, initial_email=initial_user)
+SdsInABoxStack(app, f"SdsInABoxStack-{SDS_ID}", SDS_ID=SDS_ID, initial_email=initial_user)
 app.synth()

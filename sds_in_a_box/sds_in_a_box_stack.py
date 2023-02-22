@@ -21,17 +21,12 @@ from aws_cdk.aws_lambda_event_sources import S3EventSource, SnsEventSource
 
 class SdsInABoxStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, SDSID: str, initial_email: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, SDS_ID: str, initial_email: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
 ########### INIT
-        # Determines the initial configuration
-        #SDS_ID = cdk.CfnParameter(self, "sdsid", type="String", description="The ID that should be appended to all services (ex - testing, production, etc)")
-        #SDS_ID = SDS_ID.value_as_string
-        #initial_user = cdk.CfnParameter(self, "initialuser", type="String", description="The email address of the initial user of the stack")
-        #initial_user = initial_user.value_as_string
-        SDS_ID = SDSID
         initial_user_context = initial_email
+
 ########### DATA STORAGE 
         # This is the S3 bucket where the data will be stored
         data_bucket = s3.Bucket(self, "DATA-BUCKET",
@@ -137,21 +132,41 @@ class SdsInABoxStack(Stack):
                                                username=initial_user_context
                                               )
 
-########### LAMBDA FUNCTIONS
-
-        # This is where we install dependencies for the lambda functions
-        # We take advantage of something called "lambda layers"
-        #os.system("pip install requests -t ./external/python")
-        #os.system("pip install python-jose -t ./external/python")
-        #layer = lambda_.LayerVersion(self, f"SDSDependencies",
-        #                            code=lambda_.Code.from_asset("./external"),
-        #                            description="A layer that contains all dependencies needed for the lambda functions"
-        #                        )
+########### IAM POLICIES
+        opensearch_all_http_permissions = iam.PolicyStatement(
+                                               effect=iam.Effect.ALLOW,
+                                               actions=["es:ESHttp*"],
+                                               resources=[f"{sds_metadata_domain.domain_arn}/*"],
+                                          )
+        opensearch_read_only_policy = iam.PolicyStatement(
+                                             effect=iam.Effect.ALLOW,
+                                             actions=["es:ESHttpGet"],
+                                             resources=[f"{sds_metadata_domain.domain_arn}/*"],
+                                      )
+        s3_write_policy = iam.PolicyStatement(
+                              effect=iam.Effect.ALLOW,
+                              actions=["s3:PutObject"],
+                              resources=[
+                                  f"{data_bucket.bucket_arn}/*"
+                              ],
+                          )
+        s3_read_policy = iam.PolicyStatement(
+                              effect=iam.Effect.ALLOW,
+                              actions=["s3:GetObject"],
+                              resources=[
+                                  f"{data_bucket.bucket_arn}/*"
+                              ],
+                          )
         
-        # This is the role that the lambdas will all assume
-        # TODO: We'll narrow things down later, right now we're just giving admin access
-        #lambda_role = iam.Role(self, "Indexer Role", assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"))
-        #lambda_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AdministratorAccess"))
+        cognito_admin_policy = iam.PolicyStatement(
+                                    effect=iam.Effect.ALLOW,
+                                    actions=["cognito-idp:*"],
+                                    resources=[
+                                        f"*"
+                                    ],
+                                )
+
+########### LAMBDA FUNCTIONS
         
         # The purpose of this lambda function is to trigger off of a new file entering the SDC.
         indexer_lambda = lambda_alpha_.PythonFunction(self,
@@ -178,29 +193,11 @@ class SdsInABoxStack(Stack):
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         
         # Adding Opensearch permissions 
-        indexer_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["es:*"],
-                resources=[f"{sds_metadata_domain.domain_arn}/*"],
-            )
-        )
-
-        # Adding S3 Permissions 
-        indexer_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["s3:*"],
-                resources=[
-                    f"{data_bucket.bucket_arn}/*"
-                ],
-            )
-        )
-        
+        indexer_lambda.add_to_role_policy(opensearch_all_http_permissions)        
 
         # Adding a lambda that acts as a template for future APIs
         upload_api_lambda = lambda_alpha_.PythonFunction(self,
-                                      id="APILambda",
+                                      id="UploadAPILambda",
                                       function_name=f'upload-api-handler-{SDS_ID}',
                                       entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
                                       index="upload_api.py",
@@ -214,16 +211,7 @@ class SdsInABoxStack(Stack):
                                                    "COGNITO_APP_ID": command_line_client.user_pool_client_id,
                                                    "S3_BUCKET": data_bucket.s3_url_for_object()},
         )
-        # Adding S3 Permissions 
-        upload_api_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["s3:*"],
-                resources=[
-                    f"{data_bucket.bucket_arn}/*"
-                ],
-            )
-        )
+        upload_api_lambda.add_to_role_policy(s3_write_policy)
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         upload_api_url = upload_api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
                                               cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"]))
@@ -246,24 +234,8 @@ class SdsInABoxStack(Stack):
                                             "OS_INDEX": "metadata"
                                             }
                                           )
-        query_api_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["es:*"],
-                resources=[f"{sds_metadata_domain.domain_arn}/*"],
-            )
-        )
+        query_api_lambda.add_to_role_policy(opensearch_read_only_policy)
 
-        # Adding S3 Permissions 
-        query_api_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["s3:*"],
-                resources=[
-                    f"{data_bucket.bucket_arn}/*"
-                ],
-            )
-        )
         # add function url for lambda query API
         lambda_query_api_function_url = lambda_.FunctionUrl(self,
                                                  id="QueryAPI",
@@ -282,24 +254,8 @@ class SdsInABoxStack(Stack):
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.seconds(60)
         )
-        # Adding Opensearch permissions 
-        download_query_api.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["es:*"],
-                resources=[f"{sds_metadata_domain.domain_arn}/*"],
-            )
-        )
-        # Adding S3 permissions 
-        download_query_api.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["s3:*"],
-                resources=[
-                    f"{data_bucket.bucket_arn}/*"
-                ],
-            )
-        )
+        download_query_api.add_to_role_policy(opensearch_all_http_permissions)
+        download_query_api.add_to_role_policy(s3_read_policy)
         
         download_api_url = lambda_.FunctionUrl(self,
             id="DownloadQueryAPI",
@@ -327,26 +283,10 @@ class SdsInABoxStack(Stack):
         )
         signup_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         # Adding Cognito Permissions
-        signup_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["cognito-idp:*"],
-                resources=[
-                    f"*"
-                ],
-            )
-        )
+        signup_lambda.add_to_role_policy(cognito_admin_policy)
 
         userpool.add_trigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, signup_lambda)
 
-        #testing_lambda_alpha = aws_lambda_python_alpha.PythonFunction(
-        #                        self,
-        #                        "LambdaFunction",
-        #                        entry=f"sds_in_a_box/SDSCode",
-        #                        index="indexer.py",
-        #                        handler="lambda_handler",
-        #                        runtime=lambda_.Runtime.PYTHON_3_9,
-        #                    )
 
 ########### OUTPUTS
         # This is a list of the major outputs of the stack
