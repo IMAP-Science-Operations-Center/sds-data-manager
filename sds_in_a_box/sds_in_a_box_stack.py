@@ -5,7 +5,7 @@ from aws_cdk import (
     # Duration,
     Stack,
     RemovalPolicy,
-    #aws_lambda_python_alpha
+    aws_lambda_python_alpha
 )
 from constructs import Construct
 import aws_cdk as cdk
@@ -195,7 +195,7 @@ class SdsInABoxStack(Stack):
         # Adding Opensearch permissions 
         indexer_lambda.add_to_role_policy(opensearch_all_http_permissions)        
 
-        # Adding a lambda that acts as a template for future APIs
+        # Adding a lambda for uploading files to the SDS
         upload_api_lambda = lambda_alpha_.PythonFunction(self,
                                       id="UploadAPILambda",
                                       function_name=f'upload-api-handler-{SDS_ID}',
@@ -257,14 +257,14 @@ class SdsInABoxStack(Stack):
         download_query_api.add_to_role_policy(opensearch_all_http_permissions)
         download_query_api.add_to_role_policy(s3_read_policy)
         
+        # Adding a function URL
         download_api_url = lambda_.FunctionUrl(self,
-            id="DownloadQueryAPI",
-            function=download_query_api,
-            auth_type=lambda_.FunctionUrlAuthType.NONE,
-
-            cors=lambda_.FunctionUrlCorsOptions(
-                                allowed_origins=["*"],
-                                allowed_methods=[lambda_.HttpMethod.GET])
+                                               id="DownloadQueryAPI",
+                                               function=download_query_api,
+                                               auth_type=lambda_.FunctionUrlAuthType.NONE,
+                                               cors=lambda_.FunctionUrlCorsOptions(
+                                                                   allowed_origins=["*"],
+                                                                   allowed_methods=[lambda_.HttpMethod.GET])
         )
     
         # Adding a lambda that sends out an email with a link where the user can reset their password

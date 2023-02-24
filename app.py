@@ -7,14 +7,13 @@ import aws_cdk as cdk
 import aws_cdk.assertions as assertions
 from sds_in_a_box.sds_in_a_box_stack import SdsInABoxStack
 
-### Implement the code found in "sds_in_a_box_stack.py"
 app = cdk.App()
 
 SDS_ID = app.node.try_get_context("SDSID")
 initial_user=app.node.try_get_context("initial_user")
 
 if SDS_ID is None:
-    raise Exception("ERROR: Need to specify an ID to name the stack (ex - production, testing, etc)")
+    raise ValueError("ERROR: Need to specify an ID to name the stack (ex - production, testing, etc)")
 elif SDS_ID=="random":
     # A random unqiue ID for this particular instance of the SDS
     SDS_ID = "".join( [random.choice(string.ascii_lowercase) for i in range(8)] )

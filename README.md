@@ -1,6 +1,6 @@
-# SDS-in-a-box
+# SDS Data Manager
 
-Hello!  This a project that attempts to capture the minimum requirements for the core of a Science Data System.  
+This project that attempts to capture the minimum requirements for the core of a Science Data System.  
 
 Our goal with the project is that users will only need to modify the file config.json to define the data products stored on the SDC, and the rest should be mission agnostic.  
 
@@ -21,7 +21,7 @@ The development environment uses a GitHub codespace, to ensure that we're all us
 
 Everyone gets 50 free hours per month of github Codespace time.  Alternatively, your organization can pay for it to run longer than this.  
 
-Top start a new development environment, click the button for "Code" in the upper right corner of the repository, and click "Codespaces".  
+To start a new development environment, click the button for "Code" in the upper right corner of the repository, and click "Codespaces".  
 
 
 ### AWS Setup
