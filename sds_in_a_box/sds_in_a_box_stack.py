@@ -205,9 +205,7 @@ class SdsInABoxStack(Stack):
                                       runtime=lambda_.Runtime.PYTHON_3_9,
                                       timeout=cdk.Duration.minutes(15),
                                       memory_size=1000,
-                                      environment={"OS_ADMIN_USERNAME": "master-user", 
-                                                   "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
-                                                   "COGNITO_USERPOOL_ID": userpool.user_pool_id, 
+                                      environment={"COGNITO_USERPOOL_ID": userpool.user_pool_id, 
                                                    "COGNITO_APP_ID": command_line_client.user_pool_client_id,
                                                    "S3_BUCKET": data_bucket.s3_url_for_object()},
         )
@@ -227,6 +225,8 @@ class SdsInABoxStack(Stack):
                                           timeout=cdk.Duration.minutes(1),
                                           memory_size=1000,
                                           environment={
+                                            "COGNITO_USERPOOL_ID": userpool.user_pool_id, 
+                                            "COGNITO_APP_ID": command_line_client.user_pool_client_id,
                                             "OS_ADMIN_USERNAME": "master-user", 
                                             "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
                                             "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
@@ -252,8 +252,10 @@ class SdsInABoxStack(Stack):
             index='download_query_api.py',
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
-            timeout=cdk.Duration.seconds(60)
-        )
+            timeout=cdk.Duration.seconds(60),
+            environment={"COGNITO_USERPOOL_ID": userpool.user_pool_id, 
+                         "COGNITO_APP_ID": command_line_client.user_pool_client_id)
+           )
         download_query_api.add_to_role_policy(opensearch_all_http_permissions)
         download_query_api.add_to_role_policy(s3_read_policy)
         
