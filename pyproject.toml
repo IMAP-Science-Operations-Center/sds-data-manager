@@ -27,24 +27,21 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "aws-cdk-lib==2.48.0",
+    "aws-cdk-lib>=2.48.0,<3.0.0",
     "aws-cdk.aws-lambda-python-alpha",
     "constructs>=10.0.0,<11.0.0",
-    "boto3",
-    "opensearch-py",
-    "requests",
-    "python-jose"
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest==6.2.5",
-    "moto"
+    "moto",
+    "opensearch-py",
+    "pytest",
 ]
 
 [project.urls]
 homepage = "https://github.com/IMAP-Science-Operations-Center"
-repository = "https://github.com/IMAP-Science-Operations-Center/SDS-in-a-box"
+repository = "https://github.com/IMAP-Science-Operations-Center/sds-data-manager"
 
 [tool.pytest.ini_options]
 testpaths = [
