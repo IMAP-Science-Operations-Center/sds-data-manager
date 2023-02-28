@@ -19,29 +19,29 @@ To summarize, there are 3 "modes" for this application:
 3) ONLY Cognito services are created.  Context needed: "cognito_only".   
 
 '''
-import os
-import boto3 
-import string
 import random
+import string
+
 import aws_cdk as cdk
-import aws_cdk.assertions as assertions
-from sds_in_a_box.sds_in_a_box_stack import SdsInABoxStack
-from sds_in_a_box.sds_cognito_stack import SdsCognitoStack
+from sds_data_manager.sds_cognito_stack import SdsCognitoStack
+
+from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
 
 app = cdk.App()
 
 # Grab context from cdk synth and cdk deploy commands
 SDS_ID = app.node.try_get_context("SDSID")
-initial_user=app.node.try_get_context("initial_user")
 userpool_name = app.node.try_get_context("userpool_name")
 app_client_name = app.node.try_get_context("app_client_name")
 cognito_only = app.node.try_get_context("cognito_only")
 
 if SDS_ID is None:
-    raise ValueError("ERROR: Need to specify an ID to name the stack (ex - production, testing, etc)")
-elif SDS_ID=="random":
-    # A random unqiue ID for this particular instance of the SDS
-    SDS_ID = "".join( [random.choice(string.ascii_lowercase) for i in range(8)] )
+    raise ValueError(
+        "ERROR: Need to specify an ID to name the stack (ex - production, testing, etc)"
+    )
+elif SDS_ID == "random":
+    # A random unique ID for this particular instance of the SDS
+    SDS_ID = "".join([random.choice(string.ascii_lowercase) for i in range(8)])
 
 # We'll try to find the cognito userpool id and app client ID from the names
 if userpool_name and app_client_name:
@@ -73,6 +73,6 @@ if create_cognito:
     app_client_id = cognito_stack.app_client_id
 
 if not cognito_only:
-    SdsInABoxStack(app, f"SdsInABoxStack-{SDS_ID}", SDS_ID=SDS_ID, userpool_id=userpool_id, app_client_id=app_client_id)
+    SdsDataManagerStack(app, f"SdsInABoxStack-{SDS_ID}", SDS_ID=SDS_ID, userpool_id=userpool_id, app_client_id=app_client_id)
 
 app.synth()

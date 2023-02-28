@@ -14,5 +14,5 @@
 		}
 	},
 	"forwardPorts": [6080],
-    "postCreateCommand": "pip install ."
+    "postCreateCommand": "pip install .[dev]"
 }

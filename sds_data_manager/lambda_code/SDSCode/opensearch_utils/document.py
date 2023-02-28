@@ -1,9 +1,10 @@
 import json
-from .index import Index
+
 from .action import Action
+from .index import Index
 
 
-class Document():
+class Document:
     """
     Class to represent an OpenSearch document.
 
@@ -45,11 +46,17 @@ class Document():
         returns the size of the encoded (ascii) document contents in bytes.
     """
 
-    def __init__(self, index, doc_id, action, body={},):
+    def __init__(
+        self,
+        index,
+        doc_id,
+        action,
+        body=None,
+    ):
         self.index = Index.validate_index(index)
         self.identifier = self._validate_identifier(doc_id)
         self.action = Action.validate_action(action)
-        self.body = body
+        self.body = body or {}
         self.contents = ""
         self.size = 0
 
@@ -68,10 +75,14 @@ class Document():
             self.body = body
             self._update_contents()
         else:
-            raise TypeError("Document body passed in as type {}, but must be of type dict".format(type(body)))
-            
+            raise TypeError(
+                "Document body passed in as type {}, but must be of type dict".format(
+                    type(body)
+                )
+            )
+
     def update_action(self, action):
-        """ 
+        """
         Updates the action of the document.
 
         Parameters
@@ -96,32 +107,36 @@ class Document():
     def get_identifier(self):
         """Returns the document's id as an int."""
         return self.identifier
-    
+
     def get_contents(self):
         """Returns the full contents of the document as a string."""
         return self.contents
-    
+
     def size_in_bytes(self):
         """Returns the size of the document's bulk request json string in bytes."""
         return self.size
 
     def _update_contents(self):
-        action_string = \
-                '{ "' \
-                + self.action.value \
-                + '": { "_index": "' \
-                + self.index.get_name() \
-                + '", "_id": "' \
-                + self.identifier + '" } }\n'
-        self.contents = action_string + json.dumps(self.body) + '\n'
+        action_string = (
+            '{ "'
+            + self.action.value
+            + '": { "_index": "'
+            + self.index.get_name()
+            + '", "_id": "'
+            + self.identifier
+            + '" } }\n'
+        )
+        self.contents = action_string + json.dumps(self.body) + "\n"
         self.size = len(self.contents.encode("ascii"))
 
     def _validate_identifier(self, identifier):
         if type(identifier) is str or type(identifier) is int:
             return str(identifier)
         else:
-            raise TypeError("Identifier is type {}, but must be type str or int".format(type(index)))
-    
+            raise TypeError(
+                f"Identifier is type {type(identifier)}, but must be type str or int"
+            )
+
     @staticmethod
     def is_document(document):
         """
@@ -129,10 +144,10 @@ class Document():
 
         Parameters
         ----------
-        document: 
+        document:
             input to check if it is type Document.
         """
-        return type(document) is Document         
+        return type(document) is Document
 
     def __repr__(self):
         return str(self.contents)

@@ -1,6 +1,4 @@
-from opensearchpy import OpenSearch
-
-class Index():
+class Index:
     """
     Class to represent an OpenSearch index.
 
@@ -20,9 +18,10 @@ class Index():
     get_body():
         returns the body of the index as a dict.
     validate_index(index):
-        Static method to validate that the input is of 
-        type Index.    
+        Static method to validate that the input is of
+        type Index.
     """
+
     def __init__(self, name, body=None):
         self.name = name
         self.body = body
@@ -30,13 +29,13 @@ class Index():
     def get_name(self):
         """Returns the name of the index as a string."""
         return self.name
-    
+
     def get_body(self):
         """Returns the body of the index as a dictionary."""
         return self.body
 
     def __repr__(self):
-        return str({self.name:self.body})
+        return str({self.name: self.body})
 
     @staticmethod
     def validate_index(index):
@@ -54,9 +53,9 @@ class Index():
         -------
         Index
             the validated index, same the object input.
-        
+
         """
         if type(index) is Index:
             return index
         else:
-            raise TypeError("Input is type {}, but must be type Index".format(type(index)))
+            raise TypeError(f"Input is type {type(index)}, but must be type Index")

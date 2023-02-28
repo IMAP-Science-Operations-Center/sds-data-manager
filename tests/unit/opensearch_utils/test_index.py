@@ -1,18 +1,14 @@
 import unittest
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
+
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.index import Index
+
 
 class TestIndex(unittest.TestCase):
     """tests for index.py"""
 
     def setUp(self):
-        self.index_name = 'python-test-index3'
-        self.index_body = {
-        'settings': {
-            'index': {
-            'number_of_shards': 4
-            }
-        }
-        }
+        self.index_name = "python-test-index3"
+        self.index_body = {"settings": {"index": {"number_of_shards": 4}}}
 
     def test_get_name(self):
         """
@@ -42,10 +38,9 @@ class TestIndex(unittest.TestCase):
         ## Assert ##
         assert index_body_true == index_body_out
 
-    
     def test_validate_index(self):
         """
-        test that the validate_index method correctly determines the input to be of type Index.
+        Correctly determine the input to be of type Index.
         """
         ## Arrange ##
         index_true = Index(self.index_name, self.index_body)
@@ -58,7 +53,7 @@ class TestIndex(unittest.TestCase):
 
     def test_validate_index_error(self):
         """
-        test that the validate_index method corrctly determines the input to not be of type Index.
+        Correctly determine the input to not be of type Index.
         """
         ## Arrange ##
         index = "string, not an Index"
@@ -72,13 +67,12 @@ class TestIndex(unittest.TestCase):
         """
         ## Arrange ##
         my_index = Index(self.index_name, self.index_body)
-        index_string_true = str({'python-test-index3': {'settings': {'index': {'number_of_shards': 4}}}})
+        index_string_true = str(
+            {"python-test-index3": {"settings": {"index": {"number_of_shards": 4}}}}
+        )
 
         ## Act ##
         index_string_out = str(my_index)
 
         ## Assert ##
         assert index_string_true == index_string_out
-
-if __name__ == '__main__':
-    unittest.main()

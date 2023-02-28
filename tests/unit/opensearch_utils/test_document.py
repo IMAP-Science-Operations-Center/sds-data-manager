@@ -1,15 +1,22 @@
 import unittest
-import json
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
-from sds_in_a_box.SDSCode.opensearch_utils.action import Action
-from opensearchpy import OpenSearch, RequestsHttpConnection
+
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.document import Document
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.index import Index
+
 
 class TestDocument(unittest.TestCase):
     """tests for document.py"""
 
     def setUp(self):
-        self.document_body = {"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}
+        self.document_body = {
+            "mission": "imap",
+            "level": "l0",
+            "instrument": "*",
+            "date": "*",
+            "version": "*",
+            "extension": "fits",
+        }
         self.index_name = "test_data"
         self.index = Index(self.index_name)
         self.identifier = 1
@@ -33,7 +40,7 @@ class TestDocument(unittest.TestCase):
 
     def test_update_body_error(self):
         """
-        test that the update_body method throws an error when the 
+        test that the update_body method throws an error when the
         wrong type is passed in.
         """
         ## Arrange ##
@@ -45,7 +52,7 @@ class TestDocument(unittest.TestCase):
 
     def test_update_action(self):
         """
-        test that the update_action method updates the action 
+        test that the update_action method updates the action
         associated with the document.
         """
         ## Arrange ##
@@ -58,15 +65,17 @@ class TestDocument(unittest.TestCase):
 
         ## Assert ##
         assert action_out == action_true
-        
+
     def test_get_body(self):
         """
         test that the get_body method returns the document body as a string.
         """
         ## Arrange ##
-        document = Document(self.index, self.identifier, self.action, self.document_body)
+        document = Document(
+            self.index, self.identifier, self.action, self.document_body
+        )
         body_true = self.document_body
-        
+
         ## Act ##
         body_out = document.get_body()
 
@@ -75,7 +84,7 @@ class TestDocument(unittest.TestCase):
 
     def test_get_index(self):
         """
-        test that the get_index method correctly returns the document's index's name of the index.
+        Correctly return the document's index's name of the index.
         """
         ## Arrange ##
         document = Document(self.index, self.identifier, self.action)
@@ -89,7 +98,7 @@ class TestDocument(unittest.TestCase):
 
     def test_get_action(self):
         """
-        test that the get_action method correctly returns the document's action.
+        Correctly return the document's action.
         """
         ## Arrange ##
         document = Document(self.index, self.identifier, self.action)
@@ -103,7 +112,7 @@ class TestDocument(unittest.TestCase):
 
     def test_get_identifier(self):
         """
-        test that the get_identifier method correctly returns the document's identifier.
+        Correctly return the document's identifier.
         """
         ## Arrange ##
         identifier_true = str(self.identifier)
@@ -111,33 +120,43 @@ class TestDocument(unittest.TestCase):
 
         ## Act ##
         identifier_out = document.get_identifier()
-        
+
         ## Assert ##
         assert identifier_out == identifier_true
-    
+
     def test_get_contents(self):
         """
-        test that the get_contents method correctly returns the document
-        contents as a string.
+        Correctly return the document contents as a string.
         """
         ## Arrange ##
-        document = Document(self.index, self.identifier, self.action, self.document_body)
-        contents_true = '{ "create": { "_index": "test_data", "_id": "1" } }\n{"mission": "imap", "level": "l0", "instrument": "*", "date": "*", "version": "*", "extension": "fits"}\n'
+        document = Document(
+            self.index, self.identifier, self.action, self.document_body
+        )
+        contents_true = (
+            '{ "create": { "_index": "test_data", "_id": "1" } }\n'
+            '{"mission": "imap", "level": "l0", "instrument": "*", '
+            '"date": "*", "version": "*", "extension": "fits"}\n'
+        )
 
         ## Act ##
         contents_out = document.get_contents()
-        
+
         ## Assert ##
         assert contents_out == contents_true
 
-
     def test_size_in_bytes(self):
         """
-        test that the size_in_bytes method correctly returns the document's size in bytes.
+        Correctly return the document's size in bytes.
         """
         ## Arrange ##
-        document = Document(self.index, self.identifier, self.action, self.document_body)
-        doc = '{ "create": { "_index": "test_data", "_id": "1" } }\n{\'mission\': \'imap\', \'level\': \'l0\', \'instrument\': \'*\', \'date\': \'*\', \'version\': \'*\', \'extension\': \'fits\'}\n'
+        document = Document(
+            self.index, self.identifier, self.action, self.document_body
+        )
+        doc = (
+            '{ "create": { "_index": "test_data", "_id": "1" } }\n'
+            "{'mission': 'imap', 'level': 'l0', 'instrument': '*', "
+            "'date': '*', 'version': '*', 'extension': 'fits'}\n"
+        )
         size_in_bytes_true = len(doc.encode("ascii"))
 
         ## Act ##
@@ -145,10 +164,10 @@ class TestDocument(unittest.TestCase):
 
         ## Assert ##
         assert size_in_bytes_out == size_in_bytes_true
-    
+
     def test_is_document_true(self):
         """
-        test that the static method is_document correctly returns whether the input is of type Document.
+        Correctly return whether the input is of type Document.
         """
         ## Arrange ##
         document = Document(self.index, self.identifier, self.action)
@@ -162,7 +181,7 @@ class TestDocument(unittest.TestCase):
 
     def test_is_document_false(self):
         """
-        test that the static method is_document correctly returns whether the input is of type Document.
+        Correctly return whether the input is of type Document.
         """
         ## Arrange ##
         document = "string, not a document"
@@ -173,6 +192,3 @@ class TestDocument(unittest.TestCase):
 
         ## Assert ##
         assert result_out == result_true
-
-if __name__ == '__main__':
-    unittest.main()

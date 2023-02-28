@@ -1,8 +1,10 @@
 import unittest
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
-from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
-from sds_in_a_box.SDSCode.opensearch_utils.action import Action
+
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.document import Document
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.index import Index
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.payload import Payload
+
 
 class TestPayload(unittest.TestCase):
     """tests for payload.py"""
@@ -16,7 +18,10 @@ class TestPayload(unittest.TestCase):
         """
         ## Arrange ##
         payload = Payload()
-        body = '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
+        body = (
+            '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", '
+            '"version":"*", "extension":"fits"}'
+        )
         document = Document(self.index, 1, Action.CREATE, body)
 
         ## Act ##
@@ -26,17 +31,22 @@ class TestPayload(unittest.TestCase):
         assert payload.get_contents() == document.get_contents()
 
     def test_add_documents_list(self):
-        """ 
-        test that the add_documents method correctly adds a list of documents to the payload.
+        """
+        Correctly add a list of documents to the payload.
         """
         ## Arrange ##
         payload = Payload()
-        body1 = '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
-        body2 = '{"mission":"imap", "level":"l2", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
+        body1 = (
+            '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", '
+            '"version":"*", "extension":"fits"}'
+        )
+        body2 = (
+            '{"mission":"imap", "level":"l2", "instrument":"*", "date":"*", '
+            '"version":"*", "extension":"fits"}'
+        )
         document1 = Document(self.index, 1, Action.CREATE, body1)
         document2 = Document(self.index, 1, Action.CREATE, body2)
         payload_contents_true = document1.get_contents() + document2.get_contents()
-
 
         ## Act ##
         payload.add_documents([document1, document2])
@@ -46,7 +56,7 @@ class TestPayload(unittest.TestCase):
 
     def test_add_documents_error(self):
         """
-        test that the add_documents method correctly throws an error when passed neither a list nor document.
+        Correctly throw an error when passed neither a list nor document.
         """
         ## Arrange ##
         payload = Payload()
@@ -57,8 +67,8 @@ class TestPayload(unittest.TestCase):
 
     def test_add_documents_bad_list(self):
         """
-        test that the add_documents method correctly throws an error when passed a 
-        list of containing objects that are not of type Document.
+        Correctly throw an error when passed a list of containing objects that
+        are not of type Document.
         """
         ## Arrange ##
         payload = Payload()
@@ -69,11 +79,9 @@ class TestPayload(unittest.TestCase):
 
     def test_get_contents(self):
         """
-        test that the get_contents method correctly returns the contents of the payload
-        as a string.
+        Correctly returns the contents of the payload as a string.
         """
         payload = Payload()
-        body = '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
         document = Document(self.index, 1, Action.CREATE, '{"testbody":"test1"}')
         payload.add_documents(document)
         contents_true = document.get_contents()
@@ -83,10 +91,3 @@ class TestPayload(unittest.TestCase):
 
         ## Assert ##
         assert contents_true == contents_out
-
-
-
-    
-
-if __name__ == '__main__':
-    unittest.main()

@@ -2,6 +2,7 @@ import json
 
 VALID_PARAMS = ["instrument", "level", "start_date", "end_date"]
 
+
 class Query:
     """
     Query class to represent an AWS OpenSearch query domain-specific language (DSL),
@@ -13,13 +14,13 @@ class Query:
     Attributes
     ----------
     query_params: dict
-        dictionary containing the query field (dict key) and the query text 
+        dictionary containing the query field (dict key) and the query text
         (dict value).
     query_dsl_formatted: dict
         dictionary containing the json query in the OpenSearch DSL format.
     query_size: int, optional
         number of results to return. default is 10.
-    
+
 
     Methods
     -------
@@ -32,7 +33,7 @@ class Query:
     def __init__(self, query_params, size=10):
         self.query_params = query_params
         self.query_dsl_formatted = self._build_query_dsl(query_params)
-        self.query_size = size 
+        self.query_size = size
 
     def query_dsl(self):
         """Returns the query parameters in the AWS OpenSearch Query DSL format"""
@@ -53,12 +54,16 @@ class Query:
 
         """
         # define the query structure
-        query = {"query": {"bool":{}}}
+        query = {"query": {"bool": {}}}
         query_match_structure = {"match": {}}
         query_date_structure = {"range": {"date": {}}}
-        
+
         # remove all params that are not valid
-        query_params = {param: query_params[param] for param in query_params if param in VALID_PARAMS}
+        query_params = {
+            param: query_params[param]
+            for param in query_params
+            if param in VALID_PARAMS
+        }
 
         # create the query
         for param in query_params:
@@ -70,22 +75,26 @@ class Query:
                     query["query"]["bool"]["filter"] = query_date_structure
                 # create the greater than or equal to (gte) start date query
                 if param == "start_date":
-                    query["query"]["bool"]["filter"]["range"]["date"]["gte"] = query_params[param]
+                    query["query"]["bool"]["filter"]["range"]["date"][
+                        "gte"
+                    ] = query_params[param]
                 # create the less than or equal to (lte) end date query
                 if param == "end_date":
-                    query["query"]["bool"]["filter"]["range"]["date"]["lte"] = query_params[param]
+                    query["query"]["bool"]["filter"]["range"]["date"][
+                        "lte"
+                    ] = query_params[param]
             else:
-                # create the must query structure if it doesn't 
+                # create the must query structure if it doesn't
                 # already exist
                 if "must" not in query["query"]["bool"]:
                     query["query"]["bool"]["must"] = []
-                
+
                 # add the search parameters to the must query structure
                 query_match = query_match_structure.copy()
-                query_match["match"] = {param:query_params[param]}
+                query_match["match"] = {param: query_params[param]}
                 query["query"]["bool"]["must"].append(query_match)
-            
-        return query           
+
+        return query
 
     def __repr__(self):
         return self.query_dsl_formatted
