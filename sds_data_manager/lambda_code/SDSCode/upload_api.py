@@ -10,9 +10,9 @@ logger.setLevel(logging.INFO)
 
 def _load_allowed_filenames():
     """
-    This function loads the config.json file, and stores the contents as a python dictionary 
+    Load the config.json file as a python dictionary.
     
-    :return: dictionary object of file types and their attributes. 
+    :return: dictionary object of file types and their attributes.
     """
     current_dir = os.path.dirname(__file__)
     config_file = os.path.join(current_dir, "config.json")
@@ -23,12 +23,12 @@ def _load_allowed_filenames():
 
 def _check_for_matching_filetype(pattern, filename):
     """
-    This function takes in a pattern from config.json and compares it to the desired file name
+    Read a pattern from config.json and compare it to the desired filename.
 
     :param pattern: A file naming pattern from the config.json
-    :param filename: Required.  String name of the desired file name.  
+    :param filename: String name of the desired file name.
     
-    :return: None if there is no match, or the file_dictionary if there is.  
+    :return: The file_dictionary, or None if there is no match. 
     """
     split_filename = filename.replace("_", ".").split(".")
 
@@ -38,7 +38,7 @@ def _check_for_matching_filetype(pattern, filename):
     i = 0
     file_dictionary = {}
     for field in pattern:
-        if pattern[field] == '*':
+        if pattern[field] == "*":
             file_dictionary[field] = split_filename[i]
         elif pattern[field] == split_filename[i]:
             file_dictionary[field] = split_filename[i]
@@ -50,12 +50,12 @@ def _check_for_matching_filetype(pattern, filename):
 
 def _generate_signed_upload_url(filename, tags={}):
     """
-    Based on a given filename, this function will open up a presigned url into the correct location on the SDS storage bucket
+    Create a presigned url for a file in the SDS storage bucket.
     
-    :param filename: Required.  A string representing the name of the object to upload.  
-    :param tags: Optional.  A dictionary object of key:value pairs that will be stored in the S3 object metadata.  
+    :param filename: Required.  A string representing the name of the object to upload.
+    :param tags: Optional.  A dictionary that will be stored in the S3 object metadata.  
 
-    :return: None if the filename does not match mission naming conventions.  Otherwise, a URL string.  
+    :return: A URL string if the file was found, otherwise None.
     """
     filetypes = _load_allowed_filenames()
     for filetype in filetypes:
@@ -63,34 +63,32 @@ def _generate_signed_upload_url(filename, tags={}):
         metadata = _check_for_matching_filetype(filetype["pattern"], filename)
         if metadata is not None:
             break
-        
     if metadata is None:
         logger.info(f"Found no matching file types to index this file against.")
         return None
-    
     bucket_name = os.environ["S3_BUCKET"]
     url = boto3.client('s3').generate_presigned_url(
         ClientMethod="put_object", 
-        Params={'Bucket': bucket_name[5:], 
-                'Key': path_to_upload_file + filename, 
-                'Metadata': tags or dict()}, 
+        Params={
+            'Bucket': bucket_name[5:], 
+            'Key': path_to_upload_file + filename, 
+            'Metadata': tags or dict()
+        }, 
         ExpiresIn=3600,
     )
-    
     return url
 
 def lambda_handler(event, context):
     """
-    The entry point to the upload API lambda.  
-    This function returns an S3 signed-URL based on the input filename, which the user can 
-    then use to load a file onto the SDS. 
-    
-    :param event: Dictionary object.  
-                  Specifically only requires event['queryStringParameters']['filename'] be present. 
-                  User-specified key:value pairs can also exist in the 'queryStringParameters', storing these pairs as object metadata.  
+    The entry point to the upload API lambda.
+    This function returns an S3 signed-URL based on the input filename,
+    which the user can then use to upload a file into the SDS.
+    :param event: Dictionary
+        Specifically only requires event['queryStringParameters']['filename']
+        User-specified key:value pairs can also exist in the 'queryStringParameters',
+        storing these pairs as object metadata.
     :param context: Unused
-    
-    :return: If all checks are successful, this returns a pre-signed url where users can upload a data file to the SDS.  
+    :return: A pre-signed url where users can upload a data file to the SDS. 
     """
     verified_token = False
     try:
@@ -106,13 +104,11 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "body": json.dumps("Supplied token could not be verified")
             }
-
     if "filename" not in event["queryStringParameters"]:
         return {
             "statusCode": 400,
-            "body": json.dumps("Please specify a filename to upload")
+            "body": json.dumps("Please specify a filename to upload"),
         }
-        
     filename = event["queryStringParameters"]["filename"]
     url = _generate_signed_upload_url(filename, tags=event["queryStringParameters"])
     

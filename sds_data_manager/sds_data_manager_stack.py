@@ -157,7 +157,11 @@ class SdsDataManagerStack(Stack):
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(15),
             memory_size=1000,
-            environment={"S3_BUCKET": data_bucket.s3_url_for_object()},
+            environment={
+                "S3_BUCKET": data_bucket.s3_url_for_object(),
+                "COGNITO_USERPOOL_ID": userpool_id, 
+                "COGNITO_APP_ID": app_client_id,
+            },
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
@@ -185,6 +189,8 @@ class SdsDataManagerStack(Stack):
                 "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
+                "COGNITO_USERPOOL_ID": userpool_id, 
+                "COGNITO_APP_ID": app_client_id,
             },
         )
         query_api_lambda.add_to_role_policy(opensearch_read_only_policy)
@@ -210,6 +216,10 @@ class SdsDataManagerStack(Stack):
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.seconds(60),
+            environment={
+                "COGNITO_USERPOOL_ID": userpool_id, 
+                "COGNITO_APP_ID": app_client_id,
+            },
         )
         download_query_api.add_to_role_policy(opensearch_all_http_permissions)
         download_query_api.add_to_role_policy(s3_read_policy)
