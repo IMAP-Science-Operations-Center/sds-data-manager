@@ -41,10 +41,13 @@ cdk bootstrap
 
 ### Deploy
 
-Inside the app.py file, there are two important configuration items which you can alter:
+There are several important configuration items which you can alter during a deployment:
 
-1) SDS_ID - This is just a string of 8 random letters that are appendend to each resources.  Alternatively, you can change this to something more meaningful (i.e. "bryan-testing").  Just be aware that this ID needs to be completely unique in each account.  
-2) initial_user - This is the email address that the initial API user gets sent to.  
+- SDSID - An ID number appended to the name of all of your services.  For example, "prod", "dev", or "harter-testing-stack"
+- initial_user - Optional. If this email address is provided, Cognito will send an email with instructions on setting up a Cognito 
+- userpool_name - Optional (Required if app_client_name given). This is the name of the userpool that contains the specified app_client_name.
+- app_client_name - Optional (Required if userpool_name given). This is the name of the app client on the AWS account that will be used to verify received tokens in the API.  
+- cognito_only - Optional.  If this context is set, then ONLY cognito services will be created. 
 
 To deploy the SDS, first you'll need to snyth the CDK code with the command:
 

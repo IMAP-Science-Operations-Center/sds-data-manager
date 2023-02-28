@@ -24,7 +24,7 @@ class SdsCognitoStack(Stack):
     def __init__(self, scope: Construct, 
                  construct_id: str, 
                  SDS_ID: str, 
-                 initial_email: str,
+                 initial_email: str='',
                  **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
@@ -73,18 +73,17 @@ class SdsCognitoStack(Stack):
         # Add a lambda function that will trigger whenever an email is sent to the user (see the lambda section above)
 
         # Create an initial user of the API
-        initial_user = cognito.CfnUserPoolUser(self, "MyCfnUserPoolUser",
-                                            user_pool_id=userpool.user_pool_id,
-                                            desired_delivery_mediums=["EMAIL"],
-                                            force_alias_creation=False,
-                                            user_attributes=[cognito.CfnUserPoolUser.AttributeTypeProperty(
-                                                name="email",
-                                                value=initial_user_context
-                                            )],
-                                            username=initial_user_context
-                                            )
-        userpool_id = userpool.user_pool_id
-        app_client_id = command_line_client.user_pool_client_id
+        if initial_user_context:
+                initial_user = cognito.CfnUserPoolUser(self, "MyCfnUserPoolUser",
+                                                user_pool_id=userpool.user_pool_id,
+                                                desired_delivery_mediums=["EMAIL"],
+                                                force_alias_creation=False,
+                                                user_attributes=[cognito.CfnUserPoolUser.AttributeTypeProperty(
+                                                        name="email",
+                                                        value=initial_user_context
+                                                )],
+                                                username=initial_user_context
+                                                )
 
 ########### LAMBDA
         # Adding a lambda that sends out an email with a link where the user can reset their password
@@ -107,8 +106,9 @@ class SdsCognitoStack(Stack):
 
         userpool.add_trigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, signup_lambda)
 
-        self.userpool_id = userpool_id
-        self.app_client_id = app_client_id
+        self.userpool_id = userpool.user_pool_id
+        self.app_client_id = command_line_client.user_pool_client_id
+
 ########### OUTPUTS
         cdk.CfnOutput(self, "COGNITO_USERPOOL_ID", value=userpool_id)
         cdk.CfnOutput(self, "COGNITO_APP_ID", value=app_client_id)

@@ -3,6 +3,7 @@ import botocore
 import os
 import json
 import logging
+import cognito_utils
 
 logger = logging.getLogger()
 logging.basicConfig()

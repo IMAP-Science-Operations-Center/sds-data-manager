@@ -6,17 +6,17 @@ Options can be included by adding "--context param=value" to a cdk synth/deploy 
 
 cdk deploy --context SDSID=harter-testing --context userpool_name=sds-userpool-dev --context app_client_name=sdscommandline-dev
 
-:context SDSID: Required.  
-:context initial_user: Required if userpool_name/app_client_name are not provided.  This is the email address of the initial cognito user.  
-:context userpool_name: Required if initial_user is not provided.  This is the name of the userpool that contains the specified app_client_name.
-:context app_client_name: Required if initial_user is not provided.  This is the name of the app client on the AWS account that will be used to verify received tokens in the API.  
-:context cognito_only: Optional.  If true, then this stack will only deploy the cognito clients.  
+:context SDSID: Required. This is a unique identifier for your stack.  
+:context initial_user: Optional. This is the email address of the initial cognito user.  If not provided, the first user will need to be set up in the AWS console.   
+:context userpool_name: Optional (Required if app_client_name given). This is the name of the userpool that contains the specified app_client_name.
+:context app_client_name: Optional (Required if userpool_name given). This is the name of the app client on the AWS account that will be used to verify received tokens in the API.  
+:context cognito_only: Optional.  If true, then this stack will only deploy cognito services.  
 
-There are 3 "modes" for this application:
+To summarize, there are 3 "modes" for this application:
 
-1) Cognito is spun up at the same time as the rest of the stack.  You must provide the "initial_user" email address.  
-2) No Cognito services are created.  Instead, a pre-existing cognito userpool is used.  Context for "userpool_name" and "app_client_name" are required.  
-3) ONLY Cognito services are created.  The context of "cognito_only" must be provided, in addition to the "initial_user".  
+1) Cognito is spun up at the same time as the rest of the stack.  No special context is needed.   
+2) No Cognito services are created and instead a pre-existing cognito userpool is used.  Context needed: "userpool_name" and "app_client_name".  
+3) ONLY Cognito services are created.  Context needed: "cognito_only".   
 
 '''
 import os
@@ -61,10 +61,10 @@ if userpool_name and app_client_name:
     else:
         raise ValueError(f"There is no appclient with the name {app_client_name}")
     create_cognito = False
-elif initial_user:
-    create_cognito = True
+elif userpool_name or app_client_name:
+    raise Exception("Required to either specify both a Cognito Userpool and Appclient name.")
 else:
-    raise Exception("Required to either specify both a Cognito Userpool and Appclient, or the initial_email for a new Cognito service. ")
+    create_cognito = True
 
 # If the criteria are met, create a brand new Cognito userpool to verify API access
 if create_cognito:

@@ -24,8 +24,8 @@ class SdsInABoxStack(Stack):
     def __init__(self, scope: Construct, 
                  construct_id: str, 
                  SDS_ID: str, 
-                 userpool_id=None, 
-                 app_client_id=None,
+                 userpool_id: str='', 
+                 app_client_id: str='',
                  **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
                        
