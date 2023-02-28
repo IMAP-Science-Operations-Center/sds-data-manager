@@ -24,13 +24,13 @@ import string
 
 import aws_cdk as cdk
 from sds_data_manager.sds_cognito_stack import SdsCognitoStack
-
 from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
 
 app = cdk.App()
 
 # Grab context from cdk synth and cdk deploy commands
 SDS_ID = app.node.try_get_context("SDSID")
+initial_user = app.node.try_get_context("initial_user")
 userpool_name = app.node.try_get_context("userpool_name")
 app_client_name = app.node.try_get_context("app_client_name")
 cognito_only = app.node.try_get_context("cognito_only")
