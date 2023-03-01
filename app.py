@@ -1,27 +1,43 @@
 #!/usr/bin/env python3
 '''
-This stack generates the necessary AWS services for the data management portions of a Science Data System.  
+This stack generates the necessary AWS services for the data management 
+portions of a Science Data System.  
 
-Options can be included by adding "--context param=value" to a cdk synth/deploy command, for example:
+Options can be included by adding "--context param=value" to a cdk s
+ynth/deploy command, for example:
 
-cdk deploy --context SDSID=harter-testing --context userpool_name=sds-userpool-dev --context app_client_name=sdscommandline-dev
+cdk deploy --context SDSID=harter-testing \
+           --context userpool_name=sds-userpool-dev \
+           --context app_client_name=sdscommandline-dev \
+           --all
 
 :context SDSID: Required. This is a unique identifier for your stack.  
-:context initial_user: Optional. This is the email address of the initial cognito user.  If not provided, the first user will need to be set up in the AWS console.   
-:context userpool_name: Optional (Required if app_client_name given). This is the name of the userpool that contains the specified app_client_name.
-:context app_client_name: Optional (Required if userpool_name given). This is the name of the app client on the AWS account that will be used to verify received tokens in the API.  
-:context cognito_only: Optional.  If true, then this stack will only deploy cognito services.  
+:context initial_user: Optional. This is the email address of the initial
+                       cognito user.  If not provided, the first user will 
+                       need to be set up in the AWS console.   
+:context userpool_name: Optional (Required if app_client_name given). 
+                        This is the name of the userpool that contains 
+                        the specified app_client_name.
+:context app_client_name: Optional (Required if userpool_name given). 
+                          This is the name of the app client on the AWS 
+                          account that will be used to verify received 
+                          tokens in the API.  
+:context cognito_only: Optional.  If true, then this stack will only 
+                       deploy cognito services.  
 
 To summarize, there are 3 "modes" for this application:
 
-1) Cognito is spun up at the same time as the rest of the stack.  No special context is needed.   
-2) No Cognito services are created and instead a pre-existing cognito userpool is used.  Context needed: "userpool_name" and "app_client_name".  
-3) ONLY Cognito services are created.  Context needed: "cognito_only".   
+1) Cognito is spun up at the same time as the rest of the stack.  
+   Context needed: None  
+2) No Cognito services are created and a pre-existing cognito userpool is used.  
+   Context needed: "userpool_name" and "app_client_name".  
+3) ONLY Cognito services are created.  
+   Context needed: "cognito_only".   
 
 '''
 import random
 import string
-
+import boto3
 import aws_cdk as cdk
 from sds_data_manager.sds_cognito_stack import SdsCognitoStack
 from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
@@ -68,11 +84,12 @@ else:
 
 # If the criteria are met, create a brand new Cognito userpool to verify API access
 if create_cognito:
-    cognito_stack = SdsCognitoStack(app, f"SDSCognitoStack-{SDS_ID}", SDS_ID=SDS_ID, initial_email=initial_user)
+    cognito_stack = SdsCognitoStack(app, f"SDSCognitoStack-{SDS_ID}", 
+                                    sds_id=SDS_ID, initial_email=initial_user)
     userpool_id = cognito_stack.userpool_id
     app_client_id = cognito_stack.app_client_id
 
 if not cognito_only:
-    SdsDataManagerStack(app, f"SdsDataManager-{SDS_ID}", sds_id=SDS_ID, userpool_id=userpool_id, app_client_id=app_client_id)
-
+    SdsDataManagerStack(app, f"SdsDataManager-{SDS_ID}", sds_id=SDS_ID, 
+                        userpool_id=userpool_id, app_client_id=app_client_id)
 app.synth()

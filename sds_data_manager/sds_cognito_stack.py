@@ -23,7 +23,7 @@ class SdsCognitoStack(Stack):
 
     def __init__(self, scope: Construct, 
                  construct_id: str, 
-                 SDS_ID: str, 
+                 sds_id: str, 
                  initial_email: str='',
                  **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -65,8 +65,9 @@ class SdsCognitoStack(Stack):
                                                                                 custom=True),
                                                     prevent_user_existence_errors=True)
         
-        # Add a random unique domain name where users can sign up / reset passwords
-        # Users will be able to reset their passwords at https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={}&redirect_uri=https://example.com&response_type=code
+        # Add aunique domain name where users can sign up / reset passwords
+        # Users will be able to reset their passwords at:
+        # https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={}&redirect_uri=https://example.com&response_type=code
         userpooldomain = userpool.add_domain(id="TeamLoginCognitoDomain",
                                             cognito_domain=cognito.CognitoDomainOptions(domain_prefix=f"sds-login-{SDS_ID}"))
 
@@ -87,10 +88,11 @@ class SdsCognitoStack(Stack):
 
 ########### LAMBDA
         # Adding a lambda that sends out an email with a link where the user can reset their password
+        lambda_code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "lambda_code")
         signup_lambda = lambda_alpha_.PythonFunction(self,
                                          id="SignupLambda",
                                          function_name=f'cognito_signup_message-{SDS_ID}',
-                                         entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "lambda_code"),
+                                         entry=lambda_code_dir,
                                          index="SDSCode/cognito_signup_message.py",
                                          handler="lambda_handler",
                                          runtime=lambda_.Runtime.PYTHON_3_9,
@@ -111,4 +113,8 @@ class SdsCognitoStack(Stack):
 ########### OUTPUTS
         cdk.CfnOutput(self, "COGNITO_USERPOOL_ID", value=self.userpool_id)
         cdk.CfnOutput(self, "COGNITO_APP_ID", value=self.app_client_id)
-        cdk.CfnOutput(self, "SIGN_IN_WEBPAGE", value=f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={self.app_client_id}&redirect_uri=https://example.com&response_type=code")
+        cdk.CfnOutput(self, "SIGN_IN_WEBPAGE", 
+                      value=f"https://sds-login-{SDS_ID}" + 
+                      ".auth.us-west-2.amazoncognito.com/login?client_id=" + 
+                      self.app_client_id + 
+                      "&redirect_uri=https://example.com&response_type=code")
