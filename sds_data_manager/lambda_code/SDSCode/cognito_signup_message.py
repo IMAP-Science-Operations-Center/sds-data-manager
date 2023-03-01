@@ -64,10 +64,10 @@ def lambda_handler(event, context):
             subject = f"Science Data System {os.environ['SDS_ID']} sign up"            
             event["response"]["emailSubject"] = subject
             event["response"]["smsMessage"] = "We don't use this"
-            message = "Your Username is {username} and your password is {####}." +  
-                      "Continue signing up at: " + 
-                      os.environ["COGNITO_DOMAIN"] + "/login?client_id="+ 
-                      command_line_client + 
+            message = "Your Username is {username} and your password is {####}." +  \
+                      "Continue signing up at: " + \
+                      os.environ["COGNITO_DOMAIN"] + "/login?client_id=" + \
+                      command_line_client + \
                       "&redirect_uri=https://example.com&response_type=code"
             event["response"]["emailMessage"]= message
                             

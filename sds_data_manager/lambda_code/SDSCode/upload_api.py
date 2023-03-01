@@ -41,7 +41,7 @@ def _check_for_matching_filetype(pattern, filename):
     
     return file_dictionary
 
-def _generate_signed_upload_url(filename, tags={}):
+def _generate_signed_upload_url(filename, tags=None):
     """
     Create a presigned url for a file in the SDS storage bucket.
     :param filename: Required.  A string representing the name of the object to upload.

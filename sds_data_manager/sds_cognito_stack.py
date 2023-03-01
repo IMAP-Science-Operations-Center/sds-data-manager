@@ -44,7 +44,7 @@ class SdsCognitoStack(Stack):
         # Create the Cognito UserPool
         userpool = cognito.UserPool(self,
                                     id='TeamUserPool',
-                                    user_pool_name=f'sds-userpool-{SDS_ID}',
+                                    user_pool_name=f'sds-userpool-{sds_id}',
                                     account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
                                     auto_verify=cognito.AutoVerifiedAttrs(email=True),
                                     standard_attributes=cognito.
@@ -55,7 +55,7 @@ class SdsCognitoStack(Stack):
 
         # Add a client sign in for the userpool
         command_line_client = cognito.UserPoolClient(user_pool=userpool, scope=self, id='sds-command-line',
-                                                    user_pool_client_name= f"sdscommandline-{SDS_ID}",
+                                                    user_pool_client_name= f"sdscommandline-{sds_id}",
                                                     id_token_validity=cdk.Duration.minutes(60),
                                                     access_token_validity=cdk.Duration.minutes(60),
                                                     refresh_token_validity=cdk.Duration.minutes(60),
@@ -67,9 +67,9 @@ class SdsCognitoStack(Stack):
         
         # Add aunique domain name where users can sign up / reset passwords
         # Users will be able to reset their passwords at:
-        # https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={}&redirect_uri=https://example.com&response_type=code
+        # https://sds-login-{sds_id}.auth.us-west-2.amazoncognito.com/login?client_id={}&redirect_uri=https://example.com&response_type=code
         userpooldomain = userpool.add_domain(id="TeamLoginCognitoDomain",
-                                            cognito_domain=cognito.CognitoDomainOptions(domain_prefix=f"sds-login-{SDS_ID}"))
+                                            cognito_domain=cognito.CognitoDomainOptions(domain_prefix=f"sds-login-{sds_id}"))
 
         # Add a lambda function that will trigger whenever an email is sent to the user (see the lambda section above)
 
@@ -91,16 +91,16 @@ class SdsCognitoStack(Stack):
         lambda_code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "lambda_code")
         signup_lambda = lambda_alpha_.PythonFunction(self,
                                          id="SignupLambda",
-                                         function_name=f'cognito_signup_message-{SDS_ID}',
+                                         function_name=f'cognito_signup_message-{sds_id}',
                                          entry=lambda_code_dir,
                                          index="SDSCode/cognito_signup_message.py",
                                          handler="lambda_handler",
                                          runtime=lambda_.Runtime.PYTHON_3_9,
                                          timeout=cdk.Duration.minutes(15),
                                          memory_size=1000,
-                                         environment={"COGNITO_DOMAIN_PREFIX": f"sds-login-{SDS_ID}", 
-                                                      "COGNITO_DOMAIN": f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com", 
-                                                      "SDS_ID": SDS_ID}
+                                         environment={"COGNITO_DOMAIN_PREFIX": f"sds-login-{sds_id}", 
+                                                      "COGNITO_DOMAIN": f"https://sds-login-{sds_id}.auth.us-west-2.amazoncognito.com", 
+                                                      "sds_id": sds_id}
         )
         signup_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         # Adding Cognito Permissions
@@ -114,7 +114,7 @@ class SdsCognitoStack(Stack):
         cdk.CfnOutput(self, "COGNITO_USERPOOL_ID", value=self.userpool_id)
         cdk.CfnOutput(self, "COGNITO_APP_ID", value=self.app_client_id)
         cdk.CfnOutput(self, "SIGN_IN_WEBPAGE", 
-                      value=f"https://sds-login-{SDS_ID}" + 
-                      ".auth.us-west-2.amazoncognito.com/login?client_id=" + 
-                      self.app_client_id + 
+                      value=f"https://sds-login-{sds_id}" + \
+                      ".auth.us-west-2.amazoncognito.com/login?client_id=" + \
+                      self.app_client_id + \
                       "&redirect_uri=https://example.com&response_type=code")
