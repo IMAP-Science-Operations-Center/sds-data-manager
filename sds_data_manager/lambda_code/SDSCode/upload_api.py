@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import boto3
-from SDSCode import cognito_utils
+import .cognito_utils
 
 logger = logging.getLogger()
 logging.basicConfig()

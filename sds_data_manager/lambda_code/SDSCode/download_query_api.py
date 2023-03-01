@@ -1,6 +1,6 @@
 import json
 import logging
-from SDSCode import cognito_utils
+import .cognito_utils
 import os
 
 import boto3
