@@ -103,13 +103,12 @@ class SdsCognitoStack(Stack):
         signup_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         # Adding Cognito Permissions
         signup_lambda.add_to_role_policy(cognito_admin_policy)
-
         userpool.add_trigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, signup_lambda)
-
+        # Add attributes to the class for other stacks to reference
         self.userpool_id = userpool.user_pool_id
         self.app_client_id = command_line_client.user_pool_client_id
 
 ########### OUTPUTS
-        cdk.CfnOutput(self, "COGNITO_USERPOOL_ID", value=userpool_id)
-        cdk.CfnOutput(self, "COGNITO_APP_ID", value=app_client_id)
-        cdk.CfnOutput(self, "SIGN_IN_WEBPAGE", value=f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={app_client_id}&redirect_uri=https://example.com&response_type=code")
+        cdk.CfnOutput(self, "COGNITO_USERPOOL_ID", value=self.userpool_id)
+        cdk.CfnOutput(self, "COGNITO_APP_ID", value=self.app_client_id)
+        cdk.CfnOutput(self, "SIGN_IN_WEBPAGE", value=f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={self.app_client_id}&redirect_uri=https://example.com&response_type=code")

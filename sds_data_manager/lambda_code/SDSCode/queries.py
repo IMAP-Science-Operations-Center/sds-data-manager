@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import sys
-import cognito_utils
+from SDSCode import cognito_utils
 from opensearchpy import RequestsHttpConnection
 
 from .opensearch_utils.client import Client

@@ -73,6 +73,6 @@ if create_cognito:
     app_client_id = cognito_stack.app_client_id
 
 if not cognito_only:
-    SdsDataManagerStack(app, f"SdsInABoxStack-{SDS_ID}", SDS_ID=SDS_ID, userpool_id=userpool_id, app_client_id=app_client_id)
+    SdsDataManagerStack(app, f"SdsDataManager-{SDS_ID}", sds_id=SDS_ID, userpool_id=userpool_id, app_client_id=app_client_id)
 
 app.synth()

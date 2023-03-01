@@ -14,13 +14,30 @@ The code in this repository takes the form of an AWS CDK project. It provides th
 4. A lambda function that inserts file metadata into an opensearch instance
 5. A Cognito User Pool that keeps track of who can access the restricted APIs.  
 
-## Development
+## Development (Codespaces)
 
-The development environment uses a GitHub codespace, to ensure that we're all using the proper libraries as we develop and deploy.  
-
-Everyone gets 50 free hours per month of github Codespace time.  Alternatively, your organization can pay for it to run longer than this.  
+The development environment optionally uses a GitHub codespace, to ensure that we're all using the proper libraries as we develop and deploy.  The development environment configuration is kept in the .devcontainer folder.  
 
 To start a new development environment, click the button for "Code" in the upper right corner of the repository, and click "Codespaces".  
+
+## Development (Local)
+
+1. Install nodejs newer than version 14.
+    <https://nodejs.org/en/download/>
+
+2. Install the aws-cdk:
+
+    ```bash
+    npm install -g aws-cdk
+    ```
+
+3. Install the package
+
+    ```bash
+    pip install -e .[dev]
+    # optionally install pre-commit hooks
+    pre-commit install
+    ```
 
 ### AWS Setup
 
@@ -48,51 +65,28 @@ There are several important configuration items which you can alter during a dep
 - app_client_name - Optional (Required if userpool_name given). This is the name of the app client on the AWS account that will be used to verify received tokens in the API.  
 - cognito_only - Optional.  If this context is set, then ONLY cognito services will be created. 
 
-To deploy the SDS, first you'll need to synthesize the CDK code with the command:
+To deploy the SDS, first you should synthesize the CDK code with the command to check for errors:
 
 ```bash
 cdk synth --context SDSID={insert a unique ID here}
 ```
 
-and then you can deploy the architecture with the following command:
+When you are ready, you can deploy the architecture with the following command:
 
 ```bash
-cdk deploy --context SDSID={insert a unique ID here}
+cdk deploy --all --context SDSID={insert a unique ID here}
 ```
 
 for example:
 
 ```bash
 cdk synth --context SDSID=username-testing
-cdk deploy --context SDSID=username-testing
+cdk deploy --all --context SDSID=username-testing
 ```
 
 After about 20 minutes or so, you should have a brand new SDS set up in AWS.  
-This is the repository for the cloud infrastructure on the IMAP mission.
 
-1. Install nodejs newer than version 14.
-    <https://nodejs.org/en/download/>
 
-2. Install the aws-cdk:
-
-    ```bash
-    npm install -g aws-cdk
-    ```
-
-3. Install the package
-
-    ```bash
-    pip install -e .[dev]
-    # optionally install pre-commit hooks
-    pre-commit install
-    ```
-
-4. Configure your environment with AWS credentials and bootstrap the cdk
-
-    ```bash
-    aws configure
-    cdk bootstrap
-    ```
 
 ### Virtual Desktop for Development
 
