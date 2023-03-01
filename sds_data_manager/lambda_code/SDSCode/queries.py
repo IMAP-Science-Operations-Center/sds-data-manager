@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import sys
-from SDSCode import cognito_utils
 from opensearchpy import RequestsHttpConnection
 
 from .opensearch_utils.client import Client
@@ -29,23 +28,6 @@ def _create_open_search_client():
 
 def lambda_handler(event, context):
     logger.info("Received event: " + json.dumps(event, indent=2))
-    
-    # Verify the user's cognito token
-    verified_token = False
-    try:
-        token=event["headers"]["authorization"]
-        verified_token = cognito_utils.verify_cognito_token(token)
-    except Exception as e:
-        logger.info(f"Authentication error: {e}")
-
-
-    if not verified_token:
-        logger.info("Supplied token could not be verified")
-        return {
-                'statusCode': 400,
-                'body': json.dumps("Supplied token could not be verified")
-            }
-    
     # create the opensearch query from the API parameters
     query = Query(event["queryStringParameters"])
     client = _create_open_search_client()

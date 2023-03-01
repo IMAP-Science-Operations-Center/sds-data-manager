@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import boto3
-from SDSCode import cognito_utils
 
 logger = logging.getLogger()
 logging.basicConfig()
@@ -82,18 +81,6 @@ def lambda_handler(event, context):
     :param context: Unused
     :return: A pre-signed url where users can upload a data file to the SDS. 
     """
-    verified_token = False
-    try:
-        token=event["headers"]["authorization"]
-        verified_token = cognito_utils.verify_cognito_token(token)
-    except Exception as e:
-        logger.info(f"Authentication error: {e}")
-    if not verified_token:
-        logger.info("Supplied token could not be verified")
-        return {
-                "statusCode": 400,
-                "body": json.dumps("Supplied token could not be verified")
-            }
     if "filename" not in event["queryStringParameters"]:
         return {
             "statusCode": 400,

@@ -1,6 +1,5 @@
 import json
 import logging
-from SDSCode import cognito_utils
 import os
 
 import boto3
@@ -41,24 +40,7 @@ def lambda_handler(event, context):
         context : This is not used.
     """
 
-    logger.info(event)
-    
-    # Verify the cognito token
-    verified_token = False
-    try:
-        token=event["headers"]["authorization"]
-        verified_token = cognito_utils.verify_cognito_token(token)
-    except Exception as e:
-        logger.info(f"Authentication error: {e}")
-
-
-    if not verified_token:
-        logger.info("Supplied token could not be verified")
-        return {
-                'statusCode': 400,
-                'body': json.dumps("Supplied token could not be verified")
-            }
-    
+    logger.info(event)    
     one_day = 86400
     url_life = os.environ.get("URL_EXPIRE", one_day)
 
