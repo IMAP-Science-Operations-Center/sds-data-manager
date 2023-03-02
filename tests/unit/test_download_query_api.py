@@ -5,7 +5,7 @@ from operator import contains
 import boto3
 from moto import mock_s3
 
-from sds_data_manager.lambda_code.SDSCode.download_query_api import lambda_handler
+from sds_data_manager.lambda_code.SDSCode import download_query_api
 
 
 class TestDownloadQueryAPI(unittest.TestCase):
@@ -50,7 +50,7 @@ class TestDownloadQueryAPI(unittest.TestCase):
             },
         }
 
-        response = lambda_handler(event=self.event, context=None)
+        response = download_query_api.lambda_handler(event=self.event, context=None)
         assert response["statusCode"] == 200
         assert contains(response["body"], "download_url")
 
@@ -66,7 +66,7 @@ class TestDownloadQueryAPI(unittest.TestCase):
             },
         }
 
-        response = lambda_handler(event=self.event, context=None)
+        response = download_query_api.lambda_handler(event=self.event, context=None)
         assert response["statusCode"] == 404
 
     def test_input_parameters_missing(self):
@@ -86,10 +86,10 @@ class TestDownloadQueryAPI(unittest.TestCase):
             "queryStringParameters": {"bad_input": f"{self.s3_filepath}"},
         }
 
-        response = lambda_handler(event=self.empty_para_event, context=None)
+        response = download_query_api.lambda_handler(event=self.empty_para_event, context=None)
         assert response["statusCode"] == 400
 
-        response = lambda_handler(event=self.bad_para_event, context=None)
+        response = download_query_api.lambda_handler(event=self.bad_para_event, context=None)
         assert response["statusCode"] == 400
 
     def tearDown(self):
