@@ -88,12 +88,12 @@ class SdsCognitoStack(Stack):
             )
 
         ########### LAMBDA
-        # Adding a lambda that sends out an email with a link 
+        # Adding a lambda that sends out an email with a link
         # where the user can reset their password
         lambda_code_dir = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "lambda_code"
         )
-        cognito_domain=f"https://sds-login-{sds_id}.auth.us-west-2.amazoncognito.com"
+        cognito_domain = f"https://sds-login-{sds_id}.auth.us-west-2.amazoncognito.com"
         signup_lambda = lambda_alpha_.PythonFunction(
             self,
             id="SignupLambda",
