@@ -1,12 +1,15 @@
 import json
 import logging
 import os
+
 import boto3
+
 from . import cognito_utils
 
 logger = logging.getLogger()
 logging.basicConfig()
 logger.setLevel(logging.INFO)
+
 
 def _load_allowed_filenames():
     """
@@ -19,12 +22,13 @@ def _load_allowed_filenames():
         data = json.load(f)
     return data
 
+
 def _check_for_matching_filetype(pattern, filename):
     """
     Read a pattern from config.json and compare it to the desired filename.
     :param pattern: A file naming pattern from the config.json
     :param filename: String name of the desired file name.
-    :return: The file_dictionary, or None if there is no match. 
+    :return: The file_dictionary, or None if there is no match.
     """
     split_filename = filename.replace("_", ".").split(".")
     if len(split_filename) != len(pattern):
@@ -39,14 +43,15 @@ def _check_for_matching_filetype(pattern, filename):
         else:
             return None
         i += 1
-    
+
     return file_dictionary
+
 
 def _generate_signed_upload_url(filename, tags={}):
     """
     Create a presigned url for a file in the SDS storage bucket.
     :param filename: Required.  A string representing the name of the object to upload.
-    :param tags: Optional.  A dictionary that will be stored in the S3 object metadata.  
+    :param tags: Optional.  A dictionary that will be stored in the S3 object metadata.
     :return: A URL string if the file was found, otherwise None.
     """
     filetypes = _load_allowed_filenames()
@@ -64,11 +69,12 @@ def _generate_signed_upload_url(filename, tags={}):
         Params={
             "Bucket": bucket_name[5:],
             "Key": path_to_upload_file + filename,
-            "Metadata": tags or dict()
-        }, 
+            "Metadata": tags or dict(),
+        },
         ExpiresIn=3600,
     )
     return url
+
 
 def lambda_handler(event, context):
     """
@@ -80,20 +86,20 @@ def lambda_handler(event, context):
         User-specified key:value pairs can also exist in the 'queryStringParameters',
         storing these pairs as object metadata.
     :param context: Unused
-    :return: A pre-signed url where users can upload a data file to the SDS. 
+    :return: A pre-signed url where users can upload a data file to the SDS.
     """
     verified_token = False
     try:
-        token=event["headers"]["authorization"]
+        token = event["headers"]["authorization"]
         verified_token = cognito_utils.verify_cognito_token(token)
     except Exception as e:
         logger.info(f"Authentication error: {e}")
     if not verified_token:
         logger.info("Supplied token could not be verified")
         return {
-                "statusCode": 400,
-                "body": json.dumps("Supplied token could not be verified")
-            }
+            "statusCode": 400,
+            "body": json.dumps("Supplied token could not be verified"),
+        }
     if "filename" not in event["queryStringParameters"]:
         return {
             "statusCode": 400,
@@ -107,6 +113,6 @@ def lambda_handler(event, context):
             "body": json.dumps(
                 "A pre-signed URL could not be generated. Please ensure that the "
                 "file name matches mission file naming conventions."
-             )
+            ),
         }
     return {"statusCode": 200, "body": json.dumps(url)}

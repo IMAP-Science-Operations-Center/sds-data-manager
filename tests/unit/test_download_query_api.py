@@ -86,10 +86,14 @@ class TestDownloadQueryAPI(unittest.TestCase):
             "queryStringParameters": {"bad_input": f"{self.s3_filepath}"},
         }
 
-        response = download_query_api.lambda_handler(event=self.empty_para_event, context=None)
+        response = download_query_api.lambda_handler(
+            event=self.empty_para_event, context=None
+        )
         assert response["statusCode"] == 400
 
-        response = download_query_api.lambda_handler(event=self.bad_para_event, context=None)
+        response = download_query_api.lambda_handler(
+            event=self.bad_para_event, context=None
+        )
         assert response["statusCode"] == 400
 
     def tearDown(self):
