@@ -18,8 +18,8 @@ def verify_cognito_token(token):
     region = "us-west-2"
     userpool_id = os.environ["COGNITO_USERPOOL_ID"]
     app_client_id = os.environ["COGNITO_APP_ID"]
-    keys_url = "https://cognito-idp." + region + 
-               ".amazonaws.com/" + userpool_id + 
+    keys_url = "https://cognito-idp." + region + \
+               ".amazonaws.com/" + userpool_id + \
                "/.well-known/jwks.json"
     response = requests.get(keys_url, timeout=10)
     keys = (response.json())["keys"]
