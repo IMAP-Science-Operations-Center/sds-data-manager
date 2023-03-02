@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''
+"""
 This stack generates the necessary AWS services for the data management 
 portions of a Science Data System.  
 
@@ -34,11 +34,13 @@ To summarize, there are 3 "modes" for this application:
 3) ONLY Cognito services are created.  
    Context needed: "cognito_only".   
 
-'''
+"""
 import random
 import string
-import boto3
+
 import aws_cdk as cdk
+import boto3
+
 from sds_data_manager.sds_cognito_stack import SdsCognitoStack
 from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
 
@@ -61,35 +63,45 @@ elif SDS_ID == "random":
 
 # We'll try to find the cognito userpool id and app client ID from the names
 if userpool_name and app_client_name:
-    cognito_client = boto3.client('cognito-idp')
+    cognito_client = boto3.client("cognito-idp")
     userpool_list = cognito_client.list_user_pools(MaxResults=60)
-    for up in userpool_list['UserPools']:
-        if up['Name'] == userpool_name:
-            userpool_id = up['Id']
+    for up in userpool_list["UserPools"]:
+        if up["Name"] == userpool_name:
+            userpool_id = up["Id"]
             break
     else:
         raise ValueError(f"There is no userpool with the name {userpool_name}.")
-    app_client_list = cognito_client.list_user_pool_clients(UserPoolId=userpool_id, MaxResults=60)
-    for ac in app_client_list['UserPoolClients']:
-        if ac['ClientName'] == app_client_name:
-            app_client_id = ac['ClientId']
+    app_client_list = cognito_client.list_user_pool_clients(
+        UserPoolId=userpool_id, MaxResults=60
+    )
+    for ac in app_client_list["UserPoolClients"]:
+        if ac["ClientName"] == app_client_name:
+            app_client_id = ac["ClientId"]
             break
     else:
         raise ValueError(f"There is no appclient with the name {app_client_name}")
     create_cognito = False
 elif userpool_name or app_client_name:
-    raise Exception("Required to either specify both a Cognito Userpool and Appclient name.")
+    raise Exception(
+        "Required to either specify both a Cognito Userpool and Appclient name."
+    )
 else:
     create_cognito = True
 
 # If the criteria are met, create a brand new Cognito userpool to verify API access
 if create_cognito:
-    cognito_stack = SdsCognitoStack(app, f"SDSCognitoStack-{SDS_ID}", 
-                                    sds_id=SDS_ID, initial_email=initial_user)
+    cognito_stack = SdsCognitoStack(
+        app, f"SDSCognitoStack-{SDS_ID}", sds_id=SDS_ID, initial_email=initial_user
+    )
     userpool_id = cognito_stack.userpool_id
     app_client_id = cognito_stack.app_client_id
 
 if not cognito_only:
-    SdsDataManagerStack(app, f"SdsDataManager-{SDS_ID}", sds_id=SDS_ID, 
-                        userpool_id=userpool_id, app_client_id=app_client_id)
+    SdsDataManagerStack(
+        app,
+        f"SdsDataManager-{SDS_ID}",
+        sds_id=SDS_ID,
+        userpool_id=userpool_id,
+        app_client_id=app_client_id,
+    )
 app.synth()

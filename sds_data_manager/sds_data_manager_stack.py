@@ -15,8 +15,13 @@ from constructs import Construct
 
 class SdsDataManagerStack(Stack):
     def __init__(
-        self, scope: Construct, construct_id: str, sds_id: str, 
-        userpool_id: str='', app_client_id: str='', **kwargs
+        self,
+        scope: Construct,
+        construct_id: str,
+        sds_id: str,
+        userpool_id: str = "",
+        app_client_id: str = "",
+        **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -159,7 +164,7 @@ class SdsDataManagerStack(Stack):
             memory_size=1000,
             environment={
                 "S3_BUCKET": data_bucket.s3_url_for_object(),
-                "COGNITO_USERPOOL_ID": userpool_id, 
+                "COGNITO_USERPOOL_ID": userpool_id,
                 "COGNITO_APP_ID": app_client_id,
             },
         )
@@ -189,7 +194,7 @@ class SdsDataManagerStack(Stack):
                 "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
-                "COGNITO_USERPOOL_ID": userpool_id, 
+                "COGNITO_USERPOOL_ID": userpool_id,
                 "COGNITO_APP_ID": app_client_id,
             },
         )
@@ -217,7 +222,7 @@ class SdsDataManagerStack(Stack):
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.seconds(60),
             environment={
-                "COGNITO_USERPOOL_ID": userpool_id, 
+                "COGNITO_USERPOOL_ID": userpool_id,
                 "COGNITO_APP_ID": app_client_id,
             },
         )

@@ -40,7 +40,7 @@ def lambda_handler(event, context):
         context : This is not used.
     """
 
-    logger.info(event)    
+    logger.info(event)
     one_day = 86400
     url_life = os.environ.get("URL_EXPIRE", one_day)
 
