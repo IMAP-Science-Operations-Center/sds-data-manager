@@ -71,9 +71,6 @@ class SdsCognitoStack(Stack):
                 domain_prefix=f"sds-login-{sds_id}"
             ),
         )
-
-        # Add a lambda function that will trigger whenever an email is sent to the user (see the lambda section above)
-
         # Create an initial user of the API
         if initial_user_context:
             cognito.CfnUserPoolUser(
@@ -91,10 +88,12 @@ class SdsCognitoStack(Stack):
             )
 
         ########### LAMBDA
-        # Adding a lambda that sends out an email with a link where the user can reset their password
+        # Adding a lambda that sends out an email with a link 
+        # where the user can reset their password
         lambda_code_dir = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "lambda_code"
         )
+        cognito_domain=f"https://sds-login-{sds_id}.auth.us-west-2.amazoncognito.com"
         signup_lambda = lambda_alpha_.PythonFunction(
             self,
             id="SignupLambda",
@@ -107,8 +106,8 @@ class SdsCognitoStack(Stack):
             memory_size=1000,
             environment={
                 "COGNITO_DOMAIN_PREFIX": f"sds-login-{sds_id}",
-                "COGNITO_DOMAIN": f"https://sds-login-{sds_id}.auth.us-west-2.amazoncognito.com",
-                "sds_id": sds_id,
+                "COGNITO_DOMAIN": cognito_domain,
+                "SDS_ID": sds_id,
             },
         )
         signup_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
