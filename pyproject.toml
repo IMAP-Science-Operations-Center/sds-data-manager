@@ -54,7 +54,7 @@ optional = true
 [tool.poetry.group.lambda-dev.dependencies]
 opensearch-py = "^2.1.1"
 requests = "^2.28.2"
-jose = "^1.0.0"
+python-jose = "^3.3.0"
 
 [project.urls]
 homepage = "https://github.com/IMAP-Science-Operations-Center"
