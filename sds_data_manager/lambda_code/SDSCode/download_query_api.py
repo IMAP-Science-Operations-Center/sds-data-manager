@@ -54,8 +54,9 @@ def lambda_handler(event, context):
 
     if not verified_token:
         logger.info("Supplied token could not be verified")
-        return http_response(status_code=400, 
-                             body=json.dumps("Supplied token could not be verified"))
+        return http_response(
+            status_code=400, body=json.dumps("Supplied token could not be verified")
+        )
 
     one_day = 86400
     url_life = os.environ.get("URL_EXPIRE", one_day)
@@ -94,12 +95,11 @@ def lambda_handler(event, context):
     except botocore.exceptions.ClientError as e:
         if e.response["Error"]["Code"] == "404":
             # object doesn't exist
-            status_code=404
-            body="File not found in S3."
+            pass
         else:
             # fails due to another error
-            status_code=e.response["Error"]["Code"]
-            body = str(e)
+            e.response["Error"]["Code"]
+            str(e)
         return http_response(status_code=404, body="File not found in S3.")
 
     pre_signed_url = s3_client.generate_presigned_url(
