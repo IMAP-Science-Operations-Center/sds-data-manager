@@ -22,6 +22,24 @@ Everyone gets 50 free hours per month of github Codespace time.  Alternatively, 
 
 To start a new development environment, click the button for "Code" in the upper right corner of the repository, and click "Codespaces".  
 
+If you are running locally, you will need to install [cdk](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and [poetry](https://python-poetry.org/docs/#installation). 
+
+### Poetry set up
+If you're running locally, you can install the Python requirements with Poetry:
+
+```
+poetry install
+```
+
+This will install the dependencies from `poetry.lock`, ensuring that consistent versions are used. Poetry also provides a virtual environment, which you will have to activate.
+
+```
+poetry shell
+```
+
+If running in codespaces, this should already be done.
+
+
 ### AWS Setup
 
 The first thing you'll need to do is configure your aws environment with:
@@ -32,11 +50,30 @@ aws configure
 
 Enter in your AWS Access Key ID and AWS Secret Access Key, which can be obtained by setting up a user account in the AWS console. For region, set it to the AWS region you'd like to set up your SDS. For IMAP, we're using "us-west-2"
 
-**NOTE**-- If this is a brand new AWS account, then you'll need to bootstrap your account to allow CDK deployment with the command:
+If you have multiple AWS access/secret key pairs locally, you can add the configuration to `~/.aws/config`. 
+
+```
+[imap]
+region=us-west-2
+aws_access_key_id=<Access Key>
+aws_secret_access_key=<Secret Key>
+```
+
+Then, you can set the profile used by cdk by setting the `AWS_PROFILE` environment variable to the profile name (in this case, imap):
+
+```
+export AWS_PROFILE=imap
+```
+
+You may also need to set the `CDK_DEFAULT_ACCOUNT` environment variable. 
+
+**NOTE**-- If this is a brand new AWS account, then you'll need to bootstrap your account to allow CDK deployment with the command: 
 
 ```bash
 cdk bootstrap
 ```
+
+If you get errors with this command, running with `-v` will provide more information. 
 
 ### Deploy
 
