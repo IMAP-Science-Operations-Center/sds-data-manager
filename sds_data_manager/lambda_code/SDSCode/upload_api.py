@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import boto3
-import .cognito_utils
+from . import cognito_utils
 
 logger = logging.getLogger()
 logging.basicConfig()

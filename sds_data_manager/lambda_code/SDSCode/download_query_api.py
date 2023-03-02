@@ -1,6 +1,6 @@
 import json
 import logging
-import .cognito_utils
+from . import cognito_utils
 import os
 
 import boto3
