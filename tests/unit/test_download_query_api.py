@@ -50,8 +50,9 @@ class TestDownloadQueryAPI(unittest.TestCase):
             },
         }
 
-        response = download_query_api.lambda_handler(event=self.event, 
-                                                     context='unit-testing')
+        response = download_query_api.lambda_handler(
+            event=self.event, context="unit-testing"
+        )
         assert response["statusCode"] == 200
         assert contains(response["body"], "download_url")
 
@@ -67,8 +68,9 @@ class TestDownloadQueryAPI(unittest.TestCase):
             },
         }
 
-        response = download_query_api.lambda_handler(event=self.event, 
-                                                     context='unit-testing')
+        response = download_query_api.lambda_handler(
+            event=self.event, context="unit-testing"
+        )
         assert response["statusCode"] == 404
 
     def test_input_parameters_missing(self):
@@ -89,12 +91,12 @@ class TestDownloadQueryAPI(unittest.TestCase):
         }
 
         response = download_query_api.lambda_handler(
-            event=self.empty_para_event, context='unit-testing'
+            event=self.empty_para_event, context="unit-testing"
         )
         assert response["statusCode"] == 400
 
         response = download_query_api.lambda_handler(
-            event=self.bad_para_event, context='unit-testing'
+            event=self.bad_para_event, context="unit-testing"
         )
         assert response["statusCode"] == 400
 
