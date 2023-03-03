@@ -19,7 +19,7 @@ class SdsDataManagerStack(Stack):
         scope: Construct,
         construct_id: str,
         sds_id: str,
-        userpool_id: str
+        userpool_id: str,
         app_client_id: str,
         **kwargs,
     ) -> None:
