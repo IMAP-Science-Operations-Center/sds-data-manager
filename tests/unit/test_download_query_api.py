@@ -89,12 +89,12 @@ class TestDownloadQueryAPI(unittest.TestCase):
         }
 
         response = download_query_api.lambda_handler(
-            event=self.empty_para_event, context=None
+            event=self.empty_para_event, context='unit-testing'
         )
         assert response["statusCode"] == 400
 
         response = download_query_api.lambda_handler(
-            event=self.bad_para_event, context=None
+            event=self.bad_para_event, context='unit-testing'
         )
         assert response["statusCode"] == 400
 
