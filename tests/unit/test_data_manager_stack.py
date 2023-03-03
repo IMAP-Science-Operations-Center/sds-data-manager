@@ -12,5 +12,5 @@ from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
 def test_sds_data_manager_validity():
     app = core.App(context={"SDSID": "unit-testing"})
     sds_id = "".join([random.choice(string.ascii_lowercase) for i in range(8)])
-    stack = SdsDataManagerStack(app, f"sds-data-manager-{sds_id}", sds_id)
+    stack = SdsDataManagerStack(app, f"sds-data-manager-{sds_id}", sds_id, userpool_id='', app_client_id='')
     assertions.Template.from_stack(stack)
