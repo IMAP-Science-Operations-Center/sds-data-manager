@@ -21,11 +21,25 @@ class TestQuery(unittest.TestCase):
             "start_date": "2022-01-01T00:00:00",
             "end_date": "2022-01-30T00:00:00",
         }
-        query_dsl_true = (
-            '{"query": {"bool": {"must": [{"match": {"level": "l0"}}, {"match": '
-            '{"instrument": "mag"}}], "filter": {"range": {"date": '
-            '{"gte": "2022-01-01T00:00:00", "lte": "2022-01-30T00:00:00"}}}}}}'
-        )
+        query_dsl_true = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"match": {"level": "l0"}},
+                        {"match": {"instrument": "mag"}},
+                    ],
+                    "filter": {
+                        "range": {
+                            "date": {
+                                "gte": "2022-01-01T00:00:00",
+                                "lte": "2022-01-30T00:00:00",
+                            }
+                        }
+                    },
+                }
+            }
+        }
+
         query = Query(query_params)
 
         ## Act ##
@@ -46,11 +60,17 @@ class TestQuery(unittest.TestCase):
             "instrument": "mag",
             "end_date": "2022-01-30T00:00:00",
         }
-        query_dsl_true = (
-            '{"query": {"bool": {"must": [{"match": {"level": "l0"}}, {"match": '
-            '{"instrument": "mag"}}], "filter": {"range": {"date": '
-            '{"lte": "2022-01-30T00:00:00"}}}}}}'
-        )
+        query_dsl_true = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"match": {"level": "l0"}},
+                        {"match": {"instrument": "mag"}},
+                    ],
+                    "filter": {"range": {"date": {"lte": "2022-01-30T00:00:00"}}},
+                }
+            }
+        }
         query = Query(query_params)
 
         ## Act ##
@@ -71,11 +91,17 @@ class TestQuery(unittest.TestCase):
             "instrument": "mag",
             "start_date": "2022-01-01T00:00:00",
         }
-        query_dsl_true = (
-            '{"query": {"bool": {"must": [{"match": {"level": "l0"}}, {"match": '
-            '{"instrument": "mag"}}], "filter": {"range": {"date": '
-            '{"gte": "2022-01-01T00:00:00"}}}}}}'
-        )
+        query_dsl_true = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"match": {"level": "l0"}},
+                        {"match": {"instrument": "mag"}},
+                    ],
+                    "filter": {"range": {"date": {"gte": "2022-01-01T00:00:00"}}},
+                }
+            }
+        }
         query = Query(query_params)
 
         ## Act ##
@@ -91,10 +117,16 @@ class TestQuery(unittest.TestCase):
         """
         ## Arrange ##
         query_params = {"level": "l0", "instrument": "mag"}
-        query_dsl_true = (
-            '{"query": {"bool": {"must": [{"match": {"level": "l0"}}, {"match": '
-            '{"instrument": "mag"}}]}}}'
-        )
+        query_dsl_true = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"match": {"level": "l0"}},
+                        {"match": {"instrument": "mag"}},
+                    ]
+                }
+            }
+        }
         query = Query(query_params)
 
         ## Act ##
