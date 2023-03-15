@@ -5,7 +5,7 @@ import boto3
 import pytest
 from botocore.exceptions import ClientError
 from opensearchpy import RequestsHttpConnection
-
+from openmock import openmock
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.client import Client
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.document import Document
@@ -17,43 +17,14 @@ from sds_data_manager.lambda_code.SDSCode.opensearch_utils.query import Query
 @pytest.mark.network()
 class TestClient(unittest.TestCase):
     """tests for client.py"""
-
+    @openmock
     def setUp(self):
-        # Opensearch client Params
-        host = (
-            "search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com"
-        )
-        port = 443
+         # mocked Opensearch client Params
+        host = "localhost"
+        port = 8080
         hosts = [{"host": host, "port": port}]
-
-        secret_name = "OpenSearchPassword9643DC3D-uVH94BjrbF9u"
-        region_name = "us-west-2"
-
-        # Create a Secrets Manager client
-        session = boto3.session.Session()
-        client = session.client(service_name="secretsmanager", region_name=region_name)
-        try:
-            get_secret_value_response = client.get_secret_value(SecretId=secret_name)
-        except ClientError as e:
-            # For a list of exceptions thrown, see
-            # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
-            raise e
-
-        # Decrypts secret using the associated KMS key.
-        secret = get_secret_value_response["SecretString"]
-
-        auth = ("master-user", secret)
-        self.client = Client(
-            hosts=hosts,
-            http_auth=auth,
-            use_ssl=True,
-            verify_certs=True,
-            connnection_class=RequestsHttpConnection,
-        )
+        self.client = Client(hosts=hosts)
         self.index = Index("test_data")
-
-        if self.client.index_exists(self.index):
-            self.client.delete_index(self.index)
 
         self.payload = Payload()
         body1 = {
@@ -122,6 +93,12 @@ class TestClient(unittest.TestCase):
         self.client.send_document(document)
         document_out = self.client.get_document(document)
 
+        # openmock does not output the _primary_term and _seq_no. These are two opensearch fields that we're not using.
+        # adding these fields to the output to highlight that these do exist in a real opensearch document, but are missing
+        # from openmock. These missing fields do not impact the test
+        document_out["_primary_term"] = 1
+        document_out["_seq_no"] = 0
+
         ## Assert ##
         assert document_true == document_out
 
@@ -180,6 +157,12 @@ class TestClient(unittest.TestCase):
         self.client.send_document(document)
         document_out = self.client.get_document(document)
 
+        # openmock does not output the _primary_term and _seq_no. These are two opensearch fields that we're not currently using.
+        # adding these fields to the output to highlight that these do exist in a real opensearch document, but are missing
+        # from openmock. These missing fields do not impact the test
+        document_out["_primary_term"] = 1
+        document_out["_seq_no"] = 1
+
         ## Assert ##
         assert document_out == document_true
 
@@ -209,6 +192,12 @@ class TestClient(unittest.TestCase):
         ## Act ##
         self.client.send_document(document)
         document_out = self.client.get_document(document)
+
+        # openmock does not output the _primary_term and _seq_no. These are two opensearch fields that we're not using.
+        # adding these fields to the output to highlight that these do exist in a real opensearch document, but are missing
+        # from openmock. These missing fields do not impact the test
+        document_out["_primary_term"] = 1
+        document_out["_seq_no"] = 0
 
         ## Assert ##
         assert document_out == document_true
@@ -254,6 +243,14 @@ class TestClient(unittest.TestCase):
         document1_out = self.client.get_document(document1)
         document2_out = self.client.get_document(document2)
 
+        # openmock does not output the _primary_term and _seq_no. These are two opensearch fields that we're not using.
+        # adding these fields to the output to highlight that these do exist in a real opensearch document, but are missing
+        # from openmock. These missing fields do not impact the test
+        document1_out["_primary_term"] = 1
+        document1_out["_seq_no"] = 0
+        document2_out["_primary_term"] = 1
+        document2_out["_seq_no"] = 0
+
         ## Assert ##
         assert document1_out == document1_true
         assert document2_out == document2_true
@@ -293,10 +290,17 @@ class TestClient(unittest.TestCase):
                 "end_date": "20230201",
             }
         )
-        # need to give opensearch a second to receive the payload before searching
-        time.sleep(1)
+
         ## Act ##
         search_out = self.client.search(query, self.index)
+
+        # openmock gives a different _score value. This field is not being used and does not affect the test,
+        # so it is being removed from the output. The _version field is output by openmock, but not by
+        # the real opensearch client, so that is being removed from the output as well and does not affect
+        # the test
+        search_out[0].pop("_score")
+        search_out[0].pop("_version")
+        search_true[0].pop("_score")
 
         ## Assert ##
         assert search_out == search_true
@@ -315,151 +319,159 @@ class TestClient(unittest.TestCase):
             {
                 "_index": "test_data",
                 "_type": "_doc",
-                "_id": "3",
+                "_id": "1",
                 "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "5",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "9",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "11",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "13",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "16",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "17",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "19",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "4",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "7",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "8",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "10",
-                "_score": 1.0,
-                "_source": {"test body": 10},
-            },
-            {
-                "_index": "test_data",
-                "_type": "_doc",
-                "_id": "14",
-                "_score": 1.0,
-                "_source": {"test body": 10},
+                "_source": {"instrument": 10},
             },
             {
                 "_index": "test_data",
                 "_type": "_doc",
                 "_id": "2",
                 "_score": 1.0,
-                "_source": {"test body": 10},
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "3",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "4",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "5",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
             },
             {
                 "_index": "test_data",
                 "_type": "_doc",
                 "_id": "6",
                 "_score": 1.0,
-                "_source": {"test body": 10},
+                "_source": {"instrument": 10},
             },
             {
                 "_index": "test_data",
                 "_type": "_doc",
-                "_id": "1",
+                "_id": "7",
                 "_score": 1.0,
-                "_source": {"test body": 10},
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "8",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "9",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "10",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "11",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
             },
             {
                 "_index": "test_data",
                 "_type": "_doc",
                 "_id": "12",
                 "_score": 1.0,
-                "_source": {"test body": 10},
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "13",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "14",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
             },
             {
                 "_index": "test_data",
                 "_type": "_doc",
                 "_id": "15",
                 "_score": 1.0,
-                "_source": {"test body": 10},
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "16",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "17",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
             },
             {
                 "_index": "test_data",
                 "_type": "_doc",
                 "_id": "18",
                 "_score": 1.0,
-                "_source": {"test body": 10},
+                "_source": {"instrument": 10},
+            },
+            {
+                "_index": "test_data",
+                "_type": "_doc",
+                "_id": "19",
+                "_score": 1.0,
+                "_source": {"instrument": 10},
             },
         ]
 
         payload = Payload()
         for i in range(1, 20):
-            document = Document(self.index, i, Action.CREATE, {"test body": 10})
+            document = Document(self.index, i, Action.CREATE, {"instrument": 10})
             payload.add_documents(document)
 
         self.client.send_payload(payload)
 
-        query = Query({"test body": "10"})
-        # need to give opensearch a second to receive the payload before searching
-        time.sleep(1)
+        query = Query({"instrument": 10})
 
         ## Act ##
         search_out = self.client.search(query, self.index)
+
+        # openmock gives a different _score value than opensearch. This field is not being used and does not
+        # affect the test, so it is being removed from the output. The _version field is output by openmock,
+        # but not by the real opensearch client, so that is being removed from the output as well and does
+        # not affect the test
+        for i in range(0, len(search_out)):
+            search_out[i].pop("_score")
+            search_out[i].pop("_version")
+        for i in range(0, len(search_true)):
+            search_true[i].pop("_score")
 
         ## Assert ##
         assert search_out == search_true
@@ -467,7 +479,7 @@ class TestClient(unittest.TestCase):
         ## Teardown ##
         payload = Payload()
         for i in range(1, 20):
-            document = Document(self.index, i, Action.DELETE, {"test body": 10})
+            document = Document(self.index, i, Action.DELETE, {"instrument": 10})
             self.payload.add_documents(document)
         self.client.send_payload(payload)
 

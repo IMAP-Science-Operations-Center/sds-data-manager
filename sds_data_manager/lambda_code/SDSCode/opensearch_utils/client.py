@@ -1,4 +1,4 @@
-from opensearchpy import OpenSearch, RequestsHttpConnection
+import opensearchpy
 
 from .action import Action
 
@@ -46,17 +46,17 @@ class Client:
     def __init__(
         self,
         hosts,
-        http_auth,
+        http_auth=None,
         use_ssl=True,
         verify_certs=True,
-        connnection_class=RequestsHttpConnection,
+        connnection_class=opensearchpy.RequestsHttpConnection,
     ):
         self.hosts = hosts
         self.http_auth = http_auth
         self.use_ssl = use_ssl
         self.verify_certs = verify_certs
         self.connnection_class = connnection_class
-        self.client = OpenSearch(
+        self.client = opensearchpy.OpenSearch(
             hosts=self.hosts,
             http_auth=self.http_auth,
             use_ssl=self.use_ssl,
