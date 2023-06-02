@@ -32,7 +32,7 @@ def lambda_handler(event, context):
     # create the opensearch query from the API parameters
     query = Query(event["queryStringParameters"])
     client = _create_open_search_client()
-    logger.info("Query: " + query.query_dsl())
+    logger.info("Query: " + str(query.query_dsl()))
     # search the opensearch instance
     search_result = client.search(query, Index(os.environ["OS_INDEX"]))
     logger.info("Query Search Results: " + json.dumps(search_result))
