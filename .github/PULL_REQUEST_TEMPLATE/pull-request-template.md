@@ -24,7 +24,7 @@ List any new dependencies introduced by these changes
 - updated file 1
    - description of change 1 in file 1
    - description of change 2 in file 2
-- update file 2
+- updated file 2
    - descipriton of change 1 in file 2
 
 
