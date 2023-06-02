@@ -30,6 +30,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.9,<4"
 pytest-cov = "^4.0.0"
+openmock = "^2.3.0"
 
 [tool.poetry.group.cdk-install.dependencies]
 # 2.66+ required for aws-cdk.aws-lambda-python-alpha
