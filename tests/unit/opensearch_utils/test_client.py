@@ -1,11 +1,8 @@
-import time
 import unittest
 
-import boto3
 import pytest
-from botocore.exceptions import ClientError
-from opensearchpy import RequestsHttpConnection
 from openmock import openmock
+
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.client import Client
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.document import Document
@@ -14,12 +11,13 @@ from sds_data_manager.lambda_code.SDSCode.opensearch_utils.payload import Payloa
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.query import Query
 
 
-#@pytest.mark.network()
+# @pytest.mark.network()
 class TestClient(unittest.TestCase):
     """tests for client.py"""
+
     @openmock
     def setUp(self):
-         # mocked Opensearch client Params
+        # mocked Opensearch client Params
         host = "localhost"
         port = 8080
         hosts = [{"host": host, "port": port}]
@@ -54,7 +52,7 @@ class TestClient(unittest.TestCase):
         self.document1 = Document(self.index, 1, Action.CREATE, body1)
         self.document2 = Document(self.index, 2, Action.CREATE, body2)
         self.document3 = Document(self.index, 3, Action.CREATE, body3)
-    
+
     def test_create_index(self):
         """
         test that the create_index method correctly creates a new index in OpenSearch.
@@ -93,8 +91,9 @@ class TestClient(unittest.TestCase):
         self.client.send_document(document)
         document_out = self.client.get_document(document)
 
-        # openmock does not output the _primary_term and _seq_no. These are two opensearch fields that we're not using.
-        # adding these fields to the output to highlight that these do exist in a real opensearch document, but are missing
+        # openmock does not output the _primary_term and _seq_no. These are two
+        # opensearch fields that we're not using. Adding these fields to the output to
+        #  highlight that these do exist in a real opensearch document, but are missing
         # from openmock. These missing fields do not impact the test
         document_out["_primary_term"] = 1
         document_out["_seq_no"] = 0
@@ -158,9 +157,10 @@ class TestClient(unittest.TestCase):
         self.client.send_document(document)
         document_out = self.client.get_document(document)
 
-        # openmock does not output the _primary_term and _seq_no. These are two opensearch fields that we're not currently using.
-        # adding these fields to the output to highlight that these do exist in a real opensearch document, but are missing
-        # from openmock. These missing fields do not impact the test
+        # openmock does not output the _primary_term and _seq_no. These are two
+        # opensearch fields that we're not currently using. Adding these fields to the
+        # output to highlight that these do exist in a real opensearch document, but
+        # are missing from openmock. These missing fields do not impact the test
         document_out["_primary_term"] = 1
         document_out["_seq_no"] = 1
 
@@ -194,8 +194,9 @@ class TestClient(unittest.TestCase):
         self.client.send_document(document)
         document_out = self.client.get_document(document)
 
-        # openmock does not output the _primary_term and _seq_no. These are two opensearch fields that we're not using.
-        # adding these fields to the output to highlight that these do exist in a real opensearch document, but are missing
+        # openmock does not output the _primary_term and _seq_no. These are two
+        # opensearch fields that we're not using. Adding these fields to the output to
+        # highlight that these do exist in a real opensearch document, but are missing
         # from openmock. These missing fields do not impact the test
         document_out["_primary_term"] = 1
         document_out["_seq_no"] = 0
@@ -244,8 +245,9 @@ class TestClient(unittest.TestCase):
         document1_out = self.client.get_document(document1)
         document2_out = self.client.get_document(document2)
 
-        # openmock does not output the _primary_term and _seq_no. These are two opensearch fields that we're not using.
-        # adding these fields to the output to highlight that these do exist in a real opensearch document, but are missing
+        # openmock does not output the _primary_term and _seq_no. These are two
+        # opensearch fields that we're not using. Adding these fields to the output to
+        # highlight that these do exist in a real opensearch document, but are missing
         # from openmock. These missing fields do not impact the test
         document1_out["_primary_term"] = 1
         document1_out["_seq_no"] = 0
@@ -295,10 +297,10 @@ class TestClient(unittest.TestCase):
         ## Act ##
         search_out = self.client.search(query, self.index)
 
-        # openmock gives a different _score value. This field is not being used and does not affect the test,
-        # so it is being removed from the output. The _version field is output by openmock, but not by
-        # the real opensearch client, so that is being removed from the output as well and does not affect
-        # the test
+        # openmock gives a different _score value. This field is not being used and does
+        # not affect the test, so it is being removed from the output. The _version
+        # field is output by openmock, but not by the real opensearch client, so that
+        # is being removed from the output as well and does not affect the test
         search_out[0].pop("_score")
         search_out[0].pop("_version")
         search_true[0].pop("_score")
@@ -464,9 +466,10 @@ class TestClient(unittest.TestCase):
         ## Act ##
         search_out = self.client.search(query, self.index)
 
-        # openmock gives a different _score value than opensearch. This field is not being used and does not
-        # affect the test, so it is being removed from the output. The _version field is output by openmock,
-        # but not by the real opensearch client, so that is being removed from the output as well and does
+        # openmock gives a different _score value than opensearch. This field is not
+        # being used and does not affect the test, so it is being removed from the
+        # output. The _version field is output by openmock, but not by the real
+        # opensearch client, so that is being removed from the output as well and does
         # not affect the test
         for i in range(0, len(search_out)):
             search_out[i].pop("_score")
