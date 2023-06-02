@@ -1,9 +1,3 @@
----
-name: Pull Request Template
-about: Template for pull requests
-assignees: ''
----
-
 # Change Summary
 
 ## Overview
