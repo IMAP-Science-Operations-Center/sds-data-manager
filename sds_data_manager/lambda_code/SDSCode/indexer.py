@@ -20,16 +20,12 @@ s3 = boto3.client("s3")
 
 
 def _load_allowed_filenames():
-    # Rather than storing the configuration locally,
-    # we should store the configuration somewhere where things
-    # can be changed on the fly.
-    # For example, a dynamodb table or a section in opensearch
-    current_dir = os.path.dirname(__file__)
-    config_file = os.path.join(current_dir, "config.json")
-
-    with open(config_file) as f:
-        data = json.load(f)
-    return data
+    # get the config file from the S3 bucket
+    config_object = s3.get_object(
+        Bucket=os.environ["S3_CONFIG_BUCKET_NAME"], Key="config.json"
+    )
+    file_content = config_object["Body"].read()
+    return json.loads(file_content)
 
 
 def _check_for_matching_filetype(pattern, filename):
@@ -68,6 +64,7 @@ def lambda_handler(event, context):
     logger.info("Received event: " + json.dumps(event, indent=2))
 
     # Retrieve a list of allowed file types
+    logger.info("Loading allowed filenames from configuration file in S3.")
     filetypes = _load_allowed_filenames()
     logger.info("Allowed file types: " + str(filetypes))
 
@@ -104,7 +101,7 @@ def lambda_handler(event, context):
         logger.info("Found the following metadata to index: " + str(metadata))
 
         # use the s3 path to file as the ID in opensearch
-        s3_path = os.path.join(os.environ["S3_BUCKET"], filename)
+        s3_path = os.path.join(os.environ["S3_DATA_BUCKET"], filename)
         # create a document for the metadata and add it to the payload
         opensearch_doc = Document(index, s3_path, Action.CREATE, metadata)
         document_payload.add_documents(opensearch_doc)

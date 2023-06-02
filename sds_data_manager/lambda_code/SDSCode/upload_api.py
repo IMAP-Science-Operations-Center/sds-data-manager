@@ -8,6 +8,8 @@ logger = logging.getLogger()
 logging.basicConfig()
 logger.setLevel(logging.INFO)
 
+s3 = boto3.client("s3")
+
 
 def _load_allowed_filenames():
     """
@@ -15,13 +17,12 @@ def _load_allowed_filenames():
 
     :return: dictionary object of file types and their attributes.
     """
-
-    current_dir = os.path.dirname(__file__)
-    config_file = os.path.join(current_dir, "config.json")
-
-    with open(config_file) as f:
-        data = json.load(f)
-    return data
+    # get the config file from the S3 bucket
+    config_object = s3.get_object(
+        Bucket=os.environ["S3_CONFIG_BUCKET_NAME"], Key="config.json"
+    )
+    file_content = config_object["Body"].read()
+    return json.loads(file_content)
 
 
 def _check_for_matching_filetype(pattern, filename):

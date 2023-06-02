@@ -1,4 +1,4 @@
-import os
+import pathlib
 
 import aws_cdk as cdk
 import aws_cdk.aws_ec2 as ec2
@@ -7,6 +7,7 @@ import aws_cdk.aws_lambda as lambda_
 import aws_cdk.aws_lambda_python_alpha as lambda_alpha_
 import aws_cdk.aws_opensearchservice as opensearch
 import aws_cdk.aws_s3 as s3
+import aws_cdk.aws_s3_deployment as s3_deploy
 import aws_cdk.aws_secretsmanager as secretsmanager
 from aws_cdk import RemovalPolicy, Stack  # Duration,
 from aws_cdk.aws_lambda_event_sources import S3EventSource
@@ -31,6 +32,44 @@ class SdsDataManagerStack(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 
+        ########### CONFIG STORAGE
+        # confirm that a config.json file exists in the expected
+        # location before S3 upload
+        if (
+            not pathlib.Path(__file__)
+            .parent.joinpath("config", "config.json")
+            .resolve()
+            .exists()
+        ):
+            raise RuntimeError(
+                "sds_data_manager/config directory must contain config.json"
+            )
+
+        # This is the S3 bucket where the configurations will be stored
+        config_bucket = s3.Bucket(
+            self,
+            "CONFIG-BUCKET",
+            bucket_name=f"sds-config-{sds_id}",
+            versioned=True,
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+        )
+
+        # Upload all files in the config directory to the S3 config bucket.
+        # This directory should contain a config.json file that will
+        # be used for indexing files into the data bucket.
+        s3_deploy.BucketDeployment(
+            self,
+            "DeployConfig",
+            sources=[
+                s3_deploy.Source.asset(
+                    str(pathlib.Path(__file__).parent.joinpath("config").resolve())
+                )
+            ],
+            destination_bucket=config_bucket,
+        )
+
         ########### DATABASE
         # Need to make a secret username/password for OpenSearch
         os_secret = secretsmanager.Secret(self, "OpenSearchPassword")
@@ -39,6 +78,7 @@ class SdsDataManagerStack(Stack):
         sds_metadata_domain = opensearch.Domain(
             self,
             "SDSMetadataDomain",
+            domain_name=f"sdsmetadatadomain-{sds_id}",
             # Version 1.3 released 07/27/22
             version=opensearch.EngineVersion.OPENSEARCH_1_3,
             # Define the Nodes
@@ -102,9 +142,8 @@ class SdsDataManagerStack(Stack):
         s3_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:GetObject"],
-            resources=[f"{data_bucket.bucket_arn}/*"],
+            resources=[f"{data_bucket.bucket_arn}/*", f"{config_bucket.bucket_arn}/*"],
         )
-
         iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["cognito-idp:*"],
@@ -119,9 +158,7 @@ class SdsDataManagerStack(Stack):
             self,
             id="IndexerLambda",
             function_name=f"file-indexer-{sds_id}",
-            entry=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "lambda_code"
-            ),
+            entry=str(pathlib.Path(__file__).parent.joinpath("lambda_code").resolve()),
             index="SDSCode/indexer.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
@@ -133,7 +170,8 @@ class SdsDataManagerStack(Stack):
                 "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
-                "S3_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}",
             },
         )
         indexer_lambda.add_event_source(
@@ -143,23 +181,27 @@ class SdsDataManagerStack(Stack):
 
         # Adding Opensearch permissions
         indexer_lambda.add_to_role_policy(opensearch_all_http_permissions)
+        # Adding s3 read permissions to get config.json
+        indexer_lambda.add_to_role_policy(s3_read_policy)
 
         # Adding a lambda for uploading files to the SDS
         upload_api_lambda = lambda_alpha_.PythonFunction(
             self,
             id="UploadAPILambda",
             function_name=f"upload-api-handler-{sds_id}",
-            entry=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "lambda_code/"
-            ),
+            entry=str(pathlib.Path(__file__).parent.joinpath("lambda_code").resolve()),
             index="SDSCode/upload_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(15),
             memory_size=1000,
-            environment={"S3_BUCKET": data_bucket.s3_url_for_object()},
+            environment={
+                "S3_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}",
+            },
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
+        upload_api_lambda.add_to_role_policy(s3_read_policy)
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         upload_api_url = upload_api_lambda.add_function_url(
             auth_type=lambda_.FunctionUrlAuthType.NONE,
@@ -171,9 +213,7 @@ class SdsDataManagerStack(Stack):
             self,
             id="QueryAPILambda",
             function_name=f"query-api-handler-{sds_id}",
-            entry=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "lambda_code/"
-            ),
+            entry=str(pathlib.Path(__file__).parent.joinpath("lambda_code").resolve()),
             index="SDSCode/queries.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
@@ -203,9 +243,7 @@ class SdsDataManagerStack(Stack):
             self,
             id="DownloadQueryAPILambda",
             function_name=f"download-query-api-{sds_id}",
-            entry=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "lambda_code/"
-            ),
+            entry=str(pathlib.Path(__file__).parent.joinpath("lambda_code").resolve()),
             index="SDSCode/download_query_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,

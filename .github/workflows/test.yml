@@ -29,4 +29,7 @@ jobs:
         id: test
         run: |
           # Ignore the network marks from the remote test environment
-          poetry run pytest --color=yes -m "not network"
+          poetry run pytest --color=yes --cov --cov-report=xml -m "not network"
+
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v3

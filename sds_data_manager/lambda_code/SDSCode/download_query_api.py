@@ -45,7 +45,7 @@ def lambda_handler(event, context):
     one_day = 86400
     url_life = os.environ.get("URL_EXPIRE", one_day)
 
-    if event["rawQueryString"] == "":
+    if not event["rawQueryString"]:
         response_body = """No input given. It requires s3_uri.\n
                         s3_uri: full s3 URI. Eg. s3://bucket-name/filepath/filename.pkts
                         """
