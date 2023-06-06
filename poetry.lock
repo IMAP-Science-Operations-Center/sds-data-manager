@@ -784,14 +784,14 @@ files = [
 
 [[package]]
 name = "openmock"
-version = "2.3.0"
+version = "2.3.1"
 description = "Python OpenSearch Mock for test purposes"
 category = "main"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "openmock-2.3.0-py3-none-any.whl", hash = "sha256:88b0812868442a2075da960400ab1a8ec28928c8fe865a163c197ff1232fa238"},
-    {file = "openmock-2.3.0.tar.gz", hash = "sha256:51d5053b0729293427868c12c4612e9c0e764094e4cc3301c6b002eacc66c26c"},
+    {file = "openmock-2.3.1-py3-none-any.whl", hash = "sha256:a85f8607b79170439911f7977bd021036f53faf9a2ff97cacde5d151499da639"},
+    {file = "openmock-2.3.1.tar.gz", hash = "sha256:ff796582b63a9c121d92d800d5f92696887d7e5a67608337bcd294611cfcfe7a"},
 ]
 
 [package.dependencies]

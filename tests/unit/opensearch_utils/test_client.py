@@ -1,6 +1,5 @@
 import unittest
 
-import pytest
 from openmock import openmock
 
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action
@@ -11,7 +10,6 @@ from sds_data_manager.lambda_code.SDSCode.opensearch_utils.payload import Payloa
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.query import Query
 
 
-# @pytest.mark.network()
 class TestClient(unittest.TestCase):
     """tests for client.py"""
 
@@ -105,7 +103,6 @@ class TestClient(unittest.TestCase):
         document.update_action(Action.DELETE)
         self.client.send_document(document)
 
-    @pytest.mark.skip(reason="need to update openmock to fix doc exists function")
     def test_send_document_delete(self):
         """
         Correctly delete the specified document in OpenSearch.
@@ -120,6 +117,9 @@ class TestClient(unittest.TestCase):
         exists_true = False
 
         exists_confirm = self.client.document_exists(document)
+        print(self.client.get_document(document))
+        print(document)
+
         assert exists_confirm is True
 
         ## Act ##
@@ -471,11 +471,11 @@ class TestClient(unittest.TestCase):
         # output. The _version field is output by openmock, but not by the real
         # opensearch client, so that is being removed from the output as well and does
         # not affect the test
-        for i in range(0, len(search_out)):
-            search_out[i].pop("_score")
-            search_out[i].pop("_version")
-        for i in range(0, len(search_true)):
-            search_true[i].pop("_score")
+        for search in search_out:
+            search.pop("_score")
+            search.pop("_version")
+        for search in search_true:
+            search.pop("_score")
 
         ## Assert ##
         assert search_out == search_true
