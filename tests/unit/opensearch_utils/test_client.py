@@ -117,8 +117,6 @@ class TestClient(unittest.TestCase):
         exists_true = False
 
         exists_confirm = self.client.document_exists(document)
-        print(self.client.get_document(document))
-        print(document)
 
         assert exists_confirm is True
 
