@@ -15,6 +15,16 @@
     ]
   },
   "context": {
+    "deploy-where": "dev",
+    "dev": {
+      "sds_id": "dev",
+      "account": "<account_id>"
+    },
+    "prod": {
+      "sds_id": "prod",
+      "account": "<account_id>"
+    },
+    "sdc-region": "us-west-2",
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,

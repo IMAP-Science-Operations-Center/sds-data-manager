@@ -36,4 +36,14 @@ def lambda_handler(event, context):
     # search the opensearch instance
     search_result = client.search(query, Index(os.environ["OS_INDEX"]))
     logger.info("Query Search Results: " + json.dumps(search_result))
-    return search_result
+
+    # Format the response
+    response = {
+        "statusCode": 200,
+        "body": json.dumps(search_result),  # Convert JSON data to a string
+        "headers": {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'  # Allow CORS
+        },
+    }
+    return response

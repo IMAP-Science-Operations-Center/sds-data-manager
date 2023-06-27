@@ -1,0 +1,14 @@
+{
+  "hosted-zone:account=449431850278:domainName=imap-mission.com:region=us-west-2": {
+    "Id": "/hostedzone/Z0001061360KSHZBTVPUP",
+    "Name": "imap-mission.com."
+  },
+  "hosted-zone:account=301233867300:domainName=lcs.imap-mission.com:region=us-west-2": {
+    "Id": "/hostedzone/Z0096780YIGK228HFE3Z",
+    "Name": "lcs.imap-mission.com."
+  },
+  "hosted-zone:account=301233867300:domainName=imap-mission.com:region=us-west-2": {
+    "Id": "/hostedzone/Z0805670E2CD5807ZDXN",
+    "Name": "imap-mission.com."
+  }
+}

@@ -33,13 +33,13 @@ def http_response(header_type="text/html", status_code=200, body="Success"):
 def lambda_handler(event, context):
     """This lambda handler checks if this file exists or not. If file doesn't exist, it
     gives back an error. Otherwise, it returns pre-signed s3 url that user can use to
-    donwload data from s3.
+    download data from s3.
 
     Args:
         event (dict): input to lambda
         context : This is not used.
     """
-
+    print(event)
     logger.info(event)
 
     one_day = 86400

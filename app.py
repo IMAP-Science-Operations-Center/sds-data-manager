@@ -1,23 +1,34 @@
 #!/usr/bin/env python3
-import random
-import string
+# Installed
+from aws_cdk import App, Environment
+# Local
+from sds_data_manager.utils.stackbuilder import build_sdc
 
-import aws_cdk as cdk
+"""
+This app is designed to be the dev and production deployment app. It defaults to a dev deployment 
+via a default `deploy-where` value in cdk.json. To deploy to prod, specify `--context deploy-where=prod`.
+"""
 
-from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
+app = App()
 
-app = cdk.App()
+# Grab values from context
+sdc_region = app.node.try_get_context('sdc-region')
+where_to_deploy = app.node.try_get_context('deploy-where')
+params = app.node.try_get_context(where_to_deploy)
 
-SDS_ID = app.node.try_get_context("SDSID")
+# Ensure required parameters are present
+if not params or 'account' not in params or 'sds_id' not in params:
+    raise ValueError("Required context parameters 'account' and 'sds_id' not provided.")
 
-if SDS_ID is None:
-    raise ValueError(
-        "ERROR: Need to specify an ID to name the stack (ex - production, testing, etc)"
-    )
-elif SDS_ID == "random":
-    # A random unique ID for this particular instance of the SDS
-    SDS_ID = "".join([random.choice(string.ascii_lowercase) for i in range(8)])
+account = params["account"]
 
+env = Environment(account=account, region=sdc_region)
+print(f"Deploying to account {account} in region {sdc_region}.")
 
-SdsDataManagerStack(app, f"SdsDataManagerStack-{SDS_ID}", SDS_ID)
+# Deploy Libera SDC resources. This is the default with no CLI context variables set.
+stacks = build_sdc(app,
+                   env=env,
+                   sds_id=params["sds_id"])
+
 app.synth()
+
