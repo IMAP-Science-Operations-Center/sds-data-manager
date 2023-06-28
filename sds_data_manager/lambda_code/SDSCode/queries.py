@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 
+import boto3
 from opensearchpy import RequestsHttpConnection
 
 from .opensearch_utils.client import Client
@@ -17,6 +18,23 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 def _create_open_search_client():
     logger.info("OS DOMAIN: " + os.environ["OS_DOMAIN"])
     hosts = [{"host": os.environ["OS_DOMAIN"], "port": int(os.environ["OS_PORT"])}]
+    # TODO: remove hard-coded parameters
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name="us-west-2")
+    response = client.get_secret_value(
+        SecretId=os.environ["SECRET_ID"]
+    )
+    print(response)
+    # Parse the SecretString
+    #secret_string = json.loads(response['SecretString'])
+    print('look here 5!!!!!')
+    print(response['SecretString'])
+    print('look here 6!!!!')
+    print(os.environ["OS_ADMIN_PASSWORD_LOCATION"])
+    print('look here 7!!!!')
+    #auth = (os.environ["OS_ADMIN_USERNAME"], response['SecretString'])
     auth = (os.environ["OS_ADMIN_USERNAME"], os.environ["OS_ADMIN_PASSWORD_LOCATION"])
     return Client(
         hosts=hosts,

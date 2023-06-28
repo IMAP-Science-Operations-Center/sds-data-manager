@@ -1,25 +1,33 @@
+# Standard
 import json
 import logging
 import os
-
+# Installed
 import boto3
 import botocore
-
+# Logger setup
 logger = logging.getLogger()
 logging.basicConfig()
 logger.setLevel(logging.INFO)
 
 
 def http_response(header_type="text/html", status_code=200, body="Success"):
-    """customize http response.
+    """Customizes HTTP response for the lambda function.
 
-    Args:
-        header_type (str, optional): [description]. Defaults to 'text/html'.
-        status_code (int, optional): [description]. Defaults to 200.
-        body (str, optional): [description]. Defaults to 'Success'.
+    Parameters
+    ----------
+    header_type : str, optional
+        Type of the content being returned, defaults to 'text/html'.
+    status_code : int, optional
+        HTTP status code indicating the result of the operation, defaults to 200.
+    body : str, optional
+        The content of the response, defaults to 'Success'.
 
-    Returns:
-        [json]: API response
+    Returns
+    -------
+    dict
+        A dictionary containing headers, status code, and body, designed to be returned
+        by a Lambda function as an API response.
     """
     return {
         "headers": {
@@ -35,11 +43,20 @@ def lambda_handler(event, context):
     gives back an error. Otherwise, it returns pre-signed s3 url that user can use to
     download data from s3.
 
-    Args:
-        event (dict): input to lambda
-        context : This is not used.
+    Parameters
+    ----------
+    event : dict
+        The JSON formatted document with the data required for the lambda function to process
+    context : LambdaContext
+        This object provides methods and properties that provide information about the invocation, function,
+        and runtime environment.
+
+    Returns
+    -------
+    dict
+        The response from the function which could either be a pre-signed S3 URL in case of successful
+        operation or an error message with corresponding status code in case of failure.
     """
-    print(event)
     logger.info(event)
 
     one_day = 86400

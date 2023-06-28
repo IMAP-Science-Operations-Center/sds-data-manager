@@ -10,6 +10,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_s3 as s3,
     aws_s3_deployment as s3_deploy,
+    aws_secretsmanager as secrets,
     aws_lambda as lambda_,
     aws_lambda_event_sources,
     aws_lambda_python_alpha as lambda_alpha_
@@ -38,6 +39,13 @@ class SdsDataManager(Stack):
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
+        print('look here!!!!')
+        print(opensearch.os_secret.secret_name)
+        print(opensearch.os_secret.secret_arn)
+        print(opensearch.os_secret.secret_full_arn)
+        print(opensearch.os_secret.secret_value_from_json)
+        print('look here2!!!!!')
+
         # This is the S3 bucket used by upload_api_lambda
         data_bucket = s3.Bucket(
             self, f"DataBucket-{sds_id}",
@@ -47,6 +55,8 @@ class SdsDataManager(Stack):
             auto_delete_objects=True,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
+        print(data_bucket)
+        print('look here3!!!!!')
 
         # Confirm that a config.json file exists in the expected
         # location before S3 upload
@@ -64,7 +74,7 @@ class SdsDataManager(Stack):
         config_bucket = s3.Bucket(
             self,
             f"ConfigBucket-{sds_id}",
-            bucket_name=f"sds-config-{sds_id}",
+            bucket_name=f"sds-config-bucket-{sds_id}",
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
@@ -118,7 +128,8 @@ class SdsDataManager(Stack):
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
                 "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
-                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}"
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
+                "SECRET_ID": opensearch.secret_name
             },
         )
 
@@ -131,6 +142,9 @@ class SdsDataManager(Stack):
         indexer_lambda.add_to_role_policy(opensearch.opensearch_all_http_permissions)
         # Adding s3 read permissions to get config.json
         indexer_lambda.add_to_role_policy(s3_read_policy)
+
+        opensearch_secret = secrets.Secret.from_secret_name_v2(self, "opensearch_secret", opensearch.secret_name)
+        opensearch_secret.grant_read(grantee=indexer_lambda)
 
         # upload API lambda
         upload_api_lambda = lambda_alpha_.PythonFunction(
@@ -145,7 +159,7 @@ class SdsDataManager(Stack):
             memory_size=1000,
             environment={
                 "S3_BUCKET": data_bucket.s3_url_for_object(),
-                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}",
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
             },
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
@@ -169,9 +183,12 @@ class SdsDataManager(Stack):
                 "OS_DOMAIN": opensearch.sds_metadata_domain.domain_endpoint,
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
+                "SECRET_ID": opensearch.secret_name
             },
         )
         query_api_lambda.add_to_role_policy(opensearch.opensearch_read_only_policy)
+
+        opensearch_secret.grant_read(grantee=query_api_lambda)
 
         # download query API lambda
         download_query_api = lambda_alpha_.PythonFunction(
