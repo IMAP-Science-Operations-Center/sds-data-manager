@@ -85,7 +85,7 @@ class OpenSearchLambdas(Stack):
             memory_size=1000,
             environment={
                 "S3_BUCKET": data_manager.data_bucket.s3_url_for_object(),
-                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}-lcs",
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}",
             },
         )
         upload_api_lambda.add_to_role_policy(data_manager.s3_write_policy)

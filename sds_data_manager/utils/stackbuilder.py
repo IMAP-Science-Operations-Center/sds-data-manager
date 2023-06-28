@@ -31,17 +31,18 @@ def build_sdc(scope: App, env: Environment,
 
     data_manager = sds_data_manager_stack.SdsDataManager(scope, f"SdsDataManager-{sds_id}",
                                                          sds_id,
+                                                         open_search,
                                                          env=env)
 
-    lambdas = lambda_stack.OpenSearchLambdas(scope, f"LambdaStack-{sds_id}",
-                                             sds_id,
-                                             open_search,
-                                             data_manager,
-                                             env=env)
+    # lambdas = lambda_stack.OpenSearchLambdas(scope, f"LambdaStack-{sds_id}",
+    #                                          sds_id,
+    #                                          open_search,
+    #                                          data_manager,
+    #                                          env=env)
 
     domain = domain_stack.Domain(scope, f"DomainStack-{sds_id}",
                                  sds_id, env=env)
 
     api_gateway_stack.ApiGateway(scope, f"ApiGateway-{sds_id}",
-                                 sds_id, lambdas.lambda_functions,
+                                 sds_id, data_manager.lambda_functions,
                                  domain.hosted_zone, domain.certificate, env=env)
