@@ -1,12 +1,15 @@
+# Standard
 import os
 import time
 import unittest
 
+# Installed
 import boto3
 import pytest
 from botocore.exceptions import ClientError
 from opensearchpy import RequestsHttpConnection
 
+# Local
 from sds_data_manager.lambda_code.SDSCode import indexer
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.client import Client
@@ -20,20 +23,24 @@ class TestIndexer(unittest.TestCase):
         # Opensearch client Params
         os.environ[
             "OS_DOMAIN"
-        ] = "search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com"
+        ] = "search-sdsmetadatadomain-dev-i3bnjqingkrphg2crwdcwqabqe.us-west-2.es.amazonaws.com"
         os.environ["OS_PORT"] = "443"
         os.environ["OS_INDEX"] = "test_data"
 
         hosts = [{"host": os.environ["OS_DOMAIN"], "port": os.environ["OS_PORT"]}]
 
-        secret_name = "OpenSearchPassword9643DC3D-uVH94BjrbF9u"
+        secret_name = "sdp-database-creds"
         region_name = "us-west-2"
 
         # Create a Secrets Manager client
         session = boto3.session.Session()
-        client = session.client(service_name="secretsmanager", region_name=region_name)
+        client = session.client(
+            service_name='secretsmanager',
+            region_name=region_name)
         try:
-            get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+            get_secret_value_response = client.get_secret_value(
+                SecretId=secret_name
+            )
         except ClientError as e:
             # For a list of exceptions thrown, see
             # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
@@ -53,6 +60,8 @@ class TestIndexer(unittest.TestCase):
 
         os.environ["OS_ADMIN_USERNAME"] = "master-user"
         os.environ["OS_ADMIN_PASSWORD_LOCATION"] = secret
+        os.environ["SECRET_ID"] = secret_name
+        os.environ["S3_CONFIG_BUCKET_NAME"] = 'sds-config-bucket-dev'
 
         # This is a pretend new file payload, like we just received
         # "imap_l0_instrument_date_version.fits" from the bucket
