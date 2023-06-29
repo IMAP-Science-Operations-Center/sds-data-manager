@@ -26,16 +26,9 @@ def _create_open_search_client():
     response = client.get_secret_value(
         SecretId=os.environ["SECRET_ID"]
     )
-    print(response)
-    # Parse the SecretString
-    #secret_string = json.loads(response['SecretString'])
-    print('look here 5!!!!!')
-    print(response['SecretString'])
-    print('look here 6!!!!')
-    print(os.environ["OS_ADMIN_PASSWORD_LOCATION"])
-    print('look here 7!!!!')
-    #auth = (os.environ["OS_ADMIN_USERNAME"], response['SecretString'])
-    auth = (os.environ["OS_ADMIN_USERNAME"], os.environ["OS_ADMIN_PASSWORD_LOCATION"])
+
+    auth = (os.environ["OS_ADMIN_USERNAME"], response['SecretString'])
+
     return Client(
         hosts=hosts,
         http_auth=auth,

@@ -18,6 +18,8 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
+s3 = boto3.client("s3")
+
 
 def _load_allowed_filenames():
     """Load the allowed filenames configuration from an S3 bucket.
@@ -27,7 +29,6 @@ def _load_allowed_filenames():
     dict
         The content of 'config.json', parsed into a Python dictionary.
     """
-    s3 = boto3.client("s3")
 
     # get the config file from the S3 bucket
     config_object = s3.get_object(
@@ -93,15 +94,7 @@ def _create_open_search_client():
         SecretId=os.environ["SECRET_ID"]
     )
 
-    # Parse the SecretString
-    #secret_string = json.loads(response['SecretString'])
-    print('look here 5!!!!!')
-    print(response['SecretString'])
-    print('look here 6!!!!')
-    print(os.environ["OS_ADMIN_PASSWORD_LOCATION"])
-    print('look here 7!!!!')
-    auth = (os.environ["OS_ADMIN_USERNAME"], os.environ["OS_ADMIN_PASSWORD_LOCATION"])
-    #auth = (os.environ["OS_ADMIN_USERNAME"], response['SecretString'])
+    auth = (os.environ["OS_ADMIN_USERNAME"], response['SecretString'])
 
     return Client(
         hosts=hosts,
