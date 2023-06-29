@@ -8,7 +8,6 @@ from aws_cdk import (
 from sds_data_manager.stacks import (
     api_gateway_stack,
     domain_stack,
-    lambda_stack,
     opensearch_stack,
     sds_data_manager_stack
 )
@@ -33,12 +32,6 @@ def build_sdc(scope: App, env: Environment,
                                                          sds_id,
                                                          open_search,
                                                          env=env)
-
-    # lambdas = lambda_stack.OpenSearchLambdas(scope, f"LambdaStack-{sds_id}",
-    #                                          sds_id,
-    #                                          open_search,
-    #                                          data_manager,
-    #                                          env=env)
 
     domain = domain_stack.Domain(scope, f"DomainStack-{sds_id}",
                                  sds_id, env=env)

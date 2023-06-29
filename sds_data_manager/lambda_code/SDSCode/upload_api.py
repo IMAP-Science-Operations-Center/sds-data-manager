@@ -52,6 +52,31 @@ def _check_for_matching_filetype(pattern, filename):
 
     return file_dictionary
 
+def http_response(header_type="text/html", status_code=200, body="Success"):
+    """Customizes HTTP response for the lambda function.
+
+    Parameters
+    ----------
+    header_type : str, optional
+        Type of the content being returned, defaults to 'text/html'.
+    status_code : int, optional
+        HTTP status code indicating the result of the operation, defaults to 200.
+    body : str, optional
+        The content of the response, defaults to 'Success'.
+
+    Returns
+    -------
+    dict
+        A dictionary containing headers, status code, and body, designed to be returned
+        by a Lambda function as an API response.
+    """
+    return {
+        "headers": {
+            "Content-Type": header_type,
+        },
+        "statusCode": status_code,
+        "body": body,
+    }
 
 def _generate_signed_upload_url(filename, tags=None):
     """
@@ -102,6 +127,7 @@ def lambda_handler(event, context):
 
     :return: A pre-signed url where users can upload a data file to the SDS.
     """
+    logger.info(event)
 
     if "filename" not in event["queryStringParameters"]:
         return {

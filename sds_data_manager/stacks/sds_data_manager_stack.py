@@ -15,7 +15,7 @@ from aws_cdk import (
     aws_lambda_event_sources,
     aws_lambda_python_alpha as lambda_alpha_
 )
-
+# Local
 from .opensearch_stack import OpenSearch
 
 
@@ -39,13 +39,6 @@ class SdsDataManager(Stack):
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
-        print('look here!!!!')
-        print(opensearch.os_secret.secret_name)
-        print(opensearch.os_secret.secret_arn)
-        print(opensearch.os_secret.secret_full_arn)
-        print(opensearch.os_secret.secret_value_from_json)
-        print('look here2!!!!!')
-
         # This is the S3 bucket used by upload_api_lambda
         data_bucket = s3.Bucket(
             self, f"DataBucket-{sds_id}",
@@ -55,8 +48,6 @@ class SdsDataManager(Stack):
             auto_delete_objects=True,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
-        print(data_bucket)
-        print('look here3!!!!!')
 
         # Confirm that a config.json file exists in the expected
         # location before S3 upload
