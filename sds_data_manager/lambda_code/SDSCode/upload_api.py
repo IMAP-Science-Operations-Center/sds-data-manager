@@ -102,6 +102,8 @@ def lambda_handler(event, context):
 
     :return: A pre-signed url where users can upload a data file to the SDS.
     """
+    print(event)
+    print(context)
 
     if "filename" not in event["queryStringParameters"]:
         return {

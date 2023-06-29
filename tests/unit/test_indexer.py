@@ -19,9 +19,8 @@ from sds_data_manager.lambda_code.SDSCode.opensearch_utils.index import Index
 class TestIndexer(unittest.TestCase):
     def setUp(self):
         # Opensearch client Params
-        os.environ[
-            "OS_DOMAIN"
-        ] = "search-sdsmetadatadomain-dev-i3bnjqingkrphg2crwdcwqabqe.us-west-2.es.amazonaws.com"
+        os.environ["OS_DOMAIN"] = \
+            "search-sdsmetadatadomain-dev-i3bnjqingkrphg2crwdcwqabqe.us-west-2.es.amazonaws.com"
         os.environ["OS_PORT"] = "443"
         os.environ["OS_INDEX"] = "test_data"
 
@@ -98,7 +97,7 @@ class TestIndexer(unittest.TestCase):
         self.client.create_index(self.index)
 
     def test_indexer(self):
-        ## Arrange
+        # Arrange
         self.client.send_document(self.document)
         document_true = {
             "_index": "test_data",
@@ -118,12 +117,12 @@ class TestIndexer(unittest.TestCase):
             },
         }
 
-        ## Act
+        # Act
         indexer.lambda_handler(self.sample_payload, "")
         time.sleep(1)
         document_out = self.client.get_document(self.document)
 
-        ## Assert
+        # Assert
         assert document_out == document_true
 
     def tearDown(self):

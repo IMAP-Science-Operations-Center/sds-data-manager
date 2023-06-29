@@ -3,6 +3,7 @@ package-lock.json
 __pycache__
 .pytest_cache
 .venv
+.env
 *.egg-info
 .aws
 external
@@ -33,3 +34,6 @@ MANIFEST
 cdk.out
 aws
 awscliv2.zip
+
+# Individual development CDK apps
+app*dev.py

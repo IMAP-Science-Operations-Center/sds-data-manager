@@ -43,4 +43,3 @@ class Domain(Stack):
                                            domain_name='*.imap-mission.com',
                                            validation=acm.CertificateValidation.from_dns(self.hosted_zone)
                                            )
-

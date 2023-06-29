@@ -21,9 +21,8 @@ class TestQueries(unittest.TestCase):
     def setUp(self):
         # Opensearch client Params
         # TODO: there has to be a better way
-        os.environ[
-            "OS_DOMAIN"
-        ] = "search-sdsmetadatadomain-dev-i3bnjqingkrphg2crwdcwqabqe.us-west-2.es.amazonaws.com"
+        os.environ["OS_DOMAIN"] = \
+            "search-sdsmetadatadomain-dev-i3bnjqingkrphg2crwdcwqabqe.us-west-2.es.amazonaws.com"
 
         os.environ["OS_PORT"] = "443"
         os.environ["OS_INDEX"] = "test_data"
@@ -75,7 +74,7 @@ class TestQueries(unittest.TestCase):
 
     def test_queries(self):
         """tests that the queries lambda correctly returns the search results"""
-        ## Arrange ##
+        # Arrange
         response_true = [
             {
                 "_index": "test_data",
@@ -96,7 +95,7 @@ class TestQueries(unittest.TestCase):
         time.sleep(1)
         event = {"queryStringParameters": {"instrument": "mag"}}
 
-        ## Act ##
+        # Act
         response = queries.lambda_handler(event, "")
         response_out = json.loads(response['body'])
 

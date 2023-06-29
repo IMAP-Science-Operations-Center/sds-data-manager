@@ -1,21 +1,38 @@
+# Standard
 import json
 import logging
 import os
 import sys
-
+# Installed
 import boto3
 from opensearchpy import RequestsHttpConnection
-
+# Local
 from .opensearch_utils.client import Client
 from .opensearch_utils.index import Index
 from .opensearch_utils.query import Query
-
+# Logger setup
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
 def _create_open_search_client():
+    """Creates and returns an OpenSearch client.
+
+    This function fetches environment variables to set up an OpenSearch client.
+    It uses the AWS Secrets Manager to retrieve secure information for authentication.
+
+    Returns
+    -------
+    Client
+        A Client object that's connected to the specified OpenSearch cluster. This client is set to use
+        SSL for secure connections and verifies certificates. It also uses the RequestsHttpConnection class
+        for handling HTTP requests.
+
+    Note
+    ----
+    This function is currently using hard-coded parameters for the AWS Secrets Manager session.
+    """
     logger.info("OS DOMAIN: " + os.environ["OS_DOMAIN"])
     hosts = [{"host": os.environ["OS_DOMAIN"], "port": int(os.environ["OS_PORT"])}]
     # TODO: remove hard-coded parameters
@@ -39,6 +56,19 @@ def _create_open_search_client():
 
 
 def lambda_handler(event, context):
+    """Handler function for making queries.
+
+    Parameters
+    ----------
+    event : dict
+        The JSON formatted document with the data required for the lambda function to process
+    context : LambdaContext
+        This object provides methods and properties that provide information about the invocation, function,
+        and runtime environment.
+    """
+    print(event)
+    print(context)
+
     logger.info("Received event: " + json.dumps(event, indent=2))
     # create the opensearch query from the API parameters
     query = Query(event["queryStringParameters"])

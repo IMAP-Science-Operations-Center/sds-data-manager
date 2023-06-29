@@ -84,19 +84,3 @@ class ApiGateway(Stack):
 
             # Create a new method that is linked to the Lambda function
             resource.add_method(http_method, apigw.LambdaIntegration(lambda_fn))
-
-            # Here's an example of how you can add an IAM authorizer to your API:
-            # api = apigw.RestApi(self, "myapi",
-            #                     rest_api_name="My Service",
-            #                     description="This service serves.",
-            #                     deploy_options=apigw.StageOptions(
-            #                         metrics_enabled=True,
-            #                         logging_level=apigw.MethodLoggingLevel.INFO,
-            #                         data_trace_enabled=True
-            #                     )
-            #                     )
-            #
-            # iam_authorizer = apigw.IamAuthorizer()
-            #
-            # api.root.add_method("ANY", authorizer=iam_authorizer)
-

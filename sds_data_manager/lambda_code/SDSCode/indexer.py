@@ -38,7 +38,7 @@ def _load_allowed_filenames():
     return json.loads(file_content)
 
 
-def _check_for_matching_filetype(pattern:dict, filename:str):
+def _check_for_matching_filetype(pattern: dict, filename: str):
     """
     Checks whether a given filename matches a specific pattern.
 
@@ -141,7 +141,6 @@ def lambda_handler(event, context):
     for record in event["Records"]:
         # Retrieve the Object name
         logger.info(f"Record Received: {record}")
-        record["s3"]["bucket"]["name"]
         filename = record["s3"]["object"]["key"]
 
         logger.info(f"Attempting to insert {os.path.basename(filename)} into database")

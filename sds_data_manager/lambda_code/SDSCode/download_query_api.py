@@ -59,6 +59,9 @@ def lambda_handler(event, context):
     """
     logger.info(event)
 
+    print(event)
+    print(context)
+
     one_day = 86400
     url_life = os.environ.get("URL_EXPIRE", one_day)
 
