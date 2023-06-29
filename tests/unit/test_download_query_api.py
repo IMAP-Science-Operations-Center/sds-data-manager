@@ -1,10 +1,11 @@
+# Standard
 import os
 import unittest
 from operator import contains
-
+# Installed
 import boto3
 from moto import mock_s3
-
+# Local
 from sds_data_manager.lambda_code.SDSCode.download_query_api import lambda_handler
 
 
@@ -30,7 +31,7 @@ class TestDownloadQueryAPI(unittest.TestCase):
         )
         # upload a file
         self.s3_filepath = "test-data/science_block_20221116_163611Z_idle.bin"
-        self.local_filepath = f"tests/unit/{self.s3_filepath}"
+        self.local_filepath = f"{self.s3_filepath}"
         self.s3_client.upload_file(
             self.local_filepath, self.bucket_name, self.s3_filepath
         )
