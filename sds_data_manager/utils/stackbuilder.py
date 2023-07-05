@@ -14,7 +14,7 @@ from sds_data_manager.stacks import (
 
 
 def build_sdc(scope: App, env: Environment,
-              sds_id: str):
+              sds_id: str, use_custom_domain: bool = False):
     """Builds the entire SDC
 
     Parameters
@@ -24,6 +24,8 @@ def build_sdc(scope: App, env: Environment,
         Account and region
     sds_id : str
         Name suffix for stack
+    use_custom_domain : bool, Optional
+        Build API Gateway using custom domain
     """
     open_search = opensearch_stack.OpenSearch(scope, f"OpenSearch-{sds_id}",
                                               sds_id, env=env)
@@ -34,8 +36,9 @@ def build_sdc(scope: App, env: Environment,
                                                          env=env)
 
     domain = domain_stack.Domain(scope, f"DomainStack-{sds_id}",
-                                 sds_id, env=env)
+                                 sds_id, env=env, use_custom_domain=use_custom_domain)
 
     api_gateway_stack.ApiGateway(scope, f"ApiGateway-{sds_id}",
                                  sds_id, data_manager.lambda_functions,
-                                 domain.hosted_zone, domain.certificate, env=env)
+                                 env=env, hosted_zone=domain.hosted_zone,
+                                 certificate=domain.certificate, use_custom_domain=use_custom_domain)

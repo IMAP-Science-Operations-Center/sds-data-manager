@@ -13,16 +13,15 @@ from aws_cdk import (
 class ApiGateway(Stack):
     """Sets up api gateway, creates subdomains, and creates methods that
     are linked to the lambda function"""
-    #TODO: may add Edge-optimized APIs for production. We are using Regional for development.
-    # (improve performance for users far from AWS Region where API is hosted.)
 
     def __init__(self, scope: Construct,
                  construct_id: str,
                  sds_id: str,
                  lambda_functions: dict,
-                 hosted_zone: route53.IHostedZone,
-                 certificate: acm.ICertificate,
                  env: Environment,
+                 hosted_zone: route53.IHostedZone = None,
+                 certificate: acm.ICertificate = None,
+                 use_custom_domain: bool = False,
                  **kwargs) -> None:
         """
         Parameters
@@ -33,11 +32,13 @@ class ApiGateway(Stack):
             Name suffix for stack
         lambda_functions : dict
             Lambda functions
+        env : Environment
         hosted_zone : route53.IHostedZone
             Hosted zone used for DNS routing.
         certificate : acm.ICertificate
             Used for validating the secure connections to API Gateway.
-        env : Environment
+        use_custom_domain : bool
+            Determines if a custom domain should be used.
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
@@ -53,26 +54,28 @@ class ApiGateway(Stack):
                                 endpoint_types=[apigw.EndpointType.REGIONAL]
                                 )
 
-            # Define a custom domain
-            custom_domain = apigw.DomainName(self,
-                                             f'{subdomain}-DomainName-{sds_id}',
-                                             domain_name=f'{subdomain}.imap-mission.com',
-                                             certificate=certificate,
-                                             endpoint_type=apigw.EndpointType.REGIONAL
-                                             )
+            # If using custom domain
+            if use_custom_domain:
+                # Define a custom domain
+                custom_domain = apigw.DomainName(self,
+                                                 f'{subdomain}-DomainName-{sds_id}',
+                                                 domain_name=f'{subdomain}.imap-mission.com',
+                                                 certificate=certificate,
+                                                 endpoint_type=apigw.EndpointType.REGIONAL
+                                                 )
 
-            # Route domain to api gateway
-            apigw.BasePathMapping(self, f'{subdomain}-BasePathMapping-{sds_id}',
-                                  domain_name=custom_domain,
-                                  rest_api=api,
-                                  )
+                # Route domain to api gateway
+                apigw.BasePathMapping(self, f'{subdomain}-BasePathMapping-{sds_id}',
+                                      domain_name=custom_domain,
+                                      rest_api=api,
+                                      )
 
-            # Add record to Route53
-            route53.ARecord(self, f'{subdomain}-AliasRecord-{sds_id}',
-                            zone=hosted_zone,
-                            record_name=f'{subdomain}.imap-mission.com',
-                            target=route53.RecordTarget.from_alias(targets.ApiGatewayDomain(custom_domain))
-                            )
+                # Add record to Route53
+                route53.ARecord(self, f'{subdomain}-AliasRecord-{sds_id}',
+                                zone=hosted_zone,
+                                record_name=f'{subdomain}.imap-mission.com',
+                                target=route53.RecordTarget.from_alias(targets.ApiGatewayDomain(custom_domain))
+                                )
 
             # Get the lambda function and its HTTP method
             lambda_info = lambda_functions[subdomain]

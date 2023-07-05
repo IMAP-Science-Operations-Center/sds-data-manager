@@ -16,15 +16,18 @@ class Domain(Stack):
                  construct_id: str,
                  sds_id: str,
                  env: Environment,
+                 use_custom_domain: bool = False,
                  **kwargs) -> None:
         """
         Parameters
         ----------
         scope : Construct
         construct_id : str
-        env : Environment
         sds_id : str
             Name suffix for stack
+        env : Environment
+        use_custom_domain : bool, Optional
+            Build API Gateway using custom domain
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
@@ -36,10 +39,15 @@ class Domain(Stack):
                                           iam.ManagedPolicy.from_aws_managed_policy_name("AmazonRoute53FullAccess")
                                       ])
 
-        self.hosted_zone = route53.HostedZone.from_lookup(
-            self, f'HostedZone-{sds_id}', domain_name='imap-mission.com')
+        if use_custom_domain:
+            self.hosted_zone = route53.HostedZone.from_lookup(self,
+                                                              f'HostedZone-{sds_id}',
+                                                              domain_name='imap-mission.com')
 
-        self.certificate = acm.Certificate(self, f'Certificate-{sds_id}',
-                                           domain_name='*.imap-mission.com',
-                                           validation=acm.CertificateValidation.from_dns(self.hosted_zone)
-                                           )
+            self.certificate = acm.Certificate(self, f'Certificate-{sds_id}',
+                                               domain_name='*.imap-mission.com',
+                                               validation=acm.CertificateValidation.from_dns(self.hosted_zone)
+                                               )
+        else:
+            self.hosted_zone = None
+            self.certificate = None
