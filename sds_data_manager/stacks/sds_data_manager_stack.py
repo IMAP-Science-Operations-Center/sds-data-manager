@@ -114,7 +114,6 @@ class SdsDataManager(Stack):
             memory_size=1000,
             environment={
                 "OS_ADMIN_USERNAME": "master-user",
-                "OS_ADMIN_PASSWORD_LOCATION": opensearch.os_secret.secret_value.unsafe_unwrap(),
                 "OS_DOMAIN": opensearch.sds_metadata_domain.domain_endpoint,
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
@@ -170,11 +169,11 @@ class SdsDataManager(Stack):
             memory_size=1000,
             environment={
                 "OS_ADMIN_USERNAME": "master-user",
-                "OS_ADMIN_PASSWORD_LOCATION": opensearch.os_secret.secret_value.unsafe_unwrap(),
                 "OS_DOMAIN": opensearch.sds_metadata_domain.domain_endpoint,
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
-                "SECRET_ID": opensearch.secret_name
+                "SECRET_ID": opensearch.secret_name,
+                "REGION": env.region
             },
         )
         query_api_lambda.add_to_role_policy(opensearch.opensearch_read_only_policy)
