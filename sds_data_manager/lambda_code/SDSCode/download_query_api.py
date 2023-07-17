@@ -2,9 +2,11 @@
 import json
 import logging
 import os
+
 # Installed
 import boto3
 import botocore
+
 # Logger setup
 logger = logging.getLogger()
 logging.basicConfig()

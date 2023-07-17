@@ -1,5 +1,6 @@
 # Standard
 import pathlib
+
 # Installed
 import aws_cdk as cdk
 from constructs import Construct
@@ -15,6 +16,7 @@ from aws_cdk import (
     aws_lambda_event_sources,
     aws_lambda_python_alpha as lambda_alpha_
 )
+
 # Local
 from .opensearch_stack import OpenSearch
 

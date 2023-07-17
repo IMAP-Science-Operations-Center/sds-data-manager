@@ -3,9 +3,11 @@ import json
 import logging
 import os
 import sys
+
 # Installed
 import boto3
 from opensearchpy import RequestsHttpConnection
+
 # Local
 from .opensearch_utils.action import Action
 from .opensearch_utils.client import Client

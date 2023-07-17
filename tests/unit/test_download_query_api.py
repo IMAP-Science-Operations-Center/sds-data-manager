@@ -2,9 +2,11 @@
 import os
 import unittest
 from operator import contains
+
 # Installed
 import boto3
 from moto import mock_s3
+
 # Local
 from sds_data_manager.lambda_code.SDSCode.download_query_api import lambda_handler
 

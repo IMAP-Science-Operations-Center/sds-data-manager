@@ -3,11 +3,13 @@ import os
 import time
 import unittest
 import json
+
 # Installed
 import boto3
 import pytest
 from botocore.exceptions import ClientError
 from opensearchpy import RequestsHttpConnection
+
 # Local
 from sds_data_manager.lambda_code.SDSCode import queries
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action

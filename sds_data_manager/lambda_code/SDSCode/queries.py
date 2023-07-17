@@ -3,13 +3,16 @@ import json
 import logging
 import os
 import sys
+
 # Installed
 import boto3
 from opensearchpy import RequestsHttpConnection
+
 # Local
 from .opensearch_utils.client import Client
 from .opensearch_utils.index import Index
 from .opensearch_utils.query import Query
+
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

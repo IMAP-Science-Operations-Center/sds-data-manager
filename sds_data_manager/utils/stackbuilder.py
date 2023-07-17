@@ -4,6 +4,7 @@ from aws_cdk import (
     App,
     Environment
 )
+
 # Local
 from sds_data_manager.stacks import (
     opensearch_stack,
