@@ -17,12 +17,10 @@
   "context": {
     "deploy-where": "dev",
     "dev": {
-      "sds_id": "dev",
-      "account": "<account_id>"
+      "sds_id": "dev"
     },
     "prod": {
-      "sds_id": "prod",
-      "account": "<account_id>"
+      "sds_id": "prod"
     },
     "sdc-region": "us-west-2",
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
