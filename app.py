@@ -25,7 +25,7 @@ account = params["account"]
 env = Environment(account=account, region=sdc_region)
 print(f"Deploying to account {account} in region {sdc_region}.")
 
-# Deploy Libera SDC resources. This is the default with no CLI context variables set.
+# Deploy SDC resources. This is the default with no CLI context variables set.
 stacks = build_sdc(app,
                    env=env,
                    sds_id=params["sds_id"])
