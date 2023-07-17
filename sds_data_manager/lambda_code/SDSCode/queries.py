@@ -39,7 +39,7 @@ def _create_open_search_client():
     session = boto3.session.Session()
     client = session.client(
         service_name='secretsmanager',
-        region_name="us-west-2")
+        region_name=os.environ["REGION"])
     response = client.get_secret_value(
         SecretId=os.environ["SECRET_ID"]
     )
