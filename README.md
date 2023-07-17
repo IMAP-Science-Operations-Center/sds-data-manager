@@ -2,7 +2,7 @@
 
 This project is the core of a Science Data System.  
 
-Our goal with the project is that users will only need to modify the file config.json to define the data products stored on the SDC, and the rest should be mission agnostic.  
+Our goal with the project is that users will only need to modify the file config.json to define the data products stored on the SDS, and the rest should be mission agnostic.  
 
 ## Architecture
 

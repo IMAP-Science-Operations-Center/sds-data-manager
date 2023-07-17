@@ -154,7 +154,7 @@ def lambda_handler(event, context):
                 break
 
         # Found nothing. This should probably send out an error notification
-        # to the team, because how did it make its way onto the SDC?
+        # to the team, because how did it make its way onto the SDS?
         if metadata is None:
             logger.info("Found no matching file types to index this file against.")
             return None

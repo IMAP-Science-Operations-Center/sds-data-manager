@@ -6,10 +6,10 @@ build-backend = "poetry.core.masonry.api"
 name = "sds-data-manager"
 version = "0.1.0"
 description = "IMAP Science Operations Center AWS data manager"
-authors = ["IMAP SDC Developers <imap.sdc@lists.lasp.colorado.edu>"]
+authors = ["IMAP SDS Developers <imap.sdc@lists.lasp.colorado.edu>"]
 readme = "README.md"
 license = "MIT"
-keywords = ["IMAP", "SDC", "SOC", "Science Operations"]
+keywords = ["IMAP", "SDC", "SOC", "SDS", "Science Operations"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

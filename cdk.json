@@ -22,7 +22,7 @@
     "prod": {
       "sds_id": "prod"
     },
-    "sdc-region": "us-west-2",
+    "sds-region": "us-west-2",
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
