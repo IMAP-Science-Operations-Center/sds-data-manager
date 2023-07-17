@@ -11,7 +11,7 @@ from .opensearch_utils.client import Client
 from .opensearch_utils.index import Index
 from .opensearch_utils.query import Query
 # Logger setup
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -35,7 +35,7 @@ def _create_open_search_client():
     """
     logger.info("OS DOMAIN: " + os.environ["OS_DOMAIN"])
     hosts = [{"host": os.environ["OS_DOMAIN"], "port": int(os.environ["OS_PORT"])}]
-    # TODO: remove hard-coded parameters
+
     session = boto3.session.Session()
     client = session.client(
         service_name='secretsmanager',
@@ -66,8 +66,8 @@ def lambda_handler(event, context):
         This object provides methods and properties that provide information about the invocation, function,
         and runtime environment.
     """
-    print(event)
-    print(context)
+    logger.info(f"Event: {event}")
+    logger.info(f"Context: {context}")
 
     logger.info("Received event: " + json.dumps(event, indent=2))
     # create the opensearch query from the API parameters
