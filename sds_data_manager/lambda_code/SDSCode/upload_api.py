@@ -4,7 +4,7 @@ import os
 
 import boto3
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logging.basicConfig()
 logger.setLevel(logging.INFO)
 
@@ -102,8 +102,8 @@ def lambda_handler(event, context):
 
     :return: A pre-signed url where users can upload a data file to the SDS.
     """
-    print(event)
-    print(context)
+    logger.info(f"Event: {event}")
+    logger.info(f"Context: {context}")
 
     if "filename" not in event["queryStringParameters"]:
         return {
