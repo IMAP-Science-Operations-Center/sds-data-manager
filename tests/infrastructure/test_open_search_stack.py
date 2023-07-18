@@ -28,6 +28,23 @@ def template():
     return template
 
 
+def test_secrets_manager_resource_count(template):
+    template.resource_count_is("AWS::SecretsManager::Secret", 1)
+
+
+def test_secrets_manager_resource_properties(template):
+    template.has_resource(
+        "AWS::SecretsManager::Secret",
+        {
+            "DeletionPolicy": "Delete",
+            "UpdateReplacePolicy": "Delete",
+        },
+    )
+
+
+def test_iam_roles_resource_count(template):
+    template.resource_count_is("AWS::IAM::Role", 1)
+
 def test_expected_properties_for_iam_roles(template):
     found_resources = template.find_resources(
         "AWS::IAM::Role",
@@ -52,18 +69,7 @@ def test_expected_properties_for_iam_roles(template):
     assert len(found_resources) == 1
 
 
-def test_secrets_manager_resource_count(template):
-    template.resource_count_is("AWS::SecretsManager::Secret", 1)
 
-
-def test_secrets_manager_resource_properties(template):
-    template.has_resource(
-        "AWS::SecretsManager::Secret",
-        {
-            "DeletionPolicy": "Delete",
-            "UpdateReplacePolicy": "Delete",
-        },
-    )
 
 
 def test_opensearch_domain_resource_count(template):
@@ -125,8 +131,7 @@ def test_sdsmetadatadomain_app_logs_resource_properties(template):
     template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
 
 
-def test_iam_roles_resource_count(template):
-    template.resource_count_is("AWS::IAM::Role", 1)
+
 
 
 def test_custom_opensearch_access_policy_resource_count(template):
@@ -256,6 +261,58 @@ def test_expected_properties_for_iam_roles(template):
 
 def test_iam_policy_resource_count(template):
     template.resource_count_is("AWS::IAM::Policy", 2)
+
+
+def test_sdsmetadatadomain_esloggroup_iam_policy_resource_properties(template, sds_id):
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "logs:PutResourcePolicy",
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": "logs:DeleteResourcePolicy",
+                        "Resource": "*",
+                    },
+                ],
+            },
+            "PolicyName": Match.string_like_regexp(
+                f"SDSMetadataDomainsdsidtestESLogGroupPolicyc*"
+            ),
+        },
+    )
+
+
+def test_sdsmetadatadomain_accesspolicy_iam_policy_resource_properties(template):
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "es:UpdateDomainConfig",
+                        "Resource": {
+                            "Fn::GetAtt": [
+                                Match.string_like_regexp("SDSMetadataDomain*"),
+                                "Arn",
+                            ]
+                        },
+                    }
+                ],
+            },
+            "PolicyName": Match.string_like_regexp(
+                "SDSMetadataDomainsdsidtestAccessPolicyCustomResourcePolicy*"
+            ),
+        },
+    )
 
 
 def test_lambda_function_resource_count(template):
