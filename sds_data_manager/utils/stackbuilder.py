@@ -7,13 +7,15 @@ from aws_cdk import (
 
 # Local
 from sds_data_manager.stacks import (
+    domain_stack,
     opensearch_stack,
-    sds_data_manager_stack
+    sds_data_manager_stack,
+    api_gateway_stack
 )
 
 
 def build_sds(scope: App, env: Environment,
-              sds_id: str):
+              sds_id: str, use_custom_domain: bool = False):
     """Builds the entire SDS
 
     Parameters
@@ -33,3 +35,13 @@ def build_sds(scope: App, env: Environment,
                                                          sds_id,
                                                          open_search,
                                                          env=env)
+
+    domain = domain_stack.Domain(scope, f"DomainStack-{sds_id}",
+                                 sds_id, env=env, use_custom_domain=use_custom_domain,
+                                 environment_name='dev')
+
+    api_gateway_stack.ApiGateway(scope, f"ApiGateway-{sds_id}",
+                                 sds_id, data_manager.lambda_functions,
+                                 env=env, hosted_zone=domain.hosted_zone,
+                                 certificate=domain.certificate, use_custom_domain=use_custom_domain,
+                                 environment_name='dev')

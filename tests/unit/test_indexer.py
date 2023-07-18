@@ -20,15 +20,21 @@ from sds_data_manager.lambda_code.SDSCode.opensearch_utils.index import Index
 @pytest.mark.network()
 class TestIndexer(unittest.TestCase):
     def setUp(self):
-        # Opensearch client Params
-        os.environ["OS_DOMAIN"] = \
-            "search-sdsmetadatadomain-dev-i3bnjqingkrphg2crwdcwqabqe.us-west-2.es.amazonaws.com"
+        session = boto3.Session()
+
+        # get the opensearch client
+        opensearch_client = session.client('opensearch')
+
+        # describe the OpenSearch domain and get its endpoint
+        domain_description = opensearch_client.describe_domain(DomainName='sdsmetadatadomain-dev')
+        os.environ["OS_DOMAIN"] = domain_description['DomainStatus']['Endpoint']
+        
         os.environ["OS_PORT"] = "443"
         os.environ["OS_INDEX"] = "test_data"
 
         hosts = [{"host": os.environ["OS_DOMAIN"], "port": os.environ["OS_PORT"]}]
 
-        secret_name = "sdp-database-creds"
+        secret_name = f"sdp-database-creds-dev"
         region_name = "us-west-2"
 
         # Create a Secrets Manager client

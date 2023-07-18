@@ -30,7 +30,7 @@ class OpenSearch(Stack):
         super().__init__(scope, construct_id, env=env, **kwargs)
 
         # Define Database name related constants
-        self.secret_name = "sdp-database-creds"
+        self.secret_name = f"sdp-database-creds-{sds_id}"
 
         # Create a secret username/password for OpenSearch
         self.os_secret = secretsmanager.Secret(self, f"OpenSearchPassword-{sds_id}",

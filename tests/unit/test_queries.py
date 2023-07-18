@@ -21,13 +21,19 @@ from sds_data_manager.lambda_code.SDSCode.opensearch_utils.index import Index
 @pytest.mark.network()
 class TestQueries(unittest.TestCase):
     def setUp(self):
-        # Opensearch client Params
-        # TODO: there has to be a better way
-        os.environ["OS_DOMAIN"] = \
-            "search-sdsmetadatadomain-dev-i3bnjqingkrphg2crwdcwqabqe.us-west-2.es.amazonaws.com"
+
+        session = boto3.Session()
+
+        # get the opensearch client
+        opensearch_client = session.client('opensearch')
+
+        # describe the OpenSearch domain and get its endpoint
+        domain_description = opensearch_client.describe_domain(DomainName='sdsmetadatadomain-dev')
+        os.environ["OS_DOMAIN"] = domain_description['DomainStatus']['Endpoint']
 
         os.environ["OS_PORT"] = "443"
         os.environ["OS_INDEX"] = "test_data"
+        os.environ["REGION"] = "us-west-2"
 
         hosts = [{"host": os.environ["OS_DOMAIN"], "port": os.environ["OS_PORT"]}]
 

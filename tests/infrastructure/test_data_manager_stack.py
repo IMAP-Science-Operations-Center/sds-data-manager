@@ -1,13 +1,34 @@
+# Standard
 import pytest
+
+# Installed
+import boto3
+from aws_cdk import App, Environment
 from aws_cdk.assertions import Match, Template
 
-from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
+# Local
+from sds_data_manager.stacks import sds_data_manager_stack
+from sds_data_manager.stacks import opensearch_stack
 
 
 @pytest.fixture(scope="module")
-def template(app, sds_id):
-    stack_name = f"stack-{sds_id}"
-    stack = SdsDataManagerStack(app, stack_name, sds_id)
+def template():
+
+    session = boto3.Session()
+
+    account = session.client('sts').get_caller_identity().get('Account')
+    region = session.region_name
+
+    env = Environment(account=account, region=region)
+    app = App()
+
+    sds_id = "sdsid-test"
+    open_search = opensearch_stack.OpenSearch(app, f"OpenSearch-{sds_id}",
+                                              sds_id, env=env)
+    stack = sds_data_manager_stack.SdsDataManager(app, f"SdsDataManager-{sds_id}",
+                                                  sds_id,
+                                                  open_search,
+                                                  env=env)
     template = Template.from_stack(stack)
     return template
 
@@ -27,7 +48,7 @@ def test_s3_data_bucket_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::S3::Bucket",
         props={
-            "BucketName": f"sds-data-{sds_id}",
+            "BucketName": f"sds-config-bucket-{sds_id}",
             "VersioningConfiguration": {"Status": "Enabled"},
             "PublicAccessBlockConfiguration": {"RestrictPublicBuckets": True},
         },
@@ -46,7 +67,7 @@ def test_s3_config_bucket_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::S3::Bucket",
         {
-            "BucketName": f"sds-config-{sds_id}",
+            "BucketName": f"sds-config-bucket-{sds_id}",
             "VersioningConfiguration": {"Status": "Enabled"},
             "PublicAccessBlockConfiguration": {
                 "BlockPublicAcls": True,
@@ -66,7 +87,7 @@ def test_s3_data_bucket_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::S3::BucketPolicy",
         props={
-            "Bucket": {"Ref": Match.string_like_regexp("DATABUCKET*")},
+            "Bucket": {"Ref": Match.string_like_regexp("DataBucket*")},
             "PolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [
@@ -86,7 +107,7 @@ def test_s3_data_bucket_policy_resource_properties(template):
                         "Resource": [
                             {
                                 "Fn::GetAtt": [
-                                    Match.string_like_regexp("DATABUCKET*"),
+                                    Match.string_like_regexp("DataBucket*"),
                                     "Arn",
                                 ]
                             },
@@ -96,7 +117,7 @@ def test_s3_data_bucket_policy_resource_properties(template):
                                     [
                                         {
                                             "Fn::GetAtt": [
-                                                Match.string_like_regexp("DATABUCKET*"),
+                                                Match.string_like_regexp("DataBucket*"),
                                                 "Arn",
                                             ]
                                         },
@@ -116,7 +137,7 @@ def test_s3_config_bucket_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::S3::BucketPolicy",
         {
-            "Bucket": {"Ref": Match.string_like_regexp("CONFIGBUCKET*")},
+            "Bucket": {"Ref": Match.string_like_regexp("ConfigBucket*")},
             "PolicyDocument": {
                 "Statement": [
                     {
@@ -135,7 +156,7 @@ def test_s3_config_bucket_policy_resource_properties(template):
                         "Resource": [
                             {
                                 "Fn::GetAtt": [
-                                    Match.string_like_regexp("CONFIGBUCKET*"),
+                                    Match.string_like_regexp("ConfigBucket*"),
                                     "Arn",
                                 ]
                             },
@@ -146,7 +167,7 @@ def test_s3_config_bucket_policy_resource_properties(template):
                                         {
                                             "Fn::GetAtt": [
                                                 Match.string_like_regexp(
-                                                    "CONFIGBUCKET*"
+                                                    "ConfigBucket*"
                                                 ),
                                                 "Arn",
                                             ]
@@ -180,7 +201,7 @@ def test_data_bucket_custom_s3_auto_delete_resource_properties(template):
                     "Arn",
                 ]
             },
-            "BucketName": {"Ref": Match.string_like_regexp("DATABUCKET*")},
+            "BucketName": {"Ref": Match.string_like_regexp("DataBucket*")},
         },
     )
 
@@ -197,7 +218,7 @@ def test_config_bucket_custom_s3_auto_delete_resoource_count(template):
                     "Arn",
                 ]
             },
-            "BucketName": {"Ref": Match.string_like_regexp("CONFIGBUCKET*")},
+            "BucketName": {"Ref": Match.string_like_regexp("ConfigBucket*")},
         },
     )
 
@@ -214,7 +235,7 @@ def test_custom_s3_bucket_notifications_resource_properties(template):
                     "Arn",
                 ]
             },
-            "BucketName": {"Ref": Match.string_like_regexp("DATABUCKET*")},
+            "BucketName": {"Ref": Match.string_like_regexp("DataBucket*")},
             "NotificationConfiguration": {
                 "LambdaFunctionConfigurations": [
                     {
@@ -233,141 +254,8 @@ def test_custom_s3_bucket_notifications_resource_properties(template):
     )
 
 
-def test_secrets_manager_resource_count(template):
-    template.resource_count_is("AWS::SecretsManager::Secret", 1)
-
-
-def test_secrets_manager_resource_properties(template):
-    template.has_resource(
-        "AWS::SecretsManager::Secret",
-        {
-            "DeletionPolicy": "Delete",
-            "UpdateReplacePolicy": "Delete",
-        },
-    )
-
-
-def test_opensearch_domain_resource_count(template):
-    template.resource_count_is("AWS::OpenSearchService::Domain", 1)
-
-
-def test_opensearch_domain_resource_properties(template, sds_id):
-    template.has_resource_properties(
-        "AWS::OpenSearchService::Domain",
-        {
-            "DomainName": f"sdsmetadatadomain-{sds_id}",
-            "EngineVersion": "OpenSearch_1.3",
-            "ClusterConfig": {"InstanceType": "t3.small.search", "InstanceCount": 1},
-            "EBSOptions": {"EBSEnabled": True, "VolumeSize": 10, "VolumeType": "gp2"},
-            "NodeToNodeEncryptionOptions": {"Enabled": True},
-            "EncryptionAtRestOptions": {"Enabled": True},
-        },
-    )
-
-
-def test_custom_cloudwatch_log_resource_policy_count(template):
-    template.resource_count_is("Custom::CloudwatchLogResourcePolicy", 1)
-
-
-def test_custom_opensearch_access_policy_resource_count(template):
-    template.resource_count_is("Custom::OpenSearchAccessPolicy", 1)
-
-
-def test_custom_opensearch_access_policy_resource_properties(template):
-    template.has_resource(
-        "Custom::OpenSearchAccessPolicy",
-        {
-            "DeletionPolicy": "Delete",
-            "UpdateReplacePolicy": "Delete",
-        },
-    )
-
-    template.has_resource_properties(
-        "Custom::OpenSearchAccessPolicy",
-        {
-            "ServiceToken": {"Fn::GetAtt": [Match.string_like_regexp("AWS*"), "Arn"]},
-            "Create": {
-                "Fn::Join": [
-                    "",
-                    [
-                        '{"action":"updateDomainConfig","service":"OpenSearch","parameters":{"DomainName":"',
-                        {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
-                        '","AccessPolicies":"{\\"Statement\\":[{\\"Action\\":\\"es:*\\",\\"Effect\\":\\"Allow\\",\\"Principal\\":{\\"AWS\\":\\"*\\"},\\"Resource\\":\\"',
-                        {
-                            "Fn::GetAtt": [
-                                Match.string_like_regexp("SDSMetadataDomain*"),
-                                "Arn",
-                            ]
-                        },
-                        '/*\\"}],\\"Version\\":\\"2012-10-17\\"}"},"outputPaths":["DomainConfig.AccessPolicies"],"physicalResourceId":{"id":"',
-                        {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
-                        'AccessPolicy"}}',
-                    ],
-                ]
-            },
-            "Update": {
-                "Fn::Join": [
-                    "",
-                    [
-                        '{"action":"updateDomainConfig","service":"OpenSearch","parameters":{"DomainName":"',
-                        {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
-                        '","AccessPolicies":"{\\"Statement\\":[{\\"Action\\":\\"es:*\\",\\"Effect\\":\\"Allow\\",\\"Principal\\":{\\"AWS\\":\\"*\\"},\\"Resource\\":\\"',
-                        {
-                            "Fn::GetAtt": [
-                                Match.string_like_regexp("SDSMetadataDomain*"),
-                                "Arn",
-                            ]
-                        },
-                        '/*\\"}],\\"Version\\":\\"2012-10-17\\"}"},"outputPaths":["DomainConfig.AccessPolicies"],"physicalResourceId":{"id":"',
-                        {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
-                        'AccessPolicy"}}',
-                    ],
-                ]
-            },
-            "InstallLatestAwsSdk": True,
-        },
-    )
-
-
-def test_log_groups_resource_count(template):
-    template.resource_count_is("AWS::Logs::LogGroup", 3)
-
-
-def test_sdsmetadatadomain_slow_search_logs_resource_properties(template):
-    template.has_resource(
-        "AWS::Logs::LogGroup",
-        {
-            "DeletionPolicy": "Retain",
-            "UpdateReplacePolicy": "Retain",
-        },
-    )
-    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
-
-
-def test_sdsmetadatadomain_slow_index_logs_resource_properties(template):
-    template.has_resource(
-        "AWS::Logs::LogGroup",
-        {
-            "DeletionPolicy": "Retain",
-            "UpdateReplacePolicy": "Retain",
-        },
-    )
-    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
-
-
-def test_sdsmetadatadomain_app_logs_resource_properties(template):
-    template.has_resource(
-        "AWS::Logs::LogGroup",
-        {
-            "DeletionPolicy": "Retain",
-            "UpdateReplacePolicy": "Retain",
-        },
-    )
-    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
-
-
 def test_iam_roles_resource_count(template):
-    template.resource_count_is("AWS::IAM::Role", 8)
+    template.resource_count_is("AWS::IAM::Role", 7)
 
 
 def test_expected_properties_for_iam_roles(template):
@@ -389,13 +277,13 @@ def test_expected_properties_for_iam_roles(template):
         },
     )
 
-    # There are 8 IAM Role expected resources with the same properties
+    # There are 7 IAM Role expected resources with the same properties
     # confirm that all are found in the stack
-    assert len(found_resources) == 8
+    assert len(found_resources) == 7
 
 
 def test_iam_policy_resource_count(template):
-    template.resource_count_is("AWS::IAM::Policy", 8)
+    template.resource_count_is("AWS::IAM::Policy", 6)
 
 
 def test_upload_lambda_api_aim_policy_resource_properties(template):
@@ -414,7 +302,7 @@ def test_upload_lambda_api_aim_policy_resource_properties(template):
                                 [
                                     {
                                         "Fn::GetAtt": [
-                                            Match.string_like_regexp("DATABUCKET*"),
+                                            Match.string_like_regexp("DataBucket*"),
                                             "Arn",
                                         ]
                                     },
@@ -433,7 +321,7 @@ def test_upload_lambda_api_aim_policy_resource_properties(template):
                                     [
                                         {
                                             "Fn::GetAtt": [
-                                                Match.string_like_regexp("DATABUCKET*"),
+                                                Match.string_like_regexp("DataBucket*"),
                                                 "Arn",
                                             ]
                                         },
@@ -448,7 +336,7 @@ def test_upload_lambda_api_aim_policy_resource_properties(template):
                                         {
                                             "Fn::GetAtt": [
                                                 Match.string_like_regexp(
-                                                    "CONFIGBUCKET*"
+                                                    "ConfigBucket*"
                                                 ),
                                                 "Arn",
                                             ]
@@ -463,130 +351,6 @@ def test_upload_lambda_api_aim_policy_resource_properties(template):
             },
             "PolicyName": Match.string_like_regexp(
                 "UploadAPILambdaServiceRoleDefaultPolicy*"
-            ),
-        },
-    )
-
-
-def test_sdsmetadatadomain_esloggroup_iam_policy_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Policy",
-        {
-            "PolicyDocument": {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": "logs:PutResourcePolicy",
-                        "Resource": "*",
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": "logs:DeleteResourcePolicy",
-                        "Resource": "*",
-                    },
-                ],
-            },
-            "PolicyName": Match.string_like_regexp(
-                "SDSMetadataDomainESLogGroupPolicyc*"
-            ),
-        },
-    )
-
-
-def test_sdsmetadatadomain_accesspolicy_iam_policy_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Policy",
-        {
-            "PolicyDocument": {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": "es:UpdateDomainConfig",
-                        "Resource": {
-                            "Fn::GetAtt": [
-                                Match.string_like_regexp("SDSMetadataDomain*"),
-                                "Arn",
-                            ]
-                        },
-                    }
-                ],
-            },
-            "PolicyName": Match.string_like_regexp(
-                "SDSMetadataDomainAccessPolicyCustomResourcePolicy*"
-            ),
-        },
-    )
-
-
-def test_indexer_lambda_iam_policy_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Policy",
-        {
-            "PolicyDocument": {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": "es:ESHttp*",
-                        "Resource": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    {
-                                        "Fn::GetAtt": [
-                                            Match.string_like_regexp(
-                                                "SDSMetadataDomain*"
-                                            ),
-                                            "Arn",
-                                        ]
-                                    },
-                                    "/*",
-                                ],
-                            ]
-                        },
-                    },
-                    {
-                        "Action": "s3:GetObject",
-                        "Effect": "Allow",
-                        "Resource": [
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp("DATABUCKET*"),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "CONFIGBUCKET*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                        ],
-                    },
-                ],
-            },
-            "PolicyName": Match.string_like_regexp(
-                "IndexerLambdaServiceRoleDefaultPolicy*"
             ),
         },
     )
@@ -611,246 +375,8 @@ def test_bucket_notification_iam_policy_resource_properties(template):
     )
 
 
-def test_queryapilambda_iam_policy_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Policy",
-        {
-            "PolicyDocument": {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": "es:ESHttpGet",
-                        "Resource": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    {
-                                        "Fn::GetAtt": [
-                                            Match.string_like_regexp(
-                                                "SDSMetadataDomain*"
-                                            ),
-                                            "Arn",
-                                        ]
-                                    },
-                                    "/*",
-                                ],
-                            ]
-                        },
-                    }
-                ],
-            },
-            "PolicyName": Match.string_like_regexp(
-                "QueryAPILambdaServiceRoleDefaultPolicy*"
-            ),
-        },
-    )
-
-
-def test_downloadquerylambda_iam_policy_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Policy",
-        {
-            "PolicyDocument": {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": "es:ESHttp*",
-                        "Resource": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    {
-                                        "Fn::GetAtt": [
-                                            Match.string_like_regexp(
-                                                "SDSMetadataDomain*"
-                                            ),
-                                            "Arn",
-                                        ]
-                                    },
-                                    "/*",
-                                ],
-                            ]
-                        },
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": "s3:GetObject",
-                        "Resource": [
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp("DATABUCKET*"),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "CONFIGBUCKET*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                        ],
-                    },
-                ],
-            },
-            "PolicyName": Match.string_like_regexp(
-                "DownloadQueryAPILambdaServiceRoleDefaultPolicy*"
-            ),
-        },
-    )
-
-
-def test_custom_buck_deployment_iam_service_role_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Policy",
-        {
-            "PolicyName": Match.string_like_regexp(
-                "CustomCDKBucketDeployment.*ServiceRoleDefaultPolicy.*"
-            ),
-            "PolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": ["s3:GetObject*", "s3:GetBucket*", "s3:List*"],
-                        "Effect": "Allow",
-                        "Resource": [
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        "arn:",
-                                        {"Ref": "AWS::Partition"},
-                                        ":s3:::",
-                                        {"Fn::Sub": Match.any_value()},
-                                    ],
-                                ]
-                            },
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        "arn:",
-                                        {"Ref": "AWS::Partition"},
-                                        ":s3:::",
-                                        {"Fn::Sub": Match.any_value()},
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                        ],
-                    },
-                    {
-                        "Action": [
-                            "s3:GetObject*",
-                            "s3:GetBucket*",
-                            "s3:List*",
-                            "s3:DeleteObject*",
-                            "s3:PutObject",
-                            "s3:PutObjectLegalHold",
-                            "s3:PutObjectRetention",
-                            "s3:PutObjectTagging",
-                            "s3:PutObjectVersionTagging",
-                            "s3:Abort*",
-                        ],
-                        "Effect": "Allow",
-                        "Resource": [
-                            {
-                                "Fn::GetAtt": [
-                                    Match.string_like_regexp("CONFIGBUCKET*"),
-                                    "Arn",
-                                ]
-                            },
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "CONFIGBUCKET*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                        ],
-                    },
-                ],
-                "Version": "2012-10-17",
-            },
-        },
-    )
-
-
-def test_lambda_urls_resource_count(template):
-    template.resource_count_is("AWS::Lambda::Url", 3)
-
-
-def test_upload_api_lambda_url_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::Lambda::Url",
-        {
-            "AuthType": "NONE",
-            "TargetFunctionArn": {
-                "Fn::GetAtt": [Match.string_like_regexp("UploadAPILambda*"), "Arn"]
-            },
-            "Cors": {"AllowMethods": ["*"], "AllowOrigins": ["*"]},
-        },
-    )
-
-
-def test_query_api_lambda_url_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::Lambda::Url",
-        {
-            "AuthType": "NONE",
-            "TargetFunctionArn": {
-                "Fn::GetAtt": [Match.string_like_regexp("QueryAPILambda*"), "Arn"]
-            },
-            "Cors": {"AllowMethods": ["GET"], "AllowOrigins": ["*"]},
-        },
-    )
-
-
-def test_download_api_lambda_url_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::Lambda::Url",
-        {
-            "AuthType": "NONE",
-            "TargetFunctionArn": {
-                "Fn::GetAtt": [
-                    Match.string_like_regexp("DownloadQueryAPILambda*"),
-                    "Arn",
-                ]
-            },
-            "Cors": {"AllowMethods": ["GET"], "AllowOrigins": ["*"]},
-        },
-    )
-
-
 def test_lambda_function_resource_count(template):
-    template.resource_count_is("AWS::Lambda::Function", 8)
+    template.resource_count_is("AWS::Lambda::Function", 7)
 
 
 def test_indexer_lambda_function_resource_properties(template, sds_id):
@@ -928,23 +454,6 @@ def test_download_api_lambda_function_resource_properties(template, sds_id):
     )
 
 
-def test_aws_lambda_function_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::Lambda::Function",
-        props={
-            "Handler": "index.handler",
-            "Runtime": "nodejs14.x",
-            "Timeout": 120,
-            "Role": {
-                "Fn::GetAtt": [
-                    Match.string_like_regexp("AWS.*ServiceRole.*"),
-                    "Arn",
-                ]
-            },
-        },
-    )
-
-
 def test_aws_bucket_notification_lambda_function_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Function",
@@ -1000,83 +509,9 @@ def test_custom_cdk_bucket_deployment_lambda_resource_properties(template):
 
 
 def test_lambda_permission_resource_count(template):
-    template.resource_count_is("AWS::Lambda::Permission", 4)
-
-
-def test_indexer_lambda_permission_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::Lambda::Permission",
-        {
-            "Action": "lambda:InvokeFunction",
-            "FunctionName": {
-                "Fn::GetAtt": [Match.string_like_regexp("IndexerLambda*"), "Arn"]
-            },
-            "Principal": "s3.amazonaws.com",
-            "SourceAccount": {"Ref": "AWS::AccountId"},
-            "SourceArn": {
-                "Fn::GetAtt": [Match.string_like_regexp("DATABUCKET*"), "Arn"]
-            },
-        },
-    )
-
-
-def test_upload_api_lambda_permission_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::Lambda::Permission",
-        {
-            "Action": "lambda:InvokeFunctionUrl",
-            "FunctionName": {
-                "Fn::GetAtt": [Match.string_like_regexp("UploadAPILambda*"), "Arn"]
-            },
-            "Principal": "*",
-            "FunctionUrlAuthType": "NONE",
-        },
-    )
-
-
-def test_query_api_lambda_permission_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::Lambda::Permission",
-        {
-            "Action": "lambda:InvokeFunctionUrl",
-            "FunctionName": {
-                "Fn::GetAtt": [Match.string_like_regexp("QueryAPILambda*"), "Arn"]
-            },
-            "Principal": "*",
-            "FunctionUrlAuthType": "NONE",
-        },
-    )
-
-
-def test_download_api_lambda_permission_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::Lambda::Permission",
-        {
-            "Action": "lambda:InvokeFunctionUrl",
-            "FunctionName": {
-                "Fn::GetAtt": [
-                    Match.string_like_regexp("DownloadQueryAPILambda*"),
-                    "Arn",
-                ]
-            },
-            "Principal": "*",
-            "FunctionUrlAuthType": "NONE",
-        },
-    )
+    template.resource_count_is("AWS::Lambda::Permission", 1)
 
 
 def test_lambda_layer_resource_count(template):
     template.resource_count_is("AWS::Lambda::LayerVersion", 1)
 
-
-def test_custom_deploy_config_lambda_layer(template):
-    template.has_resource_properties(
-        "AWS::Lambda::LayerVersion",
-        {
-            "Content": {
-                "S3Bucket": {"Fn::Sub": Match.any_value()},
-                "S3Key": Match.string_like_regexp(".*.zip"),
-            },
-            "Description": "/opt/awscli/aws",
-        },
-    )

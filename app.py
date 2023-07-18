@@ -28,7 +28,8 @@ print(f"Deploying to account {account} in region {sds_region}.")
 # Deploy SDS resources. This is the default with no CLI context variables set.
 stacks = build_sds(app,
                    env=env,
-                   sds_id=params["sds_id"])
+                   sds_id=params["sds_id"],
+                   use_custom_domain=True)
 
 app.synth()
 

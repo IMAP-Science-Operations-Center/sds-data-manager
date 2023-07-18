@@ -1,4 +1,3 @@
-# Installed
 from constructs import Construct
 from aws_cdk import (
     Stack,
@@ -22,6 +21,7 @@ class ApiGateway(Stack):
                  hosted_zone: route53.IHostedZone = None,
                  certificate: acm.ICertificate = None,
                  use_custom_domain: bool = False,
+                 environment_name: str = "dev",
                  **kwargs) -> None:
 
         super().__init__(scope, construct_id, env=env, **kwargs)
@@ -41,7 +41,7 @@ class ApiGateway(Stack):
         if use_custom_domain:
             custom_domain = apigw.DomainName(self,
                                              f'api-DomainName-{sds_id}',
-                                             domain_name=f'api.imap-mission.com',
+                                             domain_name=f'api.{environment_name}.imap-mission.com',
                                              certificate=certificate,
                                              endpoint_type=apigw.EndpointType.REGIONAL
                                              )
@@ -55,7 +55,7 @@ class ApiGateway(Stack):
             # Add record to Route53
             route53.ARecord(self, f'api-AliasRecord-{sds_id}',
                             zone=hosted_zone,
-                            record_name=f'api.imap-mission.com',
+                            record_name=f'api.{environment_name}.imap-mission.com',
                             target=route53.RecordTarget.from_alias(targets.ApiGatewayDomain(custom_domain))
                             )
 
