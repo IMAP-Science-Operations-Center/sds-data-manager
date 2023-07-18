@@ -31,7 +31,7 @@ class ApiGateway(Stack):
 
         # Create a single API Gateway
         api = apigw.RestApi(self, f'api-RestApi-{sds_id}',
-                            rest_api_name=f'My Service',
+                            rest_api_name=f'api-RestApi-{sds_id}',
                             description=f'This service serves as my API Gateway.',
                             deploy_options=apigw.StageOptions(stage_name=f'{sds_id}'),
                             endpoint_types=[apigw.EndpointType.REGIONAL]
