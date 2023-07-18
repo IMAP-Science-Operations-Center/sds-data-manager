@@ -1,3 +1,4 @@
+# Installed
 from constructs import Construct
 from aws_cdk import (
     Stack,
@@ -44,10 +45,10 @@ class Domain(Stack):
         if use_custom_domain:
             self.hosted_zone = route53.HostedZone.from_lookup(self,
                                                               f'HostedZone-{sds_id}',
-                                                              domain_name=f'{environment_name}.imap-mission.com')
+                                                              domain_name='imap-mission.com')
 
             self.certificate = acm.Certificate(self, f'Certificate-{sds_id}',
-                                               domain_name=f'*.{environment_name}.imap-mission.com',
+                                               domain_name='*.imap-mission.com',
                                                validation=acm.CertificateValidation.from_dns(self.hosted_zone)
                                                )
         else:
