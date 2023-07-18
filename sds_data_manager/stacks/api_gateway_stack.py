@@ -23,60 +23,44 @@ class ApiGateway(Stack):
                  certificate: acm.ICertificate = None,
                  use_custom_domain: bool = False,
                  **kwargs) -> None:
-        """
-        Parameters
-        ----------
-        scope : Construct
-        construct_id : str
-        sds_id : str
-            Name suffix for stack
-        lambda_functions : dict
-            Lambda functions
-        env : Environment
-        hosted_zone : route53.IHostedZone
-            Hosted zone used for DNS routing.
-        certificate : acm.ICertificate
-            Used for validating the secure connections to API Gateway.
-        use_custom_domain : bool
-            Determines if a custom domain should be used.
-        """
+
         super().__init__(scope, construct_id, env=env, **kwargs)
 
         # Define subdomains
         subdomains = lambda_functions.keys()
 
+        # Create a single API Gateway
+        api = apigw.RestApi(self, f'api-RestApi-{sds_id}',
+                            rest_api_name=f'My Service',
+                            description=f'This service serves as my API Gateway.',
+                            deploy_options=apigw.StageOptions(stage_name=f'{sds_id}'),
+                            endpoint_types=[apigw.EndpointType.REGIONAL]
+                            )
+
+        # Define a custom domain
+        if use_custom_domain:
+            custom_domain = apigw.DomainName(self,
+                                             f'api-DomainName-{sds_id}',
+                                             domain_name=f'api.imap-mission.com',
+                                             certificate=certificate,
+                                             endpoint_type=apigw.EndpointType.REGIONAL
+                                             )
+
+            # Route domain to api gateway
+            apigw.BasePathMapping(self, f'api-BasePathMapping-{sds_id}',
+                                  domain_name=custom_domain,
+                                  rest_api=api,
+                                  )
+
+            # Add record to Route53
+            route53.ARecord(self, f'api-AliasRecord-{sds_id}',
+                            zone=hosted_zone,
+                            record_name=f'api.imap-mission.com',
+                            target=route53.RecordTarget.from_alias(targets.ApiGatewayDomain(custom_domain))
+                            )
+
+        # Loop through the lambda functions to create resources (routes) in the API Gateway
         for subdomain in subdomains:
-            # Set up the API Gateway
-            api = apigw.RestApi(self, f'{subdomain}-RestApi-{sds_id}',
-                                rest_api_name=f'My {subdomain.capitalize()} Service',
-                                description=f'This service serves as my {subdomain.capitalize()} API Gateway.',
-                                deploy_options=apigw.StageOptions(stage_name='dev'),
-                                endpoint_types=[apigw.EndpointType.REGIONAL]
-                                )
-
-            # If using custom domain
-            if use_custom_domain:
-                # Define a custom domain
-                custom_domain = apigw.DomainName(self,
-                                                 f'{subdomain}-DomainName-{sds_id}',
-                                                 domain_name=f'{subdomain}.imap-mission.com',
-                                                 certificate=certificate,
-                                                 endpoint_type=apigw.EndpointType.REGIONAL
-                                                 )
-
-                # Route domain to api gateway
-                apigw.BasePathMapping(self, f'{subdomain}-BasePathMapping-{sds_id}',
-                                      domain_name=custom_domain,
-                                      rest_api=api,
-                                      )
-
-                # Add record to Route53
-                route53.ARecord(self, f'{subdomain}-AliasRecord-{sds_id}',
-                                zone=hosted_zone,
-                                record_name=f'{subdomain}.imap-mission.com',
-                                target=route53.RecordTarget.from_alias(targets.ApiGatewayDomain(custom_domain))
-                                )
-
             # Get the lambda function and its HTTP method
             lambda_info = lambda_functions[subdomain]
             lambda_fn = lambda_info['function']

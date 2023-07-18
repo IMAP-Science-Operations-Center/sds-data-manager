@@ -1,4 +1,3 @@
-# Installed
 from constructs import Construct
 from aws_cdk import (
     Stack,
@@ -17,6 +16,7 @@ class Domain(Stack):
                  sds_id: str,
                  env: Environment,
                  use_custom_domain: bool = False,
+                 environment_name: str = "dev",
                  **kwargs) -> None:
         """
         Parameters
@@ -28,6 +28,8 @@ class Domain(Stack):
         env : Environment
         use_custom_domain : bool, Optional
             Build API Gateway using custom domain
+        environment_name : str, Optional
+            Name of the environment (e.g., 'dev', 'prod')
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
@@ -42,12 +44,13 @@ class Domain(Stack):
         if use_custom_domain:
             self.hosted_zone = route53.HostedZone.from_lookup(self,
                                                               f'HostedZone-{sds_id}',
-                                                              domain_name='imap-mission.com')
+                                                              domain_name=f'{environment_name}.imap-mission.com')
 
             self.certificate = acm.Certificate(self, f'Certificate-{sds_id}',
-                                               domain_name='*.imap-mission.com',
+                                               domain_name=f'*.{environment_name}.imap-mission.com',
                                                validation=acm.CertificateValidation.from_dns(self.hosted_zone)
                                                )
         else:
             self.hosted_zone = None
             self.certificate = None
+
