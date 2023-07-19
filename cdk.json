@@ -15,7 +15,7 @@
     ]
   },
   "context": {
-    "deploy-where": "dev",
+    "env": "dev",
     "dev": {
       "sds_id": "dev"
     },

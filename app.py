@@ -6,14 +6,14 @@ from sds_data_manager.utils.stackbuilder import build_sds
 
 """
 This app is designed to be the dev and production deployment app. It defaults to a dev deployment 
-via a default `deploy-where` value in cdk.json. To deploy to prod, specify `--context deploy-where=prod`.
+via a default `env` value in cdk.json. To deploy to prod, specify `--context env=prod`.
 """
 
 app = App()
 
 # Grab values from context
 sds_region = app.node.try_get_context('sds-region')
-where_to_deploy = app.node.try_get_context('deploy-where')
+where_to_deploy = app.node.try_get_context('env')
 params = app.node.try_get_context(where_to_deploy)
 
 # Ensure required parameters are present
