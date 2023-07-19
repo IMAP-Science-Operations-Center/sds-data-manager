@@ -11,6 +11,8 @@ from sds_data_manager.utils.stackbuilder import build_sds
 
 """
     This app is designed for individual developer testing.
+    IMPORTANT: You will need to make a copy of app_template_dev.py file with a different name 
+    (app_<name>_dev.py) and keep a copy of it locally so that it will not be committed. 
 
     To deploy this app:
     
