@@ -59,10 +59,8 @@ def lambda_handler(event, context):
         The response from the function which could either be a pre-signed S3 URL in case of successful
         operation or an error message with corresponding status code in case of failure.
     """
-    logger.info(event)
-
-    print(event)
-    print(context)
+    logger.info(f"Event: {event}")
+    logger.info(f"Context: {context}")
 
     one_day = 86400
     url_life = os.environ.get("URL_EXPIRE", one_day)
