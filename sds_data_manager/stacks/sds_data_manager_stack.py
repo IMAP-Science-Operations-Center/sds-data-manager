@@ -22,7 +22,10 @@ from .opensearch_stack import OpenSearch
 
 
 class SdsDataManager(Stack):
-    """Stack for Data Management."""
+    """
+    Class that includes resources for handling upload, indexing in OpenSearch, query execution, and
+    data download.
+    """
     def __init__(self, scope: Construct,
                  construct_id: str,
                  sds_id: str,

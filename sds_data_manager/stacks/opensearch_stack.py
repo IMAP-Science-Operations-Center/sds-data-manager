@@ -12,7 +12,11 @@ from aws_cdk import (
 
 
 class OpenSearch(Stack):
-    """Creates OpenSearch cluster and policies."""
+    """
+    Creates an AWS CDK Stack which sets up an OpenSearch cluster with specific
+    configurations and associated IAM policies. It also creates a secret username/password for
+    OpenSearch using AWS Secrets Manager.
+    """
     def __init__(self, scope: Construct,
                  construct_id: str,
                  sds_id: str,
