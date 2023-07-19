@@ -36,6 +36,8 @@ class SdsDataManager(Stack):
         scope : App
         construct_id : str
         sds_id: str
+        opensearch: OpenSearch
+            This class depends on opensearch, which is built with opensearch_stack.py
         env : Environment
             Account and region
         """
