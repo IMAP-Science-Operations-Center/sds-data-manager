@@ -31,6 +31,12 @@ If you're running locally, you can install the Python requirements with Poetry:
 poetry install
 ```
 
+To install all extras
+
+```
+poetry install --all-extras
+```
+
 This will install the dependencies from `poetry.lock`, ensuring that consistent versions are used. Poetry also provides a virtual environment, which you will have to activate.
 
 ```
