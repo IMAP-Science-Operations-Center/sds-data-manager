@@ -1,16 +1,12 @@
-# Standard
 import os
 import time
 import unittest
-import json
 
-# Installed
 import boto3
 import pytest
 from botocore.exceptions import ClientError
 from opensearchpy import RequestsHttpConnection
 
-# Local
 from sds_data_manager.lambda_code.SDSCode import queries
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action
 from sds_data_manager.lambda_code.SDSCode.opensearch_utils.client import Client
@@ -21,35 +17,23 @@ from sds_data_manager.lambda_code.SDSCode.opensearch_utils.index import Index
 @pytest.mark.network()
 class TestQueries(unittest.TestCase):
     def setUp(self):
-
-        session = boto3.Session()
-
-        # get the opensearch client
-        opensearch_client = session.client('opensearch')
-
-        # describe the OpenSearch domain and get its endpoint
-        domain_description = opensearch_client.describe_domain(DomainName='sdsmetadatadomain-dev')
-        os.environ["OS_DOMAIN"] = domain_description['DomainStatus']['Endpoint']
-
+        # Opensearch client Params
+        os.environ[
+            "OS_DOMAIN"
+        ] = "search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com"
         os.environ["OS_PORT"] = "443"
         os.environ["OS_INDEX"] = "test_data"
-        os.environ["REGION"] = "us-west-2"
 
         hosts = [{"host": os.environ["OS_DOMAIN"], "port": os.environ["OS_PORT"]}]
 
-        secret_name = "sdp-database-creds"
+        secret_name = "OpenSearchPassword9643DC3D-uVH94BjrbF9u"
         region_name = "us-west-2"
 
         # Create a Secrets Manager client
         session = boto3.session.Session()
-        client = session.client(
-            service_name='secretsmanager',
-            region_name=region_name)
-
+        client = session.client(service_name="secretsmanager", region_name=region_name)
         try:
-            get_secret_value_response = client.get_secret_value(
-                SecretId=secret_name
-            )
+            get_secret_value_response = client.get_secret_value(SecretId=secret_name)
         except ClientError as e:
             # For a list of exceptions thrown, see
             # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
@@ -69,7 +53,6 @@ class TestQueries(unittest.TestCase):
 
         os.environ["OS_ADMIN_USERNAME"] = "master-user"
         os.environ["OS_ADMIN_PASSWORD_LOCATION"] = secret
-        os.environ["SECRET_ID"] = secret_name
         body = {
             "mission": "imap",
             "level": "l0",
@@ -82,13 +65,13 @@ class TestQueries(unittest.TestCase):
 
     def test_queries(self):
         """tests that the queries lambda correctly returns the search results"""
-        # Arrange
+        ## Arrange ##
         response_true = [
             {
                 "_index": "test_data",
                 "_type": "_doc",
                 "_id": "1",
-                "_score": 0.18232156,
+                "_score": 0.2876821,
                 "_source": {
                     "mission": "imap",
                     "level": "l0",
@@ -96,22 +79,17 @@ class TestQueries(unittest.TestCase):
                     "date": "20230112",
                     "version": "*",
                     "extension": "pkts",
-                }
+                },
             }
         ]
         self.client.send_document(self.document)
         time.sleep(1)
         event = {"queryStringParameters": {"instrument": "mag"}}
 
-        # Act
-        response = queries.lambda_handler(event, "")
-        response_out = json.loads(response['body'])
+        ## Act ##
+        response_out = queries.lambda_handler(event, "")
 
-        for res in response_out:
-            res['_score'] = None
-        for res in response_true:
-            res['_score'] = None
-
+        ## Assert ##
         assert response_out == response_true
 
     def tearDown(self):
