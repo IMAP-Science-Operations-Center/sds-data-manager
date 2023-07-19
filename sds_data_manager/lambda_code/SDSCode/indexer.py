@@ -124,8 +124,8 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: " + json.dumps(event, indent=2))
 
-    print(event)
-    print(context)
+    logger.info(f"Event: {event}")
+    logger.info(f"Context: {context}")
 
     # Retrieve a list of allowed file types
     logger.info("Loading allowed filenames from configuration file in S3.")
