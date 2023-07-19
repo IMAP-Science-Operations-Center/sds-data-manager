@@ -11,7 +11,10 @@ from aws_cdk import (
 
 class ApiGateway(Stack):
     """Sets up api gateway, creates subdomains, and creates methods that
-    are linked to the lambda function"""
+    are linked to the lambda function.
+
+    An example of the format of the url: https://dev.imap-mission.com/query
+    """
 
     def __init__(self, scope: Construct,
                  construct_id: str,
