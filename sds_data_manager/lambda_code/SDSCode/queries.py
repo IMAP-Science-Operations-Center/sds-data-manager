@@ -22,19 +22,21 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 def _create_open_search_client():
     """Creates and returns an OpenSearch client.
 
-    This function fetches environment variables to set up an OpenSearch client.
-    It uses the AWS Secrets Manager to retrieve secure information for authentication.
+    This function fetches environment variables to set up an
+    OpenSearch client. It uses the AWS Secrets Manager to
+    retrieve secure information for authentication.
 
     Returns
     -------
     Client
-        A Client object that's connected to the specified OpenSearch cluster. This client is set to use
-        SSL for secure connections and verifies certificates. It also uses the RequestsHttpConnection class
-        for handling HTTP requests.
+        A Client object that's connected to the specified OpenSearch cluster.
+        This client is set to use SSL for secure connections and verifies certificates.
+        It also uses the RequestsHttpConnection class for handling HTTP requests.
 
     Note
     ----
-    This function is currently using hard-coded parameters for the AWS Secrets Manager session.
+    This function is currently using hard-coded parameters for the
+    AWS Secrets Manager session.
     """
     logger.info("OS DOMAIN: " + os.environ["OS_DOMAIN"])
     hosts = [{"host": os.environ["OS_DOMAIN"], "port": int(os.environ["OS_PORT"])}]
@@ -62,9 +64,11 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event : dict
-        The JSON formatted document with the data required for the lambda function to process
+        The JSON formatted document with the data required for the
+        lambda function to process
     context : LambdaContext
-        This object provides methods and properties that provide information about the invocation, function,
+        This object provides methods and properties that provide
+        information about the invocation, function,
         and runtime environment.
     """
     logger.info(f"Event: {event}")

@@ -78,8 +78,8 @@ def _create_open_search_client():
     """Retrieve secrets from Secrets Manager and creates an Open Search client.
 
     This function retrieves the secret from the Secrets Manager and uses
-    the secrets, along with other environment variables, to establish a secure connection to the OpenSearch
-    cluster.
+    the secrets, along with other environment variables, to establish a
+    secure connection to the OpenSearch cluster.
 
     Returns
     -------
@@ -113,9 +113,11 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event : dict
-        The JSON formatted document with the data required for the lambda function to process
+        The JSON formatted document with the data required for the
+        lambda function to process
     context : LambdaContext
-        This object provides methods and properties that provide information about the invocation, function,
+        This object provides methods and properties that provide
+        information about the invocation, function,
         and runtime environment.
     """
     logger.info("Received event: " + json.dumps(event, indent=2))

@@ -48,16 +48,18 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event : dict
-        The JSON formatted document with the data required for the lambda function to process
+        The JSON formatted document with the data required for the
+        lambda function to process
     context : LambdaContext
-        This object provides methods and properties that provide information about the invocation, function,
-        and runtime environment.
+        This object provides methods and properties that provide information
+        about the invocation, function, and runtime environment.
 
     Returns
     -------
     dict
-        The response from the function which could either be a pre-signed S3 URL in case of successful
-        operation or an error message with corresponding status code in case of failure.
+        The response from the function which could either be a pre-signed
+        S3 URL in case of successful operation or an error message with
+        corresponding status code in case of failure.
     """
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")

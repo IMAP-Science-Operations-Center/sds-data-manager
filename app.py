@@ -6,8 +6,9 @@ from aws_cdk import App, Environment
 from sds_data_manager.utils.stackbuilder import build_sds
 
 """
-This app is designed to be the dev and production deployment app. It defaults to a dev deployment
-via a default `env` value in cdk.json. To deploy to prod, specify `--context env=prod`.
+This app is designed to be the dev and production deployment app.
+It defaults to a dev deployment via a default `env` value in cdk.json.
+To deploy to prod, specify `--context env=prod`.
 """
 
 app = App()
