@@ -7,7 +7,6 @@ from aws_cdk import (
 
 # Local
 from sds_data_manager.stacks import (
-    domain_stack,
     opensearch_stack,
     sds_data_manager_stack
 )
@@ -34,7 +33,3 @@ def build_sds(scope: App, env: Environment,
                                                          sds_id,
                                                          open_search,
                                                          env=env)
-
-    domain = domain_stack.Domain(scope, f"DomainStack-{sds_id}",
-                                 sds_id, env=env, use_custom_domain=use_custom_domain,
-                                 environment_name='dev')
