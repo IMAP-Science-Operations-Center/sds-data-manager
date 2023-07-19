@@ -9,8 +9,7 @@ from aws_cdk import (
 from sds_data_manager.stacks import (
     domain_stack,
     opensearch_stack,
-    sds_data_manager_stack,
-    api_gateway_stack
+    sds_data_manager_stack
 )
 
 
