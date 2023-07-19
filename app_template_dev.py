@@ -10,7 +10,10 @@ from aws_cdk import App, Environment
 from sds_data_manager.utils.stackbuilder import build_sds
 
 """
-    This app is used for individual developer testing, instead of app.py. When deploying locally, you can update the sds_id to include your initials and distinguish your stack from the main dev stack or other developers.
+    This app is used for individual developer testing, instead of app.py. 
+    When deploying locally, you can update the sds_id to include your initials and distinguish 
+    your stack from the main dev stack or other developers.
+    
     IMPORTANT: You will need to make a copy of app_template_dev.py file with a different name
     (app_<name>_dev.py) and keep a copy of it locally so that it will not be committed.
 
@@ -43,8 +46,9 @@ try:
 
     if os.environ.get("AWS_PROFILE") != "<profile>":
         raise KeyError("Wrong AWS Account set!")
-except KeyError:
-    raise KeyError("Env variables not set! Do you have an AWS_PROFILE activated?")
+except KeyError as err:
+    raise KeyError("Env variables not set! Do you have an AWS_PROFILE activated?") from err
+
 
 env = Environment(account=account, region=region)
 app = App()
