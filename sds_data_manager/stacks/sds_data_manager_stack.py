@@ -3,35 +3,48 @@ import pathlib
 
 # Installed
 import aws_cdk as cdk
-from constructs import Construct
 from aws_cdk import (
-    Stack,
     Environment,
     RemovalPolicy,
-    aws_iam as iam,
-    aws_s3 as s3,
-    aws_s3_deployment as s3_deploy,
-    aws_secretsmanager as secrets,
-    aws_lambda as lambda_,
+    Stack,
     aws_lambda_event_sources,
-    aws_lambda_python_alpha as lambda_alpha_
 )
+from aws_cdk import (
+    aws_iam as iam,
+)
+from aws_cdk import (
+    aws_lambda as lambda_,
+)
+from aws_cdk import (
+    aws_lambda_python_alpha as lambda_alpha_,
+)
+from aws_cdk import (
+    aws_s3 as s3,
+)
+from aws_cdk import (
+    aws_s3_deployment as s3_deploy,
+)
+from aws_cdk import (
+    aws_secretsmanager as secrets,
+)
+from constructs import Construct
 
 # Local
 from .opensearch_stack import OpenSearch
 
 
 class SdsDataManager(Stack):
-    """
-    Class that includes resources for handling upload, indexing in OpenSearch, query execution, and
-    data download.
-    """
-    def __init__(self, scope: Construct,
-                 construct_id: str,
-                 sds_id: str,
-                 opensearch: OpenSearch,
-                 env: Environment,
-                 **kwargs) -> None:
+    """Stack for Data Management."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        sds_id: str,
+        opensearch: OpenSearch,
+        env: Environment,
+        **kwargs,
+    ) -> None:
         """SdsDataManagerStack
 
         Parameters
@@ -48,7 +61,8 @@ class SdsDataManager(Stack):
 
         # This is the S3 bucket used by upload_api_lambda
         data_bucket = s3.Bucket(
-            self, f"DataBucket-{sds_id}",
+            self,
+            f"DataBucket-{sds_id}",
             bucket_name=f"sds-data-{sds_id}",
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
@@ -87,7 +101,9 @@ class SdsDataManager(Stack):
             f"DeployConfig-{sds_id}",
             sources=[
                 s3_deploy.Source.asset(
-                    str(pathlib.Path(__file__).parent.joinpath("..", "config").resolve())
+                    str(
+                        pathlib.Path(__file__).parent.joinpath("..", "config").resolve()
+                    )
                 )
             ],
             destination_bucket=config_bucket,
@@ -113,7 +129,9 @@ class SdsDataManager(Stack):
             self,
             id="IndexerLambda",
             function_name=f"file-indexer-{sds_id}",
-            entry=str(pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()),
+            entry=str(
+                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
+            ),
             index="SDSCode/indexer.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
@@ -126,12 +144,14 @@ class SdsDataManager(Stack):
                 "OS_INDEX": "metadata",
                 "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
                 "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
-                "SECRET_ID": opensearch.secret_name
+                "SECRET_ID": opensearch.secret_name,
             },
         )
 
         indexer_lambda.add_event_source(
-            aws_lambda_event_sources.S3EventSource(data_bucket, events=[s3.EventType.OBJECT_CREATED])
+            aws_lambda_event_sources.S3EventSource(
+                data_bucket, events=[s3.EventType.OBJECT_CREATED]
+            )
         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
@@ -140,7 +160,9 @@ class SdsDataManager(Stack):
         # Adding s3 read permissions to get config.json
         indexer_lambda.add_to_role_policy(s3_read_policy)
 
-        opensearch_secret = secrets.Secret.from_secret_name_v2(self, "opensearch_secret", opensearch.secret_name)
+        opensearch_secret = secrets.Secret.from_secret_name_v2(
+            self, "opensearch_secret", opensearch.secret_name
+        )
         opensearch_secret.grant_read(grantee=indexer_lambda)
 
         # upload API lambda
@@ -148,7 +170,9 @@ class SdsDataManager(Stack):
             self,
             id="UploadAPILambda",
             function_name=f"upload-api-handler-{sds_id}",
-            entry=str(pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()),
+            entry=str(
+                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
+            ),
             index="SDSCode/upload_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
@@ -168,7 +192,9 @@ class SdsDataManager(Stack):
             self,
             id="QueryAPILambda",
             function_name=f"query-api-handler-{sds_id}",
-            entry=str(pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()),
+            entry=str(
+                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
+            ),
             index="SDSCode/queries.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
@@ -180,7 +206,7 @@ class SdsDataManager(Stack):
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
                 "SECRET_ID": opensearch.secret_name,
-                "REGION": env.region
+                "REGION": env.region,
             },
         )
         query_api_lambda.add_to_role_policy(opensearch.opensearch_read_only_policy)
@@ -192,30 +218,22 @@ class SdsDataManager(Stack):
             self,
             id="DownloadQueryAPILambda",
             function_name=f"download-query-api-{sds_id}",
-            entry=str(pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()),
+            entry=str(
+                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
+            ),
             index="SDSCode/download_query_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.seconds(60),
         )
-        download_query_api.add_to_role_policy(opensearch.opensearch_all_http_permissions)
+        download_query_api.add_to_role_policy(
+            opensearch.opensearch_all_http_permissions
+        )
         download_query_api.add_to_role_policy(s3_read_policy)
 
         self.lambda_functions = {
-            'upload': {
-                'function': upload_api_lambda,
-                'httpMethod': 'POST'
-            },
-            'query': {
-                'function': query_api_lambda,
-                'httpMethod': 'GET'
-            },
-            'download': {
-                'function': download_query_api,
-                'httpMethod': 'GET'
-            },
-            'indexer': {
-                'function': indexer_lambda,
-                'httpMethod': 'POST'
-            }
-            }
+            "upload": {"function": upload_api_lambda, "httpMethod": "POST"},
+            "query": {"function": query_api_lambda, "httpMethod": "GET"},
+            "download": {"function": download_query_api, "httpMethod": "GET"},
+            "indexer": {"function": indexer_lambda, "httpMethod": "POST"},
+        }

@@ -1,27 +1,35 @@
 # Installed
-from constructs import Construct
 from aws_cdk import (
-    Stack,
     Environment,
-    aws_ec2 as ec2,
-    aws_iam as iam,
-    aws_opensearchservice as opensearch,
-    aws_secretsmanager as secretsmanager,
-    RemovalPolicy
+    RemovalPolicy,
+    Stack,
 )
+from aws_cdk import (
+    aws_ec2 as ec2,
+)
+from aws_cdk import (
+    aws_iam as iam,
+)
+from aws_cdk import (
+    aws_opensearchservice as opensearch,
+)
+from aws_cdk import (
+    aws_secretsmanager as secretsmanager,
+)
+from constructs import Construct
 
 
 class OpenSearch(Stack):
-    """
-    Creates an AWS CDK Stack which sets up an OpenSearch cluster with specific
-    configurations and associated IAM policies. It also creates a secret username/password for
-    OpenSearch using AWS Secrets Manager.
-    """
-    def __init__(self, scope: Construct,
-                 construct_id: str,
-                 sds_id: str,
-                 env: Environment,
-                 **kwargs) -> None:
+    """Creates OpenSearch cluster and policies."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        sds_id: str,
+        env: Environment,
+        **kwargs,
+    ) -> None:
         """
         Parameters
         ----------
@@ -37,8 +45,9 @@ class OpenSearch(Stack):
         self.secret_name = f"sdp-database-creds-{sds_id}"
 
         # Create a secret username/password for OpenSearch
-        self.os_secret = secretsmanager.Secret(self, f"OpenSearchPassword-{sds_id}",
-                                               secret_name=self.secret_name)
+        self.os_secret = secretsmanager.Secret(
+            self, f"OpenSearchPassword-{sds_id}", secret_name=self.secret_name
+        )
 
         # Create the opensearch cluster
         self.sds_metadata_domain = opensearch.Domain(

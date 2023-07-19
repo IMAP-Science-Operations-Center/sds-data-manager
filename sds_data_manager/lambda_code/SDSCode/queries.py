@@ -41,13 +41,11 @@ def _create_open_search_client():
 
     session = boto3.session.Session()
     client = session.client(
-        service_name='secretsmanager',
-        region_name=os.environ["REGION"])
-    response = client.get_secret_value(
-        SecretId=os.environ["SECRET_ID"]
+        service_name="secretsmanager", region_name=os.environ["REGION"]
     )
+    response = client.get_secret_value(SecretId=os.environ["SECRET_ID"])
 
-    auth = (os.environ["OS_ADMIN_USERNAME"], response['SecretString'])
+    auth = (os.environ["OS_ADMIN_USERNAME"], response["SecretString"])
 
     return Client(
         hosts=hosts,
@@ -86,8 +84,8 @@ def lambda_handler(event, context):
         "statusCode": 200,
         "body": json.dumps(search_result),  # Convert JSON data to a string
         "headers": {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'  # Allow CORS
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",  # Allow CORS
         },
     }
     return response

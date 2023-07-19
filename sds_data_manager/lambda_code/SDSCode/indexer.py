@@ -75,7 +75,7 @@ def _check_for_matching_filetype(pattern: dict, filename: str):
 
 
 def _create_open_search_client():
-    """ Retrieve secrets from Secrets Manager and creates an Open Search client.
+    """Retrieve secrets from Secrets Manager and creates an Open Search client.
 
     This function retrieves the secret from the Secrets Manager and uses
     the secrets, along with other environment variables, to establish a secure connection to the OpenSearch
@@ -89,14 +89,10 @@ def _create_open_search_client():
     hosts = [{"host": os.environ["OS_DOMAIN"], "port": int(os.environ["OS_PORT"])}]
 
     session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name="us-west-2")
-    response = client.get_secret_value(
-        SecretId=os.environ["SECRET_ID"]
-    )
+    client = session.client(service_name="secretsmanager", region_name="us-west-2")
+    response = client.get_secret_value(SecretId=os.environ["SECRET_ID"])
 
-    auth = (os.environ["OS_ADMIN_USERNAME"], response['SecretString'])
+    auth = (os.environ["OS_ADMIN_USERNAME"], response["SecretString"])
 
     return Client(
         hosts=hosts,

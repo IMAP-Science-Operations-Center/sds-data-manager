@@ -11,11 +11,11 @@ from sds_data_manager.utils.stackbuilder import build_sds
 
 """
     This app is designed for individual developer testing.
-    IMPORTANT: You will need to make a copy of app_template_dev.py file with a different name 
-    (app_<name>_dev.py) and keep a copy of it locally so that it will not be committed. 
+    IMPORTANT: You will need to make a copy of app_template_dev.py file with a different name
+    (app_<name>_dev.py) and keep a copy of it locally so that it will not be committed.
 
     To deploy this app:
-    
+
 1. Install the required tools and activate the virtual environment:
     - nvm use
     - npm install -g aws-cdk
@@ -26,9 +26,9 @@ from sds_data_manager.utils.stackbuilder import build_sds
 
 3. Run the CDK commands:
     - cdk synth --app "python app_template_dev.py"
-    - cdk diff --app "python app_template_dev.py" 
-    - cdk deploy --app "python app_template_dev.py" [ stack | --all ] 
-    - cdk destroy --app "python app_template_dev.py" [ stack | --all ] 
+    - cdk diff --app "python app_template_dev.py"
+    - cdk deploy --app "python app_template_dev.py" [ stack | --all ]
+    - cdk destroy --app "python app_template_dev.py" [ stack | --all ]
 
 """
 # CDK_DEFAULT_REGION and CDK_DEFAULT_ACCOUNT set by the AWS CDK CLI
@@ -48,11 +48,13 @@ except KeyError:
 
 env = Environment(account=account, region=region)
 app = App()
-params = app.node.try_get_context('dev')
+params = app.node.try_get_context("dev")
 
-stacks = build_sds(app,
-                   env=env,
-                   sds_id='-'.join(['<initials>', params["sds_id"]]),
-                   use_custom_domain=True)
+stacks = build_sds(
+    app,
+    env=env,
+    sds_id="-".join(["<initials>", params["sds_id"]]),
+    use_custom_domain=True,
+)
 
 app.synth()
