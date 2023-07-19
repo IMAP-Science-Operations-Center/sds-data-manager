@@ -39,9 +39,3 @@ def build_sds(scope: App, env: Environment,
     domain = domain_stack.Domain(scope, f"DomainStack-{sds_id}",
                                  sds_id, env=env, use_custom_domain=use_custom_domain,
                                  environment_name='dev')
-
-    api_gateway_stack.ApiGateway(scope, f"ApiGateway-{sds_id}",
-                                 sds_id, data_manager.lambda_functions,
-                                 env=env, hosted_zone=domain.hosted_zone,
-                                 certificate=domain.certificate, use_custom_domain=use_custom_domain,
-                                 environment_name='dev')
