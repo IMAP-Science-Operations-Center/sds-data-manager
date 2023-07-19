@@ -11,11 +11,13 @@ from sds_data_manager.utils.stackbuilder import build_sds
 
 """
     This app is used for individual developer testing, instead of app.py. 
-    When deploying locally, you can update the sds_id to include your initials and distinguish 
-    your stack from the main dev stack or other developers.
+    When deploying locally, you can update the sds_id to include your 
+    initials and distinguish your stack from the main dev stack or 
+    other developers.
     
-    IMPORTANT: You will need to make a copy of app_template_dev.py file with a different name
-    (app_<name>_dev.py) and keep a copy of it locally so that it will not be committed.
+    IMPORTANT: You will need to make a copy of app_template_dev.py file 
+    with a different name (app_<name>_dev.py) and keep a copy of it 
+    locally so that it will not be committed.
 
     To deploy this app:
 
