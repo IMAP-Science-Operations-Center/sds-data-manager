@@ -37,4 +37,3 @@ awscliv2.zip
 cdk.context.json
 
 # Individual development CDK apps
-app*dev.py

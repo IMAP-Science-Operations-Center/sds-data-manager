@@ -67,65 +67,60 @@ export AWS_PROFILE=imap
 
 You may also need to set the `CDK_DEFAULT_ACCOUNT` environment variable. 
 
-**NOTE**-- If this is a brand new AWS account, then you'll need to bootstrap your account to allow CDK deployment with the command: 
+**NOTE**-- For new AWS users, you'll need to make certain the AWS Cloud Development Kit is installed: 
+
+Ensure you have installed nodejs newer than version 14.
+<https://nodejs.org/en/download/>
+
+```bash
+nvm use
+npm install -g aws-cdk
+```
+
+**NOTE**-- If this is a brand-new AWS account (IMPORTANT: new account, not new user), then you'll need to bootstrap your account to allow CDK deployment with the command: 
 
 ```bash
 cdk bootstrap
 ```
 
-If you get errors with this command, running with `-v` will provide more information. 
+If you get errors with the 'cdk bootstrap' command, running with `-v` will provide more information.
 
 ### Deploy
 
-Inside the app.py file, there are two important configuration items which you can alter:
+You will need to make a copy of app_template_dev.py file with a different name and keep a copy of it locally. 
+In your own copy there are two important configuration items which you can alter:
 
-1) SDS_ID - This is just a string of 8 random letters that are appended to each resource.  Alternatively, you can change this to something more meaningful (i.e. "bryan-testing").  Just be aware that this ID needs to be completely unique in each account.  
+1) AWS_PROFILE (<profile>)
+2) Your initials when deploying to an AWS account with multiple users (<initials>)
 
-To deploy the SDS, first you'll need to synthesize the CDK code with the command:
+**NOTE**-- For official deployments use app.py as is and follow the instructions in that file.
+
+To deploy, first set the appropriate environment variables:
 
 ```bash
-cdk synth --context SDSID={insert a unique ID here}
+export AWS_PROFILE=<profile>
+```
+
+You'll then need to synthesize the CDK code with the command:
+
+```bash
+cdk synth --app "python app_template_dev.py"
 ```
 
 and then you can deploy the architecture with the following command:
 
 ```bash
-cdk deploy --context SDSID={insert a unique ID here}
+cdk deploy --app "python app_template_dev.py" [ stack | --all ]
 ```
 
-for example:
-
-```bash
-cdk synth --context SDSID=username-testing
-cdk deploy --context SDSID=username-testing
-```
-
-After about 20 minutes or so, you should have a brand new SDS set up in AWS.  
+After about 20 minutes or so, you should have a brand-new SDS set up in AWS.  
 This is the repository for the cloud infrastructure on the IMAP mission.
 
-1. Install nodejs newer than version 14.
-    <https://nodejs.org/en/download/>
+**NOTE**-- If you do not intend to use AWS resources for more than a couple of days do a destroy to avoid charges, especially with databases.
 
-2. Install the aws-cdk:
-
-    ```bash
-    npm install -g aws-cdk
-    ```
-
-3. Install the package
-
-    ```bash
-    pip install -e .[dev]
-    # optionally install pre-commit hooks
-    pre-commit install
-    ```
-
-4. Configure your environment with AWS credentials and bootstrap the cdk
-
-    ```bash
-    aws configure
-    cdk bootstrap
-    ```
+```bash
+cdk destroy --app "python app_template_dev.py" [ stack | --all ] 
+```
 
 ### Virtual Desktop for Development
 
