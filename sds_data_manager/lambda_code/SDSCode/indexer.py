@@ -89,7 +89,9 @@ def _create_open_search_client():
     hosts = [{"host": os.environ["OS_DOMAIN"], "port": int(os.environ["OS_PORT"])}]
 
     session = boto3.session.Session()
-    client = session.client(service_name="secretsmanager", region_name=os.environ["REGION"])
+    client = session.client(
+        service_name="secretsmanager", region_name=os.environ["REGION"]
+    )
     response = client.get_secret_value(SecretId=os.environ["SECRET_ID"])
 
     auth = (os.environ["OS_ADMIN_USERNAME"], response["SecretString"])
