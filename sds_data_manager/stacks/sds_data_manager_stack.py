@@ -145,6 +145,7 @@ class SdsDataManager(Stack):
                 "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
                 "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
                 "SECRET_ID": opensearch.secret_name,
+                "REGION": opensearch.region
             },
         )
 
