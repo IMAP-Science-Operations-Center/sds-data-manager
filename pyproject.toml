@@ -41,7 +41,6 @@ constructs = ">=10.0.0,<11.0.0"
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
 ruff = "^0.0.253"
-pre-commit = "^3.3.3"
 
 [tool.poetry.group.tests.dependencies]
 # Installed by default, can be installed without these dependencies using `poetry install --without tests`
