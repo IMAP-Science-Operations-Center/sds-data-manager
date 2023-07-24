@@ -10,7 +10,8 @@ class ApiGateway(Stack):
     """Sets up api gateway, creates routes, and creates methods that
     are linked to the lambda function.
 
-    An example of the format of the url: https://dev.imap-mission.com/query
+    An example of the format of the url:
+    https://api.tlcs-dev.imap-mission.com/query
     """
 
     def __init__(
@@ -25,6 +26,23 @@ class ApiGateway(Stack):
         use_custom_domain: bool = False,
         **kwargs,
     ) -> None:
+        """
+        Parameters
+        ----------
+        scope : Construct
+        construct_id : str
+        sds_id : str
+            Name suffix for stack
+        lambda_functions : dict
+            Lambda functions
+        env : Environment
+        hosted_zone : route53.IHostedZone
+            Hosted zone used for DNS routing.
+        certificate : acm.ICertificate
+            Used for validating the secure connections to API Gateway.
+        use_custom_domain : bool
+            Use if account contains registered domain.
+        """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
         # Define routes
