@@ -7,7 +7,7 @@ from constructs import Construct
 
 
 class ApiGateway(Stack):
-    """Sets up api gateway, creates subdomains, and creates methods that
+    """Sets up api gateway, creates routes, and creates methods that
     are linked to the lambda function.
 
     An example of the format of the url: https://dev.imap-mission.com/query
@@ -23,20 +23,19 @@ class ApiGateway(Stack):
         hosted_zone: route53.IHostedZone = None,
         certificate: acm.ICertificate = None,
         use_custom_domain: bool = False,
-        environment_name: str = "dev",
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, env=env, **kwargs)
 
-        # Define subdomains
-        subdomains = lambda_functions.keys()
+        # Define routes
+        routes = lambda_functions.keys()
 
         # Create a single API Gateway
         api = apigw.RestApi(
             self,
             f"api-RestApi-{sds_id}",
             rest_api_name=f"api-RestApi-{sds_id}",
-            description="This service serves as my API Gateway.",
+            description="API Gateway for lambda function endpoints.",
             deploy_options=apigw.StageOptions(stage_name=f"{sds_id}"),
             endpoint_types=[apigw.EndpointType.REGIONAL],
         )
@@ -46,7 +45,7 @@ class ApiGateway(Stack):
             custom_domain = apigw.DomainName(
                 self,
                 f"api-DomainName-{sds_id}",
-                domain_name=f"{environment_name}.imap-mission.com",
+                domain_name=f"api.{sds_id}.imap-mission.com",
                 certificate=certificate,
                 endpoint_type=apigw.EndpointType.REGIONAL,
             )
@@ -64,21 +63,21 @@ class ApiGateway(Stack):
                 self,
                 f"api-AliasRecord-{sds_id}",
                 zone=hosted_zone,
-                record_name=f"{environment_name}.imap-mission.com",
+                record_name=f"api.{sds_id}.imap-mission.com",
                 target=route53.RecordTarget.from_alias(
                     targets.ApiGatewayDomain(custom_domain)
                 ),
             )
 
         # Loop through the lambda functions to create resources (routes)
-        for subdomain in subdomains:
+        for route in routes:
             # Get the lambda function and its HTTP method
-            lambda_info = lambda_functions[subdomain]
+            lambda_info = lambda_functions[route]
             lambda_fn = lambda_info["function"]
             http_method = lambda_info["httpMethod"]
 
             # Define the API Gateway Resources
-            resource = api.root.add_resource(subdomain)
+            resource = api.root.add_resource(route)
 
             # Create a new method that is linked to the Lambda function
             resource.add_method(http_method, apigw.LambdaIntegration(lambda_fn))

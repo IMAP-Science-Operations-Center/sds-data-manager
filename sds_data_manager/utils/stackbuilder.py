@@ -51,5 +51,4 @@ def build_sds(
         hosted_zone=domain.hosted_zone,
         certificate=domain.certificate,
         use_custom_domain=use_custom_domain,
-        environment_name="dev",
     )

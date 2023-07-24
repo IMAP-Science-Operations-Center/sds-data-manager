@@ -52,7 +52,7 @@ class Domain(Stack):
             self.certificate = acm.Certificate(
                 self,
                 f"Certificate-{sds_id}",
-                domain_name="*.imap-mission.com",
+                domain_name=f"*.{sds_id}.imap-mission.com",
                 validation=acm.CertificateValidation.from_dns(self.hosted_zone),
             )
         else:
