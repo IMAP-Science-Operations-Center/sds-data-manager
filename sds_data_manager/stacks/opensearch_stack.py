@@ -54,7 +54,7 @@ class OpenSearch(Stack):
             self,
             f"SDSMetadataDomain-{sds_id}",
             domain_name=f"sdsmetadatadomain-{sds_id}",
-            version=opensearch.EngineVersion.OPENSEARCH_1_3,
+            version=opensearch.EngineVersion.OPENSEARCH_2_7,
             capacity=opensearch.CapacityConfig(
                 data_nodes=1,
                 data_node_instance_type="t3.small.search",
