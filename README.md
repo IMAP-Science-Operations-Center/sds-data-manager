@@ -93,11 +93,11 @@ If you get errors with the 'cdk bootstrap' command, running with `-v` will provi
 
 ### Deploy
 
-You will need to make a copy of app_template_dev.py file with a different name (app_<name>_dev.py) and keep a copy of it locally so that it will not be committed. 
+You will need to make a copy of app_template_dev.py file with a different name `app_<name>_dev.py` and keep a copy of it locally so that it will not be committed.
 In your own copy there are two important configuration items which you can alter:
 
-1) AWS_PROFILE (<profile>)
-2) Your initials when deploying to an AWS account with multiple users (<initials>)
+1) AWS_PROFILE `<profile>`
+2) Your initials when deploying to an AWS account with multiple users `<initials>`
 
 **NOTE**-- For official deployments use app.py as is and follow the instructions in that file.
 
