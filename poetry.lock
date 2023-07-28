@@ -61,7 +61,7 @@ tests-no-zope = ["cloudpickle", "hypothesis", "mypy (>=1.1.1)", "pympler", "pyte
 name = "aws-cdk-asset-awscli-v1"
 version = "2.2.200"
 description = "A library that contains the AWS CLI for use in Lambda Layers"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -78,7 +78,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-asset-kubectl-v20"
 version = "2.1.2"
 description = "A library that contains kubectl for use in Lambda Layers"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -95,7 +95,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-asset-node-proxy-agent-v5"
 version = "2.0.166"
 description = "@aws-cdk/asset-node-proxy-agent-v5"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -112,7 +112,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-aws-lambda-python-alpha"
 version = "2.88.0a0"
 description = "The CDK Construct Library for AWS Lambda in Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -131,7 +131,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-lib"
 version = "2.88.0"
 description = "Version 2 of the AWS Cloud Development Kit library"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -183,7 +183,7 @@ lxml = ["lxml"]
 name = "black"
 version = "23.7.0"
 description = "The uncompromising code formatter."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
@@ -230,7 +230,7 @@ uvloop = ["uvloop (>=0.15.2)"]
 name = "boto3"
 version = "1.28.12"
 description = "The AWS SDK for Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">= 3.7"
 files = [
@@ -250,7 +250,7 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 name = "botocore"
 version = "1.31.12"
 description = "Low-level, data-driven core of boto 3."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">= 3.7"
 files = [
@@ -270,7 +270,7 @@ crt = ["awscrt (==0.16.26)"]
 name = "cattrs"
 version = "23.1.2"
 description = "Composable complex class support for attrs and dataclasses."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -308,7 +308,7 @@ files = [
 name = "cffi"
 version = "1.15.1"
 description = "Foreign Function Interface for Python calling C code."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 files = [
@@ -385,7 +385,7 @@ pycparser = "*"
 name = "cfgv"
 version = "3.3.1"
 description = "Validate configuration and produce human readable error messages."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6.1"
 files = [
@@ -482,7 +482,7 @@ files = [
 name = "click"
 version = "8.1.6"
 description = "Composable command line interface toolkit"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -509,7 +509,7 @@ files = [
 name = "constructs"
 version = "10.2.69"
 description = "A programming model for software-defined state"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -602,7 +602,7 @@ toml = ["tomli"]
 name = "cryptography"
 version = "41.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -648,7 +648,7 @@ test-randomorder = ["pytest-randomly"]
 name = "distlib"
 version = "0.3.7"
 description = "Distribution utilities"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 files = [
@@ -672,7 +672,7 @@ files = [
 name = "exceptiongroup"
 version = "1.1.2"
 description = "Backport of PEP 654 (exception groups)"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -687,7 +687,7 @@ test = ["pytest (>=6)"]
 name = "filelock"
 version = "3.12.2"
 description = "A platform independent file lock."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -703,7 +703,7 @@ testing = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "diff-cover (>=7.5)", "p
 name = "identify"
 version = "2.5.26"
 description = "File identification library for Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
@@ -762,7 +762,7 @@ testing = ["flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs
 name = "importlib-resources"
 version = "6.0.0"
 description = "Read resources from Python packages"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
@@ -811,7 +811,7 @@ i18n = ["Babel (>=2.7)"]
 name = "jmespath"
 version = "1.0.1"
 description = "JSON Matching Expressions"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -823,7 +823,7 @@ files = [
 name = "jsii"
 version = "1.85.0"
 description = "Python client for jsii runtime"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -961,7 +961,7 @@ files = [
 name = "moto"
 version = "4.1.13"
 description = ""
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1008,7 +1008,7 @@ xray = ["aws-xray-sdk (>=0.93,!=0.96)", "setuptools"]
 name = "mypy-extensions"
 version = "1.0.0"
 description = "Type system extensions for programs checked with the mypy type checker."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.5"
 files = [
@@ -1047,7 +1047,7 @@ testing-docutils = ["pygments", "pytest (>=7,<8)", "pytest-param-files (>=0.3.4,
 name = "nodeenv"
 version = "1.8.0"
 description = "Node.js virtual environment builder"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*"
 files = [
@@ -1116,7 +1116,7 @@ files = [
 name = "pathspec"
 version = "0.11.1"
 description = "Utility library for gitignore style pattern matching of file paths."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1128,7 +1128,7 @@ files = [
 name = "platformdirs"
 version = "3.9.1"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1160,7 +1160,7 @@ testing = ["pytest", "pytest-benchmark"]
 name = "pre-commit"
 version = "3.3.3"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
@@ -1179,7 +1179,7 @@ virtualenv = ">=20.10.0"
 name = "publication"
 version = "0.0.3"
 description = "Publication helps you maintain public-api-friendly modules by preventing unintentional access to private implementation details via introspection."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 files = [
@@ -1203,7 +1203,7 @@ files = [
 name = "pycparser"
 version = "2.21"
 description = "C parser in Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 files = [
@@ -1400,7 +1400,7 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 name = "responses"
 version = "0.23.1"
 description = "A utility library for mocking out the `requests` Python library."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1421,7 +1421,7 @@ tests = ["coverage (>=6.0.0)", "flake8", "mypy", "pytest (>=7.0.0)", "pytest-asy
 name = "ruff"
 version = "0.0.253"
 description = "An extremely fast Python linter, written in Rust."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1448,7 +1448,7 @@ files = [
 name = "s3transfer"
 version = "0.6.1"
 description = "An Amazon S3 Transfer Manager"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">= 3.7"
 files = [
@@ -1466,7 +1466,7 @@ crt = ["botocore[crt] (>=1.20.29,<2.0a.0)"]
 name = "setuptools"
 version = "68.0.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1674,7 +1674,7 @@ files = [
 name = "typeguard"
 version = "2.13.3"
 description = "Run-time type checker for Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.5.3"
 files = [
@@ -1690,7 +1690,7 @@ test = ["mypy", "pytest", "typing-extensions"]
 name = "types-pyyaml"
 version = "6.0.12.11"
 description = "Typing stubs for PyYAML"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 files = [
@@ -1731,7 +1731,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 name = "virtualenv"
 version = "20.24.2"
 description = "Virtual Python Environment builder"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1752,7 +1752,7 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 name = "werkzeug"
 version = "2.3.6"
 description = "The comprehensive WSGI web application library."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
@@ -1770,7 +1770,7 @@ watchdog = ["watchdog (>=2.3)"]
 name = "xmltodict"
 version = "0.13.0"
 description = "Makes working with XML feel like you are working with JSON"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.4"
 files = [
@@ -1795,9 +1795,10 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy (>=0.9.1)", "pytest-ruff"]
 
 [extras]
+dev = ["black", "boto3", "moto", "openmock", "pre-commit", "pytest", "pytest-cov", "ruff"]
 doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "65d8c325f92271515bd237df287b06fe79cb6286fe1d585052a4be8a9d5ee207"
+content-hash = "f30a8b3e436cd4fd78dff8cf134a2a5d2582f39149104737f426a7cb0a4d7a9f"
