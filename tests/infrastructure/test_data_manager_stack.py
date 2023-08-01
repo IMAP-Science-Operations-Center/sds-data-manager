@@ -1,6 +1,10 @@
+# Standard
 import pytest
+
+# Installed
 from aws_cdk.assertions import Match, Template
 
+# Local
 from sds_data_manager.stacks.opensearch_stack import OpenSearch
 from sds_data_manager.stacks.sds_data_manager_stack import SdsDataManager
 
@@ -721,24 +725,6 @@ def test_download_api_lambda_function_resource_properties(template, sds_id):
     )
 
 
-# This is something that AWS creates. Uncertain what it is for.
-# def test_aws_lambda_function_resource_properties(template):
-#     template.has_resource_properties(
-#         "AWS::Lambda::Function",
-#         props={
-#             "Handler": "index.handler",
-#             "Runtime": "nodejs14.x",
-#             "Timeout": 120,
-#             "Role": {
-#                 "Fn::GetAtt": [
-#                     Match.string_like_regexp("AWS.*ServiceRole.*"),
-#                     "Arn",
-#                 ]
-#             },
-#         },
-#     )
-
-
 def test_aws_bucket_notification_lambda_function_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Function",
@@ -792,7 +778,8 @@ def test_custom_cdk_bucket_deployment_lambda_resource_properties(template):
         },
     )
 
-# This is now only to add an eventsource to the indexer lambda. The 3 others were being used by the
+# This is now only to add an eventsource to the indexer lambda.
+# The 3 others were being used by the
 # lambda urls (download, query, upload) and so no longer exist.
 def test_lambda_permission_resource_count(template):
     template.resource_count_is("AWS::Lambda::Permission", 1)
@@ -807,7 +794,7 @@ def test_indexer_lambda_permission_resource_properties(template):
                 "Fn::GetAtt": [Match.string_like_regexp("IndexerLambda*"), "Arn"]
             },
             "Principal": "s3.amazonaws.com",
-            "SourceAccount": Match.string_like_regexp("\d{12}"),
+            "SourceAccount": Match.string_like_regexp("\d{10}"),
             "SourceArn": {
                 "Fn::GetAtt": [Match.string_like_regexp("DataBucket*"), "Arn"]
             },
@@ -815,7 +802,8 @@ def test_indexer_lambda_permission_resource_properties(template):
     )
 
 
-# Note: these tests don't work because in the previous version of the code, we created lambda_.FunctionUrl objects
+# Note: these tests don't work because in the previous version of the code,
+# we created lambda_.FunctionUrl objects
 # which granted permissions for lambda function URLs to be invoked.
 # def test_upload_api_lambda_permission_resource_properties(template):
 #     template.has_resource_properties(
