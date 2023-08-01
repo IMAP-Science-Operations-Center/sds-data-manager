@@ -35,7 +35,7 @@ def test_iam_roles_resource_count(template):
 
 
 def test_expected_properties_for_iam_roles(template):
-    found_resources = template.has_resource_properties(
+    template.has_resource_properties(
         "AWS::IAM::Role",
         {
             "AssumeRolePolicyDocument": {
@@ -48,7 +48,7 @@ def test_expected_properties_for_iam_roles(template):
                 ],
                 "Version": "2012-10-17",
             }
-        }
+        },
     )
 
 
