@@ -1,8 +1,8 @@
 [
 {"product": "IMAP-L0-File",
-"pattern": {"mission":"imap", "level":"l0", "type":"sci", "instrument":"*", "date":"*", "version":"*", "extension":"pkts"}, 
+"pattern": {"mission":"imap", "level":"l0", "type":"sci", "instrument":"*", "date":"*", "version":"*", "extension":"pkts"},
 "path": "imap/l0/"},
 {"product": "IMAP-L1-File",
-"pattern": {"mission":"imap", "level":"l1", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}, 
+"pattern": {"mission":"imap", "level":"l1", "instrument":"*", "date":"*", "version":"*", "extension":"fits"},
 "path": "imap/l1/"}
 ]

@@ -10,3 +10,5 @@ Welcome to sds-data-manager's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   cdk/index
+

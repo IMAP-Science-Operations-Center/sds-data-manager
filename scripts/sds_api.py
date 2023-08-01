@@ -20,7 +20,7 @@ def _execute_api(url, **kwargs):
     try:
         response = requests.get(url_with_parameters, timeout=10)
     except Exception as e:
-        print(f"Could not finish query due to error {str(e)}")
+        print(f"Could not finish query due to error {e!s}")
         return
     return response
 
