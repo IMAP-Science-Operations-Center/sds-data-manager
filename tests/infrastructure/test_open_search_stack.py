@@ -35,27 +35,21 @@ def test_iam_roles_resource_count(template):
 
 
 def test_expected_properties_for_iam_roles(template):
-    found_resources = template.find_resources(
+    template.has_resource_properties(
         "AWS::IAM::Role",
         {
-            "Properties": {
-                "AssumeRolePolicyDocument": {
-                    "Statement": [
-                        {
-                            "Action": "sts:AssumeRole",
-                            "Effect": "Allow",
-                            "Principal": {"Service": "lambda.amazonaws.com"},
-                        }
-                    ],
-                    "Version": "2012-10-17",
-                }
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
             }
-        },
+        }
     )
-
-    # There is 1 IAM Role expected resources with the same properties
-    # confirm that all are found in the stack
-    assert len(found_resources) == 1
 
 
 def test_opensearch_domain_resource_count(template):
@@ -84,28 +78,6 @@ def test_log_groups_resource_count(template):
     template.resource_count_is("AWS::Logs::LogGroup", 3)
 
 
-def test_sdsmetadatadomain_slow_search_logs_resource_properties(template):
-    template.has_resource(
-        "AWS::Logs::LogGroup",
-        {
-            "DeletionPolicy": "Retain",
-            "UpdateReplacePolicy": "Retain",
-        },
-    )
-    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
-
-
-def test_sdsmetadatadomain_app_logs_resource_properties(template):
-    template.has_resource(
-        "AWS::Logs::LogGroup",
-        {
-            "DeletionPolicy": "Retain",
-            "UpdateReplacePolicy": "Retain",
-        },
-    )
-    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
-
-
 def test_custom_opensearch_access_policy_resource_count(template):
     template.resource_count_is("Custom::OpenSearchAccessPolicy", 1)
 
@@ -129,14 +101,16 @@ def test_custom_opensearch_access_policy_resource_properties(template):
                     [
                         '{"action":"updateDomainConfig","service":"OpenSearch","parameters":{"DomainName":"',
                         {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
-                        '","AccessPolicies":"{\\"Statement\\":[{\\"Action\\":\\"es:*\\",\\"Effect\\":\\"Allow\\",\\"Principal\\":{\\"AWS\\":\\"*\\"},\\"Resource\\":\\"',
+                        '","AccessPolicies":"{\\"Statement\\":[{\\"Action\\":\\"es:*\\",\\"Effect\\":\\"Allow\\",'
+                        '\\"Principal\\":{\\"AWS\\":\\"*\\"},\\"Resource\\":\\"',
                         {
                             "Fn::GetAtt": [
                                 Match.string_like_regexp("SDSMetadataDomain*"),
                                 "Arn",
                             ]
                         },
-                        '/*\\"}],\\"Version\\":\\"2012-10-17\\"}"},"outputPaths":["DomainConfig.AccessPolicies"],"physicalResourceId":{"id":"',
+                        '/*\\"}],\\"Version\\":\\"2012-10-17\\"}"},"outputPaths":['
+                        '"DomainConfig.AccessPolicies"],"physicalResourceId":{"id":"',
                         {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
                         'AccessPolicy"}}',
                     ],
@@ -148,14 +122,16 @@ def test_custom_opensearch_access_policy_resource_properties(template):
                     [
                         '{"action":"updateDomainConfig","service":"OpenSearch","parameters":{"DomainName":"',
                         {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
-                        '","AccessPolicies":"{\\"Statement\\":[{\\"Action\\":\\"es:*\\",\\"Effect\\":\\"Allow\\",\\"Principal\\":{\\"AWS\\":\\"*\\"},\\"Resource\\":\\"',
+                        '","AccessPolicies":"{\\"Statement\\":[{\\"Action\\":\\"es:*\\",'
+                        '\\"Effect\\":\\"Allow\\",\\"Principal\\":{\\"AWS\\":\\"*\\"},\\"Resource\\":\\"',
                         {
                             "Fn::GetAtt": [
                                 Match.string_like_regexp("SDSMetadataDomain*"),
                                 "Arn",
                             ]
                         },
-                        '/*\\"}],\\"Version\\":\\"2012-10-17\\"}"},"outputPaths":["DomainConfig.AccessPolicies"],"physicalResourceId":{"id":"',
+                        '/*\\"}],\\"Version\\":\\"2012-10-17\\"}"},'
+                        '"outputPaths":["DomainConfig.AccessPolicies"],"physicalResourceId":{"id":"',
                         {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
                         'AccessPolicy"}}',
                     ],
@@ -164,45 +140,6 @@ def test_custom_opensearch_access_policy_resource_properties(template):
             "InstallLatestAwsSdk": True,
         },
     )
-
-
-def test_sdsmetadatadomain_slow_index_logs_resource_properties(template):
-    template.has_resource(
-        "AWS::Logs::LogGroup",
-        {
-            "DeletionPolicy": "Retain",
-            "UpdateReplacePolicy": "Retain",
-        },
-    )
-    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
-
-
-def test_iam_roles_resource_count(template):
-    template.resource_count_is("AWS::IAM::Role", 1)
-
-
-def test_expected_properties_for_iam_roles(template):
-    found_resources = template.find_resources(
-        "AWS::IAM::Role",
-        {
-            "Properties": {
-                "AssumeRolePolicyDocument": {
-                    "Statement": [
-                        {
-                            "Action": "sts:AssumeRole",
-                            "Effect": "Allow",
-                            "Principal": {"Service": "lambda.amazonaws.com"},
-                        }
-                    ],
-                    "Version": "2012-10-17",
-                }
-            }
-        },
-    )
-
-    # There is 1 IAM Role expected resources with the same properties
-    # confirm that all are found in the stack
-    assert len(found_resources) == 1
 
 
 def test_iam_policy_resource_count(template):

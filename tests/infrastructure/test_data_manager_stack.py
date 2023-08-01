@@ -778,6 +778,7 @@ def test_custom_cdk_bucket_deployment_lambda_resource_properties(template):
         },
     )
 
+
 # This is now only to add an eventsource to the indexer lambda.
 # The 3 others were being used by the
 # lambda urls (download, query, upload) and so no longer exist.
@@ -785,7 +786,7 @@ def test_lambda_permission_resource_count(template):
     template.resource_count_is("AWS::Lambda::Permission", 1)
 
 
-def test_indexer_lambda_permission_resource_properties(template):
+def test_indexer_lambda_permission_resource_properties(template, account):
     template.has_resource_properties(
         "AWS::Lambda::Permission",
         {
@@ -794,7 +795,7 @@ def test_indexer_lambda_permission_resource_properties(template):
                 "Fn::GetAtt": [Match.string_like_regexp("IndexerLambda*"), "Arn"]
             },
             "Principal": "s3.amazonaws.com",
-            "SourceAccount": Match.string_like_regexp("\d{10}"),
+            "SourceAccount": account,
             "SourceArn": {
                 "Fn::GetAtt": [Match.string_like_regexp("DataBucket*"), "Arn"]
             },
