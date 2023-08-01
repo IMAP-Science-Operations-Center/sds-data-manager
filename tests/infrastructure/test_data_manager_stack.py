@@ -312,7 +312,9 @@ def test_uploadapilambda_iam_policy_resource_properties(template):
                                     [
                                         {
                                             "Fn::GetAtt": [
-                                                Match.string_like_regexp("DataBucket.*"),
+                                                Match.string_like_regexp(
+                                                    "DataBucket.*"
+                                                ),
                                                 "Arn",
                                             ]
                                         },
@@ -326,7 +328,9 @@ def test_uploadapilambda_iam_policy_resource_properties(template):
                                     [
                                         {
                                             "Fn::GetAtt": [
-                                                Match.string_like_regexp("ConfigBucket.*"),
+                                                Match.string_like_regexp(
+                                                    "ConfigBucket.*"
+                                                ),
                                                 "Arn",
                                             ]
                                         },
@@ -379,7 +383,9 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                                     [
                                         {
                                             "Fn::GetAtt": [
-                                                Match.string_like_regexp("DataBucket.*"),
+                                                Match.string_like_regexp(
+                                                    "DataBucket.*"
+                                                ),
                                                 "Arn",
                                             ]
                                         },
@@ -393,7 +399,9 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                                     [
                                         {
                                             "Fn::GetAtt": [
-                                                Match.string_like_regexp("ConfigBucket.*"),
+                                                Match.string_like_regexp(
+                                                    "ConfigBucket.*"
+                                                ),
                                                 "Arn",
                                             ]
                                         },
@@ -460,7 +468,7 @@ def test_queryapilambda_iam_policy_resource_properties(template):
                     },
                     {
                         "Effect": "Allow",
-                    }
+                    },
                 ],
             },
             "PolicyName": Match.string_like_regexp(
@@ -504,7 +512,9 @@ def test_downloadquerylambda_iam_policy_resource_properties(template):
                                     [
                                         {
                                             "Fn::GetAtt": [
-                                                Match.string_like_regexp("DataBucket.*"),
+                                                Match.string_like_regexp(
+                                                    "DataBucket.*"
+                                                ),
                                                 "Arn",
                                             ]
                                         },
@@ -551,7 +561,7 @@ def test_custom_buck_deployment_iam_service_role_resource_properties(template):
                     {
                         "Action": ["s3:GetObject*", "s3:GetBucket*", "s3:List*"],
                         "Effect": "Allow",
-                        "Resource": Match.any_value()
+                        "Resource": Match.any_value(),
                     },
                     {
                         "Action": [

@@ -166,7 +166,7 @@ def test_sdsmetadatadomain_esloggroup_iam_policy_resource_properties(template, s
                 ],
             },
             "PolicyName": Match.string_like_regexp(
-                f"SDSMetadataDomainsdsidtestESLogGroupPolicyc*"
+                "SDSMetadataDomainsdsidtestESLogGroupPolicyc*"
             ),
         },
     )
