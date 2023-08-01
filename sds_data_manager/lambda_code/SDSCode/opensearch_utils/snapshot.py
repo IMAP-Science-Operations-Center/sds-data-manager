@@ -1,12 +1,10 @@
+import logging
 import string
+from datetime import datetime
+
 import boto3
 import requests
-import logging
-import os
-from datetime import datetime
 from requests_aws4auth import AWS4Auth
-import boto3
-
 
 
 def get_auth(region):
@@ -23,6 +21,7 @@ def get_auth(region):
 
     return awsauth
 
+
 def register_repo(payload: dict, url: string, awsauth):
     """Register the snapshot repo
     Parameters
@@ -37,6 +36,7 @@ def register_repo(payload: dict, url: string, awsauth):
     headers = {"Content-Type": "application/json"}
 
     r = requests.put(url, auth=awsauth, json=payload, headers=headers)
+
     return r
 
 
@@ -53,14 +53,14 @@ def take_snapshot(url: string, awsauth):
 
 
 def run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn):
-
     awsauth = get_auth(region)
     snapshot_start_time: datetime = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%S")
     snapshot_name = f"os_snapshot_{snapshot_start_time}"
 
     logging.info(f"Starting process for snapshot: {snapshot_name}.")
 
-    # Register the snapshot, this can be run every time, if the repo is registered will return 200
+    # Register the snapshot, this can be run every time, if the
+    # repo is registered will return 200
     try:
         path = f"_snapshot/{snapshot_repo_name}"  # the OpenSearch API endpoint
         url = "https://" + host + "/" + path
@@ -75,12 +75,13 @@ def run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_ro
         }
         response = register_repo(payload, url, awsauth)
         if response.status_code == 200:
-            logging.info(f"Repo successfully registered")
+            logging.info("Repo successfully registered")
         else:
             raise Exception(f"{response.status_code}.{response.text}")
     except Exception as e:
         logging.info(
-            f"Snapshot repo registration: {snapshot_repo_name} failed with error code/text: {e}"
+            f"Snapshot repo registration: \
+            {snapshot_repo_name} failed with error code/text: {e}"
         )
         raise
 

@@ -123,13 +123,19 @@ class SdsDataManager(Stack):
         s3_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:PutObject"],
-            resources=[f"{data_bucket.bucket_arn}/*", f"{snapshot_bucket.bucket_arn}/*"],
+            resources=[
+                f"{data_bucket.bucket_arn}/*",
+                f"{snapshot_bucket.bucket_arn}/*",
+            ],
         )
         s3_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:GetObject"],
-            resources=[f"{data_bucket.bucket_arn}/*", f"{config_bucket.bucket_arn}/*",
-                       f"{snapshot_bucket.bucket_arn}/*"],
+            resources=[
+                f"{data_bucket.bucket_arn}/*",
+                f"{config_bucket.bucket_arn}/*",
+                f"{snapshot_bucket.bucket_arn}/*",
+            ],
         )
         iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
@@ -139,13 +145,22 @@ class SdsDataManager(Stack):
 
         snapshot_role_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-            resources=[f"{snapshot_bucket.bucket_arn}", f"{snapshot_bucket.bucket_arn}/*"]
+            actions=[
+                "s3:ListBucket",
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+            ],
+            resources=[
+                f"{snapshot_bucket.bucket_arn}",
+                f"{snapshot_bucket.bucket_arn}/*",
+            ],
         )
 
         ########### ROLES
-        snapshot_role = iam.Role(self, "SnapshotRole",
-            assumed_by=iam.ServicePrincipal("es.amazonaws.com"))
+        snapshot_role = iam.Role(
+            self, "SnapshotRole", assumed_by=iam.ServicePrincipal("es.amazonaws.com")
+        )
         snapshot_role.add_to_policy(snapshot_role_policy)
 
         indexer_lambda = lambda_alpha_.PythonFunction(
@@ -187,7 +202,7 @@ class SdsDataManager(Stack):
         # Adding s3 read permissions to get config.json
         indexer_lambda.add_to_role_policy(s3_read_policy)
 
-         # Add permissions for Lambda to access OpenSearch
+        # Add permissions for Lambda to access OpenSearch
         indexer_lambda.add_to_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
@@ -196,9 +211,10 @@ class SdsDataManager(Stack):
             )
         )
 
-        # PassRole allows services to assign AWS roles to resources and services in this account
-        # The OS snapshot role is invoked within the Lambda to interact with OS, it is provided to
-        # lambda via an Environmental variable in the lambda definition
+        # PassRole allows services to assign AWS roles to resources and services
+        # in this account. The OS snapshot role is invoked within the Lambda to
+        # interact with OS, it is provided to lambda via an Environmental
+        # variable in the lambda definition
         indexer_lambda.add_to_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
