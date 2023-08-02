@@ -6,6 +6,7 @@ from aws_cdk import App, Environment
 from sds_data_manager.stacks import (
     api_gateway_stack,
     domain_stack,
+    dynamodb_stack,
     opensearch_stack,
     sds_data_manager_stack,
 )
@@ -30,8 +31,18 @@ def build_sds(
         scope, f"OpenSearch-{sds_id}", sds_id, env=env
     )
 
+    dynamodb = dynamodb_stack.DynamoDB(
+        scope,
+        construct_id=f"DynamoDB-{sds_id}",
+        sds_id=sds_id,
+        table_name=f"imap-data-watcher-{sds_id}",
+        partition_key="instrument",
+        sort_key="filename",
+        env=env,
+    )
+
     data_manager = sds_data_manager_stack.SdsDataManager(
-        scope, f"SdsDataManager-{sds_id}", sds_id, open_search, env=env
+        scope, f"SdsDataManager-{sds_id}", sds_id, open_search, dynamodb, env=env
     )
 
     domain = domain_stack.Domain(

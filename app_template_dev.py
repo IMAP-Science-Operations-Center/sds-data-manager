@@ -36,32 +36,35 @@ from sds_data_manager.utils.stackbuilder import build_sds
     - cdk destroy --app "python app_template_dev.py" [ stack | --all ]
 
 """
-# CDK_DEFAULT_REGION and CDK_DEFAULT_ACCOUNT set by the AWS CDK CLI
-# based on the current AWS profile
-print(os.environ.get("AWS_PROFILE"))
+# Update with the AWS profile name you want to require for these builds
+REQUIRED_PROFILE = "<profile>"
+# Update with your initials or some other identifier
+INITIALS = "<initials>"
+
+current_profile = os.environ.get("AWS_PROFILE", "")
+if current_profile != REQUIRED_PROFILE:
+    raise ValueError(
+        f"Wrong AWS Account set! Got: [{current_profile}], "
+        f"but expected: [{REQUIRED_PROFILE}]"
+    )
+
+# These are set based on the current AWS profile
+region = os.environ["CDK_DEFAULT_REGION"]
 account = os.environ["CDK_DEFAULT_ACCOUNT"]
-print(account)
-
-try:
-    region = os.environ["CDK_DEFAULT_REGION"]
-    account = os.environ["CDK_DEFAULT_ACCOUNT"]
-
-    if os.environ.get("AWS_PROFILE") != "<profile>":
-        raise KeyError("Wrong AWS Account set!")
-except KeyError as err:
-    raise KeyError(
-        "Env variables not set! Do you have an AWS_PROFILE activated?"
-    ) from err
-
 
 env = Environment(account=account, region=region)
 app = App()
 params = app.node.try_get_context("dev")
+# sds_id = "abc-dev"
+sds_id = f"{INITIALS}-{params['sds_id']}"
+
+print(f"Using the profile [{current_profile}] in region [{region}].")
+print(f"The stack identifier being used is: {sds_id}")
 
 stacks = build_sds(
     app,
     env=env,
-    sds_id="-".join(["<initials>", params["sds_id"]]),
+    sds_id=sds_id,
     use_custom_domain=True,
 )
 
