@@ -57,7 +57,7 @@ def test_run_backup_no_exceptions(_mock_boto_session, requests_mock):
     snapshot_role_arn = "arn:aws:iam::012345678901:role/snapshot-role"
 
     repo_url = "https://" + host + "/_snapshot/snapshot-repo"
-    snapshot_url = repo_url + "/os_snapshot_2023-08-01-12:58:30"
+    snapshot_url = repo_url + "/opensearch_snapshot_2023-08-01-12:58:30"
     # request repo successful request
     requests_mock.put(repo_url, text="mocked PUT response", status_code=200)
     # take snapshot successful request
@@ -77,16 +77,14 @@ def test_run_backup_repo_exception(_mock_boto_session, requests_mock):
     """test that run_backup returns an error when the repository
     registration requests returns an error status"""
     ## Arrange ##
-    host = (
-        "search-sdsmetadatadomain.es.amazonaws.com"
-    )
+    host = "search-sdsmetadatadomain.es.amazonaws.com"
     region = "us-west-2"
     snapshot_repo_name = "snapshot-repo"
     snapshot_s3_bucket = "snapshot-bucket"
     snapshot_role_arn = "arn:aws:iam::012345678901:role/snapshot-role"
 
     repo_url = "https://" + host + "/_snapshot/snapshot-repo"
-    snapshot_url = repo_url + "/os_snapshot_2023-08-01-12:58:30"
+    snapshot_url = repo_url + "/opensearch_snapshot_2023-08-01-12:58:30"
     # register repo failed request
     requests_mock.put(repo_url, text="mocked PUT response", status_code=400)
     # take snapshot successful request
@@ -97,23 +95,27 @@ def test_run_backup_repo_exception(_mock_boto_session, requests_mock):
         snapshot.run_backup(
             host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn
         )
-    assert str(e) == "<ExceptionInfo HTTPError('400 Client Error: None for url: https://search-sdsmetadatadomain.es.amazonaws.com/_snapshot/snapshot-repo') tblen=3>"
+    assert (
+        str(e)
+        == "<ExceptionInfo HTTPError('400 Client Error: None for url: \
+        https://search-sdsmetadatadomain.es.amazonaws.com/_snapshot/snapshot-repo') \
+        tblen=3>"
+    )
+
 
 @freeze_time("2023-08-01 12:58:30")
 def test_run_backup_snapshot_exception(_mock_boto_session, requests_mock):
     """test that run_backup returns an exception when the take snapshot request
     returns and error status."""
     ## Arrange ##
-    host = (
-        "search-sdsmetadatadomain.es.amazonaws.com"
-    )
+    host = "search-sdsmetadatadomain.es.amazonaws.com"
     region = "us-west-2"
     snapshot_repo_name = "snapshot-repo"
     snapshot_s3_bucket = "snapshot-bucket"
     snapshot_role_arn = "arn:aws:iam::012345678901:role/snapshot-role"
 
     repo_url = "https://" + host + "/_snapshot/snapshot-repo"
-    snapshot_url = repo_url + "/os_snapshot_2023-08-01-12:58:30"
+    snapshot_url = repo_url + "/opensearch_snapshot_2023-08-01-12:58:30"
     # register repo successful request
     requests_mock.put(repo_url, text="mocked PUT response", status_code=200)
     # take snapshot failed request

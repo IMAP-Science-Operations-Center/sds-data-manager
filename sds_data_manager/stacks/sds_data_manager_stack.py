@@ -195,7 +195,7 @@ class SdsDataManager(Stack):
                 "DYNAMODB_TABLE": dynamodb_stack.table_name,
                 "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
                 "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
-                "S3_SNAPSHOT_BUCKET_NAME": f"sds-os-snapshot-{sds_id}",
+                "S3_SNAPSHOT_BUCKET_NAME": f"sds-opensearch-snapshot-{sds_id}",
                 "SNAPSHOT_ROLE_ARN": snapshot_role.role_arn,
                 "SNAPSHOT_REPO_NAME": "snapshot-repo",
                 "SECRET_ID": opensearch.secret_name,
@@ -227,8 +227,8 @@ class SdsDataManager(Stack):
         )
 
         # PassRole allows services to assign AWS roles to resources and services
-        # in this account. The OS snapshot role is invoked within the Lambda to
-        # interact with OS, it is provided to lambda via an Environmental
+        # in this account. The OpenSearch snapshot role is invoked within the Lambda to
+        # interact with OpenSearch, it is provided to lambda via an Environmental
         # variable in the lambda definition
         indexer_lambda.add_to_role_policy(
             iam.PolicyStatement(

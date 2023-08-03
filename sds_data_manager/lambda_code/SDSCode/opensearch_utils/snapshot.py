@@ -89,7 +89,7 @@ def run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_ro
     """
     awsauth = get_auth(region)
     snapshot_start_time: datetime = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%S")
-    snapshot_name = f"os_snapshot_{snapshot_start_time}"
+    snapshot_name = f"opensearch_snapshot_{snapshot_start_time}"
 
     logging.info(f"Starting process for snapshot: {snapshot_name}.")
 
