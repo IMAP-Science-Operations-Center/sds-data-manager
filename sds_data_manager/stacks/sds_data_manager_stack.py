@@ -310,8 +310,7 @@ class SdsDataManager(Stack):
         download_query_api.add_to_role_policy(s3_read_policy)
 
         self.lambda_functions = {
-            "upload": {"function": upload_api_lambda, "httpMethod": "POST"},
+            "upload": {"function": upload_api_lambda, "httpMethod": "GET"},
             "query": {"function": query_api_lambda, "httpMethod": "GET"},
             "download": {"function": download_query_api, "httpMethod": "GET"},
-            "indexer": {"function": indexer_lambda, "httpMethod": "POST"},
         }
