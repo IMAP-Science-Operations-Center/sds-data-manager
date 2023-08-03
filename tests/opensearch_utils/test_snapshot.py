@@ -20,7 +20,8 @@ def _mock_boto_session(monkeypatch):
 
     monkeypatch.setattr("boto3.Session", MagicMock(return_value=mock_session))
 
-@pytest.mark.usefixtures('_mock_boto_session')
+
+@pytest.mark.usefixtures("_mock_boto_session")
 def test_get_auth():
     """Test that get_auth correctly returns credentials"""
     ## Arrange ##
@@ -45,7 +46,7 @@ def test_get_auth():
 
 
 @freeze_time("2023-08-01 12:58:30")
-@pytest.mark.usefixtures('_mock_boto_session')
+@pytest.mark.usefixtures("_mock_boto_session")
 def test_run_backup_no_exceptions(requests_mock):
     """test that run_backup runs without exceptions"""
     ## Arrange ##
@@ -74,7 +75,7 @@ def test_run_backup_no_exceptions(requests_mock):
 
 
 @freeze_time("2023-08-01 12:58:30")
-@pytest.mark.usefixtures('_mock_boto_session')
+@pytest.mark.usefixtures("_mock_boto_session")
 def test_run_backup_repo_exception(requests_mock):
     """test that run_backup returns an error when the repository
     registration requests returns an error status"""
@@ -97,14 +98,11 @@ def test_run_backup_repo_exception(requests_mock):
         snapshot.run_backup(
             host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn
         )
-    assert (
-        str(e)
-        == "<ExceptionInfo RuntimeError('400.mocked PUT response') tblen=2>"
-    )
+    assert str(e) == "<ExceptionInfo RuntimeError('400.mocked PUT response') tblen=2>"
 
 
 @freeze_time("2023-08-01 12:58:30")
-@pytest.mark.usefixtures('_mock_boto_session')
+@pytest.mark.usefixtures("_mock_boto_session")
 def test_run_backup_snapshot_exception(requests_mock):
     """test that run_backup returns an exception when the take snapshot request
     returns and error status."""
