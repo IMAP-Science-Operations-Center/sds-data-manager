@@ -8,7 +8,18 @@ from requests_aws4auth import AWS4Auth
 
 
 def get_auth(region):
-    # Get AWS service and credentials for snapshot
+    """
+    Gets AWS service and credentials for snapshot
+
+    Parameters
+    ----------
+    region : str
+        region of the deployed OpenSearch Instance
+
+    Returns
+    -------
+    AWS4Auth
+    """
     service = "es"
     credentials = boto3.Session().get_credentials()
     awsauth = AWS4Auth(
@@ -23,7 +34,9 @@ def get_auth(region):
 
 
 def register_repo(payload: dict, url: string, awsauth):
-    """Register the snapshot repo
+    """Register the snapshot repository. A repository is
+    an OpenSearch term for the storage location where the
+    Snapshots will be stored. In this case, it is an S3 bucket.
     Parameters
     ----------
     payload : dict
@@ -31,6 +44,8 @@ def register_repo(payload: dict, url: string, awsauth):
              The role ARN that has S3 permissions to store the new snapshot
     url : str
         OpenSearch domain URL endpoint including https:// and trailing /.
+    awsauth: AWS4Auth
+        Credentials for use in snapshot requests
     """
 
     headers = {"Content-Type": "application/json"}
@@ -46,6 +61,8 @@ def take_snapshot(url: string, awsauth):
     ----------
     url : str
         OpenSearch domain URL endpoint including https:// and trailing /.
+    awsauth: AWS4Auth
+        Credentials for use in snapshot requests
     """
 
     r = requests.put(url, auth=awsauth)
@@ -53,6 +70,23 @@ def take_snapshot(url: string, awsauth):
 
 
 def run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn):
+    """Creates a backup of the current state of OpenSearch. This includes registering
+    a repository, if needed, as well as timestamping the snapshot name, constructing
+    the snapshot url, and taking the snapshot.
+        Parameters
+    ----------
+    host : str
+        The OpenSearch domain endpoint (does not include https:// or trailing /)
+    region : str
+        The region where the OpenSearch instance is deployed
+    snapshot_repo_name : str
+        The name of the snpashot repository. This can be different than
+        the S3 bucket name.
+    snapshot_s3_bucket : str
+        The name of the S3 bucket that will be used to store the Snapshots
+    snapshot_role_arn : str
+        The ARN of the Snapshot Role
+    """
     awsauth = get_auth(region)
     snapshot_start_time: datetime = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%S")
     snapshot_name = f"os_snapshot_{snapshot_start_time}"
@@ -77,7 +111,7 @@ def run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_ro
         if response.status_code == 200:
             logging.info("Repo successfully registered")
         else:
-            raise Exception(f"{response.status_code}.{response.text}")
+            response.raise_for_status()
     except Exception as e:
         logging.info(
             f"Snapshot repo registration: \

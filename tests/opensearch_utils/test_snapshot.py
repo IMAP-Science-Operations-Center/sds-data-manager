@@ -8,6 +8,7 @@ from sds_data_manager.lambda_code.SDSCode.opensearch_utils import snapshot
 
 @pytest.fixture()
 def _mock_boto_session(monkeypatch):
+    """Mock the boto session for credentials"""
     mock_session = MagicMock()
 
     mock_credentials = MagicMock()
@@ -21,6 +22,7 @@ def _mock_boto_session(monkeypatch):
 
 
 def test_get_auth(_mock_boto_session):
+    """Test that get_auth correctly returns credentials"""
     ## Arrange ##
     region = "us-west-2"
     service = "es"
@@ -44,6 +46,7 @@ def test_get_auth(_mock_boto_session):
 
 @freeze_time("2023-08-01 12:58:30")
 def test_run_backup_no_exceptions(_mock_boto_session, requests_mock):
+    """test that run_backup runs without exceptions"""
     ## Arrange ##
     host = (
         "search-sdsmetadatadomain-x6xubdgtaqvrdn72uvgybjoiiu.us-west-2.es.amazonaws.com"
@@ -71,9 +74,11 @@ def test_run_backup_no_exceptions(_mock_boto_session, requests_mock):
 
 @freeze_time("2023-08-01 12:58:30")
 def test_run_backup_repo_exception(_mock_boto_session, requests_mock):
+    """test that run_backup returns an error when the repository
+    registration requests returns an error status"""
     ## Arrange ##
     host = (
-        "search-sdsmetadatadomain-x6xubdgtaqvrdn72uvgybjoiiu.us-west-2.es.amazonaws.com"
+        "search-sdsmetadatadomain.es.amazonaws.com"
     )
     region = "us-west-2"
     snapshot_repo_name = "snapshot-repo"
@@ -88,17 +93,19 @@ def test_run_backup_repo_exception(_mock_boto_session, requests_mock):
     requests_mock.put(snapshot_url, text="mocked PUT response", status_code=200)
 
     ## Act / Assert ##
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as e:
         snapshot.run_backup(
             host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn
         )
-
+    assert str(e) == "<ExceptionInfo HTTPError('400 Client Error: None for url: https://search-sdsmetadatadomain.es.amazonaws.com/_snapshot/snapshot-repo') tblen=3>"
 
 @freeze_time("2023-08-01 12:58:30")
 def test_run_backup_snapshot_exception(_mock_boto_session, requests_mock):
+    """test that run_backup returns an exception when the take snapshot request
+    returns and error status."""
     ## Arrange ##
     host = (
-        "search-sdsmetadatadomain-x6xubdgtaqvrdn72uvgybjoiiu.us-west-2.es.amazonaws.com"
+        "search-sdsmetadatadomain.es.amazonaws.com"
     )
     region = "us-west-2"
     snapshot_repo_name = "snapshot-repo"
@@ -113,7 +120,9 @@ def test_run_backup_snapshot_exception(_mock_boto_session, requests_mock):
     requests_mock.put(snapshot_url, text="mocked PUT response", status_code=400)
 
     ## Act / Assert ##
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as e:
         snapshot.run_backup(
             host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn
         )
+
+    assert str(e) == "<ExceptionInfo Exception('400.mocked PUT response') tblen=2>"
