@@ -111,7 +111,7 @@ def run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_ro
         if response.status_code == 200:
             logging.info("Repo successfully registered")
         else:
-            response.raise_for_status()
+            raise RuntimeError(f"{response.status_code}.{response.text}")
     except Exception as e:
         logging.info(
             f"Snapshot repo registration: \
@@ -127,8 +127,8 @@ def run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_ro
         if response.status_code == 200:
             logging.info(f"Snapshot {snapshot_name} initiated.")
         else:
-            raise Exception(f"{response.status_code}.{response.text}")
-    except Exception as e:
+            raise RuntimeError(f"{response.status_code}.{response.text}")
+    except RuntimeError as e:
         logging.info(
             f"Snapshot initiation for {snapshot_name} failed with error code/text: {e}"
         )

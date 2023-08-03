@@ -38,7 +38,6 @@ freezegun = "^1.2.2"
 sphinx = {version="^7.1.0", optional=true}
 myst-parser = {version="^2.0.0", optional=true}
 pydata-sphinx-theme = {version="^0.13.3", optional=true}
-requests-aws4auth = "^1.2.3"
 
 [tool.poetry.group.cdk-install.dependencies]
 # 2.66+ required for aws-cdk.aws-lambda-python-alpha

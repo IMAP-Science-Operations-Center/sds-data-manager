@@ -1415,7 +1415,7 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 name = "requests-aws4auth"
 version = "1.2.3"
 description = "AWS4 authentication for Requests"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.3"
 files = [
@@ -1854,4 +1854,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "66b4c3ae7730938b424eda83ed2d4f610021b748cad43e82f70fd5a4e74fefe3"
+content-hash = "306bf3523221c9892e1ac81abdc6c42c3c8fb3746952a120b687f4520b6066f4"

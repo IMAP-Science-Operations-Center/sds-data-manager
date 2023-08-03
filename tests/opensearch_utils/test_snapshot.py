@@ -20,8 +20,8 @@ def _mock_boto_session(monkeypatch):
 
     monkeypatch.setattr("boto3.Session", MagicMock(return_value=mock_session))
 
-
-def test_get_auth(_mock_boto_session):
+@pytest.mark.usefixtures('_mock_boto_session')
+def test_get_auth():
     """Test that get_auth correctly returns credentials"""
     ## Arrange ##
     region = "us-west-2"
@@ -45,7 +45,8 @@ def test_get_auth(_mock_boto_session):
 
 
 @freeze_time("2023-08-01 12:58:30")
-def test_run_backup_no_exceptions(_mock_boto_session, requests_mock):
+@pytest.mark.usefixtures('_mock_boto_session')
+def test_run_backup_no_exceptions(requests_mock):
     """test that run_backup runs without exceptions"""
     ## Arrange ##
     host = (
@@ -73,7 +74,8 @@ def test_run_backup_no_exceptions(_mock_boto_session, requests_mock):
 
 
 @freeze_time("2023-08-01 12:58:30")
-def test_run_backup_repo_exception(_mock_boto_session, requests_mock):
+@pytest.mark.usefixtures('_mock_boto_session')
+def test_run_backup_repo_exception(requests_mock):
     """test that run_backup returns an error when the repository
     registration requests returns an error status"""
     ## Arrange ##
@@ -91,19 +93,19 @@ def test_run_backup_repo_exception(_mock_boto_session, requests_mock):
     requests_mock.put(snapshot_url, text="mocked PUT response", status_code=200)
 
     ## Act / Assert ##
-    with pytest.raises(Exception) as e:
+    with pytest.raises(RuntimeError) as e:
         snapshot.run_backup(
             host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn
         )
     assert (
         str(e)
-        == "<ExceptionInfo HTTPError('400 Client Error: None for url: \
-https://sdsmetadata.com/_snapshot/snapshot-repo') tblen=3>"
+        == "<ExceptionInfo RuntimeError('400.mocked PUT response') tblen=2>"
     )
 
 
 @freeze_time("2023-08-01 12:58:30")
-def test_run_backup_snapshot_exception(_mock_boto_session, requests_mock):
+@pytest.mark.usefixtures('_mock_boto_session')
+def test_run_backup_snapshot_exception(requests_mock):
     """test that run_backup returns an exception when the take snapshot request
     returns and error status."""
     ## Arrange ##
@@ -121,9 +123,9 @@ def test_run_backup_snapshot_exception(_mock_boto_session, requests_mock):
     requests_mock.put(snapshot_url, text="mocked PUT response", status_code=400)
 
     ## Act / Assert ##
-    with pytest.raises(Exception) as e:
+    with pytest.raises(RuntimeError) as e:
         snapshot.run_backup(
             host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn
         )
 
-    assert str(e) == "<ExceptionInfo Exception('400.mocked PUT response') tblen=2>"
+    assert str(e) == "<ExceptionInfo RuntimeError('400.mocked PUT response') tblen=2>"

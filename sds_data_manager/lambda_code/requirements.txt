@@ -95,5 +95,3 @@ six==1.16.0 ; python_version >= "3.9" and python_version < "4" \
 urllib3==1.26.16 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:8d36afa7616d8ab714608411b4a3b13e58f463aee519024578e062e141dce20f \
     --hash=sha256:8f135f6502756bde6b2a9b28989df5fbe87c9970cecaa69041edcce7f0589b14
-requests-aws4auth==1.2.3 ; python_version >= "3.9" and python_version < "4" \
-    --hash=sha256:8070a5207e95fa5fe88e87d9a75f34e768cbab35bb3557ef20cbbf9426dee4d5
