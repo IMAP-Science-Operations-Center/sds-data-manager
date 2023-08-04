@@ -44,6 +44,7 @@ class SdsDataManager(Stack):
         sds_id: str,
         opensearch: OpenSearch,
         dynamodb_stack: DynamoDB,
+        processing_step_function_arn: str,
         env: Environment,
         **kwargs,
     ) -> None:
@@ -59,6 +60,8 @@ class SdsDataManager(Stack):
         dynamodb_stack: DynamoDb
             This class depends on dynamodb_stack, which is built with
             opensearch_stack.py
+        processing_step_function_arn:
+            This has step function arn
         env : Environment
             Account and region
         """
@@ -174,6 +177,10 @@ class SdsDataManager(Stack):
         )
         snapshot_role.add_to_policy(snapshot_role_policy)
 
+        step_function_execution_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW, actions=["states:StartExecution"], resources=["*"]
+        )
+
         indexer_lambda = lambda_alpha_.PythonFunction(
             self,
             id="IndexerLambda",
@@ -200,6 +207,7 @@ class SdsDataManager(Stack):
                 "SNAPSHOT_REPO_NAME": "snapshot-repo",
                 "SECRET_ID": opensearch.secret_name,
                 "REGION": opensearch.region,
+                "STATE_MACHINE_ARN": processing_step_function_arn,
             },
         )
 
@@ -216,6 +224,8 @@ class SdsDataManager(Stack):
         indexer_lambda.add_to_role_policy(s3_read_policy)
         # Adding dynamodb write permissions
         indexer_lambda.add_to_role_policy(dynamodb_write_policy)
+        # Adding step function execution policy
+        indexer_lambda.add_to_role_policy(step_function_execution_policy)
 
         # Add permissions for Lambda to access OpenSearch
         indexer_lambda.add_to_role_policy(

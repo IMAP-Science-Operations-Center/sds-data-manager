@@ -31,9 +31,16 @@ def template(app, sds_id, opensearch_stack, env):
         env=env,
     )
     stack = SdsDataManager(
-        app, stack_name, sds_id, opensearch_stack, dynamodb_stack=dynamodb, env=env
+        app,
+        stack_name,
+        sds_id,
+        opensearch_stack,
+        dynamodb_stack=dynamodb,
+        processing_step_function_arn="arn:aws:states:us-west-1:1234567890:stateMachine:processing-state-machine",
+        env=env,
     )
     template = Template.from_stack(stack)
+
     return template
 
 
@@ -553,6 +560,11 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                         ],
                     },
                     {"Action": "dynamodb:PutItem", "Effect": "Allow", "Resource": "*"},
+                    {
+                        "Action": "states:StartExecution",
+                        "Effect": "Allow",
+                        "Resource": "*",
+                    },
                     {
                         "Action": "es:*",
                         "Effect": "Allow",

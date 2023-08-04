@@ -27,6 +27,8 @@ jobs:
 
       - name: Testing
         id: test
+        env:
+          AWS_DEFAULT_REGION: us-west-1
         run: |
           # Ignore the network marks from the remote test environment
           poetry run pytest --color=yes --cov --cov-report=xml -m "not network"

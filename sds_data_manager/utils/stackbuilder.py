@@ -9,6 +9,7 @@ from sds_data_manager.stacks import (
     dynamodb_stack,
     opensearch_stack,
     sds_data_manager_stack,
+    step_function_stack,
 )
 
 
@@ -41,8 +42,22 @@ def build_sds(
         env=env,
     )
 
+    processing_step_function = step_function_stack.ProcessingStepFunctionStack(
+        scope,
+        f"ProcessingStepFunctionStack-{sds_id}",
+        sds_id,
+        dynamodb_table_name=dynamodb.table_name,
+        env=env,
+    )
+
     data_manager = sds_data_manager_stack.SdsDataManager(
-        scope, f"SdsDataManager-{sds_id}", sds_id, open_search, dynamodb, env=env
+        scope,
+        f"SdsDataManager-{sds_id}",
+        sds_id,
+        open_search,
+        dynamodb,
+        processing_step_function_arn=processing_step_function.sfn.state_machine_arn,
+        env=env,
     )
 
     domain = domain_stack.Domain(
