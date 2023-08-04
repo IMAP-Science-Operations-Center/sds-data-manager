@@ -80,12 +80,15 @@ charset-normalizer==3.2.0 ; python_version >= "3.9" and python_version < "4" \
 idna==3.4 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4 \
     --hash=sha256:90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2
-opensearch-py==2.2.0 ; python_version >= "3.9" and python_version < "4" \
-    --hash=sha256:109fe8d2e1e8f419a22358eb901025f51e6ad2f50014c8962e23796b2a23cb67 \
-    --hash=sha256:595dcebe42e21cdf945add0b5dbaecccace1a8a5ba65d60314813767b564263c
+opensearch-py==2.3.0 ; python_version >= "3.9" and python_version < "4" \
+    --hash=sha256:4093d0bbe575979d67cfd74a153eb91d82e354e232d76c6980876321c73056c1 \
+    --hash=sha256:493b224d0f865f62663f689c3a7662b1edccf9ee6c7643f2561cafda04e3a66a
 python-dateutil==2.8.2 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86 \
     --hash=sha256:961d03dc3453ebbc59dbdea9e4e11c5651520a876d0f4db161e8674aae935da9
+requests-aws4auth==1.2.3 ; python_version >= "3.9" and python_version < "4" \
+    --hash=sha256:8070a5207e95fa5fe88e87d9a75f34e768cbab35bb3557ef20cbbf9426dee4d5 \
+    --hash=sha256:d4c73c19f37f80d4aa9c5bd4fa376cfd0c69299c48b00a8eb2ae6b0416164fb8
 requests==2.31.0 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f \
     --hash=sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1
