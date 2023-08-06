@@ -102,7 +102,7 @@ def test_s3_snapshot_bucket_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::S3::Bucket",
         {
-            "BucketName": f"sds-os-snapshot-{sds_id}",
+            "BucketName": f"sds-opensearch-snapshot-{sds_id}",
             "VersioningConfiguration": {"Status": "Enabled"},
             "PublicAccessBlockConfiguration": {
                 "BlockPublicAcls": True,

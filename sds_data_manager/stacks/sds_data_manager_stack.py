@@ -121,7 +121,7 @@ class SdsDataManager(Stack):
         snapshot_bucket = s3.Bucket(
             self,
             f"SnapshotBucket-{sds_id}",
-            bucket_name=f"sds-os-snapshot-{sds_id}",
+            bucket_name=f"sds-opensearch-snapshot-{sds_id}",
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
