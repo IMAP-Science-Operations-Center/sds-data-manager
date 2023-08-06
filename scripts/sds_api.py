@@ -4,9 +4,10 @@ import requests
 
 # YOU MUST REPLACE <sds_id> WITH THE SDS ID ASSOCIATED OF THE
 # DEPLOYMENT YOU WANT TO INTERFACE WITH
-UPLOAD_API_URL = "https://api.<sds_id>.imap-mission.com/upload/"
-DOWNLOAD_API_URL = "https://api.<sds_id>.imap-mission.com/download/"
-QUERY_API_URL = "https://api.<sds_id>.imap-mission.com/query/"
+sds_id = "dev"
+UPLOAD_API_URL = f"https://api.{sds_id}.imap-mission.com/upload/"
+DOWNLOAD_API_URL = f"https://api.{sds_id}.imap-mission.com/download/"
+QUERY_API_URL = f"https://api.{sds_id}.imap-mission.com/query/"
 
 
 def _execute_api(url, **kwargs):
