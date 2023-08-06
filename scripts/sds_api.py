@@ -2,12 +2,11 @@ import os
 
 import requests
 
-# THESE MUST BE RESET EVERY TIME FOR NOW
-UPLOAD_API_URL = "https://6enn3yprkecbvujsf5zsjzsude0borqk.lambda-url.us-west-2.on.aws/"
-DOWNLOAD_API_URL = (
-    "https://g4iwsrbkdqkm3pj5zm55wg2ufe0jaypw.lambda-url.us-west-2.on.aws/"
-)
-QUERY_API_URL = "https://ezzc7feb6hlhdrk56x4q23ljnu0ejbkn.lambda-url.us-west-2.on.aws/"
+# YOU MUST REPLACE <sds_id> WITH THE SDS ID ASSOCIATED OF THE
+# DEPLOYMENT YOU WANT TO INTERFACE WITH
+UPLOAD_API_URL = "https://api.<sds_id>.imap-mission.com/upload/"
+DOWNLOAD_API_URL = "https://api.<sds_id>.imap-mission.com/download/"
+QUERY_API_URL = "https://api.<sds_id>.imap-mission.com/query/"
 
 
 def _execute_api(url, **kwargs):

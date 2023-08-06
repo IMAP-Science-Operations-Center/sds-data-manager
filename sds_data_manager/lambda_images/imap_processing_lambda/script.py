@@ -13,7 +13,8 @@ def handler(event, context):
         AWS lambda event dictionary
     context : LambdaContext
         AWS lambda context object. This object is passed to all
-        lambda functions. See: https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
+        lambda functions. See:
+        https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
 
     Returns
     -------
