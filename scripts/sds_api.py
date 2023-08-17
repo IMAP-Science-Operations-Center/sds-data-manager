@@ -3,11 +3,9 @@ import os
 import requests
 
 # THESE MUST BE RESET EVERY TIME FOR NOW
-UPLOAD_API_URL = "https://6enn3yprkecbvujsf5zsjzsude0borqk.lambda-url.us-west-2.on.aws/"
-DOWNLOAD_API_URL = (
-    "https://g4iwsrbkdqkm3pj5zm55wg2ufe0jaypw.lambda-url.us-west-2.on.aws/"
-)
-QUERY_API_URL = "https://ezzc7feb6hlhdrk56x4q23ljnu0ejbkn.lambda-url.us-west-2.on.aws/"
+UPLOAD_API_URL = "https://api.sit2-dev.imap-mission.com/upload"
+DOWNLOAD_API_URL = "https://api.sit2-dev.imap-mission.com/download"
+QUERY_API_URL = "https://api.sit2-dev.imap-mission.com/query"
 
 
 def _execute_api(url, **kwargs):
@@ -93,7 +91,8 @@ def upload(file_location, file_name, **kwargs):
 
 
 if __name__ == "__main__":
-    x = download(
-        "s3://sds-data-harter-upload-testing/imap/l0/imap_l0_sci_mag_2024_2.pkts"
-    )
+    x = query(instrument="mag")
+
+    # Will download the file
+    download_data = download(x[0].get("_id"))
     print(x)
