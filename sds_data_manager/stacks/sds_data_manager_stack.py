@@ -117,15 +117,33 @@ class SdsDataManager(Stack):
             destination_bucket=config_bucket,
         )
 
+        ########### OpenSearch Snapshot Storage
+        snapshot_bucket = s3.Bucket(
+            self,
+            f"SnapshotBucket-{sds_id}",
+            bucket_name=f"sds-opensearch-snapshot-{sds_id}",
+            versioned=True,
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+        )
+
         s3_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:PutObject"],
-            resources=[f"{data_bucket.bucket_arn}/*"],
+            resources=[
+                f"{data_bucket.bucket_arn}/*",
+                f"{snapshot_bucket.bucket_arn}/*",
+            ],
         )
         s3_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:GetObject"],
-            resources=[f"{data_bucket.bucket_arn}/*", f"{config_bucket.bucket_arn}/*"],
+            resources=[
+                f"{data_bucket.bucket_arn}/*",
+                f"{config_bucket.bucket_arn}/*",
+                f"{snapshot_bucket.bucket_arn}/*",
+            ],
         )
         iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
@@ -133,11 +151,88 @@ class SdsDataManager(Stack):
             resources=["*"],
         )
 
+        s3_replication_configuration_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:GetReplicationConfiguration", "s3:ListBucket"],
+            resources=[f"{data_bucket.bucket_arn}"],
+        )
+
+        s3_replication_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "s3:GetObjectVersionForReplication",
+                "s3:GetObjectVersionAcl",
+                "s3:GetObjectVersionTagging",
+            ],
+            resources=[f"{data_bucket.bucket_arn}/*"],
+        )
+
+        # Rather than depending on the deploy in another account through CDK,
+        # we can assume the backup bucket already exists and go from here.
+        # Take existing sds-id, remove "dev" or "prod", and add "backup"
+        backup_bucket_name = (
+            f"sds-data-"
+            f"{(sds_id.split('-')[0]+'-' if len(sds_id.split('-')) > 1 else '')}backup"
+        )
+
+        s3_backup_bucket_items_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "s3:ReplicateObject",
+                "s3:ReplicateDelete",
+                "s3:ReplicateTags",
+                "s3:GetObject",
+                "s3:List*",
+            ],
+            resources=[f"arn:aws:s3:::{backup_bucket_name}/*"],
+        )
+
+        s3_backup_bucket_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:List*"],
+            resources=[f"arn:aws:s3:::{backup_bucket_name}"],
+        )
+
+        # Create role for backup bucket in the backup account
+        backup_role = iam.Role(
+            self,
+            "BackupRole",
+            assumed_by=iam.ServicePrincipal("s3.amazonaws.com"),
+            description="Role for getting permissions to \
+                        replicate out of S3 bucket in this account.",
+        )
+
+        backup_role.add_to_policy(s3_replication_configuration_policy)
+        backup_role.add_to_policy(s3_replication_policy)
+        backup_role.add_to_policy(s3_backup_bucket_items_policy)
+        backup_role.add_to_policy(s3_backup_bucket_policy)
+        backup_role.add_to_policy(s3_write_policy)
+
         dynamodb_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["dynamodb:PutItem"],
             resources=["*"],
         )
+
+        snapshot_role_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "s3:ListBucket",
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+            ],
+            resources=[
+                f"{snapshot_bucket.bucket_arn}",
+                f"{snapshot_bucket.bucket_arn}/*",
+            ],
+        )
+
+        ########### ROLES
+        snapshot_role = iam.Role(
+            self, "SnapshotRole", assumed_by=iam.ServicePrincipal("es.amazonaws.com")
+        )
+        snapshot_role.add_to_policy(snapshot_role_policy)
 
         step_function_execution_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW, actions=["states:StartExecution"], resources=["*"]
@@ -164,6 +259,9 @@ class SdsDataManager(Stack):
                 "DYNAMODB_TABLE": dynamodb_stack.table_name,
                 "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
                 "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
+                "S3_SNAPSHOT_BUCKET_NAME": f"sds-opensearch-snapshot-{sds_id}",
+                "SNAPSHOT_ROLE_ARN": snapshot_role.role_arn,
+                "SNAPSHOT_REPO_NAME": "snapshot-repo",
                 "SECRET_ID": opensearch.secret_name,
                 "REGION": opensearch.region,
                 "STATE_MACHINE_ARN": processing_step_function_arn,
@@ -185,6 +283,27 @@ class SdsDataManager(Stack):
         indexer_lambda.add_to_role_policy(dynamodb_write_policy)
         # Adding step function execution policy
         indexer_lambda.add_to_role_policy(step_function_execution_policy)
+
+        # Add permissions for Lambda to access OpenSearch
+        indexer_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["es:*"],
+                resources=[f"{opensearch.sds_metadata_domain.domain_arn}/*"],
+            )
+        )
+
+        # PassRole allows services to assign AWS roles to resources and services
+        # in this account. The OpenSearch snapshot role is invoked within the Lambda to
+        # interact with OpenSearch, it is provided to lambda via an Environmental
+        # variable in the lambda definition
+        indexer_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["iam:PassRole"],
+                resources=[snapshot_role.role_arn],
+            )
+        )
 
         opensearch_secret = secrets.Secret.from_secret_name_v2(
             self, "opensearch_secret", opensearch.secret_name

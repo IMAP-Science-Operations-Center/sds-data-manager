@@ -61,7 +61,7 @@ def test_opensearch_domain_resource_properties(template, sds_id):
         "AWS::OpenSearchService::Domain",
         {
             "DomainName": f"sdsmetadatadomain-{sds_id}",
-            "EngineVersion": "OpenSearch_1.3",
+            "EngineVersion": "OpenSearch_2.7",
             "ClusterConfig": {"InstanceType": "t3.small.search", "InstanceCount": 1},
             "EBSOptions": {"EBSEnabled": True, "VolumeSize": 10, "VolumeType": "gp2"},
             "NodeToNodeEncryptionOptions": {"Enabled": True},

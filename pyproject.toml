@@ -31,6 +31,8 @@ classifiers = [
 python = ">=3.9,<4"
 pytest-cov = "^4.0.0"
 openmock = "^2.3.0"
+requests-mock = "^1.11.0"
+freezegun = "^1.2.2"
 
 # Optional dependencies - install with `poetry install -E docs`
 sphinx = {version="^7.1.0", optional=true}
@@ -39,7 +41,7 @@ pydata-sphinx-theme = {version="^0.13.3", optional=true}
 
 [tool.poetry.group.cdk-install.dependencies]
 # 2.66+ required for aws-cdk.aws-lambda-python-alpha
-aws-cdk-lib = ">=2.66.0,<3.0.0"
+aws-cdk-lib = ">=2.88.0,<3.0.0"
 "aws-cdk.aws-lambda-python-alpha" = "^2.66.0a0"
 constructs = ">=10.0.0,<11.0.0"
 
@@ -61,6 +63,7 @@ optional = true
 [tool.poetry.group.lambda-dev.dependencies]
 opensearch-py = "^2.1.1"
 requests = "^2.28.2"
+requests-aws4auth = "^1.2.3"
 
 # Used for installing with pip
 [tool.poetry.extras]

@@ -40,11 +40,12 @@ def template(app, sds_id, opensearch_stack, env):
         env=env,
     )
     template = Template.from_stack(stack)
+
     return template
 
 
 def test_s3_bucket_resource_count(template):
-    template.resource_count_is("AWS::S3::Bucket", 2)
+    template.resource_count_is("AWS::S3::Bucket", 3)
 
 
 def test_s3_data_bucket_resource_properties(template, sds_id):
@@ -89,8 +90,32 @@ def test_s3_config_bucket_resource_properties(template, sds_id):
     )
 
 
+def test_s3_snapshot_bucket_resource_properties(template, sds_id):
+    template.has_resource(
+        "AWS::S3::Bucket",
+        {
+            "DeletionPolicy": "Delete",
+            "UpdateReplacePolicy": "Delete",
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::S3::Bucket",
+        {
+            "BucketName": f"sds-opensearch-snapshot-{sds_id}",
+            "VersioningConfiguration": {"Status": "Enabled"},
+            "PublicAccessBlockConfiguration": {
+                "BlockPublicAcls": True,
+                "BlockPublicPolicy": True,
+                "IgnorePublicAcls": True,
+                "RestrictPublicBuckets": True,
+            },
+        },
+    )
+
+
 def test_s3_bucket_policy_resource_count(template):
-    template.resource_count_is("AWS::S3::BucketPolicy", 2)
+    template.resource_count_is("AWS::S3::BucketPolicy", 3)
 
 
 def test_s3_data_bucket_policy_resource_properties(template):
@@ -195,8 +220,60 @@ def test_s3_config_bucket_policy_resource_properties(template):
     )
 
 
+def test_s3_snapshot_bucket_policy_resource_properties(template):
+    template.has_resource_properties(
+        "AWS::S3::BucketPolicy",
+        {
+            "Bucket": {"Ref": Match.string_like_regexp("SnapshotBucket*")},
+            "PolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": ["s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": {
+                                "Fn::GetAtt": [
+                                    Match.string_like_regexp(
+                                        "CustomS3AutoDeleteObjectsCustomResourceProviderRole*"
+                                    ),
+                                    "Arn",
+                                ]
+                            }
+                        },
+                        "Resource": [
+                            {
+                                "Fn::GetAtt": [
+                                    Match.string_like_regexp("SnapshotBucket*"),
+                                    "Arn",
+                                ]
+                            },
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Fn::GetAtt": [
+                                                Match.string_like_regexp(
+                                                    "SnapshotBucket*"
+                                                ),
+                                                "Arn",
+                                            ]
+                                        },
+                                        "/*",
+                                    ],
+                                ]
+                            },
+                        ],
+                    }
+                ],
+                "Version": "2012-10-17",
+            },
+        },
+    )
+
+
 def test_custom_s3_auto_delete_resource_count(template):
-    template.resource_count_is("Custom::S3AutoDeleteObjects", 2)
+    template.resource_count_is("Custom::S3AutoDeleteObjects", 3)
 
 
 def test_data_bucket_custom_s3_auto_delete_resource_properties(template):
@@ -265,7 +342,7 @@ def test_custom_s3_bucket_notifications_resource_properties(template):
 
 
 def test_iam_roles_resource_count(template):
-    template.resource_count_is("AWS::IAM::Role", 7)
+    template.resource_count_is("AWS::IAM::Role", 9)
 
 
 def test_expected_properties_for_iam_roles(template):
@@ -293,7 +370,7 @@ def test_expected_properties_for_iam_roles(template):
 
 
 def test_iam_policy_resource_count(template):
-    template.resource_count_is("AWS::IAM::Policy", 6)
+    template.resource_count_is("AWS::IAM::Policy", 8)
 
 
 def test_uploadapilambda_iam_policy_resource_properties(template):
@@ -306,20 +383,40 @@ def test_uploadapilambda_iam_policy_resource_properties(template):
                     {
                         "Effect": "Allow",
                         "Action": "s3:PutObject",
-                        "Resource": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    {
-                                        "Fn::GetAtt": [
-                                            Match.string_like_regexp(".*"),
-                                            "Arn",
-                                        ]
-                                    },
-                                    "/*",
-                                ],
-                            ]
-                        },
+                        "Resource": [
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Fn::GetAtt": [
+                                                Match.string_like_regexp(
+                                                    "DataBucket.*"
+                                                ),
+                                                "Arn",
+                                            ]
+                                        },
+                                        "/*",
+                                    ],
+                                ]
+                            },
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Fn::GetAtt": [
+                                                Match.string_like_regexp(
+                                                    "SnapshotBucket.*"
+                                                ),
+                                                "Arn",
+                                            ]
+                                        },
+                                        "/*",
+                                    ],
+                                ]
+                            },
+                        ],
                     },
                     {
                         "Effect": "Allow",
@@ -357,6 +454,22 @@ def test_uploadapilambda_iam_policy_resource_properties(template):
                                     ],
                                 ]
                             },
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Fn::GetAtt": [
+                                                Match.string_like_regexp(
+                                                    "SnapshotBucket.*"
+                                                ),
+                                                "Arn",
+                                            ]
+                                        },
+                                        "/*",
+                                    ],
+                                ]
+                            },
                         ],
                     },
                 ],
@@ -384,7 +497,7 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                                 [
                                     {
                                         "Fn::ImportValue": Match.string_like_regexp(
-                                            "opensearch-.*:ExportsOutputFnGetAttSDSMetadataDomain.*"
+                                            "opensearch.*"
                                         ),
                                     },
                                     "/*",
@@ -428,6 +541,22 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                                     ],
                                 ]
                             },
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Fn::GetAtt": [
+                                                Match.string_like_regexp(
+                                                    "SnapshotBucket.*"
+                                                ),
+                                                "Arn",
+                                            ]
+                                        },
+                                        "/*",
+                                    ],
+                                ]
+                            },
                         ],
                     },
                     {"Action": "dynamodb:PutItem", "Effect": "Allow", "Resource": "*"},
@@ -435,6 +564,33 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                         "Action": "states:StartExecution",
                         "Effect": "Allow",
                         "Resource": "*",
+                    },
+                    {
+                        "Action": "es:*",
+                        "Effect": "Allow",
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Fn::ImportValue": Match.string_like_regexp(
+                                            "opensearch.*"
+                                        )
+                                    },
+                                    "/*",
+                                ],
+                            ]
+                        },
+                    },
+                    {
+                        "Action": "iam:PassRole",
+                        "Effect": "Allow",
+                        "Resource": {
+                            "Fn::GetAtt": [
+                                Match.string_like_regexp("SnapshotRole.*"),
+                                "Arn",
+                            ]
+                        },
                     },
                     {
                         "Action": [
@@ -579,6 +735,22 @@ def test_downloadquerylambda_iam_policy_resource_properties(template):
                                     ],
                                 ]
                             },
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Fn::GetAtt": [
+                                                Match.string_like_regexp(
+                                                    "SnapshotBucket.*"
+                                                ),
+                                                "Arn",
+                                            ]
+                                        },
+                                        "/*",
+                                    ],
+                                ]
+                            },
                         ],
                     },
                 ],
@@ -648,53 +820,6 @@ def test_custom_buck_deployment_iam_service_role_resource_properties(template):
             },
         },
     )
-
-
-# We are no longer using lambda urls.
-# def test_lambda_urls_resource_count(template):
-#     template.resource_count_is("AWS::Lambda::Url", 3)
-#
-#
-# def test_upload_api_lambda_url_resource_properties(template):
-#     template.has_resource_properties(
-#         "AWS::Lambda::Url",
-#         {
-#             "AuthType": "NONE",
-#             "TargetFunctionArn": {
-#                 "Fn::GetAtt": [Match.string_like_regexp("UploadAPILambda*"), "Arn"]
-#             },
-#             "Cors": {"AllowMethods": ["*"], "AllowOrigins": ["*"]},
-#         },
-#     )
-#
-#
-# def test_query_api_lambda_url_resource_properties(template):
-#     template.has_resource_properties(
-#         "AWS::Lambda::Url",
-#         {
-#             "AuthType": "NONE",
-#             "TargetFunctionArn": {
-#                 "Fn::GetAtt": [Match.string_like_regexp("QueryAPILambda*"), "Arn"]
-#             },
-#             "Cors": {"AllowMethods": ["GET"], "AllowOrigins": ["*"]},
-#         },
-#     )
-#
-#
-# def test_download_api_lambda_url_resource_properties(template):
-#     template.has_resource_properties(
-#         "AWS::Lambda::Url",
-#         {
-#             "AuthType": "NONE",
-#             "TargetFunctionArn": {
-#                 "Fn::GetAtt": [
-#                     Match.string_like_regexp("DownloadQueryAPILambda*"),
-#                     "Arn",
-#                 ]
-#             },
-#             "Cors": {"AllowMethods": ["GET"], "AllowOrigins": ["*"]},
-#         },
-#     )
 
 
 def test_lambda_function_resource_count(template):

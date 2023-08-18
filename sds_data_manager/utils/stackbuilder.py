@@ -5,6 +5,7 @@ from aws_cdk import App, Environment
 # Local
 from sds_data_manager.stacks import (
     api_gateway_stack,
+    backup_bucket_stack,
     domain_stack,
     dynamodb_stack,
     opensearch_stack,
@@ -77,4 +78,23 @@ def build_sds(
         hosted_zone=domain.hosted_zone,
         certificate=domain.certificate,
         use_custom_domain=use_custom_domain,
+    )
+
+
+def build_backup(scope: App, env: Environment, sds_id: str, source_account: str):
+    """Builds backup bucket with permissions for replication from source_account.
+
+    Parameters
+    ----------
+    scope : App
+    env : Environment
+        Account and region
+    sds_id : str
+        Name suffix for stack
+    source_account : str
+        Account number for source bucket for replication
+    """
+    # This is the S3 bucket used by upload_api_lambda
+    backup_bucket_stack.BackupBucket(
+        scope, f"BackupBucket-{sds_id}", sds_id, env=env, source_account=source_account
     )

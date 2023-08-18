@@ -103,31 +103,31 @@ typeguard = ">=2.13.3,<2.14.0"
 
 [[package]]
 name = "aws-cdk-aws-lambda-python-alpha"
-version = "2.89.0a0"
+version = "2.90.0a0"
 description = "The CDK Construct Library for AWS Lambda in Python"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk.aws-lambda-python-alpha-2.89.0a0.tar.gz", hash = "sha256:e974653db17779fdeba214528ea73a26fcdabc140991af3c9f3bf3d6e707f54e"},
-    {file = "aws_cdk.aws_lambda_python_alpha-2.89.0a0-py3-none-any.whl", hash = "sha256:0a4454b8e8670832e01935e430015bc8ab7690fa0a23b052c6abc44931ac3ede"},
+    {file = "aws-cdk.aws-lambda-python-alpha-2.90.0a0.tar.gz", hash = "sha256:f7af0a75d4503d44733ea15913450801489be183cf04503d05dd2d2ae4271a68"},
+    {file = "aws_cdk.aws_lambda_python_alpha-2.90.0a0-py3-none-any.whl", hash = "sha256:9e7ab648fcd134d95d2d8b3a16457f531ad6397a319f42e27a479d7bdf162ac6"},
 ]
 
 [package.dependencies]
-aws-cdk-lib = "2.89.0"
+aws-cdk-lib = "2.90.0"
 constructs = ">=10.0.0,<11.0.0"
-jsii = ">=1.85.0,<2.0.0"
+jsii = ">=1.86.0,<2.0.0"
 publication = ">=0.0.3"
 typeguard = ">=2.13.3,<2.14.0"
 
 [[package]]
 name = "aws-cdk-lib"
-version = "2.89.0"
+version = "2.90.0"
 description = "Version 2 of the AWS Cloud Development Kit library"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk-lib-2.89.0.tar.gz", hash = "sha256:8fbd1d4ee0ffeb67bcc845bef5a10575dbc678ad07f74cdb3cb4243afc433db7"},
-    {file = "aws_cdk_lib-2.89.0-py3-none-any.whl", hash = "sha256:92eeebd77fe17b36029fae20f46eb601710485ea7c808c3d33fe1c71fee125bd"},
+    {file = "aws-cdk-lib-2.90.0.tar.gz", hash = "sha256:d99e304f96f1b04c41922cfa2fc98c1cdd7c88e45c6ebb980ecfc367cdc77e87"},
+    {file = "aws_cdk_lib-2.90.0-py3-none-any.whl", hash = "sha256:ef481a40c3ece38aeaf15706ecbfeea19860b8a7b789ea7b28056a9f456c65d1"},
 ]
 
 [package.dependencies]
@@ -135,7 +135,7 @@ files = [
 "aws-cdk.asset-kubectl-v20" = ">=2.1.2,<3.0.0"
 "aws-cdk.asset-node-proxy-agent-v5" = ">=2.0.166,<3.0.0"
 constructs = ">=10.0.0,<11.0.0"
-jsii = ">=1.85.0,<2.0.0"
+jsii = ">=1.86.0,<2.0.0"
 publication = ">=0.0.3"
 typeguard = ">=2.13.3,<2.14.0"
 
@@ -216,17 +216,17 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "boto3"
-version = "1.28.18"
+version = "1.28.20"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">= 3.7"
 files = [
-    {file = "boto3-1.28.18-py3-none-any.whl", hash = "sha256:f2ec3e6f173fe8d141d512ea7d90138db5a58af130773e26ce8e72bdbfd2cddc"},
-    {file = "boto3-1.28.18.tar.gz", hash = "sha256:87ecac82d2a68430c0292b7946512c8b1f01ea6971b43dc5832582fcb176c0dd"},
+    {file = "boto3-1.28.20-py3-none-any.whl", hash = "sha256:a654d57e3882e7fd2c1260d604a44364a2fed00da4f52faf37e5901e71145df1"},
+    {file = "boto3-1.28.20.tar.gz", hash = "sha256:e3c2e8e55c17af6671a5332d6ab4635ad9793c80d0ac6d78af7b30a994d0681b"},
 ]
 
 [package.dependencies]
-botocore = ">=1.31.18,<1.32.0"
+botocore = ">=1.31.20,<1.32.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.6.0,<0.7.0"
 
@@ -235,13 +235,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.31.18"
+version = "1.31.20"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">= 3.7"
 files = [
-    {file = "botocore-1.31.18-py3-none-any.whl", hash = "sha256:909db57f5d6ca765fc9dc9dcae962a87566d0123da1d2bd5be32432493d5785e"},
-    {file = "botocore-1.31.18.tar.gz", hash = "sha256:c4c01fae2ba32c242ce62175cad719aa49415618560d6e215ed76dab91991dc5"},
+    {file = "botocore-1.31.20-py3-none-any.whl", hash = "sha256:be51c5352162700e7beb0aa27af394adbbf86f8e7a2ca0c437d448d0a7b2bdfb"},
+    {file = "botocore-1.31.20.tar.gz", hash = "sha256:485ef175cd011ebc965f4577d8cc02a226c46bd608dd2bb75ce6938328cff0fd"},
 ]
 
 [package.dependencies]
@@ -670,6 +670,20 @@ files = [
 [package.extras]
 docs = ["furo (>=2023.5.20)", "sphinx (>=7.0.1)", "sphinx-autodoc-typehints (>=1.23,!=1.23.4)"]
 testing = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "diff-cover (>=7.5)", "pytest (>=7.3.1)", "pytest-cov (>=4.1)", "pytest-mock (>=3.10)", "pytest-timeout (>=2.1)"]
+
+[[package]]
+name = "freezegun"
+version = "1.2.2"
+description = "Let your Python tests travel through time"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "freezegun-1.2.2-py3-none-any.whl", hash = "sha256:ea1b963b993cb9ea195adbd893a48d573fda951b0da64f60883d7e988b606c9f"},
+    {file = "freezegun-1.2.2.tar.gz", hash = "sha256:cd22d1ba06941384410cd967d8a99d5ae2442f57dfafeff2fda5de8dc5c05446"},
+]
+
+[package.dependencies]
+python-dateutil = ">=2.7"
 
 [[package]]
 name = "identify"
@@ -1335,6 +1349,43 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
+name = "requests-aws4auth"
+version = "1.2.3"
+description = "AWS4 authentication for Requests"
+optional = false
+python-versions = ">=3.3"
+files = [
+    {file = "requests-aws4auth-1.2.3.tar.gz", hash = "sha256:d4c73c19f37f80d4aa9c5bd4fa376cfd0c69299c48b00a8eb2ae6b0416164fb8"},
+    {file = "requests_aws4auth-1.2.3-py2.py3-none-any.whl", hash = "sha256:8070a5207e95fa5fe88e87d9a75f34e768cbab35bb3557ef20cbbf9426dee4d5"},
+]
+
+[package.dependencies]
+requests = "*"
+six = "*"
+
+[package.extras]
+httpx = ["httpx"]
+
+[[package]]
+name = "requests-mock"
+version = "1.11.0"
+description = "Mock out responses from the requests package"
+optional = false
+python-versions = "*"
+files = [
+    {file = "requests-mock-1.11.0.tar.gz", hash = "sha256:ef10b572b489a5f28e09b708697208c4a3b2b89ef80a9f01584340ea357ec3c4"},
+    {file = "requests_mock-1.11.0-py2.py3-none-any.whl", hash = "sha256:f7fae383f228633f6bececebdab236c478ace2284d6292c6e7e2867b9ab74d15"},
+]
+
+[package.dependencies]
+requests = ">=2.3,<3"
+six = "*"
+
+[package.extras]
+fixture = ["fixtures"]
+test = ["fixtures", "mock", "purl", "pytest", "requests-futures", "sphinx", "testtools"]
+
+[[package]]
 name = "responses"
 version = "0.23.3"
 description = "A utility library for mocking out the `requests` Python library."
@@ -1714,4 +1765,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "65d8c325f92271515bd237df287b06fe79cb6286fe1d585052a4be8a9d5ee207"
+content-hash = "306bf3523221c9892e1ac81abdc6c42c3c8fb3746952a120b687f4520b6066f4"

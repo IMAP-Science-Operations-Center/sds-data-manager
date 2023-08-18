@@ -16,6 +16,7 @@ from .opensearch_utils.client import Client
 from .opensearch_utils.document import Document
 from .opensearch_utils.index import Index
 from .opensearch_utils.payload import Payload
+from .opensearch_utils.snapshot import run_backup
 
 # Logger setup
 logger = logging.getLogger()
@@ -178,6 +179,13 @@ def lambda_handler(event, context):
     filetypes = _load_allowed_filenames()
     logger.info("Allowed file types: " + str(filetypes))
 
+    # Grab environment variables
+    host = os.environ["OS_DOMAIN"]
+    snapshot_repo_name = os.environ["SNAPSHOT_REPO_NAME"]
+    snapshot_s3_bucket = os.environ["S3_SNAPSHOT_BUCKET_NAME"]
+    snapshot_role_arn = os.environ["SNAPSHOT_ROLE_ARN"]
+    region = os.environ["REGION"]
+
     # create opensearch client
     client = _create_open_search_client()
     # create index (AKA 'table' in other database)
@@ -233,6 +241,10 @@ def lambda_handler(event, context):
 
     # send the paylaod to the opensearch instance
     client.send_payload(document_payload)
+
+    # take OpenSearch Snapshot
+    run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn)
+
     client.close()
 
     # Start Step function execution

@@ -8,6 +8,7 @@ __pycache__
 .aws
 external
 .idea/
+.vscode/
 
 # Distribution / packaging
 .Python

@@ -86,6 +86,9 @@ opensearch-py==2.3.0 ; python_version >= "3.9" and python_version < "4" \
 python-dateutil==2.8.2 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86 \
     --hash=sha256:961d03dc3453ebbc59dbdea9e4e11c5651520a876d0f4db161e8674aae935da9
+requests-aws4auth==1.2.3 ; python_version >= "3.9" and python_version < "4" \
+    --hash=sha256:8070a5207e95fa5fe88e87d9a75f34e768cbab35bb3557ef20cbbf9426dee4d5 \
+    --hash=sha256:d4c73c19f37f80d4aa9c5bd4fa376cfd0c69299c48b00a8eb2ae6b0416164fb8
 requests==2.31.0 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f \
     --hash=sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1

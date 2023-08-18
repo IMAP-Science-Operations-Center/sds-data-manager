@@ -5,3 +5,5 @@ CDK Deployment
 
     aws-setup
     cdk-deployment
+    backup-deploy
+    s3-replication

@@ -9,6 +9,9 @@ from sds_data_manager.utils.stackbuilder import build_sds
 This app is designed to be the dev and production deployment app.
 It defaults to a dev deployment via a default `env` value in cdk.json.
 To deploy to prod, specify `--context env=prod`.
+To deploy to the backup account (only deploys required backup stacks),
+specify `--context env=backup`.
+
 """
 
 app = App()
