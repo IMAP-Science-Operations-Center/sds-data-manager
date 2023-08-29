@@ -4,11 +4,11 @@ services:
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile # path to Dockerfile
-    image: sds_in_a_box
+    image: sds_data_manager
     stdin_open: true # This line is same as docker run -i
     tty: true # This line is same as docker run -t
     volumes: # mount volumes
-      - .:/workspaces/SDS-in-a-box/
-      - $HOME/.aws:/workspaces/SDS-in-a-box/.aws/
+      - .:/workspaces/sds-data-manager/
+      - $HOME/.aws:/workspaces/sds-data-manager/.aws/
     # env_file: # Set environment variables using .env file
-    #   - ./sds_in_a_box/SDSCode/lambda.env
+    #   - ./sds_data_manager/SDSCode/lambda.env

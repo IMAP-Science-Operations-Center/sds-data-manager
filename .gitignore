@@ -3,9 +3,12 @@ package-lock.json
 __pycache__
 .pytest_cache
 .venv
+.env
 *.egg-info
 .aws
+external
 .idea/
+.vscode/
 
 # Distribution / packaging
 .Python
@@ -32,3 +35,10 @@ MANIFEST
 cdk.out
 aws
 awscliv2.zip
+cdk.context.json
+
+# Individual development CDK apps
+app*dev.py
+
+# Sphinx documentation
+docs/build/

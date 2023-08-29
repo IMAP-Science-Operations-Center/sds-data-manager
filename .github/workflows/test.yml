@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - development
   pull_request:
 
 jobs:
@@ -14,19 +15,23 @@ jobs:
         shell: bash -l {0}
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.11"
+      - uses: Gr1N/setup-poetry@v8
 
-      - name: Install dependencies
+      - name: Install dependencies and app
         run: |
-          python -m pip install .[dev]
-      - name: Install the app
-        run: |
-          python -m pip install --no-deps -e .
+          poetry install --with lambda-dev
+
       - name: Testing
         id: test
+        env:
+          AWS_DEFAULT_REGION: us-west-1
         run: |
           # Ignore the network marks from the remote test environment
-          python -m pytest --color=yes -m "not network"
+          poetry run pytest --color=yes --cov --cov-report=xml -m "not network"
+
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v3

@@ -1,0 +1,20 @@
+OpenSearch Setup
+================
+
+OpenSearch Snapshots
+~~~~~~~~~~~~~~~~~~~~~
+
+About OpenSearch Snapshots
+--------------------------
+OpenSearch has the ability to take `Snapshots <https://opensearch.org/docs/2.7/tuning-your-cluster/availability-and-recovery/snapshots/snapshot-restore/>`_ of itself which can be used to recover from a failure or to migrate from one cluster to another. These Snapshots are stored in a "repository" which is just a storage location. In the case of SDS Data Manager the storage location is an AWS S3 Bucket.
+
+Required Manual Setup Steps
+---------------------------
+Because the OpenSearch instance used in the SDS Data Manager is setup with fine-grain access controls, a few manual steps need to be taken to allow the Indexer lambda to intitate the Snapshot in Opensearch. If these steps are not taken, OpenSearch will not be able to create Snapshots. The steps below assume that all SDS Data Manager stacks have been deployed.
+
+The steps for setting up Snapshot permissions are as follows:
+1. Log in to your OpenSearch instance dashboard
+2. Back in AWS, go to IAM -> Roles and copy your IndexerServiceLamba role's ARN
+3. In the OpenSearch dashboard menu, go to Security -> Roles and click on the manage_snapshots role.
+4. Go to the Mapped Users tab and click on the Map Users
+5. Paste the ARN that you copied into the backed role text bock and click Map

@@ -15,6 +15,17 @@
     ]
   },
   "context": {
+    "env": "backup",
+    "dev": {
+      "sds_id": "dev"
+    },
+    "prod": {
+      "sds_id": "prod"
+    },
+    "backup":{
+      "sds_id": "backup"
+    },
+    "sds-region": "us-west-2",
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,

@@ -10,10 +10,9 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
 RUN unzip awscliv2.zip
 RUN sudo ./aws/install
 RUN sudo apt-get install -y python3 python3-pip
-RUN pip install aws-cdk-lib==2.48.0 
-RUN pip install "constructs>=10.0.0,<11.0.0"
-RUN pip install boto3
-RUN pip install opensearch-py
+
+RUN pip install poetry
 ENV AWS_CONFIG_FILE=/workspaces/SDS-in-a-box/.aws/config
 ENV AWS_SHARED_CREDENTIALS_FILE=/workspaces/SDS-in-a-box/.aws/credentials
+
 WORKDIR /workspaces/SDS-in-a-box/
