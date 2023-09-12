@@ -1,4 +1,7 @@
 """Module with helper functions for creating standard sets of stacks"""
+#Standard
+from pathlib import Path
+
 # Installed
 from aws_cdk import App, Environment
 
@@ -6,9 +9,12 @@ from aws_cdk import App, Environment
 from sds_data_manager.stacks import (
     api_gateway_stack,
     backup_bucket_stack,
+    data_storage_stack,
     domain_stack,
     dynamodb_stack,
+    networking_stack,
     opensearch_stack,
+    processing_step,
     sds_data_manager_stack,
     step_function_stack,
 )
@@ -79,6 +85,45 @@ def build_sds(
         certificate=domain.certificate,
         use_custom_domain=use_custom_domain,
     )
+
+    # Networking components for the SDC (VPC)
+    net = networking_stack.NetworkingStack(
+        scope,
+        f"Networking-{sds_id}",
+        sds_id,
+        env=env)
+
+    # Storage resources
+    storage = data_storage_stack.DataStorageStack(
+        scope,
+        f"Storage-{sds_id}",
+        sds_id,
+        env=env)
+
+    instrument_list = ['Codice', 'Swe', "Ultra"] #etc
+
+    for instrument in instrument_list:
+        processing_step.ProcessingStep(
+            scope,
+            f"L1a{instrument}Processing-{sds_id}",
+            sds_id,
+            env=env,
+            vpc=net.vpc,
+            processing_step_name=f"l1a-{instrument}-{sds_id}",
+            lambda_code_directory=str(Path('SDSCode')),
+            batch_security_group=net.batch_security_group,
+            archive_bucket=storage.archive_bucket)
+
+        processing_step.ProcessingStep(
+            scope,
+            f"L1b{instrument}Processing-{sds_id}",
+            sds_id,
+            env=env,
+            vpc=net.vpc,
+            processing_step_name=f"l1b-{instrument}-{sds_id}",
+            lambda_code_directory=str(Path('SDSCode')),
+            batch_security_group=net.batch_security_group,
+            archive_bucket=storage.archive_bucket)
 
 
 def build_backup(scope: App, env: Environment, sds_id: str, source_account: str):
