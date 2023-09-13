@@ -17,7 +17,6 @@ class DataStorageStack(Stack):
                  construct_id: str,
                  sid: str,
                  env: Environment,
-                 name_suffix: str,
                  **kwargs) -> None:
         """DataStorageStack constructor
 
@@ -32,12 +31,8 @@ class DataStorageStack(Stack):
         """
         super().__init__(scope, construct_id, env=env, **kwargs)  # Ensure the suffix is properly formatted
 
-        prod_account = self.node.try_get_context('prod')["account"]
-
-        if env.account == prod_account:
-            removal_policy = RemovalPolicy.RETAIN
-        else:
-            removal_policy = RemovalPolicy.DESTROY
+        #TODO
+        removal_policy = RemovalPolicy.DESTROY
 
         # Bucket for processed data
         self.archive_bucket = s3.Bucket(self, "ArchiveBucket",

@@ -19,6 +19,7 @@ class FargateBatchResources(Construct):
                  vpc: ec2.Vpc,
                  processing_step_name: str,
                  security_group: classmethod = None,
+                 batch_max_vcpus=10,
                  job_vcpus=0.25,
                  job_memory=512):
         """Constructor
@@ -73,6 +74,7 @@ class FargateBatchResources(Construct):
             service_role=self.role.role_arn,
             compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
                 type='FARGATE',
+                maxv_cpus=batch_max_vcpus,
                 subnets=vpc.select_subnets(subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT).subnet_ids,
                 security_group_ids=[security_group.security_group_id]
             )
@@ -87,7 +89,7 @@ class FargateBatchResources(Construct):
         # Uses the pre-built AWS construct to build the container repository
         # The repo is named specific to this data product
         self.container_registry = ecr.Repository(self, f"BatchRepository-{sds_id}",
-                                                 repository_name=f"{processing_step_name}-docker-repo",
+                                                 repository_name=f"{processing_step_name.lower()}-repo",
                                                  image_scan_on_push=True)
 
         # Setup job queue

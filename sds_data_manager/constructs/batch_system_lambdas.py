@@ -7,7 +7,8 @@ from typing import List
 # Installed
 from constructs import Construct
 from aws_cdk import (
-    aws_ec2 as ec2,
+    aws_lambda_python_alpha as lambda_alpha_,
+    aws_lambda as lambda_,
     aws_lambda as _lambda,
     aws_s3 as s3,
     aws_ecr_assets as ecr_assets,
@@ -25,6 +26,7 @@ class ManifestCreatorLambda(Construct):
     def __init__(self,
                  scope: Construct,
                  construct_id: str,
+                 sds_id:str,
                  processing_step_name: str,
                  archive_bucket: s3.Bucket,
                  code_path: str or Path,
@@ -62,21 +64,34 @@ class ManifestCreatorLambda(Construct):
 
         # Create Environment Variables
         lambda_environment = {
-            "PROCESSING_PATH": f"s3://{archive_bucket.bucket.bucket_name}/processing",
+            "PROCESSING_PATH": f"s3://{archive_bucket.bucket_name}/processing",
             "DATA_PRODUCT_NAME": processing_step_name
         }
 
-        # Define Dockerized lambda function
-        docker_image_code = _lambda.DockerImageCode.from_image_asset(str(code_path), target=lambda_target,
-                                                                     platform=ecr_assets.Platform.LINUX_AMD64)
+        # self.lambda_function = lambda_alpha_.PythonFunction(
+        #     self,
+        #     id="ManifestCreatorLambda",
+        #     function_name=f"manifest-{sds_id}",
+        #     entry=str(code_path),
+        #     index="SDSCode/instruments/l1a_Codice",
+        #     handler="lambda_handler",
+        #     runtime=lambda_.Runtime.PYTHON_3_9,
+        #     timeout=Duration.minutes(10),
+        #     memory_size=1000,
+        #     environment=lambda_environment
+        # )
 
-        self.lambda_function = _lambda.DockerImageFunction(self, 'ManifestCreatorLambda',
-                                                           function_name="l1a_Codice",
-                                                           code=docker_image_code,
-                                                           environment=lambda_environment,
-                                                           retry_attempts=0,
-                                                           memory_size=1024,
-                                                           timeout=Duration.minutes(10))
+        # # Define Dockerized lambda function
+        # docker_image_code = _lambda.DockerImageCode.from_image_asset(str(code_path), target=lambda_target,
+        #                                                              platform=ecr_assets.Platform.LINUX_AMD64)
+        #
+        # self.lambda_function = _lambda.DockerImageFunction(self, 'ManifestCreatorLambda',
+        #                                                    function_name="l1a_Codice",
+        #                                                    code=docker_image_code,
+        #                                                    environment=lambda_environment,
+        #                                                    retry_attempts=0,
+        #                                                    memory_size=1024,
+        #                                                    timeout=Duration.minutes(10))
 
         # Manifest Creator Lambda needs both read and write to the dropbox to list objects as well as write manifests
         archive_bucket.bucket.grant_read_write(self.lambda_function)

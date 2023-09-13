@@ -43,15 +43,11 @@ class BatchProcessingSystem(Construct):
     def __init__(self,
                  scope: Construct,
                  construct_id: str,
-                 env: Environment,
-                 vpc: ec2.Vpc,
+                 sds_id: str,
                  processing_step_name: str,
                  lambda_code_directory: str or Path,
                  archive_bucket: s3.Bucket,
                  manifest_creator_target: str,
-                 file_index_tables: list = None,
-                 batch_security_group: ec2.SecurityGroup = None,
-                 input_buckets: list = None,
                  batch_resources: FargateBatchResources = None) -> None:
         """Constructor
 
@@ -98,40 +94,24 @@ class BatchProcessingSystem(Construct):
         super().__init__(scope, construct_id)
         self.processing_step_name = processing_step_name
 
-        # Fargate is the default set of Batch Resources unless the user specifies an EC2 environment
-        if batch_resources is None:
-            self.batch_resources = FargateBatchResources(self, 'FargateBatchResources',
-                                                         vpc=vpc,
-                                                         security_group=batch_security_group,
-                                                         processing_step_name=processing_step_name)
-        else:
-            self.batch_resources = batch_resources
-
-
-        # Grant access to libera developers to push ECR Images to be used by the batch job
-        dev_account = self.node.try_get_context('dev')['account']
-        prod_account = self.node.try_get_context('prod')['account']
-        if env.account == dev_account or env.account == prod_account:
-            ecr_authenticators = iam.Group(self, 'EcrAuthenticators')
-            # Allows members of this group to get the auth token for `docker login`
-            ecr.AuthorizationToken.grant_read(ecr_authenticators)
-            # Add each of the Libera SDC devs to the newly created group
-            # TODO: Should we allow custom usernames to be added?
-            for username in self.node.try_get_context("sdc-developer-usernames"):
-                user = iam.User.from_user_name(self, username, user_name=username)
-                ecr_authenticators.add_user(user)
+        ecr_authenticators = iam.Group(self, 'EcrAuthenticators')
+        # Allows members of this group to get the auth token for `docker login`
+        ecr.AuthorizationToken.grant_read(ecr_authenticators)
+        # Add each of the Libera SDC devs to the newly created group
+        # TODO: Should we allow custom usernames to be added?
+        for username in self.node.try_get_context("sdc-developer-usernames"):
+            user = iam.User.from_user_name(self, username, user_name=username)
+            ecr_authenticators.add_user(user)
         # Ensure the ECR in our compute environment gets the proper removal policy
-        if env.account == prod_account:
-            removal_policy = RemovalPolicy.RETAIN
-        else:
-            removal_policy = RemovalPolicy.DESTROY
-        self.batch_resources.container_registry.apply_removal_policy(removal_policy)
-
+        # TODO: may change
+        removal_policy = RemovalPolicy.DESTROY
+        batch_resources.container_registry.apply_removal_policy(removal_policy)
 
         # Adding permissions to the dropbox and the input buckets
-        archive_bucket.bucket.grant_read_write(batch_resources.batch_job_role)
+        archive_bucket.grant_read_write(batch_resources.batch_job_role)
 
         self.manifest_creator_lambda = ManifestCreatorLambda(self, "ManifestCreatorLambda",
+                                                             sds_id=sds_id,
                                                              processing_step_name=processing_step_name,
                                                              archive_bucket=archive_bucket,
                                                              code_path=str(lambda_code_directory),
