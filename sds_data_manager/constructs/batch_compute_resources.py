@@ -28,6 +28,8 @@ class FargateBatchResources(Construct):
         ----------
         scope : Construct
         construct_id : str
+        sds_id : str
+            Name suffix for stack
         vpc : ec2.Vpc
             VPC into which to launch the compute instance.
         processing_step_name : str
@@ -35,10 +37,6 @@ class FargateBatchResources(Construct):
         security_group : classmethod, Optional
             Batch processing security group to access the RDS. If provided, must have an ingress rule to the RDS
             security group.
-        db_secret_name : str, Optional
-            Set if the batch job needs access to the database.
-        batch_has_db_access : bool, Optional
-            Set to True if the batch job needs to access the database.
         batch_max_vcpus : int, Optional
             Maximum number of virtual CPUs per compute instance.
         job_vcpus : int, Optional

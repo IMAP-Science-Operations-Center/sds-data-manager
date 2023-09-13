@@ -8,14 +8,6 @@ from datetime import datetime
 # Installed
 import boto3
 
-# Full Success
-FULL_SUCCESS = "FULL_SUCCESS"
-# Partial Success
-PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
-# Waiting
-WAITING_FOR_FILES = "WAITING"
-ERROR_STATE = -1
-
 
 def main(event: dict, context):
     """Handler function that generates manifest file"""
@@ -35,3 +27,7 @@ def main(event: dict, context):
         print(object_list)
     except KeyError as ke:
         print("No files present.")
+
+    return {
+        "MANIFEST_STATE": "SUCCESS",
+    }

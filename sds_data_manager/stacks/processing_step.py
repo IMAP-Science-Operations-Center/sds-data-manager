@@ -9,27 +9,22 @@ from constructs import Construct
 from aws_cdk import (
     Stack,
     Environment,
+    aws_events as events,
+    aws_events_targets as targets,
     aws_ec2 as ec2,
-    aws_s3 as s3
+    aws_s3 as s3,
+    aws_stepfunctions as sfn
 )
+
 # Local
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
 from sds_data_manager.constructs.batch_system import BatchProcessingSystem
 from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
+from sds_data_manager.constructs.event_bridge import S3EventToStepFunctionConstruct
 
 
 class ProcessingStep(Stack):
     """A complete automatic processing system utilizing S3, Lambda, and Batch.
-
-    Including:
-    -Optional manifest file creator that creates input manifests to trigger Batch job. If no manifest creator target
-        is provided, input manifest must be created and submitted to the dropbox by some other mechanism.
-    - Input s3 buckets for Batch to read from. The batch system does not typically alter the data in the input buckets.
-    - Input s3 buckets for Batch to read from.
-    - Dropbox s3 bucket that triggers Lambdas to start Batch jobs and pick up generated files in response to manifests.
-    - Lambda function to start Batch jobs based on input manifests appearing in dropbox (s3 triggered).
-    - Batch compute environment and source container registry.
-    - Lambda function to validate and archive products written by Batch to the dropbox (s3 triggered).
     """
 
     def __init__(self,
@@ -51,6 +46,8 @@ class ProcessingStep(Stack):
         scope : Construct
         construct_id : str
         env : Environment
+        sds_id : str
+            Name suffix for stack
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
         processing_step_name : str
@@ -58,31 +55,13 @@ class ProcessingStep(Stack):
         lambda_code_directory : str or Path
             Location of a directory containing a Dockerfile used to build Lambda runtime container images for both
             the secrets retriever and archiver lambdas.
-        rds_security_group : ec2.SecurityGroup
-            RDS security group
-        subnets : ec2.SubnetSelection
-            RDS subnet selection. e.g. ec2.SubnetSelection.PUBLIC
-        db_secret_name : str
-            RDS secret name for secret manager access
         archive_bucket : s3.Bucket
             The s3 bucket to archive any created data products
         manifest_creator_target : str
             Name of Dockerfile target for manifest creator handler. If not provided, no manifest file creator
             lambda is synthesized.
-        file_index_tables : list, Optional
-            Passed on to the internal ManifestCreator lambda where it is used to query for newly arrived input data.
         batch_security_group : ec2.SecurityGroup, Optional
             Batch processor security group. Must have an ingress rule into the RDS security group
-        name_suffix : str, Optional
-            If provided, this is appended to any resources requiring unique names. Default is None (no suffix).
-        input_buckets : list, Optional
-            List of S3 bucket objects that contain input data to the Batch processing job. This is used to
-            ensure read permissions are set properly.
-        upstream_sns_topics : list, Optional
-            List of SNS topics that feed into the manifest file creator queue.
-        timeout_hour_offset : int, Optional
-            The number of hours to offset time out time from the time of starting the step function.
-            Default is 24 hours
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
@@ -111,10 +90,32 @@ class ProcessingStep(Stack):
                                              processing_system=self.processing_system,
                                              batch_resources=self.batch_resources)
 
-        # Schedule (add this to create EventBridge cron job)
-        # state_machine_schedule = events.Schedule.cron(year='*', month='*', day='*', hour='12', minute='0')
+        # Enable S3 Event Notifications to send to EventBridge
+        s3_event_to_sf = S3EventToStepFunctionConstruct(self, "S3EventToSF", archive_bucket, self.step_function)
+
         #
-        # events.Rule(self, "CdkStateMachineScheduleRule",
-        #             description="Run cdk state machine.",
-        #             schedule=state_machine_schedule,
-        #             targets=[event_targets.SfnStateMachine(self.state_machine)])
+        # archive_bucket.add_event_notification(s3.EventType.OBJECT_CREATED, s3.Notifications(
+        #     destination=events.EventBridgeDestination(),
+        #     filter=s3.NotificationKeyFilter()
+        # ))
+        #
+        # # Create an EventBridge rule that listens for the S3 bucket event
+        # event_pattern = events.EventPattern(
+        #     source=["aws.s3"],
+        #     detail_type=["AWS API Call via CloudTrail"],
+        #     detail={
+        #         "eventName": ["PutObject", "CompleteMultipartUpload"],
+        #         "eventSource": ["s3.amazonaws.com"],
+        #         "requestParameters": {
+        #             "bucketName": [archive_bucket.bucket_name]
+        #         }
+        #     }
+        # )
+        #
+        # rule = events.Rule(self, "S3ObjectCreatedRule",
+        #                    event_pattern=event_pattern,
+        #                    description="Listen to S3 object created events.")
+        #
+        # # Set the target of the rule to your Step Function
+        # rule.add_target(targets.SfnStateMachine(self.step_function))
+

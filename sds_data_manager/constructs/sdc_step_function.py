@@ -23,6 +23,7 @@ class SdcStepFunction(Construct):
     def __init__(self,
                  scope: Construct,
                  construct_id: str,
+                 sds_id: str,
                  processing_step_name: str,
                  processing_system: BatchProcessingSystem,
                  batch_resources: FargateBatchResources):
@@ -32,6 +33,8 @@ class SdcStepFunction(Construct):
         ----------
         scope : Construct
         construct_id : str
+        sds_id : str
+            Name suffix for stack
         processing_step_name : str
             The string identifier for the processing step
         processing_system: BatchProcessingSystem
@@ -74,7 +77,7 @@ class SdcStepFunction(Construct):
         job_queue_arn = f'arn:aws:batch:{stack.region}:{stack.account}:job-queue/{batch_resources.job_queue_name}'
 
         # Batch Job Step Function
-        processing_dropbox_path_str = f"s3://{processing_system.dropbox.bucket.bucket_name}/processing"
+        processing_dropbox_path_str = f"s3:/archive_bucket/processing"
         submit_job = tasks.BatchSubmitJob(
             self, "Batch Job",
             job_name=sfn.JsonPath.string_at("$.ManifestCreatorOutput.JOB_NAME"),

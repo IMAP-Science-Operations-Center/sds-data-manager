@@ -54,7 +54,8 @@ class SdsDataManager(Stack):
         ----------
         scope : App
         construct_id : str
-        sds_id: str
+        sds_id : str
+            Name suffix for stack
         opensearch: OpenSearch
             This class depends on opensearch, which is built with opensearch_stack.py
         dynamodb_stack: DynamoDb
