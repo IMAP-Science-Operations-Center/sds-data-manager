@@ -9,18 +9,15 @@ from constructs import Construct
 from aws_cdk import (
     Stack,
     Environment,
-    aws_events as events,
-    aws_events_targets as targets,
     aws_ec2 as ec2,
-    aws_s3 as s3,
-    aws_stepfunctions as sfn
+    aws_s3 as s3
 )
 
 # Local
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
-from sds_data_manager.constructs.batch_system import BatchProcessingSystem
 from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
-from sds_data_manager.constructs.event_bridge import S3EventToStepFunctionConstruct
+from sds_data_manager.constructs.event_bridge import S3EventbridgeStepFunctionsProps, S3EventbridgeStepFunctions
+from sds_data_manager.constructs.batch_system_lambdas import ManifestCreatorLambda
 
 
 class ProcessingStep(Stack):
@@ -65,57 +62,35 @@ class ProcessingStep(Stack):
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
-        # The compute environment is an optional input to the BatchProcessingSystem construct.
         self.batch_resources = FargateBatchResources(self,
                                                      f"FargateBatchEnvironment-{sds_id}",
                                                      sds_id,
                                                      vpc=vpc,
                                                      security_group=batch_security_group,
-                                                     processing_step_name=processing_step_name)
+                                                     processing_step_name=processing_step_name,
+                                                     archive_bucket=archive_bucket,)
 
-        # The processing system sets up a Batch job to respond to input manifests submitted to its dropbox.
-        self.processing_system = BatchProcessingSystem(self,
-                                                       f"BatchProcessor-{sds_id}",
-                                                       sds_id,
-                                                       processing_step_name=processing_step_name,
-                                                       lambda_code_directory=lambda_code_directory,
-                                                       archive_bucket=archive_bucket,
-                                                       manifest_creator_target=manifest_creator_target,
-                                                       batch_resources=self.batch_resources)
+        self.manifest_creator_lambda = ManifestCreatorLambda(self, f"ManifestCreatorLambda-{sds_id}",
+                                                             sds_id=sds_id,
+                                                             processing_step_name=processing_step_name,
+                                                             archive_bucket=archive_bucket,
+                                                             code_path=str(lambda_code_directory),
+                                                             lambda_target=manifest_creator_target)
 
         self.step_function = SdcStepFunction(self,
                                              f"SdcStepFunction-{sds_id}",
                                              sds_id,
                                              processing_step_name=processing_step_name,
-                                             processing_system=self.processing_system,
+                                             processing_system=self.manifest_creator_lambda,
                                              batch_resources=self.batch_resources)
 
         # Enable S3 Event Notifications to send to EventBridge
-        s3_event_to_sf = S3EventToStepFunctionConstruct(self, "S3EventToSF", archive_bucket, self.step_function)
+        props = S3EventbridgeStepFunctionsProps(
+            state_machine=self.step_function.state_machine,
+            state_machine_input={},
+            source_bucket=archive_bucket
+        )
 
-        #
-        # archive_bucket.add_event_notification(s3.EventType.OBJECT_CREATED, s3.Notifications(
-        #     destination=events.EventBridgeDestination(),
-        #     filter=s3.NotificationKeyFilter()
-        # ))
-        #
-        # # Create an EventBridge rule that listens for the S3 bucket event
-        # event_pattern = events.EventPattern(
-        #     source=["aws.s3"],
-        #     detail_type=["AWS API Call via CloudTrail"],
-        #     detail={
-        #         "eventName": ["PutObject", "CompleteMultipartUpload"],
-        #         "eventSource": ["s3.amazonaws.com"],
-        #         "requestParameters": {
-        #             "bucketName": [archive_bucket.bucket_name]
-        #         }
-        #     }
-        # )
-        #
-        # rule = events.Rule(self, "S3ObjectCreatedRule",
-        #                    event_pattern=event_pattern,
-        #                    description="Listen to S3 object created events.")
-        #
-        # # Set the target of the rule to your Step Function
-        # rule.add_target(targets.SfnStateMachine(self.step_function))
+        # Instantiate the construct
+        S3EventbridgeStepFunctions(self, "S3EventToSF", props)
 

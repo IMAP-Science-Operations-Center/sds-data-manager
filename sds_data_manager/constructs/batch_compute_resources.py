@@ -1,5 +1,6 @@
 from constructs import Construct
 from aws_cdk import (
+    RemovalPolicy,
     aws_batch as batch,
     aws_ec2 as ec2,
     aws_iam as iam,
@@ -18,6 +19,7 @@ class FargateBatchResources(Construct):
                  sds_id: str,
                  vpc: ec2.Vpc,
                  processing_step_name: str,
+                 archive_bucket,
                  security_group: classmethod = None,
                  batch_max_vcpus=10,
                  job_vcpus=0.25,
@@ -89,6 +91,13 @@ class FargateBatchResources(Construct):
         self.container_registry = ecr.Repository(self, f"BatchRepository-{sds_id}",
                                                  repository_name=f"{processing_step_name.lower()}-repo",
                                                  image_scan_on_push=True)
+        # Permissions
+        ecr_authenticators = iam.Group(self, 'EcrAuthenticators')
+        ecr.AuthorizationToken.grant_read(ecr_authenticators)
+        for username in self.node.try_get_context("sdc-developer-usernames"):
+            user = iam.User.from_user_name(self, username, user_name=username)
+            ecr_authenticators.add_user(user)
+        self.container_registry.apply_removal_policy(RemovalPolicy.DESTROY)
 
         # Setup job queue
         self.job_queue_name = f"{processing_step_name}-fargate-batch-job-queue"
@@ -102,6 +111,7 @@ class FargateBatchResources(Construct):
                                        assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
                                        managed_policies=[
                                            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess")])
+        archive_bucket.grant_read_write(self.batch_job_role)
 
         # create job definition
         self.job_definition_name = f"fargate-batch-job-definition{processing_step_name}"

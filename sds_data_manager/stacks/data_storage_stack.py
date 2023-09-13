@@ -29,9 +29,9 @@ class DataStorageStack(Stack):
         name_suffix : str or None
             String to append to the end of any globally unique resource names.
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)  # Ensure the suffix is properly formatted
+        super().__init__(scope, construct_id, env=env, **kwargs)
 
-        #TODO
+        #TODO: may change
         removal_policy = RemovalPolicy.DESTROY
 
         # Bucket for processed data

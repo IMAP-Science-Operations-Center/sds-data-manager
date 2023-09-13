@@ -86,7 +86,6 @@ def build_sds(
         use_custom_domain=use_custom_domain,
     )
 
-    # Networking components for the SDC (VPC)
     net = networking_stack.NetworkingStack(
         scope,
         f"Networking-{sds_id}",
@@ -100,12 +99,10 @@ def build_sds(
         sds_id,
         env=env)
 
-    instrument_list = ['Codice']#, 'Swe', "Ultra"] #etc
+    instrument_list = ['Codice'] #etc
 
     lambda_code_directory = Path(__file__).parent / '..' / 'lambda_code' / 'SDSCode'
     lambda_code_directory_str = str(lambda_code_directory.resolve())
-
-
 
     for instrument in instrument_list:
 

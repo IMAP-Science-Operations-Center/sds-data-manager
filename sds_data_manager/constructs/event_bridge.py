@@ -1,11 +1,12 @@
+from constructs import Construct
+
 from aws_cdk import (
     aws_iam as iam,
     aws_stepfunctions as sfn,
     aws_events as events,
     aws_events_targets as targets,
     aws_s3 as s3,
-    aws_sqs as sqs,
-    core
+    aws_sqs as sqs
 )
 
 
@@ -15,7 +16,7 @@ class S3EventbridgeStepFunctionsProps:
                  state_machine_input: dict,
                  source_bucket: s3.IBucket,
                  event_pattern: events.EventPattern = None,
-                 dead_letter_queue: bool = True
+                 dead_letter_queue: bool = False
                  ):
         self.state_machine = state_machine
         self.state_machine_input = state_machine_input
@@ -24,11 +25,11 @@ class S3EventbridgeStepFunctionsProps:
         self.dead_letter_queue = dead_letter_queue
 
 
-class S3EventbridgeStepFunctions(core.Construct):
-    def __init__(self, scope: core.Construct, id: str, props: S3EventbridgeStepFunctionsProps):
+class S3EventbridgeStepFunctions(Construct):
+    def __init__(self, scope: Construct, id: str, props: S3EventbridgeStepFunctionsProps):
         super().__init__(scope, id)
 
-        self.source_bucket.enable_event_bridge_notification()
+        props.source_bucket.enable_event_bridge_notification()
 
         self.event_rule = events.Rule(self, "EventsRule")
 
