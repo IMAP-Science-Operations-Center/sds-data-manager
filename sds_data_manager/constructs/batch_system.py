@@ -8,29 +8,48 @@ from aws_cdk import (
     aws_ec2 as ec2,
     aws_ecr as ecr,
     aws_iam as iam,
+    aws_s3 as s3
 )
 from constructs import Construct
 # Local
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
-from sds_data_manager.constructs.batch_system_lambdas import ArchiverLambda
-
-from sds_data_manager.constructs.sdc_bucket import SdcBucket
+from sds_data_manager.constructs.batch_system_lambdas import ManifestCreatorLambda
 
 
 class BatchProcessingSystem(Construct):
     """A complete automatic processing system utilizing S3, Lambda, and Batch all in a Step Function.
+
+    Including:
+    - References Input S3 buckets for Batch to read from. (External to this Construct)
+    - Creates Dropbox S3 bucket for storage of generated data files and manifests
+    - Creates Timeout Lambda function to set a timeout time for generating incomplete or failed input manifests
+    - Creates Manifest Creator Lambda function to generate a manifest and create a batch command
+    - Creates Batch compute resources with an associated source container registry.
+    - Creates Manifest Mover Lambda function to determined failed or succeeded manifests
+    - Creates Archiver Lambda function to validate and archive products written by Batch to the dropbox
     """
+
+    # TODO: The parameter rds_security_group is unnecessarily specific. Rename it to archiver_sg. Alternatively,
+    #   we could try to omit this entirely and retroactively add the archiver lambda to the same SG as the RDS. This
+    #   comment also applies to the subnets kwarg. Together, these kwargs make the Construct signature confusing and
+    #   cryptic.
+
+    # TODO: In its current form, we are creating separate Lambda functions for each processing step archiver. However,
+    #   all of these Lambdas are running the exact same code for validating and archiving data products. If we
+    #   want to continue in this way without adding custom code for each archiver, it would be more efficient to
+    #   create the archiver lambda outside of this construct. However, this would limit our ability to customize
+    #   archiver behavior based on the current processing step.
 
     def __init__(self,
                  scope: Construct,
                  construct_id: str,
-                 sds_id: str,
                  env: Environment,
                  vpc: ec2.Vpc,
                  processing_step_name: str,
                  lambda_code_directory: str or Path,
-                 subnets: ec2.SubnetSelection,
-                 archive_bucket: SdcBucket,
+                 archive_bucket: s3.Bucket,
+                 manifest_creator_target: str,
+                 file_index_tables: list = None,
                  batch_security_group: ec2.SecurityGroup = None,
                  input_buckets: list = None,
                  batch_resources: FargateBatchResources = None) -> None:
@@ -77,7 +96,6 @@ class BatchProcessingSystem(Construct):
             Default is 24 hours
         """
         super().__init__(scope, construct_id)
-
         self.processing_step_name = processing_step_name
 
         # Fargate is the default set of Batch Resources unless the user specifies an EC2 environment
@@ -88,40 +106,34 @@ class BatchProcessingSystem(Construct):
                                                          processing_step_name=processing_step_name)
         else:
             self.batch_resources = batch_resources
-        # TODO: Add DB access to the batch job if needed
+
 
         # Grant access to libera developers to push ECR Images to be used by the batch job
         dev_account = self.node.try_get_context('dev')['account']
-        if env.account == dev_account:
+        prod_account = self.node.try_get_context('prod')['account']
+        if env.account == dev_account or env.account == prod_account:
             ecr_authenticators = iam.Group(self, 'EcrAuthenticators')
             # Allows members of this group to get the auth token for `docker login`
             ecr.AuthorizationToken.grant_read(ecr_authenticators)
             # Add each of the Libera SDC devs to the newly created group
+            # TODO: Should we allow custom usernames to be added?
             for username in self.node.try_get_context("sdc-developer-usernames"):
                 user = iam.User.from_user_name(self, username, user_name=username)
                 ecr_authenticators.add_user(user)
-        # Ensure the ECR in our compute environment gets the proper removal policy (may change)
-        removal_policy = RemovalPolicy.DESTROY
+        # Ensure the ECR in our compute environment gets the proper removal policy
+        if env.account == prod_account:
+            removal_policy = RemovalPolicy.RETAIN
+        else:
+            removal_policy = RemovalPolicy.DESTROY
         self.batch_resources.container_registry.apply_removal_policy(removal_policy)
 
-        # Dropbox bucket used for manifests (input and output) and output data products
-        self.dropbox = SdcBucket(self, "DropboxBucket",
-                                 env=env,
-                                 bucket_name=f"{processing_step_name}-dropbox")
 
         # Adding permissions to the dropbox and the input buckets
-        self.dropbox.bucket.grant_read_write(batch_resources.batch_job_role)
+        archive_bucket.bucket.grant_read_write(batch_resources.batch_job_role)
 
-        if input_buckets is not None:
-            for bucket in input_buckets:
-                bucket.grant_read(batch_resources.batch_job_role)
+        self.manifest_creator_lambda = ManifestCreatorLambda(self, "ManifestCreatorLambda",
+                                                             processing_step_name=processing_step_name,
+                                                             archive_bucket=archive_bucket,
+                                                             code_path=str(lambda_code_directory),
+                                                             lambda_target=manifest_creator_target)
 
-        self.finished_trigger_function = ArchiverLambda(self, "ArchiverLambda-{sds_id}",
-                                                        sds_id,
-                                                        vpc=vpc,
-                                                        subnets=subnets,
-                                                        processing_step_name=processing_step_name,
-                                                        dropbox=self.dropbox,
-                                                        archive_bucket=archive_bucket,
-                                                        code_path=str(lambda_code_directory),
-                                                        lambda_target=f"data-archiver-{sds_id}")

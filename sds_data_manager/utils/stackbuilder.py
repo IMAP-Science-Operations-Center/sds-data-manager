@@ -100,9 +100,10 @@ def build_sds(
         sds_id,
         env=env)
 
-    instrument_list = ['Codice', 'Swe', "Ultra"] #etc
+    instrument_list = ['Codice']#, 'Swe', "Ultra"] #etc
 
     for instrument in instrument_list:
+
         processing_step.ProcessingStep(
             scope,
             f"L1a{instrument}Processing-{sds_id}",
@@ -112,18 +113,22 @@ def build_sds(
             processing_step_name=f"l1a-{instrument}-{sds_id}",
             lambda_code_directory=str(Path('SDSCode')),
             batch_security_group=net.batch_security_group,
-            archive_bucket=storage.archive_bucket)
+            archive_bucket=storage.archive_bucket,
+            manifest_creator_target=f"l1a-{instrument}")
 
-        processing_step.ProcessingStep(
-            scope,
-            f"L1b{instrument}Processing-{sds_id}",
-            sds_id,
-            env=env,
-            vpc=net.vpc,
-            processing_step_name=f"l1b-{instrument}-{sds_id}",
-            lambda_code_directory=str(Path('SDSCode')),
-            batch_security_group=net.batch_security_group,
-            archive_bucket=storage.archive_bucket)
+        # processing_step.ProcessingStep(
+        #     scope,
+        #     f"L1b{instrument}Processing-{sds_id}",
+        #     sds_id,
+        #     env=env,
+        #     vpc=net.vpc,
+        #     processing_step_name=f"l1b-{instrument}-{sds_id}",
+        #     lambda_code_directory=str(Path('SDSCode')),
+        #     batch_security_group=net.batch_security_group,
+        #     archive_bucket=storage.archive_bucket,
+        #     manifest_creator_target=f"l1b-{instrument}")
+
+        #etc
 
 
 def build_backup(scope: App, env: Environment, sds_id: str, source_account: str):

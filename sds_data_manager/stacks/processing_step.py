@@ -40,6 +40,8 @@ class ProcessingStep(Stack):
                  vpc: ec2.Vpc,
                  processing_step_name: str,
                  lambda_code_directory: str or Path,
+                 archive_bucket: s3.Bucket,
+                 manifest_creator_target: str,
                  batch_security_group: ec2.SecurityGroup = None,
                  **kwargs) -> None:
         """Constructor
@@ -89,8 +91,7 @@ class ProcessingStep(Stack):
                                                      f"FargateBatchEnvironment-{sds_id}",
                                                      sds_id,
                                                      vpc=vpc,
-                                                     processing_step_name=processing_step_name,
-                                                     security_group=batch_security_group)
+                                                     processing_step_name=processing_step_name)
 
         # The processing system sets up a Batch job to respond to input manifests submitted to its dropbox.
         self.processing_system = BatchProcessingSystem(self,
@@ -100,7 +101,10 @@ class ProcessingStep(Stack):
                                                        vpc=vpc,
                                                        processing_step_name=processing_step_name,
                                                        lambda_code_directory=lambda_code_directory,
-                                                       batch_security_group=batch_security_group)
+                                                       batch_security_group=batch_security_group,
+                                                       archive_bucket=archive_bucket,
+                                                       batch_resources=self.batch_resources,
+                                                       manifest_creator_target=manifest_creator_target)
 
         self.step_function = SdcStepFunction(self,
                                              f"SdcStepFunction-{sds_id}",
