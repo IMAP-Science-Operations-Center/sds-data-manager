@@ -105,21 +105,21 @@ def build_sds(
     lambda_code_directory = Path(__file__).parent / '..' / 'lambda_code' / 'SDSCode'
     lambda_code_directory_str = str(lambda_code_directory.resolve())
 
-    print(lambda_code_directory_str)
 
-    # for instrument in instrument_list:
-    #
-    #     processing_step.ProcessingStep(
-    #         scope,
-    #         f"L1a{instrument}Processing-{sds_id}",
-    #         sds_id,
-    #         env=env,
-    #         vpc=net.vpc,
-    #         processing_step_name=f"l1a-{instrument}-{sds_id}",
-    #         lambda_code_directory=lambda_code_directory_str,
-    #         batch_security_group=net.batch_security_group,
-    #         archive_bucket=storage.archive_bucket,
-    #         manifest_creator_target=f"l1a-{instrument}")
+
+    for instrument in instrument_list:
+
+        processing_step.ProcessingStep(
+            scope,
+            f"L1a{instrument}Processing-{sds_id}",
+            sds_id,
+            env=env,
+            vpc=net.vpc,
+            processing_step_name=f"l1a-{instrument}-{sds_id}",
+            lambda_code_directory=lambda_code_directory_str,
+            batch_security_group=net.batch_security_group,
+            archive_bucket=storage.archive_bucket,
+            manifest_creator_target=f"l1a-{instrument}")
 
         # processing_step.ProcessingStep(
         #     scope,

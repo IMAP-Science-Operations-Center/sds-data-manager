@@ -26,7 +26,7 @@ class NetworkingStack(Stack):
                                    subnet_type=ec2.SubnetType.PUBLIC
                                ),
                                ec2.SubnetConfiguration(
-                                   subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT, #used
+                                   subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS,
                                    name=f"Private-{sds_id}",
                                    cidr_mask=24
                                ),

@@ -68,18 +68,18 @@ class ManifestCreatorLambda(Construct):
             "DATA_PRODUCT_NAME": processing_step_name
         }
 
-        # self.lambda_function = lambda_alpha_.PythonFunction(
-        #     self,
-        #     id="ManifestCreatorLambda",
-        #     function_name=f"manifest-{sds_id}",
-        #     entry=str(code_path),
-        #     index="SDSCode/instruments/l1a_Codice",
-        #     handler="lambda_handler",
-        #     runtime=lambda_.Runtime.PYTHON_3_9,
-        #     timeout=Duration.minutes(10),
-        #     memory_size=1000,
-        #     environment=lambda_environment
-        # )
+        self.lambda_function = lambda_alpha_.PythonFunction(
+            self,
+            id="ManifestCreatorLambda",
+            function_name=f"manifest-{sds_id}",
+            entry=str(code_path),
+            index="instruments/l1a_Codice.py",
+            handler="lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            timeout=Duration.minutes(10),
+            memory_size=1000,
+            environment=lambda_environment
+        )
 
         # # Define Dockerized lambda function
         # docker_image_code = _lambda.DockerImageCode.from_image_asset(str(code_path), target=lambda_target,
@@ -94,4 +94,4 @@ class ManifestCreatorLambda(Construct):
         #                                                    timeout=Duration.minutes(10))
 
         # Manifest Creator Lambda needs both read and write to the dropbox to list objects as well as write manifests
-        archive_bucket.bucket.grant_read_write(self.lambda_function)
+        archive_bucket.grant_read_write(self.lambda_function)
