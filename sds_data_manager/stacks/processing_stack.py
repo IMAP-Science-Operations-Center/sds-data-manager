@@ -18,7 +18,6 @@ from aws_cdk import (
 # Local
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
 from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
-from sds_data_manager.constructs.event_bridge import S3EventbridgeStepFunctionsProps, S3EventbridgeStepFunctions
 from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
 
 
@@ -92,48 +91,36 @@ class ProcessingStep(Stack):
                                              archive_bucket=archive_bucket,
                                              instrument_sources=instrument_sources)
 
-        # Schedule (add this to create EventBridge cron job)
-        # state_machine_schedule = events.Schedule.cron(year='*', month='*', day='*', hour='*', minute='15')
-        #
-        # events.Rule(self, "CdkStateMachineScheduleRule",
-        #             description="Run cdk state machine.",
-        #             schedule=state_machine_schedule,
-        #             targets=[event_targets.SfnStateMachine(self.step_function.state_machine)])
+        # TODO: We will add to EventBridge
+        #TODO MONDAY!
+        # - Change to this:
 
+        # {
+        #     "detail-type": ["Object Created"],
+        #     "detail": {
+        #         "bucket": {
+        #             "name": ["archive-lcs-dev"]
+        #         },
+        #         "object": {
+        #             "key": [{
+        #                 "prefix": "l1a_Codice"
+        #             }]
+        #         }
+        #     },
+        #     "source": ["aws.s3"]
+        # }
+        # - push container and test
+        # - cleanup
         rule = events.Rule(self, "rule",
                            event_pattern=events.EventPattern(
                                source=["aws.s3"],
                                detail_type=["Object Created"],
                                detail={
                                    "bucket": {
-                                       "name": ["archive-lcs-dev"]  # replace with the actual bucket name or variable
+                                       "name": [f"archive-lcs-dev"]
                                    }
                                }
                            ))
 
         rule.add_target(event_targets.SfnStateMachine(self.step_function.state_machine))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # Enable S3 Event Notifications to send to EventBridge (doesn't work)
-        #props = S3EventbridgeStepFunctionsProps(
-        #    state_machine=self.step_function.state_machine,
-        #    state_machine_input={},
-        #    archive_bucket=archive_bucket,
-        #    instrument_sources=instrument_sources
-        #)
-
-        # Instantiate the construct
-        #S3EventbridgeStepFunctions(self, "S3EventToSF", props)
 
