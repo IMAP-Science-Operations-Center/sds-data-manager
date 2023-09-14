@@ -1,17 +1,11 @@
 from constructs import Construct
 from aws_cdk import (
-    Duration,
     Stack,
-    aws_events as events,
-    aws_events_targets as event_targets,
-    aws_lambda,
     aws_stepfunctions as sfn,
-    aws_stepfunctions_tasks as tasks,
-    aws_sns as sns,
-    aws_sns_subscriptions as subscriptions
+    aws_stepfunctions_tasks as tasks
 )
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
-from sds_data_manager.constructs.batch_system import BatchProcessingSystem
+from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
 
 
 class SdcStepFunction(Construct):
@@ -25,8 +19,11 @@ class SdcStepFunction(Construct):
                  construct_id: str,
                  sds_id: str,
                  processing_step_name: str,
-                 processing_system: BatchProcessingSystem,
-                 batch_resources: FargateBatchResources):
+                 processing_system: InstrumentLambda,
+                 batch_resources: FargateBatchResources,
+                 instrument_target,
+                 archive_bucket,
+                 instrument_sources):
         """SdcStepFunction Constructor
 
         Parameters
@@ -45,7 +42,7 @@ class SdcStepFunction(Construct):
             Fargate compute environment.
         """
         super().__init__(scope, construct_id)
-
+        print(archive_bucket.bucket_name)
         # Reformat EventBridge Inputs
         add_specifics_to_input = sfn.Pass(
             self, "Reformat EventBridge Inputs",
@@ -55,19 +52,15 @@ class SdcStepFunction(Construct):
         )
 
         # Step Functions Tasks to invoke Lambda function
-        manifest_creator_task = tasks.LambdaInvoke(self, "Manifest Creator",
-                                                   lambda_function=processing_system.manifest_creator_lambda.lambda_function,
+        instrument_task = tasks.LambdaInvoke(self, f"InstrumentLambda-{processing_step_name}",
+                                                   lambda_function=processing_system.instrument_lambda,
                                                    payload=sfn.TaskInput.from_object(
-                                                       {"TIMEOUT_TIME.$": "$.TimeoutCreatorOutput.TIMEOUT_TIME"}),
-                                                   result_path="$.ManifestCreatorOutput",
+                                                       {"TIMEOUT_TIME.$": "$.TIMEOUT_TIME"}),
+                                                   result_path="$.InstrumentOutput",
                                                    result_selector={
-                                                       "MANIFEST_STATE.$": "$.Payload.MANIFEST_STATE",
-                                                       "INPUT_MANIFEST_FILENAME.$": "$.Payload.INPUT_MANIFEST_FILENAME",
+                                                       "STATE.$": "$.Payload.STATE",
                                                        "JOB_NAME.$": "$.Payload.JOB_NAME",
-                                                       "COMMAND.$": "$.Payload.COMMAND",
-                                                       "PERCENT_COMPLETE.$": "$.Payload.PERCENT_COMPLETE",
-                                                       "DATA_PRODUCT_NAME.$": "$.Payload.DATA_PRODUCT_NAME",
-                                                       "OUTPUT_MANIFEST_FILENAME.$": "$.Payload.OUTPUT_MANIFEST_FILENAME"
+                                                       "COMMAND.$": "$.Payload.COMMAND"
                                                    })
 
         # Batch Job Inputs
@@ -76,17 +69,18 @@ class SdcStepFunction(Construct):
             f'arn:aws:batch:{stack.region}:{stack.account}:job-definition/{batch_resources.job_definition_name}'
         job_queue_arn = f'arn:aws:batch:{stack.region}:{stack.account}:job-queue/{batch_resources.job_queue_name}'
 
-        # Batch Job Step Function
-        processing_dropbox_path_str = f"s3:/archive_bucket/processing"
+        # Batch Job
         submit_job = tasks.BatchSubmitJob(
-            self, "Batch Job",
-            job_name=sfn.JsonPath.string_at("$.ManifestCreatorOutput.JOB_NAME"),
+            self, f"BatchJob-{processing_step_name}",
+            job_name=sfn.JsonPath.string_at("$.InstrumentOutput.JOB_NAME"),
             job_definition_arn=job_definition_arn,
             job_queue_arn=job_queue_arn,
             container_overrides=tasks.BatchContainerOverrides(
-                command=sfn.JsonPath.list_at("$.ManifestCreatorOutput.COMMAND"),
+                command=sfn.JsonPath.list_at("$.InstrumentOutput.COMMAND"),
                 environment={
-                    "PROCESSING_DROPBOX": processing_dropbox_path_str
+                    "PROCESSING_DROPBOX": f"s3://archive_{sds_id}",
+                    "INSTRUMENT_TARGET": instrument_target,
+                    "INSTRUMENT_SOURCES": instrument_sources
                 }
             ),
             result_path='$.BatchJobOutput'
@@ -95,24 +89,24 @@ class SdcStepFunction(Construct):
         # Success and Fail Final States
         fail_state = sfn.Fail(self, "Fail State")
 
-        # Manifest Choice State
-        manifest_status = sfn.Choice(self, "Enough Files for Manifest Creation?")
-        # Manifest created go to Batch job
-        created = sfn.Condition.string_equals("$.ManifestCreatorOutput.MANIFEST_STATE", "FULL_SUCCESS")
-        manifest_status.when(created, submit_job)
-        manifest_status.otherwise(fail_state)
+        # Choice State
+        instrument_status = sfn.Choice(self, "Success?")
+        # Go to Batch job
+        created = sfn.Condition.string_equals("$.InstrumentOutput.STATE", "SUCCESS")
+        instrument_status.when(created, submit_job)
+        instrument_status.otherwise(fail_state)
 
         submit_job.add_catch(fail_state)
 
         # State sequences
         add_specifics_to_input.next(
-            manifest_creator_task).next(
-            manifest_status)
+            instrument_task).next(
+            instrument_status)
 
         # Define the state machine
         definition_body = sfn.DefinitionBody.from_chainable(add_specifics_to_input)
-        self.state_machine = sfn.StateMachine(self, "CDKProcessingStepStateMachine",
+        self.state_machine = sfn.StateMachine(self, f"CDKProcessingStepStateMachine-{processing_step_name}",
                                               definition_body=definition_body,
-                                              state_machine_name=f"{processing_step_name}-processing-step-function")
+                                              state_machine_name=f"{processing_step_name}-step-function")
 
 

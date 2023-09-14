@@ -14,7 +14,7 @@ from sds_data_manager.stacks import (
     dynamodb_stack,
     networking_stack,
     opensearch_stack,
-    processing_step,
+    processing_stack,
     sds_data_manager_stack,
     step_function_stack,
 )
@@ -49,6 +49,7 @@ def build_sds(
         env=env,
     )
 
+    #TODO: discuss making changes to this to conform to other step function processing steps (maybe)
     processing_step_function = step_function_stack.ProcessingStepFunctionStack(
         scope,
         f"ProcessingStepFunctionStack-{sds_id}",
@@ -92,7 +93,6 @@ def build_sds(
         sds_id,
         env=env)
 
-    # Storage resources
     storage = data_storage_stack.DataStorageStack(
         scope,
         f"Storage-{sds_id}",
@@ -103,33 +103,21 @@ def build_sds(
 
     lambda_code_directory = Path(__file__).parent / '..' / 'lambda_code' / 'SDSCode'
     lambda_code_directory_str = str(lambda_code_directory.resolve())
-
+    #TODO: Basic idea for now
     for instrument in instrument_list:
 
-        processing_step.ProcessingStep(
+        processing_stack.ProcessingStep(
             scope,
-            f"L1a{instrument}Processing-{sds_id}",
+            f"L1b{instrument}Processing-{sds_id}",
             sds_id,
             env=env,
             vpc=net.vpc,
-            processing_step_name=f"l1a-{instrument}-{sds_id}",
+            processing_step_name=f"l1b-{instrument}-{sds_id}",
             lambda_code_directory=lambda_code_directory_str,
-            batch_security_group=net.batch_security_group,
             archive_bucket=storage.archive_bucket,
-            manifest_creator_target=f"l1a-{instrument}")
-
-        # processing_step.ProcessingStep(
-        #     scope,
-        #     f"L1b{instrument}Processing-{sds_id}",
-        #     sds_id,
-        #     env=env,
-        #     vpc=net.vpc,
-        #     processing_step_name=f"l1b-{instrument}-{sds_id}",
-        #     lambda_code_directory=str(Path('SDSCode')),
-        #     batch_security_group=net.batch_security_group,
-        #     archive_bucket=storage.archive_bucket,
-        #     manifest_creator_target=f"l1b-{instrument}")
-
+            instrument_target=f"l1b_{instrument}",
+            instrument_sources=f"l1a_{instrument}", #this could be changed to a list
+            batch_security_group=net.batch_security_group)
         #etc
 
 

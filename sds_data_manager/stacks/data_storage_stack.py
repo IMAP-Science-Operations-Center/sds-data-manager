@@ -38,5 +38,6 @@ class DataStorageStack(Stack):
         self.archive_bucket = s3.Bucket(self, "ArchiveBucket",
                                         bucket_name=f"archive-{sid}",
                                         versioned=True,
+                                        event_bridge_enabled=True,
                                         block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
                                         removal_policy=removal_policy)

@@ -16,11 +16,8 @@ from aws_cdk import (
 )
 
 
-class ManifestCreatorLambda(Construct):
-    """Generic manifest creator Construct with customizable runtime code
-
-    Sets up a Lambda to create manifest files, providing either a file index Dynamo table or a SQS queue via
-    environment variables for the Lambda to utilize at runtime.
+class InstrumentLambda(Construct):
+    """Generic Construct with customizable runtime code
     """
 
     def __init__(self,
@@ -30,8 +27,9 @@ class ManifestCreatorLambda(Construct):
                  processing_step_name: str,
                  archive_bucket: s3.Bucket,
                  code_path: str or Path,
-                 lambda_target: str):
-        """ManifestCreatorLambda Constructor
+                 instrument_target: str,
+                 instrument_sources):
+        """InstrumentLambda Constructor
 
         Parameters
         ----------
@@ -49,7 +47,7 @@ class ManifestCreatorLambda(Construct):
             as part of the CDK deployment process according to the Dockerfile you provide. Note: you may provide a
             single Dockerfile with multiple targets for different Lambdas, allowing you to put all lambda code into a
             single directory.
-        lambda_target : str
+        instrument_creator_target : str
             Name of Dockerfile target for Lambda function handler.
         """
         super().__init__(scope, construct_id)
@@ -57,16 +55,18 @@ class ManifestCreatorLambda(Construct):
 
         # Create Environment Variables
         lambda_environment = {
-            "PROCESSING_PATH": f"s3://{archive_bucket.bucket_name}/processing",
-            "DATA_PRODUCT_NAME": processing_step_name
+            "PROCESSING_PATH": f"archive-{sds_id}",
+            "INSTRUMENT_SOURCES": instrument_sources,
+            "PROCESSING_NAME": processing_step_name,
+            "INSTRUMENT_TARGET": instrument_target
         }
 
-        self.lambda_function = lambda_alpha_.PythonFunction(
+        self.instrument_lambda = lambda_alpha_.PythonFunction(
             self,
-            id="ManifestCreatorLambda",
-            function_name=f"manifest-{sds_id}",
+            id=f"InstrumentLambda-{processing_step_name}",
+            function_name=f"{processing_step_name}",
             entry=str(code_path),
-            index="instruments/l1a_Codice.py",
+            index=f"instruments/{instrument_target}.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=Duration.minutes(10),
@@ -74,5 +74,4 @@ class ManifestCreatorLambda(Construct):
             environment=lambda_environment
         )
 
-        # Manifest Creator Lambda needs both read and write to the dropbox to list objects as well as write manifests
-        archive_bucket.grant_read_write(self.lambda_function)
+        archive_bucket.grant_read_write(self.instrument_lambda)
