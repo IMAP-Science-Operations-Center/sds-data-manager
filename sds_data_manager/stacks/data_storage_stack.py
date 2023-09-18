@@ -33,10 +33,11 @@ class DataStorageStack(Stack):
 
         #TODO: may change
         removal_policy = RemovalPolicy.DESTROY
+        self.bucket_name = f"archive-{sid}"
 
         # Bucket for processed data
-        self.archive_bucket = s3.Bucket(self, "ArchiveBucket",
-                                        bucket_name=f"archive-{sid}",
+        self.archive_bucket = s3.Bucket(self, f"ArchiveBucket-{sid}",
+                                        bucket_name=self.bucket_name,
                                         versioned=True,
                                         event_bridge_enabled=True,
                                         block_public_access=s3.BlockPublicAccess.BLOCK_ALL,

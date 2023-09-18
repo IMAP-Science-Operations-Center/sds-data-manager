@@ -21,7 +21,6 @@ def lambda_handler(event: dict, context):
     # Get the environment variables
     bucket = os.environ['PROCESSING_PATH']
     prefix = os.environ['INSTRUMENT_SOURCES']
-    target_bucket = os.environ["INSTRUMENT_TARGET"]
 
     # Retrieves objects in the S3 bucket under the given prefix
     try:
@@ -36,5 +35,5 @@ def lambda_handler(event: dict, context):
     return {
         "STATE": "SUCCESS",
         "JOB_NAME": os.environ['PROCESSING_NAME'],
-        'COMMAND': ["packet-ingest", f"s3://{bucket}/{target_bucket}", "-v"],
+        'COMMAND': ["packet-ingest"]
     }

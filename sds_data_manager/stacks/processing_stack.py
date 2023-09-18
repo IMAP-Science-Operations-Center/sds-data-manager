@@ -92,33 +92,18 @@ class ProcessingStep(Stack):
                                              instrument_sources=instrument_sources)
 
         # TODO: We will add to EventBridge
-        #TODO MONDAY!
-        # - Change to this:
-
-        # {
-        #     "detail-type": ["Object Created"],
-        #     "detail": {
-        #         "bucket": {
-        #             "name": ["archive-lcs-dev"]
-        #         },
-        #         "object": {
-        #             "key": [{
-        #                 "prefix": "l1a_Codice"
-        #             }]
-        #         }
-        #     },
-        #     "source": ["aws.s3"]
-        # }
-        # - push container and test
-        # - cleanup
         rule = events.Rule(self, "rule",
                            event_pattern=events.EventPattern(
                                source=["aws.s3"],
                                detail_type=["Object Created"],
                                detail={
                                    "bucket": {
-                                       "name": [f"archive-lcs-dev"]
-                                   }
+                                       "name": [archive_bucket.bucket_name]
+                                   },
+                                   "object": {
+                                       "key": [{
+                                           "prefix": f"{instrument_sources}"
+                                       }]}
                                }
                            ))
 

@@ -49,7 +49,7 @@ def build_sds(
         env=env,
     )
 
-    #TODO: discuss making changes to this to conform to other step function processing steps (maybe)
+    #TODO: discuss making changes to this to conform to other step function processing steps
     processing_step_function = step_function_stack.ProcessingStepFunctionStack(
         scope,
         f"ProcessingStepFunctionStack-{sds_id}",
@@ -103,6 +103,7 @@ def build_sds(
 
     lambda_code_directory = Path(__file__).parent / '..' / 'lambda_code' / 'SDSCode'
     lambda_code_directory_str = str(lambda_code_directory.resolve())
+
     #TODO: Basic idea for now
     for instrument in instrument_list:
 
@@ -117,6 +118,19 @@ def build_sds(
             archive_bucket=storage.archive_bucket,
             instrument_target=f"l1b_{instrument}",
             instrument_sources=f"l1a_{instrument}", #this could be changed to a list
+            batch_security_group=net.batch_security_group)
+
+        processing_stack.ProcessingStep(
+            scope,
+            f"L1c{instrument}Processing-{sds_id}",
+            sds_id,
+            env=env,
+            vpc=net.vpc,
+            processing_step_name=f"l1c-{instrument}-{sds_id}",
+            lambda_code_directory=lambda_code_directory_str,
+            archive_bucket=storage.archive_bucket,
+            instrument_target=f"l1c_{instrument}",
+            instrument_sources=f"l1b_{instrument}",
             batch_security_group=net.batch_security_group)
         #etc
 

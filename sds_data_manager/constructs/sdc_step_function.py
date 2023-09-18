@@ -60,7 +60,9 @@ class SdcStepFunction(Construct):
                                                    result_selector={
                                                        "STATE.$": "$.Payload.STATE",
                                                        "JOB_NAME.$": "$.Payload.JOB_NAME",
-                                                       "COMMAND.$": "$.Payload.COMMAND"
+                                                       "COMMAND.$": "$.Payload.COMMAND",
+                                                       "OUTPUT_PATH":"$.Payload.OUTPUT_PATH",
+                                                       "INSTRUMENT_TARGET":"$.Payload.INSTRUMENT_TARGET"
                                                    })
 
         # Batch Job Inputs
@@ -68,6 +70,9 @@ class SdcStepFunction(Construct):
         job_definition_arn = \
             f'arn:aws:batch:{stack.region}:{stack.account}:job-definition/{batch_resources.job_definition_name}'
         job_queue_arn = f'arn:aws:batch:{stack.region}:{stack.account}:job-queue/{batch_resources.job_queue_name}'
+
+        output_path = f"s3://{archive_bucket.bucket_name}/{instrument_target}"
+        instrument_target = f"{instrument_target}"
 
         # Batch Job
         submit_job = tasks.BatchSubmitJob(
@@ -78,9 +83,8 @@ class SdcStepFunction(Construct):
             container_overrides=tasks.BatchContainerOverrides(
                 command=sfn.JsonPath.list_at("$.InstrumentOutput.COMMAND"),
                 environment={
-                    "PROCESSING_DROPBOX": f"s3://archive_{sds_id}",
-                    "INSTRUMENT_TARGET": instrument_target,
-                    "INSTRUMENT_SOURCES": instrument_sources
+                    "OUTPUT_PATH": archive_bucket.bucket_name,
+                    "INSTRUMENT_TARGET": instrument_target
                 }
             ),
             result_path='$.BatchJobOutput'

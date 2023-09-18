@@ -66,6 +66,10 @@ class FargateBatchResources(Construct):
                                                   'service-role/AmazonECSTaskExecutionRolePolicy')
                                           ])
 
+        # if security_group is None:
+        #     security_group = ec2.SecurityGroup(self, "FargateInstanceSecurityGroup",
+        #                                        vpc=vpc)
+
         # AWS Batch manages AWS Fargate resources based on our specifications.
         # PRIVATE_WITH_NAT allows batch job to pull images from the ECR.
         self.compute_environment = batch.CfnComputeEnvironment(
@@ -92,8 +96,10 @@ class FargateBatchResources(Construct):
                                                  repository_name=f"{processing_step_name.lower()}-repo",
                                                  image_scan_on_push=True)
         # Permissions
-        ecr_authenticators = iam.Group(self, 'EcrAuthenticators')
+        ecr_authenticators = iam.Group(self, f'EcrAuthenticators-{sds_id}')
         ecr.AuthorizationToken.grant_read(ecr_authenticators)
+        self.container_registry.grant_pull(fargate_execution_role)
+
         for username in self.node.try_get_context("sdc-developer-usernames"):
             user = iam.User.from_user_name(self, username, user_name=username)
             ecr_authenticators.add_user(user)

@@ -57,8 +57,9 @@ class InstrumentLambda(Construct):
         lambda_environment = {
             "PROCESSING_PATH": f"archive-{sds_id}",
             "INSTRUMENT_SOURCES": instrument_sources,
+            "INSTRUMENT_TARGET": instrument_target,
             "PROCESSING_NAME": processing_step_name,
-            "INSTRUMENT_TARGET": instrument_target
+            "OUTPUT_PATH":f"s3://{archive_bucket.bucket_name}/{instrument_target}"
         }
 
         self.instrument_lambda = lambda_alpha_.PythonFunction(
