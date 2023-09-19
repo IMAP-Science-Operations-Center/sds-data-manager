@@ -88,13 +88,7 @@ class FargateBatchResources(Construct):
         self.container_registry = ecr.Repository(self, f"BatchRepository-{sds_id}",
                                                  repository_name=f"{processing_step_name.lower()}-repo",
                                                  image_scan_on_push=True)
-        # Permissions for local development testing
-        # ecr_authenticators = iam.Group(self, f'EcrAuthenticators-{sds_id}')
-        # ecr.AuthorizationToken.grant_read(ecr_authenticators)
-        #
-        # for username in self.node.try_get_context("sdc-developer-usernames"):
-        #     user = iam.User.from_user_name(self, username, user_name=username)
-        #     ecr_authenticators.add_user(user)
+
         self.container_registry.apply_removal_policy(RemovalPolicy.DESTROY)
         self.container_registry.grant_pull(fargate_execution_role)
 

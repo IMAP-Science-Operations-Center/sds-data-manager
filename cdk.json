@@ -26,7 +26,6 @@
       "sds_id": "backup"
     },
     "sds-region": "us-west-2",
-    "sdc-developer-usernames": ["lsandoval"],
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
