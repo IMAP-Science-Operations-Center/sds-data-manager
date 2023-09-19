@@ -2,7 +2,8 @@ from constructs import Construct
 from aws_cdk import (
     Stack,
     aws_stepfunctions as sfn,
-    aws_stepfunctions_tasks as tasks
+    aws_stepfunctions_tasks as tasks,
+    aws_s3 as s3
 )
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
 from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
@@ -17,29 +18,27 @@ class SdcStepFunction(Construct):
     def __init__(self,
                  scope: Construct,
                  construct_id: str,
-                 sds_id: str,
                  processing_step_name: str,
                  processing_system: InstrumentLambda,
                  batch_resources: FargateBatchResources,
-                 instrument_target,
-                 archive_bucket,
-                 instrument_sources):
+                 instrument_target: str,
+                 archive_bucket: s3.Bucket):
         """SdcStepFunction Constructor
 
         Parameters
         ----------
         scope : Construct
         construct_id : str
-        sds_id : str
-            Name suffix for stack
         processing_step_name : str
             The string identifier for the processing step
         processing_system: BatchProcessingSystem
-            Batch processing system.
-        db_secret_name : str
-            The string secret id that can be used to retrieve from the SecretManager
+            Batch processing system
         batch_resources: FargateBatchResources
-            Fargate compute environment.
+            Fargate compute environment
+        instrument_target : str
+            Target data product
+        archive_bucket : str
+            S3 bucket
         """
         super().__init__(scope, construct_id)
         print(archive_bucket.bucket_name)
@@ -71,7 +70,6 @@ class SdcStepFunction(Construct):
             f'arn:aws:batch:{stack.region}:{stack.account}:job-definition/{batch_resources.job_definition_name}'
         job_queue_arn = f'arn:aws:batch:{stack.region}:{stack.account}:job-queue/{batch_resources.job_queue_name}'
 
-        output_path = f"s3://{archive_bucket.bucket_name}/{instrument_target}"
         instrument_target = f"{instrument_target}"
 
         # Batch Job

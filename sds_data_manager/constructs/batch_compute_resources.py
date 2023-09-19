@@ -5,12 +5,12 @@ from aws_cdk import (
     aws_ec2 as ec2,
     aws_iam as iam,
     aws_ecr as ecr,
-    aws_secretsmanager as secrets
+    aws_s3 as s3
 )
 
 
 class FargateBatchResources(Construct):
-    """Fargate Batch compute environment with named Job Queue, and Job Definition
+    """Fargate Batch compute environment with named Job Queue, and Job Definition.
     """
 
     def __init__(self,
@@ -19,8 +19,8 @@ class FargateBatchResources(Construct):
                  sds_id: str,
                  vpc: ec2.Vpc,
                  processing_step_name: str,
-                 archive_bucket,
-                 security_group: classmethod = None,
+                 archive_bucket: s3.Bucket,
+                 security_group: classmethod,
                  batch_max_vcpus=10,
                  job_vcpus=0.25,
                  job_memory=512):
@@ -36,9 +36,10 @@ class FargateBatchResources(Construct):
             VPC into which to launch the compute instance.
         processing_step_name : str
             Name of data product being generated in this Batch job.
-        security_group : classmethod, Optional
-            Batch processing security group to access the RDS. If provided, must have an ingress rule to the RDS
-            security group.
+        archive_bucket : s3.Bucket
+            S3 bucket.
+        security_group : classmethod
+            Batch processing security group.
         batch_max_vcpus : int, Optional
             Maximum number of virtual CPUs per compute instance.
         job_vcpus : int, Optional
@@ -48,7 +49,6 @@ class FargateBatchResources(Construct):
         """
         super().__init__(scope, construct_id)
 
-        # Makes calls to other AWS services to manage resources used with AWS Batch.
         self.role = iam.Role(self, f"BatchServiceRole-{sds_id}",
                              assumed_by=iam.ServicePrincipal('batch.amazonaws.com'),
                              managed_policies=[
@@ -66,11 +66,6 @@ class FargateBatchResources(Construct):
                                                   'service-role/AmazonECSTaskExecutionRolePolicy')
                                           ])
 
-        # if security_group is None:
-        #     security_group = ec2.SecurityGroup(self, "FargateInstanceSecurityGroup",
-        #                                        vpc=vpc)
-
-        # AWS Batch manages AWS Fargate resources based on our specifications.
         # PRIVATE_WITH_NAT allows batch job to pull images from the ECR.
         self.compute_environment = batch.CfnComputeEnvironment(
             self, f"FargateBatchComputeEnvironment-{sds_id}",
@@ -90,20 +85,18 @@ class FargateBatchResources(Construct):
             order=1)
 
         # Define registry for storing processing docker images
-        # Uses the pre-built AWS construct to build the container repository
-        # The repo is named specific to this data product
         self.container_registry = ecr.Repository(self, f"BatchRepository-{sds_id}",
                                                  repository_name=f"{processing_step_name.lower()}-repo",
                                                  image_scan_on_push=True)
-        # Permissions
-        ecr_authenticators = iam.Group(self, f'EcrAuthenticators-{sds_id}')
-        ecr.AuthorizationToken.grant_read(ecr_authenticators)
-        self.container_registry.grant_pull(fargate_execution_role)
-
-        for username in self.node.try_get_context("sdc-developer-usernames"):
-            user = iam.User.from_user_name(self, username, user_name=username)
-            ecr_authenticators.add_user(user)
+        # Permissions for local development testing
+        # ecr_authenticators = iam.Group(self, f'EcrAuthenticators-{sds_id}')
+        # ecr.AuthorizationToken.grant_read(ecr_authenticators)
+        #
+        # for username in self.node.try_get_context("sdc-developer-usernames"):
+        #     user = iam.User.from_user_name(self, username, user_name=username)
+        #     ecr_authenticators.add_user(user)
         self.container_registry.apply_removal_policy(RemovalPolicy.DESTROY)
+        self.container_registry.grant_pull(fargate_execution_role)
 
         # Setup job queue
         self.job_queue_name = f"{processing_step_name}-fargate-batch-job-queue"
@@ -112,7 +105,7 @@ class FargateBatchResources(Construct):
                                            priority=1,
                                            compute_environment_order=[compute_environment_order])
 
-        # Batch job role so we can later grant access to the appropriate S3 buckets and other resources
+        # Batch job role, so we can later grant access to the appropriate S3 buckets and other resources
         self.batch_job_role = iam.Role(self, f"BatchJobRole-{sds_id}",
                                        assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
                                        managed_policies=[

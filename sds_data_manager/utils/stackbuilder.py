@@ -2,10 +2,8 @@
 #Standard
 from pathlib import Path
 
-# Installed
 from aws_cdk import App, Environment
 
-# Local
 from sds_data_manager.stacks import (
     api_gateway_stack,
     backup_bucket_stack,
@@ -104,7 +102,7 @@ def build_sds(
     lambda_code_directory = Path(__file__).parent / '..' / 'lambda_code' / 'SDSCode'
     lambda_code_directory_str = str(lambda_code_directory.resolve())
 
-    #TODO: Basic idea for now
+    #TODO: Add more levels
     for instrument in instrument_list:
 
         processing_stack.ProcessingStep(

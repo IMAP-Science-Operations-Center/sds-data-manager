@@ -1,5 +1,4 @@
 """Data Storage Stack"""
-# Installed
 from constructs import Construct
 from aws_cdk import (
     Stack,
@@ -15,7 +14,7 @@ class DataStorageStack(Stack):
     def __init__(self,
                  scope: Construct,
                  construct_id: str,
-                 sid: str,
+                 sds_id: str,
                  env: Environment,
                  **kwargs) -> None:
         """DataStorageStack constructor
@@ -24,19 +23,19 @@ class DataStorageStack(Stack):
         ----------
         scope : App
         construct_id : str
+        sds_id : str
+            Name suffix for stack
         env : Environment
             Account and region
-        name_suffix : str or None
-            String to append to the end of any globally unique resource names.
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
-        #TODO: may change
+        #TODO: removal policy may change
         removal_policy = RemovalPolicy.DESTROY
-        self.bucket_name = f"archive-{sid}"
+        self.bucket_name = f"archive-{sds_id}"
 
         # Bucket for processed data
-        self.archive_bucket = s3.Bucket(self, f"ArchiveBucket-{sid}",
+        self.archive_bucket = s3.Bucket(self, f"ArchiveBucket-{sds_id}",
                                         bucket_name=self.bucket_name,
                                         versioned=True,
                                         event_bridge_enabled=True,

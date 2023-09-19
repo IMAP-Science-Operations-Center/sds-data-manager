@@ -1,10 +1,7 @@
 """Lambda runtime code that triggers off of arrival of data into S3 bucket.
 """
-# Standard
 import os
-import json
 from datetime import datetime
-# Installed
 import boto3
 
 #TODO: ability to access database, EFS, calibration data, etc.

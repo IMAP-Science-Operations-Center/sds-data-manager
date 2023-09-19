@@ -1,17 +1,10 @@
-"""Module containing Constructs for Lambda functions that run in response to manifest files appearing in an S3 bucket"""
-"""Module containing Constructs for Lambda functions that run in response to manifest files appearing in an S3 bucket"""
-# Standard
-import json
+"""Module containing Constructs for instsrument Lambda functions"""
 from pathlib import Path
-from typing import List
-# Installed
 from constructs import Construct
 from aws_cdk import (
     aws_lambda_python_alpha as lambda_alpha_,
     aws_lambda as lambda_,
-    aws_lambda as _lambda,
     aws_s3 as s3,
-    aws_ecr_assets as ecr_assets,
     Duration
 )
 
@@ -28,7 +21,7 @@ class InstrumentLambda(Construct):
                  archive_bucket: s3.Bucket,
                  code_path: str or Path,
                  instrument_target: str,
-                 instrument_sources):
+                 instrument_sources: str):
         """InstrumentLambda Constructor
 
         Parameters
@@ -38,20 +31,17 @@ class InstrumentLambda(Construct):
         sds_id : str
             Name suffix for stack
         processing_step_name : str
-            Processing step name. e.g. Data product level name (gets prepended to resource names).
-        archive_bucket: TODO add
+            Processing step name
+        archive_bucket: s3.Bucket
+            S3 bucket
         code_path : str or Path
-            Path to the Lambda code directory. This directory is assumed to contain the resources required to build
-            a Docker image containing the desired lambda code. At minimum, usually a requirements file, a Dockerfile,
-            and a script that serves as the entrypoint to the Docker image. The Docker image is built and distributed
-            as part of the CDK deployment process according to the Dockerfile you provide. Note: you may provide a
-            single Dockerfile with multiple targets for different Lambdas, allowing you to put all lambda code into a
-            single directory.
-        instrument_creator_target : str
-            Name of Dockerfile target for Lambda function handler.
+            Path to the Lambda code directory
+        instrument_target : str
+            Target data product
+        instrument_sources : str
+            Data product sources
         """
         super().__init__(scope, construct_id)
-
 
         # Create Environment Variables
         lambda_environment = {

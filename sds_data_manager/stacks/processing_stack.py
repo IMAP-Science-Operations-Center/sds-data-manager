@@ -2,9 +2,7 @@
 This is the module containing the general stack to be built for computation of different algorithms
 
 """
-# Standard
 from pathlib import Path
-# Installed
 from constructs import Construct
 from aws_cdk import (
     Stack,
@@ -15,11 +13,9 @@ from aws_cdk import (
     aws_events_targets as event_targets,
 )
 
-# Local
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
 from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
 from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
-
 
 
 class ProcessingStep(Stack):
@@ -45,23 +41,23 @@ class ProcessingStep(Stack):
         ----------
         scope : Construct
         construct_id : str
-        env : Environment
         sds_id : str
             Name suffix for stack
+        env : Environment
         vpc : ec2.Vpc
-            VPC into which to put the resources that require networking.
+            VPC into which to put the resources that require networking
         processing_step_name : str
-            Name of the data product to be processed by this system. This string is used to name resources.
+            Name of the data product to be processed by this system
         lambda_code_directory : str or Path
-            Location of a directory containing a Dockerfile used to build Lambda runtime container images for both
-            the secrets retriever and archiver lambdas.
+            Lambda directory
         archive_bucket : s3.Bucket
-            The s3 bucket to archive any created data products
-        instrument_creator_target : str
-            Name of Dockerfile target for manifest creator handler. If not provided, no manifest file creator
-            lambda is synthesized.
-        batch_security_group : ec2.SecurityGroup, Optional
-            Batch processor security group. Must have an ingress rule into the RDS security group
+            S3 bucket
+        instrument_target : str
+            Target data product
+        instrument_sources : str
+            Data product sources
+        batch_security_group : ec2.SecurityGroup
+            Batch processor security group
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
@@ -83,15 +79,13 @@ class ProcessingStep(Stack):
 
         self.step_function = SdcStepFunction(self,
                                              f"SdcStepFunction-{processing_step_name}",
-                                             sds_id,
                                              processing_step_name=processing_step_name,
                                              processing_system=self.instrument_lambda,
                                              batch_resources=self.batch_resources,
                                              instrument_target=instrument_target,
-                                             archive_bucket=archive_bucket,
-                                             instrument_sources=instrument_sources)
+                                             archive_bucket=archive_bucket)
 
-        # TODO: We will add to EventBridge
+        # TODO: This will be a construct and also we will add to its capabilities.
         rule = events.Rule(self, "rule",
                            event_pattern=events.EventPattern(
                                source=["aws.s3"],
@@ -108,4 +102,3 @@ class ProcessingStep(Stack):
                            ))
 
         rule.add_target(event_targets.SfnStateMachine(self.step_function.state_machine))
-
