@@ -1,11 +1,9 @@
 """NetworkingStack Stack"""
 # Installed
+from aws_cdk import Environment, Stack
+from aws_cdk import aws_ec2 as ec2
 from constructs import Construct
-from aws_cdk import (
-    Stack,
-    Environment,
-    aws_ec2 as ec2
-)
+
 
 #TODO: May not need everything here, but left it for now
 class NetworkingStack(Stack):
@@ -53,5 +51,6 @@ class NetworkingStack(Stack):
                            ])
 
         # Setup a security group for the Fargate-generated EC2 instances.
-        self.batch_security_group = ec2.SecurityGroup(self, f"FargateInstanceSecurityGroup-{sds_id}",
-                                                vpc=self.vpc)
+        self.batch_security_group = ec2.SecurityGroup(self,
+                                                      f"FargateInstanceSecurityGroup-{sds_id}",
+                                                      vpc=self.vpc)

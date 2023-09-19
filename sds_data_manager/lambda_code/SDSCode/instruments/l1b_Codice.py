@@ -2,6 +2,7 @@
 """
 import os
 from datetime import datetime
+
 import boto3
 
 #TODO: ability to access database, EFS, calibration data, etc.
@@ -24,7 +25,7 @@ def lambda_handler(event: dict, context):
         s3 = boto3.client('s3')
         object_list = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)["Contents"]
         print(object_list)
-    except KeyError as ke:
+    except KeyError:
         print("No files present.")
 
     #TODO: this state will change based on availability of data

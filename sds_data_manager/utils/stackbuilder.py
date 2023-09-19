@@ -47,7 +47,8 @@ def build_sds(
         env=env,
     )
 
-    #TODO: discuss making changes to this to conform to other step function processing steps
+    #TODO: discuss taking components of this to conform to
+    # other step function processing steps
     processing_step_function = step_function_stack.ProcessingStepFunctionStack(
         scope,
         f"ProcessingStepFunctionStack-{sds_id}",

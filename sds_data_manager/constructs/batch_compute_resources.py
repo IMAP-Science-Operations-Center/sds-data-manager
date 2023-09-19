@@ -1,12 +1,10 @@
+from aws_cdk import RemovalPolicy
+from aws_cdk import aws_batch as batch
+from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_ecr as ecr
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
-from aws_cdk import (
-    RemovalPolicy,
-    aws_batch as batch,
-    aws_ec2 as ec2,
-    aws_iam as iam,
-    aws_ecr as ecr,
-    aws_s3 as s3
-)
 
 
 class FargateBatchResources(Construct):
@@ -43,7 +41,8 @@ class FargateBatchResources(Construct):
         batch_max_vcpus : int, Optional
             Maximum number of virtual CPUs per compute instance.
         job_vcpus : int, Optional
-            Number of virtual CPUs required per Batch job. Dependent on Docker image contents.
+            Number of virtual CPUs required per Batch job.
+            Dependent on Docker image contents.
         job_memory : int: Optional
             Memory required per Batch job in MB. Dependent on Docker image contents.
         """
@@ -57,7 +56,8 @@ class FargateBatchResources(Construct):
                              ]
                              )
 
-        # Required since our task is hosted on AWS Fargate, is pulling container images from the ECR, and sending
+        # Required since our task is hosted on AWS Fargate,
+        # is pulling container images from the ECR, and sending
         # container logs to CloudWatch.
         fargate_execution_role = iam.Role(self, f"FargateExecutionRole-{sds_id}",
                                           assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
@@ -79,7 +79,8 @@ class FargateBatchResources(Construct):
             )
         )
 
-        # The set of compute environments mapped to a job queue and their order relative to each other
+        # The set of compute environments mapped to a job queue
+        # and their order relative to each other
         compute_environment_order = batch.CfnJobQueue.ComputeEnvironmentOrderProperty(
             compute_environment=self.compute_environment.ref,
             order=1)
@@ -99,7 +100,8 @@ class FargateBatchResources(Construct):
                                            priority=1,
                                            compute_environment_order=[compute_environment_order])
 
-        # Batch job role, so we can later grant access to the appropriate S3 buckets and other resources
+        # Batch job role, so we can later grant access to the appropriate
+        # S3 buckets and other resources
         self.batch_job_role = iam.Role(self, f"BatchJobRole-{sds_id}",
                                        assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
                                        managed_policies=[

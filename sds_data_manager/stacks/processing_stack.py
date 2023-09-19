@@ -1,21 +1,30 @@
 """Data Storage Stack
-This is the module containing the general stack to be built for computation of different algorithms
-
+This is the module containing the general stack to be built for
+computation of different algorithms
 """
 from pathlib import Path
-from constructs import Construct
+
 from aws_cdk import (
-    Stack,
     Environment,
+    Stack,
+)
+from aws_cdk import (
     aws_ec2 as ec2,
-    aws_s3 as s3,
+)
+from aws_cdk import (
     aws_events as events,
+)
+from aws_cdk import (
     aws_events_targets as event_targets,
 )
+from aws_cdk import (
+    aws_s3 as s3,
+)
+from constructs import Construct
 
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
-from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
 from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
+from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
 
 
 class ProcessingStep(Stack):

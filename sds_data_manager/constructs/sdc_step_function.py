@@ -1,10 +1,9 @@
+from aws_cdk import Stack
+from aws_cdk import aws_s3 as s3
+from aws_cdk import aws_stepfunctions as sfn
+from aws_cdk import aws_stepfunctions_tasks as tasks
 from constructs import Construct
-from aws_cdk import (
-    Stack,
-    aws_stepfunctions as sfn,
-    aws_stepfunctions_tasks as tasks,
-    aws_s3 as s3
-)
+
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
 from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
 
@@ -51,24 +50,28 @@ class SdcStepFunction(Construct):
         )
 
         # Step Functions Tasks to invoke Lambda function
-        instrument_task = tasks.LambdaInvoke(self, f"InstrumentLambda-{processing_step_name}",
-                                                   lambda_function=processing_system.instrument_lambda,
-                                                   payload=sfn.TaskInput.from_object(
-                                                       {"TIMEOUT_TIME.$": "$.TIMEOUT_TIME"}),
-                                                   result_path="$.InstrumentOutput",
-                                                   result_selector={
-                                                       "STATE.$": "$.Payload.STATE",
-                                                       "JOB_NAME.$": "$.Payload.JOB_NAME",
-                                                       "COMMAND.$": "$.Payload.COMMAND",
-                                                       "OUTPUT_PATH":"$.Payload.OUTPUT_PATH",
-                                                       "INSTRUMENT_TARGET":"$.Payload.INSTRUMENT_TARGET"
-                                                   })
+        instrument_task = tasks.LambdaInvoke(self,
+                                             f"InstrumentLambda-{processing_step_name}",
+                                             lambda_function=processing_system.instrument_lambda,
+                                             payload=sfn.TaskInput.from_object(
+                                                 {"TIMEOUT_TIME.$": "$.TIMEOUT_TIME"}),
+                                             result_path="$.InstrumentOutput",
+                                             result_selector={
+                                                 "STATE.$": "$.Payload.STATE",
+                                                 "JOB_NAME.$": "$.Payload.JOB_NAME",
+                                                 "COMMAND.$": "$.Payload.COMMAND",
+                                                 "OUTPUT_PATH": "$.Payload.OUTPUT_PATH",
+                                                 "INSTRUMENT_TARGET":
+                                                     "$.Payload.INSTRUMENT_TARGET"
+                                             })
 
         # Batch Job Inputs
         stack = Stack.of(self)
         job_definition_arn = \
-            f'arn:aws:batch:{stack.region}:{stack.account}:job-definition/{batch_resources.job_definition_name}'
-        job_queue_arn = f'arn:aws:batch:{stack.region}:{stack.account}:job-queue/{batch_resources.job_queue_name}'
+            f'arn:aws:batch:{stack.region}:{stack.account}:job-definition/' \
+            f'{batch_resources.job_definition_name}'
+        job_queue_arn = f'arn:aws:batch:{stack.region}:{stack.account}:job-queue/' \
+                        f'{batch_resources.job_queue_name}'
 
         instrument_target = f"{instrument_target}"
 
@@ -107,8 +110,7 @@ class SdcStepFunction(Construct):
 
         # Define the state machine
         definition_body = sfn.DefinitionBody.from_chainable(add_specifics_to_input)
-        self.state_machine = sfn.StateMachine(self, f"CDKProcessingStepStateMachine-{processing_step_name}",
+        self.state_machine = sfn.StateMachine(self,
+                                              f"CDKProcessingStepStateMachine-{processing_step_name}",
                                               definition_body=definition_body,
                                               state_machine_name=f"{processing_step_name}-step-function")
-
-
