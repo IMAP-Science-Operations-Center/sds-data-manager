@@ -1,3 +1,13 @@
+"""
+The state machine integrates with AWS Lambda and AWS Batch to execute processing
+components.
+
+Key Features:
+- Configures AWS Step Functions tasks to invoke specific Lambda functions.
+- Dynamically constructs ARNs for Batch job definitions and queues.
+- Handles branching logic based on the success or failure of previous steps.
+- Defines a comprehensive state machine for the entire data processing flow.
+"""
 from aws_cdk import Stack
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_stepfunctions as sfn
@@ -40,7 +50,7 @@ class SdcStepFunction(Construct):
             S3 bucket
         """
         super().__init__(scope, construct_id)
-        print(archive_bucket.bucket_name)
+
         # Reformat EventBridge Inputs
         add_specifics_to_input = sfn.Pass(
             self, "Reformat EventBridge Inputs",

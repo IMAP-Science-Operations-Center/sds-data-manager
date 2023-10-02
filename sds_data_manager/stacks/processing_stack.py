@@ -1,25 +1,14 @@
-"""Data Storage Stack
+"""Processing Stack
 This is the module containing the general stack to be built for
 computation of different algorithms
 """
 from pathlib import Path
 
-from aws_cdk import (
-    Environment,
-    Stack,
-)
-from aws_cdk import (
-    aws_ec2 as ec2,
-)
-from aws_cdk import (
-    aws_events as events,
-)
-from aws_cdk import (
-    aws_events_targets as event_targets,
-)
-from aws_cdk import (
-    aws_s3 as s3,
-)
+from aws_cdk import Environment, Stack
+from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_events as events
+from aws_cdk import aws_events_targets as event_targets
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
@@ -49,10 +38,13 @@ class ProcessingStep(Stack):
         Parameters
         ----------
         scope : Construct
+            Parent construct.
         construct_id : str
+            A unique string identifier for this construct
         sds_id : str
             Name suffix for stack
         env : Environment
+            The AWS environment (account/region) where the stack will be deployed
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking
         processing_step_name : str

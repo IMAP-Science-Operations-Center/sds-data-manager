@@ -1,3 +1,11 @@
+"""
+This module provides the FargateBatchResources class which sets up AWS Batch resources
+utilizing Fargate as the compute environment. The resources include:
+- IAM roles.
+- Compute environment for AWS Batch.
+- ECR repository for container images.
+- Batch job queue and job definition.
+"""
 from aws_cdk import RemovalPolicy
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
@@ -27,7 +35,9 @@ class FargateBatchResources(Construct):
         Parameters
         ----------
         scope : Construct
+            Parent construct.
         construct_id : str
+            A unique string identifier for this construct.
         sds_id : str
             Name suffix for stack
         vpc : ec2.Vpc
@@ -67,6 +77,7 @@ class FargateBatchResources(Construct):
                                           ])
 
         # PRIVATE_WITH_NAT allows batch job to pull images from the ECR.
+        # TODO: Evaluate SPOT resources
         self.compute_environment = batch.CfnComputeEnvironment(
             self, f"FargateBatchComputeEnvironment-{sds_id}",
             type='MANAGED',
@@ -130,4 +141,7 @@ class FargateBatchResources(Construct):
                 'executionRoleArn': fargate_execution_role.role_arn,
                 'jobRoleArn': self.batch_job_role.role_arn,
             },
+            tags={
+                'Purpose': 'Batch Processing'
+            }
         )

@@ -1,6 +1,6 @@
-"""Module containing Constructs for instsrument Lambda functions"""
-from pathlib import Path
+"""Module containing constructs for instrumenting Lambda functions."""
 
+from pathlib import Path
 from aws_cdk import Duration
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
@@ -15,13 +15,14 @@ class InstrumentLambda(Construct):
     def __init__(self,
                  scope: Construct,
                  construct_id: str,
-                 sds_id:str,
+                 sds_id: str,
                  processing_step_name: str,
                  archive_bucket: s3.Bucket,
                  code_path: str or Path,
                  instrument_target: str,
                  instrument_sources: str):
-        """InstrumentLambda Constructor
+        """
+        InstrumentLambda Constructor.
 
         Parameters
         ----------
@@ -40,17 +41,19 @@ class InstrumentLambda(Construct):
         instrument_sources : str
             Data product sources
         """
+
         super().__init__(scope, construct_id)
 
-        # Create Environment Variables
+        # Define Lambda Environment Variables
         lambda_environment = {
-            "PROCESSING_PATH": f"archive-{sds_id}",
-            "INSTRUMENT_SOURCES": instrument_sources,
+            "S3_BUCKET": f"archive-{sds_id}",
+            "S3_KEY_PATH": instrument_sources,
             "INSTRUMENT_TARGET": instrument_target,
             "PROCESSING_NAME": processing_step_name,
-            "OUTPUT_PATH":f"s3://{archive_bucket.bucket_name}/{instrument_target}"
+            "OUTPUT_PATH": f"s3://{archive_bucket.bucket_name}/{instrument_target}"
         }
 
+        #TODO: Add Lambda layers for more libraries
         self.instrument_lambda = lambda_alpha_.PythonFunction(
             self,
             id=f"InstrumentLambda-{processing_step_name}",
@@ -64,4 +67,5 @@ class InstrumentLambda(Construct):
             environment=lambda_environment
         )
 
+        # Grant necessary permissions
         archive_bucket.grant_read_write(self.instrument_lambda)

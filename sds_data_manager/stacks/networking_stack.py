@@ -51,6 +51,7 @@ class NetworkingStack(Stack):
                            ])
 
         # Setup a security group for the Fargate-generated EC2 instances.
+        # TODO: move to batch stack
         self.batch_security_group = ec2.SecurityGroup(self,
                                                       f"FargateInstanceSecurityGroup-{sds_id}",
                                                       vpc=self.vpc)

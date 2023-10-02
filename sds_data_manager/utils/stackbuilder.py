@@ -86,7 +86,7 @@ def build_sds(
         use_custom_domain=use_custom_domain,
     )
 
-    net = networking_stack.NetworkingStack(
+    networking = networking_stack.NetworkingStack(
         scope,
         f"Networking-{sds_id}",
         sds_id,
@@ -111,26 +111,26 @@ def build_sds(
             f"L1b{instrument}Processing-{sds_id}",
             sds_id,
             env=env,
-            vpc=net.vpc,
+            vpc=networking.vpc,
             processing_step_name=f"l1b-{instrument}-{sds_id}",
             lambda_code_directory=lambda_code_directory_str,
             archive_bucket=storage.archive_bucket,
             instrument_target=f"l1b_{instrument}",
             instrument_sources=f"l1a_{instrument}", #this could be changed to a list
-            batch_security_group=net.batch_security_group)
+            batch_security_group=networking.batch_security_group)
 
         processing_stack.ProcessingStep(
             scope,
             f"L1c{instrument}Processing-{sds_id}",
             sds_id,
             env=env,
-            vpc=net.vpc,
+            vpc=networking.vpc,
             processing_step_name=f"l1c-{instrument}-{sds_id}",
             lambda_code_directory=lambda_code_directory_str,
             archive_bucket=storage.archive_bucket,
             instrument_target=f"l1c_{instrument}",
             instrument_sources=f"l1b_{instrument}",
-            batch_security_group=net.batch_security_group)
+            batch_security_group=networking.batch_security_group)
         #etc
 
 
