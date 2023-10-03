@@ -6,7 +6,6 @@ utilizing Fargate as the compute environment. The resources include:
 - ECR repository for container images.
 - Batch job queue and job definition.
 """
-from aws_cdk import RemovalPolicy
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
@@ -26,7 +25,7 @@ class FargateBatchResources(Construct):
                  vpc: ec2.Vpc,
                  processing_step_name: str,
                  archive_bucket: s3.Bucket,
-                 security_group: classmethod,
+                 repo: ecr.Repository,
                  batch_max_vcpus=10,
                  job_vcpus=0.25,
                  job_memory=512):
@@ -46,8 +45,8 @@ class FargateBatchResources(Construct):
             Name of data product being generated in this Batch job.
         archive_bucket : s3.Bucket
             S3 bucket.
-        security_group : classmethod
-            Batch processing security group.
+        repo : ecr.Repository
+            Container repo
         batch_max_vcpus : int, Optional
             Maximum number of virtual CPUs per compute instance.
         job_vcpus : int, Optional
@@ -76,6 +75,11 @@ class FargateBatchResources(Construct):
                                                   'service-role/AmazonECSTaskExecutionRolePolicy')
                                           ])
 
+        # Setup a security group for the Fargate-generated EC2 instances.
+        batch_security_group = ec2.SecurityGroup(self,
+                                                 f"FargateInstanceSecurityGroup-{sds_id}",
+                                                 vpc=vpc)
+
         # PRIVATE_WITH_NAT allows batch job to pull images from the ECR.
         # TODO: Evaluate SPOT resources
         self.compute_environment = batch.CfnComputeEnvironment(
@@ -86,7 +90,7 @@ class FargateBatchResources(Construct):
                 type='FARGATE',
                 maxv_cpus=batch_max_vcpus,
                 subnets=vpc.select_subnets(subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT).subnet_ids,
-                security_group_ids=[security_group.security_group_id]
+                security_group_ids=[batch_security_group.security_group_id]
             )
         )
 
@@ -96,13 +100,7 @@ class FargateBatchResources(Construct):
             compute_environment=self.compute_environment.ref,
             order=1)
 
-        # Define registry for storing processing docker images
-        self.container_registry = ecr.Repository(self, f"BatchRepository-{sds_id}",
-                                                 repository_name=f"{processing_step_name.lower()}-repo",
-                                                 image_scan_on_push=True)
-
-        self.container_registry.apply_removal_policy(RemovalPolicy.DESTROY)
-        self.container_registry.grant_pull(fargate_execution_role)
+        repo.grant_pull(fargate_execution_role)
 
         # Setup job queue
         self.job_queue_name = f"{processing_step_name}-fargate-batch-job-queue"
@@ -127,7 +125,7 @@ class FargateBatchResources(Construct):
             type="CONTAINER",
             platform_capabilities=['FARGATE'],
             container_properties={
-                'image': self.container_registry.repository_uri,
+                'image': repo.repository_uri,
                 'resourceRequirements': [
                     {
                         'value': str(job_memory),

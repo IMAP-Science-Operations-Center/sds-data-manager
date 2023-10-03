@@ -10,6 +10,7 @@ from sds_data_manager.stacks import (
     data_storage_stack,
     domain_stack,
     dynamodb_stack,
+    ecr_stack,
     networking_stack,
     opensearch_stack,
     processing_stack,
@@ -103,8 +104,14 @@ def build_sds(
     lambda_code_directory = Path(__file__).parent / '..' / 'lambda_code' / 'SDSCode'
     lambda_code_directory_str = str(lambda_code_directory.resolve())
 
-    #TODO: Add more levels
     for instrument in instrument_list:
+
+        ecr = ecr_stack.EcrStack(
+            scope,
+            f"{instrument}Processing-{sds_id}",
+            env=env,
+            instrument_name=f"{instrument}-{sds_id}",
+        )
 
         processing_stack.ProcessingStep(
             scope,
@@ -116,8 +123,8 @@ def build_sds(
             lambda_code_directory=lambda_code_directory_str,
             archive_bucket=storage.archive_bucket,
             instrument_target=f"l1b_{instrument}",
-            instrument_sources=f"l1a_{instrument}", #this could be changed to a list
-            batch_security_group=networking.batch_security_group)
+            instrument_sources=f"l1a_{instrument}",
+            repo=ecr.container_repo)
 
         processing_stack.ProcessingStep(
             scope,
@@ -130,7 +137,7 @@ def build_sds(
             archive_bucket=storage.archive_bucket,
             instrument_target=f"l1c_{instrument}",
             instrument_sources=f"l1b_{instrument}",
-            batch_security_group=networking.batch_security_group)
+            repo=ecr.container_repo)
         #etc
 
 

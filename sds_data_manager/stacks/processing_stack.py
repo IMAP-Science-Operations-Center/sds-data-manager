@@ -6,6 +6,7 @@ from pathlib import Path
 
 from aws_cdk import Environment, Stack
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as event_targets
 from aws_cdk import aws_s3 as s3
@@ -30,8 +31,8 @@ class ProcessingStep(Stack):
                  lambda_code_directory: str or Path,
                  archive_bucket: s3.Bucket,
                  instrument_target: str,
-                 instrument_sources,
-                 batch_security_group: classmethod = None,
+                 instrument_sources: str,
+                 repo: ecr.Repository,
                  **kwargs) -> None:
         """Constructor
 
@@ -57,8 +58,8 @@ class ProcessingStep(Stack):
             Target data product
         instrument_sources : str
             Data product sources
-        batch_security_group : ec2.SecurityGroup
-            Batch processor security group
+        repo : ecr.Repository
+            Container repo
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
@@ -66,9 +67,9 @@ class ProcessingStep(Stack):
                                                      f"FargateBatchEnvironment-{sds_id}",
                                                      sds_id,
                                                      vpc=vpc,
-                                                     security_group=batch_security_group,
                                                      processing_step_name=processing_step_name,
-                                                     archive_bucket=archive_bucket,)
+                                                     archive_bucket=archive_bucket,
+                                                     repo=repo)
 
         self.instrument_lambda = InstrumentLambda(self, f"InstrumentLambda-{sds_id}",
                                                   sds_id=sds_id,

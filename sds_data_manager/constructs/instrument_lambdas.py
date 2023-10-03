@@ -37,9 +37,9 @@ class InstrumentLambda(Construct):
         code_path : str or Path
             Path to the Lambda code directory
         instrument_target : str
-            Target data product
+            Target data product (i.e. expected product)
         instrument_sources : str
-            Data product sources
+            Data product sources (i.e. dependencies)
         """
 
         super().__init__(scope, construct_id)
@@ -61,11 +61,10 @@ class InstrumentLambda(Construct):
             entry=str(code_path),
             index=f"instruments/{instrument_target}.py",
             handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_9,
-            timeout=Duration.minutes(10),
-            memory_size=1000,
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            timeout=Duration.seconds(10),
+            memory_size=512,
             environment=lambda_environment
         )
 
-        # Grant necessary permissions
         archive_bucket.grant_read_write(self.instrument_lambda)
