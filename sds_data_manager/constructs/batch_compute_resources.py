@@ -12,6 +12,7 @@ from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
 from constructs import Construct
+from aws_cdk import RemovalPolicy
 
 
 class FargateBatchResources(Construct):
@@ -117,7 +118,9 @@ class FargateBatchResources(Construct):
                                            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess")])
         archive_bucket.grant_read_write(self.batch_job_role)
 
-        # create job definition
+        #TODO: come back and add ability to grab latest version of
+        # processing_step_name tag. I think this will require
+        # setting up a lambda. Maybe there's another way?
         self.job_definition_name = f"fargate-batch-job-definition{processing_step_name}"
         self.job_definition = batch.CfnJobDefinition(
             self, f"FargateBatchJobDefinition-{sds_id}",
