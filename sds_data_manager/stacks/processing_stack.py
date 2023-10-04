@@ -72,7 +72,6 @@ class ProcessingStep(Stack):
                                                      repo=repo)
 
         self.instrument_lambda = InstrumentLambda(self, f"InstrumentLambda-{sds_id}",
-                                                  sds_id=sds_id,
                                                   processing_step_name=processing_step_name,
                                                   data_bucket=data_bucket,
                                                   code_path=str(lambda_code_directory),

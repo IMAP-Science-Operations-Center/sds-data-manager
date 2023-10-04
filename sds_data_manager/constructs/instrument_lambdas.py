@@ -16,7 +16,6 @@ class InstrumentLambda(Construct):
     def __init__(self,
                  scope: Construct,
                  construct_id: str,
-                 sds_id: str,
                  processing_step_name: str,
                  data_bucket: s3.Bucket,
                  code_path: str or Path,
@@ -29,8 +28,6 @@ class InstrumentLambda(Construct):
         ----------
         scope : Construct
         construct_id : str
-        sds_id : str
-            Name suffix for stack
         processing_step_name : str
             Processing step name
         data_bucket: s3.Bucket
@@ -61,7 +58,7 @@ class InstrumentLambda(Construct):
             id=f"InstrumentLambda-{processing_step_name}",
             function_name=f"{processing_step_name}",
             entry=str(code_path),
-            index=f"instruments/{instrument_target}.py",
+            index=f"instruments/{instrument_target.lower()}.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_11,
             timeout=Duration.seconds(10),
