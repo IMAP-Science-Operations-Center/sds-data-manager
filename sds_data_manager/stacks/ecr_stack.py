@@ -1,7 +1,9 @@
 """ECR Stack"""
 from aws_cdk import Environment, RemovalPolicy, Stack
-from aws_cdk import aws_ecr as ecr, aws_iam as iam
+from aws_cdk import aws_ecr as ecr
+from aws_cdk import aws_iam as iam
 from constructs import Construct
+
 
 class EcrStack(Stack):
     """Ecr Resources"""
@@ -36,7 +38,7 @@ class EcrStack(Stack):
         # Allows members of this group to get the auth token for `docker login`
         ecr.AuthorizationToken.grant_read(ecr_authenticators)
 
-        # Grant permissions to the group to pull and push images to/from the ECR repository
+        # Grant permissions to the group to pull and push images
         self.container_repo.grant_pull_push(ecr_authenticators)
 
         # Add each of the SDC devs to the newly created group
