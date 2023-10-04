@@ -31,7 +31,7 @@ class SdcStepFunction(Construct):
                  processing_system: InstrumentLambda,
                  batch_resources: FargateBatchResources,
                  instrument_target: str,
-                 archive_bucket: s3.Bucket):
+                 data_bucket: s3.Bucket):
         """SdcStepFunction Constructor
 
         Parameters
@@ -46,7 +46,7 @@ class SdcStepFunction(Construct):
             Fargate compute environment
         instrument_target : str
             Target data product
-        archive_bucket : str
+        data_bucket : str
             S3 bucket
         """
         super().__init__(scope, construct_id)
@@ -94,7 +94,7 @@ class SdcStepFunction(Construct):
             container_overrides=tasks.BatchContainerOverrides(
                 command=sfn.JsonPath.list_at("$.InstrumentOutput.COMMAND"),
                 environment={
-                    "OUTPUT_PATH": archive_bucket.bucket_name,
+                    "OUTPUT_PATH": data_bucket.bucket_name,
                     "INSTRUMENT_TARGET": instrument_target
                 }
             ),

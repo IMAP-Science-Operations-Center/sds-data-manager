@@ -69,7 +69,7 @@ class SdsDataManager(Stack):
         super().__init__(scope, construct_id, env=env, **kwargs)
 
         # This is the S3 bucket used by upload_api_lambda
-        data_bucket = s3.Bucket(
+        self.data_bucket = s3.Bucket(
             self,
             f"DataBucket-{sds_id}",
             bucket_name=f"sds-data-{sds_id}",
@@ -133,7 +133,7 @@ class SdsDataManager(Stack):
             effect=iam.Effect.ALLOW,
             actions=["s3:PutObject"],
             resources=[
-                f"{data_bucket.bucket_arn}/*",
+                f"{self.data_bucket.bucket_arn}/*",
                 f"{snapshot_bucket.bucket_arn}/*",
             ],
         )
@@ -141,7 +141,7 @@ class SdsDataManager(Stack):
             effect=iam.Effect.ALLOW,
             actions=["s3:GetObject"],
             resources=[
-                f"{data_bucket.bucket_arn}/*",
+                f"{self.data_bucket.bucket_arn}/*",
                 f"{config_bucket.bucket_arn}/*",
                 f"{snapshot_bucket.bucket_arn}/*",
             ],
@@ -155,7 +155,7 @@ class SdsDataManager(Stack):
         s3_replication_configuration_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:GetReplicationConfiguration", "s3:ListBucket"],
-            resources=[f"{data_bucket.bucket_arn}"],
+            resources=[f"{self.data_bucket.bucket_arn}"],
         )
 
         s3_replication_policy = iam.PolicyStatement(
@@ -165,7 +165,7 @@ class SdsDataManager(Stack):
                 "s3:GetObjectVersionAcl",
                 "s3:GetObjectVersionTagging",
             ],
-            resources=[f"{data_bucket.bucket_arn}/*"],
+            resources=[f"{self.data_bucket.bucket_arn}/*"],
         )
 
         # Rather than depending on the deploy in another account through CDK,
@@ -259,7 +259,7 @@ class SdsDataManager(Stack):
                 "METADATA_INDEX": "metadata",
                 "DATA_TRACKER_INDEX": "data_tracker",
                 "DYNAMODB_TABLE": dynamodb_stack.table_name,
-                "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_DATA_BUCKET": self.data_bucket.s3_url_for_object(),
                 "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
                 "S3_SNAPSHOT_BUCKET_NAME": f"sds-opensearch-snapshot-{sds_id}",
                 "SNAPSHOT_ROLE_ARN": snapshot_role.role_arn,
@@ -272,7 +272,7 @@ class SdsDataManager(Stack):
 
         indexer_lambda.add_event_source(
             aws_lambda_event_sources.S3EventSource(
-                data_bucket, events=[s3.EventType.OBJECT_CREATED]
+                self.data_bucket, events=[s3.EventType.OBJECT_CREATED]
             )
         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
@@ -326,7 +326,7 @@ class SdsDataManager(Stack):
             timeout=cdk.Duration.minutes(15),
             memory_size=1000,
             environment={
-                "S3_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_BUCKET": self.data_bucket.s3_url_for_object(),
                 "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
             },
         )

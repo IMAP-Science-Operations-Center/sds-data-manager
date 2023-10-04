@@ -25,7 +25,7 @@ class FargateBatchResources(Construct):
                  sds_id: str,
                  vpc: ec2.Vpc,
                  processing_step_name: str,
-                 archive_bucket: s3.Bucket,
+                 data_bucket: s3.Bucket,
                  repo: ecr.Repository,
                  batch_max_vcpus=10,
                  job_vcpus=0.25,
@@ -44,7 +44,7 @@ class FargateBatchResources(Construct):
             VPC into which to launch the compute instance.
         processing_step_name : str
             Name of data product being generated in this Batch job.
-        archive_bucket : s3.Bucket
+        data_bucket : s3.Bucket
             S3 bucket.
         repo : ecr.Repository
             Container repo
@@ -101,7 +101,7 @@ class FargateBatchResources(Construct):
             compute_environment=self.compute_environment.ref,
             order=1)
 
-        repo.grant_pull(fargate_execution_role)
+        repo.grant_pull_push(fargate_execution_role)
 
         # Setup job queue
         self.job_queue_name = f"{processing_step_name}-fargate-batch-job-queue"
@@ -116,7 +116,7 @@ class FargateBatchResources(Construct):
                                        assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
                                        managed_policies=[
                                            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess")])
-        archive_bucket.grant_read_write(self.batch_job_role)
+        data_bucket.grant_read_write(self.batch_job_role)
 
         #TODO: come back and add ability to grab latest version of
         # processing_step_name tag. I think this will require
@@ -128,7 +128,7 @@ class FargateBatchResources(Construct):
             type="CONTAINER",
             platform_capabilities=['FARGATE'],
             container_properties={
-                'image': repo.repository_uri,
+                'image': f"{repo.repository_uri}:{processing_step_name}",
                 'resourceRequirements': [
                     {
                         'value': str(job_memory),

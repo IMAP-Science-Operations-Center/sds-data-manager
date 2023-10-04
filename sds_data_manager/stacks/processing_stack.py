@@ -29,7 +29,7 @@ class ProcessingStep(Stack):
                  vpc: ec2.Vpc,
                  processing_step_name: str,
                  lambda_code_directory: str or Path,
-                 archive_bucket: s3.Bucket,
+                 data_bucket: s3.Bucket,
                  instrument_target: str,
                  instrument_sources: str,
                  repo: ecr.Repository,
@@ -52,7 +52,7 @@ class ProcessingStep(Stack):
             Name of the data product to be processed by this system
         lambda_code_directory : str or Path
             Lambda directory
-        archive_bucket : s3.Bucket
+        data_bucket : s3.Bucket
             S3 bucket
         instrument_target : str
             Target data product
@@ -68,13 +68,13 @@ class ProcessingStep(Stack):
                                                      sds_id,
                                                      vpc=vpc,
                                                      processing_step_name=processing_step_name,
-                                                     archive_bucket=archive_bucket,
+                                                     data_bucket=data_bucket,
                                                      repo=repo)
 
         self.instrument_lambda = InstrumentLambda(self, f"InstrumentLambda-{sds_id}",
                                                   sds_id=sds_id,
                                                   processing_step_name=processing_step_name,
-                                                  archive_bucket=archive_bucket,
+                                                  data_bucket=data_bucket,
                                                   code_path=str(lambda_code_directory),
                                                   instrument_target=instrument_target,
                                                   instrument_sources=instrument_sources)
@@ -85,7 +85,7 @@ class ProcessingStep(Stack):
                                              processing_system=self.instrument_lambda,
                                              batch_resources=self.batch_resources,
                                              instrument_target=instrument_target,
-                                             archive_bucket=archive_bucket)
+                                             data_bucket=data_bucket)
 
         # TODO: This will be a construct and also we will add to its capabilities.
         rule = events.Rule(self, "rule",
@@ -94,7 +94,7 @@ class ProcessingStep(Stack):
                                detail_type=["Object Created"],
                                detail={
                                    "bucket": {
-                                       "name": [archive_bucket.bucket_name]
+                                       "name": [data_bucket.bucket_name]
                                    },
                                    "object": {
                                        "key": [{

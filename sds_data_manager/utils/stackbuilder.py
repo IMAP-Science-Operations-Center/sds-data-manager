@@ -7,7 +7,6 @@ from aws_cdk import App, Environment
 from sds_data_manager.stacks import (
     api_gateway_stack,
     backup_bucket_stack,
-    data_storage_stack,
     domain_stack,
     dynamodb_stack,
     ecr_stack,
@@ -93,12 +92,6 @@ def build_sds(
         sds_id,
         env=env)
 
-    storage = data_storage_stack.DataStorageStack(
-        scope,
-        f"Storage-{sds_id}",
-        sds_id,
-        env=env)
-
     instrument_list = ['Codice'] #etc
 
     lambda_code_directory = Path(__file__).parent / '..' / 'lambda_code' / 'SDSCode'
@@ -121,7 +114,7 @@ def build_sds(
             vpc=networking.vpc,
             processing_step_name=f"l1b-{instrument}-{sds_id}",
             lambda_code_directory=lambda_code_directory_str,
-            archive_bucket=storage.archive_bucket,
+            data_bucket=data_manager.data_bucket,
             instrument_target=f"l1b_{instrument}",
             instrument_sources=f"l1a_{instrument}",
             repo=ecr.container_repo)
@@ -134,7 +127,7 @@ def build_sds(
             vpc=networking.vpc,
             processing_step_name=f"l1c-{instrument}-{sds_id}",
             lambda_code_directory=lambda_code_directory_str,
-            archive_bucket=storage.archive_bucket,
+            data_bucket=data_manager.data_bucket,
             instrument_target=f"l1c_{instrument}",
             instrument_sources=f"l1b_{instrument}",
             repo=ecr.container_repo)

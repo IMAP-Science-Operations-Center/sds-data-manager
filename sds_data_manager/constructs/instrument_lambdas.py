@@ -17,7 +17,7 @@ class InstrumentLambda(Construct):
                  construct_id: str,
                  sds_id: str,
                  processing_step_name: str,
-                 archive_bucket: s3.Bucket,
+                 data_bucket: s3.Bucket,
                  code_path: str or Path,
                  instrument_target: str,
                  instrument_sources: str):
@@ -32,7 +32,7 @@ class InstrumentLambda(Construct):
             Name suffix for stack
         processing_step_name : str
             Processing step name
-        archive_bucket: s3.Bucket
+        data_bucket: s3.Bucket
             S3 bucket
         code_path : str or Path
             Path to the Lambda code directory
@@ -46,11 +46,11 @@ class InstrumentLambda(Construct):
 
         # Define Lambda Environment Variables
         lambda_environment = {
-            "S3_BUCKET": f"archive-{sds_id}",
+            "S3_BUCKET": f"data-{sds_id}",
             "S3_KEY_PATH": instrument_sources,
             "INSTRUMENT_TARGET": instrument_target,
             "PROCESSING_NAME": processing_step_name,
-            "OUTPUT_PATH": f"s3://{archive_bucket.bucket_name}/{instrument_target}"
+            "OUTPUT_PATH": f"s3://{data_bucket.bucket_name}/{instrument_target}"
         }
 
         #TODO: Add Lambda layers for more libraries
@@ -67,4 +67,4 @@ class InstrumentLambda(Construct):
             environment=lambda_environment
         )
 
-        archive_bucket.grant_read_write(self.instrument_lambda)
+        data_bucket.grant_read_write(self.instrument_lambda)
