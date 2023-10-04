@@ -1,10 +1,10 @@
 """Lambda runtime code that triggers off of arrival of data into S3 bucket.
 """
+import logging
 import os
 from datetime import datetime
 
 import boto3
-import logging
 
 # Setup the logging
 logging.basicConfig(level=logging.INFO)

@@ -1,6 +1,7 @@
 """Module containing constructs for instrumenting Lambda functions."""
 
 from pathlib import Path
+
 from aws_cdk import Duration
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha_

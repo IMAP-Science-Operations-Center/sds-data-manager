@@ -12,7 +12,6 @@ from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
 from constructs import Construct
-from aws_cdk import RemovalPolicy
 
 
 class FargateBatchResources(Construct):
