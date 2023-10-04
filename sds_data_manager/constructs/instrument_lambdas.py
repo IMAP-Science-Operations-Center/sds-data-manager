@@ -45,15 +45,16 @@ class InstrumentLambda(Construct):
         super().__init__(scope, construct_id)
 
         # Define Lambda Environment Variables
+        # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
-            "S3_BUCKET": f"data-{sds_id}",
+            "S3_BUCKET": f"{data_bucket.bucket_name}",
             "S3_KEY_PATH": instrument_sources,
             "INSTRUMENT_TARGET": instrument_target,
             "PROCESSING_NAME": processing_step_name,
             "OUTPUT_PATH": f"s3://{data_bucket.bucket_name}/{instrument_target}"
         }
 
-        #TODO: Add Lambda layers for more libraries
+        #TODO: Add Lambda layers for more libraries (or Dockerize)
         self.instrument_lambda = lambda_alpha_.PythonFunction(
             self,
             id=f"InstrumentLambda-{processing_step_name}",

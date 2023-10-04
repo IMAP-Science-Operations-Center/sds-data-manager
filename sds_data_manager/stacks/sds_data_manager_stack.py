@@ -74,6 +74,7 @@ class SdsDataManager(Stack):
             f"DataBucket-{sds_id}",
             bucket_name=f"sds-data-{sds_id}",
             versioned=True,
+            event_bridge_enabled=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
