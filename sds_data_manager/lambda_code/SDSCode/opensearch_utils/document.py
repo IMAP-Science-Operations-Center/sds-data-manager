@@ -71,7 +71,7 @@ class Document:
         body: str
             updated body text for the document.
         """
-        if type(body) is dict:
+        if isinstance(body, dict):
             self.body = body
             self._update_contents()
         else:
@@ -130,7 +130,7 @@ class Document:
         self.size = len(self.contents.encode("ascii"))
 
     def _validate_identifier(self, identifier):
-        if type(identifier) is str or type(identifier) is int:
+        if isinstance(identifier, (str, int)):
             return str(identifier)
         else:
             raise TypeError(

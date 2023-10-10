@@ -68,7 +68,7 @@ class Query:
         # create the query
         for param in query_params:
             # create a date query using start and end date parameters
-            if param == "start_date" or param == "end_date":
+            if param in ("start_date", "end_date"):
                 # create the filter strcture for date queries if it hasn't
                 # already been created
                 if "filter" not in query["query"]["bool"]:

@@ -38,7 +38,7 @@ class Payload:
         if Document.is_document(documents):
             self._add_to_payload(documents)
 
-        elif type(documents) is list:
+        elif isinstance(documents, list):
             # check that all the objects in documents are of type Document
             if all(Document.is_document(doc) for doc in documents):
                 for doc in documents:
