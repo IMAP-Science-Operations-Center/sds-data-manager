@@ -1,5 +1,5 @@
 """Module with helper functions for creating standard sets of stacks"""
-#Standard
+# Standard
 from pathlib import Path
 
 from aws_cdk import App, Environment
@@ -47,7 +47,7 @@ def build_sds(
         env=env,
     )
 
-    #TODO: discuss taking components of this to conform to
+    # TODO: discuss taking components of this to conform to
     # other step function processing steps
     processing_step_function = step_function_stack.ProcessingStepFunctionStack(
         scope,
@@ -87,18 +87,15 @@ def build_sds(
     )
 
     networking = networking_stack.NetworkingStack(
-        scope,
-        f"Networking-{sds_id}",
-        sds_id,
-        env=env)
+        scope, f"Networking-{sds_id}", sds_id, env=env
+    )
 
-    instrument_list = ['Codice'] #etc
+    instrument_list = ["Codice"]  # etc
 
-    lambda_code_directory = Path(__file__).parent / '..' / 'lambda_code' / 'SDSCode'
+    lambda_code_directory = Path(__file__).parent / ".." / "lambda_code" / "SDSCode"
     lambda_code_directory_str = str(lambda_code_directory.resolve())
 
     for instrument in instrument_list:
-
         ecr = ecr_stack.EcrStack(
             scope,
             f"{instrument}Processing-{sds_id}",
@@ -117,7 +114,8 @@ def build_sds(
             data_bucket=data_manager.data_bucket,
             instrument_target=f"l1b_{instrument}",
             instrument_sources=f"l1a_{instrument}",
-            repo=ecr.container_repo)
+            repo=ecr.container_repo,
+        )
 
         processing_stack.ProcessingStep(
             scope,
@@ -130,8 +128,9 @@ def build_sds(
             data_bucket=data_manager.data_bucket,
             instrument_target=f"l1c_{instrument}",
             instrument_sources=f"l1b_{instrument}",
-            repo=ecr.container_repo)
-        #etc
+            repo=ecr.container_repo,
+        )
+        # etc
 
 
 def build_backup(scope: App, env: Environment, sds_id: str, source_account: str):

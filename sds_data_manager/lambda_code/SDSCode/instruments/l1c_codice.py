@@ -10,7 +10,8 @@ import boto3
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-#TODO: ability to access database, EFS, calibration data, etc.
+# TODO: ability to access database, EFS, calibration data, etc.
+
 
 def lambda_handler(event: dict, context):
     """Handler function"""
@@ -21,21 +22,21 @@ def lambda_handler(event: dict, context):
     logger.info(f"Now time is: {now}")
 
     # Get the environment variables
-    bucket = os.environ['S3_BUCKET']
-    prefix = os.environ['S3_KEY_PATH']
+    bucket = os.environ["S3_BUCKET"]
+    prefix = os.environ["S3_KEY_PATH"]
 
     # Retrieves objects in the S3 bucket under the given prefix
     try:
-        s3 = boto3.client('s3')
+        s3 = boto3.client("s3")
         object_list = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)["Contents"]
         logger.info(f"Object list: {object_list}")
     except KeyError:
         logger.warning("No files present.")
 
-    #TODO: this state will change based on availability of data
-    #TODO: we need to think about what needs to be passed into the container
+    # TODO: this state will change based on availability of data
+    # TODO: we need to think about what needs to be passed into the container
     return {
         "STATE": "SUCCESS",
-        "JOB_NAME": os.environ['PROCESSING_NAME'],
-        'COMMAND': ["packet-ingest"]
+        "JOB_NAME": os.environ["PROCESSING_NAME"],
+        "COMMAND": ["packet-ingest"],
     }

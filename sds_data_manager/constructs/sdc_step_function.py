@@ -24,14 +24,16 @@ class SdcStepFunction(Construct):
     Creates state machine using processing components.
     """
 
-    def __init__(self,
-                 scope: Construct,
-                 construct_id: str,
-                 processing_step_name: str,
-                 processing_system: InstrumentLambda,
-                 batch_resources: FargateBatchResources,
-                 instrument_target: str,
-                 data_bucket: s3.Bucket):
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        processing_step_name: str,
+        processing_system: InstrumentLambda,
+        batch_resources: FargateBatchResources,
+        instrument_target: str,
+        data_bucket: s3.Bucket,
+    ):
         """SdcStepFunction Constructor
 
         Parameters
@@ -53,41 +55,46 @@ class SdcStepFunction(Construct):
 
         # Reformat EventBridge Inputs
         add_specifics_to_input = sfn.Pass(
-            self, "Reformat EventBridge Inputs",
+            self,
+            "Reformat EventBridge Inputs",
             parameters={
                 "TIMEOUT_TIME.$": "$.time",
-            }
+            },
         )
 
         # Step Functions Tasks to invoke Lambda function
-        instrument_task = tasks.LambdaInvoke(self,
-                                             f"InstrumentLambda-{processing_step_name}",
-                                             lambda_function=processing_system.instrument_lambda,
-                                             payload=sfn.TaskInput.from_object(
-                                                 {"TIMEOUT_TIME.$": "$.TIMEOUT_TIME"}),
-                                             result_path="$.InstrumentOutput",
-                                             result_selector={
-                                                 "STATE.$": "$.Payload.STATE",
-                                                 "JOB_NAME.$": "$.Payload.JOB_NAME",
-                                                 "COMMAND.$": "$.Payload.COMMAND",
-                                                 "OUTPUT_PATH": "$.Payload.OUTPUT_PATH",
-                                                 "INSTRUMENT_TARGET":
-                                                     "$.Payload.INSTRUMENT_TARGET"
-                                             })
+        instrument_task = tasks.LambdaInvoke(
+            self,
+            f"InstrumentLambda-{processing_step_name}",
+            lambda_function=processing_system.instrument_lambda,
+            payload=sfn.TaskInput.from_object({"TIMEOUT_TIME.$": "$.TIMEOUT_TIME"}),
+            result_path="$.InstrumentOutput",
+            result_selector={
+                "STATE.$": "$.Payload.STATE",
+                "JOB_NAME.$": "$.Payload.JOB_NAME",
+                "COMMAND.$": "$.Payload.COMMAND",
+                "OUTPUT_PATH": "$.Payload.OUTPUT_PATH",
+                "INSTRUMENT_TARGET": "$.Payload.INSTRUMENT_TARGET",
+            },
+        )
 
         # Batch Job Inputs
         stack = Stack.of(self)
-        job_definition_arn = \
-            f'arn:aws:batch:{stack.region}:{stack.account}:job-definition/' \
-            f'{batch_resources.job_definition_name}'
-        job_queue_arn = f'arn:aws:batch:{stack.region}:{stack.account}:job-queue/' \
-                        f'{batch_resources.job_queue_name}'
+        job_definition_arn = (
+            f"arn:aws:batch:{stack.region}:{stack.account}:job-definition/"
+            f"{batch_resources.job_definition_name}"
+        )
+        job_queue_arn = (
+            f"arn:aws:batch:{stack.region}:{stack.account}:job-queue/"
+            f"{batch_resources.job_queue_name}"
+        )
 
         instrument_target = f"{instrument_target}"
 
         # Batch Job
         submit_job = tasks.BatchSubmitJob(
-            self, f"BatchJob-{processing_step_name}",
+            self,
+            f"BatchJob-{processing_step_name}",
             job_name=sfn.JsonPath.string_at("$.InstrumentOutput.JOB_NAME"),
             job_definition_arn=job_definition_arn,
             job_queue_arn=job_queue_arn,
@@ -95,10 +102,10 @@ class SdcStepFunction(Construct):
                 command=sfn.JsonPath.list_at("$.InstrumentOutput.COMMAND"),
                 environment={
                     "OUTPUT_PATH": data_bucket.bucket_name,
-                    "INSTRUMENT_TARGET": instrument_target
-                }
+                    "INSTRUMENT_TARGET": instrument_target,
+                },
             ),
-            result_path='$.BatchJobOutput'
+            result_path="$.BatchJobOutput",
         )
 
         # Success and Fail Final States
@@ -114,13 +121,13 @@ class SdcStepFunction(Construct):
         submit_job.add_catch(fail_state)
 
         # State sequences
-        add_specifics_to_input.next(
-            instrument_task).next(
-            instrument_status)
+        add_specifics_to_input.next(instrument_task).next(instrument_status)
 
         # Define the state machine
         definition_body = sfn.DefinitionBody.from_chainable(add_specifics_to_input)
-        self.state_machine = sfn.StateMachine(self,
-                                              f"CDKProcessingStepStateMachine-{processing_step_name}",
-                                              definition_body=definition_body,
-                                              state_machine_name=f"{processing_step_name}-step-function")
+        self.state_machine = sfn.StateMachine(
+            self,
+            f"CDKProcessingStepStateMachine-{processing_step_name}",
+            definition_body=definition_body,
+            state_machine_name=f"{processing_step_name}-step-function",
+        )
