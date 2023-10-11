@@ -2,6 +2,7 @@
 """
 import logging
 import os
+import json
 from datetime import datetime
 
 import boto3
@@ -15,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 def lambda_handler(event: dict, context):
     """Handler function"""
-    """Handler function"""
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
 
@@ -24,15 +24,16 @@ def lambda_handler(event: dict, context):
 
     # Get the environment variables
     bucket = os.environ["S3_BUCKET"]
-    prefix = os.environ["S3_KEY_PATH"]
+    prefixes = json.loads(os.environ["S3_KEY_PATH"])
 
     # Retrieves objects in the S3 bucket under the given prefix
-    try:
-        s3 = boto3.client("s3")
-        object_list = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)["Contents"]
-        logger.info(f"Object list: {object_list}")
-    except KeyError:
-        logger.warning("No files present.")
+    for prefix in prefixes:
+        try:
+            s3 = boto3.client("s3")
+            object_list = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)["Contents"]
+            logger.info(f"Object list: {object_list}")
+        except KeyError:
+            logger.warning("No files present.")
 
     # TODO: this state will change based on availability of data
     # TODO: we need to think about what needs to be passed into the container

@@ -1,5 +1,5 @@
 """Module containing constructs for instrumenting Lambda functions."""
-
+import json
 from pathlib import Path
 
 from aws_cdk import Duration
@@ -20,7 +20,7 @@ class InstrumentLambda(Construct):
         data_bucket: s3.Bucket,
         code_path: str or Path,
         instrument_target: str,
-        instrument_sources: str,
+        instrument_sources: list,
     ):
         """
         InstrumentLambda Constructor.
@@ -37,7 +37,7 @@ class InstrumentLambda(Construct):
             Path to the Lambda code directory
         instrument_target : str
             Target data product (i.e. expected product)
-        instrument_sources : str
+        instrument_sources : list
             Data product sources (i.e. dependencies)
         """
 
@@ -47,7 +47,7 @@ class InstrumentLambda(Construct):
         # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
             "S3_BUCKET": f"{data_bucket.bucket_name}",
-            "S3_KEY_PATH": instrument_sources,
+            "S3_KEY_PATH": json.dumps(instrument_sources),
             "INSTRUMENT_TARGET": instrument_target,
             "PROCESSING_NAME": processing_step_name,
             "OUTPUT_PATH": f"s3://{data_bucket.bucket_name}/{instrument_target}",

@@ -57,7 +57,7 @@ class ProcessingStep(Stack):
             S3 bucket
         instrument_target : str
             Target data product
-        instrument_sources : str
+        instrument_sources : list
             Data product sources
         repo : ecr.Repository
             Container repo
@@ -94,18 +94,19 @@ class ProcessingStep(Stack):
             data_bucket=data_bucket,
         )
 
-        # TODO: This will be a construct and also we will add to its capabilities.
-        rule = events.Rule(
-            self,
-            "rule",
-            event_pattern=events.EventPattern(
-                source=["aws.s3"],
-                detail_type=["Object Created"],
-                detail={
-                    "bucket": {"name": [data_bucket.bucket_name]},
-                    "object": {"key": [{"prefix": f"{instrument_sources}"}]},
-                },
-            ),
-        )
+        # Kicks off Step Function as a result of object ingested into directories in
+        # s3 bucket (instrument_sources).
+        for source in instrument_sources:
+            rule = events.Rule(self,
+                               f"Rule-{processing_step_name}-{source}",
+                               event_pattern=events.EventPattern(
+                                   source=["aws.s3"],
+                                   detail_type=["Object Created"],
+                                   detail={
+                                       "bucket": {"name": [data_bucket.bucket_name]},
+                                       "object": {"key": [{"prefix": f"{source}"}]},
+                                   },
+                               ),
+                           )
 
-        rule.add_target(event_targets.SfnStateMachine(self.step_function.state_machine))
+            rule.add_target(event_targets.SfnStateMachine(self.step_function.state_machine))
