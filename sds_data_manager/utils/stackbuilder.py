@@ -22,6 +22,8 @@ from sds_data_manager.stacks import (
     sds_data_manager_stack,
 )
 
+from sds_data_manager.utils.get_dependency import get_dependency
+
 
 def build_sds(
     scope: App,
@@ -171,7 +173,7 @@ def build_sds(
             lambda_code_directory=lambda_code_directory_str,
             data_bucket=data_manager.data_bucket,
             instrument_target=f"l1b_{instrument}",
-            instrument_sources=f"l1a_{instrument}",
+            instrument_sources=get_dependency(f"l1b_{instrument}"),
             repo=ecr.container_repo,
             batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,
@@ -190,7 +192,7 @@ def build_sds(
             lambda_code_directory=lambda_code_directory_str,
             data_bucket=data_manager.data_bucket,
             instrument_target=f"l1c_{instrument}",
-            instrument_sources=f"l1b_{instrument}",
+            instrument_sources=get_dependency(f"l1c_{instrument}"),
             repo=ecr.container_repo,
             batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,
