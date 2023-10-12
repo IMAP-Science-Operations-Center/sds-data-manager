@@ -54,3 +54,14 @@ class NetworkingStack(Stack):
                 ),
             ],
         )
+
+        # Create security group for the RDS instance
+        self.rds_security_group = ec2.SecurityGroup(self, "RdsSecurityGroup",
+                                                    vpc=self.vpc, allow_all_outbound=True)
+
+        # Setup a security group for the Fargate-generated EC2 instances.
+        self.batch_security_group = ec2.SecurityGroup(self, "FargateInstanceSecurityGroup",
+                                                vpc=self.vpc)
+
+        self.rds_security_group.add_ingress_rule(self.batch_security_group, ec2.Port.tcp(5432),
+                                                 "Allow access from Fargate Batch")

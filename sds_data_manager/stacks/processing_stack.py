@@ -33,6 +33,10 @@ class ProcessingStep(Stack):
         instrument_target: str,
         instrument_sources: str,
         repo: ecr.Repository,
+        batch_security_group: ec2.SecurityGroup,
+        rds_security_group: ec2.SecurityGroup,
+        subnets: ec2.SubnetSelection,
+        db_secret_name: str,
         **kwargs,
     ) -> None:
         """Constructor
@@ -57,10 +61,18 @@ class ProcessingStep(Stack):
             S3 bucket
         instrument_target : str
             Target data product
-        instrument_sources : list
+        instrument_sources : str
             Data product sources
         repo : ecr.Repository
             Container repo
+        batch_security_group: ec2.SecurityGroup
+            Batch security group
+        rds_security_group : ec2.SecurityGroup
+            RDS security group
+        subnets : ec2.SubnetSelection
+            RDS subnet selection.
+        db_secret_name : str
+            RDS secret name for secret manager access
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
@@ -72,6 +84,8 @@ class ProcessingStep(Stack):
             processing_step_name=processing_step_name,
             data_bucket=data_bucket,
             repo=repo,
+            batch_security_group=batch_security_group,
+            db_secret_name=db_secret_name,
         )
 
         self.instrument_lambda = InstrumentLambda(
@@ -82,6 +96,10 @@ class ProcessingStep(Stack):
             code_path=str(lambda_code_directory),
             instrument_target=instrument_target,
             instrument_sources=instrument_sources,
+            db_secret_name=db_secret_name,
+            rds_security_group=rds_security_group,
+            subnets=subnets,
+            vpc=vpc,
         )
 
         self.step_function = SdcStepFunction(
@@ -92,21 +110,21 @@ class ProcessingStep(Stack):
             batch_resources=self.batch_resources,
             instrument_target=instrument_target,
             data_bucket=data_bucket,
+            db_secret_name=db_secret_name,
         )
 
-        # Kicks off Step Function as a result of object ingested into directories in
-        # s3 bucket (instrument_sources).
-        for source in instrument_sources:
-            rule = events.Rule(self,
-                               f"Rule-{processing_step_name}-{source}",
-                               event_pattern=events.EventPattern(
-                                   source=["aws.s3"],
-                                   detail_type=["Object Created"],
-                                   detail={
-                                       "bucket": {"name": [data_bucket.bucket_name]},
-                                       "object": {"key": [{"prefix": f"{source}"}]},
-                                   },
-                               ),
-                           )
+        # TODO: This will be a construct and also we will add to its capabilities.
+        rule = events.Rule(
+            self,
+            "rule",
+            event_pattern=events.EventPattern(
+                source=["aws.s3"],
+                detail_type=["Object Created"],
+                detail={
+                    "bucket": {"name": [data_bucket.bucket_name]},
+                    "object": {"key": [{"prefix": f"{instrument_sources}"}]},
+                },
+            ),
+        )
 
-            rule.add_target(event_targets.SfnStateMachine(self.step_function.state_machine))
+        rule.add_target(event_targets.SfnStateMachine(self.step_function.state_machine))

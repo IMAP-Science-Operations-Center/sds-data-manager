@@ -33,6 +33,7 @@ class SdcStepFunction(Construct):
         batch_resources: FargateBatchResources,
         instrument_target: str,
         data_bucket: s3.Bucket,
+        db_secret_name: str,
     ):
         """SdcStepFunction Constructor
 
@@ -50,6 +51,8 @@ class SdcStepFunction(Construct):
             Target data product
         data_bucket : str
             S3 bucket
+        db_secret_name : str
+
         """
         super().__init__(scope, construct_id)
 
@@ -103,6 +106,7 @@ class SdcStepFunction(Construct):
                 environment={
                     "OUTPUT_PATH": data_bucket.bucket_name,
                     "INSTRUMENT_TARGET": instrument_target,
+                    "SECRET_NAME": db_secret_name,
                 },
             ),
             result_path="$.BatchJobOutput",

@@ -11,6 +11,7 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
+from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
 
@@ -26,6 +27,8 @@ class FargateBatchResources(Construct):
         processing_step_name: str,
         data_bucket: s3.Bucket,
         repo: ecr.Repository,
+        batch_security_group: ec2.SecurityGroup,
+        db_secret_name: str,
         batch_max_vcpus=10,
         job_vcpus=0.25,
         job_memory=512,
@@ -48,6 +51,10 @@ class FargateBatchResources(Construct):
             S3 bucket.
         repo : ecr.Repository
             Container repo
+        batch_security_group: ec2.SecurityGroup
+            Batch security group
+        db_secret_name : str
+            RDS secret name for secret manager access
         batch_max_vcpus : int, Optional
             Maximum number of virtual CPUs per compute instance.
         job_vcpus : int, Optional
@@ -81,11 +88,6 @@ class FargateBatchResources(Construct):
                     "service-role/AmazonECSTaskExecutionRolePolicy"
                 )
             ],
-        )
-
-        # Setup a security group for the Fargate-generated EC2 instances.
-        batch_security_group = ec2.SecurityGroup(
-            self, f"FargateInstanceSecurityGroup-{sds_id}", vpc=vpc
         )
 
         # PRIVATE_WITH_NAT allows batch job to pull images from the ECR.
@@ -134,6 +136,9 @@ class FargateBatchResources(Construct):
             ],
         )
         data_bucket.grant_read_write(self.batch_job_role)
+        # Add RDS DB access to the batch job
+        rds_secret = secrets.Secret.from_secret_name_v2(self, "rds_secret", db_secret_name)
+        rds_secret.grant_read(grantee=self.batch_job_role)
 
         # TODO: come back and add ability to grab latest version of
         # processing_step_name tag. I think this will require

@@ -24,16 +24,32 @@ def lambda_handler(event: dict, context):
 
     # Get the environment variables
     bucket = os.environ["S3_BUCKET"]
-    prefixes = json.loads(os.environ["S3_KEY_PATH"])
+    prefix = os.environ["S3_KEY_PATH"]
+    secret_name = os.environ['SECRET_NAME']
+
+    # TODO: Use this information to access the database
+    # Retrieves secrets and set as environment variables
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name="us-west-2")
+    secret_value_response = client.get_secret_value(
+        SecretId=secret_name
+    )
+
+    secret_object = json.loads(secret_value_response['SecretString'])
+    host = secret_object["host"]
+    username = secret_object["username"]
+    dbname = secret_object["dbname"]
+    password = secret_object["password"]
 
     # Retrieves objects in the S3 bucket under the given prefix
-    for prefix in prefixes:
-        try:
-            s3 = boto3.client("s3")
-            object_list = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)["Contents"]
-            logger.info(f"Object list: {object_list}")
-        except KeyError:
-            logger.warning("No files present.")
+    try:
+        s3 = boto3.client("s3")
+        object_list = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)["Contents"]
+        logger.info(f"Object list: {object_list}")
+    except KeyError:
+        logger.warning("No files present.")
 
     # TODO: this state will change based on availability of data
     # TODO: we need to think about what needs to be passed into the container
