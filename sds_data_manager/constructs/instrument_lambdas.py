@@ -3,8 +3,8 @@
 from pathlib import Path
 
 from aws_cdk import Duration
-from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
@@ -88,5 +88,6 @@ class InstrumentLambda(Construct):
 
         data_bucket.grant_read_write(self.instrument_lambda)
 
-        rds_secret = secrets.Secret.from_secret_name_v2(self, "rds_secret", db_secret_name)
+        rds_secret = secrets.Secret.from_secret_name_v2(
+            self, "rds_secret", db_secret_name)
         rds_secret.grant_read(grantee=self.instrument_lambda)

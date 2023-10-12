@@ -1,7 +1,9 @@
 """Module with helper functions for creating standard sets of stacks"""
 from pathlib import Path
 
-from aws_cdk import App, Environment, aws_ec2 as ec2, aws_rds as rds
+from aws_cdk import App, Environment
+from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_rds as rds
 
 from sds_data_manager.stacks import (
     api_gateway_stack,
@@ -113,7 +115,7 @@ def build_sds(
                                      max_allocated_storage=rds_storage,
                                      username="postgres",
                                      secret_name="sdp-database-creds",
-                                     database_name=f"imapdb")
+                                     database_name="imapdb")
 
     instrument_list = ["Codice"]  # etc
 

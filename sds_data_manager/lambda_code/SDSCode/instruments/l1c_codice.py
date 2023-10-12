@@ -38,10 +38,10 @@ def lambda_handler(event: dict, context):
     )
 
     secret_object = json.loads(secret_value_response['SecretString'])
-    host = secret_object["host"]
-    username = secret_object["username"]
-    dbname = secret_object["dbname"]
-    password = secret_object["password"]
+    secret_object["host"]
+    secret_object["username"]
+    secret_object["dbname"]
+    secret_object["password"]
 
     # Retrieves objects in the S3 bucket under the given prefix
     try:

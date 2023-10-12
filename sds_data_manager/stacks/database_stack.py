@@ -1,12 +1,16 @@
 """SdpDatabase Stack"""
 # Installed
-from constructs import Construct
 from aws_cdk import (
     Environment,
     Stack,
+)
+from aws_cdk import (
     aws_ec2 as ec2,
+)
+from aws_cdk import (
     aws_rds as rds,
 )
+from constructs import Construct
 
 
 class SdpDatabase(Stack):
@@ -55,7 +59,7 @@ class SdpDatabase(Stack):
         super().__init__(scope, construct_id, env=env, **kwargs)
 
         self.secret_name = "sdp-database-creds"
-        database_name = f"imap"
+        database_name = "imap"
         username = "imap_user"
 
         # Allow ingress to LASP IP address range and specific port
@@ -67,7 +71,7 @@ class SdpDatabase(Stack):
 
         # Lambda was put into the same security group as the RDS, but we still need this
         rds_security_group.connections.allow_internally(ec2.Port.all_traffic(),
-                                                        description="Allows lambda ingress")
+                                                        description="Lambda ingress")
 
         # Secrets manager credentials
         rds_creds = rds.DatabaseSecret(self, "RdsCredentials",
@@ -82,7 +86,8 @@ class SdpDatabase(Stack):
         rds.DatabaseInstance(self, "RdsInstance",
                              database_name=database_name,
                              engine=rds.DatabaseInstanceEngine.postgres(version=engine_version),
-                             instance_type=ec2.InstanceType.of(instance_class, instance_size),
+                             instance_type=ec2.InstanceType.of(
+                                 instance_class, instance_size),
                              vpc=vpc,
                              vpc_subnets=self.rds_subnet_selection,
                              credentials=rds.Credentials.from_secret(rds_creds),
