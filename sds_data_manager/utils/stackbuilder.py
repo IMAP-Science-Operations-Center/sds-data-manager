@@ -21,7 +21,6 @@ from sds_data_manager.stacks import (
     processing_stack,
     sds_data_manager_stack,
 )
-
 from sds_data_manager.utils.get_dependency import get_dependency
 
 
