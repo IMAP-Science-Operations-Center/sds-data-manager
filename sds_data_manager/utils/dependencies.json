@@ -1,5 +1,0 @@
-{
-    "l1a_Codice": ["l0_Codice"],
-    "l1b_Codice": ["l1a_Codice", "l1a_Mag"],
-    "l1c_Codice": ["l1b_Codice", "l2_Ultra", "spice"]
-}
