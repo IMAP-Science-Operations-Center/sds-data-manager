@@ -1,8 +1,8 @@
 """Lambda runtime code that triggers off of arrival of data into S3 bucket.
 """
+import json
 import logging
 import os
-import json
 from datetime import datetime
 
 import boto3
