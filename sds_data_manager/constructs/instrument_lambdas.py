@@ -89,5 +89,6 @@ class InstrumentLambda(Construct):
         data_bucket.grant_read_write(self.instrument_lambda)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
-            self, "rds_secret", db_secret_name)
+            self, "rds_secret", db_secret_name
+        )
         rds_secret.grant_read(grantee=self.instrument_lambda)

@@ -6,17 +6,16 @@ import sys
 
 # Installed
 import boto3
+import psycopg2
 from opensearchpy import RequestsHttpConnection
+from psycopg2 import Error
 
 from .dynamodb_utils.processing_status import ProcessingStatus
 
 # Local
-from .opensearch_utils.action import Action
 from .opensearch_utils.client import Client
-from .opensearch_utils.document import Document
 from .opensearch_utils.index import Index
 from .opensearch_utils.payload import Payload
-from .opensearch_utils.snapshot import run_backup
 
 # Logger setup
 logger = logging.getLogger()
@@ -26,6 +25,11 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 s3 = boto3.client("s3")
 # Create a Step Functions client
 step_function_client = boto3.client("stepfunctions")
+
+host = "rds-rdsinstance1d827d17-oaxcyeanywfy.cna6jyzzcvie.us-west-2.rds.amazonaws.com"
+database = "imap"
+user = "imap_user"
+password = "JAg1iNkrRYe,28Lke.0vxU1TuEPr,G"
 
 
 def _load_allowed_filenames():
@@ -181,19 +185,19 @@ def lambda_handler(event, context):
 
     # Grab environment variables
     host = os.environ["OS_DOMAIN"]
-    snapshot_repo_name = os.environ["SNAPSHOT_REPO_NAME"]
-    snapshot_s3_bucket = os.environ["S3_SNAPSHOT_BUCKET_NAME"]
-    snapshot_role_arn = os.environ["SNAPSHOT_ROLE_ARN"]
-    region = os.environ["REGION"]
+    os.environ["SNAPSHOT_REPO_NAME"]
+    os.environ["S3_SNAPSHOT_BUCKET_NAME"]
+    os.environ["SNAPSHOT_ROLE_ARN"]
+    os.environ["REGION"]
 
     # create opensearch client
-    client = _create_open_search_client()
+    _create_open_search_client()
     # create index (AKA 'table' in other database)
-    metadata_index = Index(os.environ["METADATA_INDEX"])
-    data_tracker_index = Index(os.environ["DATA_TRACKER_INDEX"])
+    Index(os.environ["METADATA_INDEX"])
+    Index(os.environ["DATA_TRACKER_INDEX"])
 
     # create a payload
-    document_payload = Payload()
+    Payload()
 
     # We're only expecting one record, but for some reason the Records are a list object
     for record in event["Records"]:
@@ -220,32 +224,48 @@ def lambda_handler(event, context):
         logger.info("Found the following metadata to index: " + str(metadata))
 
         # use the s3 path to file as the ID in opensearch
-        s3_path = os.path.join(os.environ["S3_DATA_BUCKET"], filename)
+        os.path.join(os.environ["S3_DATA_BUCKET"], filename)
         # create a document for the metadata and add it to the payload
-        opensearch_doc = Document(metadata_index, s3_path, Action.CREATE, metadata)
-        document_payload.add_documents(opensearch_doc)
 
-        # TODO: Decide if we want to keep both or keep one after SIT-2
-        # Right now, we can write processing status of injested data to both databases.
-        # In the future, we can decide which one to write to.
-        # Initialize processing status for injested data to pending. This will be
-        # updated when the data is processed.
-        item = initialize_data_processing_status(metadata=metadata, filename=filename)
+        # Add code to get Secret instead
 
-        # Write processing status data to DynamoDB.
-        write_data_to_dynamodb(item)
+        try:
+            # Establish a connection to the PostgreSQL database
+            connection = psycopg2.connect(
+                host=host, database=database, user=user, password=password
+            )
 
-        # Write processing status data to opensearch as well.
-        data_tracker_doc = Document(data_tracker_index, filename, Action.CREATE, item)
-        document_payload.add_documents(data_tracker_doc)
+            # Create a cursor object to interact with the database
+            cursor = connection.cursor()
 
-    # send the paylaod to the opensearch instance
-    client.send_payload(document_payload)
+            # SQL query to create a table
+            insert_metadata_query = """
+                INSERT INTO metadata (
+                    mission,
+                    type,
+                    instrument,
+                    level,
+                    year,
+                    month,
+                    day,
+                    version
+                    )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
 
-    # take OpenSearch Snapshot
-    run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn)
+            # Execute the create table query
+            cursor.execute(insert_metadata_query)
+            print("Table Created")
+        except (Exception, Error) as error:
+            print("Error while connecting to PostgreSQL:", error)
 
-    client.close()
+        finally:
+            # Close the cursor and connection
+            if connection:
+                connection.commit()
+                cursor.close()
+                connection.close()
+                print("PostgreSQL connection is closed.")
 
     # Start Step function execution
     state_machine_arn = os.environ.get("STATE_MACHINE_ARN")

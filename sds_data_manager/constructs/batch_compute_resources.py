@@ -138,7 +138,8 @@ class FargateBatchResources(Construct):
         data_bucket.grant_read_write(self.batch_job_role)
         # Add RDS DB access to the batch job
         rds_secret = secrets.Secret.from_secret_name_v2(
-            self, "rds_secret", db_secret_name)
+            self, "rds_secret", db_secret_name
+        )
         rds_secret.grant_read(grantee=self.batch_job_role)
 
         # TODO: come back and add ability to grab latest version of

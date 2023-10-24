@@ -21,13 +21,13 @@ from sds_data_manager.stacks import (
 
 
 def build_sds(
-        scope: App,
-        env: Environment,
-        sds_id: str,
-        rds_size: str = 'SMALL',
-        rds_class: str = 'BURSTABLE3',
-        rds_storage: int = 200,
-        use_custom_domain: bool = False
+    scope: App,
+    env: Environment,
+    sds_id: str,
+    rds_size: str = "SMALL",
+    rds_class: str = "BURSTABLE3",
+    rds_storage: int = 200,
+    use_custom_domain: bool = False,
 ):
     """Builds the entire SDS
 
@@ -104,18 +104,22 @@ def build_sds(
         scope, f"Networking-{sds_id}", sds_id, env=env
     )
 
-    rds_stack = database_stack.SdpDatabase(scope, "RDS",
-                                     description="IMAP SDP database.",
-                                     env=env,
-                                     vpc=networking.vpc,
-                                     rds_security_group=networking.rds_security_group,
-                                     engine_version=rds.PostgresEngineVersion.VER_14_2,
-                                     instance_size=ec2.InstanceSize[rds_size],
-                                     instance_class=ec2.InstanceClass[rds_class],
-                                     max_allocated_storage=rds_storage,
-                                     username="postgres",
-                                     secret_name="sdp-database-creds",
-                                     database_name="imapdb")
+    rds_stack = database_stack.SdpDatabase(
+        scope,
+        "RDS",
+        description="IMAP SDP database.",
+        env=env,
+        sds_id=sds_id,
+        vpc=networking.vpc,
+        rds_security_group=networking.rds_security_group,
+        engine_version=rds.PostgresEngineVersion.VER_15_2,
+        instance_size=ec2.InstanceSize[rds_size],
+        instance_class=ec2.InstanceClass[rds_class],
+        max_allocated_storage=rds_storage,
+        username="postgres",
+        secret_name="sdp-database-creds",
+        database_name="imapdb",
+    )
 
     instrument_list = ["Codice"]  # etc
 
