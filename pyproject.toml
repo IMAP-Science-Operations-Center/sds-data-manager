@@ -67,6 +67,7 @@ requests-aws4auth = "^1.2.3"
 psycopg2 = "^2.9.9"
 
 # Used for installing with pip
+psycopg2-binary = "^2.9.9"
 [tool.poetry.extras]
 doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 
