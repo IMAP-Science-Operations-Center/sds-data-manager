@@ -1,0 +1,8 @@
+id,filename,instrument,version,level,mode,date,ingested,mag_id,codicelo_id,spice_id,parent_codicehi_id,status
+0,imap_l0_sci_codicehi_20230602_v01.ccsds,codicehi,1,l0,NULL,2023-06-02 14:45:00+03,2023-06-02 14:45:00+03,NULL,NULL,NULL,NULL,COMPLETE
+1,imap_l1a_sci_codicehi_20230602_v01.cdf,codicehi,1,l1a,NULL,2023-06-02 14:45:00+03,2023-06-02 14:45:00+05,NULL,NULL,NULL,0,INCOMPLETE
+2,imap_l1b_sci_codicehi_20230531_v03.cdf,codicehi,1,l1b,NULL,2023-05-31 14:45:00+03,2023-06-02 14:45:00+06,NULL,NULL,NULL,1,INCOMPLETE
+3,imap_l2_sci_codicehi_20230531_v01.cdf,codicehi,1,l2,NULL,2023-05-31 14:45:00+03,2023-06-02 14:45:00+09,NULL,NULL,NULL,2,INCOMPLETE
+4,imap_l3a_sci_codicehi_20230602_v01.cdf,codicehi,1,l3a,NULL,2023-06-02 14:45:00+03,2023-06-02 14:45:00+10,NULL,NULL,NULL,3,INCOMPLETE
+5,imap_l3b_sci_codicehi_20230531_v01.cdf,codicehi,1,l3b,NULL,2023-05-31 14:45:00+03,2023-06-02 14:45:00+11,4,NULL,NULL,4,INCOMPLETE
+6,imap_l3c_sci_codicehi_20230531_v01.cdf,codicehi,1,l3c,NULL,2023-05-31 14:45:00+03,NULL,NULL,1,NULL,4,INCOMPLETE
