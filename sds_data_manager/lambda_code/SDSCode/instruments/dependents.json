@@ -10,8 +10,7 @@
             {"instrument": "CodiceHi", "level": "l1b"}
         ],
         "l3a": [
-            {"instrument": "CodiceHi", "level": "l2"},
-            {"instrument": "CodiceHi", "level": "l0"}
+            {"instrument": "CodiceHi", "level": "l2"}
         ],
         "l3b": [
             {"instrument": "CodiceHi", "level": "l3a"},

@@ -1,6 +1,3 @@
-"""
-Lambda runtime code that triggers off of the arrival of data into an S3 bucket.
-"""
 import json
 import logging
 import os
@@ -81,7 +78,7 @@ def db_connect(db_secret_name):
     return conn
 
 
-def get_process_details(cur, instrument, filename, process_range=7):
+def get_process_details(cur, instrument, filename, process_range=2):
     """
     Gets details for instrument listed in event.
 
@@ -96,7 +93,7 @@ def get_process_details(cur, instrument, filename, process_range=7):
     filename : str
         The filename associated with the instrument.
     process_range : int
-        Numbers of days to process
+        Numbers of days backwards to process
 
     Returns
     -------
@@ -108,13 +105,9 @@ def get_process_details(cur, instrument, filename, process_range=7):
         Dates to process
     """
 
-    # Ensure the instrument value is safe to use in SQL.
-    if not instrument.isidentifier():
-        raise ValueError(f"Invalid instrument name: {instrument}")
-
     query = f"""SELECT * FROM sdc.{instrument.lower()}
                 WHERE filename = %s
-                LIMIT 1;"""  # Changed the limit to 1
+                LIMIT 1;"""
     params = (filename,)
 
     cur.execute(query, params)
@@ -132,7 +125,13 @@ def get_process_details(cur, instrument, filename, process_range=7):
     dt = record_dict["date"]
     dt_start = dt - timedelta(days=process_range)
 
-    process_dates = [dt_start.strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%d")]
+    # Generate all the dates between dt_start and dt, inclusive
+    current_date = dt_start
+    process_dates = []
+
+    while current_date <= dt:
+        process_dates.append(current_date.strftime("%Y-%m-%d"))
+        current_date += timedelta(days=1)
 
     return level, version, process_dates
 
@@ -164,17 +163,11 @@ def query_dependents(cur, version, process_dates, instrument_dependents):
 
     # Loop through instrument dependents and query them
     for instrument in instrument_dependents:
-        # Ensure the instrument name is valid
-        if not instrument["instrument"].isidentifier():
-            raise ValueError(
-                f"Invalid instrument name in dependents: {instrument['instrument']}"
-            )
-
         query = f"""SELECT * FROM sdc.{instrument['instrument'].lower()}
                     WHERE version = %s
                     AND level = %s
-                    AND ingested BETWEEN %s::DATE AND (%s::DATE + INTERVAL '1 DAY')
-                    LIMIT 100;"""
+                    AND ingested BETWEEN %s::DATE AND (
+                    %s::DATE + INTERVAL '1 DAY');"""
         params = (
             version,
             instrument["level"].lower(),
@@ -246,7 +239,7 @@ def remove_ingested(records, dependents_level, process_dates):
     return output
 
 
-def query_dependencies(cur, grouped_records, version_number):
+def query_dependencies(cur, uningested, version):
     """
     Queries and checks dependencies for a list of grouped records.
 
@@ -254,10 +247,10 @@ def query_dependencies(cur, grouped_records, version_number):
     ----------
     cur : database cursor
         The cursor object associated with the database connection.
-    grouped_records : list of dict
+    uningested : list of dict
         A list of dictionaries where each dictionary corresponds to a record
         from the database with keys 'instrument', 'level', and 'date'.
-    version_number : int or str
+    version : int or str
         The version number to be used when querying dependent records.
 
     Returns
@@ -269,6 +262,7 @@ def query_dependencies(cur, grouped_records, version_number):
     """
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
+    # TODO: pass this to the batch job
     json_path = os.path.join(dir_path, "dependents.json")
 
     with open(json_path) as f:
@@ -276,9 +270,9 @@ def query_dependencies(cur, grouped_records, version_number):
 
     instruments_to_process = []
 
-    for record in grouped_records:
+    for record in uningested:
         dependencies = data[record["instrument"]][record["level"]]
-        result = query_dependents(cur, version_number, [record["date"]], dependencies)
+        result = query_dependents(cur, version, [record["date"]], dependencies)
 
         # Check if all dependencies for this date are present in result
         all_dependencies_met = all_dependency_present(result, dependencies)
@@ -350,16 +344,21 @@ def lambda_handler(event: dict, context):
 
     with db_connect(db_secret_name) as conn:
         with conn.cursor() as cur:
+            # get details of the object
             level, version, process_dates = get_process_details(
                 cur, instrument, filename
             )
-            all_records = query_dependents(
+            # query dependents to see if they have been ingested
+            ingested_dependents = query_dependents(
                 cur, version, process_dates, instrument_dependents[level]
             )
-            grouped_records = remove_ingested(
-                all_records, instrument_dependents[level], process_dates
+            # remove dependents that have been ingested
+            uningested = remove_ingested(
+                ingested_dependents, instrument_dependents[level], process_dates
             )
-            instruments_to_process = query_dependencies(cur, grouped_records, version)
+            # decide if we have sufficient dependencies
+            # for each dependent to process
+            instruments_to_process = query_dependencies(cur, uningested, version)
 
     # Start Step function execution
     input_data = {
