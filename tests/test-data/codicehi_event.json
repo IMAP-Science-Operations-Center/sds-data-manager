@@ -1,0 +1,25 @@
+{
+    "version": "0",
+    "id": "e40f06d8-7bb8-383d-1528-7ed9a4cda92c",
+    "detail-type": "Object Created",
+    "source": "aws.s3",
+    "account": "301233867300",
+    "time": "2023-10-19T20:49:54Z",
+    "region": "us-west-2",
+    "resources": ["arn:aws:s3:::sds-data-301233867300"],
+    "detail": {
+        "version": "0",
+        "bucket": {"name": "sds-data-301233867300"},
+        "object": {
+            "key": "CodiceHi_l3a/imap_l3a_sci_codicehi_20230602_v01.pkts",
+            "size": 8736,
+            "etag": "575f9073b57e5aff9098b1334d0bf857",
+            "version-id": "0_2JK9U0bPx.7xx6B6gmXyl6Lgb7hc81",
+            "sequencer": "0065319672A112B08C"
+        },
+        "request-id": "XE57GCK5BV8RRDBP",
+        "requester": "301233867300",
+        "source-ip-address": "128.138.131.13",
+        "reason": "PutObject"
+    }
+}
