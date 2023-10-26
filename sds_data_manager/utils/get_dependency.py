@@ -26,8 +26,8 @@ def get_dependency(key):
     """
 
     # Construct the path to the JSON file
-    dependency_path = Path(__file__).parent.parent / 'utils' / 'dependencies.json'
+    dependency_path = Path(__file__).parent.parent / "utils" / "dependencies.json"
 
-    with open(dependency_path, 'r') as file:
+    with open(dependency_path) as file:
         data = json.load(file)
         return data.get(key, {})
