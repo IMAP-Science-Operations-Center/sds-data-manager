@@ -26,11 +26,6 @@ s3 = boto3.client("s3")
 # Create a Step Functions client
 step_function_client = boto3.client("stepfunctions")
 
-host = "rds-rdsinstance1d827d17-oaxcyeanywfy.cna6jyzzcvie.us-west-2.rds.amazonaws.com"
-database = "imap"
-user = "imap_user"
-password = "JAg1iNkrRYe,28Lke.0vxU1TuEPr,G"
-
 
 def _load_allowed_filenames():
     """Load the allowed filenames configuration from an S3 bucket.
@@ -112,6 +107,57 @@ def _create_open_search_client():
         verify_certs=True,
         connnection_class=RequestsHttpConnection,
     )
+
+
+def _connect_to_database(host, database, user, secret_name, region):
+    session = boto3.session.Session()
+    client = session.client(service_name="secretsmanager", region_name=region)
+    secret = client.get_secret_value(SecretId=secret_name)
+
+    logger.info("Connecting to databse")
+    # Establish a connection to the PostgreSQL database
+    connection = psycopg2.connect(
+        host=host, database=database, user=user, password=secret
+    )
+
+    # Create a cursor object to interact with the database
+    logger.info("starting curser")
+    cursor = connection.cursor()
+    logger.info("got curser")
+
+    return (connection, cursor)
+
+
+def _construct_query(s3_path, metadata):
+    logger.info("")
+    metadata["id"] = s3_path
+    metadata["year"] = metadata["date"][:4]
+    metadata["month"] = metadata["date"][4:6]
+    metadata["day"] = metadata["date"][6:8]
+    metadata.pop("date")
+    logger.info(f"metadata: {metadata}")
+    fields = ", ".join(metadata.keys())
+    placeholders = ", ".join(["%s"] * len(metadata))
+
+    insert_metadata_query = f"""
+                INSERT INTO metadata (
+                    {fields})
+                VALUES ({placeholders})
+            """
+    logger.info(f"query: {insert_metadata_query}")
+    data = tuple(metadata.values())
+    logger.info(f"query values: {data}")
+
+    return (insert_metadata_query, data)
+
+
+def _close_database_connection(connection, cursor):
+    # Close the cursor and connection
+    if connection:
+        connection.commit()
+        cursor.close()
+        connection.close()
+        logger.info("PostgreSQL connection is closed.")
 
 
 def initialize_data_processing_status(metadata: dict, filename):
@@ -224,48 +270,28 @@ def lambda_handler(event, context):
         logger.info("Found the following metadata to index: " + str(metadata))
 
         # use the s3 path to file as the ID in opensearch
-        os.path.join(os.environ["S3_DATA_BUCKET"], filename)
+        s3_path = os.path.join(os.environ["S3_DATA_BUCKET"], filename)
         # create a document for the metadata and add it to the payload
 
-        # Add code to get Secret instead
+        host = os.environ["HOST"]
+        database = os.environ["DATABASE_NAME"]
+        username = os.environ["USERNAME"]
+        secret_name = os.environ["SECRET_NAME"]
+        region = os.environ["RDS_REGION"]
 
         try:
-            # Establish a connection to the PostgreSQL database
-            connection = psycopg2.connect(
-                host=host, database=database, user=user, password=password
+            connection, cursor = _connect_to_database(
+                host, database, username, secret_name, region
             )
-
-            # Create a cursor object to interact with the database
-            cursor = connection.cursor()
-
-            # SQL query to create a table
-            insert_metadata_query = """
-                INSERT INTO metadata (
-                    mission,
-                    type,
-                    instrument,
-                    level,
-                    year,
-                    month,
-                    day,
-                    version
-                    )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """
-
             # Execute the create table query
-            cursor.execute(insert_metadata_query)
-            print("Table Created")
+            logger.info("executing query")
+            query, data = _construct_query(s3_path, metadata)
+            cursor.execute(query, data)
         except (Exception, Error) as error:
-            print("Error while connecting to PostgreSQL:", error)
+            logger.info(f"Error while connecting to PostgreSQL: {error}")
 
         finally:
-            # Close the cursor and connection
-            if connection:
-                connection.commit()
-                cursor.close()
-                connection.close()
-                print("PostgreSQL connection is closed.")
+            _close_database_connection(connection, cursor)
 
     # Start Step function execution
     state_machine_arn = os.environ.get("STATE_MACHINE_ARN")

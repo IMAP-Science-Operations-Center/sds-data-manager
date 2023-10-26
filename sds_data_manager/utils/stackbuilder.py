@@ -71,32 +71,11 @@ def build_sds(
         env=env,
     )
 
-    data_manager = sds_data_manager_stack.SdsDataManager(
-        scope,
-        f"SdsDataManager-{sds_id}",
-        sds_id,
-        open_search,
-        dynamodb,
-        processing_step_function_arn=processing_step_function.sfn.state_machine_arn,
-        env=env,
-    )
-
     domain = domain_stack.Domain(
         scope,
         f"DomainStack-{sds_id}",
         sds_id,
         env=env,
-        use_custom_domain=use_custom_domain,
-    )
-
-    api_gateway_stack.ApiGateway(
-        scope,
-        f"ApiGateway-{sds_id}",
-        sds_id,
-        data_manager.lambda_functions,
-        env=env,
-        hosted_zone=domain.hosted_zone,
-        certificate=domain.certificate,
         use_custom_domain=use_custom_domain,
     )
 
@@ -119,6 +98,28 @@ def build_sds(
         username="postgres",
         secret_name="sdp-database-creds",
         database_name="imapdb",
+    )
+
+    data_manager = sds_data_manager_stack.SdsDataManager(
+        scope,
+        f"SdsDataManager-{sds_id}",
+        sds_id,
+        open_search,
+        dynamodb,
+        rds_stack,
+        processing_step_function_arn=processing_step_function.sfn.state_machine_arn,
+        env=env,
+    )
+
+    api_gateway_stack.ApiGateway(
+        scope,
+        f"ApiGateway-{sds_id}",
+        sds_id,
+        data_manager.lambda_functions,
+        env=env,
+        hosted_zone=domain.hosted_zone,
+        certificate=domain.certificate,
+        use_custom_domain=use_custom_domain,
     )
 
     instrument_list = ["Codice"]  # etc

@@ -29,6 +29,8 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from .database_stack import SdpDatabase
+
 # Local
 from .dynamodb_stack import DynamoDB
 from .opensearch_stack import OpenSearch
@@ -44,6 +46,7 @@ class SdsDataManager(Stack):
         sds_id: str,
         opensearch: OpenSearch,
         dynamodb_stack: DynamoDB,
+        rds_stack: SdpDatabase,
         processing_step_function_arn: str,
         env: Environment,
         **kwargs,
@@ -268,6 +271,11 @@ class SdsDataManager(Stack):
                 "SECRET_ID": opensearch.secret_name,
                 "REGION": opensearch.region,
                 "STATE_MACHINE_ARN": processing_step_function_arn,
+                "HOST_NAME": rds_stack.host_name,
+                "SECRET_NAME": rds_stack.secret_name,
+                "DATABASE_NAME": rds_stack.database_name,
+                "USERNAME": rds_stack.username,
+                "RDS_REGION": rds_stack.region,
             },
         )
 
