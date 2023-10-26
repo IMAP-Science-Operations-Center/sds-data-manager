@@ -31,6 +31,7 @@ class ProcessingStep(Stack):
         data_bucket: s3.Bucket,
         instrument: str,
         instrument_dependents: dict,
+        dependents: str,
         repo: ecr.Repository,
         batch_security_group: ec2.SecurityGroup,
         rds_security_group: ec2.SecurityGroup,
@@ -60,6 +61,8 @@ class ProcessingStep(Stack):
             Instrument
         instrument_dependents : dict
             Dependents of instrument
+        dependents : str
+            Path to location of dependents.json
         repo : ecr.Repository
             Container repo
         batch_security_group: ec2.SecurityGroup
@@ -97,6 +100,7 @@ class ProcessingStep(Stack):
             batch_resources=self.batch_resources,
             data_bucket=data_bucket,
             db_secret_name=db_secret_name,
+            dependents=dependents,
         )
 
         self.instrument_lambda = InstrumentLambda(

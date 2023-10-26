@@ -2,6 +2,8 @@
 The state machine integrates with AWS Batch to execute processing
 components.
 """
+import json
+
 from aws_cdk import Stack
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
@@ -26,6 +28,7 @@ class SdcStepFunction(Construct):
         batch_resources: FargateBatchResources,
         data_bucket: s3.Bucket,
         db_secret_name: str,
+        dependents: str,
     ):
         """SdcStepFunction Constructor
 
@@ -42,6 +45,9 @@ class SdcStepFunction(Construct):
         data_bucket : s3.Bucket
             S3 bucket
         db_secret_name : str
+            Db secret name
+        dependents : str
+            Path to location of dependents.json
 
         """
         super().__init__(scope, construct_id)
@@ -56,7 +62,7 @@ class SdcStepFunction(Construct):
             "Reformat EventBridge Inputs",
             parameters={
                 "DATES.$": "$.process_dates",
-                "DEPENDENTS.$": "$.instrument_dependents",
+                "INSTR_PROCESS.$": "$.instruments_to_process",
                 "COMMAND.$": "$.command",
             },
         )
@@ -75,6 +81,11 @@ class SdcStepFunction(Construct):
         # TODO: instead of passing instrument dependents and dates as
         #  env variables we should pass them in as part of the command.
         #  This will require improvements to our Docker image code.
+
+        # Read and parse the JSON file
+        with dependents.open("r") as file:
+            json.load(file)
+
         # Batch Job
         submit_job = tasks.BatchSubmitJob(
             self,
@@ -86,8 +97,9 @@ class SdcStepFunction(Construct):
                 command=sfn.JsonPath.list_at("$.COMMAND"),
                 environment={
                     "OUTPUT_PATH": data_bucket.bucket_name,
-                    "DEPENDENTS": "$.DEPENDENTS",
+                    "INSTR_PROCESS": "$.INSTR_PROCESS",
                     "SECRET_NAME": db_secret_name,
+                    "DEPENDENTS": dependents,
                 },
             ),
             result_path="$.BatchJobOutput",

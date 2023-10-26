@@ -122,6 +122,8 @@ def build_sds(
 
     lambda_code_directory = Path(__file__).parent.parent / "lambda_code" / "SDSCode"
     lambda_code_directory_str = str(lambda_code_directory.resolve())
+    dependents_file_path = lambda_code_directory / "instruments" / "dependents.json"
+    dependents_file_path_str = str(dependents_file_path.resolve())
 
     spin_table_code = lambda_code_directory / "spin_table_api.py"
     # Create Lambda for universal spin table API
@@ -174,6 +176,7 @@ def build_sds(
             data_bucket=data_manager.data_bucket,
             instrument=instrument,
             instrument_dependents=get_dependency(instrument),
+            dependents=dependents_file_path_str,
             repo=ecr.container_repo,
             batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,

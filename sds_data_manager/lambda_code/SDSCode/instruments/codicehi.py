@@ -262,7 +262,6 @@ def query_dependencies(cur, uningested, version):
     """
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    # TODO: pass this to the batch job
     json_path = os.path.join(dir_path, "dependents.json")
 
     with open(json_path) as f:
@@ -362,6 +361,7 @@ def lambda_handler(event: dict, context):
 
     # Start Step function execution
     input_data = {
+        "process_dates": process_dates,
         "instruments_to_process": instruments_to_process,
         "command": f"{instrument}",
     }
