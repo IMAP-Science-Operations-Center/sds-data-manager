@@ -1,25 +1,33 @@
 import json
-import sys
 from pathlib import Path
 
 
 def get_dependency(key):
     """
-    Retrieves dependencies for each instrument/level.
+    Retrieves the value associated with the specified key from a JSON file.
 
     Parameters
     ----------
     key : str
-        Target name
+        The key from the JSON file.
 
     Returns
     -------
-    packets : list
-        List of all the dependencies
-    """
-    dependency_path=Path(sys.modules[__name__.split(
-        '.')[0]].__file__).parent / 'utils' / 'dependencies.json'
+    dict or {}
+        The value associated with the provided key in the JSON file.
+        If the key does not exist, an empty dictionary is returned.
 
-    with open(dependency_path) as f:
-        dependencies = json.load(f)
-        return dependencies.get(key, [])
+    Raises
+    ------
+    FileNotFoundError:
+        If the 'dependencies.json' file does not exist in the expected location.
+    json.JSONDecodeError:
+        If there's an error decoding the JSON file.
+    """
+
+    # Construct the path to the JSON file
+    dependency_path = Path(__file__).parent.parent / 'utils' / 'dependencies.json'
+
+    with open(dependency_path, 'r') as file:
+        data = json.load(file)
+        return data.get(key, {})
