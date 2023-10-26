@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from aws_cdk import Duration
+from aws_cdk import aws_iam as iam
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
@@ -21,8 +22,10 @@ class InstrumentLambda(Construct):
         processing_step_name: str,
         data_bucket: s3.Bucket,
         code_path: str or Path,
-        instrument_target: str,
-        instrument_sources: str,
+        instrument: str,
+        instrument_dependents: dict,
+        step_function_arn: str,
+        step_function_policy: iam.PolicyStatement,
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
         db_secret_name: str,
@@ -43,10 +46,14 @@ class InstrumentLambda(Construct):
             S3 bucket
         code_path : str or Path
             Path to the Lambda code directory
-        instrument_target : str
-            Target data product (i.e. expected product)
-        instrument_sources : str
-            Data product sources (i.e. dependencies)
+        instrument : str
+            Instrument
+        instrument_dependents : dict
+            Instrument dependents
+        step_function_arn: str
+            Step function arn
+        step_function_policy: iam.PolicyStatement
+            Step function policy
         rds_security_group : ec2.SecurityGroup
             RDS security group
         subnets : ec2.SubnetSelection
@@ -62,11 +69,9 @@ class InstrumentLambda(Construct):
         # Define Lambda Environment Variables
         # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
-            "S3_BUCKET": f"{data_bucket.bucket_name}",
-            "S3_KEY_PATH": instrument_sources,
-            "INSTRUMENT_TARGET": instrument_target,
-            "PROCESSING_NAME": processing_step_name,
-            "OUTPUT_PATH": f"s3://{data_bucket.bucket_name}/{instrument_target}",
+            "INSTRUMENT": f"{instrument}",
+            "INSTRUMENT_DEPENDENTS": f"{instrument_dependents}",
+            "STATE_MACHINE_ARN": step_function_arn,
             "SECRET_NAME": db_secret_name,
         }
 
@@ -76,7 +81,7 @@ class InstrumentLambda(Construct):
             id=f"InstrumentLambda-{processing_step_name}",
             function_name=f"{processing_step_name}",
             entry=str(code_path),
-            index=f"instruments/{instrument_target.lower()}.py",
+            index=f"instruments/{instrument.lower()}.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_11,
             timeout=Duration.seconds(10),
@@ -89,6 +94,7 @@ class InstrumentLambda(Construct):
         )
 
         data_bucket.grant_read_write(self.instrument_lambda)
+        self.instrument_lambda.add_to_role_policy(step_function_policy)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
