@@ -1,0 +1,197 @@
+{
+    "CodiceHi": {
+        "l1a": [
+            {"instrument": "CodiceHi", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "CodiceHi", "level": "l1a"}
+        ],
+        "l2": [
+            {"instrument": "CodiceHi", "level": "l1b"}
+        ],
+        "l3a": [
+            {"instrument": "CodiceHi", "level": "l2"},
+            {"instrument": "CodiceHi", "level": "l0"}
+        ],
+        "l3b": [
+            {"instrument": "CodiceHi", "level": "l3a"},
+            {"instrument": "Mag", "level": "l2"}
+        ],
+        "l3c": [
+            {"instrument": "CodiceHi", "level": "l3a"},
+            {"instrument": "CodiceLo", "level": "l3a"}
+        ]
+    },
+    "Ultra": {
+        "l1c": [
+            {"instrument": "CodiceHi", "level": "l2"},
+            {"instrument": "CodiceLo", "level": "l2"},
+            {"instrument": "Swapi", "level": "l2"},
+            {"instrument": "Ultra", "level": "l1b"},
+            {"instrument": "Spice", "level": "definitive"},
+            {"instrument": "Spice", "level": "final"}
+        ],
+        "l1a": [
+            {"instrument": "Ultra", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "Ultra", "level": "l1a"}
+        ],
+        "l1d": [
+            {"instrument": "Ultra", "level": "l1c"}
+        ],
+        "l2": [
+            {"instrument": "Ultra", "level": "l12"}
+        ],
+        "l3": [
+            {"instrument": "Ultra", "level": "l2"}
+        ]
+    },
+    "CodiceLo": {
+        "l3c": [
+            {"instrument": "CodiceHi", "level": "l3a"},
+            {"instrument": "CodiceLo", "level": "l3a"}
+        ],
+        "l1a": [
+            {"instrument": "CodiceLo", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "CodiceLo", "level": "l1a"}
+        ],
+        "l2": [
+            {"instrument": "CodiceLo", "level": "l1b"}
+        ],
+        "l3a": [
+            {"instrument": "CodiceLo", "level": "l2"}
+        ],
+        "l3b": [
+            {"instrument": "CodiceLo", "level": "l2"},
+            {"instrument": "CodiceLo", "level": "l3a"},
+            {"instrument": "Mag", "level": "l2"}
+        ]
+    },
+    "Glows": {
+        "l1a": [
+            {"instrument": "Glows", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "Glows", "level": "l1a"}
+        ],
+        "l2": [
+            {"instrument": "Glows", "level": "l1b"}
+        ],
+        "l3": [
+            {"instrument": "Glows", "level": "l2"},
+            {"instrument": "Hit", "level": "l2"},
+            {"instrument": "Swe", "level": "l2"}
+        ]
+    },
+    "Hit": {
+        "l1a": [
+            {"instrument": "Hit", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "Hit", "level": "l1a"}
+        ],
+        "l2": [
+            {"instrument": "Hit", "level": "l1b"}
+        ],
+        "l3": [
+            {"instrument": "Hit", "level": "l2"},
+            {"instrument": "Mag", "level": "l2"}
+        ]
+    },
+    "Idex": {
+        "l1a": [
+            {"instrument": "Idex", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "Idex", "level": "l1a"}
+        ],
+        "l1c": [
+            {"instrument": "Idex", "level": "l1b"}
+        ],
+        "l2": [
+            {"instrument": "Idex", "level": "l1c"}
+        ],
+        "l3": [
+            {"instrument": "Idex", "level": "l2"}
+        ]
+    },
+    "ImapHi": {
+        "l1a": [
+            {"instrument": "ImapHi", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "ImapHi", "level": "l1a"}
+        ],
+        "l1c": [
+            {"instrument": "ImapHi", "level": "l1b"}
+        ],
+        "l2": [
+            {"instrument": "ImapHi", "level": "l1c"}
+        ],
+        "l3": [
+            {"instrument": "ImapHi", "level": "l2"}
+        ]
+    },
+    "ImapLo": {
+        "l1c": [
+            {"instrument": "ImapHi", "level": "l1b"},
+            {"instrument": "ImapLo", "level": "l1b"}
+        ],
+        "l1a": [
+            {"instrument": "ImapLo", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "ImapLo", "level": "l1a"}
+        ],
+        "l2": [
+            {"instrument": "ImapLo", "level": "l1c"}
+        ]
+    },
+    "Mag": {
+        "l1a": [
+            {"instrument": "Mag", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "Mag", "level": "l1a"}
+        ],
+        "l2pre": [
+            {"instrument": "Mag", "level": "l1b"}
+        ],
+        "l2": [
+            {"instrument": "Mag", "level": "l1b"}
+        ]
+    },
+    "Swe": {
+        "l3": [
+            {"instrument": "Mag", "level": "l2"},
+            {"instrument": "Swapi", "level": "l2"},
+            {"instrument": "Swe", "level": "l2"}
+        ],
+        "l1a": [
+            {"instrument": "Swe", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "Swe", "level": "l1a"}
+        ],
+        "l2": [
+            {"instrument": "Swe", "level": "l1b"}
+        ]
+    },
+    "Swapi": {
+        "l1a": [
+            {"instrument": "Swapi", "level": "l0"}
+        ],
+        "l1b": [
+            {"instrument": "Swapi", "level": "l1a"}
+        ],
+        "l2": [
+            {"instrument": "Swapi", "level": "l1b"}
+        ],
+        "l3": [
+            {"instrument": "Swapi", "level": "l2"}
+        ]
+    }
+}
