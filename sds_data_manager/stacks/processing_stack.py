@@ -29,8 +29,8 @@ class ProcessingStep(Stack):
         processing_step_name: str,
         lambda_code_directory: str or Path,
         data_bucket: s3.Bucket,
-        instrument_target: str,
-        instrument_sources: str,
+        instrument: str,
+        instrument_dependents: dict,
         repo: ecr.Repository,
         batch_security_group: ec2.SecurityGroup,
         rds_security_group: ec2.SecurityGroup,
@@ -56,10 +56,10 @@ class ProcessingStep(Stack):
             Lambda directory
         data_bucket : s3.Bucket
             S3 bucket
-        instrument_target : str
-            Target data product
-        instrument_sources : list
-            Data product sources
+        instrument : str
+            Instrument
+        instrument_dependents : dict
+            Dependents of instrument
         repo : ecr.Repository
             Container repo
         batch_security_group: ec2.SecurityGroup
@@ -90,44 +90,47 @@ class ProcessingStep(Stack):
             account_name=account_name,
         )
 
+        self.step_function = SdcStepFunction(
+            self,
+            f"SdcStepFunction-{processing_step_name}",
+            processing_step_name=processing_step_name,
+            batch_resources=self.batch_resources,
+            data_bucket=data_bucket,
+            db_secret_name=db_secret_name,
+        )
+
         self.instrument_lambda = InstrumentLambda(
             self,
             "InstrumentLambda",
             processing_step_name=processing_step_name,
             data_bucket=data_bucket,
             code_path=str(lambda_code_directory),
-            instrument_target=instrument_target,
-            instrument_sources=instrument_sources,
+            instrument=instrument,
+            instrument_dependents=instrument_dependents,
+            step_function_arn=self.step_function.state_machine.state_machine_arn,
+            step_function_policy=self.step_function.execution_policy,
             db_secret_name=db_secret_name,
             rds_security_group=rds_security_group,
             subnets=subnets,
             vpc=vpc,
         )
 
-        self.step_function = SdcStepFunction(
-            self,
-            f"SdcStepFunction-{processing_step_name}",
-            processing_step_name=processing_step_name,
-            processing_system=self.instrument_lambda,
-            batch_resources=self.batch_resources,
-            instrument_target=instrument_target,
-            data_bucket=data_bucket,
-            db_secret_name=db_secret_name,
-        )
-
         # Kicks off Step Function as a result of object ingested into directories in
         # s3 bucket (instrument_sources).
-        for source in instrument_sources:
-            rule = events.Rule(self,
-                               f"Rule-{processing_step_name}-{source}",
-                               event_pattern=events.EventPattern(
-                                   source=["aws.s3"],
-                                   detail_type=["Object Created"],
-                                   detail={
-                                       "bucket": {"name": [data_bucket.bucket_name]},
-                                       "object": {"key": [{"prefix": f"{source}"}]},
-                                   },
-                               ),
-                           )
+        for source in instrument_dependents:
+            rule = events.Rule(
+                self,
+                f"Rule-{processing_step_name}-{source}",
+                event_pattern=events.EventPattern(
+                    source=["aws.s3"],
+                    detail_type=["Object Created"],
+                    detail={
+                        "bucket": {"name": [data_bucket.bucket_name]},
+                        "object": {"key": [{"prefix": f"{instrument}_{source}"}]},
+                    },
+                ),
+            )
 
-            rule.add_target(event_targets.SfnStateMachine(self.step_function.state_machine))
+            rule.add_target(
+                event_targets.LambdaFunction(self.instrument_lambda.instrument_lambda)
+            )
