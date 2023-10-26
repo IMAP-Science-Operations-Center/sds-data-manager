@@ -5,7 +5,6 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Optional
 
 import boto3
 import psycopg2
@@ -45,13 +44,13 @@ def get_filename_from_event(event):
         raise KeyError("Invalid event format: Unable to extract filename") from err
 
 
-def db_connect(secret_arn: Optional[str] = None):
+def db_connect(db_secret_name):
     """
     Retrieves secrets and connects to database.
 
     Parameters
     ----------
-    secret_arn : str, optional
+    db_secret_name : str
         The ARN for the database secrets in AWS Secrets Manager.
 
     Returns
@@ -61,11 +60,8 @@ def db_connect(secret_arn: Optional[str] = None):
     """
     client = boto3.client("secretsmanager")
 
-    # TODO: we need to get the secret arn somehow; possibly
-    #  passing it in from the event.
-
     try:
-        response = client.get_secret_value(SecretId=secret_arn)
+        response = client.get_secret_value(SecretId=db_secret_name)
         secret_string = response["SecretString"]
         secret = json.loads(secret_string)
     except Exception as e:
@@ -348,10 +344,11 @@ def lambda_handler(event: dict, context):
     instrument = os.environ.get("INSTRUMENT")
     instrument_dependents = os.environ.get("INSTRUMENT_DEPENDENTS")
     state_machine_arn = os.environ.get("STATE_MACHINE_ARN")
+    db_secret_name = os.environ.get("SECRET_NAME")
 
     filename = get_filename_from_event(event)
 
-    with db_connect() as conn:
+    with db_connect(db_secret_name) as conn:
         with conn.cursor() as cur:
             level, version, process_dates = get_process_details(
                 cur, instrument, filename
