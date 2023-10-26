@@ -3,8 +3,8 @@
 from pathlib import Path
 
 from aws_cdk import Duration
-from aws_cdk import aws_iam as iam
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
 from aws_cdk import aws_s3 as s3
