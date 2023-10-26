@@ -118,7 +118,8 @@ def build_sds(
     # create EFS
     efs = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
 
-    instrument_list = ["Codice"]  # etc
+    instrument_list = ["CodiceHi"]  # etc
+
     lambda_code_directory = Path(__file__).parent.parent / "lambda_code" / "SDSCode"
     lambda_code_directory_str = str(lambda_code_directory.resolve())
 
@@ -165,33 +166,14 @@ def build_sds(
 
         processing_stack.ProcessingStep(
             scope,
-            f"L1b{instrument}Processing",
+            f"{instrument}Processing",
             env=env,
             vpc=networking.vpc,
-            processing_step_name=f"l1b-{instrument}",
+            processing_step_name=f"{instrument}",
             lambda_code_directory=lambda_code_directory_str,
             data_bucket=data_manager.data_bucket,
-            instrument_target=f"l1b_{instrument}",
-            instrument_sources=get_dependency(f"l1b_{instrument}"),
-            repo=ecr.container_repo,
-            batch_security_group=networking.batch_security_group,
-            rds_security_group=networking.rds_security_group,
-            subnets=rds_stack.rds_subnet_selection,
-            db_secret_name=rds_stack.secret_name,
-            efs=efs,
-            account_name=account_name,
-        )
-
-        processing_stack.ProcessingStep(
-            scope,
-            f"L1c{instrument}Processing",
-            env=env,
-            vpc=networking.vpc,
-            processing_step_name=f"l1c-{instrument}",
-            lambda_code_directory=lambda_code_directory_str,
-            data_bucket=data_manager.data_bucket,
-            instrument_target=f"l1c_{instrument}",
-            instrument_sources=get_dependency(f"l1c_{instrument}"),
+            instrument=instrument,
+            instrument_dependents=get_dependency(instrument),
             repo=ecr.container_repo,
             batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,
