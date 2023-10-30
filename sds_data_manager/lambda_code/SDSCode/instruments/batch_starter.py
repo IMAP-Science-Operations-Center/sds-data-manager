@@ -355,9 +355,20 @@ def lambda_handler(event: dict, context):
             uningested = remove_ingested(
                 ingested_dependents, instrument_dependents[level], process_dates
             )
+
+            # Check if uningested is empty
+            if not uningested:
+                logger.info("No uningested dependents found. Skipping further processing.")
+                return
+
             # decide if we have sufficient dependencies
             # for each dependent to process
             instruments_to_process = query_dependencies(cur, uningested, version)
+
+            # No instruments to process
+            if not instruments_to_process:
+                logger.info("No instruments_to_process. Skipping further processing.")
+                return
 
     # Start Step function execution
     input_data = {
