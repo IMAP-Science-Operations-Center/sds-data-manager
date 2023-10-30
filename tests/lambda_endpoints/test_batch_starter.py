@@ -5,7 +5,7 @@ import zoneinfo
 
 import pytest
 
-from sds_data_manager.lambda_code.SDSCode.instruments.codicehi import (
+from sds_data_manager.lambda_code.SDSCode.instruments.batch_starter import (
     all_dependency_present,
     get_filename_from_event,
     get_process_details,
@@ -18,7 +18,7 @@ from sds_data_manager.lambda_code.SDSCode.instruments.codicehi import (
 @pytest.fixture(scope="session")
 def mock_event():
     """Example of the type of event that will be passed to
-    the instrument lambda (in our case codicehi.py).
+    the instrument lambda (in our case batch_starter.py).
     """
     with open("../test-data/codicehi_event.json") as file:
         event = json.load(file)

@@ -81,7 +81,7 @@ class InstrumentLambda(Construct):
             id=f"InstrumentLambda-{processing_step_name}",
             function_name=f"{processing_step_name}",
             entry=str(code_path),
-            index=f"instruments/{instrument.lower()}.py",
+            index=f"instruments/batch_starter.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_11,
             timeout=Duration.seconds(10),
