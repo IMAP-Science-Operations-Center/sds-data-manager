@@ -180,7 +180,6 @@ def build_sds(
             instrument_dependents=get_dependency(instrument),
             dependents=dependents_file_path_str,
             repo=ecr.container_repo,
-            batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,
             subnets=rds_stack.rds_subnet_selection,
             db_secret_name=rds_stack.secret_name,
