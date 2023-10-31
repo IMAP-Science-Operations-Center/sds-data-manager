@@ -4,9 +4,9 @@ from pathlib import Path
 
 from aws_cdk import Duration
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_ecr_assets as ecr_assets
 from aws_cdk import aws_iam as iam
-from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
+from aws_cdk import aws_lambda as _lambda
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
@@ -19,7 +19,6 @@ class InstrumentLambda(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        processing_step_name: str,
         data_bucket: s3.Bucket,
         code_path: str or Path,
         instrument: str,
@@ -29,6 +28,7 @@ class InstrumentLambda(Construct):
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
         db_secret_name: str,
+        db_secret_arn: str,
         vpc: ec2.Vpc,
     ):
         """
@@ -40,8 +40,6 @@ class InstrumentLambda(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        processing_step_name : str
-            Processing step name
         data_bucket: s3.Bucket
             S3 bucket
         code_path : str or Path
@@ -60,6 +58,8 @@ class InstrumentLambda(Construct):
             RDS subnet selection.
         db_secret_name : str
             RDS secret name for secret manager access
+        db_secret_arn : str
+            RDS secret arn for secret manager access
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
         """
@@ -72,21 +72,23 @@ class InstrumentLambda(Construct):
             "INSTRUMENT": f"{instrument}",
             "INSTRUMENT_DEPENDENTS": f"{instrument_dependents}",
             "STATE_MACHINE_ARN": step_function_arn,
-            "SECRET_NAME": db_secret_name,
+            "SECRET_ARN": db_secret_arn,
         }
 
-        # TODO: Add Lambda layers for more libraries (or Dockerize)
-        self.instrument_lambda = lambda_alpha_.PythonFunction(
+        # Define Dockerized lambda function
+        docker_image_code = _lambda.DockerImageCode.from_image_asset(
+            directory=str(code_path), platform=ecr_assets.Platform.LINUX_AMD64
+        )
+
+        self.instrument_lambda = _lambda.DockerImageFunction(
             self,
-            id=f"InstrumentLambda-{processing_step_name}",
-            function_name=f"{processing_step_name}",
-            entry=str(code_path),
-            index="instruments/batch_starter.py",
-            handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_11,
-            timeout=Duration.seconds(10),
-            memory_size=512,
+            "InstrumentLambdas",
+            function_name="InstrumentLambdas",
+            code=docker_image_code,
             environment=lambda_environment,
+            retry_attempts=0,
+            memory_size=512,
+            timeout=Duration.minutes(10),
             vpc=vpc,
             vpc_subnets=subnets,
             security_groups=[rds_security_group],

@@ -64,6 +64,7 @@ class SdcStepFunction(Construct):
                 "DATES.$": "$.process_dates",
                 "INSTR_PROCESS.$": "$.instruments_to_process",
                 "COMMAND.$": "$.command",
+                "VERSION.$": "$.version",
             },
         )
 
@@ -83,8 +84,8 @@ class SdcStepFunction(Construct):
         #  This will require improvements to our Docker image code.
 
         # Read and parse the JSON file
-        with dependents.open("r") as file:
-            json.load(file)
+        with open(dependents) as file:
+            dependents_data = json.load(file)
 
         # Batch Job
         submit_job = tasks.BatchSubmitJob(
@@ -99,7 +100,8 @@ class SdcStepFunction(Construct):
                     "OUTPUT_PATH": data_bucket.bucket_name,
                     "INSTR_PROCESS": "$.INSTR_PROCESS",
                     "SECRET_NAME": db_secret_name,
-                    "DEPENDENTS": dependents,
+                    "DEPENDENTS": json.dumps(dependents_data),
+                    "VERSION": "$.VERSION",
                 },
             ),
             result_path="$.BatchJobOutput",
@@ -107,7 +109,6 @@ class SdcStepFunction(Construct):
 
         # Success and Fail Final States
         fail_state = sfn.Fail(self, "Fail State")
-
         submit_job.add_catch(fail_state)
 
         # State sequences

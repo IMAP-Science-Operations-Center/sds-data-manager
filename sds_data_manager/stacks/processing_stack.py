@@ -37,6 +37,7 @@ class ProcessingStep(Stack):
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
         db_secret_name: str,
+        db_secret_arn: str,
         efs: efs.FileSystem,
         account_name: str,
         **kwargs,
@@ -73,6 +74,8 @@ class ProcessingStep(Stack):
             RDS subnet selection.
         db_secret_name : str
             RDS secret name for secret manager access
+        db_secret_arn : str
+            RDS secret arn for secret manager access
         efs: efs.FileSystem
             EFS stack object
         account_name: str
@@ -87,7 +90,6 @@ class ProcessingStep(Stack):
             processing_step_name=processing_step_name,
             data_bucket=data_bucket,
             repo=repo,
-            batch_security_group=batch_security_group,
             db_secret_name=db_secret_name,
             efs=efs,
             account_name=account_name,
@@ -106,7 +108,6 @@ class ProcessingStep(Stack):
         self.instrument_lambda = InstrumentLambda(
             self,
             "InstrumentLambda",
-            processing_step_name=processing_step_name,
             data_bucket=data_bucket,
             code_path=str(lambda_code_directory),
             instrument=instrument,
@@ -116,11 +117,14 @@ class ProcessingStep(Stack):
             db_secret_name=db_secret_name,
             rds_security_group=rds_security_group,
             subnets=subnets,
+            db_secret_arn=db_secret_arn,
             vpc=vpc,
         )
 
         # Kicks off Step Function as a result of object ingested into directories in
         # s3 bucket (instrument_sources).
+        # TODO: Right now these directories are created manually.
+        #  Add code so that they are not.
         for source in instrument_dependents:
             rule = events.Rule(
                 self,

@@ -28,7 +28,6 @@ class FargateBatchResources(Construct):
         processing_step_name: str,
         data_bucket: s3.Bucket,
         repo: ecr.Repository,
-        batch_security_group: ec2.SecurityGroup,
         db_secret_name: str,
         efs: efs.FileSystem,
         account_name: str,
@@ -52,8 +51,6 @@ class FargateBatchResources(Construct):
             S3 bucket.
         repo : ecr.Repository
             Container repo
-        batch_security_group: ec2.SecurityGroup
-            Batch security group
         db_secret_name : str
             RDS secret name for secret manager access
         batch_max_vcpus : int, Optional

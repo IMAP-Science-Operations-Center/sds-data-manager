@@ -41,13 +41,13 @@ def get_filename_from_event(event):
         raise KeyError("Invalid event format: Unable to extract filename") from err
 
 
-def db_connect(db_secret_name):
+def db_connect(db_secret_arn):
     """
     Retrieves secrets and connects to database.
 
     Parameters
     ----------
-    db_secret_name : str
+    db_secret_arn : str
         The ARN for the database secrets in AWS Secrets Manager.
 
     Returns
@@ -58,7 +58,7 @@ def db_connect(db_secret_name):
     client = boto3.client("secretsmanager")
 
     try:
-        response = client.get_secret_value(SecretId=db_secret_name)
+        response = client.get_secret_value(SecretId=db_secret_arn)
         secret_string = response["SecretString"]
         secret = json.loads(secret_string)
     except Exception as e:
@@ -67,7 +67,7 @@ def db_connect(db_secret_name):
     try:
         conn = psycopg2.connect(
             dbname=secret["dbname"],
-            user=secret["user"],
+            user=secret["username"],
             password=secret["password"],
             host=secret["host"],
             port=secret["port"],
@@ -337,11 +337,11 @@ def lambda_handler(event: dict, context):
     instrument = os.environ.get("INSTRUMENT")
     instrument_dependents = os.environ.get("INSTRUMENT_DEPENDENTS")
     state_machine_arn = os.environ.get("STATE_MACHINE_ARN")
-    db_secret_name = os.environ.get("SECRET_NAME")
+    db_secret_arn = os.environ.get("SECRET_ARN")
 
     filename = get_filename_from_event(event)
 
-    with db_connect(db_secret_name) as conn:
+    with db_connect(db_secret_arn) as conn:
         with conn.cursor() as cur:
             # get details of the object
             level, version, process_dates = get_process_details(
@@ -358,7 +358,9 @@ def lambda_handler(event: dict, context):
 
             # Check if uningested is empty
             if not uningested:
-                logger.info("No uningested dependents found. Skipping further processing.")
+                logger.info(
+                    "No uningested dependents found. Skipping further processing."
+                )
                 return
 
             # decide if we have sufficient dependencies

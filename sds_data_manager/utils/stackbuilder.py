@@ -97,9 +97,9 @@ def build_sds(
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
-        username="imap",
-        secret_name="sdp-database-creds-rds",
-        database_name="imapdb",
+        username="imap_user",
+        secret_name="sdp-database-cred",
+        database_name="imap",
     )
 
     data_manager = sds_data_manager_stack.SdsDataManager(
@@ -120,9 +120,11 @@ def build_sds(
 
     instrument_list = ["CodiceHi"]  # etc
 
-    lambda_code_directory = Path(__file__).parent.parent / "lambda_code" / "SDSCode"
+    lambda_code_directory = (
+        Path(__file__).parent.parent / "lambda_images" / "instruments"
+    )
     lambda_code_directory_str = str(lambda_code_directory.resolve())
-    dependents_file_path = lambda_code_directory / "instruments" / "dependents.json"
+    dependents_file_path = lambda_code_directory / "dependents.json"
     dependents_file_path_str = str(dependents_file_path.resolve())
 
     spin_table_code = lambda_code_directory / "spin_table_api.py"
@@ -149,7 +151,7 @@ def build_sds(
     for instrument in instrument_list:
         ecr = ecr_stack.EcrStack(
             scope,
-            f"{instrument}Processing",
+            f"{instrument}Ecr",
             env=env,
             instrument_name=f"{instrument}",
         )
@@ -182,6 +184,7 @@ def build_sds(
             rds_security_group=networking.rds_security_group,
             subnets=rds_stack.rds_subnet_selection,
             db_secret_name=rds_stack.secret_name,
+            db_secret_arn=rds_stack.rds_creds.secret_arn,
             efs=efs,
             account_name=account_name,
         )
