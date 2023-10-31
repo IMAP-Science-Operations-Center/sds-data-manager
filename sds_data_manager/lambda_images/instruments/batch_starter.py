@@ -375,6 +375,7 @@ def lambda_handler(event: dict, context):
         "process_dates": process_dates,
         "instruments_to_process": instruments_to_process,
         "command": f"{instrument}",
+        "version": version,
     }
     response = step_function_client.start_execution(
         stateMachineArn=state_machine_arn,
