@@ -33,7 +33,6 @@ class ProcessingStep(Stack):
         instrument_dependents: dict,
         dependents: str,
         repo: ecr.Repository,
-        batch_security_group: ec2.SecurityGroup,
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
         db_secret_name: str,
@@ -66,8 +65,6 @@ class ProcessingStep(Stack):
             Path to location of dependents.json
         repo : ecr.Repository
             Container repo
-        batch_security_group: ec2.SecurityGroup
-            Batch security group
         rds_security_group : ec2.SecurityGroup
             RDS security group
         subnets : ec2.SubnetSelection
