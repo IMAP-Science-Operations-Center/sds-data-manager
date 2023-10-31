@@ -51,11 +51,12 @@ class NetworkingStack(Stack):
             ],
         )
 
-        self.vpc.add_interface_endpoint("SecretManagerEndpoint",
-                                        service=ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-                                        subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-                                        private_dns_enabled=True
-                                        )
+        self.vpc.add_interface_endpoint(
+            "SecretManagerEndpoint",
+            service=ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+            subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            private_dns_enabled=True,
+        )
 
         # Create security group for the RDS instance
         self.rds_security_group = ec2.SecurityGroup(

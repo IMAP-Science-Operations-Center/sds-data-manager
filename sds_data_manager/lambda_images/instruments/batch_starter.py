@@ -55,8 +55,7 @@ def db_connect(db_secret_arn):
     conn : psycopg.Connection
         Database connection.
     """
-    client = boto3.client(service_name="secretsmanager",
-                          region_name="us-west-2")
+    client = boto3.client(service_name="secretsmanager", region_name="us-west-2")
 
     try:
         response = client.get_secret_value(SecretId=db_secret_arn)
