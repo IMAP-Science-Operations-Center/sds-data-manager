@@ -9,6 +9,7 @@ from sds_data_manager.lambda_images.instruments.batch_starter import (
     all_dependency_present,
     get_filename_from_event,
     get_process_details,
+    prepare_data,
     query_dependencies,
     query_dependents,
     remove_ingested,
@@ -237,3 +238,21 @@ def test_query_dependencies(setup_database):
     result = query_dependencies(cur, output, 1)
 
     assert result == [{"instrument": "CodiceHi", "level": "l2", "date": "2023-06-02"}]
+
+
+def test_prepare_data():
+    output = [
+        {"instrument": "CodiceHi", "level": "l2", "date": "2023-05-31"},
+        {"instrument": "CodiceHi", "level": "l3", "date": "2023-06-01"},
+        {"instrument": "CodiceHi", "level": "l2", "date": "2023-06-02"},
+        {"instrument": "CodiceLo", "level": "l2", "date": "2023-06-02"},
+    ]
+
+    input_data = prepare_data(output)
+
+    grouped_list = {
+        "CodiceHi": {"l2": ["2023-05-31", "2023-06-02"], "l3": ["2023-06-01"]},
+        "CodiceLo": {"l2": ["2023-06-02"]},
+    }
+
+    assert grouped_list == input_data

@@ -2,7 +2,6 @@
 The state machine integrates with AWS Batch to execute processing
 components.
 """
-import json
 
 from aws_cdk import Stack
 from aws_cdk import aws_iam as iam
@@ -56,15 +55,12 @@ class SdcStepFunction(Construct):
             effect=iam.Effect.ALLOW, actions=["states:StartExecution"], resources=["*"]
         )
 
-        # Reformat EventBridge Inputs
+        # Reformat Lambda Inputs
         add_specifics_to_input = sfn.Pass(
             self,
-            "Reformat EventBridge Inputs",
+            "Reformat Lambda Inputs",
             parameters={
-                "DATES.$": "$.process_dates",
-                "INSTR_PROCESS.$": "$.instruments_to_process",
                 "COMMAND.$": "$.command",
-                "VERSION.$": "$.version",
             },
         )
 
@@ -79,14 +75,6 @@ class SdcStepFunction(Construct):
             f"{batch_resources.job_queue_name}"
         )
 
-        # TODO: instead of passing instrument dependents and dates as
-        #  env variables we should pass them in as part of the command.
-        #  This will require improvements to our Docker image code.
-
-        # Read and parse the JSON file
-        with open(dependents) as file:
-            dependents_data = json.load(file)
-
         # Batch Job
         submit_job = tasks.BatchSubmitJob(
             self,
@@ -98,10 +86,7 @@ class SdcStepFunction(Construct):
                 command=sfn.JsonPath.list_at("$.COMMAND"),
                 environment={
                     "OUTPUT_PATH": data_bucket.bucket_name,
-                    "INSTR_PROCESS": "$.INSTR_PROCESS",
                     "SECRET_NAME": db_secret_name,
-                    "DEPENDENTS": json.dumps(dependents_data),
-                    "VERSION": "$.VERSION",
                 },
             ),
             result_path="$.BatchJobOutput",

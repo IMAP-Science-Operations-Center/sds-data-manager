@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from collections import defaultdict
 from datetime import datetime, timedelta
 
 import boto3
@@ -329,6 +330,36 @@ def all_dependency_present(result, dependencies):
         return False
 
 
+def prepare_data(instruments_to_process):
+    """
+    Groups input data by 'instrument' and 'level', and aggregates the dates
+    for each group into a list.
+
+    Parameters
+    ----------
+    instruments_to_process : list of dict
+        A list of dictionaries which is not aggregated.
+
+    Returns
+    -------
+    grouped_dict: dict
+        A dictionary of instruments, each containing a dictionary of
+        levels with a list of dates.
+    """
+    grouped_data = defaultdict(lambda: defaultdict(list))
+    for item in instruments_to_process:
+        instrument = item["instrument"]
+        level = item["level"]
+        date = item["date"]
+        grouped_data[instrument][level].append(date)
+
+    grouped_dict = {
+        instrument: dict(levels) for instrument, levels in grouped_data.items()
+    }
+
+    return grouped_dict
+
+
 def lambda_handler(event: dict, context):
     """Handler function"""
     logger.info(f"Event: {event}")
@@ -372,15 +403,23 @@ def lambda_handler(event: dict, context):
                 logger.info("No instruments_to_process. Skipping further processing.")
                 return
 
-    # Start Step function execution
-    input_data = {
-        "process_dates": process_dates,
-        "instruments_to_process": instruments_to_process,
-        "command": f"{instrument}",
-        "version": version,
-    }
-    response = step_function_client.start_execution(
-        stateMachineArn=state_machine_arn,
-        input=json.dumps(input_data),
-    )
-    logger.info(f"Step function execution started: {response}")
+        grouped_list = prepare_data(instruments_to_process)
+
+        # Start Step function execution for each instrument
+        for instrument_name in grouped_list:
+            input_data = {
+                "command": [
+                    instrument_name,
+                    f"{grouped_list[instrument_name]}",
+                    f"{version}",
+                ]
+            }
+
+            response = step_function_client.start_execution(
+                stateMachineArn=state_machine_arn,
+                name=f"{instrument_name}",
+                input=json.dumps(input_data),
+            )
+            print(
+                f"Started Step Function for {instrument_name} with response: {response}"
+            )
