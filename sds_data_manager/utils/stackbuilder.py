@@ -8,6 +8,7 @@ from aws_cdk import aws_rds as rds
 from sds_data_manager.stacks import (
     api_gateway_stack,
     backup_bucket_stack,
+    create_schema_stack,
     database_stack,
     domain_stack,
     dynamodb_stack,
@@ -85,19 +86,18 @@ def build_sds(
 
     rds_stack = database_stack.SdpDatabase(
         scope,
-        "RDS",
+        f"RDS-{sds_id}",
         description="IMAP SDP database.",
         env=env,
-        sds_id=sds_id,
         vpc=networking.vpc,
         rds_security_group=networking.rds_security_group,
         engine_version=rds.PostgresEngineVersion.VER_15_2,
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
-        username="postgres",
-        secret_name="sdp-database-creds",
-        database_name="imapdb",
+        username="imap_user",
+        secret_name="sdp-database-creds-hoyt-test",
+        database_name="imap",
     )
 
     data_manager = sds_data_manager_stack.SdsDataManager(
@@ -150,7 +150,7 @@ def build_sds(
             batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,
             subnets=rds_stack.rds_subnet_selection,
-            db_secret_name=rds_stack.secret_name,
+            db_secret_name=rds_stack.rds_creds.secret_arn,
         )
 
         processing_stack.ProcessingStep(
@@ -168,9 +168,19 @@ def build_sds(
             batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,
             subnets=rds_stack.rds_subnet_selection,
-            db_secret_name=rds_stack.secret_name,
+            db_secret_name=rds_stack.rds_creds.secret_arn,
         )
-        # etc
+
+        create_schema_stack.CreateSchema(
+            scope,
+            "CreateSchemaStack",
+            env=env,
+            sds_id=sds_id,
+            db_secret_name=rds_stack.secret_name,
+            vpc=networking.vpc,
+            vpc_subnets=rds_stack.rds_subnet_selection,
+            rds_security_group=networking.rds_security_group,
+        )
 
 
 def build_backup(scope: App, env: Environment, sds_id: str, source_account: str):
