@@ -34,7 +34,9 @@ class InstrumentLambda(Construct):
         Parameters
         ----------
         scope : Construct
+            Parent construct.
         construct_id : str
+            A unique string identifier for this construct.
         processing_step_name : str
             Processing step name
         data_bucket: s3.Bucket

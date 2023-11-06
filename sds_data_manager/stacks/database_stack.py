@@ -61,7 +61,6 @@ class SdpDatabase(Stack):
         # Allow ingress to LASP IP address range and specific port
         rds_security_group.add_ingress_rule(
             peer=ec2.Peer.ipv4("128.138.131.0/24"),
-            # peer=ec2.Peer.any_ipv4(),
             connection=ec2.Port.tcp(5432),
             description="Ingress RDS",
         )
@@ -69,6 +68,7 @@ class SdpDatabase(Stack):
         rds_security_group.connections.allow_internally(
             ec2.Port.all_traffic(), description="Lambda ingress"
         )
+
         # Secrets manager credentials
         self.rds_creds = rds.DatabaseSecret(
             self, "RdsCredentials", secret_name=self.secret_name, username=username
@@ -77,6 +77,7 @@ class SdpDatabase(Stack):
         self.rds_subnet_selection = ec2.SubnetSelection(
             subnet_type=ec2.SubnetType.PUBLIC
         )
+
         rds.DatabaseInstance(
             self,
             "RdsInstance",

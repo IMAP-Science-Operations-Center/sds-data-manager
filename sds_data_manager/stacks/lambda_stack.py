@@ -17,7 +17,7 @@ class LambdaWithDockerImageStack(Stack):
     def __init__(
         self,
         scope: Construct,
-        sds_id: str,
+        construct_id: str,
         lambda_name: str,
         managed_policy_names: dict,
         lambda_code_folder: str,
@@ -25,7 +25,6 @@ class LambdaWithDockerImageStack(Stack):
         lambda_environment_vars: Optional[dict] = None,
         **kwargs,
     ):
-        super().__init__(scope, sds_id, **kwargs)
         """This create role for lambda with given policies
         and creates a lambda image from the given folder.
         It also sets the timeout and environment variables.
@@ -33,9 +32,9 @@ class LambdaWithDockerImageStack(Stack):
         Parameters
         ----------
         scope : Construct
-            The scope of the construct.
-        sdd_id : str
-            The id of the construct.
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
         lambda_name : str
             The name of the lambda.
         managed_policy_names : dict
@@ -48,7 +47,7 @@ class LambdaWithDockerImageStack(Stack):
         lambda_environment_vars : dict, optional
             The environment variables of the lambda. The default is None.
         """
-
+        super().__init__(scope, construct_id, **kwargs)
         if lambda_environment_vars is None:
             lambda_environment_vars = {}
 

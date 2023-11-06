@@ -1,5 +1,4 @@
 from aws_cdk import (
-    Environment,
     RemovalPolicy,
     Stack,
 )
@@ -35,8 +34,6 @@ class BackupBucket(Stack):
         self,
         scope: Construct,
         construct_id: str,
-        sds_id: str,
-        env: Environment,
         source_account: str,
         **kwargs,
     ) -> None:
@@ -46,14 +43,13 @@ class BackupBucket(Stack):
         Parameters
         ----------
         scope : Construct
+            Parent construct.
         construct_id : str
-        sds_id: str
-        env : Environment
-            Account and region
+            A unique string identifier for this construct.
         source_account : str
             Account number for the source S3 bucket
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
+        super().__init__(scope, construct_id, **kwargs)
 
         # FOR NOW: Deploy other stack, update this name with the created role.
         role_arn = (
@@ -64,8 +60,8 @@ class BackupBucket(Stack):
         # This is the S3 bucket used by upload_api_lambda
         backup_bucket = s3.Bucket(
             self,
-            f"BackupDataBucket-{sds_id}",
-            bucket_name=f"sds-data-{sds_id}",
+            "BackupDataBucket",
+            bucket_name=f"sds-data-{source_account}-backup",
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,

@@ -1,7 +1,7 @@
 # Create stack for DynamoDB
 from typing import Optional
 
-from aws_cdk import Environment, RemovalPolicy, Stack
+from aws_cdk import RemovalPolicy, Stack
 from aws_cdk import aws_dynamodb as dynamodb
 from constructs import Construct
 
@@ -11,24 +11,21 @@ class DynamoDB(Stack):
         self,
         scope: Construct,
         construct_id: str,
-        sds_id: str,
         table_name: str,
         partition_key: str,
         sort_key: str,
-        env: Environment,
         on_demand: bool = True,
         read_capacity: Optional[int] = None,
         write_capacity: Optional[int] = None,
         **kwargs,
     ):
-        super().__init__(scope, construct_id, **kwargs)
         """
         Parameters
         ----------
         scope : Construct
+            Parent construct.
         construct_id : str
-        sds_id : str
-            Name suffix for stack
+            A unique string identifier for this construct.
         table_name : str
             Database table name
         partition_key : str
@@ -55,8 +52,6 @@ class DynamoDB(Stack):
             unique for each item in a DynamoDB table. This means that while multiple
             items within a partition can have the same sort key value, their partition
             key values must be different.
-        env : Environment
-            Account and region
         on_demand : bool
             If true, creates on demand DynamoDB table. If false, creates provisioned
             DynamoDB table.
@@ -67,7 +62,7 @@ class DynamoDB(Stack):
             Write capacity for provisioned DynamoDB table.
             Default value is 1.
         """
-        self.sds_id = sds_id
+        super().__init__(scope, construct_id, **kwargs)
         self.table_name = table_name
         self.partition_key = partition_key
         self.sort_key = sort_key
@@ -90,7 +85,7 @@ class DynamoDB(Stack):
         # preceding 35 days
         dynamodb.Table(
             self,
-            f"DynamoDB-{self.sds_id}",
+            f"DynamoDB-{self.table_name}",
             table_name=self.table_name,
             partition_key=dynamodb.Attribute(
                 name=self.partition_key, type=dynamodb.AttributeType.STRING

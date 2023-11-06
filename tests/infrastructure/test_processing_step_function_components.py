@@ -9,22 +9,20 @@ from sds_data_manager.stacks.step_function_stack import ProcessingStepFunctionSt
 
 
 @pytest.fixture(scope="module")
-def step_function(app, sds_id, env):
+def step_function(app):
     app = cdk.App()
 
-    stack_name = f"processing-step-function-stack-{sds_id}"
+    stack_name = "processing-step-function-stack"
     stack = ProcessingStepFunctionStack(
-        app, stack_name, sds_id, env=env, dynamodb_table_name="test-table"
+        app, stack_name, dynamodb_table_name="test-table"
     )
     template = Template.from_stack(stack)
     return template
 
 
 @pytest.fixture(scope="module")
-def lambda_stack(app, sds_id, env):
-    app = cdk.App()
-
-    stack_name = f"processing-lambda-stack-{sds_id}"
+def lambda_stack(app):
+    stack_name = "processing-lambda-stack"
     # Set path of main folder for lambda code.
     lambda_code_main_folder = (
         f"{Path(__file__).parent}/../../sds_data_manager/lambda_images/"
@@ -37,7 +35,7 @@ def lambda_stack(app, sds_id, env):
     stack = LambdaWithDockerImageStack(
         app,
         stack_name,
-        lambda_name=f"lambda-{sds_id}",
+        lambda_name="lambda",
         managed_policy_names=[
             "service-role/AWSLambdaBasicExecutionRole",
             "AmazonS3FullAccess",

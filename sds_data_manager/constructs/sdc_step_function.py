@@ -40,7 +40,9 @@ class SdcStepFunction(Construct):
         Parameters
         ----------
         scope : Construct
+            Parent construct.
         construct_id : str
+            A unique string identifier for this construct.
         processing_step_name : str
             The string identifier for the processing step
         processing_system: BatchProcessingSystem

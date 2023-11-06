@@ -1,0 +1,46 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  cdk-deploy:
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - uses: Gr1N/setup-poetry@v8
+
+      - name: Install dependencies and app
+        run: |
+          poetry install --with lambda-dev
+
+      - name: Install cdk
+        run: |
+          npm install -g aws-cdk@2.100.0
+
+      # https://github.com/aws-actions/configure-aws-credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::449431850278:role/GitHubDeploy
+          aws-region: us-west-2
+
+      - name: Synth
+        run: |
+          # poetry run to get the environment we installed everything into
+          poetry run cdk synth --context account_name=dev
+
+      - name: Deploy
+        run: |
+          # poetry run to get the environment we installed everything into
+          poetry run cdk deploy --all --context account_name=dev --require-approval never

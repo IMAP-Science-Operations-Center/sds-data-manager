@@ -4,7 +4,6 @@ import pathlib
 # Installed
 import aws_cdk as cdk
 from aws_cdk import (
-    Environment,
     RemovalPolicy,
     Stack,
     aws_lambda_event_sources,
@@ -44,11 +43,10 @@ class SdsDataManager(Stack):
         self,
         scope: Construct,
         construct_id: str,
-        sds_id: str,
         opensearch: OpenSearch,
         dynamodb_stack: DynamoDB,
         processing_step_function_arn: str,
-        env: Environment,
+        env: cdk.Environment,
         db_secret_name: str,
         vpc: ec2.Vpc,
         vpc_subnets,
@@ -59,10 +57,10 @@ class SdsDataManager(Stack):
 
         Parameters
         ----------
-        scope : App
+        scope : Construct
+            Parent construct.
         construct_id : str
-        sds_id : str
-            Name suffix for stack
+            A unique string identifier for this construct.
         opensearch: OpenSearch
             This class depends on opensearch, which is built with opensearch_stack.py
         dynamodb_stack: DynamoDb
@@ -70,16 +68,17 @@ class SdsDataManager(Stack):
             opensearch_stack.py
         processing_step_function_arn:
             This has step function arn
-        env : Environment
-            Account and region
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
+        # Get the current account number so we can use it in the bucket names
+        account = env.account
+        region = env.region
 
         # This is the S3 bucket used by upload_api_lambda
         self.data_bucket = s3.Bucket(
             self,
-            f"DataBucket-{sds_id}",
-            bucket_name=f"sds-data-{sds_id}",
+            "DataBucket",
+            bucket_name=f"sds-data-{account}",
             versioned=True,
             event_bridge_enabled=True,
             removal_policy=RemovalPolicy.DESTROY,
@@ -102,8 +101,8 @@ class SdsDataManager(Stack):
         # S3 bucket where the configurations will be stored
         config_bucket = s3.Bucket(
             self,
-            f"ConfigBucket-{sds_id}",
-            bucket_name=f"sds-config-bucket-{sds_id}",
+            "ConfigBucket",
+            bucket_name=f"sds-config-bucket-{account}",
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
@@ -115,7 +114,7 @@ class SdsDataManager(Stack):
         # be used for indexing files into the data bucket.
         s3_deploy.BucketDeployment(
             self,
-            f"DeployConfig-{sds_id}",
+            "DeployConfig",
             sources=[
                 s3_deploy.Source.asset(
                     str(
@@ -129,8 +128,8 @@ class SdsDataManager(Stack):
         ########### OpenSearch Snapshot Storage
         snapshot_bucket = s3.Bucket(
             self,
-            f"SnapshotBucket-{sds_id}",
-            bucket_name=f"sds-opensearch-snapshot-{sds_id}",
+            "SnapshotBucket",
+            bucket_name=f"sds-opensearch-snapshot-{account}",
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
@@ -178,11 +177,8 @@ class SdsDataManager(Stack):
 
         # Rather than depending on the deploy in another account through CDK,
         # we can assume the backup bucket already exists and go from here.
-        # Take existing sds-id, remove "dev" or "prod", and add "backup"
-        backup_bucket_name = (
-            f"sds-data-"
-            f"{(sds_id.split('-')[0]+'-' if len(sds_id.split('-')) > 1 else '')}backup"
-        )
+        # Consisting of the source account number (this account) and "backup"
+        backup_bucket_name = f"sds-data-{account}-backup"
 
         s3_backup_bucket_items_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
@@ -209,7 +205,7 @@ class SdsDataManager(Stack):
             assumed_by=iam.ServicePrincipal("s3.amazonaws.com"),
             description="Role for getting permissions to \
                         replicate out of S3 bucket in this account.",
-            role_name=f"BackupRole-{sds_id}",
+            role_name="BackupRole",
         )
 
         backup_role.add_to_policy(s3_replication_configuration_policy)
@@ -251,7 +247,7 @@ class SdsDataManager(Stack):
         indexer_lambda = lambda_alpha_.PythonFunction(
             self,
             id="IndexerLambda",
-            function_name=f"file-indexer-{sds_id}",
+            function_name="file-indexer",
             entry=str(
                 pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
             ),
@@ -272,8 +268,8 @@ class SdsDataManager(Stack):
                 "DATA_TRACKER_INDEX": "data_tracker",
                 "DYNAMODB_TABLE": dynamodb_stack.table_name,
                 "S3_DATA_BUCKET": self.data_bucket.s3_url_for_object(),
-                "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
-                "S3_SNAPSHOT_BUCKET_NAME": f"sds-opensearch-snapshot-{sds_id}",
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{account}",
+                "S3_SNAPSHOT_BUCKET_NAME": f"sds-opensearch-snapshot-{account}",
                 "SNAPSHOT_ROLE_ARN": snapshot_role.role_arn,
                 "SNAPSHOT_REPO_NAME": "snapshot-repo",
                 "SECRET_ID": opensearch.secret_name,
@@ -334,7 +330,7 @@ class SdsDataManager(Stack):
         upload_api_lambda = lambda_alpha_.PythonFunction(
             self,
             id="UploadAPILambda",
-            function_name=f"upload-api-handler-{sds_id}",
+            function_name="upload-api-handler",
             entry=str(
                 pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
             ),
@@ -345,7 +341,7 @@ class SdsDataManager(Stack):
             memory_size=1000,
             environment={
                 "S3_BUCKET": self.data_bucket.s3_url_for_object(),
-                "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{account}",
             },
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
@@ -356,7 +352,7 @@ class SdsDataManager(Stack):
         query_api_lambda = lambda_alpha_.PythonFunction(
             self,
             id="QueryAPILambda",
-            function_name=f"query-api-handler-{sds_id}",
+            function_name="query-api-handler",
             entry=str(
                 pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
             ),
@@ -371,7 +367,7 @@ class SdsDataManager(Stack):
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
                 "SECRET_ID": opensearch.secret_name,
-                "REGION": env.region,
+                "REGION": region,
             },
         )
         query_api_lambda.add_to_role_policy(opensearch.opensearch_read_only_policy)
@@ -382,7 +378,7 @@ class SdsDataManager(Stack):
         download_query_api = lambda_alpha_.PythonFunction(
             self,
             id="DownloadQueryAPILambda",
-            function_name=f"download-query-api-{sds_id}",
+            function_name="download-query-api",
             entry=str(
                 pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
             ),

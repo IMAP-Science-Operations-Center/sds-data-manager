@@ -1,5 +1,5 @@
 """ECR Stack"""
-from aws_cdk import Environment, RemovalPolicy, Stack
+from aws_cdk import RemovalPolicy, Stack
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_iam as iam
 from constructs import Construct
@@ -13,21 +13,20 @@ class EcrStack(Stack):
         scope: Construct,
         construct_id: str,
         instrument_name: str,
-        env: Environment,
         **kwargs,
     ) -> None:
         """DataStorageStack constructor
 
         Parameters
         ----------
-        scope : App
+        scope : Construct
+            Parent construct.
         construct_id : str
+            A unique string identifier for this construct.
         instrument_name : str
             Name of instrument
-        env : Environment
-            Account and region
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
+        super().__init__(scope, construct_id, **kwargs)
 
         # Define registry for storing processing docker images
         self.container_repo = ecr.Repository(

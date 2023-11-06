@@ -4,7 +4,7 @@ computation of different algorithms
 """
 from pathlib import Path
 
-from aws_cdk import Environment, Stack
+from aws_cdk import Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_events as events
@@ -24,8 +24,6 @@ class ProcessingStep(Stack):
         self,
         scope: Construct,
         construct_id: str,
-        sds_id: str,
-        env: Environment,
         vpc: ec2.Vpc,
         processing_step_name: str,
         lambda_code_directory: str or Path,
@@ -46,11 +44,7 @@ class ProcessingStep(Stack):
         scope : Construct
             Parent construct.
         construct_id : str
-            A unique string identifier for this construct
-        sds_id : str
-            Name suffix for stack
-        env : Environment
-            The AWS environment (account/region) where the stack will be deployed
+            A unique string identifier for this construct.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking
         processing_step_name : str
@@ -74,12 +68,11 @@ class ProcessingStep(Stack):
         db_secret_name : str
             RDS secret name for secret manager access
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
+        super().__init__(scope, construct_id, **kwargs)
 
         self.batch_resources = FargateBatchResources(
             self,
-            f"FargateBatchEnvironment-{sds_id}",
-            sds_id,
+            "FargateBatchEnvironment",
             vpc=vpc,
             processing_step_name=processing_step_name,
             data_bucket=data_bucket,
@@ -90,7 +83,7 @@ class ProcessingStep(Stack):
 
         self.instrument_lambda = InstrumentLambda(
             self,
-            f"InstrumentLambda-{sds_id}",
+            "InstrumentLambda",
             processing_step_name=processing_step_name,
             data_bucket=data_bucket,
             code_path=str(lambda_code_directory),

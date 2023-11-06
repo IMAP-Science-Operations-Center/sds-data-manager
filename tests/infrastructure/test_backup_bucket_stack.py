@@ -5,12 +5,10 @@ from sds_data_manager.stacks.backup_bucket_stack import BackupBucket
 
 
 @pytest.fixture(scope="module")
-def template(app, sds_id, env):
+def template(app):
     backup = BackupBucket(
         app,
-        construct_id=f"BackupBucket-{sds_id}",
-        sds_id=sds_id,
-        env=env,
+        construct_id="BackupBucket-test",
         source_account="0",
     )
 
@@ -23,7 +21,7 @@ def test_s3_bucket_resource_count(template):
     template.resource_count_is("AWS::S3::Bucket", 1)
 
 
-def test_s3_config_bucket_resource_properties(template, sds_id):
+def test_s3_config_bucket_resource_properties(template):
     template.has_resource(
         "AWS::S3::Bucket",
         {
@@ -35,7 +33,7 @@ def test_s3_config_bucket_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::S3::Bucket",
         {
-            "BucketName": f"sds-data-{sds_id}",
+            "BucketName": "sds-data-0-backup",
             "VersioningConfiguration": {"Status": "Enabled"},
             "PublicAccessBlockConfiguration": {
                 "BlockPublicAcls": True,

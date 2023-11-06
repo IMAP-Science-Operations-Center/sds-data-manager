@@ -15,18 +15,22 @@
     ]
   },
   "context": {
-    "env": "backup",
+    "account_name": "dev",
     "usernames": ["sandoval"],
+    "backup": {
+      "account": "012345678901",
+      "source_account": "dev"
+    },
     "dev": {
-      "sds_id": "dev"
+      "account": "449431850278",
+      "domain_name": "imap-mission.com",
+      "region": "us-west-2"
     },
     "prod": {
-      "sds_id": "prod"
+      "account": "123456789012",
+      "domain_name": "imap-mission.com",
+      "region": "us-west-2"
     },
-    "backup":{
-      "sds_id": "backup"
-    },
-    "sds-region": "us-west-2",
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
@@ -44,10 +48,6 @@
     "@aws-cdk/aws-sns-subscriptions:restrictSqsDescryption": true,
     "@aws-cdk/aws-apigateway:disableCloudWatchRole": true,
     "@aws-cdk/core:enablePartitionLiterals": true,
-    "@aws-cdk/core:target-partitions": [
-      "aws",
-      "aws-cn"
-    ],
-    "@aws-cdk/customresources:installLatestAwsSdkDefault": false
+    "@aws-cdk/core:target-partitions": ["aws"]
   }
 }

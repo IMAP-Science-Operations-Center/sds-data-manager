@@ -1,5 +1,5 @@
-S3 replication
-===============
+S3 Replication
+==============
 
 Once you have finished :doc:`backup-deploy`, you can set up replication in the source bucket.
 
@@ -12,7 +12,7 @@ Create a replication rule
 #. Enter an ID. If this is a developer bucket, include your initials. Preferably, it should be clear this is a backup rule.
 #. Under "Source Bucket", select "Apply to all objects in this bucket"
 #. Under "Destination" select "Specify a bucket in another account" and enter the account number and bucket name
-#. Under "IAM role", select the "SdsDataManager-{initials}-dev-BackupRole"
+#. Under "IAM role", select the "SdsDataManager-{account_name}-BackupRole"
 #. Then, save the rule, and select "Do not replicate existing objects" in the popup
 
 Now, items placed in the source bucket will be automatically replicated to the backup bucket!

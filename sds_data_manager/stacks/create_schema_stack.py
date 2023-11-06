@@ -26,7 +26,6 @@ class CreateSchema(Stack):
         scope: Construct,
         construct_id: str,
         env: Environment,
-        sds_id: str,
         db_secret_name: str,
         vpc: ec2.Vpc,
         vpc_subnets,
@@ -38,7 +37,7 @@ class CreateSchema(Stack):
         schema_create_lambda = lambda_alpha_.PythonFunction(
             self,
             id="CreateMetadataSchema",
-            function_name=f"create-schema-{sds_id}",
+            function_name="create-schema",
             entry=str(
                 pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
             ),

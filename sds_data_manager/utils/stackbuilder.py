@@ -24,7 +24,7 @@ from sds_data_manager.stacks import (
 def build_sds(
     scope: App,
     env: Environment,
-    sds_id: str,
+    account_config: dict,
     rds_size: str = "SMALL",
     rds_class: str = "BURSTABLE3",
     rds_storage: int = 200,
@@ -34,29 +34,19 @@ def build_sds(
 
     Parameters
     ----------
-    scope : App
+    scope : Construct
+        Parent construct.
     env : Environment
         Account and region
-    sds_id : str
-        Name suffix for stack
-    rds_size : str, Optional
-        Size of RDS
-    rds_class : str, Optional
-        Type of RDS
-    rds_storage : int, Optional
-        Max allowable storage in GiB
-    use_custom_domain : bool, Optional
-        Build API Gateway using custom domain
+    account_config : dict
+        Account configuration (domain_name and other account specific configurations)
     """
-    open_search = opensearch_stack.OpenSearch(
-        scope, f"OpenSearch-{sds_id}", sds_id, env=env
-    )
+    open_search = opensearch_stack.OpenSearch(scope, "OpenSearch", env=env)
 
     dynamodb = dynamodb_stack.DynamoDB(
         scope,
-        construct_id=f"DynamoDB-{sds_id}",
-        sds_id=sds_id,
-        table_name=f"imap-data-watcher-{sds_id}",
+        construct_id="DynamoDB",
+        table_name="data-watcher",
         partition_key="instrument",
         sort_key="filename",
         env=env,
@@ -66,27 +56,27 @@ def build_sds(
     # other step function processing steps
     processing_step_function = step_function_stack.ProcessingStepFunctionStack(
         scope,
-        f"ProcessingStepFunctionStack-{sds_id}",
-        sds_id,
+        "ProcessingStepFunctionStack",
         dynamodb_table_name=dynamodb.table_name,
         env=env,
     )
 
-    domain = domain_stack.Domain(
-        scope,
-        f"DomainStack-{sds_id}",
-        sds_id,
-        env=env,
-        use_custom_domain=use_custom_domain,
-    )
+    domain = None
+    domain_name = account_config.get("domain_name", None)
+    if domain_name is not None:
+        domain = domain_stack.DomainStack(
+            scope,
+            "DomainStack",
+            domain_name=domain_name,
+            account_name=account_config["account_name"],
+            env=env,
+        )
 
-    networking = networking_stack.NetworkingStack(
-        scope, f"Networking-{sds_id}", sds_id, env=env
-    )
+    networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
 
     rds_stack = database_stack.SdpDatabase(
         scope,
-        f"RDS-{sds_id}",
+        "RDS",
         description="IMAP SDP database.",
         env=env,
         vpc=networking.vpc,
@@ -95,15 +85,14 @@ def build_sds(
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
-        username="imap_user",
-        secret_name="sdp-database-creds-hoyt-test",
-        database_name="imap",
+        username="postgres",
+        secret_name="sdp-database-creds",
+        database_name="imapdb",
     )
 
     data_manager = sds_data_manager_stack.SdsDataManager(
         scope,
-        f"SdsDataManager-{sds_id}",
-        sds_id,
+        "SdsDataManager",
         open_search,
         dynamodb,
         processing_step_function_arn=processing_step_function.sfn.state_machine_arn,
@@ -116,35 +105,31 @@ def build_sds(
 
     api_gateway_stack.ApiGateway(
         scope,
-        f"ApiGateway-{sds_id}",
-        sds_id,
+        "ApiGateway",
         data_manager.lambda_functions,
+        domain_stack=domain,
         env=env,
-        hosted_zone=domain.hosted_zone,
-        certificate=domain.certificate,
-        use_custom_domain=use_custom_domain,
     )
 
     instrument_list = ["Codice"]  # etc
 
-    lambda_code_directory = Path(__file__).parent / ".." / "lambda_code" / "SDSCode"
+    lambda_code_directory = Path(__file__).parent.parent / "lambda_code" / "SDSCode"
     lambda_code_directory_str = str(lambda_code_directory.resolve())
 
     for instrument in instrument_list:
         ecr = ecr_stack.EcrStack(
             scope,
-            f"{instrument}Processing-{sds_id}",
+            f"{instrument}Processing",
             env=env,
-            instrument_name=f"{instrument}-{sds_id}",
+            instrument_name=f"{instrument}",
         )
 
         processing_stack.ProcessingStep(
             scope,
-            f"L1b{instrument}Processing-{sds_id}",
-            sds_id,
+            f"L1b{instrument}Processing",
             env=env,
             vpc=networking.vpc,
-            processing_step_name=f"l1b-{instrument}-{sds_id}",
+            processing_step_name=f"l1b-{instrument}",
             lambda_code_directory=lambda_code_directory_str,
             data_bucket=data_manager.data_bucket,
             instrument_target=f"l1b_{instrument}",
@@ -158,11 +143,10 @@ def build_sds(
 
         processing_stack.ProcessingStep(
             scope,
-            f"L1c{instrument}Processing-{sds_id}",
-            sds_id,
+            f"L1c{instrument}Processing",
             env=env,
             vpc=networking.vpc,
-            processing_step_name=f"l1c-{instrument}-{sds_id}",
+            processing_step_name=f"l1c-{instrument}",
             lambda_code_directory=lambda_code_directory_str,
             data_bucket=data_manager.data_bucket,
             instrument_target=f"l1c_{instrument}",
@@ -178,7 +162,6 @@ def build_sds(
             scope,
             "CreateSchemaStack",
             env=env,
-            sds_id=sds_id,
             db_secret_name=rds_stack.secret_name,
             vpc=networking.vpc,
             vpc_subnets=rds_stack.rds_subnet_selection,
@@ -186,20 +169,22 @@ def build_sds(
         )
 
 
-def build_backup(scope: App, env: Environment, sds_id: str, source_account: str):
+def build_backup(scope: App, env: Environment, source_account: str):
     """Builds backup bucket with permissions for replication from source_account.
 
     Parameters
     ----------
-    scope : App
+    scope : Construct
+        Parent construct.
     env : Environment
         Account and region
-    sds_id : str
-        Name suffix for stack
     source_account : str
         Account number for source bucket for replication
     """
     # This is the S3 bucket used by upload_api_lambda
     backup_bucket_stack.BackupBucket(
-        scope, f"BackupBucket-{sds_id}", sds_id, env=env, source_account=source_account
+        scope,
+        "BackupBucket",
+        source_account=source_account,
+        env=env,
     )

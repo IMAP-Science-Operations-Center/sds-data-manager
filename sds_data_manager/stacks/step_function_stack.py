@@ -2,7 +2,6 @@ from pathlib import Path
 
 from aws_cdk import (
     Duration,
-    Environment,
     Stack,
 )
 from aws_cdk import (
@@ -25,13 +24,10 @@ class ProcessingStepFunctionStack(Stack):
     def __init__(
         self,
         scope: Construct,
-        id: str,
-        sds_id: str,
-        env: Environment,
+        construct_id: str,
         dynamodb_table_name: str,
         **kwargs,
     ) -> None:
-        super().__init__(scope, id, env=env, **kwargs)
         """
         This stack creates lambda functions that will be invoked in the processing
         step function. Then it creates step functions task for those lambdas and
@@ -40,17 +36,15 @@ class ProcessingStepFunctionStack(Stack):
         Parameters
         ----------
         scope : Construct
-            The scope of the CDK construct.
-        id : str
-            The ID of the CDK construct.
-        env : Environment
-            The environment of the CDK construct. It contains account number and region.
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
         dynamodb_table_name : str
             The name of the DynamoDB table.
         kwargs : dict
             Other parameters.
         """
-
+        super().__init__(scope, construct_id, **kwargs)
         # Get AWS managed policies to attach to lambda role.
         aws_managed_lambda_permissions = [
             "service-role/AWSLambdaBasicExecutionRole",
@@ -68,8 +62,8 @@ class ProcessingStepFunctionStack(Stack):
         # Create a lambda function for processing.
         imap_processing_lambda = lambda_stack.LambdaWithDockerImageStack(
             scope,
-            sds_id=f"ProcessingLambda-{sds_id}",
-            lambda_name=f"processing-lambda-{sds_id}",
+            construct_id=f"{construct_id}-processing-lambda",
+            lambda_name="processing-lambda",
             managed_policy_names=aws_managed_lambda_permissions,
             timeout=300,
             lambda_code_folder=imap_processing_lambda_code_path,
@@ -82,8 +76,8 @@ class ProcessingStepFunctionStack(Stack):
         # Create a lambda function for data checker.
         data_checker_lambda = lambda_stack.LambdaWithDockerImageStack(
             scope,
-            sds_id=f"DataCheckerLambda-{sds_id}",
-            lambda_name=f"data-checker-lambda-{sds_id}",
+            construct_id=f"{construct_id}-data-checker-lambda",
+            lambda_name="data-checker-lambda",
             managed_policy_names=aws_managed_lambda_permissions,
             timeout=300,
             lambda_code_folder=data_checker_lambda_code_path,
@@ -188,7 +182,7 @@ class ProcessingStepFunctionStack(Stack):
         self.sfn = sfn.StateMachine(
             self,
             "MyStateMachine",
-            state_machine_name=f"processing-state-machine-{sds_id}",
+            state_machine_name="processing-state-machine",
             definition=definition,
             timeout=Duration.minutes(5),
             role=step_function_role,

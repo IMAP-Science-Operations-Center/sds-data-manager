@@ -6,15 +6,14 @@ from sds_data_manager.stacks.dynamodb_stack import DynamoDB
 
 
 @pytest.fixture()
-def on_demand_dynamodb(sds_id="test"):
+def on_demand_dynamodb():
     app = cdk.App()
 
-    stack_name = f"on-demand-stack-{sds_id}"
+    stack_name = "on-demand-stack"
     stack = DynamoDB(
         app,
         stack_name,
-        sds_id,
-        table_name=f"table-{sds_id}",
+        table_name="table-test",
         partition_key="filename",
         sort_key="instrument",
         env=None,
@@ -24,15 +23,14 @@ def on_demand_dynamodb(sds_id="test"):
 
 
 @pytest.fixture()
-def provisioned_dynamodb(sds_id="test"):
+def provisioned_dynamodb():
     app = cdk.App()
 
-    stack_name = f"provisioned-stack-{sds_id}"
+    stack_name = "provisioned-stack"
     stack = DynamoDB(
         app,
         stack_name,
-        sds_id,
-        table_name=f"table-{sds_id}",
+        table_name="table",
         partition_key="filename",
         sort_key="instrument",
         env=None,

@@ -1,6 +1,5 @@
 # Installed
 from aws_cdk import (
-    Environment,
     RemovalPolicy,
     Stack,
 )
@@ -26,34 +25,31 @@ class OpenSearch(Stack):
         self,
         scope: Construct,
         construct_id: str,
-        sds_id: str,
-        env: Environment,
         **kwargs,
     ) -> None:
         """
         Parameters
         ----------
         scope : Construct
+            Parent construct.
         construct_id : str
-        sds_id : str
-            Name suffix for stack
-        env : Environment
+            A unique string identifier for this construct.
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
+        super().__init__(scope, construct_id, **kwargs)
 
         # Define Database name related constants
-        self.secret_name = f"sdp-database-creds-{sds_id}"
+        self.secret_name = "sdp-database-creds"
 
         # Create a secret username/password for OpenSearch
         self.os_secret = secretsmanager.Secret(
-            self, f"OpenSearchPassword-{sds_id}", secret_name=self.secret_name
+            self, "OpenSearchPassword", secret_name=self.secret_name
         )
 
         # Create the opensearch cluster
         self.sds_metadata_domain = opensearch.Domain(
             self,
-            f"SDSMetadataDomain-{sds_id}",
-            domain_name=f"sdsmetadatadomain-{sds_id}",
+            "SDSMetadataDomain",
+            domain_name="sdsmetadatadomain",
             version=opensearch.EngineVersion.OPENSEARCH_2_7,
             capacity=opensearch.CapacityConfig(
                 data_nodes=1,

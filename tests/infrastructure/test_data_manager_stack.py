@@ -11,29 +11,25 @@ from sds_data_manager.stacks.sds_data_manager_stack import SdsDataManager
 
 
 @pytest.fixture(scope="module")
-def opensearch_stack(app, sds_id, env):
-    stack_name = f"opensearch-{sds_id}"
-    stack = OpenSearch(app, stack_name, sds_id, env=env)
+def opensearch_stack(app, env):
+    stack = OpenSearch(app, "opensearch-test", env=env)
     return stack
 
 
 @pytest.fixture(scope="module")
-def template(app, sds_id, opensearch_stack, env):
-    stack_name = f"stack-{sds_id}"
+def template(app, opensearch_stack, env):
     # create dynamoDB stack
     dynamodb = DynamoDB(
         app,
-        construct_id=f"DynamoDB-{sds_id}",
-        sds_id=sds_id,
-        table_name=f"imap-data-watcher-{sds_id}",
+        construct_id="DynamoDB-test",
+        table_name="imap-data-watcher-test",
         partition_key="instrument",
         sort_key="filename",
         env=env,
     )
     stack = SdsDataManager(
         app,
-        stack_name,
-        sds_id,
+        "sds-data-manager-test",
         opensearch_stack,
         dynamodb_stack=dynamodb,
         processing_step_function_arn="arn:aws:states:us-west-1:1234567890:stateMachine:processing-state-machine",
@@ -48,7 +44,7 @@ def test_s3_bucket_resource_count(template):
     template.resource_count_is("AWS::S3::Bucket", 3)
 
 
-def test_s3_data_bucket_resource_properties(template, sds_id):
+def test_s3_data_bucket_resource_properties(template, account):
     template.has_resource(
         "AWS::S3::Bucket",
         {
@@ -59,14 +55,14 @@ def test_s3_data_bucket_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::S3::Bucket",
         props={
-            "BucketName": f"sds-config-bucket-{sds_id}",
+            "BucketName": f"sds-config-bucket-{account}",
             "VersioningConfiguration": {"Status": "Enabled"},
             "PublicAccessBlockConfiguration": {"RestrictPublicBuckets": True},
         },
     )
 
 
-def test_s3_config_bucket_resource_properties(template, sds_id):
+def test_s3_config_bucket_resource_properties(template, account):
     template.has_resource(
         "AWS::S3::Bucket",
         {
@@ -78,7 +74,7 @@ def test_s3_config_bucket_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::S3::Bucket",
         {
-            "BucketName": f"sds-config-bucket-{sds_id}",
+            "BucketName": f"sds-config-bucket-{account}",
             "VersioningConfiguration": {"Status": "Enabled"},
             "PublicAccessBlockConfiguration": {
                 "BlockPublicAcls": True,
@@ -90,7 +86,7 @@ def test_s3_config_bucket_resource_properties(template, sds_id):
     )
 
 
-def test_s3_snapshot_bucket_resource_properties(template, sds_id):
+def test_s3_snapshot_bucket_resource_properties(template, account):
     template.has_resource(
         "AWS::S3::Bucket",
         {
@@ -102,7 +98,7 @@ def test_s3_snapshot_bucket_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::S3::Bucket",
         {
-            "BucketName": f"sds-opensearch-snapshot-{sds_id}",
+            "BucketName": f"sds-opensearch-snapshot-{account}",
             "VersioningConfiguration": {"Status": "Enabled"},
             "PublicAccessBlockConfiguration": {
                 "BlockPublicAcls": True,
@@ -826,11 +822,11 @@ def test_lambda_function_resource_count(template):
     template.resource_count_is("AWS::Lambda::Function", 7)
 
 
-def test_indexer_lambda_function_resource_properties(template, sds_id):
+def test_indexer_lambda_function_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
-            "FunctionName": f"file-indexer-{sds_id}",
+            "FunctionName": "file-indexer",
             "Runtime": "python3.9",
             "Handler": "SDSCode.indexer.lambda_handler",
             "MemorySize": 1000,
@@ -845,11 +841,11 @@ def test_indexer_lambda_function_resource_properties(template, sds_id):
     )
 
 
-def test_upload_api_lambda_function_resource_properties(template, sds_id):
+def test_upload_api_lambda_function_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
-            "FunctionName": f"upload-api-handler-{sds_id}",
+            "FunctionName": "upload-api-handler",
             "Runtime": "python3.9",
             "Handler": "SDSCode.upload_api.lambda_handler",
             "MemorySize": 1000,
@@ -864,11 +860,11 @@ def test_upload_api_lambda_function_resource_properties(template, sds_id):
     )
 
 
-def test_query_api_lambda_function_resource_properties(template, sds_id):
+def test_query_api_lambda_function_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
-            "FunctionName": f"query-api-handler-{sds_id}",
+            "FunctionName": "query-api-handler",
             "Runtime": "python3.9",
             "Handler": "SDSCode.queries.lambda_handler",
             "MemorySize": 1000,
@@ -883,11 +879,11 @@ def test_query_api_lambda_function_resource_properties(template, sds_id):
     )
 
 
-def test_download_api_lambda_function_resource_properties(template, sds_id):
+def test_download_api_lambda_function_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
-            "FunctionName": f"download-query-api-{sds_id}",
+            "FunctionName": "download-query-api",
             "Runtime": "python3.9",
             "Handler": "SDSCode.download_query_api.lambda_handler",
             "Timeout": 60,
@@ -1063,7 +1059,7 @@ def test_backup_role_iam_policy_resource_properties(template):
     )
 
 
-def test_custom_backup_role_properties(template, sds_id):
+def test_custom_backup_role_properties(template):
     template.has_resource(
         "AWS::IAM::Role",
         {

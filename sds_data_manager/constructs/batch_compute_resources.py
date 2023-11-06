@@ -22,7 +22,6 @@ class FargateBatchResources(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        sds_id: str,
         vpc: ec2.Vpc,
         processing_step_name: str,
         data_bucket: s3.Bucket,
@@ -41,8 +40,6 @@ class FargateBatchResources(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        sds_id : str
-            Name suffix for stack
         vpc : ec2.Vpc
             VPC into which to launch the compute instance.
         processing_step_name : str
@@ -67,7 +64,7 @@ class FargateBatchResources(Construct):
 
         self.role = iam.Role(
             self,
-            f"BatchServiceRole-{sds_id}",
+            "BatchServiceRole",
             assumed_by=iam.ServicePrincipal("batch.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -81,7 +78,7 @@ class FargateBatchResources(Construct):
         # container logs to CloudWatch.
         fargate_execution_role = iam.Role(
             self,
-            f"FargateExecutionRole-{sds_id}",
+            "FargateExecutionRole",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -90,11 +87,16 @@ class FargateBatchResources(Construct):
             ],
         )
 
+        # Setup a security group for the Fargate-generated EC2 instances.
+        batch_security_group = ec2.SecurityGroup(
+            self, "FargateInstanceSecurityGroup", vpc=vpc
+        )
+
         # PRIVATE_WITH_NAT allows batch job to pull images from the ECR.
         # TODO: Evaluate SPOT resources
         self.compute_environment = batch.CfnComputeEnvironment(
             self,
-            f"FargateBatchComputeEnvironment-{sds_id}",
+            "FargateBatchComputeEnvironment",
             type="MANAGED",
             service_role=self.role.role_arn,
             compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
@@ -119,7 +121,7 @@ class FargateBatchResources(Construct):
         self.job_queue_name = f"{processing_step_name}-fargate-batch-job-queue"
         self.job_queue = batch.CfnJobQueue(
             self,
-            f"FargateBatchJobQueue-{sds_id}",
+            "FargateBatchJobQueue",
             job_queue_name=self.job_queue_name,
             priority=1,
             compute_environment_order=[compute_environment_order],
@@ -129,7 +131,7 @@ class FargateBatchResources(Construct):
         # S3 buckets and other resources
         self.batch_job_role = iam.Role(
             self,
-            f"BatchJobRole-{sds_id}",
+            "BatchJobRole",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess")
@@ -148,7 +150,7 @@ class FargateBatchResources(Construct):
         self.job_definition_name = f"fargate-batch-job-definition{processing_step_name}"
         self.job_definition = batch.CfnJobDefinition(
             self,
-            f"FargateBatchJobDefinition-{sds_id}",
+            "FargateBatchJobDefinition",
             job_definition_name=self.job_definition_name,
             type="CONTAINER",
             platform_capabilities=["FARGATE"],

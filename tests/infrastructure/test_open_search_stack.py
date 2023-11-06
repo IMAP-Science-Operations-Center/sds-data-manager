@@ -9,9 +9,9 @@ from sds_data_manager.stacks.opensearch_stack import OpenSearch
 
 
 @pytest.fixture(scope="module")
-def template(app, sds_id, env):
-    stack_name = f"opensearch-{sds_id}"
-    stack = OpenSearch(app, stack_name, sds_id, env=env)
+def template(app):
+    stack_name = "opensearch"
+    stack = OpenSearch(app, stack_name)
     template = Template.from_stack(stack)
     return template
 
@@ -56,11 +56,11 @@ def test_opensearch_domain_resource_count(template):
     template.resource_count_is("AWS::OpenSearchService::Domain", 1)
 
 
-def test_opensearch_domain_resource_properties(template, sds_id):
+def test_opensearch_domain_resource_properties(template):
     template.has_resource_properties(
         "AWS::OpenSearchService::Domain",
         {
-            "DomainName": f"sdsmetadatadomain-{sds_id}",
+            "DomainName": "sdsmetadatadomain",
             "EngineVersion": "OpenSearch_2.7",
             "ClusterConfig": {"InstanceType": "t3.small.search", "InstanceCount": 1},
             "EBSOptions": {"EBSEnabled": True, "VolumeSize": 10, "VolumeType": "gp2"},
@@ -146,7 +146,7 @@ def test_iam_policy_resource_count(template):
     template.resource_count_is("AWS::IAM::Policy", 2)
 
 
-def test_sdsmetadatadomain_esloggroup_iam_policy_resource_properties(template, sds_id):
+def test_sdsmetadatadomain_esloggroup_iam_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -166,7 +166,7 @@ def test_sdsmetadatadomain_esloggroup_iam_policy_resource_properties(template, s
                 ],
             },
             "PolicyName": Match.string_like_regexp(
-                "SDSMetadataDomainsdsidtestESLogGroupPolicyc*"
+                "SDSMetadataDomainESLogGroupPolicyc*"
             ),
         },
     )
@@ -192,7 +192,7 @@ def test_sdsmetadatadomain_accesspolicy_iam_policy_resource_properties(template)
                 ],
             },
             "PolicyName": Match.string_like_regexp(
-                "SDSMetadataDomainsdsidtestAccessPolicyCustomResourcePolicy*"
+                "SDSMetadataDomainAccessPolicyCustomResourcePolicy*"
             ),
         },
     )
