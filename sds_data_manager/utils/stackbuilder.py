@@ -106,9 +106,12 @@ def build_sds(
         sds_id,
         open_search,
         dynamodb,
-        rds_stack,
         processing_step_function_arn=processing_step_function.sfn.state_machine_arn,
         env=env,
+        db_secret_name=rds_stack.secret_name,
+        vpc=networking.vpc,
+        vpc_subnets=rds_stack.rds_subnet_selection,
+        rds_security_group=networking.rds_security_group,
     )
 
     api_gateway_stack.ApiGateway(

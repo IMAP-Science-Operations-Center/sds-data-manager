@@ -10,6 +10,9 @@ from aws_cdk import (
     aws_lambda_event_sources,
 )
 from aws_cdk import (
+    aws_ec2 as ec2,
+)
+from aws_cdk import (
     aws_iam as iam,
 )
 from aws_cdk import (
@@ -29,8 +32,6 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-from .database_stack import SdpDatabase
-
 # Local
 from .dynamodb_stack import DynamoDB
 from .opensearch_stack import OpenSearch
@@ -46,9 +47,12 @@ class SdsDataManager(Stack):
         sds_id: str,
         opensearch: OpenSearch,
         dynamodb_stack: DynamoDB,
-        rds_stack: SdpDatabase,
         processing_step_function_arn: str,
         env: Environment,
+        db_secret_name: str,
+        vpc: ec2.Vpc,
+        vpc_subnets,
+        rds_security_group,
         **kwargs,
     ) -> None:
         """SdsDataManagerStack
@@ -256,6 +260,10 @@ class SdsDataManager(Stack):
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(15),
             memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            vpc_subnets=vpc_subnets,
+            security_groups=[rds_security_group],
             environment={
                 "OS_ADMIN_USERNAME": "master-user",
                 "OS_DOMAIN": opensearch.sds_metadata_domain.domain_endpoint,
@@ -271,6 +279,7 @@ class SdsDataManager(Stack):
                 "SECRET_ID": opensearch.secret_name,
                 "REGION": opensearch.region,
                 "STATE_MACHINE_ARN": processing_step_function_arn,
+                "SECRET_NAME": db_secret_name,
             },
         )
 
@@ -298,6 +307,11 @@ class SdsDataManager(Stack):
                 resources=[f"{opensearch.sds_metadata_domain.domain_arn}/*"],
             )
         )
+
+        rds_secret = secrets.Secret.from_secret_name_v2(
+            self, "rds_secret", db_secret_name
+        )
+        rds_secret.grant_read(grantee=indexer_lambda)
 
         # PassRole allows services to assign AWS roles to resources and services
         # in this account. The OpenSearch snapshot role is invoked within the Lambda to

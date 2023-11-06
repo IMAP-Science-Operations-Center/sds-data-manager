@@ -13,9 +13,12 @@ from psycopg2 import Error
 from .dynamodb_utils.processing_status import ProcessingStatus
 
 # Local
+from .opensearch_utils.action import Action
 from .opensearch_utils.client import Client
+from .opensearch_utils.document import Document
 from .opensearch_utils.index import Index
 from .opensearch_utils.payload import Payload
+from .rds_utils.rds_utils import write_metadata
 
 # Logger setup
 logger = logging.getLogger()
@@ -109,21 +112,23 @@ def _create_open_search_client():
     )
 
 
-def _connect_to_database(host, database, user, secret_name, region):
+def _connect_to_database(secret_name):
     session = boto3.session.Session()
-    client = session.client(service_name="secretsmanager", region_name=region)
-    secret = client.get_secret_value(SecretId=secret_name)
-
-    logger.info("Connecting to databse")
-    # Establish a connection to the PostgreSQL database
+    client = session.client(service_name="secretsmanager")
+    secret_string = client.get_secret_value(SecretId=secret_name)["SecretString"]
+    secret = json.loads(secret_string)
+    logger.info("Attempting to connect with RDS database")
     connection = psycopg2.connect(
-        host=host, database=database, user=user, password=secret
+        host=secret["host"],
+        database=secret["dbname"],
+        user=secret["username"],
+        password=secret["password"],
+        port=secret["port"],
     )
+    logger.info("Database connection successful")
 
     # Create a cursor object to interact with the database
-    logger.info("starting curser")
     cursor = connection.cursor()
-    logger.info("got curser")
 
     return (connection, cursor)
 
@@ -158,6 +163,21 @@ def _close_database_connection(connection, cursor):
         cursor.close()
         connection.close()
         logger.info("PostgreSQL connection is closed.")
+
+
+def _write_metadata(metadata, s3_path, db_secret_name):
+    try:
+        connection, cursor = _connect_to_database(db_secret_name)
+        # Execute the create table query
+        query, data = _construct_query(s3_path, metadata)
+        logger.info("Attempting to execute the query")
+        cursor.execute(query, data)
+        logger.info("Query executed successfully")
+    except (Exception, Error) as error:
+        logger.info(f"Error while connecting to PostgreSQL: {error}")
+
+    finally:
+        _close_database_connection(connection, cursor)
 
 
 def initialize_data_processing_status(metadata: dict, filename):
@@ -230,20 +250,17 @@ def lambda_handler(event, context):
     logger.info("Allowed file types: " + str(filetypes))
 
     # Grab environment variables
-    host = os.environ["OS_DOMAIN"]
-    os.environ["SNAPSHOT_REPO_NAME"]
-    os.environ["S3_SNAPSHOT_BUCKET_NAME"]
-    os.environ["SNAPSHOT_ROLE_ARN"]
+    os.environ["OS_DOMAIN"]
     os.environ["REGION"]
 
     # create opensearch client
-    _create_open_search_client()
+    client = _create_open_search_client()
     # create index (AKA 'table' in other database)
-    Index(os.environ["METADATA_INDEX"])
-    Index(os.environ["DATA_TRACKER_INDEX"])
+    metadata_index = Index(os.environ["METADATA_INDEX"])
+    data_tracker_index = Index(os.environ["DATA_TRACKER_INDEX"])
 
     # create a payload
-    Payload()
+    document_payload = Payload()
 
     # We're only expecting one record, but for some reason the Records are a list object
     for record in event["Records"]:
@@ -272,26 +289,30 @@ def lambda_handler(event, context):
         # use the s3 path to file as the ID in opensearch
         s3_path = os.path.join(os.environ["S3_DATA_BUCKET"], filename)
         # create a document for the metadata and add it to the payload
+        opensearch_doc = Document(metadata_index, s3_path, Action.CREATE, metadata)
+        document_payload.add_documents(opensearch_doc)
 
-        host = os.environ["HOST"]
-        database = os.environ["DATABASE_NAME"]
-        username = os.environ["USERNAME"]
-        secret_name = os.environ["SECRET_NAME"]
-        region = os.environ["RDS_REGION"]
+        # Write metadata to RDS database
+        write_metadata(metadata, s3_path, os.environ["SECRET_NAME"])
 
-        try:
-            connection, cursor = _connect_to_database(
-                host, database, username, secret_name, region
-            )
-            # Execute the create table query
-            logger.info("executing query")
-            query, data = _construct_query(s3_path, metadata)
-            cursor.execute(query, data)
-        except (Exception, Error) as error:
-            logger.info(f"Error while connecting to PostgreSQL: {error}")
+        # TODO: Decide if we want to keep both or keep one after SIT-2
+        # Right now, we can write processing status of injested data to both databases.
+        # In the future, we can decide which one to write to.
+        # Initialize processing status for injested data to pending. This will be
+        # updated when the data is processed.
+        item = initialize_data_processing_status(metadata=metadata, filename=filename)
 
-        finally:
-            _close_database_connection(connection, cursor)
+        # Write processing status data to DynamoDB.
+        write_data_to_dynamodb(item)
+
+        # Write processing status data to opensearch as well.
+        data_tracker_doc = Document(data_tracker_index, filename, Action.CREATE, item)
+        document_payload.add_documents(data_tracker_doc)
+
+    # send the paylaod to the opensearch instance
+    client.send_payload(document_payload)
+
+    client.close()
 
     # Start Step function execution
     state_machine_arn = os.environ.get("STATE_MACHINE_ARN")
