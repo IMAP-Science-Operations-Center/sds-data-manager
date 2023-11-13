@@ -6,9 +6,11 @@ utilizing Fargate as the compute environment. The resources include:
 - ECR repository for container images.
 - Batch job queue and job definition.
 """
+from aws_cdk import Fn
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
+from aws_cdk import aws_efs as efs
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
@@ -28,6 +30,8 @@ class FargateBatchResources(Construct):
         repo: ecr.Repository,
         batch_security_group: ec2.SecurityGroup,
         db_secret_name: str,
+        efs: efs.FileSystem,
+        account_name: str,
         batch_max_vcpus=10,
         job_vcpus=0.25,
         job_memory=512,
@@ -59,6 +63,13 @@ class FargateBatchResources(Construct):
             Dependent on Docker image contents.
         job_memory : int: Optional
             Memory required per Batch job in MB. Dependent on Docker image contents.
+        efs: efs.Filesystem
+            EFS stack object
+        account_name: str
+            account name such as 'dev' or 'prod' or user specified.
+            account_name is used as ECR's tag.
+            This value can be overwritten by command line input and can
+            be accessed from the cdk.json file.
         """
         super().__init__(scope, construct_id)
 
@@ -134,7 +145,10 @@ class FargateBatchResources(Construct):
             "BatchJobRole",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess")
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonElasticFileSystemFullAccess"
+                ),
             ],
         )
         data_bucket.grant_read_write(self.batch_job_role)
@@ -148,6 +162,7 @@ class FargateBatchResources(Construct):
         # processing_step_name tag. I think this will require
         # setting up a lambda. Maybe there's another way?
         self.job_definition_name = f"fargate-batch-job-definition{processing_step_name}"
+
         self.job_definition = batch.CfnJobDefinition(
             self,
             "FargateBatchJobDefinition",
@@ -155,7 +170,31 @@ class FargateBatchResources(Construct):
             type="CONTAINER",
             platform_capabilities=["FARGATE"],
             container_properties={
-                "image": f"{repo.repository_uri}:{processing_step_name}",
+                "image": f"{repo.repository_uri}:{account_name}",
+                "mountPoints": [
+                    {
+                        "sourceVolume": efs.volume_name,
+                        "containerPath": "/mnt/spice",
+                        "readOnly": False,
+                    }
+                ],
+                "volumes": [
+                    {
+                        "name": efs.volume_name,
+                        "efsVolumeConfiguration": {
+                            "fileSystemId": Fn.import_value(efs.efs_fs_id_name),
+                            "rootDirectory": "/",
+                            "transitEncryption": "ENABLED",
+                            "transitEncryptionPort": 2049,
+                            "authorizationConfig": {
+                                "accessPointId": Fn.import_value(
+                                    efs.spice_access_point_id_name
+                                ),
+                                "iam": "ENABLED",
+                            },
+                        },
+                    }
+                ],
                 "resourceRequirements": [
                     {"value": str(job_memory), "type": "MEMORY"},
                     {"value": str(job_vcpus), "type": "VCPU"},

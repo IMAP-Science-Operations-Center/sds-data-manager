@@ -123,7 +123,12 @@ def test_s3_data_bucket_policy_resource_properties(template):
                 "Version": "2012-10-17",
                 "Statement": [
                     {
-                        "Action": ["s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+                        "Action": [
+                            "s3:PutBucketPolicy",
+                            "s3:GetBucket*",
+                            "s3:List*",
+                            "s3:DeleteObject*",
+                        ],
                         "Effect": "Allow",
                         "Principal": {
                             "AWS": {
@@ -172,7 +177,12 @@ def test_s3_config_bucket_policy_resource_properties(template):
             "PolicyDocument": {
                 "Statement": [
                     {
-                        "Action": ["s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+                        "Action": [
+                            "s3:PutBucketPolicy",
+                            "s3:GetBucket*",
+                            "s3:List*",
+                            "s3:DeleteObject*",
+                        ],
                         "Effect": "Allow",
                         "Principal": {
                             "AWS": {
@@ -224,7 +234,12 @@ def test_s3_snapshot_bucket_policy_resource_properties(template):
             "PolicyDocument": {
                 "Statement": [
                     {
-                        "Action": ["s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+                        "Action": [
+                            "s3:PutBucketPolicy",
+                            "s3:GetBucket*",
+                            "s3:List*",
+                            "s3:DeleteObject*",
+                        ],
                         "Effect": "Allow",
                         "Principal": {
                             "AWS": {

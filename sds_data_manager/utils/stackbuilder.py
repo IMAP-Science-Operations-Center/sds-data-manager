@@ -13,6 +13,7 @@ from sds_data_manager.stacks import (
     domain_stack,
     dynamodb_stack,
     ecr_stack,
+    efs_stack,
     networking_stack,
     opensearch_stack,
     processing_stack,
@@ -63,12 +64,13 @@ def build_sds(
 
     domain = None
     domain_name = account_config.get("domain_name", None)
+    account_name = account_config["account_name"]
     if domain_name is not None:
         domain = domain_stack.DomainStack(
             scope,
             "DomainStack",
             domain_name=domain_name,
-            account_name=account_config["account_name"],
+            account_name=account_name,
             env=env,
         )
 
@@ -81,7 +83,7 @@ def build_sds(
         env=env,
         vpc=networking.vpc,
         rds_security_group=networking.rds_security_group,
-        engine_version=rds.PostgresEngineVersion.VER_15_2,
+        engine_version=rds.PostgresEngineVersion.VER_15_3,
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
@@ -110,6 +112,8 @@ def build_sds(
         domain_stack=domain,
         env=env,
     )
+    # create EFS
+    efs = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
 
     instrument_list = ["Codice"]  # etc
 
@@ -123,6 +127,18 @@ def build_sds(
             env=env,
             instrument_name=f"{instrument}",
         )
+        # lambda_code_directory is used to set lambda's code
+        # asset base path. Then it requires to have folder
+        # called "instruments" in lambda_code_directory and
+        # python code with f"l1a_{instrument}.py" and f"l1b_{instrument}.py"
+        # This is how it was used on lambda definition:
+        # lambda_alpha_.PythonFunction(
+        #     ...
+        #     entry=str(code_path),
+        #     index=f"instruments/{instrument_target.lower()}.py",
+        #     handler="lambda_handler",
+        #     ...
+        # )
 
         processing_stack.ProcessingStep(
             scope,
@@ -138,7 +154,9 @@ def build_sds(
             batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,
             subnets=rds_stack.rds_subnet_selection,
-            db_secret_name=rds_stack.rds_creds.secret_arn,
+            db_secret_name=rds_stack.secret_name,
+            efs=efs,
+            account_name=account_name,
         )
 
         processing_stack.ProcessingStep(
@@ -155,7 +173,9 @@ def build_sds(
             batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,
             subnets=rds_stack.rds_subnet_selection,
-            db_secret_name=rds_stack.rds_creds.secret_arn,
+            db_secret_name=rds_stack.secret_name,
+            efs=efs,
+            account_name=account_name,
         )
 
         create_schema_stack.CreateSchema(
@@ -167,6 +187,16 @@ def build_sds(
             vpc_subnets=rds_stack.rds_subnet_selection,
             rds_security_group=networking.rds_security_group,
         )
+
+    # create lambda that mounts EFS and writes data to EFS
+    efs_stack.EFSWriteLambda(
+        scope=scope,
+        construct_id="EFSWriteLambda",
+        vpc=networking.vpc,
+        data_bucket=data_manager.data_bucket,
+        efs=efs,
+        env=env,
+    )
 
 
 def build_backup(scope: App, env: Environment, source_account: str):
