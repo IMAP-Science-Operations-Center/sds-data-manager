@@ -103,39 +103,39 @@ typeguard = ">=2.13.3,<2.14.0"
 
 [[package]]
 name = "aws-cdk-aws-lambda-python-alpha"
-version = "2.105.0a0"
+version = "2.108.1a0"
 description = "The CDK Construct Library for AWS Lambda in Python"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk.aws-lambda-python-alpha-2.105.0a0.tar.gz", hash = "sha256:310fc676d7ad32eea365ceb17384abcda455b425972973b728e27f073c347a6f"},
-    {file = "aws_cdk.aws_lambda_python_alpha-2.105.0a0-py3-none-any.whl", hash = "sha256:97c3e8ecf795ea3304a7c25680cd798f289131580429ffd170503e4999d576e2"},
+    {file = "aws-cdk.aws-lambda-python-alpha-2.108.1a0.tar.gz", hash = "sha256:31ecc2164e0cb6508d429228a69805e75befa861dd5553f67ff3a92a7f83f76d"},
+    {file = "aws_cdk.aws_lambda_python_alpha-2.108.1a0-py3-none-any.whl", hash = "sha256:2c8d320f8d6f575dabf36c779a9055076175c3b98fdfc55cbcbcdf177fa9aef6"},
 ]
 
 [package.dependencies]
-aws-cdk-lib = ">=2.105.0,<3.0.0"
+aws-cdk-lib = ">=2.108.1,<3.0.0"
 constructs = ">=10.0.0,<11.0.0"
-jsii = ">=1.89.0,<2.0.0"
+jsii = ">=1.91.0,<2.0.0"
 publication = ">=0.0.3"
 typeguard = ">=2.13.3,<2.14.0"
 
 [[package]]
 name = "aws-cdk-lib"
-version = "2.105.0"
+version = "2.108.1"
 description = "Version 2 of the AWS Cloud Development Kit library"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk-lib-2.105.0.tar.gz", hash = "sha256:c2828c6b2fc0c751e8bc3d80bd5066bd8e363452f2aaa0b19818f14ebc836b48"},
-    {file = "aws_cdk_lib-2.105.0-py3-none-any.whl", hash = "sha256:4c55b50b8b51ccc8bfd5b54e8d2c7b13e7f268b19166c8471a4c49574d32b4a1"},
+    {file = "aws-cdk-lib-2.108.1.tar.gz", hash = "sha256:86bb6488de1830d8212d33f09eea494bca138182bc4db1a151fc7925598554b7"},
+    {file = "aws_cdk_lib-2.108.1-py3-none-any.whl", hash = "sha256:0c0ffa0e129782c3e69cc320297b338bbc6c994025f31d3ce310badd662e44be"},
 ]
 
 [package.dependencies]
-"aws-cdk.asset-awscli-v1" = ">=2.2.200,<3.0.0"
+"aws-cdk.asset-awscli-v1" = ">=2.2.201,<3.0.0"
 "aws-cdk.asset-kubectl-v20" = ">=2.1.2,<3.0.0"
 "aws-cdk.asset-node-proxy-agent-v6" = ">=2.0.1,<3.0.0"
 constructs = ">=10.0.0,<11.0.0"
-jsii = ">=1.89.0,<2.0.0"
+jsii = ">=1.91.0,<2.0.0"
 publication = ">=0.0.3"
 typeguard = ">=2.13.3,<2.14.0"
 
@@ -218,17 +218,17 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "boto3"
-version = "1.28.83"
+version = "1.29.0"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">= 3.7"
 files = [
-    {file = "boto3-1.28.83-py3-none-any.whl", hash = "sha256:1d10691911c4b8b9443d3060257ba32b68b6e3cad0eebbb9f69fd1c52a78417f"},
-    {file = "boto3-1.28.83.tar.gz", hash = "sha256:489c4967805b677b7a4030460e4c06c0903d6bc0f6834453611bf87efbd8d8a3"},
+    {file = "boto3-1.29.0-py3-none-any.whl", hash = "sha256:91c72fa4848eda9311c273db667946bd9d953285ae8d54b7bbad541b74adc254"},
+    {file = "boto3-1.29.0.tar.gz", hash = "sha256:3e90ea2faa3e9892b9140f857911f9ef0013192a106f50d0ec7b71e8d1afc90a"},
 ]
 
 [package.dependencies]
-botocore = ">=1.31.83,<1.32.0"
+botocore = ">=1.32.0,<1.33.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.7.0,<0.8.0"
 
@@ -237,13 +237,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.31.83"
+version = "1.32.0"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">= 3.7"
 files = [
-    {file = "botocore-1.31.83-py3-none-any.whl", hash = "sha256:c742069e8bfd06d212d712228258ff09fb481b6ec02358e539381ce0fcad065a"},
-    {file = "botocore-1.31.83.tar.gz", hash = "sha256:40914b0fb28f13d709e1f8a4481e278350b77a3987be81acd23715ec8d5fedca"},
+    {file = "botocore-1.32.0-py3-none-any.whl", hash = "sha256:9c1e143feb6a04235cec342d2acb31a0f44df3c89f309f839e03e38a75f3f44e"},
+    {file = "botocore-1.32.0.tar.gz", hash = "sha256:95fe3357b9ddc4559941dbea0f0a6b8fc043305f013b7ae2a85dff0c3b36ee92"},
 ]
 
 [package.dependencies]
@@ -255,7 +255,7 @@ urllib3 = [
 ]
 
 [package.extras]
-crt = ["awscrt (==0.16.26)"]
+crt = ["awscrt (==0.19.12)"]
 
 [[package]]
 name = "cattrs"
@@ -933,13 +933,13 @@ files = [
 
 [[package]]
 name = "moto"
-version = "4.2.7"
+version = "4.2.8"
 description = ""
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "moto-4.2.7-py2.py3-none-any.whl", hash = "sha256:3e0ef388900448485cd6eff18e9f7fcaa6cf4560b6fb536ba2e2e1278a5ecc59"},
-    {file = "moto-4.2.7.tar.gz", hash = "sha256:1298006aaa6996b886658eb194cac0e3a5679c9fcce6cb13e741ccc5a7247abb"},
+    {file = "moto-4.2.8-py2.py3-none-any.whl", hash = "sha256:e78b49ae8acee06a865e4963174bdf974dd66398fb3bb831a7428498506c0c56"},
+    {file = "moto-4.2.8.tar.gz", hash = "sha256:9b5a363f36f8c3fb36388764e7b8c01c615da2f2cba7da3e681680de14bfc769"},
 ]
 
 [package.dependencies]
@@ -954,29 +954,29 @@ werkzeug = ">=0.5,<2.2.0 || >2.2.0,<2.2.1 || >2.2.1"
 xmltodict = "*"
 
 [package.extras]
-all = ["PyYAML (>=5.1)", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "ecdsa (!=0.15)", "graphql-core", "jsondiff (>=1.1.2)", "multipart", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.1)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "setuptools", "sshpubkeys (>=3.1.0)"]
+all = ["PyYAML (>=5.1)", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "ecdsa (!=0.15)", "graphql-core", "jsondiff (>=1.1.2)", "multipart", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.2)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "setuptools", "sshpubkeys (>=3.1.0)"]
 apigateway = ["PyYAML (>=5.1)", "ecdsa (!=0.15)", "openapi-spec-validator (>=0.5.0)", "python-jose[cryptography] (>=3.1.0,<4.0.0)"]
 apigatewayv2 = ["PyYAML (>=5.1)"]
 appsync = ["graphql-core"]
 awslambda = ["docker (>=3.0.0)"]
 batch = ["docker (>=3.0.0)"]
-cloudformation = ["PyYAML (>=5.1)", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "ecdsa (!=0.15)", "graphql-core", "jsondiff (>=1.1.2)", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.1)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "setuptools", "sshpubkeys (>=3.1.0)"]
+cloudformation = ["PyYAML (>=5.1)", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "ecdsa (!=0.15)", "graphql-core", "jsondiff (>=1.1.2)", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.2)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "setuptools", "sshpubkeys (>=3.1.0)"]
 cognitoidp = ["ecdsa (!=0.15)", "python-jose[cryptography] (>=3.1.0,<4.0.0)"]
 ds = ["sshpubkeys (>=3.1.0)"]
-dynamodb = ["docker (>=3.0.0)", "py-partiql-parser (==0.4.1)"]
-dynamodbstreams = ["docker (>=3.0.0)", "py-partiql-parser (==0.4.1)"]
+dynamodb = ["docker (>=3.0.0)", "py-partiql-parser (==0.4.2)"]
+dynamodbstreams = ["docker (>=3.0.0)", "py-partiql-parser (==0.4.2)"]
 ebs = ["sshpubkeys (>=3.1.0)"]
 ec2 = ["sshpubkeys (>=3.1.0)"]
 efs = ["sshpubkeys (>=3.1.0)"]
 eks = ["sshpubkeys (>=3.1.0)"]
 glue = ["pyparsing (>=3.0.7)"]
 iotdata = ["jsondiff (>=1.1.2)"]
-proxy = ["PyYAML (>=5.1)", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=2.5.1)", "ecdsa (!=0.15)", "graphql-core", "jsondiff (>=1.1.2)", "multipart", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.1)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "setuptools", "sshpubkeys (>=3.1.0)"]
-resourcegroupstaggingapi = ["PyYAML (>=5.1)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "ecdsa (!=0.15)", "graphql-core", "jsondiff (>=1.1.2)", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.1)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "sshpubkeys (>=3.1.0)"]
+proxy = ["PyYAML (>=5.1)", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=2.5.1)", "ecdsa (!=0.15)", "graphql-core", "jsondiff (>=1.1.2)", "multipart", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.2)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "setuptools", "sshpubkeys (>=3.1.0)"]
+resourcegroupstaggingapi = ["PyYAML (>=5.1)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "ecdsa (!=0.15)", "graphql-core", "jsondiff (>=1.1.2)", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.2)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "sshpubkeys (>=3.1.0)"]
 route53resolver = ["sshpubkeys (>=3.1.0)"]
-s3 = ["PyYAML (>=5.1)", "py-partiql-parser (==0.4.1)"]
-s3crc32c = ["PyYAML (>=5.1)", "crc32c", "py-partiql-parser (==0.4.1)"]
-server = ["PyYAML (>=5.1)", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "ecdsa (!=0.15)", "flask (!=2.2.0,!=2.2.1)", "flask-cors", "graphql-core", "jsondiff (>=1.1.2)", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.1)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "setuptools", "sshpubkeys (>=3.1.0)"]
+s3 = ["PyYAML (>=5.1)", "py-partiql-parser (==0.4.2)"]
+s3crc32c = ["PyYAML (>=5.1)", "crc32c", "py-partiql-parser (==0.4.2)"]
+server = ["PyYAML (>=5.1)", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "ecdsa (!=0.15)", "flask (!=2.2.0,!=2.2.1)", "flask-cors", "graphql-core", "jsondiff (>=1.1.2)", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.4.2)", "pyparsing (>=3.0.7)", "python-jose[cryptography] (>=3.1.0,<4.0.0)", "setuptools", "sshpubkeys (>=3.1.0)"]
 ssm = ["PyYAML (>=5.1)"]
 xray = ["aws-xray-sdk (>=0.93,!=0.96)", "setuptools"]
 
@@ -1468,13 +1468,13 @@ test = ["fixtures", "mock", "purl", "pytest", "requests-futures", "sphinx", "tes
 
 [[package]]
 name = "responses"
-version = "0.24.0"
+version = "0.24.1"
 description = "A utility library for mocking out the `requests` Python library."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "responses-0.24.0-py3-none-any.whl", hash = "sha256:060be153c270c06fa4d22c1ef8865fdef43902eb595204deeef736cddb62d353"},
-    {file = "responses-0.24.0.tar.gz", hash = "sha256:3df82f7d4dcd3e5f61498181aadb4381f291da25c7506c47fe8cb68ce29203e7"},
+    {file = "responses-0.24.1-py3-none-any.whl", hash = "sha256:a2b43f4c08bfb9c9bd242568328c65a34b318741d3fab884ac843c5ceeb543f9"},
+    {file = "responses-0.24.1.tar.gz", hash = "sha256:b127c6ca3f8df0eb9cc82fd93109a3007a86acb24871834c47b77765152ecf8c"},
 ]
 
 [package.dependencies]

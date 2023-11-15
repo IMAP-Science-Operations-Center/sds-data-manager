@@ -37,7 +37,7 @@ class CreateSchema(Stack):
         schema_create_lambda = lambda_alpha_.PythonFunction(
             self,
             id="CreateMetadataSchema",
-            function_name="create-schema",
+            function_name="create-schema-hoyt-test-2",
             entry=str(
                 pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
             ),

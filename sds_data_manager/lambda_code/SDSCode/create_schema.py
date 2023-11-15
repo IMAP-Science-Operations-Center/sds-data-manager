@@ -34,7 +34,7 @@ def send_response(event, context, response_data, response_status):
         print(f"Error sending response: {e}")
 
 
-def lambda_handler(event, context):
+def on_event(event, context):
     secret_name = os.environ["SECRET_NAME"]
     print(f"SECRET NAME: {secret_name}")
     session = boto3.session.Session()

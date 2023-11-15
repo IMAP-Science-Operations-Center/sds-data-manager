@@ -87,8 +87,8 @@ def build_sds(
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
-        username="postgres",
-        secret_name="sdp-database-creds",
+        username="imap",
+        secret_name="sdp-database-creds-rds",
         database_name="imapdb",
     )
 
@@ -178,15 +178,15 @@ def build_sds(
             account_name=account_name,
         )
 
-        create_schema_stack.CreateSchema(
-            scope,
-            "CreateSchemaStack",
-            env=env,
-            db_secret_name=rds_stack.secret_name,
-            vpc=networking.vpc,
-            vpc_subnets=rds_stack.rds_subnet_selection,
-            rds_security_group=networking.rds_security_group,
-        )
+    create_schema_stack.CreateSchema(
+        scope,
+        "CreateSchemaStack",
+        env=env,
+        db_secret_name=rds_stack.secret_name,
+        vpc=networking.vpc,
+        vpc_subnets=rds_stack.rds_subnet_selection,
+        rds_security_group=networking.rds_security_group,
+    )
 
     # create lambda that mounts EFS and writes data to EFS
     efs_stack.EFSWriteLambda(
