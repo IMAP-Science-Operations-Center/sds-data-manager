@@ -5,11 +5,13 @@ from pathlib import Path
 from aws_cdk import Duration
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr_assets as ecr_assets
-from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as _lambda
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
+
+from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
+from sds_data_manager.stacks.database_stack import SdpDatabase
 
 
 class InstrumentLambda(Construct):
@@ -22,13 +24,11 @@ class InstrumentLambda(Construct):
         data_bucket: s3.Bucket,
         code_path: str or Path,
         instrument: str,
-        instrument_dependents: dict,
-        step_function_arn: str,
-        step_function_policy: iam.PolicyStatement,
+        instrument_downstream: dict,
+        step_function_stack: SdcStepFunction,
+        rds_stack: SdpDatabase,
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
-        db_secret_name: str,
-        db_secret_arn: str,
         vpc: ec2.Vpc,
     ):
         """
@@ -46,20 +46,16 @@ class InstrumentLambda(Construct):
             Path to the Lambda code directory
         instrument : str
             Instrument
-        instrument_dependents : dict
-            Instrument dependents
-        step_function_arn: str
-            Step function arn
-        step_function_policy: iam.PolicyStatement
-            Step function policy
+        instrument_downstream : dict
+            Instrument downstream dependents of given instruments
+        step_function_stack: SdcStepFunction
+            Step function stack
         rds_security_group : ec2.SecurityGroup
             RDS security group
+        rds_stack: SdpDatabase
+            Database stack
         subnets : ec2.SubnetSelection
             RDS subnet selection.
-        db_secret_name : str
-            RDS secret name for secret manager access
-        db_secret_arn : str
-            RDS secret arn for secret manager access
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
         """
@@ -70,9 +66,9 @@ class InstrumentLambda(Construct):
         # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
             "INSTRUMENT": f"{instrument}",
-            "INSTRUMENT_DEPENDENTS": f"{instrument_dependents}",
-            "STATE_MACHINE_ARN": step_function_arn,
-            "SECRET_ARN": db_secret_arn,
+            "INSTRUMENT_DOWNSTREAM": f"{instrument_downstream}",
+            "STATE_MACHINE_ARN": step_function_stack.state_machine.state_machine_arn,
+            "SECRET_ARN": rds_stack.rds_creds.secret_arn,
         }
 
         # Define Dockerized lambda function
@@ -82,13 +78,13 @@ class InstrumentLambda(Construct):
 
         self.instrument_lambda = _lambda.DockerImageFunction(
             self,
-            "InstrumentLambdas",
-            function_name="InstrumentLambdas",
+            "InstrumentLambda",
+            function_name="InstrumentLambda",
             code=docker_image_code,
             environment=lambda_environment,
             retry_attempts=0,
             memory_size=512,
-            timeout=Duration.minutes(10),
+            timeout=Duration.minutes(1),
             vpc=vpc,
             vpc_subnets=subnets,
             security_groups=[rds_security_group],
@@ -96,9 +92,9 @@ class InstrumentLambda(Construct):
         )
 
         data_bucket.grant_read_write(self.instrument_lambda)
-        self.instrument_lambda.add_to_role_policy(step_function_policy)
+        self.instrument_lambda.add_to_role_policy(step_function_stack.execution_policy)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
-            self, "rds_secret", db_secret_name
+            self, "rds_secret", rds_stack.secret_name
         )
         rds_secret.grant_read(grantee=self.instrument_lambda)

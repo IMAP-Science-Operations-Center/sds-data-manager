@@ -21,7 +21,9 @@ from sds_data_manager.stacks import (
     processing_stack,
     sds_data_manager_stack,
 )
-from sds_data_manager.utils.get_dependency import get_dependency
+from sds_data_manager.utils.get_downstream_dependencies import (
+    get_downstream_dependencies,
+)
 
 
 def build_sds(
@@ -124,8 +126,6 @@ def build_sds(
         Path(__file__).parent.parent / "lambda_images" / "instruments"
     )
     lambda_code_directory_str = str(lambda_code_directory.resolve())
-    dependents_file_path = lambda_code_directory / "dependents.json"
-    dependents_file_path_str = str(dependents_file_path.resolve())
 
     spin_table_code = lambda_code_directory / "spin_table_api.py"
     # Create Lambda for universal spin table API
@@ -173,14 +173,14 @@ def build_sds(
             f"{instrument}Processing",
             env=env,
             vpc=networking.vpc,
-            processing_step_name=f"{instrument}",
+            processing_step_name=instrument,
             lambda_code_directory=lambda_code_directory_str,
             data_bucket=data_manager.data_bucket,
             instrument=instrument,
-            instrument_dependents=get_dependency(instrument),
-            dependents=dependents_file_path_str,
+            instrument_downstream=get_downstream_dependencies(instrument),
             repo=ecr.container_repo,
             rds_security_group=networking.rds_security_group,
+            rds_stack=rds_stack,
             subnets=rds_stack.rds_subnet_selection,
             db_secret_name=rds_stack.secret_name,
             db_secret_arn=rds_stack.rds_creds.secret_arn,

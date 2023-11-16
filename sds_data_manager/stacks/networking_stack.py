@@ -51,6 +51,8 @@ class NetworkingStack(Stack):
             ],
         )
 
+        # The lambda is in the same private security group as the RDS, but
+        # it needs to access the secrets manager, so we add this endpoint.
         self.vpc.add_interface_endpoint(
             "SecretManagerEndpoint",
             service=ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,

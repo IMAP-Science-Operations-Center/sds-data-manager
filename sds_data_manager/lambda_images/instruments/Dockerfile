@@ -10,7 +10,6 @@ RUN pip install psycopg2-binary
 
 # Install pip and install imap-processing module
 RUN python -m pip install --upgrade pip
-RUN pip install git+https://github.com/IMAP-Science-Operations-Center/imap_processing.git@dev
 
 WORKDIR ${LAMBDA_TASK_ROOT}
 COPY batch_starter.py .

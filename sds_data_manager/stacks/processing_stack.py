@@ -16,6 +16,7 @@ from constructs import Construct
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
 from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
 from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
+from sds_data_manager.stacks.database_stack import SdpDatabase
 
 
 class ProcessingStep(Stack):
@@ -30,10 +31,10 @@ class ProcessingStep(Stack):
         lambda_code_directory: str or Path,
         data_bucket: s3.Bucket,
         instrument: str,
-        instrument_dependents: dict,
-        dependents: str,
+        instrument_downstream: dict,
         repo: ecr.Repository,
         rds_security_group: ec2.SecurityGroup,
+        rds_stack: SdpDatabase,
         subnets: ec2.SubnetSelection,
         db_secret_name: str,
         db_secret_arn: str,
@@ -59,10 +60,11 @@ class ProcessingStep(Stack):
             S3 bucket
         instrument : str
             Instrument
-        instrument_dependents : dict
-            Dependents of instrument
-        dependents : str
-            Path to location of dependents.json
+        instrument_downstream : dict
+            Downstream dependents of given instrument
+            Example:
+            {'l0': [{'instrument': '<instrument>', 'level': '<level>'}],
+            'l1a': [{'instrument': '<instrument>', 'level': '<level>'}, {...}]}
         repo : ecr.Repository
             Container repo
         rds_security_group : ec2.SecurityGroup
@@ -77,6 +79,8 @@ class ProcessingStep(Stack):
             EFS stack object
         account_name: str
             account name such as 'dev' or 'prod'
+        rds_stack : SdpDatabase
+            RDS stack
         """
         super().__init__(scope, construct_id, **kwargs)
 
@@ -87,7 +91,7 @@ class ProcessingStep(Stack):
             processing_step_name=processing_step_name,
             data_bucket=data_bucket,
             repo=repo,
-            db_secret_name=db_secret_name,
+            db_secret_name=rds_stack.secret_name,
             efs=efs,
             account_name=account_name,
         )
@@ -98,8 +102,7 @@ class ProcessingStep(Stack):
             processing_step_name=processing_step_name,
             batch_resources=self.batch_resources,
             data_bucket=data_bucket,
-            db_secret_name=db_secret_name,
-            dependents=dependents,
+            db_secret_name=rds_stack.secret_name,
         )
 
         self.instrument_lambda = InstrumentLambda(
@@ -108,34 +111,36 @@ class ProcessingStep(Stack):
             data_bucket=data_bucket,
             code_path=str(lambda_code_directory),
             instrument=instrument,
-            instrument_dependents=instrument_dependents,
-            step_function_arn=self.step_function.state_machine.state_machine_arn,
-            step_function_policy=self.step_function.execution_policy,
-            db_secret_name=db_secret_name,
+            instrument_downstream=instrument_downstream,
+            step_function_stack=self.step_function,
+            rds_stack=rds_stack,
             rds_security_group=rds_security_group,
-            subnets=subnets,
-            db_secret_arn=db_secret_arn,
+            subnets=rds_stack.rds_subnet_selection,
             vpc=vpc,
         )
 
         # Kicks off Step Function as a result of object ingested into directories in
         # s3 bucket (instrument_sources).
-        # TODO: Right now these directories are created manually.
+        # TODO: Right now these directories are created manually in the s3 bucket.
         #  Add code so that they are not.
-        for source in instrument_dependents:
-            rule = events.Rule(
-                self,
-                f"Rule-{processing_step_name}-{source}",
-                event_pattern=events.EventPattern(
-                    source=["aws.s3"],
-                    detail_type=["Object Created"],
-                    detail={
-                        "bucket": {"name": [data_bucket.bucket_name]},
-                        "object": {"key": [{"prefix": f"{instrument}_{source}"}]},
+        rule = events.Rule(
+            self,
+            f"Rule-{processing_step_name}",
+            event_pattern=events.EventPattern(
+                source=["aws.s3"],
+                detail_type=["Object Created"],
+                detail={
+                    "bucket": {"name": [data_bucket.bucket_name]},
+                    "object": {
+                        "key": [
+                            {"prefix": f"{instrument}/{source}"}
+                            for source in instrument_downstream
+                        ]
                     },
-                ),
-            )
+                },
+            ),
+        )
 
-            rule.add_target(
-                event_targets.LambdaFunction(self.instrument_lambda.instrument_lambda)
-            )
+        rule.add_target(
+            event_targets.LambdaFunction(self.instrument_lambda.instrument_lambda)
+        )

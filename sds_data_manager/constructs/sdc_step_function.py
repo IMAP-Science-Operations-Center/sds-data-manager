@@ -27,7 +27,6 @@ class SdcStepFunction(Construct):
         batch_resources: FargateBatchResources,
         data_bucket: s3.Bucket,
         db_secret_name: str,
-        dependents: str,
     ):
         """SdcStepFunction Constructor
 
@@ -45,8 +44,6 @@ class SdcStepFunction(Construct):
             S3 bucket
         db_secret_name : str
             Db secret name
-        dependents : str
-            Path to location of dependents.json
 
         """
         super().__init__(scope, construct_id)

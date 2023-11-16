@@ -10,8 +10,8 @@ from sds_data_manager.lambda_images.instruments.batch_starter import (
     get_filename_from_event,
     get_process_details,
     prepare_data,
-    query_dependencies,
-    query_dependents,
+    query_instruments,
+    query_upstream_dependencies,
     remove_ingested,
 )
 
@@ -27,7 +27,7 @@ def mock_event():
 
 
 @pytest.fixture()
-def setup_database(postgresql):
+def database(postgresql):
     """Populate test database."""
 
     cursor = postgresql.cursor()
@@ -35,7 +35,7 @@ def setup_database(postgresql):
 
     # Drop the table if it exists, to start with a fresh table
     cursor.execute("DROP TABLE IF EXISTS sdc.codicehi;")
-
+    # TODO: sync with actual database schema once it is created
     sql_command = """
     CREATE TABLE sdc.codicehi (
         -- Primary key
@@ -52,7 +52,7 @@ def setup_database(postgresql):
         mag_id INTEGER,
         spice_id INTEGER,
         parent_codicehi_id INTEGER,
-        status TEXT
+        repointing_id, INTEGER,
     );
     """
 
@@ -80,7 +80,6 @@ def setup_database(postgresql):
                 if row["parent_codicehi_id"].strip()
                 and row["parent_codicehi_id"].isdigit()
                 else None,
-                row["status"] if row["status"].strip() else None,
             ]
 
             cursor.execute(
@@ -88,9 +87,9 @@ def setup_database(postgresql):
                 INSERT INTO sdc.codicehi (
                 filename, instrument, version, level,
                 mode, date, ingested,
-                mag_id, spice_id, parent_codicehi_id, status
+                mag_id, spice_id, parent_codicehi_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 tuple(values_to_insert),
             )
@@ -110,12 +109,12 @@ def test_get_filename_from_event(mock_event):
     # Use mock event from the fixture
     filename = get_filename_from_event(mock_event)
 
-    assert filename == "imap_l3a_sci_codicehi_20230602_v01.pkts"
+    assert filename == "imap_codicehi_l3a_20230602_v01.cdf"
 
 
-def test_setup_database(setup_database):
+def test_setup_database(database):
     # Create a cursor from the connection
-    cursor = setup_database.cursor()
+    cursor = database.cursor()
 
     # Use the cursor to execute SQL and fetch results
     cursor.execute("SELECT COUNT(*) FROM sdc.codicehi")
@@ -123,16 +122,14 @@ def test_setup_database(setup_database):
     cursor.close()
 
     with open("../test-data/process_kickoff_test_data.csv") as f:
-        reader = csv.reader(f)
-        next(reader, None)
-        row_count = sum(1 for _ in reader)
+        row_count = len(f.readlines())
 
     assert count == row_count
 
 
-def test_get_process_details(setup_database):
+def test_get_process_details(database):
     # Test that we query the instrument database properly.
-    conn = setup_database
+    conn = database
     cur = conn.cursor()
 
     data_level, version_number, process_dates = get_process_details(
@@ -194,40 +191,37 @@ def test_all_dependency_present():
         },
     ]
 
-    res_true = all_dependency_present(result, dependencies_true)
-    res_false = all_dependency_present(result, dependencies_false)
-
-    assert res_true is True
-    assert res_false is False
+    assert all_dependency_present(result, dependencies_true)
+    assert not all_dependency_present(result, dependencies_false)
 
 
-def test_query_dependents(setup_database):
+def test_query_dependents(database):
     # Test to query the database to make certain dependents are
     # not already there.
-    conn = setup_database
+    conn = database
     cur = conn.cursor()
 
-    instrument_dependents = [
+    instrument_downstream = [
         {"instrument": "CodiceHi", "level": "l3b"},
         {"instrument": "CodiceHi", "level": "l3c"},
     ]
     process_dates = ["2023-05-31", "2023-06-01", "2023-06-02"]
 
     # Dependents that have been ingested for this date range.
-    records = query_dependents(cur, 1, process_dates, instrument_dependents)
+    records = query_instruments(cur, 1, process_dates, instrument_downstream)
 
     assert records[0]["filename"] == "imap_l3b_sci_codicehi_20230531_v01.cdf"
 
     # Since there are 2 instruments x 3 dates and one record to remove = 5
-    output = remove_ingested(records, instrument_dependents, process_dates)
+    output = remove_ingested(records, instrument_downstream, process_dates)
 
     assert len(output) == 5
 
 
-def test_query_dependencies(setup_database):
+def test_query_dependencies(database):
     # Test code that decides if we have sufficient dependencies
     # for each dependent to process.
-    conn = setup_database
+    conn = database
     cur = conn.cursor()
 
     output = [
@@ -235,7 +229,7 @@ def test_query_dependencies(setup_database):
         {"instrument": "CodiceHi", "level": "l2", "date": "2023-06-01"},
         {"instrument": "CodiceHi", "level": "l2", "date": "2023-06-02"},
     ]
-    result = query_dependencies(cur, output, 1)
+    result = query_upstream_dependencies(cur, output, 1)
 
     assert result == [{"instrument": "CodiceHi", "level": "l2", "date": "2023-06-02"}]
 

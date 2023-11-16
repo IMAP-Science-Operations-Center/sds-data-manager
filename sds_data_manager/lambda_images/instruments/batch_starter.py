@@ -137,9 +137,9 @@ def get_process_details(cur, instrument, filename, process_range=2):
     return level, version, process_dates
 
 
-def query_dependents(cur, version, process_dates, instrument_dependents):
+def query_instruments(cur, version, process_dates, instruments):
     """
-    Queries the database for dependent instruments and retrieves their records.
+    Queries the database for instruments and retrieves their records.
 
     Parameters
     ----------
@@ -149,8 +149,8 @@ def query_dependents(cur, version, process_dates, instrument_dependents):
         Version of the instrument to be queried.
     process_dates : list
         A list containing start and end date to filter records on their ingestion date.
-    instrument_dependents : list of dict
-        A list containing dictionaries of dependent instruments and their levels.
+    instruments : list of dict
+        A list containing dictionaries of instruments and their levels.
         Each dictionary should have keys 'instrument' and 'level'.
 
     Returns
@@ -162,8 +162,8 @@ def query_dependents(cur, version, process_dates, instrument_dependents):
     """
     all_records = []
 
-    # Loop through instrument dependents and query them
-    for instrument in instrument_dependents:
+    # Loop through instruments and query them
+    for instrument in instruments:
         query = f"""SELECT * FROM sdc.{instrument['instrument'].lower()}
                     WHERE version = %s
                     AND level = %s
@@ -188,9 +188,9 @@ def query_dependents(cur, version, process_dates, instrument_dependents):
     return all_records
 
 
-def remove_ingested(records, dependents_level, process_dates):
+def remove_ingested(records, inst_list, process_dates):
     """
-    Identifies and returns a list of dependent instruments
+    Identifies and returns a list of instruments
     that have not been ingested for the specified dates.
 
     Parameters
@@ -198,8 +198,8 @@ def remove_ingested(records, dependents_level, process_dates):
     records : list of dict
         A list of dictionaries where each dictionary
         corresponds to a record from the database.
-    dependents_level : list of dict
-        A list containing dictionaries of dependent
+    inst_list : list of dict
+        A list containing dictionaries of
         instruments and their levels.
     process_dates : list
         A list of date strings representing the dates
@@ -209,7 +209,7 @@ def remove_ingested(records, dependents_level, process_dates):
     -------
     output : list of dict
         A list of dictionaries where each dictionary
-        indicates a dependent instrument and its level
+        indicates an instrument and its level
         that has not been ingested for a given date.
 
     """
@@ -220,19 +220,19 @@ def remove_ingested(records, dependents_level, process_dates):
         (rec["date"].date(), rec["instrument"], rec["level"]) for rec in records
     }
 
-    for dependent in dependents_level:
+    for inst in inst_list:
         for date_str in process_dates:
             date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
 
             if (
                 date_obj,
-                dependent["instrument"].lower(),
-                dependent["level"].lower(),
+                inst["instrument"].lower(),
+                inst["level"].lower(),
             ) not in records_set:
                 output.append(
                     {
-                        "instrument": dependent["instrument"],
-                        "level": dependent["level"],
+                        "instrument": inst["instrument"],
+                        "level": inst["level"],
                         "date": date_str,
                     }
                 )
@@ -240,7 +240,7 @@ def remove_ingested(records, dependents_level, process_dates):
     return output
 
 
-def query_dependencies(cur, uningested, version):
+def query_upstream_dependencies(cur, uningested, version):
     """
     Queries and checks dependencies for a list of grouped records.
 
@@ -252,7 +252,7 @@ def query_dependencies(cur, uningested, version):
         A list of dictionaries where each dictionary corresponds to a record
         from the database with keys 'instrument', 'level', and 'date'.
     version : int or str
-        The version number to be used when querying dependent records.
+        The version number to be used when querying records.
 
     Returns
     -------
@@ -263,7 +263,7 @@ def query_dependencies(cur, uningested, version):
     """
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    json_path = os.path.join(dir_path, "dependents.json")
+    json_path = os.path.join(dir_path, "upstream_dependencies.json")
 
     with open(json_path) as f:
         data = json.load(f)
@@ -272,7 +272,7 @@ def query_dependencies(cur, uningested, version):
 
     for record in uningested:
         dependencies = data[record["instrument"]][record["level"]]
-        result = query_dependents(cur, version, [record["date"]], dependencies)
+        result = query_instruments(cur, version, [record["date"]], dependencies)
 
         # Check if all dependencies for this date are present in result
         all_dependencies_met = all_dependency_present(result, dependencies)
@@ -366,7 +366,7 @@ def lambda_handler(event: dict, context):
     logger.info(f"Context: {context}")
 
     instrument = os.environ.get("INSTRUMENT")
-    instrument_dependents = os.environ.get("INSTRUMENT_DEPENDENTS")
+    instrument_downstream = os.environ.get("INSTRUMENT_DOWNSTREAM")
     state_machine_arn = os.environ.get("STATE_MACHINE_ARN")
     db_secret_arn = os.environ.get("SECRET_ARN")
 
@@ -378,32 +378,41 @@ def lambda_handler(event: dict, context):
             level, version, process_dates = get_process_details(
                 cur, instrument, filename
             )
-            # query dependents to see if they have been ingested
-            ingested_dependents = query_dependents(
-                cur, version, process_dates, instrument_dependents[level]
+            # query downstream dependents to see if they have been ingested
+            # e.g. if codice_l0_20230401_v01 object created the event, has
+            # codice_l1a_20230401_v01 been ingested already? This is to
+            # check for duplicates, but maybe we should just handle duplicates
+            # in batch job and remove this.
+            # TODO: this can only be for daily data products (not ENA or GLOWS); remove?
+            ingested_dependents = query_instruments(
+                cur, version, process_dates, instrument_downstream[level]
             )
-            # remove dependents that have been ingested
+            # TODO: this can only be for daily data products (not ENA or GLOWS); remove?
+            # remove downstream dependents that have been ingested
             uningested = remove_ingested(
-                ingested_dependents, instrument_dependents[level], process_dates
+                ingested_dependents, instrument_downstream[level], process_dates
             )
 
+            # TODO: this can only be for daily data products (not ENA or GLOWS); remove?
             # Check if uningested is empty
             if not uningested:
                 logger.info(
-                    "No uningested dependents found. Skipping further processing."
+                    "No uningested downstream dependents found."
                 )
                 return
 
-            # decide if we have sufficient dependencies
-            # for each dependent to process
-            instruments_to_process = query_dependencies(cur, uningested, version)
+            # TODO: add universal spin table query for ENAs and GLOWS
+            # decide if we have sufficient upstream dependencies
+            downstream_instruments_to_process = query_upstream_dependencies(
+                cur, uningested, version
+            )
 
             # No instruments to process
-            if not instruments_to_process:
+            if not downstream_instruments_to_process:
                 logger.info("No instruments_to_process. Skipping further processing.")
                 return
 
-        grouped_list = prepare_data(instruments_to_process)
+        grouped_list = prepare_data(downstream_instruments_to_process)
 
         # Start Step function execution for each instrument
         for instrument_name in grouped_list:
