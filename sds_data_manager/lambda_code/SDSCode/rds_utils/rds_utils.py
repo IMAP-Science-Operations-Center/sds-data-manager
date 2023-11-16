@@ -33,7 +33,7 @@ def connect_to_database(secret_name):
 
 
 def _construct_ingestion_query(s3_path, metadata):
-    logger.info("")
+    logger.info("Constructing metadata ingestion query")
     metadata["id"] = s3_path
     metadata["year"] = metadata["date"][:4]
     metadata["month"] = metadata["date"][4:6]

@@ -34,23 +34,14 @@ def send_response(event, context, response_data, response_status):
         print(f"Error sending response: {e}")
 
 
-def on_event(event, context):
+def lambda_handler(event, context):
     secret_name = os.environ["SECRET_NAME"]
-    print(f"SECRET NAME: {secret_name}")
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager")
     secret_string = client.get_secret_value(SecretId=secret_name)["SecretString"]
     secret = json.loads(secret_string)
-    print(f"SECRET FULL: {secret}")
-    print(f"HOST: {secret['host']}")
-    print(f"DATABASE NAME: {secret['dbname']}")
-    print(f"USER NAME: {secret['username']}")
-    print(f"PASSWORD: {secret['password']}")
-    print(f"PORT: {secret['port']}")
 
     try:
-        print("CONNECTING TO DATABSE")
-
         # Establish a connection to the PostgreSQL database
         connection = psycopg2.connect(
             host=secret["host"],
@@ -60,12 +51,8 @@ def on_event(event, context):
             port=secret["port"],
         )
 
-        print("CONNECTED")
-
         # Create a cursor object to interact with the database
         cursor = connection.cursor()
-
-        print("CURSOR CREATED")
 
         # SQL query to create a table
         create_table_query = """
@@ -83,13 +70,11 @@ def on_event(event, context):
             )
         """
 
-        print("QUERY CREATED")
-
         # Execute the create table query
         cursor.execute(create_table_query)
-        print("QUERY EXECUTED")
         response_status = "SUCCESS"
         response_data = create_table_query
+
     except (Exception, Error) as error:
         print("Error while connecting to PostgreSQL:", error)
         response_status = "FAILED"
