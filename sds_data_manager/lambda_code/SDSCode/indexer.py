@@ -16,7 +16,7 @@ from .opensearch_utils.client import Client
 from .opensearch_utils.document import Document
 from .opensearch_utils.index import Index
 from .opensearch_utils.payload import Payload
-from .rds_utils.rds_utils import write_metadata
+from .rds_utils.db_connection import DbConnection, DbIngestQuery
 
 # Logger setup
 logger = logging.getLogger()
@@ -223,7 +223,14 @@ def lambda_handler(event, context):
         document_payload.add_documents(opensearch_doc)
 
         # Write metadata to RDS database
-        write_metadata(metadata, s3_path, os.environ["SECRET_NAME"])
+        # Connect to RDS database
+        db_connection = DbConnection(os.environ["SECRET_NAME"])
+        # Create DB ingest query
+        db_ingest_query = DbIngestQuery(s3_path, metadata)
+        # Send query to database
+        db_connection.send_query(db_ingest_query)
+        # Close DB connection
+        db_connection.close()
 
         # TODO: Decide if we want to keep both or keep one after SIT-2
         # Right now, we can write processing status of injested data to both databases.
