@@ -50,7 +50,7 @@ def test_ingest_query(create_db_query):
                 """
 
     ## Assert
-    assert create_db_query.ingest_query() == query_true
+    assert create_db_query.get_query() == query_true
 
 
 def test_ingest_data(create_db_query):
@@ -66,4 +66,4 @@ def test_ingest_data(create_db_query):
     )
 
     ## Assert
-    assert create_db_query.ingest_data() == query_data_true
+    assert create_db_query.get_data() == query_data_true
