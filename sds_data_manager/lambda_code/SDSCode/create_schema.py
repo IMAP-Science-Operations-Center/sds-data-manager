@@ -6,6 +6,11 @@ import psycopg2
 import requests
 from psycopg2 import Error
 
+# TODO: The code in this lambda will be updated in the next PR
+# to reflect the schema that will be needed by the SDC.
+# Its current state is the bare minimum to get a table
+# created to allow files to be indexed.
+
 # Add code to get Secret instead
 s3 = boto3.client("s3")
 
