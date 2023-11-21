@@ -18,13 +18,13 @@ def create_db_query():
 def test_db_ingest_init(create_db_query):
     """Test that DBIngestQuery object correctly initializes"""
     ## Arrange
-    query_true = """
+    query_expected = """
                     INSERT INTO metadata (
                         mission, instrument, level, id, year, month, day)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """
 
-    query_data_true = (
+    query_data_expected = (
         "imap",
         "swe",
         "l1a",
@@ -35,27 +35,27 @@ def test_db_ingest_init(create_db_query):
     )
 
     ## Assert
-    assert create_db_query.query == query_true
-    assert create_db_query.data == query_data_true
+    assert create_db_query.query == query_expected
+    assert create_db_query.data == query_data_expected
 
 
 def test_ingest_query(create_db_query):
     """Test that the ingest_query() function returns the correct query"""
 
     ## Arrange
-    query_true = """
+    query_expected = """
                     INSERT INTO metadata (
                         mission, instrument, level, id, year, month, day)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """
 
     ## Assert
-    assert create_db_query.get_query() == query_true
+    assert create_db_query.get_query() == query_expected
 
 
 def test_ingest_data(create_db_query):
     ## Arrange
-    query_data_true = (
+    query_data_expected = (
         "imap",
         "swe",
         "l1a",
@@ -66,4 +66,4 @@ def test_ingest_data(create_db_query):
     )
 
     ## Assert
-    assert create_db_query.get_data() == query_data_true
+    assert create_db_query.get_data() == query_data_expected

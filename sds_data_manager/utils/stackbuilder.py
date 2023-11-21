@@ -26,9 +26,6 @@ def build_sds(
     scope: App,
     env: Environment,
     account_config: dict,
-    rds_size: str = "SMALL",
-    rds_class: str = "BURSTABLE3",
-    rds_storage: int = 200,
     use_custom_domain: bool = False,
 ):
     """Builds the entire SDS
@@ -75,6 +72,11 @@ def build_sds(
         )
 
     networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
+
+    # Get RDS properties from account_config
+    rds_size = account_config.get("rds_size", "SMALL")
+    rds_class = account_config.get("rds_class", "BURSTABLE3")
+    rds_storage = account_config.get("rds_stack", 200)
 
     rds_stack = database_stack.SdpDatabase(
         scope,

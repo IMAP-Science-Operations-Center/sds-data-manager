@@ -1,3 +1,5 @@
+"""Creates RDS PostgreSQL database schema"""
+
 import json
 import os
 
@@ -11,11 +13,23 @@ from psycopg2 import Error
 # Its current state is the bare minimum to get a table
 # created to allow files to be indexed.
 
-# Add code to get Secret instead
-s3 = boto3.client("s3")
-
 
 def send_response(event, context, response_data, response_status):
+    """Construct a response to indicate the status of the custom
+    resource lambda "SUCCESS" or "FAILED"
+
+    Parameters
+    -------
+    event: dict
+        JSON-formatted document that contains data for a Lambda function to process.
+    context: Context
+        provides methods and properties that provide information about the invocation,
+        function, and execution environment.
+    response_data: str
+        either the query that was sent or an error message if the query failed.
+    reponse_status: str
+        "SUCCESS" or "FAILED" status depending on query status.
+    """
     response_url = event["ResponseURL"]
     response_body = {
         "Status": response_status,
@@ -32,11 +46,8 @@ def send_response(event, context, response_data, response_status):
 
     headers = {"content-type": "", "content-length": str(len(json_response_body))}
 
-    try:
-        response = requests.put(response_url, data=json_response_body, headers=headers)
-        response.raise_for_status()
-    except Exception as e:
-        print(f"Error sending response: {e}")
+    response = requests.put(response_url, data=json_response_body, headers=headers)
+    response.raise_for_status()
 
 
 def lambda_handler(event, context):
@@ -63,7 +74,7 @@ def lambda_handler(event, context):
         create_table_query = """
             CREATE TABLE IF NOT EXISTS metadata (
                 id VARCHAR(100) PRIMARY KEY,
-                mission VARCHAR(100),
+                mission VARCHAR(4),
                 type VARCHAR(100),
                 instrument VARCHAR(100),
                 level VARCHAR(10),

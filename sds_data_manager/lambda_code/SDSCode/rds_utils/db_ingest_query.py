@@ -24,13 +24,6 @@ class DbIngestQuery:
         S3 path for the file being ingested.
     metadata: dict
         metadata dictionary for the file being ingested.
-
-    Methods
-    -------
-    get_query(query):
-        gets the ingest query string.
-    get_data():
-        gets the ingest data tuple.
     """
 
     def __init__(self, s3_path: str, metadata: dict):
@@ -57,7 +50,16 @@ class DbIngestQuery:
         fields = ", ".join(self.metadata.keys())
         # create placeholders for the query data to put into query string
         placeholders = ", ".join(["%s"] * len(self.metadata))
-        # format query
+        # format query using the field names and the correct number
+        # of placeholders. The resulting query should look something
+        # like this:
+        #
+        # INSERT INTO metadata (
+        #    mission, instrument, level, id, year, month, day)
+        # VALUES (%s, %s, %s, %s, %s, %s, %s)
+        #
+        # where each value in the data tuple should map to
+        # one of the placeholders (%s) in the query string
         self.query = f"""
                     INSERT INTO metadata (
                         {fields})
@@ -67,23 +69,3 @@ class DbIngestQuery:
         # create tuple to hold query data
         self.data = tuple(self.metadata.values())
         logger.info(f"query values: {self.data}")
-
-    def get_query(self):
-        """get the query string.
-
-        Returns
-        -------
-        str
-            Query string with placeholders for query data to use in psycopg2.
-        """
-        return self.query
-
-    def get_data(self):
-        """get the query data.
-
-        Returns
-        -------
-        str
-            Query data to use in psycopg2 along with the query string.
-        """
-        return self.data

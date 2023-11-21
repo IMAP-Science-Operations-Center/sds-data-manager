@@ -97,5 +97,5 @@ ignore = ["D203", "D212", "PLR0913", "PLR2004"]
 
 [tool.ruff.per-file-ignores]
 # TODO: Too many statements, this could be refactored to separate
-#       the single stack out into a few  smaller pieces
+#       the single stack out into a few smaller pieces
 "sds_data_manager/stacks/sds_data_manager_stack.py" = ["PLR0915"]

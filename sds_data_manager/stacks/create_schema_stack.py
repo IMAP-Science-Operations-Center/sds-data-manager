@@ -37,14 +37,14 @@ class CreateSchema(Stack):
         schema_create_lambda = lambda_alpha_.PythonFunction(
             self,
             id="CreateMetadataSchema",
-            function_name="create-schema-hoyt-test-2",
+            function_name="create-schema",
             entry=str(
                 pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
             ),
             index="SDSCode/create_schema.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
-            timeout=aws_cdk.Duration.minutes(15),
+            timeout=aws_cdk.Duration.seconds(10),
             memory_size=1000,
             allow_public_subnet=True,
             vpc=vpc,
