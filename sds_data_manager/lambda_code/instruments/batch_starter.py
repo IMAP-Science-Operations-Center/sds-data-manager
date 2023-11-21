@@ -79,7 +79,7 @@ def db_connect(db_secret_arn):
     return conn
 
 
-def get_process_details(cur, instrument, filename, process_range=2):
+def get_process_details(cur, instrument, filename, process_range=1):
     """
     Gets details for instrument listed in event.
 
@@ -95,6 +95,7 @@ def get_process_details(cur, instrument, filename, process_range=2):
         The filename associated with the instrument.
     process_range : int
         Numbers of days backwards to process
+        e.g. 1 means process all data from 1 day ago
 
     Returns
     -------
@@ -107,8 +108,7 @@ def get_process_details(cur, instrument, filename, process_range=2):
     """
 
     query = f"""SELECT * FROM sdc.{instrument.lower()}
-                WHERE filename = %s
-                LIMIT 1;"""
+                WHERE filename = %s;"""
     params = (filename,)
 
     cur.execute(query, params)
@@ -118,19 +118,26 @@ def get_process_details(cur, instrument, filename, process_range=2):
     if not records:
         raise ValueError(f"No records found for filename: {filename}")
 
+    # Check if more than one record is found
+    if len(records) > 1:
+        raise ValueError(
+            f"Expected a single record for filename: {filename}, "
+            f"but found multiple records."
+        )
+
     record_dict = dict(zip(column_names, records[0]))
 
     level = record_dict["level"]
     version = record_dict["version"]
 
-    dt = record_dict["date"]
-    dt_start = dt - timedelta(days=process_range)
+    date = record_dict["date"]
+    date_start = date - timedelta(days=process_range)
 
-    # Generate all the dates between dt_start and dt, inclusive
-    current_date = dt_start
+    # Generate all the dates between date_start and date, inclusive
+    current_date = date_start
     process_dates = []
 
-    while current_date <= dt:
+    while current_date <= date:
         process_dates.append(current_date.strftime("%Y-%m-%d"))
         current_date += timedelta(days=1)
 
@@ -220,6 +227,8 @@ def remove_ingested(records, inst_list, process_dates):
         (rec["date"].date(), rec["instrument"], rec["level"]) for rec in records
     }
 
+    # Here we are removing the ingested instruments from the
+    # list of the instruments that we want to ingest.
     for inst in inst_list:
         for date_str in process_dates:
             date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -242,7 +251,7 @@ def remove_ingested(records, inst_list, process_dates):
 
 def query_upstream_dependencies(cur, uningested, version):
     """
-    Queries and checks dependencies for a list of grouped records.
+    Queries and checks if the records are needed for their downstream dependencies.
 
     Parameters
     ----------
@@ -258,12 +267,12 @@ def query_upstream_dependencies(cur, uningested, version):
     -------
     instruments_to_process : list of dict
         A list of dictionaries. Each dictionary corresponds to a record
-        for which all dependencies are met.
+        that can be processed as its downstream dependencies are unmet.
 
     """
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    json_path = os.path.join(dir_path, "upstream_dependencies.json")
+    json_path = os.path.join(dir_path, "downstream_dependents.json")
 
     with open(json_path) as f:
         data = json.load(f)
@@ -271,11 +280,22 @@ def query_upstream_dependencies(cur, uningested, version):
     instruments_to_process = []
 
     for record in uningested:
-        dependencies = data[record["instrument"]][record["level"]]
-        result = query_instruments(cur, version, [record["date"]], dependencies)
+        upstream_dependencies = [
+            {"instrument": instr, "level": level}
+            for instr, levels in data.items()
+            for level, deps in levels.items()
+            if any(
+                dep["instrument"] == record["instrument"]
+                and dep["level"] == record["level"]
+                for dep in deps
+            )
+        ]
 
         # Check if all dependencies for this date are present in result
-        all_dependencies_met = all_dependency_present(result, dependencies)
+        result = query_instruments(
+            cur, version, [record["date"]], upstream_dependencies
+        )
+        all_dependencies_met = all_dependency_present(result, upstream_dependencies)
 
         if all_dependencies_met:
             print(f"All dependencies for {record['date']} are met!")
@@ -396,9 +416,7 @@ def lambda_handler(event: dict, context):
             # TODO: this can only be for daily data products (not ENA or GLOWS); remove?
             # Check if uningested is empty
             if not uningested:
-                logger.info(
-                    "No uningested downstream dependents found."
-                )
+                logger.info("No uningested downstream dependents found.")
                 return
 
             # TODO: add universal spin table query for ENAs and GLOWS
