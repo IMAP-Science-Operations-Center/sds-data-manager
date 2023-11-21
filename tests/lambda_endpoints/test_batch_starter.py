@@ -52,7 +52,7 @@ def database(postgresql):
         mag_id INTEGER,
         spice_id INTEGER,
         parent_codicehi_id INTEGER,
-        repointing_id, INTEGER,
+        pointing_id INTEGER
     );
     """
 
@@ -80,6 +80,9 @@ def database(postgresql):
                 if row["parent_codicehi_id"].strip()
                 and row["parent_codicehi_id"].isdigit()
                 else None,
+                int(row["pointing_id"])
+                if row["pointing_id"].strip() and row["pointing_id"].isdigit()
+                else None,
             ]
 
             cursor.execute(
@@ -87,9 +90,9 @@ def database(postgresql):
                 INSERT INTO sdc.codicehi (
                 filename, instrument, version, level,
                 mode, date, ingested,
-                mag_id, spice_id, parent_codicehi_id
+                mag_id, spice_id, parent_codicehi_id, pointing_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 tuple(values_to_insert),
             )
@@ -133,7 +136,7 @@ def test_get_process_details(database):
     cur = conn.cursor()
 
     data_level, version_number, process_dates = get_process_details(
-        cur, "CodiceHi", "imap_l3a_sci_codicehi_20230602_v01.cdf"
+        cur, "CodiceHi", "imap_codicehi_l3a_20230602_v01.cdf"
     )
 
     assert data_level == "l3a"
@@ -155,7 +158,7 @@ def test_all_dependency_present():
     result = [
         {
             "id": 6,
-            "filename": "imap_l2_sci_codicehi_20230531_v01.cdf",
+            "filename": "imap_codicehi_l2_20230531_v01.cdf",
             "instrument": "codicehi",
             "version": 1,
             "level": "l2",
@@ -173,7 +176,7 @@ def test_all_dependency_present():
         },
         {
             "id": 7,
-            "filename": "imap_l0_sci_codicehi_20230531_v01.cdf",
+            "filename": "imap_codicehi_l0_20230531_v01.ccsds",
             "instrument": "codicehi",
             "version": 1,
             "level": "l0",
@@ -210,7 +213,7 @@ def test_query_dependents(database):
     # Dependents that have been ingested for this date range.
     records = query_instruments(cur, 1, process_dates, instrument_downstream)
 
-    assert records[0]["filename"] == "imap_l3b_sci_codicehi_20230531_v01.cdf"
+    assert records[0]["filename"] == "imap_codicehi_l3b_20230531_v01.cdf"
 
     # Since there are 2 instruments x 3 dates and one record to remove = 5
     output = remove_ingested(records, instrument_downstream, process_dates)
