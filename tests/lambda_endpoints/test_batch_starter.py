@@ -1,6 +1,7 @@
 import datetime
 import json
 import zoneinfo
+from pathlib import Path
 
 import pytest
 
@@ -20,7 +21,8 @@ def mock_event():
     """Example of the type of event that will be passed to
     the instrument lambda (in our case batch_starter.py).
     """
-    with open("../test-data/codicehi_event.json") as file:
+    directory = Path(__file__).parent.parent / "test-data" / "codicehi_event.json"
+    with open(directory) as file:
         event = json.load(file)
     return event
 
