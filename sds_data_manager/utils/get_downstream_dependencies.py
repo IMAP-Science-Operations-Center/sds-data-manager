@@ -19,10 +19,7 @@ def get_downstream_dependencies(key):
 
     # Construct the path to the JSON file
     dependency_path = (
-        Path(__file__).parent.parent
-        / "lambda_code"
-        / "instruments"
-        / "downstream_dependents.json"
+        Path(__file__).parent.parent / "lambda_code" / "downstream_dependents.json"
     )
 
     with open(dependency_path) as file:

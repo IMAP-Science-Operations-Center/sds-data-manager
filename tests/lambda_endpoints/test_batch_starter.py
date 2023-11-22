@@ -4,7 +4,7 @@ import zoneinfo
 
 import pytest
 
-from sds_data_manager.lambda_code.instruments.batch_starter import (
+from sds_data_manager.lambda_code.batch_starter import (
     all_dependency_present,
     get_filename_from_event,
     get_process_details,
