@@ -148,6 +148,13 @@ def test_get_filename_from_event(mock_event):
 
     assert filename == "imap_codicehi_l3a_20230602_v01.cdf"
 
+    mock_event = {"some_other_key": {"not_the_expected_structure": {}}}
+
+    with pytest.raises(
+        KeyError, match="Invalid event format: Unable to extract filename"
+    ):
+        get_filename_from_event(mock_event)
+
 
 def test_setup_database(database):
     # Create a cursor from the connection
