@@ -4,8 +4,8 @@ from pathlib import Path
 
 from aws_cdk import Duration
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_ecr_assets as ecr_assets
-from aws_cdk import aws_lambda as _lambda
+from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_lambda_python_alpha as lambda_alpha
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
@@ -71,16 +71,14 @@ class InstrumentLambda(Construct):
             "SECRET_ARN": rds_stack.rds_creds.secret_arn,
         }
 
-        # Define Dockerized lambda function
-        docker_image_code = _lambda.DockerImageCode.from_image_asset(
-            directory=str(code_path), platform=ecr_assets.Platform.LINUX_AMD64
-        )
-
-        self.instrument_lambda = _lambda.DockerImageFunction(
+        self.instrument_lambda = lambda_alpha.PythonFunction(
             self,
             "InstrumentLambda",
             function_name="InstrumentLambda",
-            code=docker_image_code,
+            entry=str(code_path),
+            index="batch_starter.py",
+            handler="lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_9,
             environment=lambda_environment,
             retry_attempts=0,
             memory_size=512,

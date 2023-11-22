@@ -11,7 +11,7 @@
         "version": "0",
         "bucket": {"name": "sds-data-301233867300"},
         "object": {
-            "key": "CodiceHi_l3a/imap_l3a_sci_codicehi_20230602_v01.pkts",
+            "key": "Codicehi/l3a/imap_codicehi_l3a_20230602_v01.cdf",
             "size": 8736,
             "etag": "575f9073b57e5aff9098b1334d0bf857",
             "version-id": "0_2JK9U0bPx.7xx6B6gmXyl6Lgb7hc81",

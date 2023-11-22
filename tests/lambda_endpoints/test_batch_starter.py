@@ -1,11 +1,10 @@
-import csv
 import datetime
 import json
 import zoneinfo
 
 import pytest
 
-from sds_data_manager.lambda_images.instruments.batch_starter import (
+from sds_data_manager.lambda_code.instruments.batch_starter import (
     all_dependency_present,
     get_filename_from_event,
     get_process_details,
@@ -58,44 +57,77 @@ def database(postgresql):
 
     cursor.execute(sql_command)
 
-    # Insert mock data:
-    with open("../test-data/process_kickoff_test_data.csv") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            values_to_insert = [
-                row["filename"] if row["filename"].strip() else None,
-                row["instrument"] if row["instrument"].strip() else None,
-                row["version"] if row["version"].strip() else None,
-                row["level"] if row["level"].strip() else None,
-                row["mode"] if row["mode"].strip() else None,
-                None if row["date"].strip() in ["NULL", ""] else row["date"],
-                None if row["ingested"].strip() in ["NULL", ""] else row["ingested"],
-                int(row["mag_id"])
-                if row["mag_id"].strip() and row["mag_id"].isdigit()
-                else None,
-                int(row["spice_id"])
-                if row["spice_id"].strip() and row["spice_id"].isdigit()
-                else None,
-                int(row["parent_codicehi_id"])
-                if row["parent_codicehi_id"].strip()
-                and row["parent_codicehi_id"].isdigit()
-                else None,
-                int(row["pointing_id"])
-                if row["pointing_id"].strip() and row["pointing_id"].isdigit()
-                else None,
-            ]
+    hardcoded_data = [
+        {
+            "id": 2,
+            "filename": "imap_codicehi_l1b_20230531_v01.cdf",
+            "instrument": "codicehi",
+            "version": 1,
+            "level": "l1b",
+            "mode": None,
+            "date": "2023-05-31 14:45:00+03",
+            "ingested": "2023-06-02 14:45:00+06",
+            "mag_id": None,
+            "codicelo_id": None,
+            "spice_id": None,
+            "parent_codicehi_id": 1,
+            "pointing_id": 1,
+        },
+        {
+            "id": 4,
+            "filename": "imap_codicehi_l3a_20230602_v01.cdf",
+            "instrument": "codicehi",
+            "version": 1,
+            "level": "l3a",
+            "mode": None,
+            "date": "2023-06-02 14:45:00+03",
+            "ingested": "2023-06-02 14:45:00+10",
+            "mag_id": None,
+            "codicelo_id": None,
+            "spice_id": None,
+            "parent_codicehi_id": 3,
+            "pointing_id": 1,
+        },
+        {
+            "id": 5,
+            "filename": "imap_codicehi_l3b_20230531_v01.cdf",
+            "instrument": "codicehi",
+            "version": 1,
+            "level": "l3b",
+            "mode": None,
+            "date": "2023-05-31 14:45:00+03",
+            "ingested": "2023-06-02 14:45:00+11",
+            "mag_id": 4,
+            "codicelo_id": None,
+            "spice_id": None,
+            "parent_codicehi_id": 4,
+            "pointing_id": 1,
+        },
+    ]
 
-            cursor.execute(
-                """
-                INSERT INTO sdc.codicehi (
-                filename, instrument, version, level,
-                mode, date, ingested,
-                mag_id, spice_id, parent_codicehi_id, pointing_id
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                tuple(values_to_insert),
+    for row in hardcoded_data:
+        cursor.execute(
+            """
+            INSERT INTO sdc.codicehi (
+                filename, instrument, version, level, mode, date,
+                ingested, mag_id, spice_id, parent_codicehi_id, pointing_id
             )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+            (
+                row["filename"],
+                row["instrument"],
+                row["version"],
+                row["level"],
+                row["mode"],
+                row["date"],
+                row["ingested"],
+                row.get("mag_id"),
+                row.get("spice_id"),
+                row.get("parent_codicehi_id"),
+                row.get("pointing_id"),
+            ),
+        )
 
     # Committing the transaction
     postgresql.commit()
@@ -124,10 +156,7 @@ def test_setup_database(database):
     count = cursor.fetchone()[0]
     cursor.close()
 
-    with open("../test-data/process_kickoff_test_data.csv") as f:
-        row_count = len(f.readlines())
-
-    assert count == row_count
+    assert count == 3
 
 
 def test_get_process_details(database):
@@ -141,7 +170,7 @@ def test_get_process_details(database):
 
     assert data_level == "l3a"
     assert version_number == 1
-    assert process_dates == ["2023-05-31", "2023-06-01", "2023-06-02"]
+    assert process_dates == ["2023-06-01", "2023-06-02"]
 
 
 def test_all_dependency_present():

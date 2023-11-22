@@ -122,9 +122,7 @@ def build_sds(
 
     instrument_list = ["CodiceHi"]  # etc
 
-    lambda_code_directory = (
-        Path(__file__).parent.parent / "lambda_images" / "instruments"
-    )
+    lambda_code_directory = Path(__file__).parent.parent / "lambda_code" / "instruments"
     lambda_code_directory_str = str(lambda_code_directory.resolve())
 
     spin_table_code = lambda_code_directory / "spin_table_api.py"
