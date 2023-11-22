@@ -118,7 +118,7 @@ def build_sds(
     )
 
     # create EFS
-    efs = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
+    efs_instance = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
 
     instrument_list = ["CodiceHi"]  # etc
 
@@ -179,12 +179,18 @@ def build_sds(
             repo=ecr.container_repo,
             rds_security_group=networking.rds_security_group,
             rds_stack=rds_stack,
-            subnets=rds_stack.rds_subnet_selection,
-            db_secret_name=rds_stack.secret_name,
-            db_secret_arn=rds_stack.rds_creds.secret_arn,
-            efs=efs,
+            efs_instance=efs_instance,
             account_name=account_name,
         )
+    # create lambda that mounts EFS and writes data to EFS
+    efs_stack.EFSWriteLambda(
+        scope=scope,
+        construct_id="EFSWriteLambda",
+        env=env,
+        vpc=networking.vpc,
+        data_bucket=data_manager.data_bucket,
+        efs_instance=efs_instance,
+    )
 
     create_schema_stack.CreateSchema(
         scope,

@@ -280,16 +280,25 @@ def query_upstream_dependencies(cur, uningested, version):
     instruments_to_process = []
 
     for record in uningested:
-        upstream_dependencies = [
-            {"instrument": instr, "level": level}
-            for instr, levels in data.items()
-            for level, deps in levels.items()
-            if any(
-                dep["instrument"] == record["instrument"]
-                and dep["level"] == record["level"]
-                for dep in deps
-            )
-        ]
+        upstream_dependencies = []
+
+        # Iterate over each key-value pair in the data dictionary
+        for instr, levels in data.items():
+            # Iterate over each level and its corresponding dependencies
+            for level, deps in levels.items():
+                # Check if there's any dependency that matches the criteria
+                dependency_found = False
+                for dep in deps:
+                    if (
+                        dep["instrument"] == record["instrument"]
+                        and dep["level"] == record["level"]
+                    ):
+                        dependency_found = True
+                        break  # Found a matching dependency
+
+                # If a matching dependency was found, add a dictionary to the list
+                if dependency_found:
+                    upstream_dependencies.append({"instrument": instr, "level": level})
 
         # Check if all dependencies for this date are present in result
         result = query_instruments(

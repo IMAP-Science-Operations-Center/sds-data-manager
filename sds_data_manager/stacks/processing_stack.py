@@ -7,7 +7,6 @@ from pathlib import Path
 from aws_cdk import Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
-from aws_cdk import aws_efs as efs
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as event_targets
 from aws_cdk import aws_s3 as s3
@@ -17,6 +16,7 @@ from sds_data_manager.constructs.batch_compute_resources import FargateBatchReso
 from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
 from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
 from sds_data_manager.stacks.database_stack import SdpDatabase
+from sds_data_manager.stacks.efs_stack import EFSStack
 
 
 class ProcessingStep(Stack):
@@ -35,10 +35,7 @@ class ProcessingStep(Stack):
         repo: ecr.Repository,
         rds_security_group: ec2.SecurityGroup,
         rds_stack: SdpDatabase,
-        subnets: ec2.SubnetSelection,
-        db_secret_name: str,
-        db_secret_arn: str,
-        efs: efs.FileSystem,
+        efs_instance: EFSStack,
         account_name: str,
         **kwargs,
     ) -> None:
@@ -69,18 +66,12 @@ class ProcessingStep(Stack):
             Container repo
         rds_security_group : ec2.SecurityGroup
             RDS security group
-        subnets : ec2.SubnetSelection
-            RDS subnet selection.
-        db_secret_name : str
-            RDS secret name for secret manager access
-        db_secret_arn : str
-            RDS secret arn for secret manager access
-        efs: efs.FileSystem
+        rds_stack : SdpDatabase
+            RDS stack
+        efs_instance: efs.FileSystem
             EFS stack object
         account_name: str
             account name such as 'dev' or 'prod'
-        rds_stack : SdpDatabase
-            RDS stack
         """
         super().__init__(scope, construct_id, **kwargs)
 
@@ -92,7 +83,7 @@ class ProcessingStep(Stack):
             data_bucket=data_bucket,
             repo=repo,
             db_secret_name=rds_stack.secret_name,
-            efs=efs,
+            efs_instance=efs_instance,
             account_name=account_name,
         )
 

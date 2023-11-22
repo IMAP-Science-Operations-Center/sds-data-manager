@@ -10,11 +10,12 @@ from aws_cdk import Fn
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
-from aws_cdk import aws_efs as efs
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
+
+from sds_data_manager.stacks.efs_stack import EFSStack
 
 
 class FargateBatchResources(Construct):
@@ -29,7 +30,7 @@ class FargateBatchResources(Construct):
         data_bucket: s3.Bucket,
         repo: ecr.Repository,
         db_secret_name: str,
-        efs: efs.FileSystem,
+        efs_instance: EFSStack,
         account_name: str,
         batch_max_vcpus=10,
         job_vcpus=0.25,
@@ -60,7 +61,7 @@ class FargateBatchResources(Construct):
             Dependent on Docker image contents.
         job_memory : int: Optional
             Memory required per Batch job in MB. Dependent on Docker image contents.
-        efs: efs.Filesystem
+        efs_instance: efs.Filesystem
             EFS stack object
         account_name: str
             account name such as 'dev' or 'prod' or user specified.
@@ -170,22 +171,24 @@ class FargateBatchResources(Construct):
                 "image": f"{repo.repository_uri}:{account_name}",
                 "mountPoints": [
                     {
-                        "sourceVolume": efs.volume_name,
+                        "sourceVolume": efs_instance.volume_name,
                         "containerPath": "/mnt/spice",
                         "readOnly": False,
                     }
                 ],
                 "volumes": [
                     {
-                        "name": efs.volume_name,
+                        "name": efs_instance.volume_name,
                         "efsVolumeConfiguration": {
-                            "fileSystemId": Fn.import_value(efs.efs_fs_id_name),
+                            "fileSystemId": Fn.import_value(
+                                efs_instance.efs_fs_id_name
+                            ),
                             "rootDirectory": "/",
                             "transitEncryption": "ENABLED",
                             "transitEncryptionPort": 2049,
                             "authorizationConfig": {
                                 "accessPointId": Fn.import_value(
-                                    efs.spice_access_point_id_name
+                                    efs_instance.spice_access_point_id_name
                                 ),
                                 "iam": "ENABLED",
                             },

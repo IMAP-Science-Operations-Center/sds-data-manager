@@ -136,7 +136,7 @@ class EFSWriteLambda(Stack):
         construct_id: str,
         vpc: ec2.Vpc,
         data_bucket: s3.Bucket,
-        efs: efs.FileSystem,
+        efs_instance: EFSStack,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -178,7 +178,7 @@ class EFSWriteLambda(Stack):
         # NOTE: Workaround to overcome EFS circular dependency when mounting
         # a filesystem
         # https://github.com/aws/aws-cdk/issues/18759
-        spice_access_point_id = Fn.import_value(efs.spice_access_point_id_name)
+        spice_access_point_id = Fn.import_value(efs_instance.spice_access_point_id_name)
 
         # This access point is used by other resources to read from EFS
         lambda_mount_path = "/mnt/spice"
