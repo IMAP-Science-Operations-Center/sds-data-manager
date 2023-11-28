@@ -16,7 +16,7 @@ from .opensearch_utils.client import Client
 from .opensearch_utils.document import Document
 from .opensearch_utils.index import Index
 from .opensearch_utils.payload import Payload
-from .rds_utils.db_connection import DbConnection, DbIngestQuery
+from .opensearch_utils.snapshot import run_backup
 
 # Logger setup
 logger = logging.getLogger()
@@ -24,8 +24,6 @@ logger.setLevel(logging.INFO)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 s3 = boto3.client("s3")
-# Create a Step Functions client
-step_function_client = boto3.client("stepfunctions")
 
 
 def _load_allowed_filenames():
@@ -180,8 +178,11 @@ def lambda_handler(event, context):
     logger.info("Allowed file types: " + str(filetypes))
 
     # Grab environment variables
-    os.environ["OS_DOMAIN"]
-    os.environ["REGION"]
+    host = os.environ["OS_DOMAIN"]
+    snapshot_repo_name = os.environ["SNAPSHOT_REPO_NAME"]
+    snapshot_s3_bucket = os.environ["S3_SNAPSHOT_BUCKET_NAME"]
+    snapshot_role_arn = os.environ["SNAPSHOT_ROLE_ARN"]
+    region = os.environ["REGION"]
 
     # create opensearch client
     client = _create_open_search_client()
@@ -222,16 +223,6 @@ def lambda_handler(event, context):
         opensearch_doc = Document(metadata_index, s3_path, Action.CREATE, metadata)
         document_payload.add_documents(opensearch_doc)
 
-        # Write metadata to RDS database
-        # Connect to RDS database
-        db_connection = DbConnection(os.environ["SECRET_NAME"])
-        # Create DB ingest query
-        db_ingest_query = DbIngestQuery(s3_path, metadata)
-        # Send query to database
-        db_connection.send_query(db_ingest_query)
-        # Close DB connection
-        db_connection.close()
-
         # TODO: Decide if we want to keep both or keep one after SIT-2
         # Right now, we can write processing status of injested data to both databases.
         # In the future, we can decide which one to write to.
@@ -249,13 +240,7 @@ def lambda_handler(event, context):
     # send the paylaod to the opensearch instance
     client.send_payload(document_payload)
 
-    client.close()
+    # take OpenSearch Snapshot
+    run_backup(host, region, snapshot_repo_name, snapshot_s3_bucket, snapshot_role_arn)
 
-    # Start Step function execution
-    state_machine_arn = os.environ.get("STATE_MACHINE_ARN")
-    input_data = {"instrument": metadata["instrument"]}
-    response = step_function_client.start_execution(
-        stateMachineArn=state_machine_arn,
-        input=json.dumps(input_data),  # Input data must be a JSON string
-    )
-    logger.info(f"Step function execution started: {response}")
+    client.close()
