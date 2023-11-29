@@ -75,6 +75,12 @@ def template(app, opensearch_stack, networking_stack, database_stack, env):
     )
     template = Template.from_stack(stack)
 
+    f = open("cdk_template.json", "w")
+    import json
+
+    f.write(json.dumps(template.to_json()))
+    f.close()
+
     return template
 
 
@@ -632,6 +638,25 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                         },
                     },
                     {
+                        "Action": [
+                            "secretsmanager:GetSecretValue",
+                            "secretsmanager:DescribeSecret",
+                        ],
+                        "Effect": "Allow",
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:",
+                                    {"Ref": "AWS::Partition"},
+                                    Match.string_like_regexp(
+                                        ":secretsmanager:.*:secret:.*"
+                                    ),
+                                ],
+                            ]
+                        },
+                    },
+                    {
                         "Action": "iam:PassRole",
                         "Effect": "Allow",
                         "Resource": {
@@ -654,13 +679,14 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                                     "arn:",
                                     {"Ref": "AWS::Partition"},
                                     Match.string_like_regexp(
-                                        ":secretsmanager:.*:secret:.*"
+                                        ":secretsmanager:.*:secret:sdp-database.*"
                                     ),
                                 ],
                             ]
                         },
                     },
-                ],
+                ]
+                # ],
             },
             "PolicyName": Match.string_like_regexp(
                 "IndexerLambdaServiceRoleDefaultPolicy.*"
