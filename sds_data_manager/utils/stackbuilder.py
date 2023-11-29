@@ -18,7 +18,6 @@ from sds_data_manager.stacks import (
     opensearch_stack,
     processing_stack,
     sds_data_manager_stack,
-    step_function_stack,
 )
 
 
@@ -47,15 +46,6 @@ def build_sds(
         table_name="data-watcher",
         partition_key="instrument",
         sort_key="filename",
-        env=env,
-    )
-
-    # TODO: discuss taking components of this to conform to
-    # other step function processing steps
-    processing_step_function = step_function_stack.ProcessingStepFunctionStack(
-        scope,
-        "ProcessingStepFunctionStack",
-        dynamodb_table_name=dynamodb.table_name,
         env=env,
     )
 
@@ -99,7 +89,6 @@ def build_sds(
         "SdsDataManager",
         open_search,
         dynamodb,
-        processing_step_function_arn=processing_step_function.sfn.state_machine_arn,
         env=env,
         db_secret_name=rds_stack.secret_name,
         vpc=networking.vpc,

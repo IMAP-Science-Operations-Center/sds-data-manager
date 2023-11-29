@@ -45,7 +45,6 @@ class SdsDataManager(Stack):
         construct_id: str,
         opensearch: OpenSearch,
         dynamodb_stack: DynamoDB,
-        processing_step_function_arn: str,
         env: cdk.Environment,
         db_secret_name: str,
         vpc: ec2.Vpc,
@@ -66,8 +65,6 @@ class SdsDataManager(Stack):
         dynamodb_stack: DynamoDb
             This class depends on dynamodb_stack, which is built with
             opensearch_stack.py
-        processing_step_function_arn:
-            This has step function arn
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
         # Get the current account number so we can use it in the bucket names
@@ -274,8 +271,6 @@ class SdsDataManager(Stack):
                 "SNAPSHOT_REPO_NAME": "snapshot-repo",
                 "SECRET_ID": opensearch.secret_name,
                 "REGION": opensearch.region,
-                "STATE_MACHINE_ARN": processing_step_function_arn,
-                "SECRET_NAME": db_secret_name,
             },
         )
 
