@@ -75,12 +75,6 @@ def template(app, opensearch_stack, networking_stack, database_stack, env):
     )
     template = Template.from_stack(stack)
 
-    f = open("cdk_template.json", "w")
-    import json
-
-    f.write(json.dumps(template.to_json()))
-    f.close()
-
     return template
 
 
