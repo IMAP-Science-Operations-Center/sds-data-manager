@@ -28,12 +28,15 @@ For example::
 
 8. In `cdk.json`, replace the usernames in the list so that it only contains the username from your personal AWS account (the user created in step 2).
 9. In your local terminal, go to the top of the `sds-data-manager` repository and run the following:
+
     a. `cdk bootstrap --profile my_profile --context account_name=my_context`
     b. `cdk synth --profile my_profile --context account_name=my_context`
     c. `cdk deploy --profile my_profile --context account_name=my_context`
+
         * Add `--require-approval never` to the end of step 9c if you don't want to be prompted for each stack.
         * Note: Not sure if this happens to anyone else, but when the deployment gets this part of the deployment:
-        Temrinal output example::
+        Terminal output example::
+
             0af60606a7e1: Pushed
             03f331fd9b29: Pushed
             03f331fd9b29: Pushed
