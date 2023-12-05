@@ -80,20 +80,6 @@ def build_sds(
         env=env,
     )
 
-    domain = None
-    domain_name = account_config.get("domain_name", None)
-    account_name = account_config["account_name"]
-    if domain_name is not None:
-        domain = domain_stack.DomainStack(
-            scope,
-            "DomainStack",
-            domain_name=domain_name,
-            account_name=account_name,
-            env=env,
-        )
-
-    networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
-
     # Get RDS properties from account_config
     rds_size = account_config.get("rds_size", "SMALL")
     rds_class = account_config.get("rds_class", "BURSTABLE3")
@@ -128,13 +114,6 @@ def build_sds(
         rds_security_group=networking.rds_security_group,
     )
 
-    api_gateway_stack.ApiGateway(
-        scope,
-        "ApiGateway",
-        data_manager.lambda_functions,
-        domain_stack=domain,
-        env=env,
-    )
     # create EFS
     efs = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
 
