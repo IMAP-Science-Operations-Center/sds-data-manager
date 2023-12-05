@@ -8,7 +8,7 @@ Deploy CDK to Personal AWS Account
 4. On your local system, add a new profile to `~/.aws/config` for your personal account. This can be named anything you want, we'll call it `my_profile` for this example.
 5. In your local command line, type `aws configure` to setup your credentials.
 6. Paste your IAM key and token from step 3.
-7. In the IMAP `sds-data-manager` repository, add a new context to `cdk.json`. we'll call it `my_context` for this example.
+7. In the IMAP `sds-data-manager` repository, add a new context to `cdk.json`. We'll call it `my_context` for this example.
 For example::
     "backup": {
         "account": "012345678901",
