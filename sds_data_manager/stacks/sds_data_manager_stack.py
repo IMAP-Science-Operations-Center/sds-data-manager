@@ -31,6 +31,8 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from .api_gateway_stack import ApiGateway
+
 # Local
 from .dynamodb_stack import DynamoDB
 from .opensearch_stack import OpenSearch
@@ -45,6 +47,7 @@ class SdsDataManager(Stack):
         construct_id: str,
         opensearch: OpenSearch,
         dynamodb_stack: DynamoDB,
+        api: ApiGateway,
         env: cdk.Environment,
         db_secret_name: str,
         vpc: ec2.Vpc,
@@ -65,6 +68,9 @@ class SdsDataManager(Stack):
         dynamodb_stack: DynamoDb
             This class depends on dynamodb_stack, which is built with
             opensearch_stack.py
+        api: ApiGateway
+            This class has created API resources. This function uses it to add
+            route that points to targe Lambda.
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
         # Get the current account number so we can use it in the bucket names
@@ -343,6 +349,12 @@ class SdsDataManager(Stack):
         upload_api_lambda.add_to_role_policy(s3_read_policy)
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
+        api.add_route(
+            route="upload",
+            http_method="GET",
+            lambda_function=upload_api_lambda,
+        )
+
         # query API lambda
         query_api_lambda = lambda_alpha_.PythonFunction(
             self,
@@ -367,6 +379,12 @@ class SdsDataManager(Stack):
         )
         query_api_lambda.add_to_role_policy(opensearch.opensearch_read_only_policy)
 
+        api.add_route(
+            route="query",
+            http_method="GET",
+            lambda_function=query_api_lambda,
+        )
+
         opensearch_secret.grant_read(grantee=query_api_lambda)
 
         # download query API lambda
@@ -387,8 +405,8 @@ class SdsDataManager(Stack):
         )
         download_query_api.add_to_role_policy(s3_read_policy)
 
-        self.lambda_functions = {
-            "upload": {"function": upload_api_lambda, "httpMethod": "GET"},
-            "query": {"function": query_api_lambda, "httpMethod": "GET"},
-            "download": {"function": download_query_api, "httpMethod": "GET"},
-        }
+        api.add_route(
+            route="download",
+            http_method="GET",
+            lambda_function=download_query_api,
+        )

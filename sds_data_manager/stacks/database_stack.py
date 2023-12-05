@@ -70,6 +70,14 @@ class SdpDatabase(Stack):
         )
 
         # Secrets manager credentials
+        # NOTE:
+        # If credentials already exists, then we will need to delete
+        # the secret before recreating it.
+        #
+        # Use this command with <> value replaced:
+        # aws --profile <aws profile> secretsmanager delete-secret \
+        # --secret-id <secret name> \
+        # --force-delete-without-recovery
         self.rds_creds = rds.DatabaseSecret(
             self, "RdsCredentials", secret_name=self.secret_name, username=username
         )

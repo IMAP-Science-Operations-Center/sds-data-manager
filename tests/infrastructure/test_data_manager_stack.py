@@ -6,6 +6,7 @@ from aws_cdk import aws_rds as rds
 # Installed
 from aws_cdk.assertions import Match, Template
 
+from sds_data_manager.stacks.api_gateway_stack import ApiGateway
 from sds_data_manager.stacks.database_stack import SdpDatabase
 
 # Local
@@ -52,6 +53,11 @@ def database_stack(app, networking_stack, env):
 
 @pytest.fixture(scope="module")
 def template(app, opensearch_stack, networking_stack, database_stack, env):
+    apigw = ApiGateway(
+        app,
+        construct_id="ApigwTest",
+    )
+
     # create dynamoDB stack
     dynamodb = DynamoDB(
         app,
@@ -66,6 +72,7 @@ def template(app, opensearch_stack, networking_stack, database_stack, env):
         "sds-data-manager-test",
         opensearch_stack,
         dynamodb_stack=dynamodb,
+        api=apigw,
         env=env,
         db_secret_name="0123456789",
         vpc=networking_stack.vpc,

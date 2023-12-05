@@ -6,7 +6,13 @@ from constructs import Construct
 
 
 class DomainStack(Stack):
-    """Acquires hosted_zone and certificate"""
+    """Acquires hosted_zone and certificate
+
+    NOTE: Please make sure domain_name is registered
+    in AWS account. This step is manual. And
+    follow rest of manual setup steps documented in
+    <doc path>.
+    """
 
     def __init__(
         self,

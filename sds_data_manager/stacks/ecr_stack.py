@@ -46,6 +46,7 @@ class EcrStack(Stack):
         self.container_repo.grant_pull_push(ecr_authenticators)
 
         # Add each of the SDC devs to the newly created group
+        # TODO: should we remove this?
         for username in self.node.try_get_context("usernames"):
             user = iam.User.from_user_name(self, username, user_name=username)
             ecr_authenticators.add_user(user)
