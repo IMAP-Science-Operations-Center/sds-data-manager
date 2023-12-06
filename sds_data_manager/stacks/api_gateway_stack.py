@@ -197,7 +197,7 @@ class APILambda(Stack):
             self,
             id=lambda_name,
             function_name=lambda_name,
-            entry=str(code_path.parent),  # This gives folder path
+            entry=str(code_path.parent / "SDSCode"),  # This gives folder path
             index=str(code_path.name),  # This gives file name
             handler=lambda_handler,  # This points to function inside the file
             runtime=lambda_.Runtime.PYTHON_3_11,
