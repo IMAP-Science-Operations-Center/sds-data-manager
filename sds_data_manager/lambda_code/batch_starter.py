@@ -5,7 +5,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 import boto3
-import psycopg2
+import psycopg
 
 # Setup the logging
 logging.basicConfig(level=logging.INFO)
@@ -66,7 +66,7 @@ def db_connect(db_secret_arn):
         raise Exception(f"Error retrieving secret: {e}") from e
 
     try:
-        conn = psycopg2.connect(
+        conn = psycopg.connect(
             dbname=secret["dbname"],
             user=secret["username"],
             password=secret["password"],
@@ -85,8 +85,8 @@ def get_process_details(cur, instrument, filename, process_range=1):
 
     Parameters
     ----------
-    cur : psycopg2.extensions.cursor
-        A psycopg2 database cursor object to execute
+    cur : psycopg.extensions.cursor
+        A psycopg database cursor object to execute
         database operations.
     instrument : str
         The name of the instrument for which details
@@ -150,8 +150,8 @@ def query_instruments(cur, version, process_dates, instruments):
 
     Parameters
     ----------
-    cur : psycopg2.extensions.cursor
-        A psycopg2 database cursor object to execute database operations.
+    cur : psycopg.extensions.cursor
+        A psycopg database cursor object to execute database operations.
     version : int
         Version of the instrument to be queried.
     process_dates : list

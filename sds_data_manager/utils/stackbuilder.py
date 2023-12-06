@@ -186,11 +186,12 @@ def build_sds(
     efs_stack.EFSWriteLambda(
         scope=scope,
         construct_id="EFSWriteLambda",
-        env=env,
         vpc=networking.vpc,
         data_bucket=data_manager.data_bucket,
         efs_instance=efs_instance,
+        env=env,
     )
+
 
     create_schema_stack.CreateSchema(
         scope,

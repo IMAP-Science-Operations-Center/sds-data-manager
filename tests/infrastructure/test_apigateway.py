@@ -34,7 +34,7 @@ def template(app):
 def lambda_template():
     app = cdk.App()
     lambda_code_directory = (
-        Path(__file__).parent.parent.parent / "sds_data_manager/lambda_code/SDSCode"
+        Path(__file__).parent.parent.parent / "sds_data_manager/lambda_code"
     )
     spin_table_code = lambda_code_directory / "spin_table_api.py"
     vpc = NetworkingStack(app, "networking-stack")
