@@ -9,6 +9,7 @@ from aws_cdk import aws_rds as rds
 from sds_data_manager.stacks import (
     api_gateway_stack,
     backup_bucket_stack,
+    create_schema_stack,
     database_stack,
     domain_stack,
     dynamodb_stack,
@@ -22,7 +23,12 @@ from sds_data_manager.stacks import (
 )
 
 
-def build_sds(scope: App, env: Environment, account_config: dict):
+def build_sds(
+    scope: App,
+    env: Environment,
+    account_config: dict,
+    use_custom_domain: bool = False,
+):
     """Builds the entire SDS
 
     Parameters
@@ -74,18 +80,11 @@ def build_sds(scope: App, env: Environment, account_config: dict):
         env=env,
     )
 
-    data_manager = sds_data_manager_stack.SdsDataManager(
-        scope,
-        "SdsDataManager",
-        open_search,
-        dynamodb,
-        api,
-        env=env,
-    )
+    # Get RDS properties from account_config
+    rds_size = account_config.get("rds_size", "SMALL")
+    rds_class = account_config.get("rds_class", "BURSTABLE3")
+    rds_storage = account_config.get("rds_stack", 200)
 
-    rds_size: str = "SMALL"
-    rds_class: str = "BURSTABLE3"
-    rds_storage: int = 200
     rds_stack = database_stack.SdpDatabase(
         scope,
         "RDS",
@@ -97,9 +96,22 @@ def build_sds(scope: App, env: Environment, account_config: dict):
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
-        username="postgres",
-        secret_name="sdp-database-creds",
+        username="imap",
+        secret_name="sdp-database-creds-rds",
         database_name="imapdb",
+    )
+
+    data_manager = sds_data_manager_stack.SdsDataManager(
+        scope,
+        "SdsDataManager",
+        open_search,
+        dynamodb,
+        api,
+        env=env,
+        db_secret_name=rds_stack.secret_name,
+        vpc=networking.vpc,
+        vpc_subnets=rds_stack.rds_subnet_selection,
+        rds_security_group=networking.rds_security_group,
     )
 
     # create EFS
@@ -187,7 +199,16 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             efs=efs,
             account_name=account_name,
         )
-        # etc
+
+    create_schema_stack.CreateSchema(
+        scope,
+        "CreateSchemaStack",
+        env=env,
+        db_secret_name=rds_stack.secret_name,
+        vpc=networking.vpc,
+        vpc_subnets=rds_stack.rds_subnet_selection,
+        rds_security_group=networking.rds_security_group,
+    )
 
     # create lambda that mounts EFS and writes data to EFS
     efs_stack.EFSWriteLambda(

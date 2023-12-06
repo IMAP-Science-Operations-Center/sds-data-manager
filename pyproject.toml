@@ -64,6 +64,7 @@ optional = true
 opensearch-py = "^2.1.1"
 requests = "^2.28.2"
 requests-aws4auth = "^1.2.3"
+psycopg2-binary = "^2.9.9"
 urllib3 = "<2.0.0"
 
 # Used for installing with pip

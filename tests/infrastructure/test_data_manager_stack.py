@@ -1,13 +1,17 @@
 # Standard
 import pytest
+from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_rds as rds
 
 # Installed
 from aws_cdk.assertions import Match, Template
 
 from sds_data_manager.stacks.api_gateway_stack import ApiGateway
+from sds_data_manager.stacks.database_stack import SdpDatabase
 
 # Local
 from sds_data_manager.stacks.dynamodb_stack import DynamoDB
+from sds_data_manager.stacks.networking_stack import NetworkingStack
 from sds_data_manager.stacks.opensearch_stack import OpenSearch
 from sds_data_manager.stacks.sds_data_manager_stack import SdsDataManager
 
@@ -19,11 +23,41 @@ def opensearch_stack(app, env):
 
 
 @pytest.fixture(scope="module")
-def template(app, opensearch_stack, env):
+def networking_stack(app, env):
+    networking = NetworkingStack(app, "Networking", env=env)
+    return networking
+
+
+@pytest.fixture(scope="module")
+def database_stack(app, networking_stack, env):
+    rds_size = "SMALL"
+    rds_class = "BURSTABLE3"
+    rds_storage = 200
+    database_stack = SdpDatabase(
+        app,
+        "RDS",
+        description="IMAP SDP database",
+        env=env,
+        vpc=networking_stack.vpc,
+        rds_security_group=networking_stack.rds_security_group,
+        engine_version=rds.PostgresEngineVersion.VER_15_3,
+        instance_size=ec2.InstanceSize[rds_size],
+        instance_class=ec2.InstanceClass[rds_class],
+        max_allocated_storage=rds_storage,
+        username="imap",
+        secret_name="sdp-database-creds-rds",
+        database_name="imapdb",
+    )
+    return database_stack
+
+
+@pytest.fixture(scope="module")
+def template(app, opensearch_stack, networking_stack, database_stack, env):
     apigw = ApiGateway(
         app,
         construct_id="ApigwTest",
     )
+
     # create dynamoDB stack
     dynamodb = DynamoDB(
         app,
@@ -40,6 +74,10 @@ def template(app, opensearch_stack, env):
         dynamodb_stack=dynamodb,
         api=apigw,
         env=env,
+        db_secret_name="0123456789",
+        vpc=networking_stack.vpc,
+        vpc_subnets=database_stack.rds_subnet_selection,
+        rds_security_group=networking_stack.rds_security_group,
     )
     template = Template.from_stack(stack)
 
@@ -600,6 +638,25 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                         },
                     },
                     {
+                        "Action": [
+                            "secretsmanager:GetSecretValue",
+                            "secretsmanager:DescribeSecret",
+                        ],
+                        "Effect": "Allow",
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:",
+                                    {"Ref": "AWS::Partition"},
+                                    Match.string_like_regexp(
+                                        ":secretsmanager:.*:secret:.*"
+                                    ),
+                                ],
+                            ]
+                        },
+                    },
+                    {
                         "Action": "iam:PassRole",
                         "Effect": "Allow",
                         "Resource": {
@@ -622,13 +679,14 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                                     "arn:",
                                     {"Ref": "AWS::Partition"},
                                     Match.string_like_regexp(
-                                        ":secretsmanager:.*:secret:.*"
+                                        ":secretsmanager:.*:secret:sdp-database.*"
                                     ),
                                 ],
                             ]
                         },
                     },
-                ],
+                ]
+                # ],
             },
             "PolicyName": Match.string_like_regexp(
                 "IndexerLambdaServiceRoleDefaultPolicy.*"

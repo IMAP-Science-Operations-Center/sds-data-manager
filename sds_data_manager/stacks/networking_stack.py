@@ -61,6 +61,13 @@ class NetworkingStack(Stack):
             self, "FargateInstanceSecurityGroup", vpc=self.vpc
         )
 
+        self.vpc.add_interface_endpoint(
+            "SecretManagerEndpoint",
+            service=ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+            subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            private_dns_enabled=True,
+        )
+
         self.rds_security_group.add_ingress_rule(
             self.batch_security_group, ec2.Port.tcp(5432), "Access from Fargate Batch"
         )

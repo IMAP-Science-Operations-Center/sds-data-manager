@@ -1,9 +1,7 @@
 """SdpDatabase Stack"""
 # Installed
-from aws_cdk import (
-    Environment,
-    Stack,
-)
+
+from aws_cdk import Environment, Stack
 from aws_cdk import (
     aws_ec2 as ec2,
 )
@@ -59,18 +57,13 @@ class SdpDatabase(Stack):
             Database name
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
-
-        self.secret_name = "sdp-database-creds"
-        database_name = "imap"
-        username = "imap_user"
-
+        self.secret_name = secret_name
         # Allow ingress to LASP IP address range and specific port
         rds_security_group.add_ingress_rule(
             peer=ec2.Peer.ipv4("128.138.131.0/24"),
             connection=ec2.Port.tcp(5432),
             description="Ingress RDS",
         )
-
         # Lambda was put into the same security group as the RDS, but we still need this
         rds_security_group.connections.allow_internally(
             ec2.Port.all_traffic(), description="Lambda ingress"
@@ -85,10 +78,9 @@ class SdpDatabase(Stack):
         # aws --profile <aws profile> secretsmanager delete-secret \
         # --secret-id <secret name> \
         # --force-delete-without-recovery
-        rds_creds = rds.DatabaseSecret(
+        self.rds_creds = rds.DatabaseSecret(
             self, "RdsCredentials", secret_name=self.secret_name, username=username
         )
-
         # Subnets for RDS
         self.rds_subnet_selection = ec2.SubnetSelection(
             subnet_type=ec2.SubnetType.PUBLIC
@@ -102,7 +94,7 @@ class SdpDatabase(Stack):
             instance_type=ec2.InstanceType.of(instance_class, instance_size),
             vpc=vpc,
             vpc_subnets=self.rds_subnet_selection,
-            credentials=rds.Credentials.from_secret(rds_creds),
+            credentials=rds.Credentials.from_secret(self.rds_creds),
             security_groups=[rds_security_group],
             publicly_accessible=True,
             max_allocated_storage=max_allocated_storage,
