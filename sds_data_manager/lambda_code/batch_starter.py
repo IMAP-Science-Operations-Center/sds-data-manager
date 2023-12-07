@@ -5,7 +5,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 import boto3
-import psycopg
+import psycopg2
 
 # Setup the logging
 logging.basicConfig(level=logging.INFO)
@@ -66,7 +66,7 @@ def db_connect(db_secret_arn):
         raise Exception(f"Error retrieving secret: {e}") from e
 
     try:
-        conn = psycopg.connect(
+        conn = psycopg2.connect(
             dbname=secret["dbname"],
             user=secret["username"],
             password=secret["password"],
