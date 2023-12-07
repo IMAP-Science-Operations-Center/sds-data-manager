@@ -136,7 +136,7 @@ class EFSWriteLambda(Stack):
         construct_id: str,
         vpc: ec2.Vpc,
         data_bucket: s3.Bucket,
-        efs_instance: EFSStack,
+        efs_instance: efs.FileSystem,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)

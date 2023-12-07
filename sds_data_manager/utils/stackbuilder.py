@@ -182,16 +182,6 @@ def build_sds(
             efs_instance=efs_instance,
             account_name=account_name,
         )
-    # create lambda that mounts EFS and writes data to EFS
-    efs_stack.EFSWriteLambda(
-        scope=scope,
-        construct_id="EFSWriteLambda",
-        vpc=networking.vpc,
-        data_bucket=data_manager.data_bucket,
-        efs_instance=efs_instance,
-        env=env,
-    )
-
 
     create_schema_stack.CreateSchema(
         scope,
@@ -209,7 +199,7 @@ def build_sds(
         construct_id="EFSWriteLambda",
         vpc=networking.vpc,
         data_bucket=data_manager.data_bucket,
-        efs=efs,
+        efs_instance=efs_instance,
         env=env,
     )
 
