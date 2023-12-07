@@ -65,7 +65,7 @@ class InstrumentLambda(Construct):
         # Define Lambda Environment Variables
         # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
-            "INSTRUMENT": f"{instrument}",
+            "INSTRUMENT": instrument,
             "INSTRUMENT_DOWNSTREAM": f"{instrument_downstream}",
             "STATE_MACHINE_ARN": step_function_stack.state_machine.state_machine_arn,
             "SECRET_ARN": rds_stack.rds_creds.secret_arn,
@@ -78,7 +78,7 @@ class InstrumentLambda(Construct):
             entry=str(code_path),
             index="batch_starter.py",
             handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_9,
+            runtime=lambda_.Runtime.PYTHON_3_11,
             environment=lambda_environment,
             retry_attempts=0,
             memory_size=512,
