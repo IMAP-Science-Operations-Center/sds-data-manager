@@ -1,12 +1,12 @@
 Deploy CDK to Personal AWS Account
 ==================================
 
-1. Get a personal AWS account setup by submitting a `Service Desk ticket <https://servicedesk.lasp.colorado.edu/servicedesk/customer/portals>`_.
-2. Once the account is setup, `login in to AWS <https://signin.aws.amazon.com/signin?redirect_uri=https%3A%2F%2Fconsole.aws.amazon.com%2Fconsole%2Fhome%3FhashArgs%3D%2523%26isauthcode%3Dtrue%26state%3DhashArgsFromTB_us-east-2_bdb6cea710bddb8a&client_id=arn%3Aaws%3Asignin%3A%3A%3Aconsole%2Fcanvas&forceMobileApp=0&code_challenge=DSG8NACFeAjbOsDQjFFz6TvuW-ohRykiAIXkuEQriOI&code_challenge_method=SHA-256>`_ and create a user in IAM.
+1. Get a personal AWS account set up by submitting a `Service Desk ticket <https://servicedesk.lasp.colorado.edu/servicedesk/customer/portals>`_.
+2. Once the account is set up, `login in to AWS <https://signin.aws.amazon.com/signin?redirect_uri=https%3A%2F%2Fconsole.aws.amazon.com%2Fconsole%2Fhome%3FhashArgs%3D%2523%26isauthcode%3Dtrue%26state%3DhashArgsFromTB_us-east-2_bdb6cea710bddb8a&client_id=arn%3Aaws%3Asignin%3A%3A%3Aconsole%2Fcanvas&forceMobileApp=0&code_challenge=DSG8NACFeAjbOsDQjFFz6TvuW-ohRykiAIXkuEQriOI&code_challenge_method=SHA-256>`_ and create a user in IAM.
    a. You'll likely want to give your user the ``AdministratorAccess`` policy.
 3. Next, go to ``Security Credentials`` for your new user and create an access key. This will be needed in step 6, so save the access key/secret access key.
 4. On your local system, add a new profile to ``~/.aws/config`` for your personal account. This can be named anything you want, we'll call it ``my_profile`` for this example.
-5. In your local command line, type ``aws configure`` to setup your credentials.
+5. In your local command line, type ``aws configure`` to set up your credentials.
 6. Paste your IAM access key and secret access key from step 3.
 7. In the IMAP ``sds-data-manager`` repository, add a new context to ``cdk.json``. We'll call it ``my_context`` for this example.
 For example::
