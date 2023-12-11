@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from sds_data_manager.lambda_code.batch_starter import (
+from sds_data_manager.lambda_code.step_function_starter import (
     all_dependency_present,
     get_filename_from_event,
     get_process_details,
@@ -19,7 +19,7 @@ from sds_data_manager.lambda_code.batch_starter import (
 @pytest.fixture(scope="session")
 def mock_event():
     """Example of the type of event that will be passed to
-    the instrument lambda (in our case batch_starter.py).
+    the instrument lambda (in our case step_function_starter.py).
     """
     directory = Path(__file__).parent.parent / "test-data" / "codicehi_event.json"
     with open(directory) as file:

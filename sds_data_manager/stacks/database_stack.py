@@ -12,7 +12,7 @@ from constructs import Construct
 
 
 class SdpDatabase(Stack):
-    """Stack for creating database"""
+    """Stack for creating RDS database"""
 
     def __init__(
         self,

@@ -64,7 +64,7 @@ class BatchStarterLambda(Stack):
             "BatchStarterLambda",
             function_name="BatchStarterLambda",
             entry=str(code_path),
-            index="batch_starter.py",
+            index="step_function_starter.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_11,
             environment=lambda_environment,

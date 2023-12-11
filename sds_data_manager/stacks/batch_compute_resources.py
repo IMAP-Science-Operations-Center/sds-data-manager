@@ -208,3 +208,92 @@ class FargateBatchResources(Stack):
             },
             tags={"Purpose": "Batch Processing"},
         )
+
+
+class IalirtEC2Resources(Construct):
+    """EC2 compute environment."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        vpc: ec2.Vpc,
+        repo: ecr.Repository,
+        db_secret_name: str,
+        instance_type: str = "t3.micro",
+    ):
+        """Constructor
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        vpc : ec2.Vpc
+            VPC in which to create compute instances.
+        repo : ecr.Repository
+            ECR repository containing the Docker image.
+        db_secret_name : str
+            DynamoDB secret name.
+        instance_type : str, Optional
+            Type of EC2 instance to launch.
+        """
+        super().__init__(scope, construct_id)
+
+        # Security Group for the EC2 Instance
+        security_group = ec2.SecurityGroup(
+            self,
+            "IalirtEC2SecurityGroup",
+            vpc=vpc,
+            description="Security group for Ialirt EC2 instance",
+        )
+
+        # Allow ingress to LASP IP address range and specific port
+        security_group.add_ingress_rule(
+            # ec2.Peer.ipv4("128.138.131.0/24"),
+            ec2.Peer.any_ipv4(),  # Adjust as needed to restrict access
+            ec2.Port.tcp(8080),
+            "Allow inbound traffic on TCP port 8080",
+        )
+
+        # Create an IAM role for the EC2 instance
+        ec2_role = iam.Role(
+            self,
+            "IalirtEC2Role",
+            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonEC2ContainerRegistryReadOnly"
+                ),
+            ],
+        )
+
+        # Create an EC2 instance
+        ec2_instance = ec2.Instance(
+            self,
+            "IalirtEC2Instance",
+            instance_type=ec2.InstanceType(instance_type),
+            machine_image=ec2.MachineImage.latest_amazon_linux(),
+            vpc=vpc,
+            security_group=security_group,
+            role=ec2_role,
+        )
+
+        # User Data to install Docker and run the container
+        user_data = ec2.UserData.for_linux()
+        user_data.add_commands(
+            "yum update -y",
+            "amazon-linux-extras install docker -y",
+            "service docker start",
+            # 80:80 is the port mapping from the Dockerfile
+            f"docker run -d -p 80:80 {repo.repository_uri}:latest",
+        )
+        # converts commands (is it necessary?)
+        ec2_instance.add_user_data(user_data.render())
+
+        # Add DB access to EC2 instance
+        db_secret = secrets.Secret.from_secret_name_v2(
+            self, "db_secret", db_secret_name
+        )
+        db_secret.grant_read(grantee=ec2_role)

@@ -191,6 +191,41 @@ def build_sds(
 
     # TODO: create batch_starter_lambda
 
+    # I-ALiRT IOIS ECR
+    ialirt_ecr = ecr_stack.EcrStack(
+        scope,
+        "IalirtEcr",
+        env=env,
+        instrument_name="IalirtEcr",
+    )
+
+    # I-ALiRT IOIS DynamoDB
+    # ingest-ugps: ingestion ugps - 64 bit
+    # sct-vtcw: spacecraft time ugps - 64 bit
+    # src-seq-ctr: increments with each packet
+    # length: length of packet
+    # packet: binary blob
+    ialirt_dynamodb = dynamodb_stack.DynamoDB(
+        scope,
+        construct_id="IalirtDynamoDB",
+        table_name="ialirt-iois",
+        partition_key="ingest-ugps",
+        sort_key="sct-vtcw",
+        # on_demand=False,
+        # TODO: set read_capacity and write_capacity
+        env=env,
+    )
+
+    # I-ALiRT Processing (currently only IOIS)
+    processing_stack.IalirtProcessing(
+        scope,
+        "IalirtProcessing",
+        env=env,
+        vpc=networking.vpc,
+        repo=ialirt_ecr.container_repo,
+        db_secret_name=ialirt_dynamodb.secret_name,
+    )
+
 
 def build_backup(scope: App, env: Environment, source_account: str):
     """Builds backup bucket with permissions for replication from source_account.
