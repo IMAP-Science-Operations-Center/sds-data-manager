@@ -202,10 +202,9 @@ def build_sds(
     # I-ALiRT IOIS DynamoDB
     # ingest-ugps: ingestion ugps - 64 bit
     # sct-vtcw: spacecraft time ugps - 64 bit
-    # src-seq-ctr: increments with each packet
-    # length: length of packet
-    # packet: binary blob
-    ialirt_dynamodb = dynamodb_stack.DynamoDB(
+    # src-seq-ctr: increments with each packet (included in filename?)
+    # ccsds-filename: filename of the packet
+    dynamodb_stack.DynamoDB(
         scope,
         construct_id="IalirtDynamoDB",
         table_name="ialirt-iois",
@@ -223,7 +222,7 @@ def build_sds(
         env=env,
         vpc=networking.vpc,
         repo=ialirt_ecr.container_repo,
-        db_secret_name=ialirt_dynamodb.secret_name,
+        # ecr_policy=ialirt_ecr.ecr_policy,
     )
 
 

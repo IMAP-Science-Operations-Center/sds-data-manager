@@ -218,9 +218,9 @@ class IalirtEC2Resources(Construct):
         scope: Construct,
         construct_id: str,
         vpc: ec2.Vpc,
-        repo: ecr.Repository,
-        db_secret_name: str,
+        # ecr_policy: iam.PolicyStatement,
         instance_type: str = "t3.micro",
+        user_data: ec2.UserData = None,
     ):
         """Constructor
 
@@ -234,8 +234,6 @@ class IalirtEC2Resources(Construct):
             VPC in which to create compute instances.
         repo : ecr.Repository
             ECR repository containing the Docker image.
-        db_secret_name : str
-            DynamoDB secret name.
         instance_type : str, Optional
             Type of EC2 instance to launch.
         """
@@ -266,34 +264,29 @@ class IalirtEC2Resources(Construct):
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonEC2ContainerRegistryReadOnly"
                 ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonDynamoDBFullAccess"
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonSSMManagedInstanceCore"
+                ),
             ],
         )
+
+        # Assuming 'ec2_role' is the role of your EC2 instance
+        # ec2_role.add_to_policy(ecr_policy)
 
         # Create an EC2 instance
         ec2_instance = ec2.Instance(
             self,
             "IalirtEC2Instance",
             instance_type=ec2.InstanceType(instance_type),
-            machine_image=ec2.MachineImage.latest_amazon_linux(),
+            machine_image=ec2.MachineImage.latest_amazon_linux2(),
             vpc=vpc,
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             security_group=security_group,
             role=ec2_role,
+            user_data=user_data,
         )
 
-        # User Data to install Docker and run the container
-        user_data = ec2.UserData.for_linux()
-        user_data.add_commands(
-            "yum update -y",
-            "amazon-linux-extras install docker -y",
-            "service docker start",
-            # 80:80 is the port mapping from the Dockerfile
-            f"docker run -d -p 80:80 {repo.repository_uri}:latest",
-        )
-        # converts commands (is it necessary?)
         ec2_instance.add_user_data(user_data.render())
-
-        # Add DB access to EC2 instance
-        db_secret = secrets.Secret.from_secret_name_v2(
-            self, "db_secret", db_secret_name
-        )
-        db_secret.grant_read(grantee=ec2_role)

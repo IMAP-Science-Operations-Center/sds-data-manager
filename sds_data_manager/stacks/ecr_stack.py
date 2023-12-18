@@ -31,7 +31,7 @@ class EcrStack(Stack):
         # Define registry for storing processing docker images
         self.container_repo = ecr.Repository(
             self,
-            f"BatchRepository-{construct_id}",
+            f"Repository-{construct_id}",
             repository_name=f"{instrument_name.lower()}-repo",
             image_scan_on_push=True,
         )
@@ -52,3 +52,13 @@ class EcrStack(Stack):
             ecr_authenticators.add_user(user)
 
         self.container_repo.apply_removal_policy(RemovalPolicy.DESTROY)
+
+        # # Create ECR Policy
+        # self.ecr_policy = iam.PolicyStatement(
+        #     actions=[
+        #         "ecr:GetDownloadUrlForLayer",
+        #         "ecr:BatchGetImage",
+        #         "ecr:BatchCheckLayerAvailability"
+        #     ],
+        #     resources=[self.container_repo.repository_arn]
+        # )
