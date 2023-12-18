@@ -52,13 +52,4 @@ class EcrStack(Stack):
             ecr_authenticators.add_user(user)
 
         self.container_repo.apply_removal_policy(RemovalPolicy.DESTROY)
-
-        # # Create ECR Policy
-        # self.ecr_policy = iam.PolicyStatement(
-        #     actions=[
-        #         "ecr:GetDownloadUrlForLayer",
-        #         "ecr:BatchGetImage",
-        #         "ecr:BatchCheckLayerAvailability"
-        #     ],
-        #     resources=[self.container_repo.repository_arn]
-        # )
+        self.repo_uri = self.container_repo.repository_uri
