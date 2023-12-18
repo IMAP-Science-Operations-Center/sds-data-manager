@@ -13,13 +13,13 @@ logging.basicConfig()
 logger.setLevel(logging.INFO)
 
 
-def http_response(header_type="text/html", status_code=200, body="Success"):
+def http_response(headers=None, status_code=200, body="Success"):
     """Customizes HTTP response for the lambda function.
 
     Parameters
     ----------
-    header_type : str, optional
-        Type of the content being returned, defaults to 'text/html'.
+    headers : dict, optional
+        Content headers for the response, defaults to Content-type: text/html.
     status_code : int, optional
         HTTP status code indicating the result of the operation, defaults to 200.
     body : str, optional
@@ -31,10 +31,14 @@ def http_response(header_type="text/html", status_code=200, body="Success"):
         A dictionary containing headers, status code, and body, designed to be returned
         by a Lambda function as an API response.
     """
+    if headers is None:
+        headers = (
+            {
+                "Content-Type": "text/html",
+            },
+        )
     return {
-        "headers": {
-            "Content-Type": header_type,
-        },
+        "headers": headers,
         "statusCode": status_code,
         "body": body,
     }
@@ -110,5 +114,9 @@ def lambda_handler(event, context):
         "get_object", Params={"Bucket": bucket, "Key": filepath}, ExpiresIn=url_life
     )
     response_body = {"download_url": pre_signed_url}
-
-    return http_response(header_type="application/json", body=json.dumps(response_body))
+    # The 302 response needs a "Location" header with the pre-signed URL
+    # to indicate where the redirect needs to point on the client side.
+    headers = {"Content-Type": "text/html", "Location": pre_signed_url}
+    return http_response(
+        headers=headers, status_code=302, body=json.dumps(response_body)
+    )

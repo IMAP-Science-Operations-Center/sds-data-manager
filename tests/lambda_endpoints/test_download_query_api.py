@@ -40,7 +40,8 @@ def test_object_exists_with_s3_uri():
     }
 
     response = lambda_handler(event=event, context=None)
-    assert response["statusCode"] == 200
+    assert response["statusCode"] == 302
+    assert "Location" in response["headers"]
     assert "download_url" in response["body"]
 
 
