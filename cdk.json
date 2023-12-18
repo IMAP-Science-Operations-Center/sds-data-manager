@@ -16,10 +16,15 @@
   },
   "context": {
     "account_name": "dev",
-    "usernames": ["sandoval"],
+    "usernames": ["lsandoval"],
     "backup": {
       "account": "012345678901",
       "source_account": "dev"
+    },
+    "lcs": {
+      "account": "301233867300",
+      "domain_name": "imap-mission.com",
+      "region": "us-west-2"
     },
     "dev": {
       "account": "449431850278",
