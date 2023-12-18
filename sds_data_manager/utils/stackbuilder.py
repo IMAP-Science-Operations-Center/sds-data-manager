@@ -216,13 +216,16 @@ def build_sds(
     )
 
     # I-ALiRT Processing (currently only IOIS)
+    # TODO: the EC2 instance does not automatically
+    # pull new images from ECR. Need to decide
+    # how to handle this. For now, manually pull.
+    # This might change to ECS Fargate in the future.
     processing_stack.IalirtProcessing(
         scope,
         "IalirtProcessing",
         env=env,
         vpc=networking.vpc,
-        repo=ialirt_ecr.container_repo,
-        # ecr_policy=ialirt_ecr.ecr_policy,
+        repo_uri=ialirt_ecr.repo_uri,
     )
 
 

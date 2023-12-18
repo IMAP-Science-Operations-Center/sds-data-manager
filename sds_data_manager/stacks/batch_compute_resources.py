@@ -218,9 +218,8 @@ class IalirtEC2Resources(Construct):
         scope: Construct,
         construct_id: str,
         vpc: ec2.Vpc,
-        # ecr_policy: iam.PolicyStatement,
+        repo_uri: str,
         instance_type: str = "t3.micro",
-        user_data: ec2.UserData = None,
     ):
         """Constructor
 
@@ -232,12 +231,24 @@ class IalirtEC2Resources(Construct):
             A unique string identifier for this construct.
         vpc : ec2.Vpc
             VPC in which to create compute instances.
-        repo : ecr.Repository
+        repo_uri : ec2.UserData
             ECR repository containing the Docker image.
         instance_type : str, Optional
             Type of EC2 instance to launch.
         """
         super().__init__(scope, construct_id)
+
+        # Define user data script
+        user_data = ec2.UserData.for_linux()
+        user_data.add_commands(
+            "yum update -y",
+            "amazon-linux-extras install docker -y",
+            "systemctl start docker",
+            "systemctl enable docker",
+            "$(aws ecr get-login --no-include-email --region us-west-2 | bash)",
+            f"docker pull {repo_uri}:latest",
+            f"docker run --rm -d -p 8080:8080 {repo_uri}:latest",
+        )
 
         # Security Group for the EC2 Instance
         security_group = ec2.SecurityGroup(
@@ -249,8 +260,7 @@ class IalirtEC2Resources(Construct):
 
         # Allow ingress to LASP IP address range and specific port
         security_group.add_ingress_rule(
-            # ec2.Peer.ipv4("128.138.131.0/24"),
-            ec2.Peer.any_ipv4(),  # Adjust as needed to restrict access
+            ec2.Peer.ipv4("128.138.131.0/24"),  # LASP IP address range
             ec2.Port.tcp(8080),
             "Allow inbound traffic on TCP port 8080",
         )
@@ -272,9 +282,6 @@ class IalirtEC2Resources(Construct):
                 ),
             ],
         )
-
-        # Assuming 'ec2_role' is the role of your EC2 instance
-        # ec2_role.add_to_policy(ecr_policy)
 
         # Create an EC2 instance
         ec2_instance = ec2.Instance(
