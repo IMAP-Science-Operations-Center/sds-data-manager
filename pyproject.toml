@@ -67,6 +67,7 @@ requests = "^2.28.2"
 requests-aws4auth = "^1.2.3"
 psycopg2-binary = "^2.9.9"
 urllib3 = "<2.0.0"
+SQLAlchemy = "<=2.0.23"
 
 # Used for installing with pip
 [tool.poetry.extras]

@@ -5,6 +5,8 @@ import logging
 import sys
 
 import requests
+from SDSCode.database.database import engine
+from SDSCode.database.models import Base
 
 # Logger setup
 logger = logging.getLogger()
@@ -12,7 +14,7 @@ logger.setLevel(logging.INFO)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
-def send_response(event, context, response_data, response_status):
+def send_response(event, context, response_status):
     """Construct a response to indicate the status of the custom
     resource lambda "SUCCESS" or "FAILED"
 
@@ -23,8 +25,6 @@ def send_response(event, context, response_data, response_status):
     context: Context
         provides methods and properties that provide information about the invocation,
         function, and execution environment.
-    response_data: str
-        either the query that was sent or an error message if the query failed.
     reponse_status: str
         "SUCCESS" or "FAILED" status depending on query status.
     """
@@ -37,7 +37,6 @@ def send_response(event, context, response_data, response_status):
         "StackId": event["StackId"],
         "RequestId": event["RequestId"],
         "LogicalResourceId": event["LogicalResourceId"],
-        "Data": response_data,
     }
 
     json_response_body = json.dumps(response_body)
@@ -49,5 +48,12 @@ def send_response(event, context, response_data, response_status):
 
 
 def lambda_handler(event, context):
-    logger.info("Sending custom resource response.")
-    send_response(event, context, "", "SUCCESS")
+    logger.info("Creating RDS tables")
+    logger.info(event)
+    try:
+        # Create tables
+        Base.metadata.create_all(engine)
+        send_response(event, context, "SUCCESS")
+    except Exception as e:
+        logger.error(e)
+        send_response(event, context, "FAILED")
