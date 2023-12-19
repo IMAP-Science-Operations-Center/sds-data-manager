@@ -12,6 +12,7 @@ from aws_cdk import Fn, Stack
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
+from aws_cdk import aws_ecs as ecs
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
@@ -215,6 +216,8 @@ class FargateBatchResources(Stack):
         )
 
 
+# TODO: Add Elastic load balancer to distributes
+#  traffic across the different container instances.
 class IalirtEC2Resources(Construct):
     """EC2 compute environment."""
 
@@ -224,87 +227,93 @@ class IalirtEC2Resources(Construct):
         construct_id: str,
         vpc: ec2.Vpc,
         repo_uri: str,
-        instance_type: str = "t3.micro",
     ):
-        """Constructor
-
-        Parameters
-        ----------
-        scope : Construct
-            Parent construct.
-        construct_id : str
-            A unique string identifier for this construct.
-        vpc : ec2.Vpc
-            VPC in which to create compute instances.
-        repo_uri : str
-            ECR repository containing the Docker image.
-        instance_type : str, Optional
-            Type of EC2 instance to launch.
-        """
         super().__init__(scope, construct_id)
 
-        # Define user data script
-        # - Updates the instance
-        # - Installs Docker
-        # - Starts the Docker
-        # - Logs into AWS ECR
-        # - Pulls the Docker image
-        # - Runs the Docker container
-        user_data = ec2.UserData.for_linux()
-        user_data.add_commands(
-            "yum update -y",
-            "amazon-linux-extras install docker -y",
-            "systemctl start docker",
-            "systemctl enable docker",
-            "sleep 30",  # Wait for 30 seconds
-            "aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 301233867300.dkr.ecr.us-west-2.amazonaws.com"
-            f"docker pull {repo_uri}:latest",
-            f"docker run --rm -d -p 8080:8080 {repo_uri}:latest",
-        )
-
-        # Security Group for the EC2 Instance
-        security_group = ec2.SecurityGroup(
+        # Security Group for the ECS tasks
+        ecs_security_group = ec2.SecurityGroup(
             self,
-            "IalirtEC2SecurityGroup",
+            "IalirtECSSecurityGroup",
             vpc=vpc,
-            description="Security group for Ialirt EC2 instance",
+            description="Security group for Ialirt ECS tasks",
         )
 
-        # Allow ingress to LASP IP address range and specific port
-        security_group.add_ingress_rule(
-            ec2.Peer.ipv4("128.138.131.0/24"),  # LASP IP address range
-            ec2.Port.tcp(8080),
-            "Allow inbound traffic on TCP port 8080",
+        # Allows inbound network traffic on TCP port 8080
+        # to any EC2 instance associated with this security group.
+        ecs_security_group.add_ingress_rule(
+            peer=ec2.Peer.any_ipv4(),
+            connection=ec2.Port.tcp(80),
+            description="Ingress for ECS",
         )
 
-        # Create an IAM role for the EC2 instance
-        # - Read-only access to AWS ECR
-        # - Basic instance management via AWS Systems Manager
-        ec2_role = iam.Role(
+        # # Allow internal traffic within the security group
+        # ecs_security_group.connections.allow_internally(
+        #     ec2.Port.all_traffic(), description="Internal ECS traffic"
+        # )
+
+        # Create an IAM role for the ECS tasks
+        ecs_task_role = iam.Role(
             self,
-            "IalirtEC2Role",
-            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+            "IalirtECSTaskRole",
+            assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AmazonECSTaskExecutionRolePolicy"
+                ),
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonEC2ContainerRegistryReadOnly"
                 ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonSSMManagedInstanceCore"
-                ),
+                # iam.ManagedPolicy.from_aws_managed_policy_name(
+                #     "AmazonSSMManagedInstanceCore"
+                # ),
             ],
         )
 
-        # Create an EC2 instance
-        ec2_instance = ec2.Instance(
-            self,
-            "IalirtEC2Instance",
-            instance_type=ec2.InstanceType(instance_type),
-            machine_image=ec2.MachineImage.latest_amazon_linux2(),
-            vpc=vpc,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-            security_group=security_group,
-            role=ec2_role,
-            user_data=user_data,
+        # Create an ECS Cluster
+        ecs_cluster = ecs.Cluster(self, "IalirtEcsCluster", vpc=vpc)
+
+        # Add capacity to the ECS cluster
+        ecs_cluster.add_capacity(
+            "DefaultAutoScalingGroup",
+            # TODO optimize instance type
+            instance_type=ec2.InstanceType("t2.micro"),
+            # minimum number of EC2 instances that
+            # Auto Scaling group should maintain in cluster
+            min_capacity=1,
         )
 
-        ec2_instance.add_user_data(user_data.render())
+        # Create an ECS Task Definition with EC2 launch type
+        task_definition = ecs.Ec2TaskDefinition(
+            self,
+            "IalirtTaskDefinition",
+            task_role=ecs_task_role,
+            network_mode=ecs.NetworkMode.AWS_VPC,
+        )
+
+        # Add a container to the task definition
+        container = task_definition.add_container(
+            "IalirtContainer",
+            image=ecs.ContainerImage.from_registry(repo_uri + ":latest"),
+            memory_limit_mib=512,
+        )
+        container.add_port_mappings(ecs.PortMapping(container_port=80))
+
+        # Create an ECS Service
+        ecs.Ec2Service(
+            self,
+            "IalirtService",
+            cluster=ecs_cluster,
+            task_definition=task_definition,
+            desired_count=1,
+            security_groups=[ecs_security_group],
+        )
+
+        # Optional: Auto Scaling setup for your service
+        # auto_scaling = ecs_service.auto_scale_task_count(
+        #     min_capacity=1,
+        #     max_capacity=3
+        # )
+        # auto_scaling.scale_on_cpu_utilization(
+        #     "CpuScaling",
+        #     target_utilization_percent=70
+        # )
