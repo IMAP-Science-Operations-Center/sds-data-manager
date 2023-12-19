@@ -236,7 +236,7 @@ class IalirtEC2Resources(Construct):
             A unique string identifier for this construct.
         vpc : ec2.Vpc
             VPC in which to create compute instances.
-        repo_uri : ec2.UserData
+        repo_uri : str
             ECR repository containing the Docker image.
         instance_type : str, Optional
             Type of EC2 instance to launch.
@@ -244,13 +244,20 @@ class IalirtEC2Resources(Construct):
         super().__init__(scope, construct_id)
 
         # Define user data script
+        # - Updates the instance
+        # - Installs Docker
+        # - Starts the Docker
+        # - Logs into AWS ECR
+        # - Pulls the Docker image
+        # - Runs the Docker container
         user_data = ec2.UserData.for_linux()
         user_data.add_commands(
             "yum update -y",
             "amazon-linux-extras install docker -y",
             "systemctl start docker",
             "systemctl enable docker",
-            "$(aws ecr get-login --no-include-email --region us-west-2 | bash)",
+            "sleep 30",  # Wait for 30 seconds
+            "aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 301233867300.dkr.ecr.us-west-2.amazonaws.com"
             f"docker pull {repo_uri}:latest",
             f"docker run --rm -d -p 8080:8080 {repo_uri}:latest",
         )
@@ -271,6 +278,8 @@ class IalirtEC2Resources(Construct):
         )
 
         # Create an IAM role for the EC2 instance
+        # - Read-only access to AWS ECR
+        # - Basic instance management via AWS Systems Manager
         ec2_role = iam.Role(
             self,
             "IalirtEC2Role",
@@ -278,9 +287,6 @@ class IalirtEC2Resources(Construct):
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonEC2ContainerRegistryReadOnly"
-                ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonDynamoDBFullAccess"
                 ),
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonSSMManagedInstanceCore"
