@@ -1,3 +1,10 @@
+"""
+Verify the successful deployment and operation in an
+ECR and EC2 setup.
+
+Note: verification may also be done via the
+webbrowser: http://<EC2_IP>:8080/
+"""
 import os
 
 import pytest
@@ -20,5 +27,3 @@ def test_flask_app_response():
         pytest.fail("Failed to connect to the Flask application.")
     except requests.exceptions.Timeout:
         pytest.fail("Connection to the Flask application timed out.")
-
-    print("Test passed: Flask application returned the expected response.")
