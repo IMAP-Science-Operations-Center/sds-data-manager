@@ -16,7 +16,6 @@ from sds_data_manager.stacks import (
     efs_stack,
     monitoring_stack,
     networking_stack,
-    opensearch_stack,
     processing_stack,
     sds_data_manager_stack,
 )
@@ -71,8 +70,6 @@ def build_sds(
     )
     api.deliver_to_sns(monitoring.sns_topic_notifications)
 
-    open_search = opensearch_stack.OpenSearch(scope, "OpenSearch", env=env)
-
     # Get RDS properties from account_config
     rds_size = account_config.get("rds_size", "SMALL")
     rds_class = account_config.get("rds_class", "BURSTABLE3")
@@ -97,7 +94,6 @@ def build_sds(
     data_manager = sds_data_manager_stack.SdsDataManager(
         scope,
         "SdsDataManager",
-        open_search,
         api,
         env=env,
         db_secret_name=rds_stack.secret_name,
