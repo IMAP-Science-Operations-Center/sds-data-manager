@@ -11,14 +11,7 @@ from sds_data_manager.stacks.database_stack import SdpDatabase
 
 # Local
 from sds_data_manager.stacks.networking_stack import NetworkingStack
-from sds_data_manager.stacks.opensearch_stack import OpenSearch
 from sds_data_manager.stacks.sds_data_manager_stack import SdsDataManager
-
-
-@pytest.fixture(scope="module")
-def opensearch_stack(app, env):
-    stack = OpenSearch(app, "opensearch-test", env=env)
-    return stack
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +44,7 @@ def database_stack(app, networking_stack, env):
 
 
 @pytest.fixture(scope="module")
-def template(app, opensearch_stack, networking_stack, database_stack, env):
+def template(app, networking_stack, database_stack, env):
     apigw = ApiGateway(
         app,
         construct_id="ApigwTest",
@@ -60,7 +53,6 @@ def template(app, opensearch_stack, networking_stack, database_stack, env):
     stack = SdsDataManager(
         app,
         "sds-data-manager-test",
-        opensearch_stack,
         api=apigw,
         env=env,
         db_secret_name="0123456789",
@@ -74,35 +66,11 @@ def template(app, opensearch_stack, networking_stack, database_stack, env):
 
 
 def test_s3_bucket_resource_count(template):
-    template.resource_count_is("AWS::S3::Bucket", 2)
-
-
-def test_s3_snapshot_bucket_resource_properties(template, account):
-    template.has_resource(
-        "AWS::S3::Bucket",
-        {
-            "DeletionPolicy": "Delete",
-            "UpdateReplacePolicy": "Delete",
-        },
-    )
-
-    template.has_resource_properties(
-        "AWS::S3::Bucket",
-        {
-            "BucketName": f"sds-opensearch-snapshot-{account}",
-            "VersioningConfiguration": {"Status": "Enabled"},
-            "PublicAccessBlockConfiguration": {
-                "BlockPublicAcls": True,
-                "BlockPublicPolicy": True,
-                "IgnorePublicAcls": True,
-                "RestrictPublicBuckets": True,
-            },
-        },
-    )
+    template.resource_count_is("AWS::S3::Bucket", 1)
 
 
 def test_s3_bucket_policy_resource_count(template):
-    template.resource_count_is("AWS::S3::BucketPolicy", 2)
+    template.resource_count_is("AWS::S3::BucketPolicy", 1)
 
 
 def test_s3_data_bucket_policy_resource_properties(template):
@@ -160,65 +128,8 @@ def test_s3_data_bucket_policy_resource_properties(template):
     )
 
 
-def test_s3_snapshot_bucket_policy_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::S3::BucketPolicy",
-        {
-            "Bucket": {"Ref": Match.string_like_regexp("SnapshotBucket*")},
-            "PolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": [
-                            "s3:PutBucketPolicy",
-                            "s3:GetBucket*",
-                            "s3:List*",
-                            "s3:DeleteObject*",
-                        ],
-                        "Effect": "Allow",
-                        "Principal": {
-                            "AWS": {
-                                "Fn::GetAtt": [
-                                    Match.string_like_regexp(
-                                        "CustomS3AutoDeleteObjectsCustomResourceProviderRole*"
-                                    ),
-                                    "Arn",
-                                ]
-                            }
-                        },
-                        "Resource": [
-                            {
-                                "Fn::GetAtt": [
-                                    Match.string_like_regexp("SnapshotBucket*"),
-                                    "Arn",
-                                ]
-                            },
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "SnapshotBucket*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                        ],
-                    }
-                ],
-                "Version": "2012-10-17",
-            },
-        },
-    )
-
-
 def test_custom_s3_auto_delete_resource_count(template):
-    template.resource_count_is("Custom::S3AutoDeleteObjects", 2)
+    template.resource_count_is("Custom::S3AutoDeleteObjects", 1)
 
 
 def test_data_bucket_custom_s3_auto_delete_resource_properties(template):
@@ -270,7 +181,7 @@ def test_custom_s3_bucket_notifications_resource_properties(template):
 
 
 def test_iam_roles_resource_count(template):
-    template.resource_count_is("AWS::IAM::Role", 8)
+    template.resource_count_is("AWS::IAM::Role", 7)
 
 
 def test_expected_properties_for_iam_roles(template):
@@ -292,13 +203,13 @@ def test_expected_properties_for_iam_roles(template):
         },
     )
 
-    # There are 7 IAM Role expected resources with the same properties
+    # There are 6 IAM Role expected resources with the same properties
     # confirm that all are found in the stack
     assert len(found_resources) == 6
 
 
 def test_iam_policy_resource_count(template):
-    template.resource_count_is("AWS::IAM::Policy", 7)
+    template.resource_count_is("AWS::IAM::Policy", 5)
 
 
 def test_uploadapilambda_iam_policy_resource_properties(template):
@@ -311,78 +222,38 @@ def test_uploadapilambda_iam_policy_resource_properties(template):
                     {
                         "Effect": "Allow",
                         "Action": "s3:PutObject",
-                        "Resource": [
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "DataBucket.*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "SnapshotBucket.*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                        ],
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp("DataBucket.*"),
+                                            "Arn",
+                                        ]
+                                    },
+                                    "/*",
+                                ],
+                            ]
+                        },
                     },
                     {
                         "Effect": "Allow",
                         "Action": "s3:GetObject",
-                        "Resource": [
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "DataBucket.*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "SnapshotBucket.*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                        ],
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp("DataBucket.*"),
+                                            "Arn",
+                                        ]
+                                    },
+                                    "/*",
+                                ],
+                            ]
+                        },
                     },
                 ],
             },
@@ -401,40 +272,6 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                 "Version": "2012-10-17",
                 "Statement": [
                     {
-                        "Effect": "Allow",
-                        "Action": "es:ESHttp*",
-                        "Resource": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    {
-                                        "Fn::ImportValue": Match.string_like_regexp(
-                                            "opensearch.*"
-                                        ),
-                                    },
-                                    "/*",
-                                ],
-                            ]
-                        },
-                    },
-                    {
-                        "Action": "es:*",
-                        "Effect": "Allow",
-                        "Resource": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    {
-                                        "Fn::ImportValue": Match.string_like_regexp(
-                                            "opensearch.*"
-                                        )
-                                    },
-                                    "/*",
-                                ],
-                            ]
-                        },
-                    },
-                    {
                         "Action": [
                             "secretsmanager:GetSecretValue",
                             "secretsmanager:DescribeSecret",
@@ -452,38 +289,8 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                                 ],
                             ]
                         },
-                    },
-                    {
-                        "Action": "iam:PassRole",
-                        "Effect": "Allow",
-                        "Resource": {
-                            "Fn::GetAtt": [
-                                Match.string_like_regexp("SnapshotRole.*"),
-                                "Arn",
-                            ]
-                        },
-                    },
-                    {
-                        "Action": [
-                            "secretsmanager:GetSecretValue",
-                            "secretsmanager:DescribeSecret",
-                        ],
-                        "Effect": "Allow",
-                        "Resource": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    "arn:",
-                                    {"Ref": "AWS::Partition"},
-                                    Match.string_like_regexp(
-                                        ":secretsmanager:.*:secret:sdp-database.*"
-                                    ),
-                                ],
-                            ]
-                        },
-                    },
-                ]
-                # ],
+                    }
+                ],
             },
             "PolicyName": Match.string_like_regexp(
                 "IndexerLambdaServiceRoleDefaultPolicy.*"
@@ -517,28 +324,6 @@ def test_queryapilambda_iam_policy_resource_properties(template):
         {
             "PolicyDocument": {
                 "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": "es:ESHttpGet",
-                        "Resource": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    {
-                                        "Fn::ImportValue": Match.string_like_regexp(
-                                            "opensearch-.*:ExportsOutputFnGetAttSDSMetadataDomain.*"
-                                        ),
-                                    },
-                                    "/*",
-                                ],
-                            ]
-                        },
-                    },
-                    {
-                        "Effect": "Allow",
-                    },
-                ],
             },
             "PolicyName": Match.string_like_regexp(
                 "QueryAPILambdaServiceRoleDefaultPolicy.*"
@@ -556,58 +341,21 @@ def test_downloadquerylambda_iam_policy_resource_properties(template):
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": "es:ESHttp*",
+                        "Action": "s3:GetObject",
                         "Resource": {
                             "Fn::Join": [
                                 "",
                                 [
                                     {
-                                        "Fn::ImportValue": Match.string_like_regexp(
-                                            "opensearch-.*:ExportsOutputFnGetAttSDSMetadataDomain.*"
-                                        ),
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp("DataBucket.*"),
+                                            "Arn",
+                                        ]
                                     },
                                     "/*",
                                 ],
                             ]
                         },
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": "s3:GetObject",
-                        "Resource": [
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "DataBucket.*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "SnapshotBucket.*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                        ],
                     },
                 ],
             },

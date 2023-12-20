@@ -30,9 +30,6 @@ from constructs import Construct
 
 from .api_gateway_stack import ApiGateway
 
-# Local
-from .opensearch_stack import OpenSearch
-
 
 class SdsDataManager(Stack):
     """Stack for Data Management."""
@@ -41,7 +38,6 @@ class SdsDataManager(Stack):
         self,
         scope: Construct,
         construct_id: str,
-        opensearch: OpenSearch,
         api: ApiGateway,
         env: cdk.Environment,
         db_secret_name: str,
@@ -58,8 +54,6 @@ class SdsDataManager(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        opensearch: OpenSearch
-            This class depends on opensearch, which is built with opensearch_stack.py
         api: ApiGateway
             This class has created API resources. This function uses it to add
             route that points to targe Lambda.
@@ -81,23 +75,11 @@ class SdsDataManager(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 
-        ########### OpenSearch Snapshot Storage
-        snapshot_bucket = s3.Bucket(
-            self,
-            "SnapshotBucket",
-            bucket_name=f"sds-opensearch-snapshot-{account}",
-            versioned=True,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-        )
-
         s3_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:PutObject"],
             resources=[
                 f"{self.data_bucket.bucket_arn}/*",
-                f"{snapshot_bucket.bucket_arn}/*",
             ],
         )
         s3_read_policy = iam.PolicyStatement(
@@ -105,7 +87,6 @@ class SdsDataManager(Stack):
             actions=["s3:GetObject"],
             resources=[
                 f"{self.data_bucket.bucket_arn}/*",
-                f"{snapshot_bucket.bucket_arn}/*",
             ],
         )
         iam.PolicyStatement(
@@ -169,26 +150,6 @@ class SdsDataManager(Stack):
         backup_role.add_to_policy(s3_backup_bucket_policy)
         backup_role.add_to_policy(s3_write_policy)
 
-        snapshot_role_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
-            actions=[
-                "s3:ListBucket",
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject",
-            ],
-            resources=[
-                f"{snapshot_bucket.bucket_arn}",
-                f"{snapshot_bucket.bucket_arn}/*",
-            ],
-        )
-
-        ########### ROLES
-        snapshot_role = iam.Role(
-            self, "SnapshotRole", assumed_by=iam.ServicePrincipal("es.amazonaws.com")
-        )
-        snapshot_role.add_to_policy(snapshot_role_policy)
-
         indexer_lambda = lambda_alpha_.PythonFunction(
             self,
             id="IndexerLambda",
@@ -206,17 +167,8 @@ class SdsDataManager(Stack):
             vpc_subnets=vpc_subnets,
             security_groups=[rds_security_group],
             environment={
-                "OS_ADMIN_USERNAME": "master-user",
-                "OS_DOMAIN": opensearch.sds_metadata_domain.domain_endpoint,
-                "OS_PORT": "443",
-                "METADATA_INDEX": "metadata",
                 "DATA_TRACKER_INDEX": "data_tracker",
                 "S3_DATA_BUCKET": self.data_bucket.s3_url_for_object(),
-                "S3_SNAPSHOT_BUCKET_NAME": f"sds-opensearch-snapshot-{account}",
-                "SNAPSHOT_ROLE_ARN": snapshot_role.role_arn,
-                "SNAPSHOT_REPO_NAME": "snapshot-repo",
-                "SECRET_ID": opensearch.secret_name,
-                "REGION": opensearch.region,
             },
         )
 
@@ -227,39 +179,10 @@ class SdsDataManager(Stack):
         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
-        # Adding Opensearch permissions
-        indexer_lambda.add_to_role_policy(opensearch.opensearch_all_http_permissions)
-
-        # Add permissions for Lambda to access OpenSearch
-        indexer_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["es:*"],
-                resources=[f"{opensearch.sds_metadata_domain.domain_arn}/*"],
-            )
-        )
-
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
         )
         rds_secret.grant_read(grantee=indexer_lambda)
-
-        # PassRole allows services to assign AWS roles to resources and services
-        # in this account. The OpenSearch snapshot role is invoked within the Lambda to
-        # interact with OpenSearch, it is provided to lambda via an Environmental
-        # variable in the lambda definition
-        indexer_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["iam:PassRole"],
-                resources=[snapshot_role.role_arn],
-            )
-        )
-
-        opensearch_secret = secrets.Secret.from_secret_name_v2(
-            self, "opensearch_secret", opensearch.secret_name
-        )
-        opensearch_secret.grant_read(grantee=indexer_lambda)
 
         # upload API lambda
         upload_api_lambda = lambda_alpha_.PythonFunction(
@@ -302,23 +225,15 @@ class SdsDataManager(Stack):
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
             environment={
-                "OS_ADMIN_USERNAME": "master-user",
-                "OS_DOMAIN": opensearch.sds_metadata_domain.domain_endpoint,
-                "OS_PORT": "443",
-                "OS_INDEX": "metadata",
-                "SECRET_ID": opensearch.secret_name,
                 "REGION": region,
             },
         )
-        query_api_lambda.add_to_role_policy(opensearch.opensearch_read_only_policy)
 
         api.add_route(
             route="query",
             http_method="GET",
             lambda_function=query_api_lambda,
         )
-
-        opensearch_secret.grant_read(grantee=query_api_lambda)
 
         # download query API lambda
         download_query_api = lambda_alpha_.PythonFunction(
@@ -333,9 +248,7 @@ class SdsDataManager(Stack):
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.seconds(60),
         )
-        download_query_api.add_to_role_policy(
-            opensearch.opensearch_all_http_permissions
-        )
+
         download_query_api.add_to_role_policy(s3_read_policy)
 
         api.add_route(
