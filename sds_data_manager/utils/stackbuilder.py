@@ -216,13 +216,14 @@ def build_sds(
     )
 
     # I-ALiRT Processing (currently only IOIS)
-    # TODO: add auto-scaling.
     processing_stack.IalirtProcessing(
         scope,
-        "IalirtProcessing3",
+        "IalirtProcessing11",
         env=env,
         vpc=networking.vpc,
         repo_uri=ialirt_ecr.repo_uri,
+        ecr_policy=ialirt_ecr.ecr_policy,
+        container_repo=ialirt_ecr.container_repo,
     )
 
 
