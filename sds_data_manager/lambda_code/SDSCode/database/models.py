@@ -24,10 +24,9 @@ class UniversalSpinTable(Base):
     repointing_number = Column(Integer, nullable=False)
 
 
-class MetadataTable(Base):
+class MetadataTable:
     """Common Metadata table"""
 
-    __tablename__ = "metadata_table"
     id = Column(Integer, primary_key=True)
     file_name = Column(String, nullable=False)
     # TODO: Do we need instrument since these will be split up into their
@@ -38,65 +37,69 @@ class MetadataTable(Base):
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=False)
     ingestion_date = Column(DateTime(timezone=True), nullable=False)
-    version = Column(String, nullable=False)
+    version = Column(Integer, nullable=False)
     format = Column(String, nullable=False)
 
 
-class LoMetadataTable(MetadataTable):
+# TODO: Follow-up PR should add in columns for each instrument
+# for instrument dependency IDs
+
+
+class LoMetadataTable(MetadataTable, Base):
     """IMAP-Lo Metadata Table"""
 
     __tablename__ = "lo_metadata_table"
 
 
-class HiMetadataTable(MetadataTable):
+class HiMetadataTable(MetadataTable, Base):
     """IMAP-Hi Metadata Table"""
 
     __tablename__ = "hi_metadata_table"
 
 
-class UltraMetadataTable(MetadataTable):
+class UltraMetadataTable(MetadataTable, Base):
     """IMAP-Ultra Metadata Table"""
 
     __tablename__ = "ultra_metadata_table"
 
 
-class HITMetadataTable(MetadataTable):
+class HITMetadataTable(MetadataTable, Base):
     """HIT Metadata Table"""
 
     __tablename__ = "hit_metadata_table"
 
 
-class IDEXMetadataTable(MetadataTable):
+class IDEXMetadataTable(MetadataTable, Base):
     """IDEX Metadata Table"""
 
     __tablename__ = "idex_metadata_table"
 
 
-class SWAPIMetadataTable(MetadataTable):
+class SWAPIMetadataTable(MetadataTable, Base):
     """SWAPI Metadata Table"""
 
     __tablename__ = "swapi_metadata_table"
 
 
-class SWEMetadataTable(MetadataTable):
+class SWEMetadataTable(MetadataTable, Base):
     """SWE Metadata Table"""
 
     __tablename__ = "swe_metadata_table"
 
 
-class CoDICEMetadataTable(MetadataTable):
+class CoDICEMetadataTable(MetadataTable, Base):
     """CoDICE Metadata Table"""
 
     __tablename__ = "codice_metadata_table"
 
 
-class MAGMetadataTable(MetadataTable):
+class MAGMetadataTable(MetadataTable, Base):
     """MAG Metadata Table"""
 
     __tablename__ = "mag_metadata_table"
 
 
-class GLOWSMetadataTable(MetadataTable):
+class GLOWSMetadataTable(MetadataTable, Base):
     """GLOWS MetadataTable"""
 
     __tablename__ = "glows_metadata_table"
