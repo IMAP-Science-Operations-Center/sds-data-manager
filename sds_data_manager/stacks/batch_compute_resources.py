@@ -227,6 +227,8 @@ class IalirtEC2Resources(Construct):
         construct_id: str,
         vpc: ec2.Vpc,
         repo_uri: str,
+        ecr_policy: str,
+        container_repo: ecr.Repository,
     ):
         super().__init__(scope, construct_id)
 
@@ -246,10 +248,10 @@ class IalirtEC2Resources(Construct):
             description="Ingress for ECS",
         )
 
-        # # Allow internal traffic within the security group
-        # ecs_security_group.connections.allow_internally(
-        #     ec2.Port.all_traffic(), description="Internal ECS traffic"
-        # )
+        # Allow internal traffic within the security group
+        ecs_security_group.connections.allow_internally(
+            ec2.Port.all_traffic(), description="Internal ECS traffic"
+        )
 
         # Create an IAM role for the ECS tasks
         ecs_task_role = iam.Role(
@@ -263,11 +265,14 @@ class IalirtEC2Resources(Construct):
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonEC2ContainerRegistryReadOnly"
                 ),
-                # iam.ManagedPolicy.from_aws_managed_policy_name(
-                #     "AmazonSSMManagedInstanceCore"
-                # ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonSSMManagedInstanceCore"
+                ),
             ],
         )
+        ecs_task_role.add_to_policy(ecr_policy)
+        container_repo.grant_read(ecs_task_role)
+
 
         # Create an ECS Cluster
         ecs_cluster = ecs.Cluster(self, "IalirtEcsCluster", vpc=vpc)
@@ -293,7 +298,7 @@ class IalirtEC2Resources(Construct):
         # Add a container to the task definition
         container = task_definition.add_container(
             "IalirtContainer",
-            image=ecs.ContainerImage.from_registry(repo_uri + ":latest"),
+            image=ecs.ContainerImage.from_registry("301233867300.dkr.ecr.us-west-2.amazonaws.com/ialirtecr-repo:latest"),
             memory_limit_mib=512,
         )
         container.add_port_mappings(ecs.PortMapping(container_port=80))
