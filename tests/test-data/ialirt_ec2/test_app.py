@@ -16,7 +16,7 @@ app = Flask(__name__)
 # should trigger the function that follows.
 @app.route("/")
 def hello():
-    return "Hello World."
+    return "Hola Mundo."
 
 
 if __name__ == "__main__":

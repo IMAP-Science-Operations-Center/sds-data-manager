@@ -2,6 +2,21 @@
 Verify the successful deployment and operation in an
 ECR and EC2 setup.
 
+# TODO: this is not ideal, but it works until we setup ECS.
+Steps for setting up test:
+1. Deploy IalirtProcessing Stack
+2. While in ialirt_ec2 directory build Docker image and
+push to ECR. Follow the instructions in the Dockerfile.
+3. Navigate to EC2 instance in the AWS Console, check
+the box next to it and click Connect.
+Connect using Session Manager.
+4. Run the following commands:
+    a.  'sudo docker ps'
+    b. if a container is not yet running:
+    'sudo docker pull <repo uri>:latest'
+    c. 'sudo docker run --rm -d -p 8080:8080 <repo uri>:latest'
+5. Make certain you are logged in to the LASP VPN.
+
 Note: verification may also be done via the
 webbrowser: http://<EC2_IP>:8080/
 """
@@ -21,8 +36,8 @@ def test_flask_app_response():
     url = f"http://{EC2_IP}:8080/"
     try:
         response = requests.get(url, timeout=60)
-        # Check if the response content is "Hello World!"
-        assert response.text == "Hello World!"
+        # Check if the response content is "Hola Mundo."
+        assert response.text == "Hola Mundo."
     except requests.exceptions.ConnectionError:
         pytest.fail("Failed to connect to the Flask application.")
     except requests.exceptions.Timeout:

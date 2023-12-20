@@ -218,12 +218,11 @@ def build_sds(
     # I-ALiRT Processing (currently only IOIS)
     processing_stack.IalirtProcessing(
         scope,
-        "IalirtProcessing11",
+        "IalirtProcessing",
         env=env,
         vpc=networking.vpc,
-        repo_uri=ialirt_ecr.repo_uri,
+        repo=ialirt_ecr.container_repo,
         ecr_policy=ialirt_ecr.ecr_policy,
-        container_repo=ialirt_ecr.container_repo,
     )
 
 

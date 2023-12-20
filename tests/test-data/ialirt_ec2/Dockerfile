@@ -5,9 +5,7 @@
 # 3. docker tag <tag> <ecr uri>
 # 4. docker push <ecr uri>
 FROM python:3.10
-
-# Copy the only necessary file
-COPY test_app.py /app/app.py
+COPY . /app
 
 # Set the working directory in the container
 WORKDIR /app
