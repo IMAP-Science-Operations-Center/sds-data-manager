@@ -14,6 +14,7 @@ from sds_data_manager.stacks import (
     data_bucket_stack,
     database_stack,
     domain_stack,
+    dynamodb_stack,
     ecr_stack,
     efs_stack,
     indexer_lambda_stack,
