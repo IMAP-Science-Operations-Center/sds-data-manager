@@ -219,8 +219,8 @@ class IalirtEC2Resources(Construct):
         construct_id: str,
         vpc: ec2.Vpc,
         ecr_policy: iam.PolicyStatement,
+        repo: ecr.Repository,
         instance_type: str = "t3.micro",
-        user_data: ec2.UserData = None,
     ):
         """Constructor
 
@@ -234,10 +234,30 @@ class IalirtEC2Resources(Construct):
             VPC in which to create compute instances.
         ecr_policy : iam.PolicyStatement
             ECR policy statement.
+        repo : ecr.Repository
+            Container repo.
         instance_type : str, Optional
             Type of EC2 instance to launch.
         """
         super().__init__(scope, construct_id)
+
+        # Define user data script
+        # - Updates the instance
+        # - Installs Docker
+        # - Starts the Docker
+        # - Logs into AWS ECR
+        # - Pulls the Docker image
+        # - Runs the Docker container
+        user_data = ec2.UserData.for_linux()
+        user_data.add_commands(
+            "yum update -y",
+            "amazon-linux-extras install docker -y",
+            "systemctl start docker",
+            "systemctl enable docker",
+            "$(aws ecr get-login --no-include-email --region us-west-2 | bash)",
+            f"docker pull {repo.repository_uri}:latest",
+            f"docker run --rm -d -p 8080:8080 {repo.repository_uri}:latest",
+        )
 
         # Security Group for the EC2 Instance
         security_group = ec2.SecurityGroup(
@@ -255,6 +275,8 @@ class IalirtEC2Resources(Construct):
         )
 
         # Create an IAM role for the EC2 instance
+        # - Read-only access to AWS ECR
+        # - Basic instance management via AWS Systems Manager
         ec2_role = iam.Role(
             self,
             "IalirtEC2Role",
@@ -264,15 +286,10 @@ class IalirtEC2Resources(Construct):
                     "AmazonEC2ContainerRegistryReadOnly"
                 ),
                 iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonDynamoDBFullAccess"
-                ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonSSMManagedInstanceCore"
                 ),
             ],
         )
-
-        # Assuming 'ec2_role' is the role of your EC2 instance
         ec2_role.add_to_policy(ecr_policy)
 
         # Create an EC2 instance
@@ -280,12 +297,7 @@ class IalirtEC2Resources(Construct):
             self,
             "IalirtEC2Instance",
             instance_type=ec2.InstanceType(instance_type),
-            machine_image=ec2.MachineImage.latest_amazon_linux(
-                generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
-                edition=ec2.AmazonLinuxEdition.STANDARD,
-                virtualization=ec2.AmazonLinuxVirt.HVM,
-                storage=ec2.AmazonLinuxStorage.GENERAL_PURPOSE,
-            ),
+            machine_image=ec2.MachineImage.latest_amazon_linux2(),
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             security_group=security_group,
