@@ -87,3 +87,24 @@ class NetworkingStack(Stack):
         self.rds_security_group.add_ingress_rule(
             self.batch_security_group, ec2.Port.tcp(5432), "Access from Fargate Batch"
         )
+
+        # VPC Endpoint for Amazon ECR API (Docker image repository)
+        self.vpc.add_interface_endpoint(
+            "ECRApiEndpoint",
+            service=ec2.InterfaceVpcEndpointAwsService.ECR,
+            subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
+        )
+
+        # VPC Endpoint for Amazon ECR Docker (for pulling images)
+        self.vpc.add_interface_endpoint(
+            "ECRDockerEndpoint",
+            service=ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
+            subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
+        )
+
+        # VPC Endpoint for CloudWatch Logs (for logging from ECS tasks)
+        self.vpc.add_interface_endpoint(
+            "CloudWatchLogsEndpoint",
+            service=ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+            subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
+        )
