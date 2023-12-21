@@ -1,4 +1,5 @@
 # Standard
+import datetime
 import json
 import logging
 import os
@@ -6,6 +7,9 @@ import sys
 
 # Installed
 import boto3
+from SDSCode.database import models
+from SDSCode.database.database import engine
+from sqlalchemy.orm import Session
 
 # Local
 from .path_helper import FilenameParser
@@ -51,13 +55,51 @@ def lambda_handler(event, context):
         # when we create schema and write file metadata to DB
         filename_parsed = FilenameParser(filename)
         filename_parsed.upload_filepath()
-        metadata = None
 
-        # TODO: remove this check since upload api validates filename?
-        # Found nothing. This should probably send out an error notification
-        # to the team, because how did it make its way onto the SDS?
-        if metadata is None:
-            logger.info("Found no matching file types to index this file against.")
-            return None
+        # setup a dictionary of metadata parmaeters to unpack in the
+        # instrument table
+        metadata_params = {
+            "id": 1,
+            "file_name": filename_parsed.upload_filepath()["body"],
+            "instrument": filename_parsed.instrument,
+            "data_level": filename_parsed.data_level,
+            "descriptor": filename_parsed.descriptor,
+            "start_date": filename_parsed.startdate,
+            "end_date": filename_parsed.enddate,
+            "ingestion_date": datetime.datetime.now(),
+            "version": filename_parsed.version,
+            "format": filename_parsed.extension,
+        }
 
-        logger.info("Found the following metadata to index: " + str(metadata))
+        # Add data to the corresponding instrument database
+        with Session(engine) as session:
+            if filename_parsed.instrument == "lo":
+                data = models.LoMetadataTable(**metadata_params)
+            elif filename_parsed.instrument == "hi":
+                data = models.HiMetadataTable(**metadata_params)
+            elif filename_parsed.instrument == "ultra":
+                data = models.UltraMetadataTable(**metadata_params)
+            elif filename_parsed.instrument == "hit":
+                data = models.HITMetadataTable(**metadata_params)
+            elif filename_parsed.instrument == "idex":
+                data = models.IDEXMetadataTable(**metadata_params)
+            elif filename_parsed.instrument == "swapi":
+                data = models.SWAPIMetadataTable(**metadata_params)
+            elif filename_parsed.instrument == "swe":
+                data = models.SWEMetadataTable(**metadata_params)
+            elif filename_parsed.instrument == "codice":
+                data = models.CoDICEMetadataTable(**metadata_params)
+            elif filename_parsed.instrument == "mag":
+                data = models.MAGMetadataTable(**metadata_params)
+            elif filename_parsed.instrument == "glows":
+                data = models.GLOWSMetadataTable(**metadata_params)
+            else:
+                raise Exception(
+                    f"Invalid instrument name in metadata. \
+                                recieved: {filename_parsed.instrument}, but only \
+                                    lo, hi, ultra, hit, idex, swapi, swe, codice, mag, \
+                                    glows are valid"
+                )
+
+            session.add(data)
+            session.commit()
