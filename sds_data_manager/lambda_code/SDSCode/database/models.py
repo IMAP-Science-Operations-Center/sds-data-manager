@@ -82,18 +82,18 @@ class SWAPITable(FileCatalogTable, Base):
 
 
 class SWETable(FileCatalogTable, Base):
-    """SWE Metadata Table"""
+    """SWE File Catalog Table"""
 
     __tablename__ = "codice"
 
 
 class MAGTable(FileCatalogTable, Base):
-    """MAG Metadata Table"""
+    """MAG File Catalog Table"""
 
     __tablename__ = "mag"
 
 
 class GLOWSTable(FileCatalogTable, Base):
-    """GLOWS MetadataTable"""
+    """GLOWS File Catalog Table"""
 
     __tablename__ = "glows"
