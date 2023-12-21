@@ -41,7 +41,8 @@ class MetadataTable:
 
 
 # TODO: Follow-up PR should add in columns for each instrument
-# for instrument dependency IDs
+# for instrument dependency IDs, SPICE ID, parent id,
+# and pointing id
 
 
 class LoTable(MetadataTable, Base):
