@@ -28,7 +28,7 @@ class FileCatalogTable:
     """Common file catalog table"""
 
     # TODO: determine cap for strings
-    id = id = Column(Integer, Identity(start=0, increment=1), primary_key=True)
+    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_path = Column(String, nullable=False)
     instrument = Column(String(6), nullable=False)
     data_level = Column(String(3), nullable=False)
@@ -83,6 +83,12 @@ class SWAPITable(FileCatalogTable, Base):
 
 class SWETable(FileCatalogTable, Base):
     """SWE File Catalog Table"""
+
+    __tablename__ = "swe"
+
+
+class CoDICETable(FileCatalogTable, Base):
+    """CoDICE File Catalog Table"""
 
     __tablename__ = "codice"
 
