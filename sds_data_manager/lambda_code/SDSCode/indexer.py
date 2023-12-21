@@ -53,6 +53,8 @@ def lambda_handler(event, context):
         logger.info(f"Attempting to insert {os.path.basename(filename)} into database")
         filename_parsed = FilenameParser(filename)
         filepath = filename_parsed.upload_filepath()
+
+        # confirm that the file is valid
         if filepath["statusCode"] == 400:
             logger.error(filepath["body"])
             break
@@ -60,7 +62,7 @@ def lambda_handler(event, context):
         # setup a dictionary of metadata parameters to unpack in the
         # instrument table
         metadata_params = {
-            "file_name": filepath["body"],
+            "file_path": filepath["body"],
             "instrument": filename_parsed.instrument,
             "data_level": filename_parsed.data_level,
             "descriptor": filename_parsed.descriptor,
