@@ -24,8 +24,8 @@ class UniversalSpinTable(Base):
     repointing_number = Column(Integer, nullable=False)
 
 
-class MetadataTable:
-    """Common Metadata table"""
+class FileCatalogTable:
+    """Common file catalog table"""
 
     # TODO: determine cap for strings
     id = id = Column(Integer, Identity(start=0, increment=1), primary_key=True)
@@ -45,61 +45,55 @@ class MetadataTable:
 # and pointing id
 
 
-class LoTable(MetadataTable, Base):
-    """IMAP-Lo Metadata Table"""
+class LoTable(FileCatalogTable, Base):
+    """IMAP-Lo File Catalog Table"""
 
     __tablename__ = "lo"
 
 
-class HiTable(MetadataTable, Base):
-    """IMAP-Hi Metadata Table"""
+class HiTable(FileCatalogTable, Base):
+    """IMAP-Hi File Catalog Table"""
 
     __tablename__ = "hi"
 
 
-class UltraTable(MetadataTable, Base):
-    """IMAP-Ultra Metadata Table"""
+class UltraTable(FileCatalogTable, Base):
+    """IMAP-Ultra File Catalog Table"""
 
     __tablename__ = "ultra"
 
 
-class HITTable(MetadataTable, Base):
-    """HIT Metadata Table"""
+class HITTable(FileCatalogTable, Base):
+    """HIT File Catalog Table"""
 
     __tablename__ = "hit"
 
 
-class IDEXTable(MetadataTable, Base):
-    """IDEX Metadata Table"""
+class IDEXTable(FileCatalogTable, Base):
+    """IDEX File Catalog Table"""
 
     __tablename__ = "idex"
 
 
-class SWAPITable(MetadataTable, Base):
-    """SWAPI Metadata Table"""
+class SWAPITable(FileCatalogTable, Base):
+    """SWAPI File Catalog Table"""
 
     __tablename__ = "swapi"
 
 
-class SWETable(MetadataTable, Base):
+class SWETable(FileCatalogTable, Base):
     """SWE Metadata Table"""
-
-    __tablename__ = "swe"
-
-
-class CoDICETable(MetadataTable, Base):
-    """CoDICE Metadata Table"""
 
     __tablename__ = "codice"
 
 
-class MAGTable(MetadataTable, Base):
+class MAGTable(FileCatalogTable, Base):
     """MAG Metadata Table"""
 
     __tablename__ = "mag"
 
 
-class GLOWSTable(MetadataTable, Base):
+class GLOWSTable(FileCatalogTable, Base):
     """GLOWS MetadataTable"""
 
     __tablename__ = "glows"
