@@ -11,7 +11,7 @@ class UniversalSpinTable(Base):
     """Universal Spin Table schema"""
 
     __tablename__ = "universal_spin_table"
-    id = Column(Integer, Identity(start=0, increment=1), primary_key=True)
+    id = Column(Integer, primary_key=True)
     spin_number = Column(Integer, nullable=False)
     spin_start_sc_time = Column(Integer, nullable=False)
     spin_start_utc_time = Column(DateTime(timezone=True), nullable=False)
@@ -27,7 +27,7 @@ class UniversalSpinTable(Base):
 class MetadataTable:
     """Common Metadata table"""
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, Identity(start=0, increment=1), primary_key=True)
     file_name = Column(String, nullable=False)
     # TODO: Do we need instrument since these will be split up into their
     # separate tables?

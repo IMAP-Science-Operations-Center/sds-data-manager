@@ -51,16 +51,16 @@ def lambda_handler(event, context):
         filename = record["s3"]["object"]["key"]
 
         logger.info(f"Attempting to insert {os.path.basename(filename)} into database")
-        # TODO: change below logics to use new FilenameParser
-        # when we create schema and write file metadata to DB
         filename_parsed = FilenameParser(filename)
-        filename_parsed.upload_filepath()
+        filepath = filename_parsed.upload_filepath()
+        if filepath["statusCode"] == 400:
+            logger.error(filepath["body"])
+            break
 
-        # setup a dictionary of metadata parmaeters to unpack in the
+        # setup a dictionary of metadata parameters to unpack in the
         # instrument table
         metadata_params = {
-            "id": 1,
-            "file_name": filename_parsed.upload_filepath()["body"],
+            "file_name": filepath["body"],
             "instrument": filename_parsed.instrument,
             "data_level": filename_parsed.data_level,
             "descriptor": filename_parsed.descriptor,
@@ -93,13 +93,8 @@ def lambda_handler(event, context):
                 data = models.MAGMetadataTable(**metadata_params)
             elif filename_parsed.instrument == "glows":
                 data = models.GLOWSMetadataTable(**metadata_params)
-            else:
-                raise Exception(
-                    f"Invalid instrument name in metadata. \
-                                recieved: {filename_parsed.instrument}, but only \
-                                    lo, hi, ultra, hit, idex, swapi, swe, codice, mag, \
-                                    glows are valid"
-                )
+            # FileParser already confirmed that the file has a valid
+            # instrument name.
 
             session.add(data)
             session.commit()
