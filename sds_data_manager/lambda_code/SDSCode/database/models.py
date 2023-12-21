@@ -27,79 +27,78 @@ class UniversalSpinTable(Base):
 class MetadataTable:
     """Common Metadata table"""
 
+    # TODO: determine cap for strings
     id = Column(Integer, primary_key=True)
-    file_name = Column(String, nullable=False)
-    # TODO: Do we need instrument since these will be split up into their
-    # separate tables?
-    instrument = Column(String, nullable=False)
-    data_level = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    instrument = Column(String(6), nullable=False)
+    data_level = Column(String(3), nullable=False)
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=False)
     ingestion_date = Column(DateTime(timezone=True), nullable=False)
     version = Column(Integer, nullable=False)
-    format = Column(String, nullable=False)
+    extension = Column(String, nullable=False)
 
 
 # TODO: Follow-up PR should add in columns for each instrument
 # for instrument dependency IDs
 
 
-class LoMetadataTable(MetadataTable, Base):
+class LoTable(MetadataTable, Base):
     """IMAP-Lo Metadata Table"""
 
-    __tablename__ = "lo_metadata_table"
+    __tablename__ = "lo"
 
 
-class HiMetadataTable(MetadataTable, Base):
+class HiTable(MetadataTable, Base):
     """IMAP-Hi Metadata Table"""
 
-    __tablename__ = "hi_metadata_table"
+    __tablename__ = "hi"
 
 
-class UltraMetadataTable(MetadataTable, Base):
+class UltraTable(MetadataTable, Base):
     """IMAP-Ultra Metadata Table"""
 
-    __tablename__ = "ultra_metadata_table"
+    __tablename__ = "ultra"
 
 
-class HITMetadataTable(MetadataTable, Base):
+class HITTable(MetadataTable, Base):
     """HIT Metadata Table"""
 
-    __tablename__ = "hit_metadata_table"
+    __tablename__ = "hit"
 
 
-class IDEXMetadataTable(MetadataTable, Base):
+class IDEXTable(MetadataTable, Base):
     """IDEX Metadata Table"""
 
-    __tablename__ = "idex_metadata_table"
+    __tablename__ = "idex"
 
 
-class SWAPIMetadataTable(MetadataTable, Base):
+class SWAPITable(MetadataTable, Base):
     """SWAPI Metadata Table"""
 
-    __tablename__ = "swapi_metadata_table"
+    __tablename__ = "swapi"
 
 
-class SWEMetadataTable(MetadataTable, Base):
+class SWETable(MetadataTable, Base):
     """SWE Metadata Table"""
 
-    __tablename__ = "swe_metadata_table"
+    __tablename__ = "swe"
 
 
-class CoDICEMetadataTable(MetadataTable, Base):
+class CoDICETable(MetadataTable, Base):
     """CoDICE Metadata Table"""
 
-    __tablename__ = "codice_metadata_table"
+    __tablename__ = "codice"
 
 
-class MAGMetadataTable(MetadataTable, Base):
+class MAGTable(MetadataTable, Base):
     """MAG Metadata Table"""
 
-    __tablename__ = "mag_metadata_table"
+    __tablename__ = "mag"
 
 
-class GLOWSMetadataTable(MetadataTable, Base):
+class GLOWSTable(MetadataTable, Base):
     """GLOWS MetadataTable"""
 
-    __tablename__ = "glows_metadata_table"
+    __tablename__ = "glows"
