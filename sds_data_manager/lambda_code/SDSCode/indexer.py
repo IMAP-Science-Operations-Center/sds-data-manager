@@ -68,31 +68,31 @@ def lambda_handler(event, context):
             "end_date": filename_parsed.enddate,
             "ingestion_date": datetime.datetime.now(),
             "version": filename_parsed.version,
-            "format": filename_parsed.extension,
+            "extension": filename_parsed.extension,
         }
 
         # Add data to the corresponding instrument database
         with Session(engine) as session:
             if filename_parsed.instrument == "lo":
-                data = models.LoMetadataTable(**metadata_params)
+                data = models.LoTable(**metadata_params)
             elif filename_parsed.instrument == "hi":
-                data = models.HiMetadataTable(**metadata_params)
+                data = models.HiTable(**metadata_params)
             elif filename_parsed.instrument == "ultra":
-                data = models.UltraMetadataTable(**metadata_params)
+                data = models.UltraTable(**metadata_params)
             elif filename_parsed.instrument == "hit":
-                data = models.HITMetadataTable(**metadata_params)
+                data = models.HITTable(**metadata_params)
             elif filename_parsed.instrument == "idex":
-                data = models.IDEXMetadataTable(**metadata_params)
+                data = models.IDEXTable(**metadata_params)
             elif filename_parsed.instrument == "swapi":
-                data = models.SWAPIMetadataTable(**metadata_params)
+                data = models.SWAPITable(**metadata_params)
             elif filename_parsed.instrument == "swe":
-                data = models.SWEMetadataTable(**metadata_params)
+                data = models.SWETable(**metadata_params)
             elif filename_parsed.instrument == "codice":
-                data = models.CoDICEMetadataTable(**metadata_params)
+                data = models.CoDICETable(**metadata_params)
             elif filename_parsed.instrument == "mag":
-                data = models.MAGMetadataTable(**metadata_params)
+                data = models.MAGTable(**metadata_params)
             elif filename_parsed.instrument == "glows":
-                data = models.GLOWSMetadataTable(**metadata_params)
+                data = models.GLOWSTable(**metadata_params)
             # FileParser already confirmed that the file has a valid
             # instrument name.
 
