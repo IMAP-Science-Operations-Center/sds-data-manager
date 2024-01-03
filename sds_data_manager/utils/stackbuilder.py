@@ -216,6 +216,8 @@ def build_sds(
         env=env,
     )
 
+    # TODO: look into creating a separate stackbuilder
+    #  for I-ALiRT
     # I-ALiRT Processing (currently only IOIS)
     processing_stack.IalirtProcessing(
         scope,
