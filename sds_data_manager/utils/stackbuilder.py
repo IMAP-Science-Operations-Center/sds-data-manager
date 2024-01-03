@@ -19,6 +19,7 @@ from sds_data_manager.stacks import (
     efs_stack,
     indexer_lambda_stack,
     instrument_lambdas,
+    ialirt_processing_stack,
     monitoring_stack,
     networking_stack,
     sds_api_manager_stack,
@@ -200,32 +201,15 @@ def build_sds(
         instrument_name="IalirtEcr",
     )
 
-    # I-ALiRT IOIS DynamoDB
-    # ingest-ugps: ingestion ugps - 64 bit
-    # sct-vtcw: spacecraft time ugps - 64 bit
-    # src-seq-ctr: increments with each packet (included in filename?)
-    # ccsds-filename: filename of the packet
-    dynamodb_stack.DynamoDB(
-        scope,
-        construct_id="IalirtDynamoDB",
-        table_name="ialirt-iois",
-        partition_key="ingest-ugps",
-        sort_key="sct-vtcw",
-        # on_demand=False,
-        # TODO: set read_capacity and write_capacity
-        env=env,
-    )
-
     # TODO: look into creating a separate stackbuilder
     #  for I-ALiRT
     # I-ALiRT Processing (currently only IOIS)
-    processing_stack.IalirtProcessing(
+    ialirt_processing_stack.IalirtProcessing(
         scope,
         "IalirtProcessing",
         env=env,
         vpc=networking.vpc,
         repo=ialirt_ecr.container_repo,
-        ecr_policy=ialirt_ecr.ecr_policy,
     )
 
 

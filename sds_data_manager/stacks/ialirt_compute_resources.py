@@ -16,7 +16,6 @@ class IalirtEC2Resources(Construct):
         scope: Construct,
         construct_id: str,
         vpc: ec2.Vpc,
-        ecr_policy: iam.PolicyStatement,
         repo: ecr.Repository,
         instance_type: str = "t3.micro",
     ):
@@ -30,8 +29,6 @@ class IalirtEC2Resources(Construct):
             A unique string identifier for this construct.
         vpc : ec2.Vpc
             VPC in which to create compute instances.
-        ecr_policy : iam.PolicyStatement
-            ECR policy statement.
         repo : ecr.Repository
             Container repo.
         instance_type : str, Optional
@@ -90,7 +87,6 @@ class IalirtEC2Resources(Construct):
                 ),
             ],
         )
-        # ec2_role.add_to_policy(ecr_policy)
 
         # Create an EC2 instance
         ec2.Instance(
@@ -104,5 +100,3 @@ class IalirtEC2Resources(Construct):
             role=ec2_role,
             user_data=user_data,
         )
-
-        # ec2_instance.add_user_data(user_data.render())
