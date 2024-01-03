@@ -21,6 +21,7 @@ from sds_data_manager.stacks import (
     ialirt_processing_stack,
     indexer_lambda_stack,
     instrument_lambdas,
+    ialirt_processing_stack,
     monitoring_stack,
     networking_stack,
     sds_api_manager_stack,
