@@ -55,12 +55,24 @@ def write_data_to_efs(s3_key: str, s3_bucket: str):
 
     logging.debug("After downloading file: %s", os.listdir(mount_path))
 
-    # Attitude naming convention is this:
+    # TODO: we only want historical attitude kernels delivery
+    #  following each track (3/wk)
+    # Make certain it does not start with imap_pred_ (only imap_)
+    # https://confluence.lasp.colorado.edu/display/IMAP/IMAP+POC+External+Reference+Documents
+    # pg 17 of 7516-9163 MOC Data Products Guide
+    # Historical attitude naming convention is this:
     # imap_yyyy_doy_yyyy_doy_##.ah.bc and
     # imap_yyyy_doy_yyyy_doy_##.ah.a
-    if filename.endswith(".ah.a") or filename.endswith(".ah.bc"):
+    if (
+        filename.endswith(".ah.a")
+        or filename.endswith(".ah.bc")
+        and not filename.startswith("imap_pred_")
+    ):
         create_symlink(download_path, attitude_symlink_path)
 
+    # TODO: reconstructed would be ideal (change to imap_recon)
+    # Reconstructed delivered 1/wk
+    # But nom is least ideal (after burn and pred)
     # Ephemeris naming convention is this:
     # Eg. imap_nom_yyyymmdd_yyyymmdd_v##.bsp
     # The reason we check startswith is because other ephemeris
@@ -68,7 +80,11 @@ def write_data_to_efs(s3_key: str, s3_bucket: str):
     #   imap_recon_yyyymmdd_yyyymmdd_v##.bsp
     #   imap_burn_yyyymmdd_yyyymmdd_v##.bsp
     #   imap_pred_yyyymmdd_yyyymmdd_v##.bsp
-    elif filename.startswith("imap_nom") and filename.endswith(".bsp"):
+    elif filename.startswith("imap_recon") and filename.endswith(".bsp"):
+        create_symlink(download_path, ephemeris_symlink_path)
+    elif filename.startswith("imap_burn") and filename.endswith(".bsp"):
+        create_symlink(download_path, ephemeris_symlink_path)
+    elif filename.startswith("imap_pred") and filename.endswith(".bsp"):
         create_symlink(download_path, ephemeris_symlink_path)
 
 

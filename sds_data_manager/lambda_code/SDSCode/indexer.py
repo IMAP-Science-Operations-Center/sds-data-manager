@@ -1,4 +1,5 @@
 # Standard
+import datetime
 import json
 import logging
 import os
@@ -6,6 +7,9 @@ import sys
 
 # Installed
 import boto3
+from SDSCode.database import models
+from SDSCode.database.database import engine
+from sqlalchemy.orm import Session
 
 # Local
 from .path_helper import FilenameParser
@@ -47,17 +51,48 @@ def lambda_handler(event, context):
         filename = record["s3"]["object"]["key"]
 
         logger.info(f"Attempting to insert {os.path.basename(filename)} into database")
-        # TODO: change below logics to use new FilenameParser
-        # when we create schema and write file metadata to DB
         filename_parsed = FilenameParser(filename)
-        filename_parsed.upload_filepath()
-        metadata = None
+        filepath = filename_parsed.upload_filepath()
 
-        # TODO: remove this check since upload api validates filename?
-        # Found nothing. This should probably send out an error notification
-        # to the team, because how did it make its way onto the SDS?
-        if metadata is None:
-            logger.info("Found no matching file types to index this file against.")
-            return None
+        # confirm that the file is valid
+        if filepath["statusCode"] != 200:
+            logger.error(filepath["body"])
+            break
 
-        logger.info("Found the following metadata to index: " + str(metadata))
+        # setup a dictionary of metadata parameters to unpack in the
+        # instrument table
+        metadata_params = {
+            "file_path": filepath["body"],
+            "instrument": filename_parsed.instrument,
+            "data_level": filename_parsed.data_level,
+            "descriptor": filename_parsed.descriptor,
+            "start_date": filename_parsed.startdate,
+            "end_date": filename_parsed.enddate,
+            "ingestion_date": datetime.datetime.now(datetime.timezone.utc),
+            "version": filename_parsed.version,
+            "extension": filename_parsed.extension,
+        }
+
+        # The model lookup is used to match the instrument data
+        # to the correct postgres table based on the instrument name.
+        model_lookup = {
+            "lo": models.LoTable,
+            "hi": models.HiTable,
+            "ultra": models.UltraTable,
+            "hit": models.HITTable,
+            "idex": models.IDEXTable,
+            "swapi": models.SWAPITable,
+            "swe": models.SWETable,
+            "codice": models.CoDICETable,
+            "mag": models.MAGTable,
+            "glows": models.GLOWSTable,
+        }
+
+        # FileParser already confirmed that the file has a valid
+        # instrument name.
+        data = model_lookup[filename_parsed.instrument](**metadata_params)
+
+        # Add data to the corresponding instrument database
+        with Session(engine) as session:
+            session.add(data)
+            session.commit()

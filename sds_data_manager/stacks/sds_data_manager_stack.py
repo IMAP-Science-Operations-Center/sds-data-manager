@@ -169,6 +169,7 @@ class SdsDataManager(Stack):
             environment={
                 "DATA_TRACKER_INDEX": "data_tracker",
                 "S3_DATA_BUCKET": self.data_bucket.s3_url_for_object(),
+                "SECRET_NAME": db_secret_name,
             },
         )
 

@@ -1,5 +1,5 @@
 """Main file to store schema definition"""
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Identity, Integer, String
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -25,10 +25,10 @@ class UniversalSpinTable(Base):
 
 
 class FileCatalogTable:
-    """Common File Catalog table"""
+    """Common file catalog table"""
 
     # TODO: determine cap for strings
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_path = Column(String, nullable=False)
     instrument = Column(String(6), nullable=False)
     data_level = Column(String(3), nullable=False)
@@ -36,7 +36,7 @@ class FileCatalogTable:
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=False)
     ingestion_date = Column(DateTime(timezone=True), nullable=False)
-    version = Column(Integer, nullable=False)
+    version = Column(String, nullable=False)
     extension = Column(String, nullable=False)
 
 
