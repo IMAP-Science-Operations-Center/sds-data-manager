@@ -168,7 +168,10 @@ class FargateBatchResources(Construct):
             type="CONTAINER",
             platform_capabilities=["FARGATE"],
             container_properties={
-                "image": f"{repo.repository_uri}:{account_name}",
+                "image": f"{repo.repository_uri}:latest",
+                "environment": [
+                    {"name": "IMAP_SPICE_DIR", "value": "/mnt/spice"},
+                ],
                 "mountPoints": [
                     {
                         "sourceVolume": efs_instance.volume_name,
