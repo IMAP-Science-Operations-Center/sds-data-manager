@@ -55,7 +55,7 @@ def lambda_handler(event, context):
         filepath = filename_parsed.upload_filepath()
 
         # confirm that the file is valid
-        if filepath["statusCode"] == 400:
+        if filepath["statusCode"] != 200:
             logger.error(filepath["body"])
             break
 
@@ -68,35 +68,31 @@ def lambda_handler(event, context):
             "descriptor": filename_parsed.descriptor,
             "start_date": filename_parsed.startdate,
             "end_date": filename_parsed.enddate,
-            "ingestion_date": datetime.datetime.now(),
+            "ingestion_date": datetime.datetime.now(datetime.timezone.utc),
             "version": filename_parsed.version,
             "extension": filename_parsed.extension,
         }
 
+        # The model lookup is used to match the instrument data
+        # to the correct postgres table based on the instrument name.
+        model_lookup = {
+            "lo": models.LoTable,
+            "hi": models.HiTable,
+            "ultra": models.UltraTable,
+            "hit": models.HITTable,
+            "idex": models.IDEXTable,
+            "swapi": models.SWAPITable,
+            "swe": models.SWETable,
+            "codice": models.CoDICETable,
+            "mag": models.MAGTable,
+            "glows": models.GLOWSTable,
+        }
+
+        # FileParser already confirmed that the file has a valid
+        # instrument name.
+        data = model_lookup[filename_parsed.instrument](**metadata_params)
+
         # Add data to the corresponding instrument database
         with Session(engine) as session:
-            if filename_parsed.instrument == "lo":
-                data = models.LoTable(**metadata_params)
-            elif filename_parsed.instrument == "hi":
-                data = models.HiTable(**metadata_params)
-            elif filename_parsed.instrument == "ultra":
-                data = models.UltraTable(**metadata_params)
-            elif filename_parsed.instrument == "hit":
-                data = models.HITTable(**metadata_params)
-            elif filename_parsed.instrument == "idex":
-                data = models.IDEXTable(**metadata_params)
-            elif filename_parsed.instrument == "swapi":
-                data = models.SWAPITable(**metadata_params)
-            elif filename_parsed.instrument == "swe":
-                data = models.SWETable(**metadata_params)
-            elif filename_parsed.instrument == "codice":
-                data = models.CoDICETable(**metadata_params)
-            elif filename_parsed.instrument == "mag":
-                data = models.MAGTable(**metadata_params)
-            elif filename_parsed.instrument == "glows":
-                data = models.GLOWSTable(**metadata_params)
-            # FileParser already confirmed that the file has a valid
-            # instrument name.
-
             session.add(data)
             session.commit()
