@@ -170,7 +170,7 @@ class FargateBatchResources(Construct):
             container_properties={
                 "image": f"{repo.repository_uri}:latest",
                 "environment": [
-                    {"name": "SPICE_DIRECTORY", "value": "/mnt/spice"},
+                    {"name": "IMAP_SPICE_DIR", "value": "/mnt/spice"},
                 ],
                 "mountPoints": [
                     {
