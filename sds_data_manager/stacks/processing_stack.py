@@ -14,7 +14,6 @@ from constructs import Construct
 
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
 from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
-from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
 from sds_data_manager.stacks.database_stack import SdpDatabase
 from sds_data_manager.stacks.efs_stack import EFSStack
 
@@ -87,15 +86,6 @@ class ProcessingStep(Stack):
             account_name=account_name,
         )
 
-        self.step_function = SdcStepFunction(
-            self,
-            f"SdcStepFunction-{processing_step_name}",
-            processing_step_name=processing_step_name,
-            batch_resources=self.batch_resources,
-            data_bucket=data_bucket,
-            db_secret_name=rds_stack.secret_name,
-        )
-
         self.instrument_lambda = InstrumentLambda(
             self,
             "InstrumentLambda",
@@ -103,14 +93,14 @@ class ProcessingStep(Stack):
             code_path=str(lambda_code_directory),
             instrument=instrument,
             instrument_downstream=instrument_downstream,
-            step_function_stack=self.step_function,
+            batch_resources=self.batch_resources,
             rds_stack=rds_stack,
             rds_security_group=rds_security_group,
             subnets=rds_stack.rds_subnet_selection,
             vpc=vpc,
         )
 
-        # Kicks off Step Function as a result of object ingested into directories in
+        # Kicks off lambda as a result of object ingested into directories in
         # s3 bucket (instrument_sources).
         # TODO: Right now these directories are created manually in the s3 bucket.
         #  Add code so that they are not.

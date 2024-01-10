@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from aws_cdk import Duration
+from aws_cdk import Duration, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha
@@ -10,7 +10,7 @@ from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
-from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
+from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
 from sds_data_manager.stacks.database_stack import SdpDatabase
 
 
@@ -25,7 +25,7 @@ class InstrumentLambda(Construct):
         code_path: str or Path,
         instrument: str,
         instrument_downstream: dict,
-        step_function_stack: SdcStepFunction,
+        batch_resources: FargateBatchResources,
         rds_stack: SdpDatabase,
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
@@ -48,12 +48,12 @@ class InstrumentLambda(Construct):
             Instrument
         instrument_downstream : dict
             Instrument downstream dependents of given instruments
-        step_function_stack: SdcStepFunction
-            Step function stack
-        rds_security_group : ec2.SecurityGroup
-            RDS security group
+        batch_resources: FargateBatchResources
+            Fargate compute environment
         rds_stack: SdpDatabase
             Database stack
+        rds_security_group : ec2.SecurityGroup
+            RDS security group
         subnets : ec2.SubnetSelection
             RDS subnet selection.
         vpc : ec2.Vpc
@@ -62,12 +62,24 @@ class InstrumentLambda(Construct):
 
         super().__init__(scope, construct_id)
 
+        # Batch Job Inputs
+        stack = Stack.of(self)
+        job_definition_arn = (
+            f"arn:aws:batch:{stack.region}:{stack.account}:job-definition/"
+            f"{batch_resources.job_definition_name}"
+        )
+        job_queue_arn = (
+            f"arn:aws:batch:{stack.region}:{stack.account}:job-queue/"
+            f"{batch_resources.job_queue_name}"
+        )
+
         # Define Lambda Environment Variables
         # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
             "INSTRUMENT": instrument,
             "INSTRUMENT_DOWNSTREAM": f"{instrument_downstream}",
-            "STATE_MACHINE_ARN": step_function_stack.state_machine.state_machine_arn,
+            "BATCH_JOB_DEFINITION": job_definition_arn,
+            "BATCH_JOB_QUEUE": job_queue_arn,
             "SECRET_ARN": rds_stack.rds_creds.secret_arn,
         }
 
@@ -90,7 +102,6 @@ class InstrumentLambda(Construct):
         )
 
         data_bucket.grant_read_write(self.instrument_lambda)
-        self.instrument_lambda.add_to_role_policy(step_function_stack.execution_policy)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", rds_stack.secret_name
