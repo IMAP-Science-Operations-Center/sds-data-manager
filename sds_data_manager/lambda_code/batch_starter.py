@@ -447,10 +447,6 @@ def lambda_handler(event: dict, context):
         # Start Batch Job execution for each instrument
         for instrument_name in grouped_list:
             for data_level in grouped_list[instrument_name]:
-                print(
-                    f"imap_{instrument_name}_{data_level}_<descriptor>_<startdate>_<enddate>_<vxx-xx>.cdf"
-                )
-
                 batch_client.submit_job(
                     jobName=f"imap_{instrument_name}_{data_level}_<descriptor>_<startdate>_<enddate>_<vxx-xx>.cdf",
                     jobQueue=job_queue,
