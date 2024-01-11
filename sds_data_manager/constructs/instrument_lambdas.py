@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from aws_cdk import Duration, Stack
+from aws_cdk import Duration
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha
@@ -63,15 +63,8 @@ class InstrumentLambda(Construct):
         super().__init__(scope, construct_id)
 
         # Batch Job Inputs
-        stack = Stack.of(self)
-        job_definition_arn = (
-            f"arn:aws:batch:{stack.region}:{stack.account}:job-definition/"
-            f"{batch_resources.job_definition_name}"
-        )
-        job_queue_arn = (
-            f"arn:aws:batch:{stack.region}:{stack.account}:job-queue/"
-            f"{batch_resources.job_queue_name}"
-        )
+        job_definition_arn = batch_resources.job_definition.attr_job_definition_arn
+        job_queue_arn = batch_resources.job_queue.attr_job_queue_arn
 
         # Define Lambda Environment Variables
         # TODO: if we need more variables change so we can pass as input
