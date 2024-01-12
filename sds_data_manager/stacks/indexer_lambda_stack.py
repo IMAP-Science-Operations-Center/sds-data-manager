@@ -9,6 +9,10 @@ from aws_cdk import (
 from aws_cdk import (
     aws_ec2 as ec2,
 )
+from aws_cdk import aws_events as events
+from aws_cdk import (
+    aws_events_targets as targets,
+)
 from aws_cdk import (
     aws_lambda as lambda_,
 )
@@ -76,3 +80,92 @@ class IndexerLambda(Stack):
             self, "rds_secret", db_secret_name
         )
         rds_secret.grant_read(grantee=indexer_lambda)
+
+        # Instrument list
+        instruments = [
+            "codice",
+            "glows",
+            "hi",
+            "hit",
+            "idex",
+            "lo",
+            "mag",
+            "swapi",
+            "swe",
+            "ultra",
+        ]
+
+        # Events that triggers Indexer Lambda:
+        # 1. Arrival of L0 data
+        # 2. PutEvent from Lambda that builds dependency and starts Batch Job
+        # 3. Batch Job status change
+
+        # Write l0 info to db with
+        # status SUCCEEDED
+        l0_arrival_rule = events.Rule(
+            self,
+            "l0DataArrival",
+            rule_name="l0-data-arrival",
+            event_pattern=events.EventPattern(
+                source=["aws.s3"],
+                detail_type=["Object Created"],
+                detail={
+                    "bucket": {"name": [data_bucket.bucket_name]},
+                    "object": {
+                        "key": [
+                            {"prefix": f"imap/{instrument}/l0/"}
+                            for instrument in instruments
+                        ]
+                    },
+                },
+            ),
+        )
+
+        # This event listens for PutEvent from Lambda that builds
+        # dependency and starts Batch Job.
+        # Indexer Lambda listens for that event and writes
+        # all information to database
+        # and intialized other information such as
+        # ingestion time to null.
+        # PutEvent Example:
+        #     {
+        #     "DetailType": "Job Started",
+        #     "Source": "aws.lambda",
+        #     "Detail": {
+        #     "filename": "str",
+        #     "status": "InProgress",
+        #     "depedency": {    "codice": "s3-filepath", "mag": "s3-filepath"}
+        #     }}
+        batch_starter_event_rule = events.Rule(
+            self,
+            "batchStarterEvent",
+            rule_name="batch-starter-event",
+            event_pattern=events.EventPattern(
+                source=["imap.lambda"],
+                detail_type=["Batch Job Started"],
+                detail={
+                    "filename": [{"exists": True}],
+                    "status": ["InProgress"],
+                    "depedency": [{"exists": True}],
+                },
+            ),
+        )
+
+        # Uses batch job status
+        # to update status in the database and
+        # update ingested time if status was success
+        batch_job_status_rule = events.Rule(
+            self,
+            "batchJobStatus",
+            rule_name="batch-job-status",
+            event_pattern=events.EventPattern(
+                source=["aws.batch"],
+                detail_type=["Batch Job State Change"],
+                detail={"status": ["SUCCEEDED", "FAILED"]},
+            ),
+        )
+
+        # Add the Lambda function as the target for the rules
+        l0_arrival_rule.add_target(targets.LambdaFunction(indexer_lambda))
+        batch_starter_event_rule.add_target(targets.LambdaFunction(indexer_lambda))
+        batch_job_status_rule.add_target(targets.LambdaFunction(indexer_lambda))
