@@ -132,7 +132,7 @@ class IndexerLambda(Stack):
         #     "DetailType": "Job Started",
         #     "Source": "aws.lambda",
         #     "Detail": {
-        #     "filename": "str",
+        #     "file_to_create": "str",
         #     "status": "InProgress",
         #     "depedency": {    "codice": "s3-filepath", "mag": "s3-filepath"}
         #     }}
@@ -144,7 +144,7 @@ class IndexerLambda(Stack):
                 source=["imap.lambda"],
                 detail_type=["Batch Job Started"],
                 detail={
-                    "filename": [{"exists": True}],
+                    "file_to_create": [{"exists": True}],
                     "status": ["InProgress"],
                     "depedency": [{"exists": True}],
                 },
