@@ -12,8 +12,12 @@ RUN pip install requests
 # Create a directory for storing uploaded/downloaded files
 RUN mkdir -p /mnt/data
 
+# Copy imap_api.py script into the container
+COPY imap_api.py /app/imap_api.py
+WORKDIR /app
+
 # Set an environment variable to indicate the Docker environment
 ENV DOCKER_ENV=true
 
 # Define the entrypoint of the container
-ENTRYPOINT ["imap_api"]
+ENTRYPOINT ["python", "/app/imap_api.py"]

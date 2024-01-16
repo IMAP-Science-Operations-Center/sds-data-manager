@@ -22,7 +22,7 @@ def _parse_args():
         "This command line program downloads"
         "a file from the s3_uri, modifies it, and uploads"
         "the modified file to the same s3 uri. "
-        "Example usage: python imap_api.py <s3_uri>. "
+        "Example usage: python cli.py <s3_uri>. "
     )
 
     s3_uri_help = "The s3_uri from which to download. "
