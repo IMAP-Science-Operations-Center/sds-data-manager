@@ -51,7 +51,7 @@ def lambda_handler(event, context):
         filename = record["s3"]["object"]["key"]
 
         logger.info(f"Attempting to insert {os.path.basename(filename)} into database")
-        filename_parsed = FilenameParser(filename)
+        filename_parsed = FilenameParser(os.path.basename(filename))
         filepath = filename_parsed.upload_filepath()
 
         # confirm that the file is valid

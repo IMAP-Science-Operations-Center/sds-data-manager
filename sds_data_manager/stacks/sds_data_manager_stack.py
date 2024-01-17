@@ -180,11 +180,6 @@ class SdsDataManager(Stack):
         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
-        rds_secret = secrets.Secret.from_secret_name_v2(
-            self, "rds_secret", db_secret_name
-        )
-        rds_secret.grant_read(grantee=indexer_lambda)
-
         # upload API lambda
         upload_api_lambda = lambda_alpha_.PythonFunction(
             self,
@@ -225,8 +220,13 @@ class SdsDataManager(Stack):
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            vpc_subnets=vpc_subnets,
+            security_groups=[rds_security_group],
             environment={
                 "REGION": region,
+                "SECRET_NAME": db_secret_name,
             },
         )
 
@@ -257,3 +257,9 @@ class SdsDataManager(Stack):
             http_method="GET",
             lambda_function=download_query_api,
         )
+
+        rds_secret = secrets.Secret.from_secret_name_v2(
+            self, "rds_secret", db_secret_name
+        )
+        rds_secret.grant_read(grantee=indexer_lambda)
+        rds_secret.grant_read(grantee=query_api_lambda)
