@@ -2,7 +2,7 @@
 """
 import argparse
 import logging
-import os
+from pathlib import Path
 
 import requests
 
@@ -61,25 +61,24 @@ def download(s3_uri, api_endpoint="https://api.dev.imap-mission.com"):
     url_with_parameters = f"{api_endpoint}/download?{s3_uri}"
     response = requests.get(url_with_parameters)
 
-    # Check if running in Docker
-    running_in_docker = os.getenv("DOCKER_ENV") is not None
-
     # Set the base directory
-    base_directory = "/mnt/data" if running_in_docker else "."
+    base_directory = Path("/mnt/data")
+
+    if not base_directory.exists():
+        base_directory = Path.cwd()
 
     # Join the base directory with the file name
-    file_name_and_path = os.path.join(base_directory, s3_uri.replace("s3://", ""))
+    file_name_and_path = base_directory / Path(s3_uri.replace("s3://", ""))
 
-    download_dir = os.path.dirname(file_name_and_path)
-    if not os.path.exists(download_dir):
-        os.makedirs(download_dir)
+    # Make parent directories if they don't exist
+    file_name_and_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(file_name_and_path, "wb") as file:
         file.write(response.content)
 
     logging.info(f"File downloaded and saved to: {file_name_and_path}")
 
-    return file_name_and_path
+    return str(file_name_and_path)
 
 
 def upload(local_file_location, api_endpoint="https://api.dev.imap-mission.com"):
@@ -95,7 +94,8 @@ def upload(local_file_location, api_endpoint="https://api.dev.imap-mission.com")
     """
     logging.info(f"Starting upload for file: {local_file_location}")
 
-    remote_file_name = os.path.basename(local_file_location)
+    local_file_path = Path(local_file_location)
+    remote_file_name = local_file_path.name
 
     # Modify descriptor in file name
     modified_file_name = remote_file_name.replace(
@@ -114,12 +114,13 @@ def main():
     """Main function for the IMAP API utilities."""
     args = _parse_args()
 
-    if args.api_endpoint is not None:
-        file_name_and_path = download(args.s3_uri, args.api_endpoint)
-        upload(file_name_and_path, args.api_endpoint)
-    else:
-        file_name_and_path = download(args.s3_uri)
-        upload(file_name_and_path)
+    endpoint = (
+        args.api_endpoint
+        if args.api_endpoint is not None
+        else "https://api.dev.imap-mission.com"
+    )
+    file_name_and_path = download(args.s3_uri, endpoint)
+    upload(file_name_and_path, endpoint)
 
     logging.info("Process completed successfully")
 
