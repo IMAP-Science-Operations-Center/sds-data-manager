@@ -12,7 +12,34 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Create a Step Functions client
-batch_client = boto3.client("batch")
+step_function_client = boto3.client("stepfunctions")
+
+
+def get_filename_from_event(event):
+    """
+    Extracts the filename (object key) from the given S3 event
+    without folder path.
+
+    Parameters
+    ----------
+    event : dict
+        The JSON formatted S3 event.
+
+    Returns
+    -------
+    filename : str
+        Extracted filename from the event.
+
+    Raises
+    ------
+    KeyError:
+        If the necessary fields are not found in the event.
+    """
+    try:
+        full_path = event["detail"]["object"]["key"]
+        return full_path.split("/")[-1]
+    except KeyError as err:
+        raise KeyError("Invalid event format: Unable to extract filename") from err
 
 
 def db_connect(db_secret_arn):
@@ -50,6 +77,71 @@ def db_connect(db_secret_arn):
         raise Exception(f"Error connecting to the database: {e}") from e
 
     return conn
+
+
+def get_process_details(cur, instrument, filename, process_range=1):
+    """
+    Gets details for instrument listed in event.
+
+    Parameters
+    ----------
+    cur : psycopg.extensions.cursor
+        A psycopg database cursor object to execute
+        database operations.
+    instrument : str
+        The name of the instrument for which details
+        are to be retrieved.
+    filename : str
+        The filename associated with the instrument.
+    process_range : int
+        Numbers of days backwards to process
+        e.g. 1 means process all data from 1 day ago
+
+    Returns
+    -------
+    level : str
+        Instrument level
+    version : int
+        Version
+    process_dates : list
+        Dates to process
+    """
+
+    query = f"""SELECT * FROM sdc.{instrument.lower()}
+                WHERE filename = %s;"""
+    params = (filename,)
+
+    cur.execute(query, params)
+    column_names = [desc[0] for desc in cur.description]
+    records = cur.fetchall()
+
+    if not records:
+        raise ValueError(f"No records found for filename: {filename}")
+
+    # Check if more than one record is found
+    if len(records) > 1:
+        raise ValueError(
+            f"Expected a single record for filename: {filename}, "
+            f"but found multiple records."
+        )
+
+    record_dict = dict(zip(column_names, records[0]))
+
+    level = record_dict["level"]
+    version = record_dict["version"]
+
+    date = record_dict["date"]
+    date_start = date - timedelta(days=process_range)
+
+    # Generate all the dates between date_start and date, inclusive
+    current_date = date_start
+    process_dates = []
+
+    while current_date <= date:
+        process_dates.append(current_date.strftime("%Y-%m-%d"))
+        current_date += timedelta(days=1)
+
+    return level, version, process_dates
 
 
 def query_instruments(cur, version, process_dates, instruments):
@@ -304,19 +396,17 @@ def lambda_handler(event: dict, context):
 
     instrument = os.environ.get("INSTRUMENT")
     instrument_downstream = os.environ.get("INSTRUMENT_DOWNSTREAM")
+    state_machine_arn = os.environ.get("STATE_MACHINE_ARN")
     db_secret_arn = os.environ.get("SECRET_ARN")
 
-    job_queue = os.environ.get("BATCH_JOB_QUEUE")
-    job_definition = os.environ.get("BATCH_JOB_DEFINITION")
-
-    # TODO: what will event look like?
-    level = event["detail"]["object"]["level"]
-    version = event["detail"]["object"]["version"]
-    start_date = event["detail"]["object"]["start_date"]
-    end_date = event["detail"]["object"]["end_date"]
+    filename = get_filename_from_event(event)
 
     with db_connect(db_secret_arn) as conn:
         with conn.cursor() as cur:
+            # get details of the object
+            level, version, process_dates = get_process_details(
+                cur, instrument, filename
+            )
             # query downstream dependents to see if they have been ingested
             # e.g. if codice_l0_20230401_v01 object created the event, has
             # codice_l1a_20230401_v01 been ingested already? This is to
@@ -351,17 +441,21 @@ def lambda_handler(event: dict, context):
 
         grouped_list = prepare_data(downstream_instruments_to_process)
 
-        # TODO: more changes required for dates, version, and descriptor
-        # Start Batch Job execution for each instrument
+        # Start Step function execution for each instrument
         for instrument_name in grouped_list:
-            for data_level in grouped_list[instrument_name]:
-                batch_client.submit_job(
-                    jobName=f"imap_{instrument_name}_{data_level}_<descriptor>_<startdate>_<enddate>_<vxx-xx>.cdf",
-                    jobQueue=job_queue,
-                    jobDefinition=job_definition,
-                    containerOverrides={
-                        "command": [
-                            f"imap_{instrument_name}_{data_level}_<descriptor>_<startdate>_<enddate>_<vxx-xx>.cdf"
-                        ],
-                    },
-                )
+            input_data = {
+                "command": [
+                    instrument_name,
+                    f"{grouped_list[instrument_name]}",
+                    f"{version}",
+                ]
+            }
+
+            response = step_function_client.start_execution(
+                stateMachineArn=state_machine_arn,
+                name=f"{instrument_name}",
+                input=json.dumps(input_data),
+            )
+            print(
+                f"Started Step Function for {instrument_name} with response: {response}"
+            )
