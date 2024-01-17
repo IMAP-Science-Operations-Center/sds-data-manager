@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Create a Step Functions client
-step_function_client = boto3.client("stepfunctions")
+batch_client = boto3.client("batch")
 
 
 def get_filename_from_event(event):
@@ -396,8 +396,10 @@ def lambda_handler(event: dict, context):
 
     instrument = os.environ.get("INSTRUMENT")
     instrument_downstream = os.environ.get("INSTRUMENT_DOWNSTREAM")
-    state_machine_arn = os.environ.get("STATE_MACHINE_ARN")
     db_secret_arn = os.environ.get("SECRET_ARN")
+
+    job_queue = os.environ.get("BATCH_JOB_QUEUE")
+    job_definition = os.environ.get("BATCH_JOB_DEFINITION")
 
     filename = get_filename_from_event(event)
 
@@ -441,21 +443,17 @@ def lambda_handler(event: dict, context):
 
         grouped_list = prepare_data(downstream_instruments_to_process)
 
-        # Start Step function execution for each instrument
+        # TODO: more changes required for dates, version, and descriptor
+        # Start Batch Job execution for each instrument
         for instrument_name in grouped_list:
-            input_data = {
-                "command": [
-                    instrument_name,
-                    f"{grouped_list[instrument_name]}",
-                    f"{version}",
-                ]
-            }
-
-            response = step_function_client.start_execution(
-                stateMachineArn=state_machine_arn,
-                name=f"{instrument_name}",
-                input=json.dumps(input_data),
-            )
-            print(
-                f"Started Step Function for {instrument_name} with response: {response}"
-            )
+            for data_level in grouped_list[instrument_name]:
+                batch_client.submit_job(
+                    jobName=f"imap_{instrument_name}_{data_level}_<descriptor>_<startdate>_<enddate>_<vxx-xx>.cdf",
+                    jobQueue=job_queue,
+                    jobDefinition=job_definition,
+                    containerOverrides={
+                        "command": [
+                            f"imap_{instrument_name}_{data_level}_<descriptor>_<startdate>_<enddate>_<vxx-xx>.cdf"
+                        ],
+                    },
+                )
