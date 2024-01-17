@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from aws_cdk import Duration
+from aws_cdk import Duration, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha
@@ -14,7 +14,7 @@ from sds_data_manager.stacks.batch_compute_resources import FargateBatchResource
 from sds_data_manager.stacks.database_stack import SdpDatabase
 
 
-class InstrumentLambda(Construct):
+class InstrumentLambda(Stack):
     """Generic Construct with customizable runtime code"""
 
     def __init__(
@@ -30,6 +30,7 @@ class InstrumentLambda(Construct):
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
         vpc: ec2.Vpc,
+        **kwargs,
     ):
         """
         InstrumentLambda Constructor.
@@ -60,7 +61,7 @@ class InstrumentLambda(Construct):
             VPC into which to put the resources that require networking.
         """
 
-        super().__init__(scope, construct_id)
+        super().__init__(scope, construct_id, **kwargs)
 
         # Batch Job Inputs
         job_definition_arn = batch_resources.job_definition.attr_job_definition_arn
@@ -78,8 +79,8 @@ class InstrumentLambda(Construct):
 
         self.instrument_lambda = lambda_alpha.PythonFunction(
             self,
-            "InstrumentLambda",
-            function_name="InstrumentLambda",
+            f"{instrument}InstrumentLambda",
+            function_name=f"{instrument}InstrumentLambda",
             entry=str(code_path),
             index="batch_starter.py",
             handler="lambda_handler",

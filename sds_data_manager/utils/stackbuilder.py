@@ -1,5 +1,7 @@
 """Module with helper functions for creating standard sets of stacks"""
 
+from pathlib import Path
+
 from aws_cdk import App, Environment
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_rds as rds
@@ -15,9 +17,13 @@ from sds_data_manager.stacks import (
     ecr_stack,
     efs_stack,
     indexer_lambda_stack,
+    instrument_lambdas,
     monitoring_stack,
     networking_stack,
     sds_api_manager_stack,
+)
+from sds_data_manager.utils.get_downstream_dependencies import (
+    get_downstream_dependencies,
 )
 
 
@@ -118,6 +124,9 @@ def build_sds(
 
     instrument_list = ["CodiceHi"]  # etc
 
+    lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
+    lambda_code_directory_str = str(lambda_code_directory.resolve())
+
     for instrument in instrument_list:
         ecr = ecr_stack.EcrStack(
             scope,
@@ -138,7 +147,7 @@ def build_sds(
         #     ...
         # )
 
-        batch_compute_resources.FargateBatchResources(
+        batch_resources = batch_compute_resources.FargateBatchResources(
             scope,
             construct_id=f"{instrument}BatchJob",
             vpc=networking.vpc,
@@ -148,6 +157,21 @@ def build_sds(
             db_secret_name=db_secret_name,
             efs_instance=efs_instance,
             account_name=account_name,
+            env=env,
+        )
+
+        instrument_lambdas.InstrumentLambda(
+            scope,
+            f"{instrument}InstrumentLambda",
+            data_bucket=data_bucket.data_bucket,
+            code_path=lambda_code_directory_str,
+            instrument=instrument,
+            instrument_downstream=get_downstream_dependencies(instrument),
+            batch_resources=batch_resources,
+            rds_stack=rds_stack,
+            rds_security_group=networking.rds_security_group,
+            subnets=rds_stack.rds_subnet_selection,
+            vpc=networking.vpc,
             env=env,
         )
 
