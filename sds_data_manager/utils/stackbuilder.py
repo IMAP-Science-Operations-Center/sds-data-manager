@@ -22,9 +22,6 @@ from sds_data_manager.stacks import (
     networking_stack,
     sds_api_manager_stack,
 )
-from sds_data_manager.utils.get_downstream_dependencies import (
-    get_downstream_dependencies,
-)
 
 
 def build_sds(
@@ -147,7 +144,7 @@ def build_sds(
         #     ...
         # )
 
-        batch_resources = batch_compute_resources.FargateBatchResources(
+        batch_compute_resources.FargateBatchResources(
             scope,
             construct_id=f"{instrument}BatchJob",
             vpc=networking.vpc,
@@ -160,20 +157,17 @@ def build_sds(
             env=env,
         )
 
-        instrument_lambdas.InstrumentLambda(
-            scope,
-            f"{instrument}InstrumentLambda",
-            data_bucket=data_bucket.data_bucket,
-            code_path=lambda_code_directory_str,
-            instrument=instrument,
-            instrument_downstream=get_downstream_dependencies(instrument),
-            batch_resources=batch_resources,
-            rds_stack=rds_stack,
-            rds_security_group=networking.rds_security_group,
-            subnets=rds_stack.rds_subnet_selection,
-            vpc=networking.vpc,
-            env=env,
-        )
+    instrument_lambdas.InstrumentLambda(
+        scope,
+        "InstrumentLambda",
+        data_bucket=data_bucket.data_bucket,
+        code_path=lambda_code_directory_str,
+        rds_stack=rds_stack,
+        rds_security_group=networking.rds_security_group,
+        subnets=rds_stack.rds_subnet_selection,
+        vpc=networking.vpc,
+        env=env,
+    )
 
     create_schema_stack.CreateSchema(
         scope,

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 import boto3
 import psycopg2
+from get_downstream_dependencies import get_downstream_dependencies
 
 # Setup the logging
 logging.basicConfig(level=logging.INFO)
@@ -394,12 +395,24 @@ def lambda_handler(event: dict, context):
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
 
-    instrument = os.environ.get("INSTRUMENT")
-    instrument_downstream = os.environ.get("INSTRUMENT_DOWNSTREAM")
+    # Event details (TBD)
+    instrument = event["detail"]["object"]["instrument"]
+    instrument_downstream = get_downstream_dependencies(instrument)
     db_secret_arn = os.environ.get("SECRET_ARN")
 
-    job_queue = os.environ.get("BATCH_JOB_QUEUE")
-    job_definition = os.environ.get("BATCH_JOB_DEFINITION")
+    session = boto3.session.Session()
+    sts_client = boto3.client("sts")
+    region = session.region_name
+    account = sts_client.get_caller_identity()["Account"]
+
+    job_definition = (
+        f"arn:aws:batch:{region}:{account}:job-definition/"
+        f"fargate-batch-job-definition{instrument}"
+    )
+    job_queue = (
+        f"arn:aws:batch:{region}:{account}:job-queue/"
+        f"{instrument}-fargate-batch-job-queue"
+    )
 
     filename = get_filename_from_event(event)
 
