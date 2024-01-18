@@ -1,6 +1,55 @@
 """Main file to store schema definition"""
-from sqlalchemy import Boolean, Column, DateTime, Identity, Integer, String
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Identity,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import DeclarativeBase
+
+# Instrument name Enums for the file catalog table
+instruments = Enum(
+    "codice",
+    "glows",
+    "hi-45",
+    "hi-90",
+    "hit",
+    "idex",
+    "lo",
+    "mag",
+    "swapi",
+    "swe",
+    "ultra-45",
+    "ultra-90",
+    name="instrument",
+)
+
+# data level enums for the file catalog table
+data_levels = Enum(
+    "l0",
+    "l1a",
+    "l1b",
+    "l1c",
+    "l1ca",
+    "l1cb",
+    "l1d",
+    "l2",
+    "l2pre",
+    "l3",
+    "l3a",
+    "l3b",
+    "l3c",
+    "l3d",
+    name="data_level",
+)
+
+# status enums for the status tracking table
+statuses = Enum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
 
 
 class Base(DeclarativeBase):
@@ -14,7 +63,7 @@ class UniversalSpinTable(Base):
     id = Column(Integer, primary_key=True)
     spin_number = Column(Integer, nullable=False)
     spin_start_sc_time = Column(Integer, nullable=False)
-    spin_start_utc_time = Column(DateTime(timezone=True), nullable=False)
+    spin_start_utc_time = Column(DateTime, nullable=False)
     star_tracker_flag = Column(Boolean, nullable=False)
     spin_duration = Column(Integer, nullable=False)
     thruster_firing_event = Column(Boolean, nullable=False)
@@ -24,82 +73,31 @@ class UniversalSpinTable(Base):
     repointing_number = Column(Integer, nullable=False)
 
 
-class FileCatalogTable:
-    """Common file catalog table"""
+class StatusTracking(Base):
+    """Status tracking table"""
+
+    __tablename__ = "status_tracking"
+
+    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
+    file_to_create_path = Column(String, nullable=False)
+    status = Column(statuses, nullable=False)
+    job_definition = Column(String, nullable=False)
+    ingestion_date = Column(DateTime, nullable=True)
+
+
+class FileCatalog(Base):
+    """File catalog table"""
+
+    __tablename__ = "file_catalog"
 
     # TODO: determine cap for strings
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_path = Column(String, nullable=False)
-    instrument = Column(String(6), nullable=False)
-    data_level = Column(String(3), nullable=False)
+    instrument = Column(instruments, nullable=False)
+    data_level = Column(data_levels, nullable=False)
     descriptor = Column(String, nullable=False)
-    start_date = Column(DateTime(timezone=True), nullable=False)
-    end_date = Column(DateTime(timezone=True), nullable=False)
-    ingestion_date = Column(DateTime(timezone=True), nullable=False)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
     version = Column(String, nullable=False)
     extension = Column(String, nullable=False)
-
-
-# TODO: Follow-up PR should add in columns for each instrument
-# for instrument dependency IDs, SPICE ID, parent id,
-# and pointing id
-
-
-class LoTable(FileCatalogTable, Base):
-    """IMAP-Lo File Catalog Table"""
-
-    __tablename__ = "lo"
-
-
-class HiTable(FileCatalogTable, Base):
-    """IMAP-Hi File Catalog Table"""
-
-    __tablename__ = "hi"
-
-
-class UltraTable(FileCatalogTable, Base):
-    """IMAP-Ultra File Catalog Table"""
-
-    __tablename__ = "ultra"
-
-
-class HITTable(FileCatalogTable, Base):
-    """HIT File Catalog Table"""
-
-    __tablename__ = "hit"
-
-
-class IDEXTable(FileCatalogTable, Base):
-    """IDEX File Catalog Table"""
-
-    __tablename__ = "idex"
-
-
-class SWAPITable(FileCatalogTable, Base):
-    """SWAPI File Catalog Table"""
-
-    __tablename__ = "swapi"
-
-
-class SWETable(FileCatalogTable, Base):
-    """SWE File Catalog Table"""
-
-    __tablename__ = "swe"
-
-
-class CoDICETable(FileCatalogTable, Base):
-    """CoDICE File Catalog Table"""
-
-    __tablename__ = "codice"
-
-
-class MAGTable(FileCatalogTable, Base):
-    """MAG File Catalog Table"""
-
-    __tablename__ = "mag"
-
-
-class GLOWSTable(FileCatalogTable, Base):
-    """GLOWS File Catalog Table"""
-
-    __tablename__ = "glows"
+    status_tracking_id = Column(Integer, ForeignKey("status_tracking_table.id"))

@@ -1,7 +1,5 @@
 """Module with helper functions for creating standard sets of stacks"""
-from pathlib import Path
 
-import aws_cdk as cdk
 from aws_cdk import App, Environment
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_rds as rds
@@ -9,18 +7,17 @@ from aws_cdk import aws_rds as rds
 from sds_data_manager.stacks import (
     api_gateway_stack,
     backup_bucket_stack,
+    batch_compute_resources,
     create_schema_stack,
+    data_bucket_stack,
     database_stack,
     domain_stack,
     ecr_stack,
     efs_stack,
+    indexer_lambda_stack,
     monitoring_stack,
     networking_stack,
-    processing_stack,
-    sds_data_manager_stack,
-)
-from sds_data_manager.utils.get_downstream_dependencies import (
-    get_downstream_dependencies,
+    sds_api_manager_stack,
 )
 
 
@@ -41,6 +38,9 @@ def build_sds(
     account_config : dict
         Account configuration (domain_name and other account specific configurations)
     """
+    data_bucket = data_bucket_stack.DataBucketStack(
+        scope=scope, construct_id="DataBucket", env=env
+    )
 
     networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
 
@@ -74,7 +74,7 @@ def build_sds(
     rds_size = account_config.get("rds_size", "SMALL")
     rds_class = account_config.get("rds_class", "BURSTABLE3")
     rds_storage = account_config.get("rds_stack", 200)
-
+    db_secret_name = "sdp-database-cred"
     rds_stack = database_stack.SdpDatabase(
         scope,
         "RDS",
@@ -87,49 +87,36 @@ def build_sds(
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
         username="imap_user",
-        secret_name="sdp-database-cred",
+        secret_name=db_secret_name,
         database_name="imap",
     )
 
-    data_manager = sds_data_manager_stack.SdsDataManager(
-        scope,
-        "SdsDataManager",
-        api,
+    indexer_lambda_stack.IndexerLambda(
+        scope=scope,
+        construct_id="IndexerLambda",
         env=env,
-        db_secret_name=rds_stack.secret_name,
+        db_secret_name=db_secret_name,
         vpc=networking.vpc,
         vpc_subnets=rds_stack.rds_subnet_selection,
         rds_security_group=networking.rds_security_group,
+        data_bucket=data_bucket.data_bucket,
+    )
+
+    sds_api_manager_stack.SdsApiManager(
+        scope=scope,
+        construct_id="SdsApiManager",
+        api=api,
+        env=env,
+        data_bucket=data_bucket.data_bucket,
+        vpc=networking.vpc,
+        rds_security_group=networking.rds_security_group,
+        db_secret_name=db_secret_name,
     )
 
     # create EFS
     efs_instance = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
 
     instrument_list = ["CodiceHi"]  # etc
-
-    lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
-    lambda_code_directory_str = str(lambda_code_directory.resolve())
-
-    spin_table_code = lambda_code_directory / "spin_table_api.py"
-    # Create Lambda for universal spin table API
-    spin_spin_api_handler = api_gateway_stack.APILambda(
-        scope=scope,
-        construct_id="SpinTableAPILambda",
-        lambda_name="universal-spin-table-api-handler",
-        code_path=spin_table_code,
-        lambda_handler="lambda_handler",
-        timeout=cdk.Duration.minutes(1),
-        rds_security_group=networking.rds_security_group,
-        db_secret_name=rds_stack.secret_name,
-        vpc=networking.vpc,
-        env=env,
-    )
-
-    api.add_route(
-        route="spin_table",
-        http_method="GET",
-        lambda_function=spin_spin_api_handler.lambda_function,
-    )
 
     for instrument in instrument_list:
         ecr = ecr_stack.EcrStack(
@@ -151,28 +138,24 @@ def build_sds(
         #     ...
         # )
 
-        processing_stack.ProcessingStep(
+        batch_compute_resources.FargateBatchResources(
             scope,
-            f"{instrument}Processing",
-            env=env,
+            construct_id=f"{instrument}BatchJob",
             vpc=networking.vpc,
             processing_step_name=instrument,
-            lambda_code_directory=lambda_code_directory_str,
-            data_bucket=data_manager.data_bucket,
-            instrument=instrument,
-            instrument_downstream=get_downstream_dependencies(instrument),
+            data_bucket=data_bucket.data_bucket,
             repo=ecr.container_repo,
-            rds_security_group=networking.rds_security_group,
-            rds_stack=rds_stack,
+            db_secret_name=db_secret_name,
             efs_instance=efs_instance,
             account_name=account_name,
+            env=env,
         )
 
     create_schema_stack.CreateSchema(
         scope,
         "CreateSchemaStack",
         env=env,
-        db_secret_name=rds_stack.secret_name,
+        db_secret_name=db_secret_name,
         vpc=networking.vpc,
         vpc_subnets=rds_stack.rds_subnet_selection,
         rds_security_group=networking.rds_security_group,
@@ -183,10 +166,12 @@ def build_sds(
         scope=scope,
         construct_id="EFSWriteLambda",
         vpc=networking.vpc,
-        data_bucket=data_manager.data_bucket,
+        data_bucket=data_bucket.data_bucket,
         efs_instance=efs_instance,
         env=env,
     )
+
+    # TODO: create batch_starter_lambda
 
 
 def build_backup(scope: App, env: Environment, source_account: str):

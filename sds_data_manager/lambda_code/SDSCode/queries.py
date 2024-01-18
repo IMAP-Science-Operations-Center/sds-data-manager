@@ -1,12 +1,11 @@
 # Standard
-import itertools
 import json
 import logging
 import sys
 
 from SDSCode.database import models
 from SDSCode.database.database import engine
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 # Logger setup
@@ -33,42 +32,14 @@ def lambda_handler(event, context):
 
     logger.info("Received event: " + json.dumps(event, indent=2))
 
-    # The model lookup is used to match the instrument data
-    # to the correct postgres table based on the instrument name.
-    model_lookup = {
-        "lo": models.LoTable,
-        "hi": models.HiTable,
-        "ultra": models.UltraTable,
-        "hit": models.HITTable,
-        "idex": models.IDEXTable,
-        "swapi": models.SWAPITable,
-        "swe": models.SWETable,
-        "codice": models.CoDICETable,
-        "mag": models.MAGTable,
-        "glows": models.GLOWSTable,
-    }
-
     # add session, pick model like in indexer and add query to filter_as
     query_params = event["queryStringParameters"]
 
-    with Session(engine) as session:
-        if "instrument" in query_params.keys():
-            model = model_lookup[query_params.pop("instrument")]
-            query = select(model.__table__)
-            for param, value in query_params.items():
-                query = query.where(getattr(model, param) == value)
-        else:
-            all_models = [model_name.__table__ for model_name in model_lookup.values()]
-            print(f"ALL MODELS: {all_models}")
-            query = select(*all_models)
-            print(f"QUERY {query}")
-            for model, param in itertools.product(
-                model_lookup.values(), query_params.keys()
-            ):
-                print(f"MODEL: {model}")
-                print(f"PARAM: {param}")
-                query = query.where(or_(getattr(model, param) == query_params[param]))
+    query = select(models.FileCatalog.__table__)
+    for param, value in query_params.items():
+        query = query.where(getattr(models.FileCatalog, param) == value)
 
+    with Session(engine) as session:
         search_result = session.execute(query).all()
 
     logger.info("Query Search Results: " + str(search_result))
