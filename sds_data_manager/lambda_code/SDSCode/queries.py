@@ -47,7 +47,7 @@ def lambda_handler(event, context):
     # Format the response
     response = {
         "statusCode": 200,
-        "body": str(search_result),  # Convert JSON data to a string
+        "body": json.dumps(str(search_result)),
         "headers": {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",  # Allow CORS
