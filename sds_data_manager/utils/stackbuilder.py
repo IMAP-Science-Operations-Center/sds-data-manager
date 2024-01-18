@@ -157,9 +157,9 @@ def build_sds(
             env=env,
         )
 
-    instrument_lambdas.InstrumentLambda(
+    instrument_lambdas.BatchStarterLambda(
         scope,
-        "InstrumentLambda",
+        "BatchStarterLambda",
         data_bucket=data_bucket.data_bucket,
         code_path=lambda_code_directory_str,
         rds_stack=rds_stack,

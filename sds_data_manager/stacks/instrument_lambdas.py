@@ -13,7 +13,7 @@ from constructs import Construct
 from sds_data_manager.stacks.database_stack import SdpDatabase
 
 
-class InstrumentLambda(Stack):
+class BatchStarterLambda(Stack):
     """Generic Construct with customizable runtime code"""
 
     def __init__(
@@ -29,7 +29,7 @@ class InstrumentLambda(Stack):
         **kwargs,
     ):
         """
-        InstrumentLambda Constructor.
+        BatchStarterLambda Constructor.
 
         Parameters
         ----------
@@ -61,8 +61,8 @@ class InstrumentLambda(Stack):
 
         self.instrument_lambda = lambda_alpha.PythonFunction(
             self,
-            "InstrumentLambda",
-            function_name="InstrumentLambda",
+            "BatchStarterLambda",
+            function_name="BatchStarterLambda",
             entry=str(code_path),
             index="batch_starter.py",
             handler="lambda_handler",
