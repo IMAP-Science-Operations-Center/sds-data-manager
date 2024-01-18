@@ -34,7 +34,7 @@ class EcrStack(Stack):
         # Define registry for storing processing docker images
         self.container_repo = ecr.Repository(
             self,
-            f"Repository-{construct_id}",
+            f"BatchRepository-{construct_id}",
             repository_name=f"{instrument_name.lower()}-repo",
             image_scan_on_push=True,
         )
