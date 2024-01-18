@@ -49,7 +49,7 @@ data_levels = Enum(
 )
 
 # status enums for the status tracking table
-statuses = Enum("SUCCESS", "FAILURE", name="status")
+statuses = Enum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
 
 
 class Base(DeclarativeBase):
@@ -73,10 +73,10 @@ class UniversalSpinTable(Base):
     repointing_number = Column(Integer, nullable=False)
 
 
-class StatusTrackingTable(Base):
+class StatusTracking(Base):
     """Status tracking table"""
 
-    __tablename__ = "status_tracking_table"
+    __tablename__ = "status_tracking"
 
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_to_create_path = Column(String, nullable=False)
@@ -85,10 +85,10 @@ class StatusTrackingTable(Base):
     ingestion_date = Column(DateTime(timezone=True), nullable=True)
 
 
-class FileCatalogTable(Base):
+class FileCatalog(Base):
     """File catalog table"""
 
-    __tablename__ = "file_catalog_table"
+    __tablename__ = "file_catalog"
 
     # TODO: determine cap for strings
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
