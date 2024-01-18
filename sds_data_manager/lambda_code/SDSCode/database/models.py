@@ -100,4 +100,4 @@ class FileCatalog(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String, nullable=False)
     extension = Column(String, nullable=False)
-    status_tracking_id = Column(Integer, ForeignKey("status_tracking_table.id"))
+    status_tracking_id = Column(Integer, ForeignKey("status_tracking.id"))
