@@ -1,5 +1,4 @@
 """Main file to store schema definition"""
-import enum
 
 from sqlalchemy import (
     Boolean,
@@ -13,48 +12,44 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
+# Instrument name Enums for the file catalog table
+instruments = Enum(
+    "codice",
+    "glows",
+    "hi-45",
+    "hi-90",
+    "hit",
+    "idex",
+    "lo",
+    "mag",
+    "swapi",
+    "swe",
+    "ultra-45",
+    "ultra-90",
+    name="instrument",
+)
 
-class InstrumentEnum(enum.Enum):
-    """Instrument table enums"""
+# data level enums for the file catalog table
+data_levels = Enum(
+    "l0",
+    "l1a",
+    "l1b",
+    "l1c",
+    "l1ca",
+    "l1cb",
+    "l1d",
+    "l2",
+    "l2pre",
+    "l3",
+    "l3a",
+    "l3b",
+    "l3c",
+    "l3d",
+    name="data_level",
+)
 
-    CODICE = "codice"
-    GLOWS = "glows"
-    HI45 = "hi-45"
-    HI90 = "hi-90"
-    HIT = "hit"
-    IDEX = "idex"
-    LO = "lo"
-    MAG = "mag"
-    SWAPI = "swapi"
-    SWE = "swe"
-    ULTRA45 = "ultra-45"
-    ULTRA90 = "ultra-90"
-
-
-class DataLevelEnum(enum.Enum):
-    """Data level enums"""
-
-    L0 = "l0"
-    L1A = "l1a"
-    L1B = "l1b"
-    L1C = "l1c"
-    L1CA = "l1ca"
-    L1CB = "l1cb"
-    L1D = "l1d"
-    L2 = "l2"
-    L2PRE = "l2pre"
-    L3 = "l3"
-    L3A = "l3a"
-    L3B = "l3b"
-    L3C = "l3c"
-    L3D = "l3d"
-
-
-class StatusEnum(enum.Enum):
-    """File status enums"""
-
-    SUCCESS = 1
-    FAILURE = 0
+# status enums for the status tracking table
+statuses = Enum("SUCCESS", "FAILURE", name="status")
 
 
 class Base(DeclarativeBase):
@@ -85,7 +80,7 @@ class StatusTrackingTable(Base):
 
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_to_create_path = Column(String, nullable=False)
-    status = Column(Enum(StatusEnum), nullable=False)
+    status = Column(statuses, nullable=False)
     job_definition = Column(String, nullable=False)
     ingestion_date = Column(DateTime(timezone=True), nullable=True)
 
@@ -98,8 +93,8 @@ class FileCatalogTable(Base):
     # TODO: determine cap for strings
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_path = Column(String, nullable=False)
-    instrument = Column(Enum(InstrumentEnum), nullable=False)
-    data_level = Column(Enum(DataLevelEnum), nullable=False)
+    instrument = Column(instruments, nullable=False)
+    data_level = Column(data_levels, nullable=False)
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=False)
