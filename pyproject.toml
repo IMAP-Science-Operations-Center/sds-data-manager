@@ -89,6 +89,7 @@ filterwarnings = [
     "ignore::DeprecationWarning:importlib*",
     "ignore::DeprecationWarning:jsii*",
 ]
+norecursedirs = ["tests/test-data"]
 
 [tool.ruff]
 target-version = "py39"
