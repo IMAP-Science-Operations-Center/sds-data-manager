@@ -44,6 +44,8 @@ def lambda_handler(event, context):
     logger.info(f"Context: {context}")
 
     # We're only expecting one record, but for some reason the Records are a list object
+    # TODO: events no longer have a Records key with list. This is already planned for
+    # removal in an upcoming PR.
     for record in event["Records"]:
         # Retrieve the Object name
         logger.info(f"Record Received: {record}")
