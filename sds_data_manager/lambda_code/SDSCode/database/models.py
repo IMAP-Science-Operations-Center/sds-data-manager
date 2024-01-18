@@ -63,7 +63,7 @@ class UniversalSpinTable(Base):
     id = Column(Integer, primary_key=True)
     spin_number = Column(Integer, nullable=False)
     spin_start_sc_time = Column(Integer, nullable=False)
-    spin_start_utc_time = Column(DateTime(timezone=True), nullable=False)
+    spin_start_utc_time = Column(DateTime, nullable=False)
     star_tracker_flag = Column(Boolean, nullable=False)
     spin_duration = Column(Integer, nullable=False)
     thruster_firing_event = Column(Boolean, nullable=False)
@@ -82,7 +82,7 @@ class StatusTracking(Base):
     file_to_create_path = Column(String, nullable=False)
     status = Column(statuses, nullable=False)
     job_definition = Column(String, nullable=False)
-    ingestion_date = Column(DateTime(timezone=True), nullable=True)
+    ingestion_date = Column(DateTime, nullable=True)
 
 
 class FileCatalog(Base):
@@ -96,8 +96,8 @@ class FileCatalog(Base):
     instrument = Column(instruments, nullable=False)
     data_level = Column(data_levels, nullable=False)
     descriptor = Column(String, nullable=False)
-    start_date = Column(DateTime(timezone=True), nullable=False)
-    end_date = Column(DateTime(timezone=True), nullable=False)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
     version = Column(String, nullable=False)
     extension = Column(String, nullable=False)
     status_tracking_id = Column(Integer, ForeignKey("status_tracking_table.id"))
