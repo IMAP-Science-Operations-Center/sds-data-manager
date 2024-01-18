@@ -32,6 +32,8 @@ class InstrumentEnum(enum.Enum):
 
 
 class DataLevelEnum(enum.Enum):
+    """Data level enums"""
+
     L0 = "l0"
     L1A = "l1a"
     L1B = "l1b"

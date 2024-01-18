@@ -1,5 +1,4 @@
 # Standard
-import datetime
 import json
 import logging
 import os
@@ -68,31 +67,11 @@ def lambda_handler(event, context):
             "descriptor": filename_parsed.descriptor,
             "start_date": filename_parsed.startdate,
             "end_date": filename_parsed.enddate,
-            "ingestion_date": datetime.datetime.now(datetime.timezone.utc),
             "version": filename_parsed.version,
             "extension": filename_parsed.extension,
         }
 
-        # The model lookup is used to match the instrument data
-        # to the correct postgres table based on the instrument name.
-        model_lookup = {
-            "lo": models.LoTable,
-            "hi": models.HiTable,
-            "ultra": models.UltraTable,
-            "hit": models.HITTable,
-            "idex": models.IDEXTable,
-            "swapi": models.SWAPITable,
-            "swe": models.SWETable,
-            "codice": models.CoDICETable,
-            "mag": models.MAGTable,
-            "glows": models.GLOWSTable,
-        }
-
-        # FileParser already confirmed that the file has a valid
-        # instrument name.
-        data = model_lookup[filename_parsed.instrument](**metadata_params)
-
-        # Add data to the corresponding instrument database
+        # Add data to the file catalog
         with Session(engine) as session:
-            session.add(data)
+            session.add(models.FileCatalogTable(**metadata_params))
             session.commit()
