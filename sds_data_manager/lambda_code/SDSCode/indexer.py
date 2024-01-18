@@ -75,5 +75,5 @@ def lambda_handler(event, context):
 
         # Add data to the file catalog
         with Session(engine) as session:
-            session.add(models.FileCatalogTable(**metadata_params))
+            session.add(models.FileCatalog(**metadata_params))
             session.commit()
