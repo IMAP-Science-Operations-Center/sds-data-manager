@@ -35,9 +35,19 @@ def lambda_handler(event, context):
     # add session, pick model like in indexer and add query to filter_as
     query_params = event["queryStringParameters"]
 
+    # select the file catalog for the query
     query = select(models.FileCatalog.__table__)
+
+    # go through each query parameter to set up sqlalchemy query conditions
     for param, value in query_params.items():
-        query = query.where(getattr(models.FileCatalog, param) == value)
+        if param == "start_date":
+            query = query.where(getattr(models.FileCatalog, param) >= value)
+        elif param == "end_date":
+            # TODO: Need to discuss as a team how to handle date queries. For now,
+            # the date queries will only look at the file start_date.
+            query = query.where(models.FileCatalog.start_date <= value)
+        else:
+            query = query.where(getattr(models.FileCatalog, param) == value)
 
     with Session(engine) as session:
         search_result = session.execute(query).all()
