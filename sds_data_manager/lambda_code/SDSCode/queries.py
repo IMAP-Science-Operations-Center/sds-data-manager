@@ -3,8 +3,8 @@ import json
 import logging
 import sys
 
+from SDSCode.database import database as db
 from SDSCode.database import models
-from SDSCode.database.database import engine
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -48,7 +48,7 @@ def lambda_handler(event, context):
             query = query.where(models.FileCatalog.start_date <= value)
         else:
             query = query.where(getattr(models.FileCatalog, param) == value)
-
+    engine = db.get_engine()
     with Session(engine) as session:
         search_result = session.execute(query).all()
 
