@@ -1,16 +1,15 @@
-# Standard
+import datetime
 import json
 import logging
 import os
 import sys
 
-# Installed
 import boto3
-from SDSCode.database import models
-from SDSCode.database.database import engine
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
-# Local
+from .database import database as db
+from .database import models
 from .path_helper import FilenameParser
 
 # Logger setup
@@ -22,11 +21,11 @@ s3 = boto3.client("s3")
 
 
 def lambda_handler(event, context):
-    """Handler function for creating metadata, adding it to the payload,
-    and sending it to the opensearch instance.
+    """Handler function for creating metadata, adding it to the database.
 
-    This function is an event handler called by the AWS Lambda upon the creation of an
-    object in a s3 bucket.
+    This function is an event handler for multiple event sources.
+    List of event sources are aws.s3, aws.batch and imap.lambda.
+    imap.lambda is custom PutEvent from AWS lambda.
 
     Parameters
     ----------
@@ -42,6 +41,7 @@ def lambda_handler(event, context):
 
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
+    engine = db.get_engine()
 
     filename = event["detail"]["object"]["key"]
 
@@ -60,8 +60,8 @@ def lambda_handler(event, context):
         "instrument": filename_parsed.instrument,
         "data_level": filename_parsed.data_level,
         "descriptor": filename_parsed.descriptor,
-        "start_date": filename_parsed.startdate,
-        "end_date": filename_parsed.enddate,
+        "start_date": datetime.datetime.strptime(filename_parsed.startdate, "%Y%m%d"),
+        "end_date": datetime.datetime.strptime(filename_parsed.enddate, "%Y%m%d"),
         "version": filename_parsed.version,
         "extension": filename_parsed.extension,
     }
@@ -70,3 +70,14 @@ def lambda_handler(event, context):
     with Session(engine) as session:
         session.add(models.FileCatalog(**metadata_params))
         session.commit()
+
+        # TODO: These are sanity check. will remove
+        # from upcoming PR
+        result = session.query(models.FileCatalog).all()
+        for row in result:
+            print(row.instrument)
+            print(row.file_path)
+
+        inspector = inspect(engine)
+        table_names = inspector.get_table_names()
+        print(table_names)

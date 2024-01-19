@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from aws_cdk import Duration
+from aws_cdk import Duration, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha
@@ -10,11 +10,10 @@ from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
-from sds_data_manager.stacks.batch_compute_resources import FargateBatchResources
 from sds_data_manager.stacks.database_stack import SdpDatabase
 
 
-class InstrumentLambda(Construct):
+class BatchStarterLambda(Stack):
     """Generic Construct with customizable runtime code"""
 
     def __init__(
@@ -23,16 +22,14 @@ class InstrumentLambda(Construct):
         construct_id: str,
         data_bucket: s3.Bucket,
         code_path: str or Path,
-        instrument: str,
-        instrument_downstream: dict,
-        batch_resources: FargateBatchResources,
         rds_stack: SdpDatabase,
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
         vpc: ec2.Vpc,
+        **kwargs,
     ):
         """
-        InstrumentLambda Constructor.
+        BatchStarterLambda Constructor.
 
         Parameters
         ----------
@@ -44,12 +41,6 @@ class InstrumentLambda(Construct):
             S3 bucket
         code_path : str or Path
             Path to the Lambda code directory
-        instrument : str
-            Instrument
-        instrument_downstream : dict
-            Instrument downstream dependents of given instruments
-        batch_resources: FargateBatchResources
-            Fargate compute environment
         rds_stack: SdpDatabase
             Database stack
         rds_security_group : ec2.SecurityGroup
@@ -60,26 +51,18 @@ class InstrumentLambda(Construct):
             VPC into which to put the resources that require networking.
         """
 
-        super().__init__(scope, construct_id)
-
-        # Batch Job Inputs
-        job_definition_arn = batch_resources.job_definition.attr_job_definition_arn
-        job_queue_arn = batch_resources.job_queue.attr_job_queue_arn
+        super().__init__(scope, construct_id, **kwargs)
 
         # Define Lambda Environment Variables
         # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
-            "INSTRUMENT": instrument,
-            "INSTRUMENT_DOWNSTREAM": f"{instrument_downstream}",
-            "BATCH_JOB_DEFINITION": job_definition_arn,
-            "BATCH_JOB_QUEUE": job_queue_arn,
             "SECRET_ARN": rds_stack.rds_creds.secret_arn,
         }
 
         self.instrument_lambda = lambda_alpha.PythonFunction(
             self,
-            "InstrumentLambda",
-            function_name="InstrumentLambda",
+            "BatchStarterLambda",
+            function_name="BatchStarterLambda",
             entry=str(code_path),
             index="batch_starter.py",
             handler="lambda_handler",
