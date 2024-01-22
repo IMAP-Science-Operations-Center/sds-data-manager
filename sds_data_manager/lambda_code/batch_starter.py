@@ -4,14 +4,11 @@ import os
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
-from .SDSCode.database import models
-from .SDSCode.database.database import engine
-from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
-from datetime import timedelta
 
 import boto3
 import psycopg2
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 # Setup the logging
 logging.basicConfig(level=logging.INFO)
@@ -66,19 +63,24 @@ def query_instruments(db_session, version, process_dates, instruments):
     all_records = []
 
     for instrument in instruments:
-        instrument_name = instrument['instrument'].lower()
-        instrument_class = globals()[instrument_name.capitalize() + 'Table']
+        instrument_name = instrument["instrument"].lower()
+        instrument_class = globals()[instrument_name.capitalize() + "Table"]
 
         query = db_session.query(instrument_class).filter(
             instrument_class.version == version,
-            instrument_class.data_level == func.lower(instrument['level']),
-            instrument_class.ingestion_date.between(min(process_dates), max(process_dates) + timedelta(days=1))
+            instrument_class.data_level == func.lower(instrument["level"]),
+            instrument_class.ingestion_date.between(
+                min(process_dates), max(process_dates) + timedelta(days=1)
+            ),
         )
 
         records = query.all()
         for record in records:
             # convert the record to a dictionary, or handle as needed
-            record_dict = {column.name: getattr(record, column.name) for column in record.__table__.columns}
+            record_dict = {
+                column.name: getattr(record, column.name)
+                for column in record.__table__.columns
+            }
             all_records.append(record_dict)
 
     return all_records
@@ -108,7 +110,6 @@ def query_upstream_dependencies(cur, downstream_dependents):
 
     # Iterate over each key-value pair
     for instr, levels in data.items():
-
         # Check if all dependencies for this date are present in result
         result = query_instruments(
             cur, version, [record["date"]], upstream_dependencies
@@ -223,16 +224,17 @@ def get_downstream_dependents(instrument, level):
 
     return dependents
 
+
 def extract_components(filename):
     """Extracts components from filename"""
     pattern = (
-        r"^imap_"  
-        r"(?P<instrument>[^_]*)_"  
-        r"(?P<datalevel>[^_]*)_"  
-        r"(?P<descriptor>[^_]*)_"  
-        r"(?P<startdate>\d{8})_"  
-        r"(?P<enddate>\d{8})_"  
-        r"(?P<version>v\d{2}-\d{2})"  
+        r"^imap_"
+        r"(?P<instrument>[^_]*)_"
+        r"(?P<datalevel>[^_]*)_"
+        r"(?P<descriptor>[^_]*)_"
+        r"(?P<startdate>\d{8})_"
+        r"(?P<enddate>\d{8})_"
+        r"(?P<version>v\d{2}-\d{2})"
         r"\.cdf$"
     )
     match = re.match(pattern, filename)
@@ -270,12 +272,16 @@ def lambda_handler(event: dict, context):
     )
 
     with Session(database.engine) as session:
-        result = query_instruments(session, 1, [datetime(2023, 5, 31)], [{"instrument": "codicehi", "level": "l1b"}])
+        result = query_instruments(
+            session,
+            1,
+            [datetime(2023, 5, 31)],
+            [{"instrument": "codicehi", "level": "l1b"}],
+        )
         print(result)
 
     with db_connect(db_secret_arn) as conn:
         with conn.cursor() as cur:
-
             # TODO: query the version table here for latest version
             #  of each downstream_dependent. Add logic for reprocessing.
             # TODO: add universal spin table query for ENAs and GLOWS

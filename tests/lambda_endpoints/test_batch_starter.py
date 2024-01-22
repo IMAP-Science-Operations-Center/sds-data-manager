@@ -1,12 +1,8 @@
 import datetime
-import json
 import zoneinfo
-from pathlib import Path
-from alchemy_mock.mocking import UnifiedAlchemyMagicMock
-from sds_data_manager.lambda_code.SDSCode.database.models import FileCatalogTable
-from sds_data_manager.stacks.database_stack import SdpDatabase
 
 import pytest
+from alchemy_mock.mocking import UnifiedAlchemyMagicMock
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_rds as rds
 
@@ -18,6 +14,9 @@ from sds_data_manager.lambda_code.batch_starter import (
     query_instruments,
     query_upstream_dependencies,
 )
+from sds_data_manager.lambda_code.SDSCode.database.models import FileCatalogTable
+from sds_data_manager.stacks.database_stack import SdpDatabase
+
 
 @pytest.fixture(scope="module")
 def database_stack(app, networking_stack, env):
@@ -42,9 +41,7 @@ def database_stack(app, networking_stack, env):
     return database_stack
 
 
-
 def test_extract_components():
-
     filename = "imap_ultra-45_l2_science_20240101_20240102_v00-01.cdf"
     components = extract_components(filename)
 
@@ -70,12 +67,10 @@ def test_get_downstream_dependents(database_stack):
         {"instrument": "codicelo", "level": "l3b"},
         {"instrument": "codicehi", "level": "l3b"},
         {"instrument": "swe", "level": "l3"},
-        {"instrument": "hit", "level": "l3"}
+        {"instrument": "hit", "level": "l3"},
     ]
 
     assert dependents == expected_dependents
-
-
 
 
 def test_query_upstream_dependencies(self):
@@ -83,18 +78,28 @@ def test_query_upstream_dependencies(self):
     session = UnifiedAlchemyMagicMock()
 
     # Mock the response for the specific query
-    session.add(FileCatalogTable(id=1, filename='file1.cdf', level='l1b'))
-    session.add(FileCatalogTable(id=2, filename='file2.cdf', level='l2a'))
-    session.add(FileCatalogTable(id=3, filename='file3.cdf', level='l1b'))
+    session.add(FileCatalogTable(id=1, filename="file1.cdf", level="l1b"))
+    session.add(FileCatalogTable(id=2, filename="file2.cdf", level="l2a"))
+    session.add(FileCatalogTable(id=3, filename="file3.cdf", level="l1b"))
 
     # Call the function you are testing
-    records = query_instruments(session, 1, [datetime(2023, 5, 31)], [{"instrument": "codicehi", "level": "l1b"}])
+    records = query_instruments(
+        session,
+        1,
+        [datetime(2023, 5, 31)],
+        [{"instrument": "codicehi", "level": "l1b"}],
+    )
 
     # Assert the results
     self.assertEqual(len(records), 2)  # it should return two records
-    self.assertTrue(all(record.level == 'l1b' for record in records))  # all records should have level 'l1b'
-    self.assertEqual(records[0].filename, 'file1.cdf')  # additional assertions as needed
-    self.assertEqual(records[1].filename, 'file3.cdf')
+    self.assertTrue(
+        all(record.level == "l1b" for record in records)
+    )  # all records should have level 'l1b'
+    self.assertEqual(
+        records[0].filename, "file1.cdf"
+    )  # additional assertions as needed
+    self.assertEqual(records[1].filename, "file3.cdf")
+
 
 def test_setup_database(database):
     # Create a cursor from the connection
