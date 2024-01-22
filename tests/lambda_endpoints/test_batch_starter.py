@@ -2,159 +2,99 @@ import datetime
 import json
 import zoneinfo
 from pathlib import Path
+from alchemy_mock.mocking import UnifiedAlchemyMagicMock
+from sds_data_manager.lambda_code.SDSCode.database.models import FileCatalogTable
+from sds_data_manager.stacks.database_stack import SdpDatabase
 
 import pytest
+from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_rds as rds
 
 from sds_data_manager.lambda_code.batch_starter import (
     all_dependency_present,
-    get_filename_from_event,
-    get_process_details,
+    extract_components,
+    get_downstream_dependents,
     prepare_data,
     query_instruments,
     query_upstream_dependencies,
-    remove_ingested,
 )
 
+@pytest.fixture(scope="module")
+def database_stack(app, networking_stack, env):
+    rds_size = "SMALL"
+    rds_class = "BURSTABLE3"
+    rds_storage = 200
+    database_stack = SdpDatabase(
+        app,
+        "RDS",
+        description="IMAP SDP database",
+        env=env,
+        vpc=networking_stack.vpc,
+        rds_security_group=networking_stack.rds_security_group,
+        engine_version=rds.PostgresEngineVersion.VER_15_3,
+        instance_size=ec2.InstanceSize[rds_size],
+        instance_class=ec2.InstanceClass[rds_class],
+        max_allocated_storage=rds_storage,
+        username="imap",
+        secret_name="sdp-database-creds-rds",
+        database_name="imapdb",
+    )
+    return database_stack
 
-@pytest.fixture(scope="session")
-def mock_event():
-    """Example of the type of event that will be passed to
-    the instrument lambda (in our case batch_starter.py).
-    """
-    directory = Path(__file__).parent.parent / "test-data" / "codicehi_event.json"
-    with open(directory) as file:
-        event = json.load(file)
-    return event
 
 
-@pytest.fixture()
-def database(postgresql):
-    """Populate test database."""
+def test_extract_components():
 
-    cursor = postgresql.cursor()
-    cursor.execute("CREATE SCHEMA IF NOT EXISTS sdc;")
+    filename = "imap_ultra-45_l2_science_20240101_20240102_v00-01.cdf"
+    components = extract_components(filename)
 
-    # Drop the table if it exists, to start with a fresh table
-    cursor.execute("DROP TABLE IF EXISTS sdc.codicehi;")
-    # TODO: sync with actual database schema once it is created
-    sql_command = """
-    CREATE TABLE sdc.codicehi (
-        -- Primary key
-        id SERIAL PRIMARY KEY,
+    expected_components = {
+        "instrument": "ultra-45",
+        "datalevel": "l2",
+        "descriptor": "science",
+        "startdate": "20240101",
+        "enddate": "20240102",
+        "version": "v00-01",
+    }
 
-        -- Basic columns
-        filename TEXT UNIQUE NOT NULL,
-        instrument TEXT NOT NULL,
-        version INTEGER NOT NULL,
-        level TEXT NOT NULL,
-        mode TEXT,
-        date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
-        ingested TIMESTAMP WITH TIME ZONE DEFAULT (now() AT TIME ZONE 'UTC'),
-        mag_id INTEGER,
-        spice_id INTEGER,
-        parent_codicehi_id INTEGER,
-        pointing_id INTEGER
-    );
-    """
+    assert components == expected_components
 
-    cursor.execute(sql_command)
 
-    hardcoded_data = [
-        {
-            "id": 2,
-            "filename": "imap_codicehi_l1b_20230531_v01.cdf",
-            "instrument": "codicehi",
-            "version": 1,
-            "level": "l1b",
-            "mode": None,
-            "date": "2023-05-31 14:45:00+03",
-            "ingested": "2023-06-02 14:45:00+06",
-            "mag_id": None,
-            "codicelo_id": None,
-            "spice_id": None,
-            "parent_codicehi_id": 1,
-            "pointing_id": 1,
-        },
-        {
-            "id": 4,
-            "filename": "imap_codicehi_l3a_20230602_v01.cdf",
-            "instrument": "codicehi",
-            "version": 1,
-            "level": "l3a",
-            "mode": None,
-            "date": "2023-06-02 14:45:00+03",
-            "ingested": "2023-06-02 14:45:00+10",
-            "mag_id": None,
-            "codicelo_id": None,
-            "spice_id": None,
-            "parent_codicehi_id": 3,
-            "pointing_id": 1,
-        },
-        {
-            "id": 5,
-            "filename": "imap_codicehi_l3b_20230531_v01.cdf",
-            "instrument": "codicehi",
-            "version": 1,
-            "level": "l3b",
-            "mode": None,
-            "date": "2023-05-31 14:45:00+03",
-            "ingested": "2023-06-02 14:45:00+11",
-            "mag_id": 4,
-            "codicelo_id": None,
-            "spice_id": None,
-            "parent_codicehi_id": 4,
-            "pointing_id": 1,
-        },
+def test_get_downstream_dependents(database_stack):
+    instrument = "mag"
+    datalevel = "l2"
+
+    dependents = get_downstream_dependents(instrument, datalevel)
+
+    expected_dependents = [
+        {"instrument": "codicelo", "level": "l3b"},
+        {"instrument": "codicehi", "level": "l3b"},
+        {"instrument": "swe", "level": "l3"},
+        {"instrument": "hit", "level": "l3"}
     ]
 
-    for row in hardcoded_data:
-        cursor.execute(
-            """
-            INSERT INTO sdc.codicehi (
-                filename, instrument, version, level, mode, date,
-                ingested, mag_id, spice_id, parent_codicehi_id, pointing_id
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-            (
-                row["filename"],
-                row["instrument"],
-                row["version"],
-                row["level"],
-                row["mode"],
-                row["date"],
-                row["ingested"],
-                row.get("mag_id"),
-                row.get("spice_id"),
-                row.get("parent_codicehi_id"),
-                row.get("pointing_id"),
-            ),
-        )
-
-    # Committing the transaction
-    postgresql.commit()
-    cursor.close()
-
-    # Yield the connection so tests can use it directly if needed
-    yield postgresql
-
-    # Cleanup: close the connection after tests
-    postgresql.close()
+    assert dependents == expected_dependents
 
 
-def test_get_filename_from_event(mock_event):
-    # Use mock event from the fixture
-    filename = get_filename_from_event(mock_event)
 
-    assert filename == "imap_codicehi_l3a_20230602_v01.cdf"
 
-    mock_event = {"some_other_key": {"not_the_expected_structure": {}}}
+def test_query_upstream_dependencies(self):
+    # Create a mock session
+    session = UnifiedAlchemyMagicMock()
 
-    with pytest.raises(
-        KeyError, match="Invalid event format: Unable to extract filename"
-    ):
-        get_filename_from_event(mock_event)
+    # Mock the response for the specific query
+    session.add(FileCatalogTable(id=1, filename='file1.cdf', level='l1b'))
+    session.add(FileCatalogTable(id=2, filename='file2.cdf', level='l2a'))
+    session.add(FileCatalogTable(id=3, filename='file3.cdf', level='l1b'))
 
+    # Call the function you are testing
+    records = query_instruments(session, 1, [datetime(2023, 5, 31)], [{"instrument": "codicehi", "level": "l1b"}])
+
+    # Assert the results
+    self.assertEqual(len(records), 2)  # it should return two records
+    self.assertTrue(all(record.level == 'l1b' for record in records))  # all records should have level 'l1b'
+    self.assertEqual(records[0].filename, 'file1.cdf')  # additional assertions as needed
+    self.assertEqual(records[1].filename, 'file3.cdf')
 
 def test_setup_database(database):
     # Create a cursor from the connection

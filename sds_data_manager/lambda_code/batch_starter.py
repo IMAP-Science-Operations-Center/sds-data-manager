@@ -1,8 +1,14 @@
 import json
 import logging
 import os
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta
+from .SDSCode.database import models
+from .SDSCode.database.database import engine
+from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
+from datetime import timedelta
 
 import boto3
 import psycopg2
@@ -52,112 +58,33 @@ def db_connect(db_secret_arn):
     return conn
 
 
-def query_instruments(cur, version, process_dates, instruments):
+def query_instruments(db_session, version, process_dates, instruments):
     """
     Queries the database for instruments and retrieves their records.
-
-    Parameters
-    ----------
-    cur : psycopg.extensions.cursor
-        A psycopg database cursor object to execute database operations.
-    version : int
-        Version of the instrument to be queried.
-    process_dates : list
-        A list containing start and end date to filter records on their ingestion date.
-    instruments : list of dict
-        A list containing dictionaries of instruments and their levels.
-        Each dictionary should have keys 'instrument' and 'level'.
-
-    Returns
-    -------
-    all_records : list of dict
-        A list of dictionaries where each dictionary corresponds to a record
-        from the database that matches the given criteria.
-
+    ... [rest of your docstring]
     """
     all_records = []
 
-    # Loop through instruments and query them
     for instrument in instruments:
-        query = f"""SELECT * FROM sdc.{instrument['instrument'].lower()}
-                    WHERE version = %s
-                    AND level = %s
-                    AND ingested BETWEEN %s::DATE AND (
-                    %s::DATE + INTERVAL '1 DAY');"""
-        params = (
-            version,
-            instrument["level"].lower(),
-            min(process_dates),
-            max(process_dates),
+        instrument_name = instrument['instrument'].lower()
+        instrument_class = globals()[instrument_name.capitalize() + 'Table']
+
+        query = db_session.query(instrument_class).filter(
+            instrument_class.version == version,
+            instrument_class.data_level == func.lower(instrument['level']),
+            instrument_class.ingestion_date.between(min(process_dates), max(process_dates) + timedelta(days=1))
         )
 
-        cur.execute(query, params)
-        column_names = [desc[0] for desc in cur.description]
-        records = cur.fetchall()
-
-        # Map the column names to the records
-        records_dicts = [dict(zip(column_names, record)) for record in records]
-
-        all_records.extend(records_dicts)
+        records = query.all()
+        for record in records:
+            # convert the record to a dictionary, or handle as needed
+            record_dict = {column.name: getattr(record, column.name) for column in record.__table__.columns}
+            all_records.append(record_dict)
 
     return all_records
 
 
-def remove_ingested(records, inst_list, process_dates):
-    """
-    Identifies and returns a list of instruments
-    that have not been ingested for the specified dates.
-
-    Parameters
-    ----------
-    records : list of dict
-        A list of dictionaries where each dictionary
-        corresponds to a record from the database.
-    inst_list : list of dict
-        A list containing dictionaries of
-        instruments and their levels.
-    process_dates : list
-        A list of date strings representing the dates
-        to be checked for missing ingestions.
-
-    Returns
-    -------
-    output : list of dict
-        A list of dictionaries where each dictionary
-        indicates an instrument and its level
-        that has not been ingested for a given date.
-
-    """
-
-    output = []
-
-    records_set = {
-        (rec["date"].date(), rec["instrument"], rec["level"]) for rec in records
-    }
-
-    # Here we are removing the ingested instruments from the
-    # list of the instruments that we want to ingest.
-    for inst in inst_list:
-        for date_str in process_dates:
-            date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-
-            if (
-                date_obj,
-                inst["instrument"].lower(),
-                inst["level"].lower(),
-            ) not in records_set:
-                output.append(
-                    {
-                        "instrument": inst["instrument"],
-                        "level": inst["level"],
-                        "date": date_str,
-                    }
-                )
-
-    return output
-
-
-def query_upstream_dependencies(cur, uningested, version):
+def query_upstream_dependencies(cur, downstream_dependents):
     """
     Queries and checks if the records are needed for their downstream dependencies.
 
@@ -179,34 +106,8 @@ def query_upstream_dependencies(cur, uningested, version):
 
     """
 
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    json_path = os.path.join(dir_path, "downstream_dependents.json")
-
-    with open(json_path) as f:
-        data = json.load(f)
-
-    instruments_to_process = []
-
-    for record in uningested:
-        upstream_dependencies = []
-
-        # Iterate over each key-value pair in the data dictionary
-        for instr, levels in data.items():
-            # Iterate over each level and its corresponding dependencies
-            for level, deps in levels.items():
-                # Check if there's any dependency that matches the criteria
-                dependency_found = False
-                for dep in deps:
-                    if (
-                        dep["instrument"] == record["instrument"]
-                        and dep["level"] == record["level"]
-                    ):
-                        dependency_found = True
-                        break  # Found a matching dependency
-
-                # If a matching dependency was found, add a dictionary to the list
-                if dependency_found:
-                    upstream_dependencies.append({"instrument": instr, "level": level})
+    # Iterate over each key-value pair
+    for instr, levels in data.items():
 
         # Check if all dependencies for this date are present in result
         result = query_instruments(
@@ -297,9 +198,9 @@ def prepare_data(instruments_to_process):
     return grouped_dict
 
 
-def get_downstream_dependencies(key):
+def get_downstream_dependents(instrument, level):
     """
-    Retrieves downstream dependencies of a given instrument.
+    Retrieves downstream dependents of a given instrument.
 
     Parameters
     ----------
@@ -318,12 +219,25 @@ def get_downstream_dependencies(key):
 
     with open(dependency_path) as file:
         data = json.load(file)
-        value = data.get(key)
+        dependents = data[instrument][level]
 
-        if value is None:
-            raise KeyError(f"Key '{key}' not found in the JSON file.")
+    return dependents
 
-        return value
+def extract_components(filename):
+    """Extracts components from filename"""
+    pattern = (
+        r"^imap_"  
+        r"(?P<instrument>[^_]*)_"  
+        r"(?P<datalevel>[^_]*)_"  
+        r"(?P<descriptor>[^_]*)_"  
+        r"(?P<startdate>\d{8})_"  
+        r"(?P<enddate>\d{8})_"  
+        r"(?P<version>v\d{2}-\d{2})"  
+        r"\.cdf$"
+    )
+    match = re.match(pattern, filename)
+    components = match.groupdict()
+    return components
 
 
 def lambda_handler(event: dict, context):
@@ -331,9 +245,14 @@ def lambda_handler(event: dict, context):
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
 
-    # Event details (TBD)
-    instrument = event["detail"]["object"]["instrument"]
-    instrument_downstream = get_downstream_dependencies(instrument)
+    # Event details:
+    filename = event["detail"]["object"]["key"]
+    components = extract_components(filename)
+    instrument = components["instrument"]
+    level = components["datalevel"]
+
+    downstream_dependents = get_downstream_dependents(instrument, level)
+
     db_secret_arn = os.environ.get("SECRET_ARN")
 
     session = boto3.session.Session()
@@ -350,39 +269,19 @@ def lambda_handler(event: dict, context):
         f"{instrument}-fargate-batch-job-queue"
     )
 
-    # TODO: what will event look like?
-    level = event["detail"]["object"]["level"]
-    version = event["detail"]["object"]["version"]
-    start_date = event["detail"]["object"]["start_date"]
-    end_date = event["detail"]["object"]["end_date"]
+    with Session(database.engine) as session:
+        result = query_instruments(session, 1, [datetime(2023, 5, 31)], [{"instrument": "codicehi", "level": "l1b"}])
+        print(result)
 
     with db_connect(db_secret_arn) as conn:
         with conn.cursor() as cur:
-            # query downstream dependents to see if they have been ingested
-            # e.g. if codice_l0_20230401_v01 object created the event, has
-            # codice_l1a_20230401_v01 been ingested already? This is to
-            # check for duplicates, but maybe we should just handle duplicates
-            # in batch job and remove this.
-            # TODO: this can only be for daily data products (not ENA or GLOWS); remove?
-            ingested_dependents = query_instruments(
-                cur, version, process_dates, instrument_downstream[level]
-            )
-            # TODO: this can only be for daily data products (not ENA or GLOWS); remove?
-            # remove downstream dependents that have been ingested
-            uningested = remove_ingested(
-                ingested_dependents, instrument_downstream[level], process_dates
-            )
 
-            # TODO: this can only be for daily data products (not ENA or GLOWS); remove?
-            # Check if uningested is empty
-            if not uningested:
-                logger.info("No uningested downstream dependents found.")
-                return
-
+            # TODO: query the version table here for latest version
+            #  of each downstream_dependent. Add logic for reprocessing.
             # TODO: add universal spin table query for ENAs and GLOWS
             # decide if we have sufficient upstream dependencies
             downstream_instruments_to_process = query_upstream_dependencies(
-                cur, uningested, version
+                cur, downstream_dependents
             )
 
             # No instruments to process
