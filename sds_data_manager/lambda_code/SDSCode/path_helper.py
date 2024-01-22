@@ -61,13 +61,11 @@ class FilenameParser:
             Filename
         """
         self.filename = filename
-        print(f"FILENAME: {self.filename}")
         self.filename_convention = (
             "<mission>_<instrument>_<datalevel>_<descriptor>_"
             "<startdate>_<enddate>_<version>.<extension>"
         )
         self.split_filename = filename.split("_")
-        print(f"SPLIT LIST: {self.split_filename}")
         (
             self.mission,
             self.instrument,
@@ -189,12 +187,6 @@ class FilenameParser:
 
         # Iterate through each validation check
         for _field, (is_valid, error_message) in validation_checks.items():
-            print(f"FIELD: {_field}")
-            print(f"MISSION {self.mission}")
-            print(f"MISSION CONFIG{file_pattern_config.mission}")
-            print(f"IS VALID: {is_valid}")
-            print(f"ERROR MSG {error_message}")
-
             if not is_valid:
                 self.message = error_message
                 return False
