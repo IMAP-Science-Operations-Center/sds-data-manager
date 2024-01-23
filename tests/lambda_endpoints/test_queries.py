@@ -53,7 +53,7 @@ def expected_response():
     return expected_response
 
 
-def test_start_date_query(test_engine, expected_response):
+def test_start_date_query(setup_test_data, test_engine, expected_response):
     """Test that start date can be queried"""
     event = {"queryStringParameters": {"start_date": "20251101"}}
 
