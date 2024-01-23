@@ -23,11 +23,12 @@ def setup_test_data(test_engine):
     }
 
     # Add data to the file catalog
-    with Session(test_engine) as session:
-        session.add(models.FileCatalog(**metadata_params))
-        session.commit()
+    session = Session(test_engine)
+    session.add(models.FileCatalog(**metadata_params))
+    session.commit()
 
-    return ""
+    yield session
+    session.close()
 
 
 @pytest.fixture()
@@ -86,7 +87,7 @@ def test_start_and_end_date_query(setup_test_data, test_engine, expected_respons
     assert returned_query["body"] == expected_response
 
 
-def test_empty_start_date_query(setup_test_data, test_engine, expected_response):
+def test_empty_start_date_query(setup_test_data, test_engine):
     "Test that a start_date query with no matches returns an empty list"
     event = {"queryStringParameters": {"start_date": "20261101"}}
     expected_response = json.dumps("[]")
