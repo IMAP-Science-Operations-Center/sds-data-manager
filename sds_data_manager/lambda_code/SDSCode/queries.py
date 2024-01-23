@@ -47,13 +47,13 @@ def lambda_handler(event, context):
     ]
     # go through each query parameter to set up sqlalchemy query conditions
     for param, value in query_params.items():
-        # confirm that the search parameter is valid
+        # confirm that the query parameter is valid
         if param not in valid_parameters:
             response = {
                 "statusCode": 400,
                 "body": json.dumps(
-                    f"{param} is not a valid search parameter. "
-                    + f"Valid search parameters are: {valid_parameters}"
+                    f"{param} is not a valid query parameter. "
+                    + f"Valid query parameters are: {valid_parameters}"
                 ),
                 "headers": {
                     "Content-Type": "application/json",
@@ -83,12 +83,14 @@ def lambda_handler(event, context):
     with Session(engine) as session:
         search_result = session.execute(query).all()
 
-    logger.info("Query Search Results: " + str(search_result))
+    logger.info(
+        "Found [%s] Query Search Results: %s", len(search_result), str(search_result)
+    )
 
     # Format the response
     response = {
         "statusCode": 200,
-        "body": json.dumps(str(search_result)),
+        "body": json.dumps(str(search_result)),  # returns a list of tuples
         "headers": {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",  # Allow CORS
