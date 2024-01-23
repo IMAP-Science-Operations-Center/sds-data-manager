@@ -56,6 +56,7 @@ class BatchStarterLambda(Stack):
         # Define Lambda Environment Variables
         # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
+            "S3_BUCKET": f"{data_bucket.bucket_name}",
             "SECRET_ARN": rds_stack.rds_creds.secret_arn,
         }
 

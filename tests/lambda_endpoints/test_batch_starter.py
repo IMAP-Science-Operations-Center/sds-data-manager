@@ -1,47 +1,71 @@
-import datetime
-import zoneinfo
+from datetime import datetime
+from pathlib import Path
 
 import pytest
-from alchemy_mock.mocking import UnifiedAlchemyMagicMock
-from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_rds as rds
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from sds_data_manager.lambda_code.batch_starter import (
-    all_dependency_present,
+    append_attributes,
     extract_components,
-    get_downstream_dependents,
+    find_dependencies,
+    load_data,
     prepare_data,
-    query_instruments,
+    query_instrument,
     query_upstream_dependencies,
 )
-from sds_data_manager.lambda_code.SDSCode.database.models import FileCatalogTable
-from sds_data_manager.stacks.database_stack import SdpDatabase
+from sds_data_manager.lambda_code.SDSCode.database.models import Base, FileCatalog
 
 
 @pytest.fixture(scope="module")
-def database_stack(app, networking_stack, env):
-    rds_size = "SMALL"
-    rds_class = "BURSTABLE3"
-    rds_storage = 200
-    database_stack = SdpDatabase(
-        app,
-        "RDS",
-        description="IMAP SDP database",
-        env=env,
-        vpc=networking_stack.vpc,
-        rds_security_group=networking_stack.rds_security_group,
-        engine_version=rds.PostgresEngineVersion.VER_15_3,
-        instance_size=ec2.InstanceSize[rds_size],
-        instance_class=ec2.InstanceClass[rds_class],
-        max_allocated_storage=rds_storage,
-        username="imap",
-        secret_name="sdp-database-creds-rds",
-        database_name="imapdb",
+def test_engine():
+    return create_engine("sqlite:///:memory:")
+
+
+@pytest.fixture(scope="module")
+def test_session(test_engine):
+    session_local = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+    Base.metadata.create_all(bind=test_engine)
+    session = session_local()
+    yield session
+    session.close()
+
+
+@pytest.fixture(scope="module")
+def test_file_catalog_simulation(test_session):
+    # Setup: Add a test record to the database
+    test_record = FileCatalog(
+        file_path="/path/to/file",
+        instrument="ultra-45",
+        data_level="l2",
+        descriptor="science",
+        start_date=datetime(2024, 1, 1),
+        end_date=datetime(2024, 1, 2),
+        version="v00-01",
+        extension=".cdf",
+        status_tracking_id=1,  # Assuming a valid ID from 'status_tracking' table
     )
-    return database_stack
+
+    test_record_2 = FileCatalog(
+        file_path="/path/to/file",
+        instrument="hit",
+        data_level="l0",
+        descriptor="science",
+        start_date=datetime(2024, 1, 1),
+        end_date=datetime(2024, 1, 2),
+        version="v00-01",
+        extension=".cdf",
+        status_tracking_id=1,  # Assuming a valid ID from 'status_tracking' table
+    )
+    test_session.add(test_record)
+    test_session.add(test_record_2)
+    test_session.commit()
+
+    return test_session
 
 
 def test_extract_components():
+    "Tests extract_components function."
     filename = "imap_ultra-45_l2_science_20240101_20240102_v00-01.cdf"
     components = extract_components(filename)
 
@@ -57,182 +81,128 @@ def test_extract_components():
     assert components == expected_components
 
 
-def test_get_downstream_dependents(database_stack):
-    instrument = "mag"
-    datalevel = "l2"
+def test_query_instrument(test_file_catalog_simulation):
+    "Tests query_instrument function."
 
-    dependents = get_downstream_dependents(instrument, datalevel)
+    upstream_dependency = {"instrument": "ultra-45", "level": "l2", "version": "v00-01"}
 
-    expected_dependents = [
-        {"instrument": "codicelo", "level": "l3b"},
-        {"instrument": "codicehi", "level": "l3b"},
-        {"instrument": "swe", "level": "l3"},
-        {"instrument": "hit", "level": "l3"},
-    ]
-
-    assert dependents == expected_dependents
-
-
-def test_query_upstream_dependencies(self):
-    # Create a mock session
-    session = UnifiedAlchemyMagicMock()
-
-    # Mock the response for the specific query
-    session.add(FileCatalogTable(id=1, filename="file1.cdf", level="l1b"))
-    session.add(FileCatalogTable(id=2, filename="file2.cdf", level="l2a"))
-    session.add(FileCatalogTable(id=3, filename="file3.cdf", level="l1b"))
-
-    # Call the function you are testing
-    records = query_instruments(
-        session,
-        1,
-        [datetime(2023, 5, 31)],
-        [{"instrument": "codicehi", "level": "l1b"}],
+    "Tests query_instrument function."
+    record = query_instrument(
+        test_file_catalog_simulation, upstream_dependency, "20240101", "20240102"
     )
 
-    # Assert the results
-    self.assertEqual(len(records), 2)  # it should return two records
-    self.assertTrue(
-        all(record.level == "l1b" for record in records)
-    )  # all records should have level 'l1b'
-    self.assertEqual(
-        records[0].filename, "file1.cdf"
-    )  # additional assertions as needed
-    self.assertEqual(records[1].filename, "file3.cdf")
+    assert record.instrument == "ultra-45"
+    assert record.data_level == "l2"
+    assert record.version == "v00-01"
+    assert record.start_date == datetime(2024, 1, 1)
+    assert record.end_date == datetime(2024, 1, 2)
 
 
-def test_setup_database(database):
-    # Create a cursor from the connection
-    cursor = database.cursor()
+def test_append_attributes(test_file_catalog_simulation):
+    "Tests append_attributes function."
+    downstream_dependents = [{"instrument": "codicelo", "level": "l3b"}]
 
-    # Use the cursor to execute SQL and fetch results
-    cursor.execute("SELECT COUNT(*) FROM sdc.codicehi")
-    count = cursor.fetchone()[0]
-    cursor.close()
-
-    assert count == 3
-
-
-def test_get_process_details(database):
-    # Test that we query the instrument database properly.
-    conn = database
-    cur = conn.cursor()
-
-    data_level, version_number, process_dates = get_process_details(
-        cur, "CodiceHi", "imap_codicehi_l3a_20230602_v01.cdf"
+    complete_dependents = append_attributes(
+        test_file_catalog_simulation,
+        downstream_dependents,
+        "20240101",
+        "20240102",
+        "v00-01",
     )
 
-    assert data_level == "l3a"
-    assert version_number == 1
-    assert process_dates == ["2023-06-01", "2023-06-02"]
+    expected_complete_dependent = {
+        "instrument": "codicelo",
+        "level": "l3b",
+        "version": "v00-01",
+        "start_date": "20240101",
+        "end_date": "20240102",
+    }
+
+    assert complete_dependents[0] == expected_complete_dependent
 
 
-def test_all_dependency_present():
-    # Test items in dependencies are all present in result_list.
-    dependencies_true = [
-        {"instrument": "CodiceHi", "level": "l0"},
-        {"instrument": "CodiceHi", "level": "l2"},
+def test_load_data():
+    "Tests load_data function."
+    base_directory = Path(__file__).resolve()
+    base_path = base_directory.parents[2] / "sds_data_manager" / "lambda_code"
+    filepath = base_path / "downstream_dependents.json"
+
+    data = load_data(filepath)
+
+    assert data["codicehi"]["l0"][0]["level"] == "l1a"
+
+
+def test_find_dependencies():
+    "Tests find_dependencies function."
+    base_directory = Path(__file__).resolve()
+    base_path = base_directory.parents[2] / "sds_data_manager" / "lambda_code"
+    filepath = base_path / "downstream_dependents.json"
+
+    data = load_data(filepath)
+
+    upstream_dependencies = find_dependencies("codicelo", "l3b", "v00-01", data)
+
+    expected_result = [
+        {"instrument": "codicelo", "level": "l2", "version": "v00-01"},
+        {"instrument": "codicelo", "level": "l3a", "version": "v00-01"},
+        {"instrument": "mag", "level": "l2", "version": "v00-01"},
     ]
-    dependencies_false = [
-        {"instrument": "CodiceHi", "level": "l0"},
-        {"instrument": "CodiceHi", "level": "l3"},
-    ]
 
-    result = [
+    assert upstream_dependencies == expected_result
+
+
+def test_query_upstream_dependencies(test_file_catalog_simulation):
+    "Tests query_upstream_dependencies function."
+    base_directory = Path(__file__).resolve()
+    filepath = (
+        base_directory.parents[2]
+        / "sds_data_manager"
+        / "lambda_code"
+        / "downstream_dependents.json"
+    )
+
+    data = load_data(filepath)
+
+    downstream_dependents = [
         {
-            "id": 6,
-            "filename": "imap_codicehi_l2_20230531_v01.cdf",
-            "instrument": "codicehi",
-            "version": 1,
-            "level": "l2",
-            "mode": "NULL",
-            "date": datetime.datetime(
-                2023, 6, 2, 5, 45, tzinfo=zoneinfo.ZoneInfo(key="America/Denver")
-            ),
-            "ingested": datetime.datetime(
-                2023, 6, 2, 5, 45, tzinfo=zoneinfo.ZoneInfo(key="America/Denver")
-            ),
-            "mag_id": 4,
-            "spice_id": 6,
-            "parent_codicehi_id": 3,
-            "status": "INCOMPLETE",
+            "instrument": "hit",
+            "level": "l1a",
+            "version": "v00-01",
+            "start_date": "20240101",
+            "end_date": "20240102",
         },
         {
-            "id": 7,
-            "filename": "imap_codicehi_l0_20230531_v01.ccsds",
-            "instrument": "codicehi",
-            "version": 1,
-            "level": "l0",
-            "mode": "NULL",
-            "date": datetime.datetime(
-                2023, 6, 2, 5, 45, tzinfo=zoneinfo.ZoneInfo(key="America/Denver")
-            ),
-            "ingested": datetime.datetime(
-                2023, 6, 2, 5, 45, tzinfo=zoneinfo.ZoneInfo(key="America/Denver")
-            ),
-            "mag_id": 4,
-            "spice_id": 6,
-            "parent_codicehi_id": 3,
-            "status": "INCOMPLETE",
+            "instrument": "hit",
+            "level": "l3",
+            "version": "v00-01",
+            "start_date": "20240101",
+            "end_date": "20240102",
         },
     ]
 
-    assert all_dependency_present(result, dependencies_true)
-    assert not all_dependency_present(result, dependencies_false)
+    result = query_upstream_dependencies(
+        test_file_catalog_simulation, downstream_dependents, data, "bucket_name"
+    )
 
-
-def test_query_dependents(database):
-    # Test to query the database to make certain dependents are
-    # not already there.
-    conn = database
-    cur = conn.cursor()
-
-    instrument_downstream = [
-        {"instrument": "CodiceHi", "level": "l3b"},
-        {"instrument": "CodiceHi", "level": "l3c"},
-    ]
-    process_dates = ["2023-05-31", "2023-06-01", "2023-06-02"]
-
-    # Dependents that have been ingested for this date range.
-    records = query_instruments(cur, 1, process_dates, instrument_downstream)
-
-    assert records[0]["filename"] == "imap_codicehi_l3b_20230531_v01.cdf"
-
-    # Since there are 2 instruments x 3 dates and one record to remove = 5
-    output = remove_ingested(records, instrument_downstream, process_dates)
-
-    assert len(output) == 5
-
-
-def test_query_dependencies(database):
-    # Test code that decides if we have sufficient dependencies
-    # for each dependent to process.
-    conn = database
-    cur = conn.cursor()
-
-    output = [
-        {"instrument": "CodiceHi", "level": "l2", "date": "2023-05-31"},
-        {"instrument": "CodiceHi", "level": "l2", "date": "2023-06-01"},
-        {"instrument": "CodiceHi", "level": "l2", "date": "2023-06-02"},
-    ]
-    result = query_upstream_dependencies(cur, output, 1)
-
-    assert result == [{"instrument": "CodiceHi", "level": "l2", "date": "2023-06-02"}]
+    assert list(result[0].keys()) == ["filename", "prepared_data"]
 
 
 def test_prepare_data():
-    output = [
-        {"instrument": "CodiceHi", "level": "l2", "date": "2023-05-31"},
-        {"instrument": "CodiceHi", "level": "l3", "date": "2023-06-01"},
-        {"instrument": "CodiceHi", "level": "l2", "date": "2023-06-02"},
-        {"instrument": "CodiceLo", "level": "l2", "date": "2023-06-02"},
-    ]
+    "Tests prepare_data function."
 
-    input_data = prepare_data(output)
+    upstream_dependencies = [{"instrument": "hit", "level": "l0", "version": "v00-01"}]
 
-    grouped_list = {
-        "CodiceHi": {"l2": ["2023-05-31", "2023-06-02"], "l3": ["2023-06-01"]},
-        "CodiceLo": {"l2": ["2023-06-02"]},
-    }
+    prepared_data = prepare_data(
+        "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf",
+        upstream_dependencies,
+        "bucket_name",
+    )
 
-    assert grouped_list == input_data
+    expected_prepared_data = (
+        "imap_cli --instrument hit --level l1a "
+        "--filename 's3://bucket_name/imap/hit/l1a/2024/01/"
+        "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf' "
+        "--dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
+    )
+
+    assert prepared_data == expected_prepared_data

@@ -2,13 +2,14 @@ import json
 import logging
 import os
 import re
-from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
+from pathlib import Path
 
 import boto3
-import psycopg2
-from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+from .SDSCode.database import database as db
+from .SDSCode.database import models
 
 # Setup the logging
 logging.basicConfig(level=logging.INFO)
@@ -18,215 +19,314 @@ logger = logging.getLogger(__name__)
 batch_client = boto3.client("batch")
 
 
-def db_connect(db_secret_arn):
+def query_instrument(session, upstream_dependency, start_date, end_date):
     """
-    Retrieves secrets and connects to database.
+    Appends start_time, end_time and version information to downstream dependents.
 
     Parameters
     ----------
-    db_secret_arn : str
-        The ARN for the database secrets in AWS Secrets Manager.
+    session : orm session
+        Database session.
+    upstream_dependency : dict
+        Dictionary of upstream dependency.
+    start_date : str
+        Start date of the event data.
+    end_date : str
+        End date of the event data.
 
     Returns
     -------
-    conn : psycopg.Connection
-        Database connection.
+    record : models.FileCatalog or None
+        The first FileCatalog record matching the query criteria.
+        None is returned if no record matches the criteria.
+
     """
-    client = boto3.client(service_name="secretsmanager", region_name="us-west-2")
+    instrument = upstream_dependency["instrument"]
+    level = upstream_dependency["level"]
+    version = upstream_dependency["version"]
 
-    try:
-        response = client.get_secret_value(SecretId=db_secret_arn)
-        secret_string = response["SecretString"]
-        secret = json.loads(secret_string)
-    except Exception as e:
-        raise Exception(f"Error retrieving secret: {e}") from e
-
-    try:
-        conn = psycopg2.connect(
-            dbname=secret["dbname"],
-            user=secret["username"],
-            password=secret["password"],
-            host=secret["host"],
-            port=secret["port"],
+    record = (
+        session.query(models.FileCatalog)
+        .filter(
+            models.FileCatalog.instrument == instrument,
+            models.FileCatalog.data_level == level,
+            models.FileCatalog.version == version,
+            models.FileCatalog.start_date >= datetime.strptime(start_date, "%Y%m%d"),
+            models.FileCatalog.end_date <= datetime.strptime(end_date, "%Y%m%d"),
         )
-    except Exception as e:
-        raise Exception(f"Error connecting to the database: {e}") from e
+        .first()
+    )
 
-    return conn
+    return record
 
 
-def query_instruments(db_session, version, process_dates, instruments):
+def append_attributes(session, downstream_dependents, start_date, end_date, version):
     """
-    Queries the database for instruments and retrieves their records.
-    ... [rest of your docstring]
-    """
-    all_records = []
-
-    for instrument in instruments:
-        instrument_name = instrument["instrument"].lower()
-        instrument_class = globals()[instrument_name.capitalize() + "Table"]
-
-        query = db_session.query(instrument_class).filter(
-            instrument_class.version == version,
-            instrument_class.data_level == func.lower(instrument["level"]),
-            instrument_class.ingestion_date.between(
-                min(process_dates), max(process_dates) + timedelta(days=1)
-            ),
-        )
-
-        records = query.all()
-        for record in records:
-            # convert the record to a dictionary, or handle as needed
-            record_dict = {
-                column.name: getattr(record, column.name)
-                for column in record.__table__.columns
-            }
-            all_records.append(record_dict)
-
-    return all_records
-
-
-def query_upstream_dependencies(cur, downstream_dependents):
-    """
-    Queries and checks if the records are needed for their downstream dependencies.
+    Appends start_time, end_time and version information to downstream dependents.
 
     Parameters
     ----------
-    cur : database cursor
-        The cursor object associated with the database connection.
-    uningested : list of dict
+    session : orm session
+        Database session.
+    downstream_dependents : list of dict
         A list of dictionaries where each dictionary corresponds to a record
-        from the database with keys 'instrument', 'level', and 'date'.
-    version : int or str
-        The version number to be used when querying records.
+    start_date : str
+        Start date of the event data.
+    end_date : str
+        End date of the event data.
+    version : str
+        Version of the event data.
+
+    Returns
+    -------
+    downstream_dependents : list of dict
+        Dictionary containing components with dates and versions appended.
+
+    """
+
+    for dependent in downstream_dependents:
+        # TODO: query the version table here for appropriate version
+        #  of each downstream_dependent.
+
+        # TODO: add repointing table query if dependent is ENA or GLOWS
+        #  Use start_date and end_date to query repointing table.
+        # Use pointing start_time and end_time in place of start_date and end_date.
+        # Add pointing number to dependent.
+
+        dependent["version"] = "v00-01"  # placeholder
+        dependent["start_date"] = start_date
+        dependent["end_date"] = end_date
+
+    return downstream_dependents
+
+
+def find_dependencies(
+    downstream_dependent_instrument,
+    downstream_dependent_inst_level,
+    downstream_dependent_version,
+    data,
+):
+    """
+    Finds dependency information for each instrument.
+
+    Parameters
+    ----------
+    downstream_dependent_instrument : str
+        Downstream dependent instrument.
+    downstream_dependent_inst_level : str
+        Downstream dependent data level.
+    downstream_dependent_version : str
+        Downstream dependent version.
+    data : dict
+        Dictionary containing dependency data.
+
+    Returns
+    -------
+    dependencies : list of dict
+        A list of dictionaries containing dependency instrument,
+        data level, and version.
+
+    """
+    dependencies = []
+
+    for instr, levels in data.items():
+        for level, deps in levels.items():
+            if any(
+                dep["instrument"] == downstream_dependent_instrument
+                and dep["level"] == downstream_dependent_inst_level
+                for dep in deps
+            ):
+                dependencies.append({"instrument": instr, "level": level})
+
+    for dependency in dependencies:
+        # TODO: query the version table here for appropriate version
+        #  of each dependency. Use downstream_dependent_version to query version table.
+        dependency["version"] = "v00-01"  # placeholder
+
+    return dependencies
+
+
+def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket):
+    """
+    Queries and checks if dependencies are available.
+
+    Parameters
+    ----------
+    session : orm session
+        Database session.
+    downstream_dependents : list of dict
+        Dictionary containing components with dates and versions appended.
+    data : dict
+        Dictionary containing dependency data.
+    s3_bucket : str
+        S3 bucket name.
 
     Returns
     -------
     instruments_to_process : list of dict
-        A list of dictionaries. Each dictionary corresponds to a record
-        that can be processed as its downstream dependencies are unmet.
+        A list of dictionaries containing the filename and prepared data.
 
     """
 
-    # Iterate over each key-value pair
-    for instr, levels in data.items():
-        # Check if all dependencies for this date are present in result
-        result = query_instruments(
-            cur, version, [record["date"]], upstream_dependencies
-        )
-        all_dependencies_met = all_dependency_present(result, upstream_dependencies)
+    instruments_to_process = []
 
-        if all_dependencies_met:
-            print(f"All dependencies for {record['date']} are met!")
+    # Iterate over each downstream dependent
+    for dependent in downstream_dependents:
+        queried_instrument_dependencies = []
+
+        instrument = dependent["instrument"]
+        level = dependent["level"]
+        version = dependent["version"]
+        start_date = dependent["start_date"]
+        end_date = dependent["end_date"]
+
+        # For each downstream dependent, find its upstream dependencies
+        upstream_dependencies = find_dependencies(instrument, level, version, data)
+
+        for upstream_dependency in upstream_dependencies:
+            # Check to see if each upstream dependency is available
+            record = query_instrument(
+                session, upstream_dependency, start_date, end_date
+            )
+            if record is not None:
+                logging.info(
+                    f"Dependency found: {upstream_dependency['instrument']}, "
+                    f"{upstream_dependency['level']}, "
+                    f"{upstream_dependency['version']}"
+                )
+                # Add dependency to list of available dependencies.
+                queried_instrument_dependencies.append(
+                    {
+                        "instrument": record.instrument,
+                        "level": record.data_level,
+                        "version": record.version,
+                    }
+                )
+            else:
+                logging.info(
+                    f"Missing dependency: {upstream_dependency['instrument']}, "
+                    f"{upstream_dependency['level']}, "
+                    f"{upstream_dependency['version']}"
+                )
+
+        # If all dependencies are available, prepare the data for batch job.
+        if queried_instrument_dependencies == upstream_dependencies:
+            # TODO: add descriptor logic. Using <sci> as placeholder.
+            filename = (
+                f"imap_{instrument}_{level}_sci_{start_date}_{end_date}_{version}.cdf"
+            )
+
+            prepared_data = prepare_data(filename, upstream_dependencies, s3_bucket)
             instruments_to_process.append(
-                {
-                    "instrument": record["instrument"],
-                    "level": record["level"],
-                    "date": record["date"],
-                }
+                {"filename": filename, "prepared_data": prepared_data}
+            )
+            logging.info(
+                f"All dependencies for {upstream_dependency['instrument']} present."
             )
         else:
-            print(f"Some dependencies for {record['date']} are missing!")
+            logging.info(
+                f"Some dependencies for {upstream_dependency['instrument']} "
+                f"are missing."
+            )
 
     return instruments_to_process
 
 
-def all_dependency_present(result, dependencies):
+def load_data(filepath: Path):
     """
-    Checks if all specified dependencies are present
-    in the given result.
+    Loads dependency data.
 
     Parameters
     ----------
-    result : list of dict
-        Result of a query.
-    dependencies : list of dict
-        List of required dependencies.
+    filepath : Path
+        Path of dependency data.
 
     Returns
     -------
-    bool
-        True if all dependencies are found in
-        the `result`, otherwise False.
+    data : dict
+        Dictionary containing dependency data.
 
     """
-    result_list = [{"instrument": r["instrument"], "level": r["level"]} for r in result]
-
-    # Convert dependencies to lowercase for comparison
-    dependencies = [
-        {"instrument": d["instrument"].lower(), "level": d["level"]}
-        for d in dependencies
-    ]
-
-    # Check if the items in dependencies are all present in result_list
-    if set(tuple(item.items()) for item in dependencies).issubset(
-        set(tuple(item.items()) for item in result_list)
-    ):
-        print("All dependencies are found.")
-        return True
-    else:
-        print("Some dependencies are missing.")
-        return False
-
-
-def prepare_data(instruments_to_process):
-    """
-    Groups input data by 'instrument' and 'level', and aggregates the dates
-    for each group into a list.
-
-    Parameters
-    ----------
-    instruments_to_process : list of dict
-        A list of dictionaries which is not aggregated.
-
-    Returns
-    -------
-    grouped_dict: dict
-        A dictionary of instruments, each containing a dictionary of
-        levels with a list of dates.
-    """
-    grouped_data = defaultdict(lambda: defaultdict(list))
-    for item in instruments_to_process:
-        instrument = item["instrument"]
-        level = item["level"]
-        date = item["date"]
-        grouped_data[instrument][level].append(date)
-
-    grouped_dict = {
-        instrument: dict(levels) for instrument, levels in grouped_data.items()
-    }
-
-    return grouped_dict
-
-
-def get_downstream_dependents(instrument, level):
-    """
-    Retrieves downstream dependents of a given instrument.
-
-    Parameters
-    ----------
-    key : str
-        The key from the JSON file.
-
-    Returns
-    -------
-    dict
-        The value associated with the provided key in the JSON file.
-    """
-
-    # Construct the path to the JSON file
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    dependency_path = os.path.join(dir_path, "downstream_dependents.json")
-
-    with open(dependency_path) as file:
+    with filepath.open() as file:
         data = json.load(file)
-        dependents = data[instrument][level]
 
-    return dependents
+    return data
 
 
-def extract_components(filename):
-    """Extracts components from filename"""
+def prepare_data(filename, upstream_dependencies, s3_bucket):
+    """
+    Prepares data for batch job.
+
+    Parameters
+    ----------
+    instrument : str
+        Instrument.
+    level : str
+        Data level.
+    start_date : str
+        Data start date.
+    filename : str
+        filename.
+    upstream_dependencies : list of dict
+        A list of dictionaries containing dependency instrument,
+        data level, and version.
+    s3_bucket : str
+        S3 bucket name.
+
+    Returns
+    -------
+    prepared_data : str
+        Data to submit to batch job.
+
+    """
+    components = extract_components(filename)
+
+    instrument = components["instrument"]
+    level = components["datalevel"]
+    start_date = components["startdate"]
+
+    format_start_date = datetime.strptime(
+        start_date, "%Y%m%d"
+    )  # Parses '20240101' from '20240101_20240102'
+
+    # Format year and month from the datetime object
+    year = format_start_date.strftime("%Y")
+    month = format_start_date.strftime("%m")
+
+    # Base S3 path
+    s3_base_path = f"s3://{s3_bucket}/imap/{instrument}/{level}/{year}/{month}/"
+
+    # Prepare the final command
+    # Pre-construct parts of the string
+    cmd_base = "imap_cli"
+    instrument_part = f"--instrument {instrument}"
+    level_part = f"--level {level}"
+    filename_part = f"--filename '{s3_base_path}{filename}'"
+    dependency_part = f"--dependency {upstream_dependencies}"
+
+    # Combine everything using an f-string for the final command
+    prepared_data = (
+        f"{cmd_base} {instrument_part} {level_part} {filename_part} {dependency_part}"
+    )
+
+    return prepared_data
+
+
+def extract_components(filename: str):
+    """
+    Extracts components from filename.
+
+    Parameters
+    ----------
+    filename : str
+        Path of dependency data.
+
+    Returns
+    -------
+    components : dict
+        Dictionary containing components.
+
+    """
     pattern = (
         r"^imap_"
         r"(?P<instrument>[^_]*)_"
@@ -252,11 +352,19 @@ def lambda_handler(event: dict, context):
     components = extract_components(filename)
     instrument = components["instrument"]
     level = components["datalevel"]
+    version = components["version"]
+    start_date = components["startdate"]
+    end_date = components["enddate"]
 
-    downstream_dependents = get_downstream_dependents(instrument, level)
+    # S3 Bucket name.
+    s3_bucket = os.environ.get("S3_BUCKET")
 
-    db_secret_arn = os.environ.get("SECRET_ARN")
+    # Retrieve dependency data.
+    dependency_path = Path(__file__).resolve().parent / "downstream_dependents.json"
+    data = load_data(dependency_path)
+    downstream_dependents = data[instrument][level]
 
+    # Get information for the batch job.
     session = boto3.session.Session()
     sts_client = boto3.client("sts")
     region = session.region_name
@@ -271,43 +379,33 @@ def lambda_handler(event: dict, context):
         f"{instrument}-fargate-batch-job-queue"
     )
 
-    with Session(database.engine) as session:
-        result = query_instruments(
-            session,
-            1,
-            [datetime(2023, 5, 31)],
-            [{"instrument": "codicehi", "level": "l1b"}],
+    # Get database engine.
+    engine = db.get_engine()
+
+    with Session(engine) as session:
+        complete_dependents = append_attributes(
+            session, downstream_dependents, start_date, end_date, version
         )
-        print(result)
 
-    with db_connect(db_secret_arn) as conn:
-        with conn.cursor() as cur:
-            # TODO: query the version table here for latest version
-            #  of each downstream_dependent. Add logic for reprocessing.
-            # TODO: add universal spin table query for ENAs and GLOWS
-            # decide if we have sufficient upstream dependencies
-            downstream_instruments_to_process = query_upstream_dependencies(
-                cur, downstream_dependents
-            )
+        # decide if we have sufficient upstream dependencies
+        downstream_instruments_to_process = query_upstream_dependencies(
+            session, complete_dependents, data, s3_bucket
+        )
 
-            # No instruments to process
-            if not downstream_instruments_to_process:
-                logger.info("No instruments_to_process. Skipping further processing.")
-                return
+        # No instruments to process
+        if not downstream_instruments_to_process:
+            logger.info("No instruments_to_process. Skipping further processing.")
+            return
 
-        grouped_list = prepare_data(downstream_instruments_to_process)
-
-        # TODO: more changes required for dates, version, and descriptor
         # Start Batch Job execution for each instrument
-        for instrument_name in grouped_list:
-            for data_level in grouped_list[instrument_name]:
-                batch_client.submit_job(
-                    jobName=f"imap_{instrument_name}_{data_level}_<descriptor>_<startdate>_<enddate>_<vxx-xx>.cdf",
-                    jobQueue=job_queue,
-                    jobDefinition=job_definition,
-                    containerOverrides={
-                        "command": [
-                            f"imap_{instrument_name}_{data_level}_<descriptor>_<startdate>_<enddate>_<vxx-xx>.cdf"
-                        ],
-                    },
-                )
+        for instrument in downstream_instruments_to_process:
+            filename = instrument["filename"]
+
+            batch_client.submit_job(
+                jobName=filename,
+                jobQueue=job_queue,
+                jobDefinition=job_definition,
+                containerOverrides={
+                    "command": [instrument["prepared_data"]],
+                },
+            )
