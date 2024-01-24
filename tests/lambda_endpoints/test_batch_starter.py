@@ -8,6 +8,7 @@ from sds_data_manager.lambda_code.batch_starter import (
     append_attributes,
     extract_components,
     find_dependencies,
+    lambda_handler,
     load_data,
     prepare_data,
     query_instrument,
@@ -194,3 +195,13 @@ def test_prepare_data():
     )
 
     assert prepared_data == expected_prepared_data
+
+
+def test_lambda_handler(test_file_catalog_simulation):
+    # Tests lambda_handler function.
+    event = {
+        "detail": {"object": {"key": "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"}}
+    }
+    context = {"context": "sample_context"}
+
+    lambda_handler(event, context)
