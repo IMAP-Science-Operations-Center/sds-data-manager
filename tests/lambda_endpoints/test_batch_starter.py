@@ -187,7 +187,7 @@ def test_prepare_data():
     )
 
     expected_prepared_data = (
-        "imap_cli --instrument hit --level l1a "
+        "--instrument hit --level l1a "
         "--s3_uri 's3://bucket_name/imap/hit/l1a/2024/01/"
         "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf' "
         "--dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"

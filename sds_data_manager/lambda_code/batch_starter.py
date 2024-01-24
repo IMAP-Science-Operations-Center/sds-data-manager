@@ -296,15 +296,12 @@ def prepare_data(filename, upstream_dependencies, s3_bucket):
 
     # Prepare the final command
     # Pre-construct parts of the string
-    cmd_base = "imap_cli"
     instrument_part = f"--instrument {instrument}"
     level_part = f"--level {level}"
     s3_uri = f"--s3_uri '{s3_base_path}{filename}'"
     dependency_part = f"--dependency {upstream_dependencies}"
 
-    prepared_data = (
-        f"{cmd_base} {instrument_part} {level_part} {s3_uri} {dependency_part}"
-    )
+    prepared_data = f"{instrument_part} {level_part} {s3_uri} {dependency_part}"
 
     return prepared_data
 
