@@ -1,7 +1,10 @@
+import os
 from datetime import datetime
 from pathlib import Path
 
+import boto3
 import pytest
+from moto import mock_batch, mock_sts
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.batch_starter import (
@@ -51,6 +54,27 @@ def test_file_catalog_simulation(test_engine):
         session.commit()
 
     return session
+
+
+@pytest.fixture()
+def _aws_credentials():
+    """Mocked AWS Credentials for moto."""
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+
+
+@pytest.fixture()
+def batch_client(_aws_credentials):
+    with mock_batch():
+        yield boto3.client("batch", region_name="us-west-2")
+
+
+@pytest.fixture()
+def sts_client(_aws_credentials):
+    with mock_sts():
+        yield boto3.client("sts", region_name="us-west-2")
 
 
 def test_extract_components():
@@ -197,7 +221,7 @@ def test_prepare_data():
     assert prepared_data == expected_prepared_data
 
 
-def test_lambda_handler(test_file_catalog_simulation):
+def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
     # Tests lambda_handler function.
     event = {
         "detail": {"object": {"key": "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"}}
