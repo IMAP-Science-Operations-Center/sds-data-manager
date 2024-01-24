@@ -2,8 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.batch_starter import (
     append_attributes,
@@ -14,27 +13,15 @@ from sds_data_manager.lambda_code.batch_starter import (
     query_instrument,
     query_upstream_dependencies,
 )
-from sds_data_manager.lambda_code.SDSCode.database.models import Base, FileCatalog
+from sds_data_manager.lambda_code.SDSCode.database import database as db
+from sds_data_manager.lambda_code.SDSCode.database.models import FileCatalog
 
 
-@pytest.fixture(scope="module")
-def test_engine():
-    return create_engine("sqlite:///:memory:")
+@pytest.fixture()
+def test_file_catalog_simulation(test_engine):
+    # Setup: Add records to the database
 
-
-@pytest.fixture(scope="module")
-def test_session(test_engine):
-    session_local = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-    Base.metadata.create_all(bind=test_engine)
-    session = session_local()
-    yield session
-    session.close()
-
-
-@pytest.fixture(scope="module")
-def test_file_catalog_simulation(test_session):
-    # Setup: Add a test record to the database
-    test_record = FileCatalog(
+    test_record_1 = FileCatalog(
         file_path="/path/to/file",
         instrument="ultra-45",
         data_level="l2",
@@ -57,11 +44,12 @@ def test_file_catalog_simulation(test_session):
         extension=".cdf",
         status_tracking_id=1,  # Assuming a valid ID from 'status_tracking' table
     )
-    test_session.add(test_record)
-    test_session.add(test_record_2)
-    test_session.commit()
+    with Session(db.get_engine()) as session:
+        session.add(test_record_1)
+        session.add(test_record_2)
+        session.commit()
 
-    return test_session
+    return session
 
 
 def test_extract_components():
@@ -200,7 +188,7 @@ def test_prepare_data():
 
     expected_prepared_data = (
         "imap_cli --instrument hit --level l1a "
-        "--filename 's3://bucket_name/imap/hit/l1a/2024/01/"
+        "--s3_uri 's3://bucket_name/imap/hit/l1a/2024/01/"
         "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf' "
         "--dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
     )

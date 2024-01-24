@@ -1,6 +1,7 @@
 """Module for testing API utilities.
 """
 import argparse
+import json
 import logging
 from pathlib import Path
 
@@ -25,15 +26,30 @@ def _parse_args():
         "Example usage: python cli.py <s3_uri>. "
     )
 
-    s3_uri_help = "The s3_uri from which to download. "
-
     api_endpoint_help = (
         "The api_endpoint. Default is https://api.dev.imap-mission.com. "
     )
 
     parser = argparse.ArgumentParser(prog="imap_api", description=description)
 
-    parser.add_argument("s3_uri", type=str, help=s3_uri_help)
+    parser.add_argument(
+        "--instrument", type=str, required=True, help="Instrument name."
+    )
+    parser.add_argument(
+        "--level", type=str, required=True, help="Data processing level."
+    )
+    parser.add_argument(
+        "--s3_uri",
+        type=str,
+        required=True,
+        help="Full path to the file in the S3 bucket.",
+    )
+    parser.add_argument(
+        "--dependency",
+        type=json.loads,
+        required=True,
+        help="Dependency information in JSON format.",
+    )
     parser.add_argument("--api_endpoint", type=str, help=api_endpoint_help)
     args = parser.parse_args()
 

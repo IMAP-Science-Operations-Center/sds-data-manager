@@ -15,7 +15,7 @@ from .SDSCode.database import models
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create a Step Functions client
+# Create a batch client
 batch_client = boto3.client("batch")
 
 
@@ -285,9 +285,7 @@ def prepare_data(filename, upstream_dependencies, s3_bucket):
     level = components["datalevel"]
     start_date = components["startdate"]
 
-    format_start_date = datetime.strptime(
-        start_date, "%Y%m%d"
-    )  # Parses '20240101' from '20240101_20240102'
+    format_start_date = datetime.strptime(start_date, "%Y%m%d")
 
     # Format year and month from the datetime object
     year = format_start_date.strftime("%Y")
@@ -301,12 +299,11 @@ def prepare_data(filename, upstream_dependencies, s3_bucket):
     cmd_base = "imap_cli"
     instrument_part = f"--instrument {instrument}"
     level_part = f"--level {level}"
-    filename_part = f"--filename '{s3_base_path}{filename}'"
+    s3_uri = f"--s3_uri '{s3_base_path}{filename}'"
     dependency_part = f"--dependency {upstream_dependencies}"
 
-    # Combine everything using an f-string for the final command
     prepared_data = (
-        f"{cmd_base} {instrument_part} {level_part} {filename_part} {dependency_part}"
+        f"{cmd_base} {instrument_part} {level_part} {s3_uri} {dependency_part}"
     )
 
     return prepared_data
@@ -409,3 +406,5 @@ def lambda_handler(event: dict, context):
                     "command": [instrument["prepared_data"]],
                 },
             )
+
+        # TODO: Add put logic here for indexer_lambda
