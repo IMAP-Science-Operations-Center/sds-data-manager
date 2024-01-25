@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sds_data_manager.lambda_code.batch_starter import (
     append_attributes,
     extract_components,
-    find_dependencies,
+    find_upstream_dependencies,
     lambda_handler,
     load_data,
     prepare_data,
@@ -113,7 +113,7 @@ def test_query_instrument(test_file_catalog_simulation):
 
 def test_append_attributes(test_file_catalog_simulation):
     "Tests append_attributes function."
-    downstream_dependents = [{"instrument": "codicelo", "level": "l3b"}]
+    downstream_dependents = [{"instrument": "codice", "level": "l3b"}]
 
     complete_dependents = append_attributes(
         test_file_catalog_simulation,
@@ -124,7 +124,7 @@ def test_append_attributes(test_file_catalog_simulation):
     )
 
     expected_complete_dependent = {
-        "instrument": "codicelo",
+        "instrument": "codice",
         "level": "l3b",
         "version": "v00-01",
         "start_date": "20240101",
@@ -142,22 +142,22 @@ def test_load_data():
 
     data = load_data(filepath)
 
-    assert data["codicehi"]["l0"][0]["level"] == "l1a"
+    assert data["codice"]["l0"][0]["level"] == "l1a"
 
 
-def test_find_dependencies():
-    "Tests find_dependencies function."
+def test_find_upstream_dependencies():
+    "Tests find_upstream_dependencies function."
     base_directory = Path(__file__).resolve()
     base_path = base_directory.parents[2] / "sds_data_manager" / "lambda_code"
     filepath = base_path / "downstream_dependents.json"
 
     data = load_data(filepath)
 
-    upstream_dependencies = find_dependencies("codicelo", "l3b", "v00-01", data)
+    upstream_dependencies = find_upstream_dependencies("codice", "l3b", "v00-01", data)
 
     expected_result = [
-        {"instrument": "codicelo", "level": "l2", "version": "v00-01"},
-        {"instrument": "codicelo", "level": "l3a", "version": "v00-01"},
+        {"instrument": "codice", "level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "level": "l3a", "version": "v00-01"},
         {"instrument": "mag", "level": "l2", "version": "v00-01"},
     ]
 

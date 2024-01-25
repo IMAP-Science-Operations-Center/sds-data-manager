@@ -12,11 +12,11 @@
         "l2": [
             {"instrument": "ultra-45", "level": "l1c"},
             {"instrument": "ultra-90", "level": "l1c"},
-            {"instrument": "codice", "level": "l3a"}
+            {"instrument": "codice", "level": "l3a"},
+            {"instrument": "codice", "level": "l3b"}
         ],
         "l3a": [
             {"instrument": "codice", "level": "l3b"},
-            {"instrument": "codice", "level": "l3c"},
             {"instrument": "codice", "level": "l3c"}
         ]
     },

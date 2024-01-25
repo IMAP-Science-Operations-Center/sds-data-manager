@@ -100,7 +100,7 @@ def append_attributes(session, downstream_dependents, start_date, end_date, vers
     return downstream_dependents
 
 
-def find_dependencies(
+def find_upstream_dependencies(
     downstream_dependent_instrument,
     downstream_dependent_inst_level,
     downstream_dependent_version,
@@ -122,12 +122,21 @@ def find_dependencies(
 
     Returns
     -------
-    dependencies : list of dict
+    upstream_dependencies : list of dict
         A list of dictionaries containing dependency instrument,
         data level, and version.
 
+    Example:
+    upstream_dependencies = find_upstream_dependencies("codice", "l3b", "v00-01", data)
+
+    expected_result = [
+        {"instrument": "codice", "level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "level": "l3a", "version": "v00-01"},
+        {"instrument": "mag", "level": "l2", "version": "v00-01"},
+    ]
+
     """
-    dependencies = []
+    upstream_dependencies = []
 
     for instr, levels in data.items():
         for level, deps in levels.items():
@@ -136,19 +145,20 @@ def find_dependencies(
                 and dep["level"] == downstream_dependent_inst_level
                 for dep in deps
             ):
-                dependencies.append({"instrument": instr, "level": level})
+                upstream_dependencies.append({"instrument": instr, "level": level})
 
-    for dependency in dependencies:
+    for dependency in upstream_dependencies:
         # TODO: query the version table here for appropriate version
         #  of each dependency. Use downstream_dependent_version to query version table.
         dependency["version"] = "v00-01"  # placeholder
 
-    return dependencies
+    return upstream_dependencies
 
 
 def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket):
     """
-    Queries and checks if dependencies are available.
+    Finds dependency information for each instrument. This function looks for
+    upstream dependency of current downstream dependent.
 
     Parameters
     ----------
@@ -181,8 +191,11 @@ def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket)
         end_date = dependent["end_date"]
 
         # For each downstream dependent, find its upstream dependencies
-        upstream_dependencies = find_dependencies(instrument, level, version, data)
+        upstream_dependencies = find_upstream_dependencies(
+            instrument, level, version, data
+        )
 
+        # TODO: do a single query without a loop.
         for upstream_dependency in upstream_dependencies:
             # Check to see if each upstream dependency is available
             record = query_instrument(
@@ -356,6 +369,7 @@ def lambda_handler(event: dict, context):
     # Retrieve dependency data.
     dependency_path = Path(__file__).resolve().parent / "downstream_dependents.json"
     data = load_data(dependency_path)
+    # Downstream dependents that are candidates for the batch job.
     downstream_dependents = data[instrument][level]
 
     # Get information for the batch job.
