@@ -32,7 +32,7 @@ import requests
 EC2_IP = os.getenv("EC2_IP_ADDRESS")
 
 
-def test_flask_app_response(_ec2_ip):
+def test_flask_app_response():
     """Test the Flask application response."""
 
     if EC2_IP is not None:
