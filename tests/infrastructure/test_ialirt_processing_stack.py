@@ -25,7 +25,6 @@ webbrowser: http://<EC2_IP>:8080/
 """
 import os
 
-import pytest
 import requests
 
 # Environment variable for EC2 IP Address (set manually)
@@ -34,7 +33,6 @@ EC2_IP = os.getenv("EC2_IP_ADDRESS")
 
 def test_flask_app_response():
     """Test the Flask application response."""
-    pytest.skip("Skipping test in CI environment")
 
     assert EC2_IP is not None, "EC2 IP Address is not set in environment variables."
 
