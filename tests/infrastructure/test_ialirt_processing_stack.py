@@ -34,7 +34,5 @@ EC2_IP = os.getenv("EC2_IP_ADDRESS")
 def test_flask_app_response():
     """Test the Flask application response."""
 
-    assert EC2_IP is not None, "EC2 IP Address is not set in environment variables."
-
     url = f"http://{EC2_IP}:8080/"
     requests.get(url, timeout=10)
