@@ -25,7 +25,6 @@ webbrowser: http://<EC2_IP>:8080/
 """
 import os
 
-import pytest
 import requests
 
 # Environment variable for EC2 IP Address (set manually)
@@ -35,6 +34,6 @@ EC2_IP = os.getenv("EC2_IP_ADDRESS")
 def test_flask_app_response():
     """Test the Flask application response."""
 
-    if EC2_IP is not None:
+    if EC2_IP is not None:  # pragma: no cover
         url = f"http://{EC2_IP}:8080/"
         requests.get(url, timeout=10)
