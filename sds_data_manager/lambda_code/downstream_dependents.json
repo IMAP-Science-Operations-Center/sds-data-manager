@@ -1,43 +1,23 @@
 {
-    "codicehi": {
+    "codice": {
         "l0": [
-            {"instrument": "codicehi", "level": "l1a"}
+            {"instrument": "codice", "level": "l1a"}
         ],
         "l1a": [
-            {"instrument": "codicehi", "level": "l1b"}
+            {"instrument": "codice", "level": "l1b"}
         ],
         "l1b": [
-            {"instrument": "codicehi", "level": "l2"}
+            {"instrument": "codice", "level": "l2"}
         ],
         "l2": [
-            {"instrument": "ultra", "level": "l1c"},
-            {"instrument": "codicehi", "level": "l3a"}
+            {"instrument": "ultra-45", "level": "l1c"},
+            {"instrument": "ultra-90", "level": "l1c"},
+            {"instrument": "codice", "level": "l3a"}
         ],
         "l3a": [
-            {"instrument": "codicehi", "level": "l3b"},
-            {"instrument": "codicehi", "level": "l3c"},
-            {"instrument": "codicelo", "level": "l3c"}
-        ]
-    },
-    "codicelo": {
-        "l0": [
-            {"instrument": "codicelo", "level": "l1a"}
-        ],
-        "l1a": [
-            {"instrument": "codicelo", "level": "l1b"}
-        ],
-        "l1b": [
-            {"instrument": "codicelo", "level": "l2"}
-        ],
-        "l2": [
-            {"instrument": "ultra", "level": "l1c"},
-            {"instrument": "codicelo", "level": "l3a"},
-            {"instrument": "codicelo", "level": "l3b"}
-        ],
-        "l3a": [
-            {"instrument": "codicelo", "level": "l3b"},
-            {"instrument": "codicelo", "level": "l3c"},
-            {"instrument": "codicehi", "level": "l3c"}
+            {"instrument": "codice", "level": "l3b"},
+            {"instrument": "codice", "level": "l3c"},
+            {"instrument": "codice", "level": "l3c"}
         ]
     },
     "glows": {
@@ -86,36 +66,54 @@
             {"instrument": "idex", "level": "l3"}
         ]
     },
-    "imaphi": {
+    "hi-45": {
         "l0": [
-            {"instrument": "imaphi", "level": "l1a"}
+            {"instrument": "hi-45", "level": "l1a"}
         ],
         "l1a": [
-            {"instrument": "imaphi", "level": "l1b"}
+            {"instrument": "hi-45", "level": "l1b"}
         ],
         "l1b": [
-            {"instrument": "imaplo", "level": "l1c"},
-            {"instrument": "imaphi", "level": "l1c"}
+            {"instrument": "lo", "level": "l1c"},
+            {"instrument": "hi-45", "level": "l1c"}
         ],
         "l1c": [
-            {"instrument": "imaphi", "level": "l2"}
+            {"instrument": "hi-45", "level": "l2"}
         ],
         "l2": [
-            {"instrument": "imaphi", "level": "l3"}
+            {"instrument": "hi-45", "level": "l3"}
         ]
     },
-    "imaplo": {
+    "hi-90": {
         "l0": [
-            {"instrument": "imaplo", "level": "l1a"}
+            {"instrument": "hi-90", "level": "l1a"}
         ],
         "l1a": [
-            {"instrument": "imaplo", "level": "l1b"}
+            {"instrument": "hi-90", "level": "l1b"}
         ],
         "l1b": [
-            {"instrument": "imaplo", "level": "l1c"}
+            {"instrument": "lo", "level": "l1c"},
+            {"instrument": "hi-90", "level": "l1c"}
         ],
         "l1c": [
-            {"instrument": "imaplo", "level": "l2"}
+            {"instrument": "hi-90", "level": "l2"}
+        ],
+        "l2": [
+            {"instrument": "hi-90", "level": "l3"}
+        ]
+    },
+    "lo": {
+        "l0": [
+            {"instrument": "lo", "level": "l1a"}
+        ],
+        "l1a": [
+            {"instrument": "lo", "level": "l1b"}
+        ],
+        "l1b": [
+            {"instrument": "lo", "level": "l1c"}
+        ],
+        "l1c": [
+            {"instrument": "lo", "level": "l2"}
         ]
     },
     "mag": {
@@ -130,8 +128,7 @@
             {"instrument": "mag", "level": "l2"}
         ],
         "l2": [
-            {"instrument": "codicelo", "level": "l3b"},
-            {"instrument": "codicehi", "level": "l3b"},
+            {"instrument": "codice", "level": "l3b"},
             {"instrument": "swe", "level": "l3"},
             {"instrument": "hit", "level": "l3"}
         ]
@@ -147,7 +144,8 @@
             {"instrument": "swapi", "level": "l2"}
         ],
         "l2": [
-            {"instrument": "ultra", "level": "l1c"},
+            {"instrument": "ultra-45", "level": "l1c"},
+            {"instrument": "ultra-90", "level": "l1c"},
             {"instrument": "swapi", "level": "l3"},
             {"instrument": "swe", "level": "l3"}
         ]
@@ -167,32 +165,44 @@
             {"instrument": "glows", "level": "l3"}
         ]
     },
-    "ultra": {
+    "ultra-45": {
         "l0": [
-            {"instrument": "ultra", "level": "l1a"}
+            {"instrument": "ultra-45", "level": "l1a"}
         ],
         "l1a": [
-            {"instrument": "ultra", "level": "l1b"}
+            {"instrument": "ultra-45", "level": "l1b"}
         ],
         "l1b": [
-            {"instrument": "ultra", "level": "l1c"}
+            {"instrument": "ultra-45", "level": "l1c"}
         ],
         "l1c": [
-            {"instrument": "ultra", "level": "l1d"}
+            {"instrument": "ultra-45", "level": "l1d"}
         ],
         "l12": [
-            {"instrument": "ultra", "level": "l2"}
+            {"instrument": "ultra-45", "level": "l2"}
         ],
         "l2": [
-            {"instrument": "ultra", "level": "l3"}
+            {"instrument": "ultra-45", "level": "l3"}
         ]
     },
-    "spice": {
-        "definitive": [
-            {"instrument": "ultra", "level": "l1c"}
+    "ultra-90": {
+        "l0": [
+            {"instrument": "ultra-90", "level": "l1a"}
         ],
-        "final": [
-            {"instrument": "ultra", "level": "l1c"}
+        "l1a": [
+            {"instrument": "ultra-90", "level": "l1b"}
+        ],
+        "l1b": [
+            {"instrument": "ultra-90", "level": "l1c"}
+        ],
+        "l1c": [
+            {"instrument": "ultra-90", "level": "l1d"}
+        ],
+        "l12": [
+            {"instrument": "ultra-90", "level": "l2"}
+        ],
+        "l2": [
+            {"instrument": "ultra-90", "level": "l3"}
         ]
     }
 }
