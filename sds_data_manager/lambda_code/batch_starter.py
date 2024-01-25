@@ -182,8 +182,6 @@ def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket)
 
     # Iterate over each downstream dependent
     for dependent in downstream_dependents:
-        queried_instrument_dependencies = []
-
         instrument = dependent["instrument"]
         level = dependent["level"]
         version = dependent["version"]
@@ -195,35 +193,31 @@ def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket)
             instrument, level, version, data
         )
 
-        # TODO: do a single query without a loop.
+        all_dependencies_available = True  # Initialize the flag
         for upstream_dependency in upstream_dependencies:
             # Check to see if each upstream dependency is available
             record = query_instrument(
                 session, upstream_dependency, start_date, end_date
             )
-            if record is not None:
-                logging.info(
-                    f"Dependency found: {upstream_dependency['instrument']}, "
-                    f"{upstream_dependency['level']}, "
-                    f"{upstream_dependency['version']}"
+            if record is None:
+                all_dependencies_available = (
+                    False  # Set flag to false if any dependency is missing
                 )
-                # Add dependency to list of available dependencies.
-                queried_instrument_dependencies.append(
-                    {
-                        "instrument": record.instrument,
-                        "level": record.data_level,
-                        "version": record.version,
-                    }
-                )
-            else:
                 logging.info(
                     f"Missing dependency: {upstream_dependency['instrument']}, "
                     f"{upstream_dependency['level']}, "
                     f"{upstream_dependency['version']}"
                 )
+                break  # Exit the loop early as we already found a missing dependency
+            else:
+                logging.info(
+                    f"Dependency found: {upstream_dependency['instrument']}, "
+                    f"{upstream_dependency['level']}, "
+                    f"{upstream_dependency['version']}"
+                )
 
-        # If all dependencies are available, prepare the data for batch job.
-        if queried_instrument_dependencies == upstream_dependencies:
+        # If all dependencies are available, prepare the data for batch job
+        if all_dependencies_available:
             # TODO: add descriptor logic. Using <sci> as placeholder.
             filename = (
                 f"imap_{instrument}_{level}_sci_{start_date}_{end_date}_{version}.cdf"
@@ -233,14 +227,9 @@ def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket)
             instruments_to_process.append(
                 {"filename": filename, "prepared_data": prepared_data}
             )
-            logging.info(
-                f"All dependencies for {upstream_dependency['instrument']} present."
-            )
+            logging.info(f"All dependencies for {instrument} present.")
         else:
-            logging.info(
-                f"Some dependencies for {upstream_dependency['instrument']} "
-                f"are missing."
-            )
+            logging.info(f"Some dependencies for {instrument} are missing.")
 
     return instruments_to_process
 
