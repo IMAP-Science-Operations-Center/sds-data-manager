@@ -3,11 +3,11 @@ import logging
 import os
 
 import boto3
-from SDSCode.path_helper import ScienceFilepathManager
+from SDSCode.path_helper import InvalidScienceFileError, ScienceFilepathManager
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 s3 = boto3.client("s3")
 
@@ -25,7 +25,7 @@ def _generate_signed_upload_url(key_path, tags=None):
     url = boto3.client("s3").generate_presigned_url(
         ClientMethod="put_object",
         Params={
-            "Bucket": bucket_name[5:],
+            "Bucket": bucket_name,
             "Key": key_path,
             "Metadata": tags or dict(),
         },
@@ -50,25 +50,30 @@ def lambda_handler(event, context):
 
     :return: A pre-signed url where users can upload a data file to the SDS.
     """
-    logger.info(f"Event: {event}")
-    logger.info(f"Context: {context}")
+    path_params = event.get("pathParameters", {}).get("proxy", None)
+    logger.debug("Parsing path parameters=[%s] from event=" "[%s]", path_params, event)
 
-    if "filename" not in event["queryStringParameters"]:
+    if not path_params:
         return {
             "statusCode": 400,
-            "body": json.dumps("Please specify a filename to upload"),
+            "body": json.dumps(
+                "No filename given for upload. "
+                "Please provide a filename "
+                "in the path. Eg. /upload/path/to/file/filename.pkts"
+            ),
         }
-
-    filename = event["queryStringParameters"]["filename"]
-
-    science_file = ScienceFilepathManager(filename)
-
-    if not science_file.is_valid:
-        return {"statusCode": 400, "body": science_file.error_message}
+    # TODO: Handle other filetypes other than science files
+    #      The current ScienceFilepathManager only accepts filenames, not the full path
+    filename = os.path.basename(path_params)
+    try:
+        science_file = ScienceFilepathManager(filename)
+    except InvalidScienceFileError as e:
+        logger.error(str(e))
+        return {"statusCode": 400, "body": str(e)}
 
     s3_key_path = science_file.construct_upload_path()
 
-    url = _generate_signed_upload_url(s3_key_path, tags=event["queryStringParameters"])
+    url = _generate_signed_upload_url(s3_key_path)
 
     if url is None:
         return {

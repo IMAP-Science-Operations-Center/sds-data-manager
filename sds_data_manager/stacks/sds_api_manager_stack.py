@@ -80,7 +80,7 @@ class SdsApiManager(Stack):
             timeout=cdk.Duration.minutes(15),
             memory_size=1000,
             environment={
-                "S3_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_BUCKET": data_bucket.bucket_name,
             },
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
@@ -91,6 +91,7 @@ class SdsApiManager(Stack):
             route="upload",
             http_method="GET",
             lambda_function=upload_api_lambda,
+            use_path_params=True,
         )
 
         # query API lambda
@@ -119,24 +120,28 @@ class SdsApiManager(Stack):
             lambda_function=query_api_lambda,
         )
 
-        # download query API lambda
-        download_query_api = lambda_alpha_.PythonFunction(
+        # download API lambda
+        download_api = lambda_alpha_.PythonFunction(
             self,
-            id="DownloadQueryAPILambda",
-            function_name="download-query-api",
+            id="DownloadAPILambda",
+            function_name="download-api-handler",
             entry=lambda_code_directory_str,
-            index="SDSCode/download_query_api.py",
+            index="SDSCode/download_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.seconds(60),
+            environment={
+                "S3_BUCKET": data_bucket.bucket_name,
+            },
         )
 
-        download_query_api.add_to_role_policy(s3_read_policy)
+        download_api.add_to_role_policy(s3_read_policy)
 
         api.add_route(
             route="download",
             http_method="GET",
-            lambda_function=download_query_api,
+            lambda_function=download_api,
+            use_path_params=True,
         )
 
         spin_table_code = lambda_code_directory / "spin_table_api.py"

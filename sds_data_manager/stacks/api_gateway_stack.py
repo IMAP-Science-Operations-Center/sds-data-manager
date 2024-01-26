@@ -127,7 +127,11 @@ class ApiGateway(Stack):
         cloudwatch_alarm.add_alarm_action(cloudwatch_actions.SnsAction(sns_topic))
 
     def add_route(
-        self, route: str, http_method: str, lambda_function: lambda_.Function
+        self,
+        route: str,
+        http_method: str,
+        lambda_function: lambda_.Function,
+        use_path_params: bool = False,
     ):
         """Add a route to the API Gateway.
 
@@ -139,9 +143,15 @@ class ApiGateway(Stack):
             HTTP method. Eg. GET, POST, etc.
         lambda_function : lambda_.Function
             Lambda function to trigger when this route is hit.
+        use_path_params : bool, optional
+            Whether or not to use path parameters, by default False
+            This allows for ``/download/{filename}`` style routes.
         """
         # Define the API Gateway Resources
         resource = self.api.root.add_resource(route)
+        if use_path_params:
+            # Need to add a proxy resource to allow path parameters
+            resource = resource.add_proxy(any_method=False)
 
         # Create a new method that is linked to the Lambda function
         resource.add_method(http_method, apigw.LambdaIntegration(lambda_function))
