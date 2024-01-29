@@ -329,7 +329,7 @@ def extract_components(filename: str):
         r"(?P<startdate>\d{8})_"
         r"(?P<enddate>\d{8})_"
         r"(?P<version>v\d{2}-\d{2})"
-        r"\.cdf$"
+        r"\.(cdf|pkts)$"
     )
     match = re.match(pattern, filename)
     if match is None:
@@ -419,12 +419,10 @@ def lambda_handler(event: dict, context):
     downstream_dependents = data[instrument][level]
 
     # Get information for the batch job.
-    session = boto3.session.Session()
-    sts_client = boto3.client("sts")
+    region = os.environ.get("REGION")
+    account = os.environ.get("ACCOUNT")
     # Create a batch client
     batch_client = boto3.client("batch")
-    region = session.region_name
-    account = sts_client.get_caller_identity()["Account"]
 
     job_definition = (
         f"arn:aws:batch:{region}:{account}:job-definition/"
