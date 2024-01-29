@@ -15,6 +15,7 @@ from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     prepare_data,
     query_instrument,
     query_upstream_dependencies,
+    send_lambda_put_event,
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import FileCatalog
@@ -224,3 +225,15 @@ def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
     context = {"context": "sample_context"}
 
     lambda_handler(event, context)
+
+
+def test_send_lambda_put_event(events_client):
+    expected_prepared_data = (
+        "--instrument hit --level l1a "
+        "--s3_uri 's3://data-bucket/imap/swapi/l1/2023/01/"
+        "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf' "
+        "--dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
+    )
+
+    result = send_lambda_put_event(expected_prepared_data)
+    assert result["ResponseMetadata"]["HTTPStatusCode"] == 200

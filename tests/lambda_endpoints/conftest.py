@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import boto3
 import pytest
-from moto import mock_s3
+from moto import mock_events, mock_s3
 from sqlalchemy import create_engine
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
@@ -26,6 +26,13 @@ def s3_client(_aws_credentials):
     """Mocked S3 Client, so we don't need network requests."""
     with mock_s3():
         yield boto3.client("s3", region_name="us-east-1")
+
+
+@pytest.fixture()
+def events_client(_aws_credentials):
+    """Mock EventBridge client"""
+    with mock_events():
+        yield boto3.client("events", region_name="us-west-2")
 
 
 # NOTE: This test_engine scope is function.
