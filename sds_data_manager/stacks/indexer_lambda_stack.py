@@ -14,6 +14,9 @@ from aws_cdk import (
     aws_events_targets as targets,
 )
 from aws_cdk import (
+    aws_iam as iam,
+)
+from aws_cdk import (
     aws_lambda as lambda_,
 )
 from aws_cdk import (
@@ -61,7 +64,7 @@ class IndexerLambda(Stack):
             index="SDSCode/indexer.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
-            timeout=cdk.Duration.minutes(15),
+            timeout=cdk.Duration.minutes(1),
             memory_size=1000,
             allow_public_subnet=True,
             vpc=vpc,
@@ -74,7 +77,17 @@ class IndexerLambda(Stack):
             },
         )
 
+        # events:PutEvents
+        put_event_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["events:PutEvents"],
+            resources=[
+                "*",
+            ],
+        )
+
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        indexer_lambda.add_to_role_policy(put_event_policy)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name

@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session
 from sds_data_manager.lambda_code.SDSCode import indexer
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.lambda_code.SDSCode.indexer import get_dependency
+from sds_data_manager.lambda_code.SDSCode.indexer import (
+    get_dependency,
+    send_event_from_indexer,
+)
 from sds_data_manager.lambda_code.SDSCode.path_helper import (
     InvalidScienceFileError,
     ScienceFilepathManager,
@@ -146,7 +149,7 @@ def write_to_s3(s3_client):
     return s3_client
 
 
-def test_batch_job_event(test_engine, write_to_s3):
+def test_batch_job_event(test_engine, write_to_s3, events_client):
     """Test batch job event"""
     # Send s3 event first to write initial data to satus
     # table
@@ -281,7 +284,7 @@ def test_custom_lambda_event(test_engine):
         assert result[0].status == models.Status.INPROGRESS
 
 
-def test_s3_event(test_engine):
+def test_s3_event(test_engine, events_client):
     """Test s3 event"""
     # Took out unused parameters from event
     event = {
@@ -347,3 +350,10 @@ def test_unknown_event(test_engine):
     returned_value = indexer.lambda_handler(event=event, context={})
     assert returned_value["statusCode"] == 400
     assert returned_value["body"] == "Unknown event source"
+
+
+def test_send_lambda_put_event(events_client):
+    filename = "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
+
+    result = send_event_from_indexer(filename)
+    assert result["ResponseMetadata"]["HTTPStatusCode"] == 200

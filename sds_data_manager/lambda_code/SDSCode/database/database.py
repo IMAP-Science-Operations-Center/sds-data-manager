@@ -21,4 +21,4 @@ def get_engine():
     db_config = json.loads(secret_string)
     db_uri = f'postgresql://{db_config["username"]}:{db_config["password"]}@{db_config["host"]}:{db_config["port"]}/{db_config["dbname"]}'
 
-    return create_engine(db_uri, echo=True)
+    return create_engine(db_uri)

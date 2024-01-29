@@ -51,6 +51,14 @@ class NetworkingStack(Stack):
             ],
         )
 
+        # Adding this endpoint so that lambda within
+        # this VPC can perform boto3.clinet("events")
+        # operations
+        self.vpc.add_interface_endpoint(
+            "EventBridgeEndpoint",
+            service=ec2.InterfaceVpcEndpointAwsService.EVENTBRIDGE,
+        )
+
         # Create security group for the RDS instance
         self.rds_security_group = ec2.SecurityGroup(
             self, "RdsSecurityGroup", vpc=self.vpc, allow_all_outbound=True

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from .database import database as db
 from .database import models
 from .database_handler import update_file_catalog_table, update_status_table
+from .lambda_custom_events import IMAPLambdaPutEvent
 from .path_helper import InvalidScienceFileError, ScienceFilepathManager
 
 # Logger setup
@@ -122,6 +123,49 @@ def http_response(headers=None, status_code=200, body="Success"):
     }
 
 
+def send_event_from_indexer(filename):
+    """Sends custom PutEvent to EventBridge.
+
+
+    Example of what PutEvent looks like:
+    event = {
+        "Source": "imap.lambda",
+        "DetailType": "Processed File",
+        "Detail": {
+            "object": {
+                  "key": filename
+            },
+        },
+    }
+
+    Parameters
+    ----------
+    filename : str
+
+    Returns
+    -------
+    dict
+        EventBridge response
+    """
+    logger.info("in send event function")
+    event_client = boto3.client("events")
+
+    # Create event["detail"] information
+    # TODO: This is what batch starter expect
+    # as input. Revisit this.
+    detail = {"object": {"key": filename}}
+
+    # create PutEvent dictionary
+    event = IMAPLambdaPutEvent(detail_type="Processed File", detail=detail)
+    event_data = event.to_event()
+    logger.info(f"sending this detail to event - {event_data}")
+
+    # Send event to EventBridge
+    response = event_client.put_events(Entries=[event_data])
+    logger.info(f"response - {response}")
+    return response
+
+
 def s3_event_handler(event):
     """Handler function for S3 events.
 
@@ -178,6 +222,7 @@ def s3_event_handler(event):
     try:
         logger.info(f"Inserting {filename} into database")
         update_status_table(status_params)
+        logger.info("Wrote data to status table")
     except Exception as e:
         logger.error(str(e))
         return http_response(status_code=400, body=str(e))
@@ -195,14 +240,18 @@ def s3_event_handler(event):
     if status_tracking is None:
         logger.error("No status tracking record found")
         return http_response(status_code=400, body="No status tracking record found")
-
+    logger.info(f"Found record in status table associated with - {filename}")
     try:
         metadata_params["status_tracking_id"] = status_tracking.id
         update_file_catalog_table(metadata_params)
+        logger.info("Wrote data to file catalog table")
     except Exception as e:
         logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 
+    # Send L0 event from this lambda for Batch starter
+    # lambda
+    send_event_from_indexer(filename)
     return http_response(status_code=200, body="Success")
 
 
@@ -290,18 +339,11 @@ def batch_event_handler(event):
                 metadata_params["file_path"] = s3_uri
                 metadata_params["status_tracking_id"] = result.id
                 update_file_catalog_table(metadata_params)
-                # TODO: send event to batch starter with filename information
-                # in upcoming PR. This is last component needed for demo.
-                # Event input will looks something like this:
-                # event = {
-                #     "Source": "imap.lambda",
-                #     "DetailType": "Processed File",
-                #     "Detail": {
-                #         "object": {
-                #               "key": filename
-                #         },
-                #     },
-                # }
+                # Send event from this lambda for Batch starter
+                # lambda
+                response = send_event_from_indexer(filename)
+                logger.info(f"Sent event to EventBridge - {response}")
+
         except Exception as e:
             logger.error(str(e))
             return http_response(status_code=400, body=str(e))
