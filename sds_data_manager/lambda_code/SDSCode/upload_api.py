@@ -83,7 +83,6 @@ def lambda_handler(event, context):
             models.FileCatalog.file_path == s3_key_path
         )
         result = session.execute(query).first()
-        print(result)
         if result:
             response = {
                 "statusCode": 409,
