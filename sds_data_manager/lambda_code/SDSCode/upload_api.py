@@ -85,7 +85,7 @@ def lambda_handler(event, context):
             models.FileCatalog.file_path == s3_key_path
         )
         result = session.execute(query).first()
-        # return a 409 response if a existing file is found
+        # return a 409 response if an existing file is found
         if result:
             response = {
                 "statusCode": 409,
