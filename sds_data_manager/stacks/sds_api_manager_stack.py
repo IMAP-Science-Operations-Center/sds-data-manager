@@ -79,8 +79,12 @@ class SdsApiManager(Stack):
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(15),
             memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            security_groups=[rds_security_group],
             environment={
                 "S3_BUCKET": data_bucket.bucket_name,
+                "SECRET_NAME": db_secret_name,
             },
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
@@ -166,6 +170,7 @@ class SdsApiManager(Stack):
         )
         rds_secret.grant_read(grantee=universal_spin_table_handler)
         rds_secret.grant_read(grantee=query_api_lambda)
+        rds_secret.grant_read(grantee=upload_api_lambda)
 
         api.add_route(
             route="spin_table",
