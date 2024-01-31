@@ -59,7 +59,7 @@ DATA_LEVELS = SqlEnum(
 )
 
 # extension enums for the file catalog table
-EXTENSIONS = SqlEnum("pkts", "cdf")
+EXTENSIONS = SqlEnum("pkts", "cdf", name="extensions")
 
 # "upstream" dependency means an instrument's processing depends on the existence
 # of another instrument's data
