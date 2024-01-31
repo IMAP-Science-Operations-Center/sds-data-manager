@@ -78,11 +78,14 @@ def lambda_handler(event, context):
 
     s3_key_path = science_file.construct_upload_path()
 
+    # Check for already existing file in the database
     with Session(db.get_engine()) as session:
+        # query and check for a matching file path
         query = select(models.FileCatalog.__table__).where(
             models.FileCatalog.file_path == s3_key_path
         )
         result = session.execute(query).first()
+        # return a 409 response if a existing file is found
         if result:
             response = {
                 "statusCode": 409,
