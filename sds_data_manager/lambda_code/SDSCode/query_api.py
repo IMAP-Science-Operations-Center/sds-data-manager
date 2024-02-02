@@ -3,7 +3,6 @@
 import datetime
 import json
 import logging
-import sys
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,7 +13,6 @@ from .database import models
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
 def lambda_handler(event, context):

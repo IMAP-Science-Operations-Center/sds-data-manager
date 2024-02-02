@@ -4,6 +4,9 @@ from pathlib import Path
 
 import boto3
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 # Define the paths
 mount_path = Path(os.environ.get("EFS_MOUNT_PATH"))
 
@@ -49,11 +52,11 @@ def write_data_to_efs(s3_key: str, s3_bucket: str):
     try:
         # Download the file from S3
         s3_client.download_file(s3_bucket, s3_key, download_path)
-        logging.debug(f"File downloaded: {download_path}")
+        logger.debug(f"File downloaded: {download_path}")
     except Exception as e:
-        logging.info(f"Error downloading file: {e!s}")
+        logger.error(f"Error downloading file: {e!s}")
 
-    logging.debug("After downloading file: %s", os.listdir(mount_path))
+    logger.debug("After downloading file: %s", os.listdir(mount_path))
 
     # TODO: we only want historical attitude kernels delivery
     #  following each track (3/wk)
@@ -138,7 +141,7 @@ def lambda_handler(event, context):
     # Retrieve the S3 bucket and key from the event
     s3_bucket = event["detail"]["bucket"]["name"]
     s3_key = event["detail"]["object"]["key"]
-    logging.debug(event)
+    logger.debug(event)
 
     write_data_to_efs(s3_key, s3_bucket)
 

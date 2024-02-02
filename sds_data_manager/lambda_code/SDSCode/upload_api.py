@@ -11,8 +11,7 @@ from .database import database as db
 from .database import models
 
 logger = logging.getLogger(__name__)
-logging.basicConfig()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 s3 = boto3.client("s3")
 

@@ -8,8 +8,7 @@ import boto3
 import botocore
 
 # Logger setup
-logger = logging.getLogger()
-logging.basicConfig()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 

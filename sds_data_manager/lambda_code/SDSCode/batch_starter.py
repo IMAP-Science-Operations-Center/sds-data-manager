@@ -13,8 +13,8 @@ from .database import models
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def query_instrument(session, upstream_dependency, start_date, end_date):
@@ -203,14 +203,14 @@ def query_upstream_dependencies(
                 all_dependencies_available = (
                     False  # Set flag to false if any dependency is missing
                 )
-                logging.info(
+                logger.info(
                     f"Missing dependency: {upstream_dependency['instrument']}, "
                     f"{upstream_dependency['level']}, "
                     f"{upstream_dependency['version']}"
                 )
                 break  # Exit the loop early as we already found a missing dependency
             else:
-                logging.info(
+                logger.info(
                     f"Dependency found: {upstream_dependency['instrument']}, "
                     f"{upstream_dependency['level']}, "
                     f"{upstream_dependency['version']}"
@@ -228,9 +228,9 @@ def query_upstream_dependencies(
             instruments_to_process.append(
                 {"filename": filename, "prepared_data": prepared_data}
             )
-            logging.info(f"All dependencies for {instrument} present.")
+            logger.info(f"All dependencies for {instrument} present.")
         else:
-            logging.info(f"Some dependencies for {instrument} are missing.")
+            logger.info(f"Some dependencies for {instrument} are missing.")
 
     return instruments_to_process
 

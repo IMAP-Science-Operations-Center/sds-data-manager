@@ -2,16 +2,14 @@
 
 import json
 import logging
-import sys
 
 import requests
 from SDSCode.database import database as db
 from SDSCode.database.models import Base
 
 # Logger setup
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
 def send_response(event, context, response_status):

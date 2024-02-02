@@ -7,7 +7,8 @@ from pathlib import Path
 
 import requests
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def _parse_args():
@@ -72,7 +73,7 @@ def download(s3_uri, api_endpoint="https://api.dev.imap-mission.com"):
     file_name_and_path : str
         The file path where the downloaded file is saved.
     """
-    logging.info(f"Starting download from S3 URI: {s3_uri}")
+    logger.info(f"Starting download from S3 URI: {s3_uri}")
 
     url_with_parameters = f"{api_endpoint}/download?{s3_uri}"
     response = requests.get(url_with_parameters)
@@ -92,7 +93,7 @@ def download(s3_uri, api_endpoint="https://api.dev.imap-mission.com"):
     with open(file_name_and_path, "wb") as file:
         file.write(response.content)
 
-    logging.info(f"File downloaded and saved to: {file_name_and_path}")
+    logger.info(f"File downloaded and saved to: {file_name_and_path}")
 
     return str(file_name_and_path)
 
@@ -108,7 +109,7 @@ def upload(local_file_location, api_endpoint="https://api.dev.imap-mission.com")
     api_endpoint : str, optional
         The API endpoint to use for uploading the file.
     """
-    logging.info(f"Starting upload for file: {local_file_location}")
+    logger.info(f"Starting upload for file: {local_file_location}")
 
     local_file_path = Path(local_file_location)
     remote_file_name = local_file_path.name
@@ -123,7 +124,7 @@ def upload(local_file_location, api_endpoint="https://api.dev.imap-mission.com")
     upload_url = get_response.json()
     requests.put(upload_url)
 
-    logging.info(f"File uploaded: {modified_file_name}")
+    logger.info(f"File uploaded: {modified_file_name}")
 
 
 def main():
@@ -138,7 +139,7 @@ def main():
     file_name_and_path = download(args.s3_uri, endpoint)
     upload(file_name_and_path, endpoint)
 
-    logging.info("Process completed successfully")
+    logger.info("Process completed successfully")
 
 
 if __name__ == "__main__":

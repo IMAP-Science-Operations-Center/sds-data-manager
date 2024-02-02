@@ -2,7 +2,6 @@ import datetime
 import json
 import logging
 import os
-import sys
 
 import boto3
 from sqlalchemy import select
@@ -15,9 +14,8 @@ from .lambda_custom_events import IMAPLambdaPutEvent
 from .path_helper import InvalidScienceFileError, ScienceFilepathManager
 
 # Logger setup
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 s3 = boto3.client("s3")
 

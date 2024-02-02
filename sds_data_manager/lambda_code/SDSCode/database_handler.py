@@ -1,6 +1,5 @@
 """Common functions to write to database"""
 import logging
-import sys
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -9,9 +8,8 @@ from .database import database as db
 from .database import models
 
 # Logger setup
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
 def update_status_table(status_params):
@@ -29,7 +27,7 @@ def update_status_table(status_params):
             session.add(models.StatusTracking(**status_params))
             session.commit()
     except IntegrityError as e:
-        logger.info(str(e))
+        logger.error(str(e))
 
 
 def update_file_catalog_table(metadata_params):
@@ -47,4 +45,4 @@ def update_file_catalog_table(metadata_params):
             session.add(models.FileCatalog(**metadata_params))
             session.commit()
     except IntegrityError as e:
-        logger.info(str(e))
+        logger.error(str(e))
