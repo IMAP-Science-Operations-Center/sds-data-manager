@@ -31,15 +31,10 @@ def http_response(headers=None, status_code=200, body="Success"):
         A dictionary containing headers, status code, and body, designed to be returned
         by a Lambda function as an API response.
     """
-    if headers is None:
-        headers = (
-            {
-                "Content-Type": "text/html",
-            },
-        )
+    headers = headers or {"Content-Type": "text/html"}
     return {
         "headers": headers,
-        "statusCode": status_code,
+        "statusCode": int(status_code),
         "body": body,
     }
 
@@ -85,12 +80,19 @@ def lambda_handler(event, context):
     try:
         s3_client.head_object(Bucket=bucket, Key=filepath)
     except botocore.exceptions.ClientError as e:
-        if e.response["Error"]["Code"] == "404":
-            # object doesn't exist
-            return http_response(status_code=404, body="File not found in S3.")
-        else:
-            # fails due to another error
-            return http_response(status_code=e.response["Error"]["Code"], body=str(e))
+        # Log the error and return a 404 response even if it is something
+        # different like a 403 from the backend, which just means the action
+        # can't be performed like only providing a filename without a path.
+        logger.error(
+            "Error: %s\n%s", e.response["Error"]["Code"], e.response["Error"]["Message"]
+        )
+        return http_response(
+            status_code=404,
+            body=(
+                "File not found, make sure you include the full path to the file in "
+                "the request, e.g. /download/path/to/file/filename.pkts."
+            ),
+        )
 
     pre_signed_url = s3_client.generate_presigned_url(
         "get_object", Params={"Bucket": bucket, "Key": filepath}, ExpiresIn=url_life
