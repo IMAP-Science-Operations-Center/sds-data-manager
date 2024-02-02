@@ -7,6 +7,7 @@ RUN pip install --upgrade pip
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN pip install requests
+RUN pip install imap_data_access
 
 # Create a directory for storing uploaded/downloaded files
 RUN mkdir -p /mnt/data
