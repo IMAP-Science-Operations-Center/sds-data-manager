@@ -279,12 +279,14 @@ def batch_event_handler(event):
                     "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "codice-repo:latest"
                 ),
                 "command": [
-                    (
-                        "--instrument hit --level l1a "
-                        "--file_path 'imap/hit/l1a/2024/01/"
-                        "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf' "
-                        "--dependency [{}]"
-                    ),
+                    "--instrument",
+                    "swe",
+                    "--level",
+                    "l1b",
+                    "--file_path",
+                    "imap/swe/l1b/2023/09/imap_swe_l1b_lveng-hk_20230927_20230927_v01-00.cdf",
+                    "--dependency",
+                    "[{'instrument': 'swe', 'level': 'l0', 'version': 'v00-01'}]"
                 ],
             },
         },
@@ -295,18 +297,10 @@ def batch_event_handler(event):
     dict
         HTTP response
     """
-    # splited command looks like this:
-    # [
-    #   '',
-    #   'instrument codice ',
-    #   'level l1a ',
-    #   "file_path 'path/filename'",
-    #   "dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
-    #  ]
-    command = event["detail"]["container"]["command"][0].split("--")
+    command = event["detail"]["container"]["command"]
 
     # Get event inputs ready
-    file_path = command[3].replace("file_path '", "").replace("'", "")
+    file_path = command[5]
     filename = os.path.basename(file_path)
 
     # TODO: post demo, revisit this and improve it

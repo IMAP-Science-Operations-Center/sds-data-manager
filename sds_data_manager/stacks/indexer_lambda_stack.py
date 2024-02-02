@@ -72,15 +72,17 @@ class IndexerLambda(Stack):
             security_groups=[rds_security_group],
             environment={
                 "DATA_TRACKER_INDEX": "data_tracker",
-                "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_DATA_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
         )
 
-        # events:PutEvents
+        # Adding events and s3 permission because indexer
+        # lambda sents events and read from s3.
+        # TODO: narrow s3 permission later
         put_event_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["events:PutEvents"],
+            actions=["events:PutEvents", "s3:*"],
             resources=[
                 "*",
             ],

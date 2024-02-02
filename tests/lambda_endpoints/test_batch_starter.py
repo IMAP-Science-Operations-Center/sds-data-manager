@@ -190,7 +190,7 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     ]
 
     result = query_upstream_dependencies(
-        test_file_catalog_simulation, downstream_dependents, data, "bucket_name"
+        test_file_catalog_simulation, downstream_dependents, data, "bucket_name", "sci"
     )
 
     assert list(result[0].keys()) == ["filename", "prepared_data"]
@@ -206,13 +206,16 @@ def test_prepare_data():
         upstream_dependencies,
     )
 
-    expected_prepared_data = (
-        "--instrument hit --level l1a "
-        "--file_path 'imap/hit/l1a/2024/01/"
-        "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf' "
-        "--dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
-    )
-
+    expected_prepared_data = [
+        "--instrument",
+        "hit",
+        "--level",
+        "l1a",
+        "--file_path",
+        ("imap/hit/l1a/2024/01/" "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"),
+        "--dependency",
+        "[{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]",
+    ]
     assert prepared_data == expected_prepared_data
 
 
@@ -227,12 +230,16 @@ def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
 
 
 def test_send_lambda_put_event(events_client):
-    expected_prepared_data = (
-        "--instrument hit --level l1a "
-        "--file_path 'imap/swapi/l1/2023/01/"
-        "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf' "
-        "--dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
-    )
+    input_command = [
+        "--instrument",
+        "hit",
+        "--level",
+        "l1a",
+        "--file_path",
+        ("imap/hit/l1a/2024/01/imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"),
+        "--dependency",
+        "[{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]",
+    ]
 
-    result = send_lambda_put_event(expected_prepared_data)
+    result = send_lambda_put_event(input_command)
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200

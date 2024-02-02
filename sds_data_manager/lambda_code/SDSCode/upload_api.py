@@ -4,6 +4,11 @@ import os
 
 import boto3
 from SDSCode.path_helper import InvalidScienceFileError, ScienceFilepathManager
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from .database import database as db
+from .database import models
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -72,6 +77,25 @@ def lambda_handler(event, context):
         return {"statusCode": 400, "body": str(e)}
 
     s3_key_path = science_file.construct_upload_path()
+
+    # Check for already existing file in the database
+    with Session(db.get_engine()) as session:
+        # query and check for a matching file path
+        query = select(models.FileCatalog.__table__).where(
+            models.FileCatalog.file_path == s3_key_path
+        )
+        result = session.execute(query).first()
+        # return a 409 response if an existing file is found
+        if result:
+            response = {
+                "statusCode": 409,
+                "body": json.dumps(f"{s3_key_path} already exists."),
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                },
+            }
+            return response
 
     url = _generate_signed_upload_url(s3_key_path)
 

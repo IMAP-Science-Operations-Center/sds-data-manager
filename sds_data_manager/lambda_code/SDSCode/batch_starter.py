@@ -91,7 +91,7 @@ def append_attributes(session, downstream_dependents, start_date, end_date, vers
         # Use pointing start_time and end_time in place of start_date and end_date.
         # Add pointing number to dependent.
 
-        dependent["version"] = "v00-01"  # placeholder
+        dependent["version"] = version  # placeholder
         dependent["start_date"] = start_date
         dependent["end_date"] = end_date
 
@@ -148,12 +148,14 @@ def find_upstream_dependencies(
     for dependency in upstream_dependencies:
         # TODO: query the version table here for appropriate version
         #  of each dependency. Use downstream_dependent_version to query version table.
-        dependency["version"] = "v00-01"  # placeholder
+        dependency["version"] = downstream_dependent_version  # placeholder
 
     return upstream_dependencies
 
 
-def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket):
+def query_upstream_dependencies(
+    session, downstream_dependents, data, s3_bucket, descriptor
+):
     """
     Finds dependency information for each instrument. This function looks for
     upstream dependency of current downstream dependent.
@@ -218,7 +220,8 @@ def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket)
         if all_dependencies_available:
             # TODO: add descriptor logic. Using <sci> as placeholder.
             filename = (
-                f"imap_{instrument}_{level}_sci_{start_date}_{end_date}_{version}.cdf"
+                f"imap_{instrument}_{level}_{descriptor}"
+                f"_{start_date}_{end_date}_{version}.cdf"
             )
 
             prepared_data = prepare_data(filename, upstream_dependencies)
@@ -294,12 +297,27 @@ def prepare_data(filename, upstream_dependencies):
 
     # Prepare the final command
     # Pre-construct parts of the string
-    instrument_part = f"--instrument {instrument}"
-    level_part = f"--level {level}"
-    file_path = f"--file_path '{s3_base_path}{filename}'"
-    dependency_part = f"--dependency {upstream_dependencies}"
-
-    prepared_data = f"{instrument_part} {level_part} {file_path} {dependency_part}"
+    # NOTE: Batch job expects command like this:
+    # "Command": [
+    #     "--instrument",
+    #     "swe",
+    #     "--level",
+    #     "l1b",
+    #     "--file_path",
+    #     "imap/swe/l1b/2023/09/imap_swe_l1b_lveng-hk_20230927_20230927_v01-00.cdf",
+    #     "--dependency",
+    #     "[{'instrument': 'swe', 'level': 'l0', 'version': 'v00-01'}]"
+    #   ]
+    prepared_data = [
+        "--instrument",
+        instrument,
+        "--level",
+        level,
+        "--file_path",
+        s3_base_path + filename,
+        "--dependency",
+        f"{upstream_dependencies}",
+    ]
 
     return prepared_data
 
@@ -359,10 +377,17 @@ def send_lambda_put_event(command_parameters):
     command_parameters : str
         IMAP cli command input parameters.
         Example of input:
-            "--instrument codice
-            --level l1a
-            --file_path '<s3-filepath>'
-            --dependency 'list of dict'"
+            [
+            "--instrument",
+            "hit",
+            "--level",
+            "l1a",
+            "--file_path",
+            ("imap/hit/l1a/2024/01/"
+            "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"),
+            "--dependency",
+            "[{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]",
+        ]
     Returns
     -------
     dict
@@ -371,9 +396,8 @@ def send_lambda_put_event(command_parameters):
     event_client = boto3.client("events")
 
     # Get event inputs ready
-    command = command_parameters.split("--")
-    file_path = command[3].replace("file_path '", "").replace("' ", "")
-    dependency = command[-1].replace("dependency ", "")
+    file_path = command_parameters[5]
+    dependency = command_parameters[7]
 
     # Create event["detail"] information
     detail = {
@@ -402,6 +426,7 @@ def lambda_handler(event: dict, context):
     logger.info(f"Parsed filename - {components}")
     instrument = components["instrument"]
     level = components["datalevel"]
+    descriptor = components["descriptor"]
     version = components["version"]
     start_date = components["startdate"]
     end_date = components["enddate"]
@@ -441,7 +466,7 @@ def lambda_handler(event: dict, context):
 
         # decide if we have sufficient upstream dependencies
         downstream_instruments_to_process = query_upstream_dependencies(
-            session, complete_dependents, data, s3_bucket
+            session, complete_dependents, data, s3_bucket, descriptor
         )
 
         # No instruments to process
@@ -450,16 +475,25 @@ def lambda_handler(event: dict, context):
             return
 
         # Start Batch Job execution for each instrument
-        for instrument in downstream_instruments_to_process:
-            filename = instrument["filename"]
+        for downstream_data in downstream_instruments_to_process:
+            filename = downstream_data["filename"]
 
-            batch_client.submit_job(
-                jobName=filename,
+            command = downstream_data["prepared_data"]
+            logger.info(f"Submitting job with this command - {command}")
+            # NOTE: The batch job name should contain only
+            # alphanumeric characters and hyphens.
+            job_name = f"{instrument}-{level}-job"
+            logger.info("Job name: %s", job_name)
+            response = batch_client.submit_job(
+                jobName=job_name,
                 jobQueue=job_queue,
                 jobDefinition=job_definition,
                 containerOverrides={
-                    "command": [instrument["prepared_data"]],
+                    "command": downstream_data["prepared_data"],
                 },
             )
+            logger.info(f"Submitted job - {response}")
             # Send EventBridge event to indexer lambda
-            send_lambda_put_event(instrument)
+            logger.info("Sending EventBridge event to indexer lambda.")
+            send_lambda_put_event(command)
+            logger.info("EventBridge event sent.")
