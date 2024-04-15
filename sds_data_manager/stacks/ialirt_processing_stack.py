@@ -1,19 +1,20 @@
-"""Configure the i-alirt processing stack.
-
-This is the module containing the general stack to be built for computation of
-I-ALiRT algorithms.
-"""
-
-from aws_cdk import RemovalPolicy, Stack
-from aws_cdk import aws_dynamodb as dynamodb
+"""Creates I-ALiRT processing stack."""
+from aws_cdk import CfnOutput, Stack
+from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
-from aws_cdk import aws_iam as iam
+from aws_cdk import aws_ecs as ecs
+from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from constructs import Construct
+
+from sds_data_manager import (
+    IALIRT_PORTS_TO_ALLOW_CONTAINER_1,
+    IALIRT_PORTS_TO_ALLOW_CONTAINER_2,
+)
 
 
 class IalirtProcessing(Stack):
-    """A processing system for ialirt."""
+    """A processing system for I-ALiRT."""
 
     def __init__(
         self,
@@ -21,122 +22,225 @@ class IalirtProcessing(Stack):
         construct_id: str,
         vpc: ec2.Vpc,
         repo: ecr.Repository,
-        instance_type: str = "t3.micro",
         **kwargs,
     ) -> None:
-        """Construct the i-alirt processing stack.
-
-        Parameters
-        ----------
-        scope : Construct
-            Parent construct.
-        construct_id : str
-            A unique string identifier for this construct.
-        vpc : ec2.Vpc
-            VPC into which to put the resources that require networking.
-        repo : ecr.Repository
-            ECR repository containing the Docker image.
-        instance_type : str
-            The EC2 instance type.
-        kwargs : dict
-            Keyword arguments
-
-        """
+        """Construct the I-ALiRT processing stack."""
         super().__init__(scope, construct_id, **kwargs)
-
         self.vpc = vpc
         self.repo = repo
-        self.instance_type = instance_type
-        self.add_compute_resources()
-        self.add_dynamodb_table()
 
-    # Setup the EC2 resources
-    def add_compute_resources(self):
-        """EC2 compute environment."""
-        # Define user data script
-        # - Updates the instance
-        # - Installs Docker
-        # - Starts the Docker
-        # - Logs into AWS ECR to pull the image onto the instance
-        # - Pulls the Docker image
-        # - Runs the Docker container
-        user_data = ec2.UserData.for_linux()
-        user_data.add_commands(
-            "yum update -y",
-            "amazon-linux-extras install docker -y",
-            "systemctl start docker",
-            "systemctl enable docker",
-            "$(aws ecr get-login --no-include-email --region us-west-2 | bash)",
-            f"docker pull {self.repo.repository_uri}:latest",
-            f"docker run --rm -d -p 8080:8080 {self.repo.repository_uri}:latest",
+        # Defines the type and port number for the
+        # allowed traffic to the Application Load Balancer
+        # and the EC2 instances.
+        ports = IALIRT_PORTS_TO_ALLOW_CONTAINER_1 + IALIRT_PORTS_TO_ALLOW_CONTAINER_2
+
+        # Add single security group in which
+        # both containers will reside
+        self.ecs_security_group = self.add_ecs_security_group(ports)
+
+        # Add a single security group in which
+        # both application load balancers will reside
+        self.load_balancer_security_group = self.add_load_balancer_security_group(ports)
+
+        # Initialize resources for each container
+        self.add_container_resources("Container1", IALIRT_PORTS_TO_ALLOW_CONTAINER_1)
+        # self.add_container_resources("Container2",
+        #                              IALIRT_PORTS_TO_ALLOW_CONTAINER_2)
+
+    def add_container_resources(self, container_name, ports):
+        """Add compute resources and load balancer for a container."""
+        # Add an ecs service and cluster for each container
+        ecs_service, ecs_cluster = self.add_compute_resources(
+            container_name, ports, self.ecs_security_group
         )
+        # Add load balancer for each container
+        load_balancer = self.add_load_balancer(
+            container_name, ports, ecs_service, self.load_balancer_security_group
+        )
+        # Add autoscaling for each container
+        self.add_autoscaling(container_name, ecs_cluster, load_balancer, ports)
 
-        # Security Group for the EC2 Instance
-        security_group = ec2.SecurityGroup(
+    def add_ecs_security_group(self, ports):
+        """Create and return a security group for containers."""
+        ecs_security_group = ec2.SecurityGroup(
             self,
-            "IalirtEC2SecurityGroup",
+            "IalirtEcsSecurityGroup",
             vpc=self.vpc,
-            description="Security group for Ialirt EC2 instance",
+            description="Security group for Ialirt",
+            allow_all_outbound=True,
         )
 
-        # Allow ingress to LASP IP address range and specific port
-        security_group.add_ingress_rule(
-            ec2.Peer.ipv4("128.138.131.0/24"),
-            ec2.Port.tcp(8080),
-            "Allow inbound traffic on TCP port 8080",
-        )
+        for port in ports:
+            # Add ingress rule for each port
+            ecs_security_group.add_ingress_rule(
+                peer=ec2.Peer.any_ipv4(),
+                connection=ec2.Port.tcp(port),
+                description="Allow inbound traffic on TCP port",
+            )
+        return ecs_security_group
 
-        # Create an IAM role for the EC2 instance
-        # - Read-only access to AWS ECR
-        # - Basic instance management via AWS Systems Manager
-        # Note: the Systems Manager provides a secure way for
-        # users to interact and access the EC2 during development.
-        ec2_role = iam.Role(
+    def add_load_balancer_security_group(self, ports):
+        """Create and return a security group for load balancers."""
+        # Create a security group for the ALB
+        load_balancer_security_group = ec2.SecurityGroup(
             self,
-            "IalirtEC2Role",
-            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
-            managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonEC2ContainerRegistryReadOnly"
-                ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonSSMManagedInstanceCore"
-                ),
-            ],
-        )
-
-        # Create an EC2 instance
-        ec2.Instance(
-            self,
-            "IalirtEC2Instance",
-            instance_type=ec2.InstanceType(self.instance_type),
-            machine_image=ec2.MachineImage.latest_amazon_linux2(),
+            "ALBSecurityGroup",
             vpc=self.vpc,
+            description="Security group for the Ialirt ALB",
+        )
+
+        # Allow inbound traffic from a specific port and
+        # any ipv4 address.
+        for port in ports:
+            load_balancer_security_group.add_ingress_rule(
+                peer=ec2.Peer.any_ipv4(),
+                connection=ec2.Port.tcp(port),
+                description=f"Allow inbound traffic on " f"TCP port {port}",
+            )
+
+        # Allow all outbound traffic.
+        load_balancer_security_group.add_egress_rule(
+            peer=ec2.Peer.any_ipv4(),
+            connection=ec2.Port.all_traffic(),
+            description="Allow outbound traffic",
+        )
+
+        return load_balancer_security_group
+
+    def add_compute_resources(self, container_name, ports, ecs_security_group):
+        """Add ECS compute resources for a container."""
+        # ECS Cluster manages EC2 instances on which containers are deployed.
+        ecs_cluster = ecs.Cluster(self, f"IalirtCluster{container_name}", vpc=self.vpc)
+
+        # This task definition specifies the networking mode as AWS_VPC.
+        # ECS tasks in AWS_VPC mode can be registered with
+        # Application Load Balancers (ALB).
+        task_definition = ecs.Ec2TaskDefinition(
+            self, f"IalirtTaskDef{container_name}", network_mode=ecs.NetworkMode.AWS_VPC
+        )
+
+        # Adds a container to the ECS task definition
+        # Logging is configured to use AWS CloudWatch Logs.
+        container = task_definition.add_container(
+            f"IalirtContainer{container_name}",
+            image=ecs.ContainerImage.from_ecr_repository(self.repo, "latest"),
+            memory_limit_mib=512,
+            cpu=256,
+            logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirt{container_name}"),
+        )
+
+        for port in ports:
+            # Map ports to container
+            port_mapping = ecs.PortMapping(
+                container_port=port,
+                host_port=port,
+                protocol=ecs.Protocol.TCP,
+            )
+            container.add_port_mappings(port_mapping)
+
+        # ECS Service is a configuration that
+        # ensures application can run and maintain
+        # instances of a task definition.
+        ecs_service = ecs.Ec2Service(
+            self,
+            f"IalirtService{container_name}",
+            cluster=ecs_cluster,
+            task_definition=task_definition,
+            security_groups=[ecs_security_group],
+            desired_count=1,
+        )
+
+        return ecs_service, ecs_cluster
+
+    def add_autoscaling(self, container_name, ecs_cluster, load_balancer, ports):
+        """Add autoscaling resources."""
+        # This auto scaling group is used to manage the
+        # number of instances in the ECS cluster. If an instance
+        # becomes unhealthy, the auto scaling group will replace it.
+        auto_scaling_group = autoscaling.AutoScalingGroup(
+            self,
+            f"AutoScalingGroup{container_name}",
+            instance_type=ec2.InstanceType.of(
+                ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.MICRO
+            ),
+            machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
+            vpc=self.vpc,
+            desired_capacity=1,
+        )
+
+        # integrates ECS with EC2 Auto Scaling Groups
+        # to manage the scaling and provisioning of the underlying
+        # EC2 instances based on the requirements of ECS tasks
+        capacity_provider = ecs.AsgCapacityProvider(
+            self,
+            f"AsgCapacityProvider{container_name}",
+            auto_scaling_group=auto_scaling_group,
+        )
+
+        ecs_cluster.add_asg_capacity_provider(capacity_provider)
+
+        # Allow inbound traffic from the Application Load Balancer
+        # to the security groups associated with the EC2 instances
+        # within the Auto Scaling Group.
+        for port in ports:
+            auto_scaling_group.connections.allow_from(load_balancer, ec2.Port.tcp(port))
+
+    def add_load_balancer(
+        self, container_name, ports, ecs_service, load_balancer_security_group
+    ):
+        """Add a load balancer for a container."""
+        # Create the Application Load Balancer and
+        # place it in a public subnet.
+        load_balancer = elbv2.ApplicationLoadBalancer(
+            self,
+            f"IalirtALB{container_name}",
+            vpc=self.vpc,
+            security_group=load_balancer_security_group,
+            internet_facing=True,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-            security_group=security_group,
-            role=ec2_role,
-            user_data=user_data,
         )
 
-    # I-ALiRT IOIS DynamoDB
-    # ingest-ugps: ingestion ugps - 64 bit
-    # sct-vtcw: spacecraft time ugps - 64 bit
-    # src-seq-ctr: increments with each packet (included in filename?)
-    # ccsds-filename: filename of the packet
-    def add_dynamodb_table(self):
-        """DynamoDB Table."""
-        dynamodb.Table(
-            self,
-            "DynamoDB-ialirt",
-            table_name="ialirt-packets",
-            partition_key=dynamodb.Attribute(
-                name="ingest-time", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="spacecraft-time", type=dynamodb.AttributeType.STRING
-            ),
-            # on-demand
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=RemovalPolicy.DESTROY,
-            point_in_time_recovery=True,
-        )
+        # Create a listener for each port specified
+        for port in ports:
+            listener = load_balancer.add_listener(
+                f"Listener{container_name}{port}",
+                port=port,
+                open=True,
+                protocol=elbv2.ApplicationProtocol.HTTP,
+            )
+
+            # Register the ECS service as a target for the listener
+            listener.add_targets(
+                f"Target{container_name}{port}",
+                port=port,
+                targets=[ecs_service],
+                protocol=elbv2.ApplicationProtocol.HTTP,
+            )
+
+            # This simply prints the DNS name of the
+            # load balancer in the terminal.
+            CfnOutput(
+                self,
+                f"LoadBalancerDNS{container_name}{port}",
+                value=f"http://{load_balancer.load_balancer_dns_name}:{port}",
+            )
+
+        return load_balancer
+
+    # def add_dynamodb_table(self):
+    #     """DynamoDB Table."""
+    #     dynamodb.Table(
+    #         self,
+    #         "DynamoDB-ialirt",
+    #         table_name="ialirt-packets",
+    #         partition_key=dynamodb.Attribute(
+    #             name="ingest-time", type=dynamodb.AttributeType.STRING
+    #         ),
+    #         sort_key=dynamodb.Attribute(
+    #             name="spacecraft-time", type=dynamodb.AttributeType.STRING
+    #         ),
+    #         # on-demand
+    #         billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+    #         removal_policy=RemovalPolicy.DESTROY,
+    #         point_in_time_recovery=True,
+    #     )
