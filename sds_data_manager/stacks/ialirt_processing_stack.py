@@ -1,6 +1,11 @@
-"""Creates I-ALiRT processing stack."""
-from aws_cdk import CfnOutput, Stack
+"""Configure the i-alirt processing stack.
+
+This is the module containing the general stack to be built for computation of
+I-ALiRT algorithms.
+"""
+from aws_cdk import CfnOutput, RemovalPolicy, Stack
 from aws_cdk import aws_autoscaling as autoscaling
+from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_ecs as ecs
@@ -23,10 +28,27 @@ class IalirtProcessing(Stack):
         repo: ecr.Repository,
         **kwargs,
     ) -> None:
-        """Construct the I-ALiRT processing stack."""
+        """Construct the i-alirt processing stack.
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        vpc : ec2.Vpc
+            VPC into which to put the resources that require networking.
+        repo : ecr.Repository
+            ECR repository containing the Docker image.
+        kwargs : dict
+            Keyword arguments
+
+        """
         super().__init__(scope, construct_id, **kwargs)
+
         self.vpc = vpc
         self.repo = repo
+        self.add_dynamodb_table()
 
         # Defines the type and port number for the
         # allowed traffic to the Application Load Balancer
@@ -224,20 +246,25 @@ class IalirtProcessing(Stack):
 
         return load_balancer
 
-    # def add_dynamodb_table(self):
-    #     """DynamoDB Table."""
-    #     dynamodb.Table(
-    #         self,
-    #         "DynamoDB-ialirt",
-    #         table_name="ialirt-packets",
-    #         partition_key=dynamodb.Attribute(
-    #             name="ingest-time", type=dynamodb.AttributeType.STRING
-    #         ),
-    #         sort_key=dynamodb.Attribute(
-    #             name="spacecraft-time", type=dynamodb.AttributeType.STRING
-    #         ),
-    #         # on-demand
-    #         billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-    #         removal_policy=RemovalPolicy.DESTROY,
-    #         point_in_time_recovery=True,
-    #     )
+    # I-ALiRT IOIS DynamoDB
+    # ingest-ugps: ingestion ugps - 64 bit
+    # sct-vtcw: spacecraft time ugps - 64 bit
+    # src-seq-ctr: increments with each packet (included in filename?)
+    # ccsds-filename: filename of the packet
+    def add_dynamodb_table(self):
+        """DynamoDB Table."""
+        dynamodb.Table(
+            self,
+            "DynamoDB-ialirt",
+            table_name="ialirt-packets",
+            partition_key=dynamodb.Attribute(
+                name="ingest-time", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="spacecraft-time", type=dynamodb.AttributeType.STRING
+            ),
+            # on-demand
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+            point_in_time_recovery=True,
+        )
