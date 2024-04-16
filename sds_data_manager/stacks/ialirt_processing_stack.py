@@ -9,7 +9,6 @@ from constructs import Construct
 
 from sds_data_manager import (
     IALIRT_PORTS_TO_ALLOW_CONTAINER_1,
-    IALIRT_PORTS_TO_ALLOW_CONTAINER_2,
 )
 
 
@@ -32,7 +31,7 @@ class IalirtProcessing(Stack):
         # Defines the type and port number for the
         # allowed traffic to the Application Load Balancer
         # and the EC2 instances.
-        ports = IALIRT_PORTS_TO_ALLOW_CONTAINER_1 + IALIRT_PORTS_TO_ALLOW_CONTAINER_2
+        ports = IALIRT_PORTS_TO_ALLOW_CONTAINER_1
 
         # Add single security group in which
         # both containers will reside
@@ -44,8 +43,6 @@ class IalirtProcessing(Stack):
 
         # Initialize resources for each container
         self.add_container_resources("Container1", IALIRT_PORTS_TO_ALLOW_CONTAINER_1)
-        # self.add_container_resources("Container2",
-        #                              IALIRT_PORTS_TO_ALLOW_CONTAINER_2)
 
     def add_container_resources(self, container_name, ports):
         """Add compute resources and load balancer for a container."""
