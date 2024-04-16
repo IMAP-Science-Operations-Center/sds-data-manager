@@ -23,7 +23,6 @@ def test_alb_response_container():
     stack_name = "IalirtProcessing"
     containers = {
         "Container1": IALIRT_PORTS_TO_ALLOW_CONTAINER_1,
-        # "Container2": IALIRT_PORTS_TO_ALLOW_CONTAINER_2,
     }
 
     for container_name, ports in containers.items():
