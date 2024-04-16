@@ -20,7 +20,7 @@ def get_alb_dns(stack_name, port, container_name):
 
 def test_alb_response_container():
     """Test to ensure the ALB responds with HTTP 200 status."""
-    stack_name = "IalirtProcessing7"
+    stack_name = "IalirtProcessing"
     containers = {
         "Container1": IALIRT_PORTS_TO_ALLOW_CONTAINER_1,
         # "Container2": IALIRT_PORTS_TO_ALLOW_CONTAINER_2,
