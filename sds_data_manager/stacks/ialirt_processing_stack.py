@@ -3,6 +3,7 @@
 This is the module containing the general stack to be built for computation of
 I-ALiRT algorithms.
 """
+
 from aws_cdk import CfnOutput, RemovalPolicy, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_dynamodb as dynamodb
@@ -55,13 +56,15 @@ class IalirtProcessing(Stack):
         # and the EC2 instances.
         ports = IALIRT_PORTS_TO_ALLOW_CONTAINER_1
 
-        # Add single security group in which
+        # Create single security group in which
         # both containers will reside
-        self.ecs_security_group = self.add_ecs_security_group(ports)
+        self.ecs_security_group = self.create_ecs_security_group(ports)
 
         # Add a single security group in which
         # both application load balancers will reside
-        self.load_balancer_security_group = self.add_load_balancer_security_group(ports)
+        self.load_balancer_security_group = self.create_load_balancer_security_group(
+            ports
+        )
 
         # Initialize resources for each container
         self.add_container_resources("Container1", IALIRT_PORTS_TO_ALLOW_CONTAINER_1)
@@ -79,7 +82,7 @@ class IalirtProcessing(Stack):
         # Add autoscaling for each container
         self.add_autoscaling(container_name, ecs_cluster, load_balancer, ports)
 
-    def add_ecs_security_group(self, ports):
+    def create_ecs_security_group(self, ports):
         """Create and return a security group for containers."""
         ecs_security_group = ec2.SecurityGroup(
             self,
@@ -98,7 +101,7 @@ class IalirtProcessing(Stack):
             )
         return ecs_security_group
 
-    def add_load_balancer_security_group(self, ports):
+    def create_load_balancer_security_group(self, ports):
         """Create and return a security group for load balancers."""
         # Create a security group for the ALB
         load_balancer_security_group = ec2.SecurityGroup(

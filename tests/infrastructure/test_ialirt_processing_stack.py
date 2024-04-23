@@ -1,5 +1,7 @@
 """Tests I-ALiRT processing stack."""
+
 import boto3
+import pytest
 import requests
 
 from sds_data_manager import (
@@ -18,6 +20,7 @@ def get_alb_dns(stack_name, port, container_name):
     raise ValueError(f"DNS output not found for port {port} in stack.")
 
 
+@pytest.mark.xfail(reason="Will fail unless IALiRT stack is deployed.")
 def test_alb_response_container():
     """Test to ensure the ALB responds with HTTP 200 status."""
     stack_name = "IalirtProcessing"
