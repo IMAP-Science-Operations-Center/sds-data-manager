@@ -87,7 +87,7 @@ def build_sds(
         env=env,
         vpc=networking.vpc,
         rds_security_group=networking.rds_security_group,
-        engine_version=rds.PostgresEngineVersion.VER_15_3,
+        engine_version=rds.PostgresEngineVersion.VER_15_6,
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
@@ -105,6 +105,7 @@ def build_sds(
         vpc_subnets=rds_stack.rds_subnet_selection,
         rds_security_group=networking.rds_security_group,
         data_bucket=data_bucket.data_bucket,
+        sns_topic=monitoring.sns_topic_notifications,
     )
 
     sds_api_manager_stack.SdsApiManager(

@@ -27,6 +27,7 @@ class IndexerLambda(Stack):
         vpc_subnets,
         rds_security_group,
         data_bucket,
+        sns_topic,
         **kwargs,
     ) -> None:
         """IndexerLambda Stack.
@@ -49,6 +50,9 @@ class IndexerLambda(Stack):
             The RDS security group
         data_bucket : obj
             The data bucket
+        sns_topic : aws_sns.Topic
+            SNS Topic for sending notifications so that external
+            resources can subscribe to for alerts.
         kwargs : dict
             Keyword arguments
 
@@ -170,7 +174,21 @@ class IndexerLambda(Stack):
             ),
         )
 
+        # Uses batch job status of failure
+        # to trigger a sns topic
+        batch_job_failure_rule = events.Rule(
+            self,
+            "batchJobFailure",
+            rule_name="batch-job-failure",
+            event_pattern=events.EventPattern(
+                source=["aws.batch"],
+                detail_type=["Batch Job State Change"],
+                detail={"status": ["FAILED"]},
+            ),
+        )
+
         # Add the Lambda function as the target for the rules
         imap_data_arrival_rule.add_target(targets.LambdaFunction(indexer_lambda))
         batch_starter_event_rule.add_target(targets.LambdaFunction(indexer_lambda))
         batch_job_status_rule.add_target(targets.LambdaFunction(indexer_lambda))
+        batch_job_failure_rule.add_target(targets.SnsTopic(sns_topic))

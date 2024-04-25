@@ -39,7 +39,7 @@ class MonitoringStack(Stack):
         Attributes
         ----------
         sns_topic_notifications : aws_sns.Topic
-            SNS Topic for sending notifications to that external
+            SNS Topic for sending notifications so that external
             resources can subscribe to for alerts.
 
         """
