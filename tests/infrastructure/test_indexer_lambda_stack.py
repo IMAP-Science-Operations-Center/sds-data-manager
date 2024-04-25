@@ -8,6 +8,7 @@ from aws_cdk.assertions import Template
 from sds_data_manager.stacks.data_bucket_stack import DataBucketStack
 from sds_data_manager.stacks.database_stack import SdpDatabase
 from sds_data_manager.stacks.indexer_lambda_stack import IndexerLambda
+from sds_data_manager.stacks.monitoring_stack import MonitoringStack
 from sds_data_manager.stacks.networking_stack import NetworkingStack
 
 
@@ -50,7 +51,14 @@ def database_stack(app, networking_stack, env):
 
 
 @pytest.fixture(scope="module")
-def template(app, networking_stack, data_bucket, database_stack, env):
+def monitoring_stack(app, env):
+    """Return the monitoring stack."""
+    networking = MonitoringStack(app, construct_id="MonitoringStack", env=env)
+    return networking
+
+
+@pytest.fixture(scope="module")
+def template(app, networking_stack, data_bucket, database_stack, monitoring_stack, env):
     """Return a template indexer lambda stack."""
     stack = IndexerLambda(
         app,
@@ -61,6 +69,7 @@ def template(app, networking_stack, data_bucket, database_stack, env):
         vpc_subnets=database_stack.rds_subnet_selection,
         rds_security_group=networking_stack.rds_security_group,
         data_bucket=data_bucket.data_bucket,
+        sns_topic=monitoring_stack.sns_topic_notifications,
     )
 
     template = Template.from_stack(stack)
