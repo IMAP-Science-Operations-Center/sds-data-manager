@@ -4,9 +4,8 @@ import boto3
 import pytest
 import requests
 
-from sds_data_manager import (
-    IALIRT_PORTS_TO_ALLOW_CONTAINER_1,
-)
+# Ports configuration for various containers within the IALiRT system
+IALIRT_PORTS = [8080, 8081]
 
 
 def get_alb_dns(stack_name, port, container_name):
@@ -25,7 +24,7 @@ def test_alb_response_container():
     """Test to ensure the ALB responds with HTTP 200 status."""
     stack_name = "IalirtProcessing"
     containers = {
-        "Container1": IALIRT_PORTS_TO_ALLOW_CONTAINER_1,
+        "Ports": IALIRT_PORTS,
     }
 
     for container_name, ports in containers.items():

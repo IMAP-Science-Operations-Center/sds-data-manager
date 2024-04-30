@@ -13,9 +13,8 @@ from aws_cdk import aws_ecs as ecs
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from constructs import Construct
 
-from sds_data_manager import (
-    IALIRT_PORTS_TO_ALLOW_CONTAINER_1,
-)
+# Ports configuration for various containers within the IALiRT system
+IALIRT_PORTS = [8080, 8081]
 
 
 class IalirtProcessing(Stack):
@@ -51,40 +50,26 @@ class IalirtProcessing(Stack):
         self.repo = repo
         self.add_dynamodb_table()
 
-        # Defines the type and port number for the
-        # allowed traffic to the Application Load Balancer
-        # and the EC2 instances.
-        ports = IALIRT_PORTS_TO_ALLOW_CONTAINER_1
-
         # Create single security group in which
         # both containers will reside
-        self.ecs_security_group = self.create_ecs_security_group(ports)
+        self.create_ecs_security_group()
 
         # Add a single security group in which
         # both application load balancers will reside
-        self.load_balancer_security_group = self.create_load_balancer_security_group(
-            ports
-        )
+        self.create_load_balancer_security_group()
 
-        # Initialize resources for each container
-        self.add_container_resources("Container1", IALIRT_PORTS_TO_ALLOW_CONTAINER_1)
-
-    def add_container_resources(self, container_name, ports):
-        """Add compute resources and load balancer for a container."""
         # Add an ecs service and cluster for each container
-        ecs_service, ecs_cluster = self.add_compute_resources(
-            container_name, ports, self.ecs_security_group
-        )
+        self.add_compute_resources("Container1", IALIRT_PORTS, self.ecs_security_group)
         # Add load balancer for each container
         load_balancer = self.add_load_balancer(
-            container_name, ports, ecs_service, self.load_balancer_security_group
+            "Container1", IALIRT_PORTS, self.load_balancer_security_group
         )
         # Add autoscaling for each container
-        self.add_autoscaling(container_name, ecs_cluster, load_balancer, ports)
+        self.add_autoscaling("Container1", load_balancer, IALIRT_PORTS)
 
-    def create_ecs_security_group(self, ports):
+    def create_ecs_security_group(self):
         """Create and return a security group for containers."""
-        ecs_security_group = ec2.SecurityGroup(
+        self.ecs_security_group = ec2.SecurityGroup(
             self,
             "IalirtEcsSecurityGroup",
             vpc=self.vpc,
@@ -92,47 +77,46 @@ class IalirtProcessing(Stack):
             allow_all_outbound=True,
         )
 
-        for port in ports:
+        for port in IALIRT_PORTS:
             # Add ingress rule for each port
-            ecs_security_group.add_ingress_rule(
+            self.ecs_security_group.add_ingress_rule(
                 peer=ec2.Peer.any_ipv4(),
                 connection=ec2.Port.tcp(port),
                 description="Allow inbound traffic on TCP port",
             )
-        return ecs_security_group
 
-    def create_load_balancer_security_group(self, ports):
+    def create_load_balancer_security_group(self):
         """Create and return a security group for load balancers."""
         # Create a security group for the ALB
-        load_balancer_security_group = ec2.SecurityGroup(
+        self.load_balancer_security_group = ec2.SecurityGroup(
             self,
             "ALBSecurityGroup",
             vpc=self.vpc,
             description="Security group for the Ialirt ALB",
         )
 
-        # Allow inbound traffic from a specific port and
+        # Allow inbound and outbound traffic from a specific port and
         # any ipv4 address.
-        for port in ports:
-            load_balancer_security_group.add_ingress_rule(
+        for port in IALIRT_PORTS:
+            self.load_balancer_security_group.add_ingress_rule(
                 peer=ec2.Peer.any_ipv4(),
                 connection=ec2.Port.tcp(port),
-                description=f"Allow inbound traffic on " f"TCP port {port}",
+                description=f"Allow inbound traffic on TCP port {port}",
             )
 
-        # Allow all outbound traffic.
-        load_balancer_security_group.add_egress_rule(
-            peer=ec2.Peer.any_ipv4(),
-            connection=ec2.Port.all_traffic(),
-            description="Allow outbound traffic",
-        )
+            # Allow all outbound traffic.
+            self.load_balancer_security_group.add_egress_rule(
+                peer=ec2.Peer.any_ipv4(),
+                connection=ec2.Port.tcp(port),
+                description=f"Allow outbound traffic on TCP port {port}",
+            )
 
-        return load_balancer_security_group
-
-    def add_compute_resources(self, container_name, ports, ecs_security_group):
+    def add_compute_resources(self, container_name, ecs_security_group):
         """Add ECS compute resources for a container."""
         # ECS Cluster manages EC2 instances on which containers are deployed.
-        ecs_cluster = ecs.Cluster(self, f"IalirtCluster{container_name}", vpc=self.vpc)
+        self.ecs_cluster = ecs.Cluster(
+            self, f"IalirtCluster{container_name}", vpc=self.vpc
+        )
 
         # This task definition specifies the networking mode as AWS_VPC.
         # ECS tasks in AWS_VPC mode can be registered with
@@ -146,12 +130,14 @@ class IalirtProcessing(Stack):
         container = task_definition.add_container(
             f"IalirtContainer{container_name}",
             image=ecs.ContainerImage.from_ecr_repository(self.repo, "latest"),
+            # Allowable values:
+            # https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs.TaskDefinition.html#cpu
             memory_limit_mib=512,
             cpu=256,
             logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirt{container_name}"),
         )
 
-        for port in ports:
+        for port in IALIRT_PORTS:
             # Map ports to container
             port_mapping = ecs.PortMapping(
                 container_port=port,
@@ -163,18 +149,16 @@ class IalirtProcessing(Stack):
         # ECS Service is a configuration that
         # ensures application can run and maintain
         # instances of a task definition.
-        ecs_service = ecs.Ec2Service(
+        self.ecs_service = ecs.Ec2Service(
             self,
             f"IalirtService{container_name}",
-            cluster=ecs_cluster,
+            cluster=self.ecs_cluster,
             task_definition=task_definition,
             security_groups=[ecs_security_group],
             desired_count=1,
         )
 
-        return ecs_service, ecs_cluster
-
-    def add_autoscaling(self, container_name, ecs_cluster, load_balancer, ports):
+    def add_autoscaling(self, container_name, load_balancer):
         """Add autoscaling resources."""
         # This auto scaling group is used to manage the
         # number of instances in the ECS cluster. If an instance
@@ -199,17 +183,15 @@ class IalirtProcessing(Stack):
             auto_scaling_group=auto_scaling_group,
         )
 
-        ecs_cluster.add_asg_capacity_provider(capacity_provider)
+        self.ecs_cluster.add_asg_capacity_provider(capacity_provider)
 
         # Allow inbound traffic from the Application Load Balancer
         # to the security groups associated with the EC2 instances
         # within the Auto Scaling Group.
-        for port in ports:
+        for port in IALIRT_PORTS:
             auto_scaling_group.connections.allow_from(load_balancer, ec2.Port.tcp(port))
 
-    def add_load_balancer(
-        self, container_name, ports, ecs_service, load_balancer_security_group
-    ):
+    def add_load_balancer(self, container_name, load_balancer_security_group):
         """Add a load balancer for a container."""
         # Create the Application Load Balancer and
         # place it in a public subnet.
@@ -223,7 +205,7 @@ class IalirtProcessing(Stack):
         )
 
         # Create a listener for each port specified
-        for port in ports:
+        for port in IALIRT_PORTS:
             listener = load_balancer.add_listener(
                 f"Listener{container_name}{port}",
                 port=port,
@@ -235,7 +217,7 @@ class IalirtProcessing(Stack):
             listener.add_targets(
                 f"Target{container_name}{port}",
                 port=port,
-                targets=[ecs_service],
+                targets=[self.ecs_service],
                 protocol=elbv2.ApplicationProtocol.HTTP,
             )
 
