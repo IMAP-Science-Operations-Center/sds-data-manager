@@ -4,9 +4,8 @@ This is the module containing the general stack to be built for computation of
 I-ALiRT algorithms.
 """
 
-from aws_cdk import CfnOutput, RemovalPolicy, Stack
+from aws_cdk import CfnOutput, Stack
 from aws_cdk import aws_autoscaling as autoscaling
-from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_ecs as ecs
@@ -48,7 +47,7 @@ class IalirtProcessing(Stack):
 
         self.vpc = vpc
         self.repo = repo
-        self.add_dynamodb_table()
+        # self.add_dynamodb_table()
 
         # Create single security group in which
         # both containers will reside
@@ -59,13 +58,11 @@ class IalirtProcessing(Stack):
         self.create_load_balancer_security_group()
 
         # Add an ecs service and cluster for each container
-        self.add_compute_resources("Container1", IALIRT_PORTS, self.ecs_security_group)
+        self.add_compute_resources("Container1")
         # Add load balancer for each container
-        load_balancer = self.add_load_balancer(
-            "Container1", IALIRT_PORTS, self.load_balancer_security_group
-        )
+        self.add_load_balancer("Container1")
         # Add autoscaling for each container
-        self.add_autoscaling("Container1", load_balancer, IALIRT_PORTS)
+        self.add_autoscaling("Container1")
 
     def create_ecs_security_group(self):
         """Create and return a security group for containers."""
@@ -111,7 +108,7 @@ class IalirtProcessing(Stack):
                 description=f"Allow outbound traffic on TCP port {port}",
             )
 
-    def add_compute_resources(self, container_name, ecs_security_group):
+    def add_compute_resources(self, container_name):
         """Add ECS compute resources for a container."""
         # ECS Cluster manages EC2 instances on which containers are deployed.
         self.ecs_cluster = ecs.Cluster(
@@ -154,11 +151,11 @@ class IalirtProcessing(Stack):
             f"IalirtService{container_name}",
             cluster=self.ecs_cluster,
             task_definition=task_definition,
-            security_groups=[ecs_security_group],
+            security_groups=[self.ecs_security_group],
             desired_count=1,
         )
 
-    def add_autoscaling(self, container_name, load_balancer):
+    def add_autoscaling(self, container_name):
         """Add autoscaling resources."""
         # This auto scaling group is used to manage the
         # number of instances in the ECS cluster. If an instance
@@ -189,24 +186,26 @@ class IalirtProcessing(Stack):
         # to the security groups associated with the EC2 instances
         # within the Auto Scaling Group.
         for port in IALIRT_PORTS:
-            auto_scaling_group.connections.allow_from(load_balancer, ec2.Port.tcp(port))
+            auto_scaling_group.connections.allow_from(
+                self.load_balancer, ec2.Port.tcp(port)
+            )
 
-    def add_load_balancer(self, container_name, load_balancer_security_group):
+    def add_load_balancer(self, container_name):
         """Add a load balancer for a container."""
         # Create the Application Load Balancer and
         # place it in a public subnet.
-        load_balancer = elbv2.ApplicationLoadBalancer(
+        self.load_balancer = elbv2.ApplicationLoadBalancer(
             self,
             f"IalirtALB{container_name}",
             vpc=self.vpc,
-            security_group=load_balancer_security_group,
+            security_group=self.load_balancer_security_group,
             internet_facing=True,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
         )
 
         # Create a listener for each port specified
         for port in IALIRT_PORTS:
-            listener = load_balancer.add_listener(
+            listener = self.load_balancer.add_listener(
                 f"Listener{container_name}{port}",
                 port=port,
                 open=True,
@@ -226,30 +225,28 @@ class IalirtProcessing(Stack):
             CfnOutput(
                 self,
                 f"LoadBalancerDNS{container_name}{port}",
-                value=f"http://{load_balancer.load_balancer_dns_name}:{port}",
+                value=f"http://{self.load_balancer.load_balancer_dns_name}:{port}",
             )
 
-        return load_balancer
-
-    # I-ALiRT IOIS DynamoDB
-    # ingest-ugps: ingestion ugps - 64 bit
-    # sct-vtcw: spacecraft time ugps - 64 bit
-    # src-seq-ctr: increments with each packet (included in filename?)
-    # ccsds-filename: filename of the packet
-    def add_dynamodb_table(self):
-        """DynamoDB Table."""
-        dynamodb.Table(
-            self,
-            "DynamoDB-ialirt",
-            table_name="ialirt-packets",
-            partition_key=dynamodb.Attribute(
-                name="ingest-time", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="spacecraft-time", type=dynamodb.AttributeType.STRING
-            ),
-            # on-demand
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=RemovalPolicy.DESTROY,
-            point_in_time_recovery=True,
-        )
+    # # I-ALiRT IOIS DynamoDB
+    # # ingest-ugps: ingestion ugps - 64 bit
+    # # sct-vtcw: spacecraft time ugps - 64 bit
+    # # src-seq-ctr: increments with each packet (included in filename?)
+    # # ccsds-filename: filename of the packet
+    # def add_dynamodb_table(self):
+    #     """DynamoDB Table."""
+    #     dynamodb.Table(
+    #         self,
+    #         "DynamoDB-ialirt",
+    #         table_name="ialirt-packets",
+    #         partition_key=dynamodb.Attribute(
+    #             name="ingest-time", type=dynamodb.AttributeType.STRING
+    #         ),
+    #         sort_key=dynamodb.Attribute(
+    #             name="spacecraft-time", type=dynamodb.AttributeType.STRING
+    #         ),
+    #         # on-demand
+    #         billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+    #         removal_policy=RemovalPolicy.DESTROY,
+    #         point_in_time_recovery=True,
+    #     )
