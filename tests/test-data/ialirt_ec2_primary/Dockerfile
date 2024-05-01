@@ -1,9 +1,9 @@
 # This code is used to Dockerize test_app.py. The workflow is as follows:
 # 1. Login to the ECR with `aws ecr get-login-password --region <region> | docker login
 # --username AWS --password-stdin <ecr uri>`
-# 2. Build the image with `docker build -t my-image --rm .`
-# 3. docker tag <tag> <ecr uri>
-# 4. docker push <ecr uri>
+# 2. Build the image with `docker build -t my-image-primary --rm .`
+# 3. docker tag my-image-primary <ecr uri>:latest-primary
+# 4. docker push <ecr uri>:latest-primary
 FROM python:3.10
 COPY . /app
 
