@@ -4,6 +4,7 @@ This is the module containing the general stack to be built for computation of
 I-ALiRT algorithms. It was built using best practices as shown here:
 
 https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbound.html
+https://aws.amazon.com/elasticloadbalancing/features/#Product_comparisons
 """
 
 from aws_cdk import CfnOutput, Stack
@@ -169,7 +170,9 @@ class IalirtProcessing(Stack):
             task_definition=task_definition,
             security_groups=[self.ecs_security_group],
             desired_count=1,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE),
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            ),
         )
 
     def add_autoscaling(self, processing_name):
@@ -225,7 +228,7 @@ class IalirtProcessing(Stack):
             listener = self.load_balancer.add_listener(
                 f"Listener{processing_name}{port}",
                 port=port,
-                open=True,
+                open=False,
                 protocol=elbv2.ApplicationProtocol.HTTP,
             )
 
