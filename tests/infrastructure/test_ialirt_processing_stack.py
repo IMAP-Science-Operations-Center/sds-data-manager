@@ -5,8 +5,8 @@ import pytest
 import requests
 
 
-def get_alb_dns(stack_name, port, container_name):
-    """Retrieve DNS for the ALB from CloudFormation."""
+def get_nlb_dns(stack_name, port, container_name):
+    """Retrieve DNS for the NLB from CloudFormation."""
     client = boto3.client("cloudformation")
     response = client.describe_stacks(StackName=stack_name)
     output_key = f"LoadBalancerDNS{container_name}{port}"
@@ -18,8 +18,8 @@ def get_alb_dns(stack_name, port, container_name):
 
 
 @pytest.mark.xfail(reason="Will fail unless IALiRT stack is deployed.")
-def test_alb_response():
-    """Test to ensure the ALB responds with HTTP 200 status."""
+def test_nlb_response():
+    """Test to ensure the NLB responds with HTTP 200 status."""
     stacks = {
         "Primary": [8080, 8081],
         "Secondary": [80],
@@ -27,10 +27,10 @@ def test_alb_response():
 
     for stack_name, ports in stacks.items():
         for port in ports:
-            alb_dns = get_alb_dns(f"IalirtProcessing{stack_name}", port, stack_name)
-            print(f"Testing URL: {alb_dns}")
+            nlb_dns = get_nlb_dns(f"IalirtProcessing{stack_name}", port, stack_name)
+            print(f"Testing URL: {nlb_dns}")
             # Specify a timeout for the request
-            response = requests.get(alb_dns, timeout=10)  # timeout in seconds
+            response = requests.get(nlb_dns, timeout=10)  # timeout in seconds
             assert (
                 response.status_code == 200
-            ), f"ALB did not return HTTP 200 on port {port} for {stack_name}"
+            ), f"NLB did not return HTTP 200 on port {port} for {stack_name}"

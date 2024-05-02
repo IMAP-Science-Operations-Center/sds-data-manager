@@ -82,24 +82,24 @@ class IalirtProcessing(Stack):
             allow_all_outbound=True,
         )
 
-        # Only allow traffic from the ALB security group
+        # Only allow traffic from the NLB security group
         self.ecs_security_group.add_ingress_rule(
             peer=ec2.Peer.security_group_id(
                 self.load_balancer_security_group.security_group_id
             ),
             connection=ec2.Port.tcp(self.container_port),
-            description=f"Allow inbound traffic from the ALB on "
+            description=f"Allow inbound traffic from the NLB on "
             f"TCP port {self.container_port}",
         )
 
     def create_load_balancer_security_group(self, processing_name):
         """Create and return a security group for load balancers."""
-        # Create a security group for the ALB
+        # Create a security group for the NLB
         self.load_balancer_security_group = ec2.SecurityGroup(
             self,
-            f"ALBSecurityGroup{processing_name}",
+            f"NLBSecurityGroup{processing_name}",
             vpc=self.vpc,
-            description="Security group for the Ialirt ALB",
+            description="Security group for the Ialirt NLB",
         )
 
         # Allow inbound and outbound traffic from a specific port and
@@ -128,7 +128,7 @@ class IalirtProcessing(Stack):
 
         # Specifies the networking mode as AWS_VPC.
         # ECS tasks in AWS_VPC mode can be registered with
-        # Application Load Balancers (ALB).
+        # Network Load Balancers (NLB).
         task_definition = ecs.Ec2TaskDefinition(
             self,
             f"IalirtTaskDef{processing_name}",
@@ -151,7 +151,7 @@ class IalirtProcessing(Stack):
         )
 
         # Map ports to container
-        # ALB needs to know which port on the EC2 instances
+        # NLB needs to know which port on the EC2 instances
         # it should forward the traffic to
         port_mapping = ecs.PortMapping(
             container_port=self.container_port,
