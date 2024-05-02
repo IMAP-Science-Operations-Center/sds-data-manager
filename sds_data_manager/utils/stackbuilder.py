@@ -191,16 +191,16 @@ def build_sds(
     ialirt_ports = {"Primary": [8080, 8081], "Secondary": [80]}
     container_ports = {"Primary": 8080, "Secondary": 80}
 
-    for port in ialirt_ports:
+    for primary_or_secondary in ialirt_ports:
         ialirt_processing_stack.IalirtProcessing(
             scope,
-            f"IalirtProcessing{port}",
+            f"IalirtProcessing{primary_or_secondary}",
             env=env,
             vpc=networking.vpc,
             repo=ialirt_ecr.container_repo,
-            processing_name=port,
-            ialirt_ports=ialirt_ports[port],
-            container_port=container_ports[port],
+            processing_name=primary_or_secondary,
+            ialirt_ports=ialirt_ports[primary_or_secondary],
+            container_port=container_ports[primary_or_secondary],
         )
 
 

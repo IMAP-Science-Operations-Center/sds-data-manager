@@ -45,7 +45,7 @@ class IalirtProcessing(Stack):
         processing_name : str
             Name of the processing stack.
         ialirt_ports : list[int]
-            List of ports to for incoming traffic.
+            List of ports to listen on for incoming traffic.
         container_port : int
             Port to be used by the container.
         kwargs : dict
