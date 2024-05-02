@@ -1,7 +1,9 @@
 """Configure the i-alirt processing stack.
 
 This is the module containing the general stack to be built for computation of
-I-ALiRT algorithms.
+I-ALiRT algorithms. It was built using best practices as shown here:
+
+https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbound.html
 """
 
 from aws_cdk import CfnOutput, Stack
@@ -56,11 +58,11 @@ class IalirtProcessing(Stack):
         self.vpc = vpc
         self.repo = repo
 
-        # Create security group in which containers will reside
-        self.create_ecs_security_group(processing_name)
-
         # Add a security group in which application load balancer will reside
         self.create_load_balancer_security_group(processing_name)
+
+        # Create security group in which containers will reside
+        self.create_ecs_security_group(processing_name)
 
         # Add an ecs service and cluster for each container
         self.add_compute_resources(processing_name)
@@ -79,13 +81,15 @@ class IalirtProcessing(Stack):
             allow_all_outbound=True,
         )
 
-        for port in self.ports:
-            # Add ingress rule for each port
-            self.ecs_security_group.add_ingress_rule(
-                peer=ec2.Peer.any_ipv4(),
-                connection=ec2.Port.tcp(port),
-                description="Allow inbound traffic on TCP port",
-            )
+        # Only allow traffic from the ALB security group
+        self.ecs_security_group.add_ingress_rule(
+            peer=ec2.Peer.security_group_id(
+                self.load_balancer_security_group.security_group_id
+            ),
+            connection=ec2.Port.tcp(self.container_port),
+            description=f"Allow inbound traffic from the ALB on "
+            f"TCP port {self.container_port}",
+        )
 
     def create_load_balancer_security_group(self, processing_name):
         """Create and return a security group for load balancers."""
@@ -98,17 +102,18 @@ class IalirtProcessing(Stack):
         )
 
         # Allow inbound and outbound traffic from a specific port and
-        # any ipv4 address.
+        # LASP IP address range.
         for port in self.ports:
             self.load_balancer_security_group.add_ingress_rule(
-                peer=ec2.Peer.any_ipv4(),
+                # TODO: allow IP addresses from partners
+                peer=ec2.Peer.ipv4("128.138.131.0/24"),
                 connection=ec2.Port.tcp(port),
                 description=f"Allow inbound traffic on TCP port {port}",
             )
 
-            # Allow all outbound traffic.
+            # Allow outbound traffic.
             self.load_balancer_security_group.add_egress_rule(
-                peer=ec2.Peer.any_ipv4(),
+                peer=ec2.Peer.ipv4("128.138.131.0/24"),
                 connection=ec2.Port.tcp(port),
                 description=f"Allow outbound traffic on TCP port {port}",
             )
@@ -164,6 +169,7 @@ class IalirtProcessing(Stack):
             task_definition=task_definition,
             security_groups=[self.ecs_security_group],
             desired_count=1,
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE),
         )
 
     def add_autoscaling(self, processing_name):
