@@ -188,8 +188,8 @@ def build_sds(
     )
 
     # All traffic to I-ALiRT is directed to listed container ports
-    ialirt_ports = {"Primary": [8080, 8081], "Secondary": [80]}
-    container_ports = {"Primary": 8080, "Secondary": 80}
+    ialirt_ports = {"Primary": [8080, 8081], "Secondary10": [80]}
+    container_ports = {"Primary": 8080, "Secondary10": 80}
 
     for primary_or_secondary in ialirt_ports:
         ialirt_processing_stack.IalirtProcessing(
