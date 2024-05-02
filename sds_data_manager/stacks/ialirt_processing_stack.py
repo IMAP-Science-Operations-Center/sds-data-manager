@@ -214,11 +214,11 @@ class IalirtProcessing(Stack):
         """Add a load balancer for a container."""
         # Create the Application Load Balancer and
         # place it in a public subnet.
-        self.load_balancer = elbv2.ApplicationLoadBalancer(
+        self.load_balancer = elbv2.NetworkLoadBalancer(
             self,
-            f"IalirtALB{processing_name}",
+            f"IalirtNLB{processing_name}",
             vpc=self.vpc,
-            security_group=self.load_balancer_security_group,
+            security_groups=[self.load_balancer_security_group],
             internet_facing=True,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
         )
@@ -228,8 +228,7 @@ class IalirtProcessing(Stack):
             listener = self.load_balancer.add_listener(
                 f"Listener{processing_name}{port}",
                 port=port,
-                open=False,
-                protocol=elbv2.ApplicationProtocol.HTTP,
+                protocol=elbv2.Protocol.TCP,
             )
 
             # Register the ECS service as a target for the listener
@@ -237,7 +236,6 @@ class IalirtProcessing(Stack):
                 f"Target{processing_name}{self.container_port}",
                 port=self.container_port,
                 targets=[self.ecs_service],
-                protocol=elbv2.ApplicationProtocol.HTTP,
             )
 
             # This simply prints the DNS name of the
