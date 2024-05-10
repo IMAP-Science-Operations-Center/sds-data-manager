@@ -1,0 +1,28 @@
+{
+  "hosted-zone:account=449431850278:domainName=imap-mission.com:region=us-west-2": {
+    "Id": "/hostedzone/Z03339253QEJJ9EWM67GM",
+    "Name": "imap-mission.com."
+  },
+  "hosted-zone:account=449431850278:domainName=dev.imap-mission.com:region=us-west-2": {
+    "Id": "/hostedzone/Z02876793IYZV6BGYMPHK",
+    "Name": "dev.imap-mission.com."
+  },
+  "availability-zones:account=449431850278:region=us-west-2": [
+    "us-west-2a",
+    "us-west-2b",
+    "us-west-2c",
+    "us-west-2d"
+  ],
+  "availability-zones:account=449431850278:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ],
+  "hosted-zone:account=449431850278:domainName=imap-mission.com:region=us-east-1": {
+    "Id": "/hostedzone/Z03339253QEJJ9EWM67GM",
+    "Name": "imap-mission.com."
+  }
+}

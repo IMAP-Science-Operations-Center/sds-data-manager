@@ -30,12 +30,11 @@ jobs:
           # Ignore the network marks from the remote test environment
           poetry run pytest --color=yes --cov --cov-report=xml -m "not network"
 
-
       - name: Test synth command
         run: |
           npm install -g aws-cdk
           # poetry run to get the environment we installed everything into
-          poetry run cdk synth --context account_name=dev
+          poetry run cdk synth
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
