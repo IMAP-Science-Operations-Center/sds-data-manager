@@ -40,8 +40,8 @@ pydata-sphinx-theme = {version="^0.13.3", optional=true}
 
 [tool.poetry.group.cdk-install.dependencies]
 # 2.66+ required for aws-cdk.aws-lambda-python-alpha
-aws-cdk-lib = ">=2.88.0,<3.0.0"
-"aws-cdk.aws-lambda-python-alpha" = "^2.66.0a0"
+aws-cdk-lib = ">=2.141.0,<3.0.0"
+"aws-cdk.aws-lambda-python-alpha" = "^2.141.0a0"
 constructs = ">=10.0.0,<11.0.0"
 
 [tool.poetry.group.dev.dependencies]
