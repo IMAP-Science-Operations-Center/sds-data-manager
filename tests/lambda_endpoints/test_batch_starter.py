@@ -70,7 +70,7 @@ def test_file_catalog_simulation(test_engine):
     test_record = [
         FileCatalog(
             file_path="/path/to/file",
-            instrument="ultra45",
+            instrument="ultra",
             data_level="l2",
             descriptor="science",
             start_date=datetime(2024, 1, 1),
@@ -170,7 +170,7 @@ def test_pre_processing_dependency(test_engine, populate_db):
 def test_query_instrument(test_file_catalog_simulation):
     """Tests ``query_instrument`` function."""
     upstream_dependency = {
-        "instrument": "ultra45",
+        "instrument": "ultra",
         "data_level": "l2",
         "version": "v001",
     }
@@ -183,7 +183,7 @@ def test_query_instrument(test_file_catalog_simulation):
         "v001",
     )
 
-    assert record.instrument == "ultra45"
+    assert record.instrument == "ultra"
     assert record.data_level == "l2"
     assert record.version == "v001"
     assert record.start_date == datetime(2024, 1, 1)
