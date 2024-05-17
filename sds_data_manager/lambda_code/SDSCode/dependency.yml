@@ -1,0 +1,28 @@
+# dependencies.yaml
+dependencies:
+  - primary_instrument: "ultra"
+    primary_data_level: "l0"
+    primary_descriptor: "45raw"
+    dependent_data_level: "l1a"
+    descriptors:
+      - descriptor: "45events"
+        relationship: "HARD"
+      - descriptor: "45phxtof"
+        relationship: "HARD"
+      - descriptor: "45aux"
+        relationship: "HARD"
+      - descriptor: "45rates"
+        relationship: "HARD"
+  - primary_instrument: "ultra"
+    primary_data_level: "l0"
+    primary_descriptor: "90raw"
+    dependent_data_level: "l1a"
+    descriptors:
+      - descriptor: "90events"
+        relationship: "HARD"
+      - descriptor: "90phxtof"
+        relationship: "HARD"
+      - descriptor: "90aux"
+        relationship: "HARD"
+      - descriptor: "90rates"
+        relationship: "HARD"
