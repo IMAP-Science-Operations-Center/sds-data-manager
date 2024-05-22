@@ -8,8 +8,10 @@ from SDSCode.database import database as db
 from SDSCode.database.models import Base
 from SDSCode.dependency_config import downstream_dependents, upstream_dependents
 from SDSCode.dependency_config_ultra import (
-    downstream_dependents_ultra,
-    upstream_dependents_ultra,
+    downstream_dependents as downstream_dependents_ultra,
+)
+from SDSCode.dependency_config_ultra import (
+    upstream_dependents as upstream_dependents_ultra,
 )
 from sqlalchemy.orm import Session
 
