@@ -222,6 +222,7 @@ def query_upstream_dependencies(session, downstream_dependents):
             prepared_data = prepare_data(
                 instrument=instrument,
                 data_level=data_level,
+                descriptor=descriptor,
                 start_date=start_date,
                 version=version,
                 upstream_dependencies=upstream_dependencies,
@@ -234,7 +235,9 @@ def query_upstream_dependencies(session, downstream_dependents):
     return instruments_to_process
 
 
-def prepare_data(instrument, data_level, start_date, version, upstream_dependencies):
+def prepare_data(
+    instrument, data_level, descriptor, start_date, version, upstream_dependencies
+):
     """Prepare data for batch job.
 
     Parameters
@@ -243,6 +246,8 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
         Instrument.
     data_level : str
         Data level.
+    descriptor : str
+        Data descriptor.
     start_date : str
         Data start date.
     version : str
@@ -261,6 +266,7 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
     # "Command": [
     #     "--instrument", "mag",
     #     "--data-level", "l1a",
+    #     "--descriptor", "sci",
     #     "--start-date", "20231212",
     #     "--version", "v001",
     #     "--dependency", """[
@@ -286,6 +292,8 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
         instrument,
         "--data-level",
         data_level,
+        "--descriptor",
+        descriptor,
         "--start-date",
         start_date,
         "--version",
