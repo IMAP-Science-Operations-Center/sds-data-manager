@@ -248,7 +248,7 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
             "instrument": "swe",
             "data_level": "l1a",
             "version": "v001",
-            "descriptor": "all",
+            "descriptor": "sci",
             "start_date": "20240101",
         }
     ]
