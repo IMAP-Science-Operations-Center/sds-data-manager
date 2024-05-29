@@ -6,11 +6,26 @@ import logging
 import requests
 from SDSCode.database import database as db
 from SDSCode.database.models import Base
-from SDSCode.dependency_config import downstream_dependents, upstream_dependents
-from SDSCode.dependency_config_ultra import (
+from SDSCode.dependency.dependency_config import (
+    downstream_dependents,
+    upstream_dependents,
+)
+from SDSCode.dependency.dependency_config_hi import (
+    downstream_dependents as downstream_dependents_hi,
+)
+from SDSCode.dependency.dependency_config_hi import (
+    upstream_dependents as upstream_dependents_hi,
+)
+from SDSCode.dependency.dependency_config_mag import (
+    downstream_dependents as downstream_dependents_mag,
+)
+from SDSCode.dependency.dependency_config_mag import (
+    upstream_dependents as upstream_dependents_mag,
+)
+from SDSCode.dependency.dependency_config_ultra import (
     downstream_dependents as downstream_dependents_ultra,
 )
-from SDSCode.dependency_config_ultra import (
+from SDSCode.dependency.dependency_config_ultra import (
     upstream_dependents as upstream_dependents_ultra,
 )
 from sqlalchemy.orm import Session
@@ -73,6 +88,10 @@ def lambda_handler(event, context):
             + upstream_dependents
             + downstream_dependents_ultra
             + upstream_dependents_ultra
+            + downstream_dependents_mag
+            + upstream_dependents_mag
+            + downstream_dependents_hi
+            + upstream_dependents_hi
         )
         with Session(engine) as session:
             session.add_all(combined_dependents)

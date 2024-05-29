@@ -10,9 +10,6 @@ from moto import mock_batch, mock_sts
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from sds_data_manager.lambda_code.SDSCode import (
-    dependency_config,
-)
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     get_dependency,
     lambda_handler,
@@ -26,6 +23,9 @@ from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     Base,
     FileCatalog,
+)
+from sds_data_manager.lambda_code.SDSCode.dependency import (
+    dependency_config,
 )
 
 

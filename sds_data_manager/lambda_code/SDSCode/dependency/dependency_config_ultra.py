@@ -2,16 +2,18 @@
 
 This is used to populate pre-processing dependency table in the database.
 
-NOTE: This setup assumes that we get one data file everyday with all
-the data of multiple apid. This is why we have only one file for each
-l0 and descriptor is raw. And l1a that depends on l0 has 'all' as
-descriptor with assumption that l1a could produce multiple files
-with different descriptor. Those different descriptor are handle in its own
-code in imap_processing repo.
+NOTE: This setup assumes that we get one data file with multiple APIDs data.
+This is why we have only one dependency for l0. We expect that we get one
+l0 file, eg. imap_ultra_l0_raw_20240529_v001.pkts, which contains all the data of all
+APIDs. That l0 data file will kick off one l1a process for 'all' as l1a will produce
+multiple files with different descriptor(aka different data product per APID). Those
+different descriptor are handled by CDF attrs.
 """
 
-from .database.models import PreProcessingDependency
+from ..database.models import PreProcessingDependency
 
+# TODO: fix ultra dependency because it's not kicking processing when new data
+# is available
 downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
