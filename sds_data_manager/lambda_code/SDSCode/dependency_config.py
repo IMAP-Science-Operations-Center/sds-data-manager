@@ -29,7 +29,7 @@ downstream_dependents = [
         primary_descriptor="raw",
         dependent_instrument="swapi",
         dependent_data_level="l1",
-        dependent_descriptor="sci",
+        dependent_descriptor="all",
         relationship="HARD",
         direction="DOWNSTREAM",
     ),
@@ -180,7 +180,7 @@ upstream_dependents = [
     PreProcessingDependency(
         primary_instrument="swapi",
         primary_data_level="l1",
-        primary_descriptor="sci",
+        primary_descriptor="all",
         dependent_instrument="swapi",
         dependent_data_level="l0",
         dependent_descriptor="raw",
