@@ -67,11 +67,15 @@ def lambda_handler(event, context):
         engine = db.get_engine()
         Base.metadata.create_all(engine)
         # Write dependencies to pre-processing dependency table
-        downstream_dependents.extend(downstream_dependents_ultra)
-        downstream_dependents.extend(upstream_dependents)
-        downstream_dependents.extend(upstream_dependents_ultra)
+        # NOTE: `.extend()` causes to have duplicate entries
+        combined_dependents = (
+            downstream_dependents
+            + upstream_dependents
+            + downstream_dependents_ultra
+            + upstream_dependents_ultra
+        )
         with Session(engine) as session:
-            session.add_all(downstream_dependents)
+            session.add_all(combined_dependents)
             session.commit()
         send_response(event, context, "SUCCESS")
     except Exception as e:
