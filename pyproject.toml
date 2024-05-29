@@ -67,7 +67,7 @@ requests-aws4auth = "^1.2.3"
 psycopg2-binary = "^2.9.9"
 urllib3 = "<2.0.0"
 SQLAlchemy = "<=3.0.0"
-imap-data-access = ">=0.6.0"
+imap-data-access = ">=0.6.1"
 
 # Used for installing with pip
 [tool.poetry.extras]

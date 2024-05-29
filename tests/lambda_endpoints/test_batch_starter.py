@@ -27,6 +27,12 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
 from sds_data_manager.lambda_code.SDSCode.dependency import (
     dependency_config,
 )
+from sds_data_manager.lambda_code.SDSCode.dependency.dependency_config_mag import (
+    downstream_dependents as mag_downstream_dependents,
+)
+from sds_data_manager.lambda_code.SDSCode.dependency.dependency_config_mag import (
+    upstream_dependents as mag_upstream_dependents,
+)
 
 
 # TODO: figure out why scope of test_engine is not working properly
@@ -46,17 +52,16 @@ def test_engine():
 @pytest.fixture()
 def populate_db(test_engine):
     """Add test data to database."""
-    # all_dependents = (
-    #     dependency_config.downstream_dependents
-    #     + dependency_config.upstream_dependents
-    # )
-    dependency_config.downstream_dependents.extend(
-        dependency_config.upstream_dependents
+    all_dependents = (
+        dependency_config.downstream_dependents
+        + dependency_config.upstream_dependents
+        + mag_downstream_dependents
+        + mag_upstream_dependents
     )
 
     # Setup: Add records to the database
     with Session(db.get_engine()) as session:
-        session.add_all(dependency_config.downstream_dependents)
+        session.add_all(all_dependents)
         session.commit()
         yield session
         session.rollback()
