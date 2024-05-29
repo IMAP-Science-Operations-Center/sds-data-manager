@@ -46,17 +46,20 @@ def test_engine():
 @pytest.fixture()
 def populate_db(test_engine):
     """Add test data to database."""
-    # all_dependents = (
-    #     dependency_config.downstream_dependents
-    #     + dependency_config.upstream_dependents
-    # )
-    dependency_config.downstream_dependents.extend(
-        dependency_config.upstream_dependents
+    # Get reserved direction dependencies
+    reserved_direction_dependencies = []
+    for dep in dependency_config.downstream_dependents:
+        if dep.reserve_direction is True:
+            reserved_direction_dependencies.append(dep.reverse_direction())
+    all_dependents = (
+        dependency_config.downstream_dependents
+        + dependency_config.upstream_dependents
+        + reserved_direction_dependencies
     )
 
     # Setup: Add records to the database
     with Session(db.get_engine()) as session:
-        session.add_all(dependency_config.downstream_dependents)
+        session.add_all(all_dependents)
         session.commit()
         yield session
         session.rollback()

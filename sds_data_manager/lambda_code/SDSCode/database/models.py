@@ -189,6 +189,12 @@ class PreProcessingDependency(Base):
     dependent_descriptor = Column(String, nullable=False)
     relationship = Column(DEPENDENCY_RELATIONSHIPS, nullable=False)
     direction = Column(DEPENDENCY_DIRECTIONS, nullable=False)
+    # Below field is an optional field. It is used to store flag. The flag
+    # indicates if current dependency direction can be reversed in direction,
+    # meaning it is both upstream and downstream dependent. Many of
+    # instrument's l1a is both upstream and downstream dependent of l1b
+    # product. But inter-instrument dependencies are one way only.
+    reserve_direction = Column(Boolean, nullable=True)
 
     # This can not be used for inter-instrument dependencies.
     def reverse_direction(self):
