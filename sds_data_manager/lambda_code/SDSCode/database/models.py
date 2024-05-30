@@ -190,6 +190,7 @@ class PreProcessingDependency(Base):
     relationship = Column(DEPENDENCY_RELATIONSHIPS, nullable=False)
     direction = Column(DEPENDENCY_DIRECTIONS, nullable=False)
 
+    # This can not be used for inter-instrument dependencies.
     def reverse_direction(self):
         "PreProcessingDependency instance with reversed direction."
         return PreProcessingDependency(
