@@ -190,6 +190,19 @@ class PreProcessingDependency(Base):
     relationship = Column(DEPENDENCY_RELATIONSHIPS, nullable=False)
     direction = Column(DEPENDENCY_DIRECTIONS, nullable=False)
 
+    def reverse_direction(self):
+        "PreProcessingDependency instance with reversed direction."
+        return PreProcessingDependency(
+            primary_instrument=self.dependent_instrument,
+            primary_data_level=self.dependent_data_level,
+            primary_descriptor=self.dependent_descriptor,
+            dependent_instrument=self.primary_instrument,
+            dependent_data_level=self.primary_data_level,
+            dependent_descriptor=self.primary_descriptor,
+            relationship=self.relationship,
+            direction="UPSTREAM" if self.direction == "DOWNSTREAM" else "DOWNSTREAM",
+        )
+
 
 class Version(Base):
     """Version table."""
