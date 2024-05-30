@@ -230,6 +230,7 @@ downstream_dependents = [
 ]
 
 # UPSTREAM DEPENDENCIES
+# This will need to change for inter-instrument dependencies
 upstream_dependents = []
 
 for dep in downstream_dependents:
