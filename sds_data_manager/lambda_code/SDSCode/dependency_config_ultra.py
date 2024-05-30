@@ -27,7 +27,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1a",
-        primary_descriptor="45de",
+        primary_descriptor="45sensor-de",
         dependent_instrument="ultra",
         dependent_data_level="l1b",
         dependent_descriptor="45all",
@@ -37,7 +37,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1a",
-        primary_descriptor="45phxtof",
+        primary_descriptor="45sensor-histogram",
         dependent_instrument="ultra",
         dependent_data_level="l1b",
         dependent_descriptor="45all",
@@ -47,7 +47,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1a",
-        primary_descriptor="45aux",
+        primary_descriptor="45sensor-aux",
         dependent_instrument="ultra",
         dependent_data_level="l1b",
         dependent_descriptor="45all",
@@ -57,7 +57,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1a",
-        primary_descriptor="45rates",
+        primary_descriptor="45sensor-rates",
         dependent_instrument="ultra",
         dependent_data_level="l1b",
         dependent_descriptor="45all",
@@ -88,7 +88,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1b",
-        primary_descriptor="45annotated-de",
+        primary_descriptor="45sensor-de",
         dependent_instrument="ultra",
         dependent_data_level="l1c",
         dependent_descriptor="45all",
@@ -98,7 +98,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1b",
-        primary_descriptor="45extended-spin",
+        primary_descriptor="45sensor-extendedspin",
         dependent_instrument="ultra",
         dependent_data_level="l1c",
         dependent_descriptor="45all",
@@ -108,7 +108,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1b",
-        primary_descriptor="45culling-mask",
+        primary_descriptor="45sensor-cullingmask",
         dependent_instrument="ultra",
         dependent_data_level="l1c",
         dependent_descriptor="45all",
@@ -118,7 +118,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1b",
-        primary_descriptor="45badtimes",
+        primary_descriptor="45sensor-badtimes",
         dependent_instrument="ultra",
         dependent_data_level="l1c",
         dependent_descriptor="45all",
@@ -129,7 +129,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1a",
-        primary_descriptor="90de",
+        primary_descriptor="90sensor-de",
         dependent_instrument="ultra",
         dependent_data_level="l1b",
         dependent_descriptor="90all",
@@ -139,7 +139,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1a",
-        primary_descriptor="90phxtof",
+        primary_descriptor="90sensor-histogram",
         dependent_instrument="ultra",
         dependent_data_level="l1b",
         dependent_descriptor="90all",
@@ -149,7 +149,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1a",
-        primary_descriptor="90aux",
+        primary_descriptor="90sensor-aux",
         dependent_instrument="ultra",
         dependent_data_level="l1b",
         dependent_descriptor="90all",
@@ -159,7 +159,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1a",
-        primary_descriptor="90rates",
+        primary_descriptor="90sensor-rates",
         dependent_instrument="ultra",
         dependent_data_level="l1b",
         dependent_descriptor="90all",
@@ -190,7 +190,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1b",
-        primary_descriptor="90annotated-de",
+        primary_descriptor="90sensor-de",
         dependent_instrument="ultra",
         dependent_data_level="l1c",
         dependent_descriptor="90all",
@@ -200,7 +200,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1b",
-        primary_descriptor="90extended-spin",
+        primary_descriptor="90sensor-extendedspin",
         dependent_instrument="ultra",
         dependent_data_level="l1c",
         dependent_descriptor="90all",
@@ -210,7 +210,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1b",
-        primary_descriptor="90culling-mask",
+        primary_descriptor="90sensor-cullingmask",
         dependent_instrument="ultra",
         dependent_data_level="l1c",
         dependent_descriptor="90all",
@@ -220,7 +220,7 @@ downstream_dependents = [
     PreProcessingDependency(
         primary_instrument="ultra",
         primary_data_level="l1b",
-        primary_descriptor="90badtimes",
+        primary_descriptor="90sensor-badtimes",
         dependent_instrument="ultra",
         dependent_data_level="l1c",
         dependent_descriptor="90all",
