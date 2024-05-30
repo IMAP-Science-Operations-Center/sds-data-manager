@@ -239,7 +239,7 @@ upstream_dependents = [
         dependent_data_level="l0",
         dependent_descriptor="raw",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     # Ultra-45
     PreProcessingDependency(
@@ -250,7 +250,7 @@ upstream_dependents = [
         dependent_data_level="l1a",
         dependent_descriptor="45de",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -260,7 +260,7 @@ upstream_dependents = [
         dependent_data_level="l1a",
         dependent_descriptor="45phxtof",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -270,7 +270,7 @@ upstream_dependents = [
         dependent_data_level="l1a",
         dependent_descriptor="45aux",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -280,7 +280,7 @@ upstream_dependents = [
         dependent_data_level="l1a",
         dependent_descriptor="45rates",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     # TODO: uncomment for post-SIT-3
     # PreProcessingDependency(
@@ -291,7 +291,7 @@ upstream_dependents = [
     #     dependent_data_level="l2",
     #     dependent_descriptor="todo",
     #     relationship="HARD",
-    #     direction="DOWNSTREAM",
+    #     direction="UPSTREAM",
     # ),
     # PreProcessingDependency(
     #     primary_instrument="ultra",
@@ -301,7 +301,7 @@ upstream_dependents = [
     #     dependent_data_level="l2",
     #     dependent_descriptor="todo",
     #     relationship="HARD",
-    #     direction="DOWNSTREAM",
+    #     direction="UPSTREAM",
     # ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -311,7 +311,7 @@ upstream_dependents = [
         dependent_data_level="l1b",
         dependent_descriptor="45annotated-de",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -321,7 +321,7 @@ upstream_dependents = [
         dependent_data_level="l1b",
         dependent_descriptor="45extended-spin",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -331,7 +331,7 @@ upstream_dependents = [
         dependent_data_level="l1b",
         dependent_descriptor="45culling-mask",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -341,7 +341,7 @@ upstream_dependents = [
         dependent_data_level="l1b",
         dependent_descriptor="45badtimes",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     # Ultra-90
     PreProcessingDependency(
@@ -352,7 +352,7 @@ upstream_dependents = [
         dependent_data_level="l1a",
         dependent_descriptor="90de",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -362,7 +362,7 @@ upstream_dependents = [
         dependent_data_level="l1a",
         dependent_descriptor="90phxtof",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -372,7 +372,7 @@ upstream_dependents = [
         dependent_data_level="l1a",
         dependent_descriptor="90aux",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -382,7 +382,7 @@ upstream_dependents = [
         dependent_data_level="l1a",
         dependent_descriptor="90rates",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     # TODO: uncomment for post-SIT-3
     # PreProcessingDependency(
@@ -393,7 +393,7 @@ upstream_dependents = [
     #     dependent_data_level="l2",
     #     dependent_descriptor="todo",
     #     relationship="HARD",
-    #     direction="DOWNSTREAM",
+    #     direction="UPSTREAM",
     # ),
     # PreProcessingDependency(
     #     primary_instrument="ultra",
@@ -403,7 +403,7 @@ upstream_dependents = [
     #     dependent_data_level="l2",
     #     dependent_descriptor="todo",
     #     relationship="HARD",
-    #     direction="DOWNSTREAM",
+    #     direction="UPSTREAM",
     # ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -413,7 +413,7 @@ upstream_dependents = [
         dependent_data_level="l1b",
         dependent_descriptor="90annotated-de",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -423,7 +423,7 @@ upstream_dependents = [
         dependent_data_level="l1b",
         dependent_descriptor="90extended-spin",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -433,7 +433,7 @@ upstream_dependents = [
         dependent_data_level="l1b",
         dependent_descriptor="90culling-mask",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -443,6 +443,6 @@ upstream_dependents = [
         dependent_data_level="l1b",
         dependent_descriptor="90badtimes",
         relationship="HARD",
-        direction="DOWNSTREAM",
+        direction="UPSTREAM",
     ),
 ]
