@@ -37,7 +37,6 @@ downstream_dependents = [
         dependent_descriptor="hskp",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -48,7 +47,6 @@ downstream_dependents = [
         dependent_descriptor="lo-counters-aggregated",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -59,7 +57,6 @@ downstream_dependents = [
         dependent_descriptor="lo-counters-singles",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -70,7 +67,6 @@ downstream_dependents = [
         dependent_descriptor="hi-counters-aggregated",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -81,7 +77,6 @@ downstream_dependents = [
         dependent_descriptor="hi-counters-singles",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -92,7 +87,6 @@ downstream_dependents = [
         dependent_descriptor="lo-sw-priority",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -103,7 +97,6 @@ downstream_dependents = [
         dependent_descriptor="lo-nsw-priority",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -114,7 +107,6 @@ downstream_dependents = [
         dependent_descriptor="lo-sw-angular",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -125,7 +117,6 @@ downstream_dependents = [
         dependent_descriptor="lo-nsw-angular",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -136,7 +127,6 @@ downstream_dependents = [
         dependent_descriptor="lo-sw-species",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -147,7 +137,6 @@ downstream_dependents = [
         dependent_descriptor="lo-nsw-species",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -158,7 +147,6 @@ downstream_dependents = [
         dependent_descriptor="lo-pha",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -169,7 +157,6 @@ downstream_dependents = [
         dependent_descriptor="hi-pha",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -180,7 +167,6 @@ downstream_dependents = [
         dependent_descriptor="hi-omni",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -191,7 +177,6 @@ downstream_dependents = [
         dependent_descriptor="hi-sectored",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -202,7 +187,6 @@ downstream_dependents = [
         dependent_descriptor="lo-ialirt",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -213,7 +197,6 @@ downstream_dependents = [
         dependent_descriptor="hi-ialirt",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # CoDICE l1a to l1b
     PreProcessingDependency(
@@ -225,7 +208,6 @@ downstream_dependents = [
         dependent_descriptor="hskp",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -236,7 +218,6 @@ downstream_dependents = [
         dependent_descriptor="lo-counters-aggregated",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -247,7 +228,6 @@ downstream_dependents = [
         dependent_descriptor="lo-counters-singles",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -258,7 +238,6 @@ downstream_dependents = [
         dependent_descriptor="hi-counters-aggregated",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -269,7 +248,6 @@ downstream_dependents = [
         dependent_descriptor="hi-counters-singles",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -280,7 +258,6 @@ downstream_dependents = [
         dependent_descriptor="lo-sw-priority",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -291,7 +268,6 @@ downstream_dependents = [
         dependent_descriptor="lo-nsw-priority",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -302,7 +278,6 @@ downstream_dependents = [
         dependent_descriptor="lo-sw-angular",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -313,7 +288,6 @@ downstream_dependents = [
         dependent_descriptor="lo-nsw-angular",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -324,7 +298,6 @@ downstream_dependents = [
         dependent_descriptor="lo-sw-species",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -335,7 +308,6 @@ downstream_dependents = [
         dependent_descriptor="lo-nsw-species",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -346,7 +318,6 @@ downstream_dependents = [
         dependent_descriptor="lo-pha",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -357,7 +328,6 @@ downstream_dependents = [
         dependent_descriptor="hi-pha",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -368,7 +338,6 @@ downstream_dependents = [
         dependent_descriptor="hi-omni",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -379,7 +348,6 @@ downstream_dependents = [
         dependent_descriptor="hi-sectored",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -390,7 +358,6 @@ downstream_dependents = [
         dependent_descriptor="lo-ialirt",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="codice",
@@ -401,7 +368,6 @@ downstream_dependents = [
         dependent_descriptor="hi-ialirt",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- GLOWS Dependencies ---->
     # TODO: add GLOWS l0 to l1a dependencies
@@ -415,7 +381,6 @@ downstream_dependents = [
         dependent_descriptor="all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="hi",
@@ -426,7 +391,6 @@ downstream_dependents = [
         dependent_descriptor="45sensor-histogram",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="hi",
@@ -437,7 +401,6 @@ downstream_dependents = [
         dependent_descriptor="45sensor-de",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="hi",
@@ -448,7 +411,6 @@ downstream_dependents = [
         dependent_descriptor="45sensor-hk",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="hi",
@@ -459,7 +421,6 @@ downstream_dependents = [
         dependent_descriptor="45sensor-pset",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # TODO: add IMAP-Hi 90 sensor data products
     # <---- HIT Dependencies ---->
@@ -472,7 +433,6 @@ downstream_dependents = [
         dependent_descriptor="sci",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="hit",
@@ -483,7 +443,6 @@ downstream_dependents = [
         dependent_descriptor="sci",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- IDEX Dependencies ---->
     PreProcessingDependency(
@@ -495,7 +454,6 @@ downstream_dependents = [
         dependent_descriptor="sci",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- LO Dependencies ---->
     # TODO: add LO dependencies
@@ -509,7 +467,6 @@ downstream_dependents = [
         dependent_descriptor="all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -520,7 +477,6 @@ downstream_dependents = [
         dependent_descriptor="normal-mago",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -531,7 +487,6 @@ downstream_dependents = [
         dependent_descriptor="normal-magi",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -542,7 +497,6 @@ downstream_dependents = [
         dependent_descriptor="burst-mago",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -553,7 +507,6 @@ downstream_dependents = [
         dependent_descriptor="burst-magi",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -564,7 +517,6 @@ downstream_dependents = [
         dependent_descriptor="normal-mago",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -575,7 +527,6 @@ downstream_dependents = [
         dependent_descriptor="normal-magi",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -586,7 +537,6 @@ downstream_dependents = [
         dependent_descriptor="burst-mago",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -597,7 +547,6 @@ downstream_dependents = [
         dependent_descriptor="burst-magi",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- SWAPI Dependencies ---->
     PreProcessingDependency(
@@ -609,7 +558,6 @@ downstream_dependents = [
         dependent_descriptor="all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- SWE Dependencies ---->
     PreProcessingDependency(
@@ -621,7 +569,6 @@ downstream_dependents = [
         dependent_descriptor="sci",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="swe",
@@ -632,7 +579,6 @@ downstream_dependents = [
         dependent_descriptor="sci",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- ULTRA Dependencies ---->
     PreProcessingDependency(
@@ -644,7 +590,6 @@ downstream_dependents = [
         dependent_descriptor="all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # Ultra-45 products
     PreProcessingDependency(
@@ -656,7 +601,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -667,7 +611,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -678,7 +621,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -689,7 +631,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # TODO: uncomment for post-SIT-3
     # PreProcessingDependency(
@@ -721,7 +662,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -732,7 +672,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -743,7 +682,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -754,7 +692,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # Ultra-90 products
     PreProcessingDependency(
@@ -766,7 +703,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -777,7 +713,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -788,7 +723,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -799,7 +733,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # TODO: uncomment for post-SIT-3
     # PreProcessingDependency(
@@ -831,7 +764,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -842,7 +774,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -853,7 +784,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -864,30 +794,12 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
 ]
 
-upstream_dependents = [
-    # TODO: check these and update later
-    PreProcessingDependency(
-        primary_instrument="hit",
-        primary_data_level="l3",
-        primary_descriptor="sci",
-        dependent_instrument="mag",
-        dependent_data_level="l2",
-        dependent_descriptor="normal-magi",
-        relationship="HARD",
-        direction="UPSTREAM",
-    ),
-    PreProcessingDependency(
-        primary_instrument="swe",
-        primary_data_level="l3",
-        primary_descriptor="sci",
-        dependent_instrument="mag",
-        dependent_data_level="l2",
-        dependent_descriptor="normal-magi",
-        relationship="HARD",
-        direction="UPSTREAM",
-    ),
-]
+upstream_dependents = []
+
+# Get dependencies for pre-processing dependency table
+for dep in downstream_dependents:
+    if dep.reverse_direction:
+        upstream_dependents.append(dep.reverse_direction())

@@ -61,14 +61,8 @@ def lambda_handler(event, context):
         engine = db.get_engine()
         Base.metadata.create_all(engine)
         # Get dependencies for pre-processing dependency table
-        reversed_downstream_dependents = []
-        for dep in downstream_dependents:
-            if dep.reserve_direction is True:
-                reversed_downstream_dependents.append(dep.reverse_direction())
         # NOTE: `.extend()` causes to have duplicate entries
-        combined_dependents = (
-            downstream_dependents + upstream_dependents + reversed_downstream_dependents
-        )
+        combined_dependents = downstream_dependents + upstream_dependents
 
         with Session(engine) as session:
             session.add_all(combined_dependents)
