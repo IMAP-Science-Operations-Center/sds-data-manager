@@ -6,7 +6,7 @@ import logging
 import requests
 from SDSCode.database import database as db
 from SDSCode.database.models import Base
-from SDSCode.dependency_config import downstream_dependents, upstream_dependents
+from SDSCode.dependency_config import all_dependents
 from sqlalchemy.orm import Session
 
 # Logger setup
@@ -60,12 +60,9 @@ def lambda_handler(event, context):
         # Create tables
         engine = db.get_engine()
         Base.metadata.create_all(engine)
-        # Get dependencies for pre-processing dependency table
-        # NOTE: `.extend()` causes to have duplicate entries
-        combined_dependents = downstream_dependents + upstream_dependents
 
         with Session(engine) as session:
-            session.add_all(combined_dependents)
+            session.add_all(all_dependents)
             session.commit()
         send_response(event, context, "SUCCESS")
     except Exception as e:

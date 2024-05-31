@@ -10,9 +10,6 @@ from moto import mock_batch, mock_sts
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from sds_data_manager.lambda_code.SDSCode import (
-    dependency_config,
-)
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     get_dependency,
     lambda_handler,
@@ -26,6 +23,9 @@ from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     Base,
     FileCatalog,
+)
+from sds_data_manager.lambda_code.SDSCode.dependency_config import (
+    all_dependents,
 )
 
 
@@ -46,10 +46,6 @@ def test_engine():
 @pytest.fixture()
 def populate_db(test_engine):
     """Add test data to database."""
-    all_dependents = (
-        dependency_config.downstream_dependents + dependency_config.upstream_dependents
-    )
-
     # Setup: Add records to the database
     with Session(db.get_engine()) as session:
         session.add_all(all_dependents)
