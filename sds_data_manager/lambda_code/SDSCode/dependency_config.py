@@ -801,7 +801,6 @@ upstream_dependents = []
 
 # Get dependencies for pre-processing dependency table
 for dep in downstream_dependents:
-    if dep.reverse_direction:
-        upstream_dependents.append(dep.reverse_direction())
+    upstream_dependents.append(dep.reverse_direction())
 
 all_dependents = downstream_dependents + upstream_dependents

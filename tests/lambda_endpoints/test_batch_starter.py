@@ -26,6 +26,8 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
 )
 from sds_data_manager.lambda_code.SDSCode.dependency_config import (
     all_dependents,
+    downstream_dependents,
+    upstream_dependents,
 )
 
 
@@ -128,6 +130,74 @@ def sts_client():
     """Yield a STS client."""
     with mock_sts():
         yield boto3.client("sts", region_name="us-west-2")
+
+
+def test_reverse_direction():
+    """Test PreProcessingDependency reverse_direction method."""
+    # Test that they have the same length
+    assert len(downstream_dependents) == len(upstream_dependents)
+    # Check that first downstream dependent is the reverse of the
+    # first upstream dependent
+    first_reversed_dependent = upstream_dependents[0]
+    assert (
+        downstream_dependents[0].relationship == first_reversed_dependent.relationship
+    )
+    assert (
+        downstream_dependents[0].dependent_descriptor
+        == first_reversed_dependent.primary_descriptor
+    )
+    assert (
+        downstream_dependents[0].dependent_data_level
+        == first_reversed_dependent.primary_data_level
+    )
+    assert (
+        downstream_dependents[0].dependent_instrument
+        == first_reversed_dependent.primary_instrument
+    )
+    assert (
+        downstream_dependents[0].primary_descriptor
+        == first_reversed_dependent.dependent_descriptor
+    )
+    assert (
+        downstream_dependents[0].primary_data_level
+        == first_reversed_dependent.dependent_data_level
+    )
+    assert (
+        downstream_dependents[0].primary_instrument
+        == first_reversed_dependent.dependent_instrument
+    )
+
+    # Check that first downstream dependent is same as the reverse of the
+    # first upstream dependent
+    first_reversed_dependent = upstream_dependents[0].reverse_direction()
+    assert downstream_dependents[0].direction == first_reversed_dependent.direction
+    assert (
+        downstream_dependents[0].relationship == first_reversed_dependent.relationship
+    )
+    assert (
+        downstream_dependents[0].dependent_descriptor
+        == first_reversed_dependent.dependent_descriptor
+    )
+    assert (
+        downstream_dependents[0].dependent_data_level
+        == first_reversed_dependent.dependent_data_level
+    )
+    assert (
+        downstream_dependents[0].dependent_instrument
+        == first_reversed_dependent.dependent_instrument
+    )
+    assert (
+        downstream_dependents[0].primary_descriptor
+        == first_reversed_dependent.primary_descriptor
+    )
+    assert (
+        downstream_dependents[0].primary_data_level
+        == first_reversed_dependent.primary_data_level
+    )
+    assert (
+        downstream_dependents[0].primary_instrument
+        == first_reversed_dependent.primary_instrument
+    )
 
 
 def test_pre_processing_dependency(test_engine, populate_db):
