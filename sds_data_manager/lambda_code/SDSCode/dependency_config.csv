@@ -1,0 +1,141 @@
+# Stores the downstream and upstream dependency configuration of the IMAP instruments
+# This is used to populate pre-processing dependency table in the database.
+#
+# NOTE: This setup assumes that we get one data file with multiple APIDs data.
+# This is why we have only one dependency for l0. We expect that we get one
+# l0 file, eg. imap_idex_l0_raw_20240529_v001.pkts, which contains all the data of all
+# APIDs. That l0 data file will kick off one l1a process for 'all' as l1a will produce
+# multiple files with different descriptor(aka different data product per APID). Those
+# different descriptor are handled by CDF attrs.
+
+# HEADER
+# primary_instrument, primary_data_level, primary_descriptor, dependent_instrument, dependent_data_level, dependent_descriptor, relationship, direction
+
+# <---- CoDICE Dependencies ---->
+
+codice, l0, hskp, codice, l1a, hskp, HARD, DOWNSTREAM
+codice, l0, lo-counters-aggregated, codice, l1a, lo-counters-aggregated, HARD, DOWNSTREAM
+codice, l0, lo-counters-singles, codice, l1a, lo-counters-singles, HARD, DOWNSTREAM
+codice, l0, hi-counters-aggregated, codice, l1a, hi-counters-aggregated, HARD, DOWNSTREAM
+codice, l0, hi-counters-singles, codice, l1a, hi-counters-singles, HARD, DOWNSTREAM
+codice, l0, lo-sw-priority, codice, l1a, lo-sw-priority, HARD, DOWNSTREAM
+codice, l0, lo-nsw-priority, codice, l1a, lo-nsw-priority, HARD, DOWNSTREAM
+codice, l0, lo-sw-angular, codice, l1a, lo-sw-angular, HARD, DOWNSTREAM
+codice, l0, lo-nsw-angular, codice, l1a, lo-nsw-angular, HARD, DOWNSTREAM
+codice, l0, lo-sw-species, codice, l1a, lo-sw-species, HARD, DOWNSTREAM
+codice, l0, lo-nsw-species, codice, l1a, lo-nsw-species, HARD, DOWNSTREAM
+codice, l0, lo-pha, codice, l1a, lo-pha, HARD, DOWNSTREAM
+codice, l0, hi-pha, codice, l1a, hi-pha, HARD, DOWNSTREAM
+codice, l0, hi-omni, codice, l1a, hi-omni, HARD, DOWNSTREAM
+codice, l0, hi-sectored, codice, l1a, hi-sectored, HARD, DOWNSTREAM
+codice, l0, lo-ialirt, codice, l1a, lo-ialirt, HARD, DOWNSTREAM
+codice, l0, hi-ialirt, codice, l1a, hi-ialirt, HARD, DOWNSTREAM
+
+# CoDICE l1a to l1b
+
+codice, l1a, hskp, codice, l1b, hskp, HARD, DOWNSTREAM
+codice, l1a, lo-counters-aggregated, codice, l1b, lo-counters-aggregated, HARD, DOWNSTREAM
+codice, l1a, lo-counters-singles, codice, l1b, lo-counters-singles, HARD, DOWNSTREAM
+codice, l1a, hi-counters-aggregated, codice, l1b, hi-counters-aggregated, HARD, DOWNSTREAM
+codice, l1a, hi-counters-singles, codice, l1b, hi-counters-singles, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l1b, lo-sw-priority, HARD, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l1b, lo-nsw-priority, HARD, DOWNSTREAM
+codice, l1a, lo-sw-angular, codice, l1b, lo-sw-angular, HARD, DOWNSTREAM
+codice, l1a, lo-nsw-angular, codice, l1b, lo-nsw-angular, HARD, DOWNSTREAM
+codice, l1a, lo-sw-species, codice, l1b, lo-sw-species, HARD, DOWNSTREAM
+codice, l1a, lo-nsw-species, codice, l1b, lo-nsw-species, HARD, DOWNSTREAM
+codice, l1a, lo-pha, codice, l1b, lo-pha, HARD, DOWNSTREAM
+codice, l1a, hi-pha, codice, l1b, hi-pha, HARD, DOWNSTREAM
+codice, l1a, hi-omni, codice, l1b, hi-omni, HARD, DOWNSTREAM
+codice, l1a, hi-sectored, codice, l1b, hi-sectored, HARD, DOWNSTREAM
+codice, l1a, lo-ialirt, codice, l1b, lo-ialirt, HARD, DOWNSTREAM
+codice, l1a, hi-ialirt, codice, l1b, hi-ialirt, HARD, DOWNSTREAM
+
+# <---- GLOWS Dependencies ---->
+# TODO: add GLOWS l0 to l1a dependencies
+
+# <---- HI Dependencies ---->
+
+hi, l0, raw, hi, l1a, all, HARD, DOWNSTREAM
+
+hi, l1a, 45sensor-histogram, hi, l1b, 45sensor-histogram, HARD, DOWNSTREAM
+hi, l1a, 45sensor-de, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
+hi, l1a, 45sensor-hk, hi, l1b, 45sensor-hk, HARD, DOWNSTREAM
+hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
+
+# TODO: add IMAP-Hi 90 sensor data products
+
+# <---- HIT Dependencies ---->
+
+hit, l0, sci, hit, l1a, sci, HARD, DOWNSTREAM
+
+hit, l1a, sci, hit, l1b, sci, HARD, DOWNSTREAM
+
+# <---- IDEX Dependencies ---->
+
+idex, l0, raw, idex, l1, sci, HARD, DOWNSTREAM
+
+# <---- LO Dependencies ---->
+# TODO: add LO dependencies
+
+# <---- MAG Dependencies ---->
+
+mag, l0, raw, mag, l1a, all, HARD, DOWNSTREAM
+
+mag, l1a, normal-mago, mag, l1b, normal-mago, HARD, DOWNSTREAM
+mag, l1a, normal-magi, mag, l1b, normal-magi, HARD, DOWNSTREAM
+mag, l1a, burst-mago, mag, l1b, burst-mago, HARD, DOWNSTREAM
+mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
+
+mag, l1b, normal-mago, mag, l1c, normal-mago, HARD, DOWNSTREAM
+mag, l1b, normal-magi, mag, l1c, normal-magi, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1c, burst-mago, HARD, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1c, burst-magi, HARD, DOWNSTREAM
+
+# <---- SWAPI Dependencies ---->
+
+swapi, l0, raw, swapi, l1, all, HARD, DOWNSTREAM
+
+# <---- SWE Dependencies ---->
+
+# L0
+swe, l0, raw, swe, l1a, sci, HARD, DOWNSTREAM
+
+# L1A
+swe, l1a, sci, swe, l1b, sci, HARD, DOWNSTREAM
+
+# <---- ULTRA Dependencies ---->
+
+ultra, l0, raw, ultra, l1a, all, HARD, DOWNSTREAM
+
+# Ultra-45 products
+
+ultra, l1a, 45sensor-de, ultra, l1b, 45all, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-histogram, ultra, l1b, 45all, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-aux, ultra, l1b, 45all, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-rates, ultra, l1b, 45all, HARD, DOWNSTREAM
+
+# TODO: uncomment for post-SIT-3
+#
+# codice, l2, todo, ultra, l1b, 45all, HARD, DOWNSTREAM
+# swapi, l2, todo, ultra, l1b, 45all, HARD, DOWNSTREAM
+
+ultra, l1b, 45sensor-de, ultra, l1c, 45all, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-extendedspin, ultra, l1c, 45all, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-cullingmask, ultra, l1c, 45all, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-badtimes, ultra, l1c, 45all, HARD, DOWNSTREAM# Ultra-90 products
+
+ultra, l1a, 90sensor-de, ultra, l1b, 90all, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-histogram, ultra, l1b, 90all, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-aux, ultra, l1b, 90all, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-rates, ultra, l1b, 90all, HARD, DOWNSTREAM
+
+# TODO: uncomment for post-SIT-3
+#
+# codice, l2, todo, ultra, l1b, 90all, HARD, DOWNSTREAM
+# swapi, l2, todo, ultra, l1b, 90all, HARD, DOWNSTREAM
+
+ultra, l1b, 90sensor-de, ultra, l1c, 90all, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-extendedspin, ultra, l1c, 90all, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-cullingmask, ultra, l1c, 90all, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-badtimes, ultra, l1c, 90all, HARD, DOWNSTREAM]
