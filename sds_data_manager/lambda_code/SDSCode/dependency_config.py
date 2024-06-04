@@ -10,9 +10,12 @@ multiple files with different descriptor(aka different data product per APID). T
 different descriptor are handled by CDF attrs.
 """
 
+import logging
 from pathlib import Path
 
 from .database.models import PreProcessingDependency
+
+logger = logging.getLogger(__name__)
 
 downstream_dependents = []
 header = [
@@ -28,7 +31,8 @@ header = [
 
 with open(Path(__file__).parent / "dependency_config.csv") as f:
     for line in f:
-        print(line)
+        # NOTE: remove this ',,,,,,,' if you edited the csv file in excel,
+        # it will add this line
         if len(line) <= 1 or line.startswith("#"):
             # Skip empty lines and comments
             continue
@@ -36,6 +40,7 @@ with open(Path(__file__).parent / "dependency_config.csv") as f:
         if len(contents) != 8:
             raise ValueError(f"Each dependency must have 8 items\nCurrent line: {line}")
 
+        logger.info(contents)
         dependency = PreProcessingDependency(**{h: c for h, c in zip(header, contents)})
         downstream_dependents.append(dependency)
 
