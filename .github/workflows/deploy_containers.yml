@@ -1,0 +1,44 @@
+name: Docker image build and publish
+on:
+  workflow_dispatch:
+    inputs:
+      instrument_name:
+        description: 'Instrument name'
+        required: true
+        type: string
+
+# concurrency required to avoid lock contention during ECR provisioning
+concurrency: ci-${{ github.repository }}-${{ inputs.instrument_name }}-docker-pipeline
+
+jobs:
+  deploy_containers:
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # https://github.com/aws-actions/configure-aws-credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::449431850278:role/GitHubDeploy
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+         mask-password: "true" # see: https://github.com/aws-actions/amazon-ecr-login#docker-credentials
+
+      - name: Build, tag, and push docker image to Amazon ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ inputs.instrument_name}}
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY-repo:$IMAGE_TAG -f dockerfiles/Dockerfile.prod .
+          docker push $REGISTRY/$REPOSITORY-repo:$IMAGE_TAG
