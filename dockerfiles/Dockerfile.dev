@@ -1,0 +1,15 @@
+# Dockerfile that installs imap_processing and its dependencies
+FROM public.ecr.aws/docker/library/python:3.12-slim
+
+# Install the imap_processing package from a specified git location
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y git
+
+ARG GIT_URL=https://github.com/IMAP-Science-Operations-Center/imap_processing.git@dev
+RUN pip install git+${GIT_URL}
+
+WORKDIR /app/data
+ENV IMAP_DATA_DIR /app/data
+
+# Define the entrypoint of the container
+ENTRYPOINT ["imap_cli"]
