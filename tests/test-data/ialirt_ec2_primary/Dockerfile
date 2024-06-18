@@ -13,8 +13,24 @@ WORKDIR /app
 # Install Flask
 RUN pip install flask
 
+# Non-interactive frontend for apt-get
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies and mountpoint-s3
+RUN apt-get update && \
+    apt-get install -y python3-dev build-essential libhdf5-dev sudo wget dialog fuse apt-utils && \
+    apt-get install sudo -y && \
+    apt-get install wget -y && \
+    apt-get install -y dialog fuse apt-utils && \
+    wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb && \
+    sudo apt-get install -y ./mount-s3.deb && \
+    rm ./mount-s3.deb
+
+# Create the /mnt/s3 directory
+RUN mkdir -p /mnt/s3
+
 # Make port 8080 available to the world outside this container
 EXPOSE 8080
 
-# Run test_app.py when the container launches
-CMD ["python", "test_app.py"]
+# Command to mount S3 and run the application
+CMD ["sh", "-c", "ialirt-bucket:/mnt/s3 && python test_app.py"]
