@@ -13,6 +13,8 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_ecs as ecs
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 
@@ -28,6 +30,7 @@ class IalirtProcessing(Stack):
         processing_name: str,
         ialirt_ports: list[int],
         container_port: int,
+        ialirt_bucket: s3.Bucket,
         **kwargs,
     ) -> None:
         """Construct the i-alirt processing stack.
@@ -48,6 +51,8 @@ class IalirtProcessing(Stack):
             List of ports to listen on for incoming traffic.
         container_port : int
             Port to be used by the container.
+        ialirt_bucket: s3.Bucket
+            S3 bucket
         kwargs : dict
             Keyword arguments
 
@@ -58,6 +63,7 @@ class IalirtProcessing(Stack):
         self.container_port = container_port
         self.vpc = vpc
         self.repo = repo
+        self.s3_bucket_name = ialirt_bucket.bucket_name
 
         # Add a security group in which application load balancer will reside
         self.create_load_balancer_security_group(processing_name)
@@ -135,6 +141,23 @@ class IalirtProcessing(Stack):
             network_mode=ecs.NetworkMode.AWS_VPC,
         )
 
+        # Add IAM role and policy for S3 access
+        task_role = iam.Role(
+            self,
+            f"IalirtTaskRole{processing_name}",
+            assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+        )
+
+        task_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["s3:GetObject", "s3:ListBucket"],
+                resources=[
+                    f"arn:aws:s3:::{self.s3_bucket_name}",
+                    f"arn:aws:s3:::{self.s3_bucket_name}/*",
+                ],
+            )
+        )
+
         # Adds a container to the ECS task definition
         # Logging is configured to use AWS CloudWatch Logs.
         container = task_definition.add_container(
@@ -148,6 +171,7 @@ class IalirtProcessing(Stack):
             memory_limit_mib=512,
             cpu=256,
             logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirt{processing_name}"),
+            environment={"S3_BUCKET": self.s3_bucket_name},
         )
 
         # Map ports to container

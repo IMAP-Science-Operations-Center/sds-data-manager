@@ -187,6 +187,11 @@ def build_sds(
         instrument_name="IalirtEcr",
     )
 
+    # I-ALiRT IOIS S3 bucket
+    ialirt_bucket = data_bucket_stack.IAlirtDataBucketStack(
+        scope=scope, construct_id="IAlirtBucket", env=env
+    )
+
     # All traffic to I-ALiRT is directed to listed container ports
     ialirt_ports = {"Primary": [8080, 8081], "Secondary": [80]}
     container_ports = {"Primary": 8080, "Secondary": 80}
@@ -201,6 +206,7 @@ def build_sds(
             processing_name=primary_or_secondary,
             ialirt_ports=ialirt_ports[primary_or_secondary],
             container_port=container_ports[primary_or_secondary],
+            ialirt_bucket=ialirt_bucket.data_bucket,
         )
 
 
