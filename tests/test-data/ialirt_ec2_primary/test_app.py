@@ -41,7 +41,12 @@ def test_s3():
             }
         )
     except Exception as e:
-        return jsonify({"message": "Failed to put object in S3", "error": str(e)}), 500
+        return jsonify(
+            {
+                "message": "Failed to put object in S3 using Primary System",
+                "error": str(e),
+            }
+        ), 500
 
 
 if __name__ == "__main__":

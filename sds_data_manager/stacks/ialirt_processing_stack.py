@@ -132,15 +132,6 @@ class IalirtProcessing(Stack):
             self, f"IalirtCluster{processing_name}", vpc=self.vpc
         )
 
-        # Specifies the networking mode as AWS_VPC.
-        # ECS tasks in AWS_VPC mode can be registered with
-        # Network Load Balancers (NLB).
-        task_definition = ecs.Ec2TaskDefinition(
-            self,
-            f"IalirtTaskDef{processing_name}",
-            network_mode=ecs.NetworkMode.AWS_VPC,
-        )
-
         # Add IAM role and policy for S3 access
         task_role = iam.Role(
             self,
@@ -150,12 +141,22 @@ class IalirtProcessing(Stack):
 
         task_role.add_to_policy(
             iam.PolicyStatement(
-                actions=["s3:GetObject", "s3:ListBucket"],
+                actions=["s3:GetObject", "s3:ListBucket", "s3:PutObject"],
                 resources=[
                     f"arn:aws:s3:::{self.s3_bucket_name}",
                     f"arn:aws:s3:::{self.s3_bucket_name}/*",
                 ],
             )
+        )
+
+        # Specifies the networking mode as AWS_VPC.
+        # ECS tasks in AWS_VPC mode can be registered with
+        # Network Load Balancers (NLB).
+        task_definition = ecs.Ec2TaskDefinition(
+            self,
+            f"IalirtTaskDef{processing_name}",
+            network_mode=ecs.NetworkMode.AWS_VPC,
+            task_role=task_role,
         )
 
         # Adds a container to the ECS task definition
