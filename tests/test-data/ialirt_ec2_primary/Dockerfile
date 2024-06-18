@@ -37,4 +37,4 @@ RUN mkdir -p /mnt/s3
 EXPOSE 8080
 
 # Command to mount S3 and run the application sequentially
-CMD ["sh", "-c", "mount-s3 ialirt-bucket:/mnt/s3 && python test_app.py"]
+CMD ["sh", "-c", "mount-s3 sds-data-301233867300:/mnt/s3 && python test_app.py"]
