@@ -4,6 +4,14 @@
 # 2. Build the image with `docker build -t my-image-primary --rm .`
 # 3. docker tag my-image-primary <ecr uri>:latest-primary
 # 4. docker push <ecr uri>:latest-primary
+
+# To run and test locally:
+# 1. `docker build -t my-image-primary --rm .`
+# 2. `docker run -it --privileged -e AWS_PROFILE=lcs -v /dev/macfuse0:/dev/macfuse0
+# -v ~/.aws:/root/.aws -p 8080:8080 my-image-primary`
+# 3. http://localhost:8080 to see the "Hello, World!" message.
+# http://localhost:8080/list to see the list of files in the mounted S3 bucket.
+
 FROM python:3.10
 COPY . /app
 
@@ -36,5 +44,8 @@ RUN mkdir -p /mnt/s3
 # Make port 8080 available to the world outside this container
 EXPOSE 8080
 
+# Set the AWS region
+ENV AWS_REGION us-west-2
+
 # Command to mount S3 and run the application sequentially
-CMD ["sh", "-c", "mount-s3 sds-data-301233867300:/mnt/s3 && python test_app.py"]
+CMD ["sh", "-c", "mount-s3 sds-data-301233867300 /mnt/s3 && python test_app.py"]
