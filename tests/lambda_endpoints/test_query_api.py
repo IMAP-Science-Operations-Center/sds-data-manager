@@ -28,13 +28,12 @@ def setup_test_data(test_engine):
         ),
     }
 
-    # Add data to the file catalog
-    session = Session(test_engine)
-    session.add(models.FileCatalog(**metadata_params))
-    session.commit()
+    # Add data to the file catalog and return the session
+    with Session(test_engine) as session:
+        session.add(models.FileCatalog(**metadata_params))
+        session.commit()
 
-    yield session
-    session.close()
+        yield session
 
 
 @pytest.fixture()
@@ -162,4 +161,59 @@ def test_invalid_query(setup_test_data, test_engine):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 400
+    assert returned_query["body"] == expected_response
+
+
+def test_sorting_of_query(setup_test_data):
+    """Add another file that should be sorted before the original file."""
+    metadata_params2 = {
+        "file_path": "test/file/path/imap_hit_l0_raw_20251106_v001.pkts",
+        "instrument": "hit",
+        "data_level": "l0",
+        "descriptor": "raw",
+        "start_date": datetime.datetime.strptime("20251106", "%Y%m%d"),
+        "version": "v001",
+        "extension": "pkts",
+        "ingestion_date": datetime.datetime.strptime(
+            "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+        ),
+    }
+
+    expected_response = json.dumps(
+        [
+            {
+                "file_path": "test/file/path/imap_hit_l0_raw_20251106_v001.pkts",
+                "instrument": "hit",
+                "data_level": "l0",
+                "descriptor": "raw",
+                "start_date": "20251106",
+                "repointing": None,
+                "version": "v001",
+                "extension": "pkts",
+                "ingestion_date": "2025-11-07 10:13:12",
+            },
+            {
+                "file_path": "test/file/path/imap_hit_l0_raw_20251107_v001.pkts",
+                "instrument": "hit",
+                "data_level": "l0",
+                "descriptor": "raw",
+                "start_date": "20251107",
+                "repointing": None,
+                "version": "v001",
+                "extension": "pkts",
+                "ingestion_date": "2025-11-07 10:13:12",
+            },
+        ]
+    )
+
+    # Add data to the file catalog
+    session = setup_test_data
+    session.add(models.FileCatalog(**metadata_params2))
+    session.commit()
+
+    event = {"queryStringParameters": {"start_date": "20251101"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
     assert returned_query["body"] == expected_response
