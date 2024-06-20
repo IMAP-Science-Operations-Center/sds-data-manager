@@ -18,18 +18,11 @@ COPY . /app
 # Set the working directory in the container
 WORKDIR /app
 
-# Install Flask
-RUN pip install flask
+# Install Flask and Boto3
+RUN pip install flask boto3
 
 # Non-interactive frontend for apt-get
 ARG DEBIAN_FRONTEND=noninteractive
-
-# Install dependencies and mountpoint-s3
-#RUN apt-get update && \
-#    apt-get install -y python3-dev build-essential libhdf5-dev sudo wget dialog fuse apt-utils && \
-#    wget https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb && \
-#    sudo apt-get install -y ./mount-s3.deb && \
-#    rm ./mount-s3.deb
 
 # Install dependencies and mountpoint-s3
 RUN apt-get update && \
