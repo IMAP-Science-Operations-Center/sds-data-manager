@@ -99,12 +99,14 @@ class SdsApiManager(Stack):
             compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
         )
 
+        lambda_raw_code = lambda_.Code.from_asset(str(lambda_code_directory))
+
         # Another lambda to test out the layer parts
         test_lambda = lambda_.Function(
             self,
             id="TestLambdaLayer",
             function_name="test-lambda-layer",
-            code=lambda_.Code.from_asset(str(lambda_code_directory)),
+            code=lambda_raw_code,
             handler="SDSCode.query_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.seconds(60),

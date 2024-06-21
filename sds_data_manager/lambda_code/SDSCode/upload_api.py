@@ -87,7 +87,7 @@ def lambda_handler(event, context):
 
     """
     path_params = event.get("pathParameters", {}).get("proxy", None)
-    logger.debug("Parsing path parameters=[%s] from event=" "[%s]", path_params, event)
+    logger.info("Parsing path parameters=[%s] from event=" "[%s]", path_params, event)
 
     if not path_params:
         return {
