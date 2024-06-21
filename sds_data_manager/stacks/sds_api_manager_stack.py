@@ -70,8 +70,55 @@ class SdsApiManager(Stack):
                 f"{data_bucket.bucket_arn}/*",
             ],
         )
-        lambda_code_directory = pathlib.Path(__file__).parent.parent / "lambda_code"
-        lambda_code_directory_str = str(lambda_code_directory.resolve())
+
+        lambda_code_directory = (
+            pathlib.Path(__file__).parent.parent / "lambda_code"
+        ).resolve()
+
+        lambda_code_directory_str = str(lambda_code_directory)
+
+        code_bundle = lambda_.Code.from_asset(
+            str(lambda_code_directory),
+            bundling=cdk.BundlingOptions(
+                image=lambda_.Runtime.PYTHON_3_12.bundling_image,
+                command=[
+                    "bash",
+                    "-c",
+                    (
+                        "pip install -r requirements.txt -t /asset-output/python && "
+                        "cp -au . /asset-output/python"
+                    ),
+                ],
+            ),
+        )
+
+        lambda_layer = lambda_.LayerVersion(
+            self,
+            id="DatabaseLayer",
+            code=code_bundle,
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+        )
+
+        # Another lambda to test out the layer parts
+        test_lambda = lambda_.Function(
+            self,
+            id="TestLambdaLayer",
+            function_name="test-lambda-layer",
+            code=lambda_.Code.from_asset(str(lambda_code_directory)),
+            handler="SDSCode.query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.seconds(60),
+            memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            security_groups=[rds_security_group],
+            layers=[lambda_layer],
+            environment={
+                "S3_BUCKET": data_bucket.bucket_name,
+                "SECRET_NAME": db_secret_name,
+            },
+            architecture=lambda_.Architecture.ARM_64,
+        )
 
         # upload API lambda
         upload_api_lambda = lambda_alpha_.PythonFunction(
@@ -128,6 +175,11 @@ class SdsApiManager(Stack):
             http_method="GET",
             lambda_function=query_api_lambda,
         )
+        api.add_route(
+            route="test",
+            http_method="GET",
+            lambda_function=test_lambda,
+        )
 
         # download API lambda
         download_api = lambda_alpha_.PythonFunction(
@@ -175,6 +227,7 @@ class SdsApiManager(Stack):
         )
         rds_secret.grant_read(grantee=universal_spin_table_handler)
         rds_secret.grant_read(grantee=query_api_lambda)
+        rds_secret.grant_read(grantee=test_lambda)
         rds_secret.grant_read(grantee=upload_api_lambda)
 
         api.add_route(
