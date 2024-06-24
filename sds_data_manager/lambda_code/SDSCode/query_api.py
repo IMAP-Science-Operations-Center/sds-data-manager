@@ -89,6 +89,11 @@ def lambda_handler(event, context):
         else:
             query = query.where(getattr(models.FileCatalog, param) == value)
 
+    # We want to order the query returns by the filename
+    # This will implicitly sort by: instrument, data level, descriptor, start_date, ...
+    # Default for the table is by the ascending id so by insertion order
+    query = query.order_by(models.FileCatalog.file_path)
+
     engine = db.get_engine()
     with Session(engine) as session:
         search_results = session.execute(query).all()
