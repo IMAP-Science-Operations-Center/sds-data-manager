@@ -7,9 +7,9 @@
 
 # To run and test locally:
 # 1. `docker build -t my-image-primary --rm .`
-# 2. `docker run -it --privileged -e AWS_PROFILE=lcs -v /dev/macfuse0:/dev/macfuse0
+# 2. `docker run -it --privileged -e AWS_PROFILE=<profile> -v /dev/macfuse0:/dev/macfuse0
 # -v ~/.aws:/root/.aws -p 8080:8080 my-image-primary`
-# 3. http://localhost:8080 to see the "Hello, World!" message.
+# 3. http://localhost:8080 to see the "Hello World Primary." message.
 # http://localhost:8080/list to see the list of files in the mounted S3 bucket.
 
 FROM python:3.10
