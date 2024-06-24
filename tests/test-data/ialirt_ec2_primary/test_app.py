@@ -1,16 +1,25 @@
-"""Test the i-alirt processing stack."""
+"""A simple, dockerized, deployable Flask web application.
+
+A simple Flask web application designed to be Dockerized and deployed on an
+EC2 instance. Intended for verifying the successful deployment and operation in
+an ECR and EC2 setup. The application listens on all interfaces (0.0.0.0) at
+port 8080, allowing external access for testing.
+"""
 
 import os
 
 from flask import Flask
 
+# Create a Flask application
 app = Flask(__name__)
 
 
+# Decorator that tells Flask what URL
+# should trigger the function that follows.
 @app.route("/")
 def hello():
     """Hello world function to test with."""
-    return "Hello, World!"
+    return "Hello World Primary."
 
 
 @app.route("/list")
@@ -22,21 +31,16 @@ def list_files():
 
 def create_and_save_file():
     """Create and save file to S3 bucket."""
-    # Directory where the S3 bucket is mounted
     s3_mount_dir = "/mnt/s3"
 
-    # Ensure the mount directory exists
     if not os.path.exists(s3_mount_dir):
         os.makedirs(s3_mount_dir)
 
-    # File name and content
-    file_name = "test_file.txt"
+    file_name = "primary_test_file.txt"
     file_content = "Hello, this is a test file."
 
-    # Full path to the file in the mounted S3 directory
     file_path = os.path.join(s3_mount_dir, file_name)
 
-    # Create and write to the file
     with open(file_path, "w") as file:
         file.write(file_content)
 

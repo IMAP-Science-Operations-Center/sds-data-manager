@@ -173,6 +173,7 @@ class IalirtProcessing(Stack):
             cpu=256,
             logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirt{processing_name}"),
             environment={"S3_BUCKET": self.s3_bucket_name},
+            privileged=True,
         )
 
         # Map ports to container
