@@ -18,8 +18,8 @@ COPY . /app
 # Set the working directory in the container
 WORKDIR /app
 
-# Install Flask and Boto3
-RUN pip install flask boto3
+# Install Flask
+RUN pip install flask
 
 # Non-interactive frontend for apt-get
 ARG DEBIAN_FRONTEND=noninteractive
