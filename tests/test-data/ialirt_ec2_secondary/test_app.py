@@ -6,6 +6,8 @@ an ECR and EC2 setup. The application listens on all interfaces (0.0.0.0) at
 port 8080, allowing external access for testing.
 """
 
+import os
+
 from flask import Flask
 
 # Create a Flask application
@@ -17,8 +19,34 @@ app = Flask(__name__)
 @app.route("/")
 def hello():
     """Hello world function to test with."""
-    return "Hello World."
+    return "Hello World Secondary."
+
+
+@app.route("/list")
+def list_files():
+    """List files in the mounted S3 bucket."""
+    files = os.listdir("/mnt/s3")
+    return "<br>".join(files)
+
+
+def create_and_save_file():
+    """Create and save file to S3 bucket."""
+    s3_mount_dir = "/mnt/s3"
+
+    if not os.path.exists(s3_mount_dir):
+        os.makedirs(s3_mount_dir)
+
+    file_name = "secondary_test_file.txt"
+    file_content = "Hello, this is a test file."
+
+    file_path = os.path.join(s3_mount_dir, file_name)
+
+    with open(file_path, "w") as file:
+        file.write(file_content)
+
+    print(f"File {file_name} created and saved to {file_path}.")
 
 
 if __name__ == "__main__":
+    create_and_save_file()
     app.run(host="0.0.0.0", port=80)
