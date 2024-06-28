@@ -3,7 +3,9 @@
 import copy
 from datetime import datetime
 
+import pytest
 from imap_data_access import ScienceFilePath
+from sqlalchemy.exc import IntegrityError
 
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     get_dependency,
@@ -23,6 +25,8 @@ from sds_data_manager.lambda_code.SDSCode.dependency_config import (
     downstream_dependents,
     upstream_dependents,
 )
+
+from .conftest import POSTGRES_AVAILABLE
 
 
 def _populate_dependency_table(session):
@@ -404,3 +408,74 @@ def test_is_job_in_status_table(session):
         version="v001",
     )
     assert not result
+
+
+@pytest.mark.skipif(
+    not POSTGRES_AVAILABLE, reason="Only postgres supports partial unique indexes."
+)
+# Loop over all combinations of status attempts that should fail
+@pytest.mark.parametrize(
+    "first_status", [models.Status.INPROGRESS, models.Status.SUCCEEDED]
+)
+@pytest.mark.parametrize(
+    "second_status", [models.Status.INPROGRESS, models.Status.SUCCEEDED]
+)
+def test_duplicate_job(session, first_status, second_status):
+    """Multiple jobs in progress should raise an IntegrityError."""
+    # Add some initial FAILED entries to the status_tracking table
+    # These should not be a part of the unique constraint
+    for _ in range(3):
+        session.add(
+            StatusTracking(
+                status=models.Status.FAILED,
+                instrument="lo",
+                data_level="l1b",
+                descriptor="de",
+                start_date=datetime(2010, 1, 1),
+                version="v001",
+            )
+        )
+    session.commit()
+    assert session.query(StatusTracking).count() == 3
+
+    record = StatusTracking(
+        status=first_status,
+        instrument="lo",
+        data_level="l1b",
+        descriptor="de",
+        start_date=datetime(2010, 1, 1),
+        version="v001",
+    )
+    session.add(record)
+    session.commit()
+    assert session.query(StatusTracking).count() == 4
+
+    duplicate = StatusTracking(
+        status=second_status,
+        instrument="lo",
+        data_level="l1b",
+        descriptor="de",
+        start_date=datetime(2010, 1, 1),
+        version="v001",
+    )
+    session.add(duplicate)
+    with pytest.raises(IntegrityError):
+        session.commit()
+    # After an error, we need to rollback the commit
+    session.rollback()
+
+    # Now we should still only have 4 items in the table
+    assert session.query(StatusTracking).count() == 4
+
+    # We can add another FAILED status without issue
+    record = StatusTracking(
+        status=models.Status.FAILED,
+        instrument="lo",
+        data_level="l1b",
+        descriptor="de",
+        start_date=datetime(2010, 1, 1),
+        version="v001",
+    )
+    session.add(record)
+    session.commit()
+    assert session.query(StatusTracking).count() == 5

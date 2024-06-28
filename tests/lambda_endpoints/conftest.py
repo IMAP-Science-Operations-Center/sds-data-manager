@@ -1,5 +1,6 @@
 """Setup testing environment to test lambda handler code."""
 
+import subprocess
 from unittest.mock import patch
 
 import boto3
@@ -8,6 +9,7 @@ from moto import mock_batch, mock_events, mock_s3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import Base
 
 BUCKET_NAME = "test-data-bucket"
@@ -84,15 +86,31 @@ def events_client():
         yield boto3.client("events", region_name="us-west-2")
 
 
+# Check if postgres is available on the system. If it is returncode == 0
+POSTGRES_AVAILABLE = (
+    subprocess.run("which psql", shell=True, check=False).returncode == 0
+)
+
+if POSTGRES_AVAILABLE:
+
+    @pytest.fixture()
+    def connection(postgresql):
+        """Use a postgres connection string."""
+        return f"postgresql+psycopg://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
+else:
+
+    @pytest.fixture()
+    def connection():
+        """Fallback to sqlite in memory database."""
+        return "sqlite:///:memory:"
+
+
 # NOTE: The default scope is function, so each test function will
 #       get a new database session and start fresh each time.
 @pytest.fixture()
-def session():
+def session(connection):
     """Create a test postgres database engine."""
-    from sds_data_manager.lambda_code.SDSCode.database import database as db
-
     with patch.object(db, "Session") as mock_session:
-        connection = "sqlite:///:memory:"
         engine = create_engine(connection)
 
         # Create the tables and session

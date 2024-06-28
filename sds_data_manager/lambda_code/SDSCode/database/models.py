@@ -8,12 +8,15 @@ from enum import Enum
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     Identity,
+    Index,
     Integer,
     String,
     UniqueConstraint,
+    and_,
 )
 from sqlalchemy import (
     Enum as SqlEnum,
@@ -109,13 +112,6 @@ class StatusTracking(Base):
     """Status tracking table."""
 
     __tablename__ = "status_tracking"
-    __table_args__ = (
-        UniqueConstraint(
-            "id",
-            "status",
-            name="status_tracking_uc",
-        ),
-    )
 
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     status = Column(STATUSES, nullable=False)
@@ -132,6 +128,27 @@ class StatusTracking(Base):
     container_image = Column(String)
     container_command = Column(String)
     processing_time = Column(Integer)
+
+    __table_args__ = (
+        # Partial unique index to ensure only one INPROGRESS or COMPLETED for a record
+        # We do want to allow multiple FAILED records
+        # NOTE: This does not work with sqllite (testing) DBs, only postgres
+        Index(
+            "idx_unique_status",
+            "instrument",
+            "data_level",
+            "descriptor",
+            "start_date",
+            "version",
+            unique=True,
+            postgresql_where=and_(status.in_(["INPROGRESS", "SUCCEEDED"])),
+        ),
+        # Optional: Check constraint to ensure valid status values
+        CheckConstraint(
+            status.in_(["INPROGRESS", "SUCCEEDED", "FAILED"]),
+            name="check_status_values",
+        ),
+    )
 
 
 class FileCatalog(Base):
@@ -160,7 +177,7 @@ class FileCatalog(Base):
     repointing = Column(Integer, nullable=True)
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(EXTENSIONS, nullable=False)
-    ingestion_date = Column(DateTime)
+    ingestion_date = Column(DateTime(timezone=True))
 
 
 class PreProcessingDependency(Base):
