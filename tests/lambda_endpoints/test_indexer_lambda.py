@@ -6,10 +6,8 @@ from datetime import datetime
 import pytest
 from imap_data_access import ScienceFilePath
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode import indexer
-from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database_handler import (
     update_status_table,
@@ -19,7 +17,7 @@ from sds_data_manager.lambda_code.SDSCode.indexer import (
 )
 
 
-def test_batch_job_event(test_engine, events_client):
+def test_batch_job_event(session, events_client):
     """Test batch job event."""
     # Write to status tracking table with current batch job event info
     status_params = {
@@ -30,7 +28,7 @@ def test_batch_job_event(test_engine, events_client):
         "start_date": datetime.strptime("20230724", "%Y%m%d"),
         "version": "v001",
     }
-    update_status_table(status_params)
+    update_status_table(session, status_params)
 
     # TODO: Will update this test further
     # when I extend batch job event handler.
@@ -91,46 +89,43 @@ def test_batch_job_event(test_engine, events_client):
     assert returned_value["statusCode"] == 200
 
     # check that data was written to status table
-    with Session(db.get_engine()) as session:
-        query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.instrument == status_params["instrument"],
-            models.StatusTracking.data_level == status_params["data_level"],
-            models.StatusTracking.version == status_params["version"],
-        )
+    query = select(models.StatusTracking.__table__).where(
+        models.StatusTracking.instrument == status_params["instrument"],
+        models.StatusTracking.data_level == status_params["data_level"],
+        models.StatusTracking.version == status_params["version"],
+    )
 
-        status_tracking = session.execute(query).first()
-        assert status_tracking.status == models.Status.FAILED
+    status_tracking = session.execute(query).first()
+    assert status_tracking.status == models.Status.FAILED
 
     # Test for succeeded case
     event["detail"]["status"] = "SUCCEEDED"
     returned_value = indexer.lambda_handler(event=event, context={})
     assert returned_value["statusCode"] == 200
 
-    with Session(db.get_engine()) as session:
-        query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.instrument == status_params["instrument"],
-            models.StatusTracking.data_level == status_params["data_level"],
-            models.StatusTracking.version == status_params["version"],
-        )
+    query = select(models.StatusTracking.__table__).where(
+        models.StatusTracking.instrument == status_params["instrument"],
+        models.StatusTracking.data_level == status_params["data_level"],
+        models.StatusTracking.version == status_params["version"],
+    )
 
-        status_tracking = session.execute(query).first()
-        assert status_tracking.status == models.Status.SUCCEEDED
+    status_tracking = session.execute(query).first()
+    assert status_tracking.status == models.Status.SUCCEEDED
 
     # Test for file that is not in status table
     event["detail"]["container"]["command"][1] = "swe"
     result = indexer.lambda_handler(event=event, context={})
     assert result["statusCode"] == 200
 
-    with Session(db.get_engine()) as session:
-        query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.instrument == "swe"
-        )
+    query = select(models.StatusTracking.__table__).where(
+        models.StatusTracking.instrument == "swe"
+    )
 
-        status_tracking = session.execute(query).first()
-        assert status_tracking.status == models.Status.SUCCEEDED
+    status_tracking = session.execute(query).first()
+    assert status_tracking.status == models.Status.SUCCEEDED
 
 
-def test_s3_event(test_engine, events_client):
+def test_s3_event(session, events_client):
     """Test s3 event."""
     # Took out unused parameters from event
     event = {
@@ -153,16 +148,15 @@ def test_s3_event(test_engine, events_client):
     assert returned_value["statusCode"] == 200
 
     # Check that data was written to database by lambda
-    with Session(db.get_engine()) as session:
-        result = session.query(models.FileCatalog).all()
-        assert len(result) == 1
-        assert (
-            result[0].file_path
-            == "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"
-        )
-        assert result[0].data_level == "l0"
-        assert result[0].instrument == "hit"
-        assert result[0].extension == "pkts"
+    result = session.query(models.FileCatalog).all()
+    assert len(result) == 1
+    assert (
+        result[0].file_path
+        == "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"
+    )
+    assert result[0].data_level == "l0"
+    assert result[0].instrument == "hit"
+    assert result[0].extension == "pkts"
 
     # Test for bad filename input
     event["detail"]["object"]["key"] = (
@@ -180,7 +174,7 @@ def test_s3_event(test_engine, events_client):
     assert str(excinfo.value) == expected_msg
 
 
-def test_unknown_event(test_engine):
+def test_unknown_event(session):
     """Test for unknown event source."""
     event = {"source": "test"}
     returned_value = indexer.lambda_handler(event=event, context={})

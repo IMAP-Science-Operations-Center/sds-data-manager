@@ -5,7 +5,6 @@ import json
 import logging
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from .database import database as db
 from .database import models
@@ -94,8 +93,7 @@ def lambda_handler(event, context):
     # Default for the table is by the ascending id so by insertion order
     query = query.order_by(models.FileCatalog.file_path)
 
-    engine = db.get_engine()
-    with Session(engine) as session:
+    with db.Session() as session:
         search_results = session.execute(query).all()
 
     # Convert the search results (list of tuples) to a list of dicts

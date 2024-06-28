@@ -7,7 +7,6 @@ from datetime import datetime
 import boto3
 from imap_data_access import ScienceFilePath
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from .database import database as db
 from .database import models
@@ -18,11 +17,15 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def get_dependency(instrument, data_level, descriptor, direction, relationship):
+def get_dependency(
+    session, instrument, data_level, descriptor, direction, relationship
+):
     """Make query to dependency table to get dependency.
 
     Parameters
     ----------
+    session : orm session
+        Database session.
     instrument : str
         Primary instrument that we are looking for its dependency.
     data_level : str
@@ -42,23 +45,23 @@ def get_dependency(instrument, data_level, descriptor, direction, relationship):
     """
     dependency = []
 
-    with Session(db.get_engine()) as session:
-        query = select(models.PreProcessingDependency.__table__).where(
-            models.PreProcessingDependency.primary_instrument == instrument,
-            models.PreProcessingDependency.primary_data_level == data_level,
-            models.PreProcessingDependency.primary_descriptor == descriptor,
-            models.PreProcessingDependency.direction == direction,
-            models.PreProcessingDependency.relationship == relationship,
+    query = select(models.PreProcessingDependency.__table__).where(
+        models.PreProcessingDependency.primary_instrument == instrument,
+        models.PreProcessingDependency.primary_data_level == data_level,
+        models.PreProcessingDependency.primary_descriptor == descriptor,
+        models.PreProcessingDependency.direction == direction,
+        models.PreProcessingDependency.relationship == relationship,
+    )
+    results = session.execute(query).all()
+
+    for result in results:
+        dependency.append(
+            {
+                "instrument": result.dependent_instrument,
+                "data_level": result.dependent_data_level,
+                "descriptor": result.dependent_descriptor,
+            }
         )
-        results = session.execute(query).all()
-        for result in results:
-            dependency.append(
-                {
-                    "instrument": result.dependent_instrument,
-                    "data_level": result.dependent_data_level,
-                    "descriptor": result.dependent_descriptor,
-                }
-            )
     return dependency
 
 
@@ -125,6 +128,7 @@ def query_downstream_dependencies(session, filename_components):
     """
     # Get downstream dependency data
     downstream_dependents = get_dependency(
+        session=session,
         instrument=filename_components["instrument"],
         data_level=filename_components["data_level"],
         descriptor=filename_components["descriptor"],
@@ -177,6 +181,7 @@ def query_upstream_dependencies(session, downstream_dependents):
         logger.info("Checking for job in progress before looking for dependencies.")
 
         job_already_exist = is_job_in_status_table(
+            session=session,
             instrument=instrument,
             data_level=data_level,
             descriptor=descriptor,
@@ -198,6 +203,7 @@ def query_upstream_dependencies(session, downstream_dependents):
 
         # For each downstream dependent, find its upstream dependencies
         upstream_dependencies = get_dependency(
+            session=session,
             instrument=instrument,
             data_level=data_level,
             descriptor=descriptor,
@@ -266,12 +272,19 @@ def query_upstream_dependencies(session, downstream_dependents):
 
 
 def is_job_in_status_table(
-    instrument: str, data_level: str, descriptor: str, start_date: str, version: str
+    session: db.Session,
+    instrument: str,
+    data_level: str,
+    descriptor: str,
+    start_date: str,
+    version: str,
 ):
     """Check if the job is already running.
 
     Parameters
     ----------
+    session : orm session
+        Database session.
     instrument : str
         Instrument.
     data_level : str
@@ -290,21 +303,20 @@ def is_job_in_status_table(
     """
     # check in status tracking table if job is already in progress
     # for this instrument, data level, version, and descriptor
-    with Session(db.get_engine()) as session:
-        query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.instrument == instrument,
-            models.StatusTracking.data_level == data_level,
-            models.StatusTracking.descriptor == descriptor,
-            models.StatusTracking.start_date == datetime.strptime(start_date, "%Y%m%d"),
-            models.StatusTracking.version == version,
-            models.StatusTracking.status.in_(
-                [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
-            ),
-        )
+    query = select(models.StatusTracking.__table__).where(
+        models.StatusTracking.instrument == instrument,
+        models.StatusTracking.data_level == data_level,
+        models.StatusTracking.descriptor == descriptor,
+        models.StatusTracking.start_date == datetime.strptime(start_date, "%Y%m%d"),
+        models.StatusTracking.version == version,
+        models.StatusTracking.status.in_(
+            [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
+        ),
+    )
 
-        results = session.execute(query).all()
-        if results:
-            return True
+    results = session.execute(query).all()
+    if results:
+        return True
     return False
 
 
@@ -334,10 +346,7 @@ def lambda_handler(event: dict, context):
         f"{instrument}-fargate-batch-job-queue"
     )
 
-    # Get database engine.
-    engine = db.get_engine()
-
-    with Session(engine) as session:
+    with db.Session() as session:
         # Downstream dependents are the instruments that
         # depend on the current instrument.
         downstream_dependents = query_downstream_dependencies(session, components)
@@ -359,6 +368,7 @@ def lambda_handler(event: dict, context):
             logger.info("Checking for duplicate job before kicking off the job.")
 
             job_already_exist = is_job_in_status_table(
+                session=session,
                 instrument=downstream_data["instrument"],
                 data_level=downstream_data["data_level"],
                 descriptor=downstream_data["descriptor"],
@@ -396,7 +406,7 @@ def lambda_handler(event: dict, context):
                 "version": downstream_data["version"],
             }
 
-            update_status_table(status_params)
+            update_status_table(session, status_params)
 
             logger.info(
                 f"Wrote job in progress to status tracking table - {status_params}"

@@ -8,6 +8,7 @@ from datetime import datetime
 import boto3
 from imap_data_access import ScienceFilePath
 
+from .database import database as db
 from .database import models
 from .database_handler import update_file_catalog_table, update_status_table
 from .lambda_custom_events import IMAPLambdaPutEvent
@@ -174,7 +175,8 @@ def s3_event_handler(event):
     ingestion_date_object = get_file_creation_date(s3_filepath)
 
     file_params["ingestion_date"] = ingestion_date_object
-    update_file_catalog_table(file_params)
+    with db.Session() as session:
+        update_file_catalog_table(session, file_params)
     logger.info("Wrote data to file catalog table")
 
     # Send event from this lambda for Batch starter
@@ -277,7 +279,8 @@ def batch_event_handler(event):
         "container_command": " ".join(command),
     }
 
-    update_status_table(status_params)
+    with db.Session() as session:
+        update_status_table(session, status_params)
 
     return http_response(status_code=200, body="Success")
 

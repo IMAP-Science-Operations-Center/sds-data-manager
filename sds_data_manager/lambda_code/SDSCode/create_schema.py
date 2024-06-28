@@ -7,7 +7,6 @@ import requests
 from SDSCode.database import database as db
 from SDSCode.database.models import Base
 from SDSCode.dependency_config import all_dependents
-from sqlalchemy.orm import Session
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -58,10 +57,9 @@ def lambda_handler(event, context):
     logger.info(event)
     try:
         # Create tables
-        engine = db.get_engine()
-        Base.metadata.create_all(engine)
+        Base.metadata.create_all(db.get_engine())
 
-        with Session(engine) as session:
+        with db.Session() as session:
             session.add_all(all_dependents)
             session.commit()
         send_response(event, context, "SUCCESS")

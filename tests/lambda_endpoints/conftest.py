@@ -4,10 +4,10 @@ from unittest.mock import patch
 
 import boto3
 import pytest
-from moto import mock_events, mock_s3
+from moto import mock_batch, mock_events, mock_s3
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import Base
 
 BUCKET_NAME = "test-data-bucket"
@@ -35,6 +35,13 @@ def science_file():
 def spice_file():
     """Path to a valid spice file."""
     return "imap/spice/ck/test_v000.bc"
+
+
+@pytest.fixture()
+def batch_client():
+    """Yield a batch client."""
+    with mock_batch():
+        yield boto3.client("batch", region_name="us-west-2")
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -77,17 +84,29 @@ def events_client():
         yield boto3.client("events", region_name="us-west-2")
 
 
-# NOTE: This test_engine scope is function.
-# With this scope, all the changes to the database
-# is only visible in each test function. It gets
-# cleaned up after each function.
+# NOTE: The default scope is function, so each test function will
+#       get a new database session and start fresh each time.
 @pytest.fixture()
-def test_engine():
-    """Create an in-memory SQLite database engine."""
-    with patch.object(db, "get_engine") as mock_engine:
-        engine = create_engine("sqlite:///:memory:")
-        mock_engine.return_value = engine
+def session():
+    """Create a test postgres database engine."""
+    from sds_data_manager.lambda_code.SDSCode.database import database as db
+
+    with patch.object(db, "Session") as mock_session:
+        connection = "sqlite:///:memory:"
+        engine = create_engine(connection)
+
+        # Create the tables and session
         Base.metadata.create_all(engine)
-        # When we use yield, it waits until session is complete
-        # and waits for to be called whereas return exits fast.
-        yield engine
+
+        with sessionmaker(bind=engine)() as session:
+            # Attach this session to the mocked module's Session call
+            mock_session.return_value = session
+
+            # Provide the session to the tests
+            yield session
+
+            # Cleanup after the test
+            session.rollback()
+            session.close()
+            # Drop tables to ensure clean state for next test
+            Base.metadata.drop_all(engine)
