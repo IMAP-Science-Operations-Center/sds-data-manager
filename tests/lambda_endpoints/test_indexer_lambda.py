@@ -9,9 +9,6 @@ from sqlalchemy import select
 
 from sds_data_manager.lambda_code.SDSCode import indexer
 from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.lambda_code.SDSCode.database_handler import (
-    update_status_table,
-)
 from sds_data_manager.lambda_code.SDSCode.indexer import (
     send_event_from_indexer,
 )
@@ -19,8 +16,8 @@ from sds_data_manager.lambda_code.SDSCode.indexer import (
 
 def test_batch_job_event(session, events_client):
     """Test batch job event."""
-    # Write to status tracking table with current batch job event info
-    status_params = {
+    # Write to Processing job table with current batch job event info
+    job_params = {
         "status": models.Status.INPROGRESS,
         "instrument": "swapi",
         "data_level": "l1",
@@ -28,7 +25,10 @@ def test_batch_job_event(session, events_client):
         "start_date": datetime.strptime("20230724", "%Y%m%d"),
         "version": "v001",
     }
-    update_status_table(session, status_params)
+    processing_job = models.ProcessingJob(**job_params)
+    session.add(processing_job)
+    session.commit()
+    job_id = processing_job.id
 
     # TODO: Will update this test further
     # when I extend batch job event handler.
@@ -40,7 +40,7 @@ def test_batch_job_event(session, events_client):
                 "arn:aws:batch:us-west-2:012345678910:"
                 "job/26242c7e-3d49-4e41-9387-74fcaf9630bb"
             ),
-            "jobName": "swe-l0-job",
+            "jobName": f"swe-l0-job-{job_id}",  # NOTE: We need to add job_id to jobName
             "jobId": "26242c7e-3d49-4e41-9387-74fcaf9630bb",
             "jobQueue": (
                 "arn:aws:batch:us-west-2:012345678910:"
@@ -89,40 +89,30 @@ def test_batch_job_event(session, events_client):
     assert returned_value["statusCode"] == 200
 
     # check that data was written to status table
-    query = select(models.StatusTracking.__table__).where(
-        models.StatusTracking.instrument == status_params["instrument"],
-        models.StatusTracking.data_level == status_params["data_level"],
-        models.StatusTracking.version == status_params["version"],
+    query = select(models.ProcessingJob.__table__).where(
+        models.ProcessingJob.instrument == job_params["instrument"],
+        models.ProcessingJob.data_level == job_params["data_level"],
+        models.ProcessingJob.version == job_params["version"],
     )
 
-    status_tracking = session.execute(query).first()
-    assert status_tracking.status == models.Status.FAILED
+    processing_job = session.execute(query).first()
+    assert processing_job.id == job_id
+    assert processing_job.status == models.Status.FAILED
 
     # Test for succeeded case
     event["detail"]["status"] = "SUCCEEDED"
     returned_value = indexer.lambda_handler(event=event, context={})
     assert returned_value["statusCode"] == 200
 
-    query = select(models.StatusTracking.__table__).where(
-        models.StatusTracking.instrument == status_params["instrument"],
-        models.StatusTracking.data_level == status_params["data_level"],
-        models.StatusTracking.version == status_params["version"],
+    query = select(models.ProcessingJob.__table__).where(
+        models.ProcessingJob.instrument == job_params["instrument"],
+        models.ProcessingJob.data_level == job_params["data_level"],
+        models.ProcessingJob.version == job_params["version"],
     )
 
-    status_tracking = session.execute(query).first()
-    assert status_tracking.status == models.Status.SUCCEEDED
-
-    # Test for file that is not in status table
-    event["detail"]["container"]["command"][1] = "swe"
-    result = indexer.lambda_handler(event=event, context={})
-    assert result["statusCode"] == 200
-
-    query = select(models.StatusTracking.__table__).where(
-        models.StatusTracking.instrument == "swe"
-    )
-
-    status_tracking = session.execute(query).first()
-    assert status_tracking.status == models.Status.SUCCEEDED
+    processing_job = session.execute(query).first()
+    assert processing_job.id == job_id
+    assert processing_job.status == models.Status.SUCCEEDED
 
 
 def test_s3_event(session, events_client):

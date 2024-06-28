@@ -8,7 +8,6 @@ from enum import Enum
 
 from sqlalchemy import (
     Boolean,
-    CheckConstraint,
     Column,
     DateTime,
     Identity,
@@ -108,10 +107,10 @@ class UniversalSpinTable(Base):
     repointing_number = Column(Integer, nullable=False)
 
 
-class StatusTracking(Base):
-    """Status tracking table."""
+class ProcessingJob(Base):
+    """Track all processing jobs."""
 
-    __tablename__ = "status_tracking"
+    __tablename__ = "processing_job_table"
 
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     status = Column(STATUSES, nullable=False)
@@ -142,11 +141,6 @@ class StatusTracking(Base):
             "version",
             unique=True,
             postgresql_where=and_(status.in_(["INPROGRESS", "SUCCEEDED"])),
-        ),
-        # Optional: Check constraint to ensure valid status values
-        CheckConstraint(
-            status.in_(["INPROGRESS", "SUCCEEDED", "FAILED"]),
-            name="check_status_values",
         ),
     )
 

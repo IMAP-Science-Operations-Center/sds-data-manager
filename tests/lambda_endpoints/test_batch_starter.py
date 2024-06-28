@@ -2,23 +2,24 @@
 
 import copy
 from datetime import datetime
+from unittest.mock import Mock, patch
 
 import pytest
 from imap_data_access import ScienceFilePath
 from sqlalchemy.exc import IntegrityError
 
+from sds_data_manager.lambda_code.SDSCode import batch_starter
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
-    get_dependency,
-    is_job_in_status_table,
+    get_dependencies,
+    get_downstream_dependencies,
+    get_file,
+    is_job_in_processing_table,
     lambda_handler,
-    query_downstream_dependencies,
-    query_instrument,
-    query_upstream_dependencies,
 )
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     FileCatalog,
-    StatusTracking,
+    ProcessingJob,
 )
 from sds_data_manager.lambda_code.SDSCode.dependency_config import (
     all_dependents,
@@ -121,12 +122,11 @@ def _populate_file_catalog(session):
     session.commit()
 
 
-def _populate_status_tracking_table(session):
+def _populate_processing_table(session):
     """Add test data to database."""
-    # Add an inprogress record to the status_tracking table
-    # to test the is_job_in_status_table function.
+    # Add an inprogress record to the processing table
     # At the time of job kickoff, we only have these written to the table
-    record = StatusTracking(
+    record = ProcessingJob(
         status=models.Status.INPROGRESS,
         instrument="lo",
         data_level="l1b",
@@ -210,7 +210,7 @@ def test_pre_processing_dependency(session):
     """Test pre-processing dependency."""
     _populate_dependency_table(session)
     # upstream dependency
-    upstream_dependency = get_dependency(
+    upstream_dependency = get_dependencies(
         session=session,
         instrument="mag",
         data_level="l1a",
@@ -224,7 +224,7 @@ def test_pre_processing_dependency(session):
     assert upstream_dependency[0]["descriptor"] == "raw"
 
     # downstream dependency
-    downstream_dependency = get_dependency(
+    downstream_dependency = get_dependencies(
         session=session,
         instrument="mag",
         data_level="l1b",
@@ -238,37 +238,44 @@ def test_pre_processing_dependency(session):
     assert downstream_dependency[0]["descriptor"] == "norm-mago"
 
 
-def test_query_instrument(session):
-    """Tests ``query_instrument`` function."""
+def test_get_file(session):
+    """Tests the get_file function."""
     _populate_file_catalog(session)
-    upstream_dependency = {
-        "instrument": "ultra",
-        "data_level": "l2",
-        "version": "v001",
-        "descriptor": "sci",
-    }
 
-    "Tests query_instrument function."
-    record = query_instrument(
+    record = get_file(
         session,
-        upstream_dependency,
-        "20240101",
-        "v001",
+        instrument="ultra",
+        data_level="l2",
+        descriptor="sci",
+        start_date="20240101",
+        version="v001",
     )
 
     assert record.instrument == "ultra"
     assert record.data_level == "l2"
-    assert record.version == "v001"
+    assert record.descriptor == "sci"
     assert record.start_date == datetime(2024, 1, 1)
+    assert record.version == "v001"
+
+    # Non-existent record should return None
+    record = get_file(
+        session,
+        instrument="ultra",
+        data_level="l2",
+        descriptor="sci",
+        start_date="20000101",
+        version="v001",
+    )
+    assert record is None
 
 
-def test_query_downstream_dependencies(session):
-    "Tests query_downstream_dependencies function."
+def test_get_downstream_dependencies(session):
+    "Tests get_downstream_dependencies function."
     _populate_dependency_table(session)
     filename = "imap_hit_l1a_sci_20240101_v001.cdf"
     file_params = ScienceFilePath.extract_filename_components(filename)
 
-    complete_dependents = query_downstream_dependencies(session, file_params)
+    complete_dependents = get_downstream_dependencies(session, file_params)
     expected_complete_dependent = {
         "instrument": "hit",
         "data_level": "l1b",
@@ -276,119 +283,36 @@ def test_query_downstream_dependencies(session):
         "version": "v001",
         "start_date": "20240101",
     }
+    assert len(complete_dependents) == 1
 
     assert complete_dependents[0] == expected_complete_dependent
 
 
-def test_query_upstream_dependencies(session):
-    """Tests ``query_upstream_dependencies`` function."""
-    _populate_dependency_table(session)
-    _populate_file_catalog(session)
-    downstream_dependents = [
-        {
-            "instrument": "hit",
-            "data_level": "l1a",
-            "version": "v001",
-            "descriptor": "sci",
-            "start_date": "20240101",
-        },
-        {
-            "instrument": "hit",
-            "data_level": "l3",
-            "version": "v001",
-            "descriptor": "sci",
-            "start_date": "20240101",
-        },
-    ]
-
-    result = query_upstream_dependencies(session, downstream_dependents)
-    assert result[0]["instrument"] == "hit"
-    assert result[0]["data_level"] == "l1a"
-    assert result[0]["version"] == "v001"
-    expected_upstream_dependents = [
-        {
-            "instrument": "hit",
-            "data_level": "l0",
-            "descriptor": "sci",
-            "start_date": "20240101",
-            "version": "v001",
-        }
-    ]
-    assert result[0]["upstream_dependencies"] == expected_upstream_dependents
-
-    # find swe upstream dependencies
-    downstream_dependents = [
-        {
-            "instrument": "swe",
-            "data_level": "l1a",
-            "version": "v001",
-            "descriptor": "sci",
-            "start_date": "20240101",
-        }
-    ]
-
-    result = query_upstream_dependencies(session, downstream_dependents)
-
-    assert len(result) == 1
-    assert result[0]["instrument"] == "swe"
-    assert result[0]["data_level"] == "l1a"
-    assert result[0]["version"] == "v001"
-    expected_upstream_dependents = [
-        {
-            "instrument": "swe",
-            "data_level": "l0",
-            "descriptor": "raw",
-            "start_date": "20240101",
-            "version": "v001",
-        }
-    ]
-
-    assert result[0]["upstream_dependencies"] == expected_upstream_dependents
-
-    downstream_dependents = [
-        {
-            "instrument": "swe",
-            "data_level": "l1b",
-            "version": "v001",
-            "descriptor": "sci",
-            "start_date": "20240101",
-        }
-    ]
-
-    result = query_upstream_dependencies(session, downstream_dependents)
-
-    assert len(result) == 1
-    assert result[0]["instrument"] == "swe"
-    assert result[0]["data_level"] == "l1b"
-    assert result[0]["version"] == "v001"
-    expected_upstream_dependents = [
-        {
-            "instrument": "swe",
-            "data_level": "l1a",
-            "descriptor": "sci",
-            "start_date": "20240101",
-            "version": "v001",
-        }
-    ]
-
-    assert result[0]["upstream_dependencies"] == expected_upstream_dependents
-
-
 def test_lambda_handler(
     session,
-    batch_client,
 ):
     """Tests ``lambda_handler`` function."""
-    event = {"detail": {"object": {"key": "imap_hit_l1a_sci_20100101_v001.cdf"}}}
+    _populate_dependency_table(session)
+    _populate_file_catalog(session)
+
+    event = {"detail": {"object": {"key": "imap_swe_l0_raw_20240101_v001.pkts"}}}
     context = {"context": "sample_context"}
-    lambda_handler(event, context)
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(event, context)
+        mock_batch_client.submit_job.assert_called_once()
+
+        # Submit a second job with the same file as input which will try to kick
+        # off a duplicate job. We expect the submit_job method to not be called
+        # so make sure it is still only called once from our previous iteration.
+        lambda_handler(event, context)
+        mock_batch_client.submit_job.assert_called_once()
 
 
 def test_is_job_in_status_table(session):
     """Test the ``is_job_in_status_table`` function."""
-    _populate_status_tracking_table(session)
-    # query the status_tracking table if this job is already in progress
-    result = is_job_in_status_table(
+    _populate_processing_table(session)
+    # query the processing table if this job is already in progress
+    result = is_job_in_processing_table(
         session=session,
         instrument="lo",
         data_level="l1b",
@@ -399,7 +323,7 @@ def test_is_job_in_status_table(session):
 
     assert result
 
-    result = is_job_in_status_table(
+    result = is_job_in_processing_table(
         session=session,
         instrument="swapi",
         data_level="l1b",
@@ -422,11 +346,11 @@ def test_is_job_in_status_table(session):
 )
 def test_duplicate_job(session, first_status, second_status):
     """Multiple jobs in progress should raise an IntegrityError."""
-    # Add some initial FAILED entries to the status_tracking table
+    # Add some initial FAILED entries to the processing table
     # These should not be a part of the unique constraint
     for _ in range(3):
         session.add(
-            StatusTracking(
+            ProcessingJob(
                 status=models.Status.FAILED,
                 instrument="lo",
                 data_level="l1b",
@@ -436,9 +360,9 @@ def test_duplicate_job(session, first_status, second_status):
             )
         )
     session.commit()
-    assert session.query(StatusTracking).count() == 3
+    assert session.query(ProcessingJob).count() == 3
 
-    record = StatusTracking(
+    record = ProcessingJob(
         status=first_status,
         instrument="lo",
         data_level="l1b",
@@ -448,9 +372,9 @@ def test_duplicate_job(session, first_status, second_status):
     )
     session.add(record)
     session.commit()
-    assert session.query(StatusTracking).count() == 4
+    assert session.query(ProcessingJob).count() == 4
 
-    duplicate = StatusTracking(
+    duplicate = ProcessingJob(
         status=second_status,
         instrument="lo",
         data_level="l1b",
@@ -465,10 +389,10 @@ def test_duplicate_job(session, first_status, second_status):
     session.rollback()
 
     # Now we should still only have 4 items in the table
-    assert session.query(StatusTracking).count() == 4
+    assert session.query(ProcessingJob).count() == 4
 
     # We can add another FAILED status without issue
-    record = StatusTracking(
+    record = ProcessingJob(
         status=models.Status.FAILED,
         instrument="lo",
         data_level="l1b",
@@ -478,4 +402,4 @@ def test_duplicate_job(session, first_status, second_status):
     )
     session.add(record)
     session.commit()
-    assert session.query(StatusTracking).count() == 5
+    assert session.query(ProcessingJob).count() == 5

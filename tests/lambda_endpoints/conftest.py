@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import boto3
 import pytest
-from moto import mock_batch, mock_events, mock_s3
+from moto import mock_events, mock_s3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -37,13 +37,6 @@ def science_file():
 def spice_file():
     """Path to a valid spice file."""
     return "imap/spice/ck/test_v000.bc"
-
-
-@pytest.fixture()
-def batch_client():
-    """Yield a batch client."""
-    with mock_batch():
-        yield boto3.client("batch", region_name="us-west-2")
 
 
 @pytest.fixture(autouse=True, scope="module")

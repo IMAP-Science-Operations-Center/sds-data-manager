@@ -10,7 +10,7 @@ from imap_data_access import ScienceFilePath
 
 from .database import database as db
 from .database import models
-from .database_handler import update_file_catalog_table, update_status_table
+from .database_handler import update_file_catalog_table
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup
@@ -250,15 +250,6 @@ def batch_event_handler(event):
         HTTP response
 
     """
-    command = event["detail"]["container"]["command"]
-
-    # Get params from batch job command
-    instrument = command[1]
-    data_level = command[3]
-    descriptor = command[5]
-    start_date = datetime.strptime(command[7], "%Y%m%d")
-    version = command[9]
-
     # Get job status
     job_status = (
         models.Status.SUCCEEDED
@@ -266,21 +257,19 @@ def batch_event_handler(event):
         else models.Status.FAILED
     )
 
-    status_params = {
-        "status": job_status,
-        "instrument": instrument,
-        "data_level": data_level,
-        "descriptor": descriptor,
-        "start_date": start_date,
-        "version": version,
-        "job_definition": event["detail"]["jobDefinition"],
-        "job_log_stream_id": event["detail"]["container"]["logStreamName"],
-        "container_image": event["detail"]["container"]["image"],
-        "container_command": " ".join(command),
-    }
+    # We injected our table ID into the job name
+    job_id = event["detail"]["jobName"].split("-")[-1]
 
     with db.Session() as session:
-        update_status_table(session, status_params)
+        # Get the batch job by its ID
+        job = session.get(models.ProcessingJob, job_id)
+        # Make the updates
+        job.status = job_status
+        job.job_definition = event["detail"]["jobDefinition"]
+        job.job_log_stream_id = event["detail"]["container"]["logStreamName"]
+        job.container_image = event["detail"]["container"]["image"]
+        job.container_command = " ".join(event["detail"]["container"]["command"])
+        session.commit()
 
     return http_response(status_code=200, body="Success")
 
