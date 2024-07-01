@@ -6,7 +6,6 @@ import aws_cdk as cdk
 from aws_cdk import Stack
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
@@ -26,6 +25,7 @@ class SdsApiManager(Stack):
         vpc,
         rds_security_group,
         db_secret_name: str,
+        layer_output_name: str,
         **kwargs,
     ) -> None:
         """Initialize the SdsApiManagerStack.
@@ -48,6 +48,8 @@ class SdsApiManager(Stack):
             The RDS security group
         db_secret_name : str
             The DB secret name
+        layer_output_name : str
+            The Lambda Layer stack output name
         kwargs : dict
             Keyword arguments
 
@@ -75,63 +77,24 @@ class SdsApiManager(Stack):
             pathlib.Path(__file__).parent.parent / "lambda_code"
         ).resolve()
 
-        lambda_code_directory_str = str(lambda_code_directory)
-
-        code_bundle = lambda_.Code.from_asset(
-            str(lambda_code_directory),
-            bundling=cdk.BundlingOptions(
-                image=lambda_.Runtime.PYTHON_3_12.bundling_image,
-                command=[
-                    "bash",
-                    "-c",
-                    (
-                        "pip install -r requirements.txt -t /asset-output/python && "
-                        "cp -au . /asset-output/python"
-                    ),
-                ],
-            ),
-        )
-
-        lambda_layer = lambda_.LayerVersion(
+        # Look up the Lambda layer using the output ARN
+        lambda_layer = lambda_.LayerVersion.from_layer_version_arn(
             self,
-            id="DatabaseLayer",
-            code=code_bundle,
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            id="APIManagerLayer",
+            layer_version_arn=cdk.Fn.import_value(layer_output_name),
         )
 
         lambda_raw_code = lambda_.Code.from_asset(str(lambda_code_directory))
 
-        # Another lambda to test out the layer parts
-        test_lambda = lambda_.Function(
-            self,
-            id="TestLambdaLayer",
-            function_name="test-lambda-layer",
-            code=lambda_raw_code,
-            handler="SDSCode.query_api.lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            timeout=cdk.Duration.seconds(60),
-            memory_size=1000,
-            allow_public_subnet=True,
-            vpc=vpc,
-            security_groups=[rds_security_group],
-            layers=[lambda_layer],
-            environment={
-                "S3_BUCKET": data_bucket.bucket_name,
-                "SECRET_NAME": db_secret_name,
-            },
-            architecture=lambda_.Architecture.ARM_64,
-        )
-
         # upload API lambda
-        upload_api_lambda = lambda_alpha_.PythonFunction(
+        upload_api_lambda = lambda_.Function(
             self,
             id="UploadAPILambda",
             function_name="upload-api-handler",
-            entry=lambda_code_directory_str,
-            index="SDSCode/upload_api.py",
-            handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_9,
-            timeout=cdk.Duration.minutes(15),
+            code=lambda_raw_code,
+            handler="SDSCode.upload_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
             memory_size=1000,
             allow_public_subnet=True,
             vpc=vpc,
@@ -140,6 +103,8 @@ class SdsApiManager(Stack):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
+            layers=[lambda_layer],
+            architecture=lambda_.Architecture.ARM_64,
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
         upload_api_lambda.add_to_role_policy(s3_read_policy)
@@ -153,14 +118,13 @@ class SdsApiManager(Stack):
         )
 
         # query API lambda
-        query_api_lambda = lambda_alpha_.PythonFunction(
+        query_api_lambda = lambda_.Function(
             self,
             id="QueryAPILambda",
             function_name="query-api-handler",
-            entry=lambda_code_directory_str,
-            index="SDSCode/query_api.py",
-            handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_9,
+            code=lambda_raw_code,
+            handler="SDSCode.query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
             allow_public_subnet=True,
@@ -170,6 +134,8 @@ class SdsApiManager(Stack):
                 "REGION": region,
                 "SECRET_NAME": db_secret_name,
             },
+            layers=[lambda_layer],
+            architecture=lambda_.Architecture.ARM_64,
         )
 
         api.add_route(
@@ -177,25 +143,21 @@ class SdsApiManager(Stack):
             http_method="GET",
             lambda_function=query_api_lambda,
         )
-        api.add_route(
-            route="test",
-            http_method="GET",
-            lambda_function=test_lambda,
-        )
 
         # download API lambda
-        download_api = lambda_alpha_.PythonFunction(
+        download_api = lambda_.Function(
             self,
             id="DownloadAPILambda",
             function_name="download-api-handler",
-            entry=lambda_code_directory_str,
-            index="SDSCode/download_api.py",
-            handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_9,
-            timeout=cdk.Duration.seconds(60),
+            code=lambda_raw_code,
+            handler="SDSCode.download_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
             environment={
                 "S3_BUCKET": data_bucket.bucket_name,
             },
+            layers=[lambda_layer],
+            architecture=lambda_.Architecture.ARM_64,
         )
 
         download_api.add_to_role_policy(s3_read_policy)
@@ -207,21 +169,23 @@ class SdsApiManager(Stack):
             use_path_params=True,
         )
 
-        spin_table_code = lambda_code_directory / "spin_table_api.py"
-
-        universal_spin_table_handler = lambda_alpha_.PythonFunction(
+        universal_spin_table_handler = lambda_.Function(
             self,
             id="universal-spin-table-api-handler",
             function_name="universal-spin-table-api-handler",
-            entry=str(spin_table_code.parent / "SDSCode"),  # This gives folder path
-            index=str(spin_table_code.name),  # This gives file name
-            handler="lambda_handler",  # This points to function inside the file
-            runtime=lambda_.Runtime.PYTHON_3_11,
+            code=lambda_raw_code,
+            handler="SDSCode.spin_table_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
-            memory_size=512,
+            memory_size=1000,
+            allow_public_subnet=True,
             vpc=vpc,
             security_groups=[rds_security_group],
-            allow_public_subnet=True,
+            environment={
+                "SECRET_NAME": db_secret_name,
+            },
+            layers=[lambda_layer],
+            architecture=lambda_.Architecture.ARM_64,
         )
 
         rds_secret = secrets.Secret.from_secret_name_v2(
@@ -229,7 +193,6 @@ class SdsApiManager(Stack):
         )
         rds_secret.grant_read(grantee=universal_spin_table_handler)
         rds_secret.grant_read(grantee=query_api_lambda)
-        rds_secret.grant_read(grantee=test_lambda)
         rds_secret.grant_read(grantee=upload_api_lambda)
 
         api.add_route(
