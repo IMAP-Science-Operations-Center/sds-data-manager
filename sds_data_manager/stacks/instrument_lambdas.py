@@ -2,13 +2,13 @@
 
 from pathlib import Path
 
+import aws_cdk as cdk
 from aws_cdk import Duration, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_lambda_python_alpha as lambda_alpha
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
@@ -66,22 +66,47 @@ class BatchStarterLambda(Stack):
             "REGION": f"{self.region}",
         }
 
-        self.instrument_lambda = lambda_alpha.PythonFunction(
+        # Create Lambda Layer
+        lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
+
+        code_bundle = lambda_.Code.from_asset(
+            str(lambda_code_directory),
+            bundling=cdk.BundlingOptions(
+                image=lambda_.Runtime.PYTHON_3_12.bundling_image,
+                command=[
+                    "bash",
+                    "-c",
+                    (
+                        "pip install -r requirements.txt -t /asset-output/python && "
+                        "cp -au . /asset-output/python"
+                    ),
+                ],
+            ),
+        )
+
+        batch_starter_layer = lambda_.LayerVersion(
+            self,
+            id="BatchStarterLayer",
+            code=code_bundle,
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+        )
+
+        self.instrument_lambda = lambda_.Function(
             self,
             "BatchStarterLambda",
             function_name="BatchStarterLambda",
-            entry=str(Path(__file__).parent.joinpath("..", "lambda_code").resolve()),
-            index="SDSCode/batch_starter.py",
-            handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_11,
+            code=lambda_.Code.from_asset(code_path),
+            handler="SDSCode.batch_starter.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
             environment=lambda_environment,
-            retry_attempts=0,
             memory_size=512,
             timeout=Duration.minutes(1),
             vpc=vpc,
             vpc_subnets=subnets,
             security_groups=[rds_security_group],
             allow_public_subnet=True,
+            layers=[batch_starter_layer],
+            architecture=lambda_.Architecture.ARM_64,
         )
 
         # Permissions to send event to EventBridge

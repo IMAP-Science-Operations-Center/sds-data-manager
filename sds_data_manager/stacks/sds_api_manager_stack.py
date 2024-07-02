@@ -1,6 +1,6 @@
 """Configure the SDS API Manager stack."""
 
-import pathlib
+from pathlib import Path
 
 import aws_cdk as cdk
 from aws_cdk import Stack
@@ -69,9 +69,7 @@ class SdsApiManager(Stack):
             ],
         )
 
-        lambda_code_directory = (
-            pathlib.Path(__file__).parent.parent / "lambda_code"
-        ).resolve()
+        lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
 
         # Create Lambda Layer
         code_bundle = lambda_.Code.from_asset(
