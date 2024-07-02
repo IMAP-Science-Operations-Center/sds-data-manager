@@ -20,7 +20,6 @@ from sds_data_manager.stacks import (
     ialirt_processing_stack,
     indexer_lambda_stack,
     instrument_lambdas,
-    lambda_layer_stack,
     monitoring_stack,
     networking_stack,
     sds_api_manager_stack,
@@ -109,16 +108,7 @@ def build_sds(
         sns_topic=monitoring.sns_topic_notifications,
     )
 
-    # create Layer for API Lambda(s)
-    # NOTE: This lambda layer stack creates layer and output it's ARN
-    # to be used in other stacks
-    lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
-    layer_name = "DatabaseDependencies"
-    lambda_layer = lambda_layer_stack.LambdaLayerStack(
-        scope=scope, id=layer_name, layer_code_directory=str(lambda_code_directory)
-    )
-
-    sds_api_manager = sds_api_manager_stack.SdsApiManager(
+    sds_api_manager_stack.SdsApiManager(
         scope=scope,
         construct_id="SdsApiManager",
         api=api,
@@ -127,9 +117,7 @@ def build_sds(
         vpc=networking.vpc,
         rds_security_group=networking.rds_security_group,
         db_secret_name=db_secret_name,
-        layer_output_name=layer_name,
     )
-    sds_api_manager.add_dependency(lambda_layer)
 
     # create EFS
     efs_instance = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)

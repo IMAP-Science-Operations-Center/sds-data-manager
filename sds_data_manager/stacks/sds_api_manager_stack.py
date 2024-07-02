@@ -25,7 +25,6 @@ class SdsApiManager(Stack):
         vpc,
         rds_security_group,
         db_secret_name: str,
-        layer_output_name: str,
         **kwargs,
     ) -> None:
         """Initialize the SdsApiManagerStack.
@@ -48,11 +47,8 @@ class SdsApiManager(Stack):
             The RDS security group
         db_secret_name : str
             The DB secret name
-        layer_output_name : str
-            The Lambda Layer stack output name
         kwargs : dict
             Keyword arguments
-
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
         # Get the current region
@@ -77,12 +73,30 @@ class SdsApiManager(Stack):
             pathlib.Path(__file__).parent.parent / "lambda_code"
         ).resolve()
 
-        # Look up the Lambda layer using the output ARN
-        lambda_layer = lambda_.LayerVersion.from_layer_version_arn(
-            self,
-            id="APIManagerLayer",
-            layer_version_arn=cdk.Fn.import_value(layer_output_name),
+        # Create Lambda Layer
+        code_bundle = lambda_.Code.from_asset(
+            str(lambda_code_directory),
+            bundling=cdk.BundlingOptions(
+                image=lambda_.Runtime.PYTHON_3_12.bundling_image,
+                command=[
+                    "bash",
+                    "-c",
+                    (
+                        "pip install -r requirements.txt -t /asset-output/python && "
+                        "cp -au . /asset-output/python"
+                    ),
+                ],
+            ),
         )
+
+        db_layer = lambda_.LayerVersion(
+            self,
+            id="DatabaseLayer",
+            code=code_bundle,
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+        )
+
+        api_layers = [db_layer]
 
         lambda_raw_code = lambda_.Code.from_asset(str(lambda_code_directory))
 
@@ -103,7 +117,7 @@ class SdsApiManager(Stack):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
-            layers=[lambda_layer],
+            layers=api_layers,
             architecture=lambda_.Architecture.ARM_64,
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
@@ -134,7 +148,7 @@ class SdsApiManager(Stack):
                 "REGION": region,
                 "SECRET_NAME": db_secret_name,
             },
-            layers=[lambda_layer],
+            layers=api_layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 
@@ -156,7 +170,7 @@ class SdsApiManager(Stack):
             environment={
                 "S3_BUCKET": data_bucket.bucket_name,
             },
-            layers=[lambda_layer],
+            layers=api_layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 
@@ -184,7 +198,7 @@ class SdsApiManager(Stack):
             environment={
                 "SECRET_NAME": db_secret_name,
             },
-            layers=[lambda_layer],
+            layers=api_layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 
