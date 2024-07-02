@@ -1,6 +1,6 @@
 """Configure the indexer lambda stack."""
 
-import pathlib
+from pathlib import Path
 
 import aws_cdk as cdk
 from aws_cdk import Stack
@@ -9,7 +9,6 @@ from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
@@ -59,16 +58,38 @@ class IndexerLambda(Stack):
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
-        indexer_lambda = lambda_alpha_.PythonFunction(
+        # Create Lambda Layer
+        lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
+
+        code_bundle = lambda_.Code.from_asset(
+            str(lambda_code_directory),
+            bundling=cdk.BundlingOptions(
+                image=lambda_.Runtime.PYTHON_3_12.bundling_image,
+                command=[
+                    "bash",
+                    "-c",
+                    (
+                        "pip install -r requirements.txt -t /asset-output/python && "
+                        "cp -au . /asset-output/python"
+                    ),
+                ],
+            ),
+        )
+
+        indexer_layer = lambda_.LayerVersion(
+            self,
+            id="IndexerLayer",
+            code=code_bundle,
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+        )
+
+        indexer_lambda = lambda_.Function(
             self,
             id="IndexerLambda",
             function_name="file-indexer",
-            entry=str(
-                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
-            ),
-            index="SDSCode/indexer.py",
-            handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_9,
+            code=lambda_.Code.from_asset(str(lambda_code_directory)),
+            handler="SDSCode.indexer.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
             allow_public_subnet=True,
@@ -80,6 +101,8 @@ class IndexerLambda(Stack):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
+            layers=[indexer_layer],
+            architecture=lambda_.Architecture.ARM_64,
         )
 
         # Adding events and s3 permission because indexer
