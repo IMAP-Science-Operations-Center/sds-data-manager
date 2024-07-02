@@ -73,6 +73,7 @@ class BatchStarterLambda(Stack):
             str(lambda_code_directory),
             bundling=cdk.BundlingOptions(
                 image=lambda_.Runtime.PYTHON_3_12.bundling_image,
+                platform="linux/arm64",  # Requires Docker Buildx.
                 command=[
                     "bash",
                     "-c",
