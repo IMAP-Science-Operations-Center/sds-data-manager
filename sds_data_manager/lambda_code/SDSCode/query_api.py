@@ -5,7 +5,6 @@ import json
 import logging
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from .database import database as db
 from .database import models
@@ -94,8 +93,7 @@ def lambda_handler(event, context):
     # Default for the table is by the ascending id so by insertion order
     query = query.order_by(models.FileCatalog.file_path)
 
-    engine = db.get_engine()
-    with Session(engine) as session:
+    with db.Session() as session:
         search_results = session.execute(query).all()
 
     # Convert the search results (list of tuples) to a list of dicts
@@ -105,9 +103,11 @@ def lambda_handler(event, context):
     # Also remove values that are not needed by users
     for result in search_results:
         result["start_date"] = result["start_date"].strftime("%Y%m%d")
-        result["ingestion_date"] = result["ingestion_date"].strftime(
-            "%Y-%m-%d %H:%M:%S%z"
-        )
+        d = result["ingestion_date"]
+        if d.tzinfo is not None:
+            # If the datetime has a timezone, convert it to UTC and remove the timezone
+            d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        result["ingestion_date"] = d.strftime("%Y-%m-%d %H:%M:%S")
         del result["id"]
 
     logger.info(
