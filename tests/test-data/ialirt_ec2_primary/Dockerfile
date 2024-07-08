@@ -41,4 +41,4 @@ EXPOSE 8080
 ENV AWS_REGION us-west-2
 
 # Command to mount S3 and run the application sequentially
-CMD ["sh", "-c", "mount-s3 sds-data-301233867300 /mnt/s3 && python test_app.py"]
+CMD ["sh", "-c", "mount-s3 ialirt-301233867300 /mnt/s3 && python test_app.py"]

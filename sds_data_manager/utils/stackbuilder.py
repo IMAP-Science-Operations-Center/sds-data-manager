@@ -17,7 +17,6 @@ from sds_data_manager.stacks import (
     domain_stack,
     ecr_stack,
     efs_stack,
-    ialirt_bucket_stack,
     ialirt_processing_stack,
     indexer_lambda_stack,
     instrument_lambdas,
@@ -188,11 +187,6 @@ def build_sds(
         instrument_name="IalirtEcr",
     )
 
-    # I-ALiRT IOIS S3 bucket
-    ialirt_bucket = ialirt_bucket_stack.IAlirtBucketStack(
-        scope=scope, construct_id="IAlirtBucket", env=env
-    )
-
     # All traffic to I-ALiRT is directed to listed container ports
     ialirt_ports = {"Primary": [8080, 8081], "Secondary": [80]}
     container_ports = {"Primary": 8080, "Secondary": 80}
@@ -207,7 +201,6 @@ def build_sds(
             processing_name=primary_or_secondary,
             ialirt_ports=ialirt_ports[primary_or_secondary],
             container_port=container_ports[primary_or_secondary],
-            ialirt_bucket=ialirt_bucket.ialirt_bucket,
         )
 
 
