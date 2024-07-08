@@ -20,12 +20,10 @@ def get_nlb_dns(stack_name, port, container_name):
 @pytest.mark.xfail(reason="Will fail unless IALiRT stack is deployed.")
 def test_nlb_response():
     """Test to ensure the NLB responds with HTTP 200 status."""
-    stacks = {
-        "Primary": [8080, 8081],
-        "Secondary": [80],
-    }
+    ialirt_ports = {"Primary": [8080, 8081], "Secondary": [80]}
+    container_ports = {"Primary": 8080, "Secondary": 80}
 
-    for stack_name, ports in stacks.items():
+    for stack_name, ports in ialirt_ports.items():
         for port in ports:
             nlb_dns = get_nlb_dns(f"IalirtProcessing{stack_name}", port, stack_name)
             print(f"Testing URL: {nlb_dns}")
@@ -35,14 +33,11 @@ def test_nlb_response():
                 response.status_code == 200
             ), f"NLB did not return HTTP 200 on port {port} for {stack_name}"
             assert (
-                response.text == f"Hello World {stack_name}."
+                response.text == f"Hello World from Port {container_ports[stack_name]}."
             ), f"NLB did not return expected text on port {port} for {stack_name}"
-            assert (
-                response.status_code == 200
-            ), f"NLB did not return HTTP 200 on port {port} for {stack_name}"
             s3_response = requests.get(
                 nlb_dns + "/list", timeout=10
             )  # timeout in seconds
             assert (
-                f"{stack_name.lower()}_test_file.txt" in s3_response.text
+                f"test_file{container_ports[stack_name]}.txt" in s3_response.text
             ), f"NLB did not return expected file name on port {port} for {stack_name}"

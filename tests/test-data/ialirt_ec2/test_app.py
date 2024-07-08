@@ -13,7 +13,7 @@ from flask import Flask
 # Create a Flask application
 app = Flask(__name__)
 # Note: The port number is changed from 8080 to 80 in the secondary Dockerfile.
-port = 8080
+port = 80
 
 
 # Decorator that tells Flask what URL

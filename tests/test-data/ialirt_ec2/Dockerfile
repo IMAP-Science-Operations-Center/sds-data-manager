@@ -43,7 +43,7 @@ RUN chmod +x /app/mount_s3.sh /app/start_flask.sh /app/entrypoint.sh
 
 # Make port 8080 available to the world outside this container
 # Note: The port number is changed from 8080 to 80 for the secondary system.
-EXPOSE 8080
+EXPOSE 80
 
 # Set the AWS region
 ENV AWS_REGION us-west-2
