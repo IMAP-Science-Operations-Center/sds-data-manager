@@ -58,7 +58,7 @@ class IalirtProcessing(Stack):
             Keyword arguments
 
         """
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id, env=env, **kwargs)
 
         self.account_number = env.account
         self.ports = ialirt_ports
@@ -161,8 +161,8 @@ class IalirtProcessing(Stack):
             iam.PolicyStatement(
                 actions=["s3:GetObject", "s3:ListBucket", "s3:PutObject"],
                 resources=[
-                    f"arn:aws:s3:::{self.ialirt_bucket}",
-                    f"arn:aws:s3:::{self.ialirt_bucket}/*",
+                    f"arn:aws:s3:::{self.ialirt_bucket.bucket_name}",
+                    f"arn:aws:s3:::{self.ialirt_bucket.bucket_name}/*",
                 ],
             )
         )
@@ -190,7 +190,7 @@ class IalirtProcessing(Stack):
             memory_limit_mib=512,
             cpu=256,
             logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirt{processing_name}"),
-            environment={"S3_BUCKET": self.ialirt_bucket},
+            environment={"S3_BUCKET": self.ialirt_bucket.bucket_name},
             # Ensure the ECS task is running in privileged mode,
             # which allows the container to use FUSE.
             privileged=True,
