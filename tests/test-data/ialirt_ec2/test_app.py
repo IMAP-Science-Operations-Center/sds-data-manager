@@ -12,6 +12,8 @@ from flask import Flask
 
 # Create a Flask application
 app = Flask(__name__)
+# Note: The port number is changed from 8080 to 80 in the secondary Dockerfile.
+port = 8080
 
 
 # Decorator that tells Flask what URL
@@ -19,7 +21,7 @@ app = Flask(__name__)
 @app.route("/")
 def hello():
     """Hello world function to test with."""
-    return "Hello World Primary."
+    return f"Hello World from Port {port}."
 
 
 @app.route("/list")
@@ -36,7 +38,7 @@ def create_and_save_file():
     if not os.path.exists(s3_mount_dir):
         os.makedirs(s3_mount_dir)
 
-    file_name = "primary_test_file.txt"
+    file_name = f"test_file{port}.txt"
     file_content = "Hello, this is a test file."
 
     file_path = os.path.join(s3_mount_dir, file_name)
@@ -49,4 +51,4 @@ def create_and_save_file():
 
 if __name__ == "__main__":
     create_and_save_file()
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=port)

@@ -38,7 +38,7 @@ class IAlirtBucketStack(Stack):
         self.ialirt_bucket = s3.Bucket(
             self,
             "IAlirtBucket",
-            bucket_name=f"sds-data-{account}",
+            bucket_name=f"ialirt-{account}",
             versioned=True,
             event_bridge_enabled=True,
             removal_policy=RemovalPolicy.DESTROY,

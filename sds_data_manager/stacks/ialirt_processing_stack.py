@@ -7,8 +7,7 @@ https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbou
 https://aws.amazon.com/elasticloadbalancing/features/#Product_comparisons
 """
 
-import aws_cdk as cdk
-from aws_cdk import CfnOutput, RemovalPolicy, Stack
+from aws_cdk import CfnOutput, Stack
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
@@ -26,12 +25,12 @@ class IalirtProcessing(Stack):
         self,
         scope: Construct,
         construct_id: str,
-        env: cdk.Environment,
         vpc: ec2.Vpc,
         repo: ecr.Repository,
         processing_name: str,
         ialirt_ports: list[int],
         container_port: int,
+        ialirt_bucket: s3.Bucket,
         **kwargs,
     ) -> None:
         """Construct the i-alirt processing stack.
@@ -42,8 +41,6 @@ class IalirtProcessing(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        env : obj
-            The environment
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
         repo : ecr.Repository
@@ -54,20 +51,19 @@ class IalirtProcessing(Stack):
             List of ports to listen on for incoming traffic.
         container_port : int
             Port to be used by the container.
+        ialirt_bucket: s3.Bucket
+            S3 bucket
         kwargs : dict
             Keyword arguments
 
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
+        super().__init__(scope, construct_id, **kwargs)
 
-        self.account_number = env.account
         self.ports = ialirt_ports
         self.container_port = container_port
         self.vpc = vpc
         self.repo = repo
-
-        # Create the S3 bucket
-        self.create_bucket()
+        self.s3_bucket_name = ialirt_bucket.bucket_name
 
         # Add a security group in which application load balancer will reside
         self.create_load_balancer_security_group(processing_name)
@@ -81,20 +77,6 @@ class IalirtProcessing(Stack):
         self.add_load_balancer(processing_name)
         # Add autoscaling for each container
         self.add_autoscaling(processing_name)
-
-    def create_bucket(self):
-        """Create s3 bucket."""
-        # This is the S3 bucket used to mount to the container.
-        self.ialirt_bucket = s3.Bucket(
-            self,
-            "IAlirtBucket",
-            bucket_name=f"ialirt-{self.account_number}",
-            versioned=True,
-            event_bridge_enabled=True,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-        )
 
     def create_ecs_security_group(self, processing_name):
         """Create and return a security group for containers."""
@@ -161,8 +143,8 @@ class IalirtProcessing(Stack):
             iam.PolicyStatement(
                 actions=["s3:GetObject", "s3:ListBucket", "s3:PutObject"],
                 resources=[
-                    f"arn:aws:s3:::{self.ialirt_bucket.bucket_name}",
-                    f"arn:aws:s3:::{self.ialirt_bucket.bucket_name}/*",
+                    f"arn:aws:s3:::{self.s3_bucket_name}",
+                    f"arn:aws:s3:::{self.s3_bucket_name}/*",
                 ],
             )
         )
@@ -190,7 +172,7 @@ class IalirtProcessing(Stack):
             memory_limit_mib=512,
             cpu=256,
             logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirt{processing_name}"),
-            environment={"S3_BUCKET": self.ialirt_bucket.bucket_name},
+            environment={"S3_BUCKET": self.s3_bucket_name},
             # Ensure the ECS task is running in privileged mode,
             # which allows the container to use FUSE.
             privileged=True,
