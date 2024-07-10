@@ -65,7 +65,7 @@ class IalirtProcessing(Stack):
         self.repo = repo
         self.s3_bucket_name = ialirt_bucket.bucket_name
 
-        # Add a security group in which application load balancer will reside
+        # Add a security group in which network load balancer will reside
         self.create_load_balancer_security_group(processing_name)
 
         # Create security group in which containers will reside
@@ -230,7 +230,7 @@ class IalirtProcessing(Stack):
 
         self.ecs_cluster.add_asg_capacity_provider(capacity_provider)
 
-        # Allow inbound traffic from the Application Load Balancer
+        # Allow inbound traffic from the Network Load Balancer
         # to the security groups associated with the EC2 instances
         # within the Auto Scaling Group.
         for port in self.ports:
@@ -240,7 +240,7 @@ class IalirtProcessing(Stack):
 
     def add_load_balancer(self, processing_name):
         """Add a load balancer for a container."""
-        # Create the Application Load Balancer and
+        # Create the Network Load Balancer and
         # place it in a public subnet.
         self.load_balancer = elbv2.NetworkLoadBalancer(
             self,
