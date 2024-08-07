@@ -31,11 +31,11 @@ def kernel_path(tmp_path):
     # Format for how the kernels will be stored in EFS.
     shutil.move(
         tmp_path / "naif" / "generic_kernels" / "spk" / "planets" / "de430.bsp",
-        tmp_path / "latest_de430.bsp",
+        tmp_path / "de430.bsp",
     )
     shutil.move(
         tmp_path / "naif" / "generic_kernels" / "lsk" / "naif0012.tls",
-        tmp_path / "latest_naif0012.tls",
+        tmp_path / "naif0012.tls",
     )
     shutil.rmtree(tmp_path / "naif")
 
