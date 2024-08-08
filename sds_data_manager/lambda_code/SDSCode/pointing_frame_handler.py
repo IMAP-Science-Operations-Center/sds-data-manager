@@ -17,10 +17,9 @@ def get_coverage():
     et_end : list
         List of dictionary containing the dependency information.
     """
-
     # Each spin is 15 seconds. We want 10 quaternions per spin.
     # duration / # samples (nominally 15/10 = 1.5 seconds)
-    step = 1.5
+    step = 5
 
     # TODO: query .csv for pointing start and end times.
     # TODO: come back to filter nutation and precession in ck.
@@ -31,7 +30,7 @@ def get_coverage():
     return et_start, et_end, et_times
 
 
-def create_pointing_frame(id =-43000):
+def create_pointing_frame(id=-43000):
     """Create the pointing frame.
 
     Returns
@@ -44,15 +43,8 @@ def create_pointing_frame(id =-43000):
     https://spiceypy.readthedocs.io/en/main/documentation.html.
     spiceypy.spiceypy.ckw02
     """
-    #mount_path = Path(os.getenv("EFS_MOUNT_PATH"))
-    #kernels = [str(file) for file in mount_path.iterdir()]
-    kernels = ['/Users/lasa6858/imap_processing/tools/tests/test_data/spice/de430.bsp',
-     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/IMAP_launch20250429_1D.bsp',
-     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/imap_sclk_0000.tsc',
-     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/imap_wkcp.tf',
-     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/naif0012.tls',
-     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/imap_spin.bc',
-     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/imap_science_0001.tf']
+    mount_path = Path(os.getenv("EFS_MOUNT_PATH"))
+    kernels = [str(file) for file in mount_path.iterdir()]
 
     body_quats = []
     z_eclip_time = []
@@ -113,14 +105,20 @@ def create_pointing_frame(id =-43000):
         # x-axis, which is perpendicular to both y_avg and z_avg.
         x_avg = np.cross(y_avg, z_avg)
 
-        lv = [et_start, et_end] + x_avg.tolist() + y_avg.tolist() + z_avg.tolist() + [0.0, 0.0, 0.0]
+        lv = (
+            [et_start, et_end]
+            + x_avg.tolist()
+            + y_avg.tolist()
+            + z_avg.tolist()
+            + [0.0, 0.0, 0.0]
+        )
 
         # Open the file and write the data
-        with open('dps_data.txt', 'w') as fid:
-            fid.write(' '.join(map(str, lv)) + '\n')
+        with open("dps_data.txt", "w") as fid:
+            fid.write(" ".join(map(str, lv)) + "\n")
 
         # Construct the full command as a single string
-        command = '/Users/lasa6858/naif/mice/exe/msopck /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_setup.txt /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_data.txt imap_dps.bc'
+        command = "/Users/lasa6858/naif/mice/exe/msopck /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_setup.txt /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_data.txt imap_dps.bc"
 
         # Run the command using shell=True
         result = os.system(command)
@@ -137,7 +135,7 @@ def create_pointing_frame(id =-43000):
             sclkdp=epochs,
             quats=quats,
             avvs=avvs,
-            nrec=2  # Number of records, adjust as needed
+            nrec=2,  # Number of records, adjust as needed
         )
 
         # Close the CK file
