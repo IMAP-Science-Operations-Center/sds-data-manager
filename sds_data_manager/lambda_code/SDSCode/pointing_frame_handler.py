@@ -31,7 +31,7 @@ def get_coverage():
     return et_start, et_end, et_times
 
 
-def create_pointing_frame():
+def create_pointing_frame(id =-43000):
     """Create the pointing frame.
 
     Returns
@@ -44,8 +44,15 @@ def create_pointing_frame():
     https://spiceypy.readthedocs.io/en/main/documentation.html.
     spiceypy.spiceypy.ckw02
     """
-    mount_path = Path(os.getenv("EFS_MOUNT_PATH"))
-    kernels = [file for file in mount_path.iterdir()]
+    #mount_path = Path(os.getenv("EFS_MOUNT_PATH"))
+    #kernels = [str(file) for file in mount_path.iterdir()]
+    kernels = ['/Users/lasa6858/imap_processing/tools/tests/test_data/spice/de430.bsp',
+     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/IMAP_launch20250429_1D.bsp',
+     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/imap_sclk_0000.tsc',
+     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/imap_wkcp.tf',
+     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/naif0012.tls',
+     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/imap_spin.bc',
+     '/Users/lasa6858/imap_processing/tools/tests/test_data/spice/imap_science_0001.tf']
 
     body_quats = []
     z_eclip_time = []
@@ -118,7 +125,22 @@ def create_pointing_frame():
         # Run the command using shell=True
         result = os.system(command)
 
+        # Calling ckw02
+        spice.ckw02(
+            handle=spice.ckopn("imap_dps.bc", "SPICE CK", 0),
+            begtime=et_start,
+            endtime=et_end,
+            inst=id,
+            ref=frame,
+            avflag=avflag,
+            segid=seg_id,
+            sclkdp=epochs,
+            quats=quats,
+            avvs=avvs,
+            nrec=2  # Number of records, adjust as needed
+        )
 
-    print("hi")
+        # Close the CK file
+        spice.ckcls(spice.ckopn("imap_dps.bc", "SPICE CK", 0))
 
     return kernels, et_end, et_start
