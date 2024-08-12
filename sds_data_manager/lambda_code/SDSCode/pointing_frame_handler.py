@@ -82,21 +82,12 @@ def create_pointing_frame(id=-43000):
         # eigenvalue points in the direction that has the most
         # combined rotation influence.
         eigvals, eigvecs = np.linalg.eig(aggregate)
+        # q0: The scalar part of the quaternion.
+        # q1, q2, q3: The vector part of the quaternion.
         q_avg = eigvecs[:, np.argmax(eigvals)]
 
         # Get inertial z axis
         z_avg = spice.q2m(list(q_avg))[:, 2]
-
-        # Convert rectangular coordinates to spherical coordinates
-        az_z_eclip_list = []
-        el_z_eclip_list = []
-
-        for time in z_eclip_time:
-            _, az_z_eclip, el_z_eclip = spice.recrad(list(time))
-            az_z_eclip_list.append(az_z_eclip)
-            el_z_eclip_list.append(el_z_eclip)
-
-        _, az_avg, el_avg = spice.recrad(list(z_avg))
 
         # Build the DPS frame
         # y_avg is perpendicular to both z_avg and the standard Z-axis
@@ -118,27 +109,33 @@ def create_pointing_frame(id=-43000):
             fid.write(" ".join(map(str, lv)) + "\n")
 
         # Construct the full command as a single string
-        command = "/Users/lasa6858/naif/mice/exe/msopck /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_setup.txt /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_data.txt imap_dps.bc"
+        command = '/Users/lasa6858/naif/mice/exe/msopck /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_setup.txt /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_data.txt imap_dps.bc'
 
         # Run the command using shell=True
         result = os.system(command)
 
-        # Calling ckw02
+        handle = spice.ckopn("imap_dps.bc", "CK", 0)
+
+        # Populate variables
+        nrec = len(et_times)  # Number of pointing records
+
+        # Call the CKW02 function
         spice.ckw02(
-            handle=spice.ckopn("imap_dps.bc", "SPICE CK", 0),
-            begtime=et_start,
-            endtime=et_end,
-            inst=id,
-            ref=frame,
-            avflag=avflag,
-            segid=seg_id,
-            sclkdp=epochs,
-            quats=quats,
-            avvs=avvs,
-            nrec=2,  # Number of records, adjust as needed
+            handle,
+            et_start,
+            et_end,
+            id, # Instrument ID (e.g., -43000 for IMAP)
+            "ECLIPJ2000", # Reference frame of the segment
+            "IMAP_DPS",  # Segment identifier
+            len(et_times),  # Number of pointing records
+            et_times,  # Encoded SCLK interval start times (using ephemeris time here)
+            np.minimum(et_times + 5, et_end),  # Encoded SCLK interval stop times (slightly after start times),
+            np.tile(q_avg, (len(et_times), 1)),
+            np.zeros((nrec, 3)), # Angular velocity vectors (assuming zero angular velocity for simplicity)
+            [1.0] * nrec  # rates: Number of seconds per tick for each interval (example value)
         )
 
         # Close the CK file
-        spice.ckcls(spice.ckopn("imap_dps.bc", "SPICE CK", 0))
+        spice.ckcls(handle)
 
     return kernels, et_end, et_start
