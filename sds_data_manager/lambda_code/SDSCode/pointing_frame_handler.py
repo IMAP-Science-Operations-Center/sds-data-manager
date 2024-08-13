@@ -3,12 +3,12 @@
 import logging
 import os
 from pathlib import Path
+
 import numpy as np
 import spiceypy as spice
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
 
 
 def get_coverage(ck_kernel):
@@ -24,10 +24,11 @@ def get_coverage(ck_kernel):
     # Each spin is 15 seconds. We want 10 quaternions per spin.
     # duration / # samples (nominally 15/10 = 1.5 seconds)
     step = 1.5
-    cover = spice.ckcov(str(ck_kernel[0]), -43000, True,"SEGMENT", 0, "TDB")
+    id_imap_spacecraft = spice.gipool('FRAME_IMAP_SPACECRAFT', 0, 1)
+    cover = spice.ckcov(str(ck_kernel[0]), int(id_imap_spacecraft), True, "SEGMENT", 0, "TDB")
     et_start, et_end = spice.wnfetd(cover, 0)
 
-    #TODO: Add pointing start and stop times here
+    # TODO: Add pointing start and stop times here
     # instead of et_start and et_end.
 
     et_times = np.arange(et_start, et_end, step)
@@ -36,7 +37,6 @@ def get_coverage(ck_kernel):
 
 def average_quaternions(et_times):
     """Average quaternions."""
-
     body_quats = []
     aggregate = np.zeros((4, 4))
 
@@ -69,7 +69,6 @@ def average_quaternions(et_times):
 
 
 def create_rotation_matrix(et_times):
-
     q_avg = average_quaternions(et_times)
 
     # Get inertial z axis
@@ -89,11 +88,11 @@ def create_rotation_matrix(et_times):
     return rotation_matrix
 
 
-def create_pointing_frame(id=-43000):
+def create_pointing_frame():
     """Create the pointing frame."""
     mount_path = Path(os.getenv("EFS_MOUNT_PATH"))
     kernels = [str(file) for file in mount_path.iterdir()]
-    ck_kernel = [str(file) for file in mount_path.iterdir() if file.suffix == '.bc']
+    ck_kernel = [str(file) for file in mount_path.iterdir() if file.suffix == ".bc"]
 
     with spice.KernelPool(kernels):
         et_start, et_end, et_times = get_coverage(ck_kernel)
@@ -106,18 +105,19 @@ def create_pointing_frame(id=-43000):
         path_to_imap_dps = mount_path / "imap_dps.bc"
 
         handle = spice.ckopn(str(path_to_imap_dps), "CK", 0)
-
-        sclk_begtim = spice.sce2c(-43, et_start)  # Convert start time to SCLK
-        sclk_endtim = spice.sce2c(-43, et_end)
+        id_imap_sclk = spice.gipool("CK_-43000_SCLK", 0, 1)
+        sclk_begtim = spice.sce2c(int(id_imap_sclk), et_start)  # Convert start time to SCLK
+        sclk_endtim = spice.sce2c(int(id_imap_sclk), et_end)
 
         et_start1 = sclk_begtim
         et_end1 = sclk_endtim
+        id_imap_dps = spice.gipool('FRAME_IMAP_DPS', 0, 1)
 
         spice.ckw02(
             handle,
             et_start1,  # Single start time
             et_end1,  # Single stop time
-            -43901,  # Instrument ID
+            int(id_imap_dps),  # Instrument ID
             "ECLIPJ2000",  # Reference frame
             "IMAP_DPS",  # Segment identifier
             1,  # Only one record
@@ -125,7 +125,7 @@ def create_pointing_frame(id=-43000):
             np.array([et_end1]),  # Single stop time
             q_avg,  # quaternion
             np.array([0.0, 0.0, 0.0]),  # Single angular velocity vector
-            np.array([1.0])  # RATES (seconds per tick)
+            np.array([1.0]),  # RATES (seconds per tick)
         )
 
         spice.ckcls(handle)
@@ -140,4 +140,3 @@ def lambda_handler(events: dict, context):
 
     # Create the pointing frame and save it to EFS
     create_pointing_frame()
-
