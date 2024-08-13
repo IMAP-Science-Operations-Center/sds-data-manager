@@ -1,5 +1,6 @@
 """Tests of Pointing Frame Generation."""
 
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -45,8 +46,7 @@ def kernel_path(tmp_path):
             or file.name.endswith(".tf")
             or file.name.endswith(".tsc")
         ):
-            file_name = f"latest_{file.name}"
-            shutil.copy(file, tmp_path / file_name)
+            shutil.copy(file, tmp_path / file.name)
 
     return tmp_path
 
@@ -56,3 +56,11 @@ def test_create_pointing_frame(kernel_path, monkeypatch):
     # Set the environment variable
     monkeypatch.setenv("EFS_MOUNT_PATH", str(kernel_path))
     create_pointing_frame()
+
+    # kernels.append('/Users/lasa6858/sds-data-manager/tests/lambda_endpoints/imap_dps.bc')
+    # with spice.KernelPool(kernels):
+    #
+    #     rot1 = spice.pxform('ECLIPJ2000', 'IMAP_DPS', et_start + 100)
+    #     rot2 = spice.pxform('ECLIPJ2000', 'IMAP_DPS', et_start + 1000)
+    #
+    #     print('hi')

@@ -1,10 +1,14 @@
 """Generate Pointing Frame."""
 
+import logging
 import os
 from pathlib import Path
-
+import boto3
 import numpy as np
 import spiceypy as spice
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def get_coverage():
@@ -19,30 +23,17 @@ def get_coverage():
     """
     # Each spin is 15 seconds. We want 10 quaternions per spin.
     # duration / # samples (nominally 15/10 = 1.5 seconds)
-    step = 5
+    step = 1.5
+    cover = spice.ckcov('/Users/lasa6858/imap_processing/tools/tests/test_data/spice/imap_spin.bc', -43000, True,
+                        "SEGMENT", 0, "TDB")
+    et_start, et_end = spice.wnfetd(cover, 0)
 
-    # TODO: query .csv for pointing start and end times.
-    # TODO: come back to filter nutation and precession in ck.
-    et_start = spice.str2et("JUN-01-2025")
-    et_end = spice.str2et("JUN-02-2025")
     et_times = np.arange(et_start, et_end, step)
-
     return et_start, et_end, et_times
 
 
 def create_pointing_frame(id=-43000):
-    """Create the pointing frame.
-
-    Returns
-    -------
-    kernels : list
-        List of kernels.
-
-    References
-    ----------
-    https://spiceypy.readthedocs.io/en/main/documentation.html.
-    spiceypy.spiceypy.ckw02
-    """
+    """Create the pointing frame."""
     mount_path = Path(os.getenv("EFS_MOUNT_PATH"))
     kernels = [str(file) for file in mount_path.iterdir()]
 
@@ -53,20 +44,12 @@ def create_pointing_frame(id=-43000):
     with spice.KernelPool(kernels):
         et_start, et_end, et_times = get_coverage()
 
-        for tdb in et_times:
-            # Rotation matrix from IMAP spacecraft frame to ECLIPJ2000.
+        for tdb in et_times[0:-2]:
             body_rots = spice.pxform("IMAP_SPACECRAFT", "ECLIPJ2000", tdb)
-            # Convert rotation matrix to quaternion.
             body_quat = spice.m2q(body_rots)
             body_quats.append(body_quat)
-            # z-axis of the IMAP spacecraft frame in the new ECLIPJ2000 frame.
-            z_eclip_time.append(body_rots[:, 2])
-
-            # Standardize the quaternion so that they may be compared.
             if body_quat[0] < 0:
                 body_quat = -body_quat
-
-            # Aggregate quarternions into a single matrix.
             aggregate += np.outer(body_quat, body_quat)
 
         # Reference: Claus Gramkow "On Averaging Rotations"
@@ -96,46 +79,48 @@ def create_pointing_frame(id=-43000):
         # x-axis, which is perpendicular to both y_avg and z_avg.
         x_avg = np.cross(y_avg, z_avg)
 
-        lv = (
-            [et_start, et_end]
-            + x_avg.tolist()
-            + y_avg.tolist()
-            + z_avg.tolist()
-            + [0.0, 0.0, 0.0]
-        )
+        # Construct the rotation matrix from x_avg, y_avg, z_avg
+        rotation_matrix = np.vstack([x_avg, y_avg, z_avg])
+        rotation_matrix = np.ascontiguousarray(rotation_matrix)
 
-        # Open the file and write the data
-        with open("dps_data.txt", "w") as fid:
-            fid.write(" ".join(map(str, lv)) + "\n")
+        # Convert the rotation matrix to a quaternion
+        q_avg = spice.m2q(rotation_matrix)
 
-        # Construct the full command as a single string
-        command = '/Users/lasa6858/naif/mice/exe/msopck /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_setup.txt /Users/lasa6858/imap_processing/imap_processing/dps_frame/dps_data.txt imap_dps.bc'
-
-        # Run the command using shell=True
-        result = os.system(command)
+        path_to_imap_dps = '/Users/lasa6858/sds-data-manager/tests/lambda_endpoints/imap_dps.bc'
 
         handle = spice.ckopn("imap_dps.bc", "CK", 0)
 
-        # Populate variables
-        nrec = len(et_times)  # Number of pointing records
+        sclk_begtim = spice.sce2c(-43, et_start)  # Convert start time to SCLK
+        sclk_endtim = spice.sce2c(-43, et_end)
 
-        # Call the CKW02 function
+        et_start1 = sclk_begtim
+        et_end1 = sclk_endtim
+
         spice.ckw02(
             handle,
-            et_start,
-            et_end,
-            id, # Instrument ID (e.g., -43000 for IMAP)
-            "ECLIPJ2000", # Reference frame of the segment
+            et_start1,  # Single start time
+            et_end1,  # Single stop time
+            -43901,  # Instrument ID
+            "ECLIPJ2000",  # Reference frame
             "IMAP_DPS",  # Segment identifier
-            len(et_times),  # Number of pointing records
-            et_times,  # Encoded SCLK interval start times (using ephemeris time here)
-            np.minimum(et_times + 5, et_end),  # Encoded SCLK interval stop times (slightly after start times),
-            np.tile(q_avg, (len(et_times), 1)),
-            np.zeros((nrec, 3)), # Angular velocity vectors (assuming zero angular velocity for simplicity)
-            [1.0] * nrec  # rates: Number of seconds per tick for each interval (example value)
+            1,  # Only one record
+            np.array([et_start1]),  # Single start time
+            np.array([et_end1]),  # Single stop time
+            q_avg,  # Single quaternion
+            np.array([0.0, 0.0, 0.0]),  # Single angular velocity vector
+            np.array([1.0])  # RATES (seconds per tick)
         )
 
-        # Close the CK file
         spice.ckcls(handle)
 
-    return kernels, et_end, et_start
+    return path_to_imap_dps
+
+
+def lambda_handler(events: dict, context):
+    """Lambda handler."""
+    logger.info(f"Events: {events}")
+    logger.info(f"Context: {context}")
+
+    # Create the pointing frame and save it to EFS
+    path_to_imap_dps = create_pointing_frame()
+
