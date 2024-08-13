@@ -8,9 +8,11 @@ from pathlib import Path
 import planetmapper
 import pytest
 from planetmapper.kernel_downloader import download_urls
+import spiceypy as spice
 
 from sds_data_manager.lambda_code.SDSCode.pointing_frame_handler import (
     create_pointing_frame,
+    get_coverage
 )
 
 
@@ -56,11 +58,13 @@ def test_create_pointing_frame(kernel_path, monkeypatch):
     # Set the environment variable
     monkeypatch.setenv("EFS_MOUNT_PATH", str(kernel_path))
     create_pointing_frame()
+    kernels = [str(file) for file in kernel_path.iterdir()]
+    ck_kernel = [str(file) for file in kernel_path.iterdir() if file.name == 'imap_spin.bc']
 
-    # kernels.append('/Users/lasa6858/sds-data-manager/tests/lambda_endpoints/imap_dps.bc')
-    # with spice.KernelPool(kernels):
-    #
-    #     rot1 = spice.pxform('ECLIPJ2000', 'IMAP_DPS', et_start + 100)
-    #     rot2 = spice.pxform('ECLIPJ2000', 'IMAP_DPS', et_start + 1000)
-    #
-    #     print('hi')
+    with spice.KernelPool(kernels):
+        et_start, et_end, et_times = get_coverage(ck_kernel)
+
+        rot1 = spice.pxform('ECLIPJ2000', 'IMAP_DPS', et_start + 100)
+        rot2 = spice.pxform('ECLIPJ2000', 'IMAP_DPS', et_start + 1000)
+
+        print('hi')
