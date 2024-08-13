@@ -10,6 +10,10 @@ import spiceypy as spice
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Each spin is 15 seconds. We want 10 quaternions per spin.
+# duration / # samples (nominally 15/10 = 1.5 seconds)
+STEP = 1.5
+
 
 def get_coverage(ck_kernel):
     """Create the pointing frame.
@@ -21,29 +25,29 @@ def get_coverage(ck_kernel):
     et_end : list
         List of dictionary containing the dependency information.
     """
-    # Each spin is 15 seconds. We want 10 quaternions per spin.
-    # duration / # samples (nominally 15/10 = 1.5 seconds)
-    step = 1.5
     id_imap_spacecraft = spice.gipool('FRAME_IMAP_SPACECRAFT', 0, 1)
-    cover = spice.ckcov(str(ck_kernel[0]), int(id_imap_spacecraft), True, "SEGMENT", 0, "TDB")
+
+    # TODO: Query pointing start and stop times here
+    # instead of et_start and et_end.
+    cover = spice.ckcov(str(ck_kernel[0]), int(id_imap_spacecraft),
+                        True, "SEGMENT", 0, "TDB")
     et_start, et_end = spice.wnfetd(cover, 0)
 
-    # TODO: Add pointing start and stop times here
-    # instead of et_start and et_end.
-
-    et_times = np.arange(et_start, et_end, step)
+    et_times = np.arange(et_start, et_end, STEP)
     return et_start, et_end, et_times
 
 
 def average_quaternions(et_times):
     """Average quaternions."""
     body_quats = []
+    z_eclip_time = []
     aggregate = np.zeros((4, 4))
 
     for tdb in et_times[0:-2]:
         body_rots = spice.pxform("IMAP_SPACECRAFT", "ECLIPJ2000", tdb)
         body_quat = spice.m2q(body_rots)
         body_quats.append(body_quat)
+        z_eclip_time.append(body_rots[:, 2])
         if body_quat[0] < 0:
             body_quat = -body_quat
         aggregate += np.outer(body_quat, body_quat)
@@ -65,11 +69,11 @@ def average_quaternions(et_times):
     # q1, q2, q3: The vector part of the quaternion.
     q_avg = eigvecs[:, np.argmax(eigvals)]
 
-    return q_avg
+    return q_avg, z_eclip_time
 
 
 def create_rotation_matrix(et_times):
-    q_avg = average_quaternions(et_times)
+    q_avg, _ = average_quaternions(et_times)
 
     # Get inertial z axis
     z_avg = spice.q2m(list(q_avg))[:, 2]
@@ -85,7 +89,7 @@ def create_rotation_matrix(et_times):
     rotation_matrix = np.vstack([x_avg, y_avg, z_avg])
     rotation_matrix = np.ascontiguousarray(rotation_matrix)
 
-    return rotation_matrix
+    return rotation_matrix, z_avg
 
 
 def create_pointing_frame():
@@ -96,7 +100,7 @@ def create_pointing_frame():
 
     with spice.KernelPool(kernels):
         et_start, et_end, et_times = get_coverage(ck_kernel)
-        rotation_matrix = create_rotation_matrix(et_times)
+        rotation_matrix, _ = create_rotation_matrix(et_times)
 
         # Convert the rotation matrix to a quaternion
         q_avg = spice.m2q(rotation_matrix)

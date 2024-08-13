@@ -1,17 +1,19 @@
-"""Tests of Pointing Frame Generation."""
-
 import shutil
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import planetmapper
 import pytest
+import numpy as np
 import spiceypy as spice
 from planetmapper.kernel_downloader import download_urls
 
 from sds_data_manager.lambda_code.SDSCode.pointing_frame_handler import (
     create_pointing_frame,
     get_coverage,
+    create_rotation_matrix,
+    average_quaternions,
 )
 
 
@@ -52,9 +54,35 @@ def kernel_path(tmp_path):
     return tmp_path
 
 
-def test_create_pointing_frame(kernel_path, monkeypatch):
-    """Tests create_pointing_frame function."""
+@pytest.fixture()
+def setup_environment(kernel_path, monkeypatch):
+    """Set up environment and create pointing frame."""
     # Set the environment variable
+    monkeypatch.setenv("EFS_MOUNT_PATH", str(kernel_path))
+
+    # Prepare kernels and ck_kernel lists
+    kernels = [str(file) for file in kernel_path.iterdir()]
+    ck_kernel = [
+        str(file) for file in kernel_path.iterdir() if file.name == "imap_spin.bc"
+    ]
+
+    return kernels, ck_kernel
+
+
+def test_get_coverage(setup_environment):
+    """Tests create_pointing_frame function."""
+    kernels, ck_kernel = setup_environment
+
+    with spice.KernelPool(kernels):
+        et_start, et_end, et_times = get_coverage(ck_kernel)
+
+    # TODO: Change for queried start/stop times.
+    assert et_start == 802008069.184905
+    assert et_end == 802094467.184905
+
+
+def test_create_pointing_frame(monkeypatch, kernel_path):
+    """Tests create_pointing_frame function."""
     monkeypatch.setenv("EFS_MOUNT_PATH", str(kernel_path))
     create_pointing_frame()
     kernels = [str(file) for file in kernel_path.iterdir()]
@@ -68,4 +96,40 @@ def test_create_pointing_frame(kernel_path, monkeypatch):
         rot1 = spice.pxform("ECLIPJ2000", "IMAP_DPS", et_start + 100)
         rot2 = spice.pxform("ECLIPJ2000", "IMAP_DPS", et_start + 1000)
 
-        print("hi")
+    assert np.array_equal(rot1, rot2)
+
+
+def test_something(setup_environment):
+    """Tests coordinate conversion and visualization."""
+    kernels, ck_kernel = setup_environment
+
+    az_z_eclip_list = []
+    el_z_eclip_list = []
+
+    with spice.KernelPool(kernels):
+        et_start, et_end, et_times = get_coverage(ck_kernel)
+        # Create visualization
+        _, z_avg = create_rotation_matrix(et_times)
+        _, z_eclip_time = average_quaternions(et_times)
+
+        for time in z_eclip_time:
+            _, az_z_eclip, el_z_eclip = spice.recrad(list(time))
+            az_z_eclip_list.append(az_z_eclip)
+            el_z_eclip_list.append(el_z_eclip)
+
+        _, az_avg, el_avg = spice.recrad(list(z_avg))
+
+    # Plotting for visualization
+    plt.figure()
+
+    time_steps = np.arange(et_start, et_end, (et_end - et_start) / len(el_z_eclip_list))
+
+    plt.plot(time_steps, np.array(el_z_eclip_list) * 180 / np.pi, '-b', label='simulated attitude')
+    plt.plot(time_steps, np.full(len(time_steps), el_avg * 180 / np.pi), '-r', linewidth=2,
+             label='mean z-axis for DPS frame')
+
+    plt.xlabel('Ephemeris Time TDB')
+    plt.ylabel('Spacecraft Spin Axis (ecliptic Inertial) Declination')
+    plt.legend()
+
+    plt.show()
