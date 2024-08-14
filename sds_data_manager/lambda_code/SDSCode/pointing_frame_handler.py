@@ -1,9 +1,15 @@
 """Generate Pointing Frame.
 
 Notes
-----------
+-----
 Kernels that are required to run this code:
-1.
+1. imap_science_0001.tf - pointing frame kernel
+2. imap_sclk_0000.tsc - spacecraft clock kernel
+3. imap_wkcp.tf - spacecraft frame kernel
+4. de430.bsp - standard SPICE planetary ephemeris kernel
+5. naif0012.tls - standard NAIF leapsecond kernel
+6. imap_spin.bc - test attitude kernel available at:
+https://lasp.colorado.edu/galaxy/display/IMAP/Data
 
 References
 ----------
@@ -162,12 +168,10 @@ def create_pointing_frame():
 
     # TODO: this part will change with ensure_spice decorator.
     kernels = [str(file) for file in mount_path.iterdir()]
-    ck_kernel = [str(file) for file in mount_path.iterdir()
-                 if file.suffix == ".bc"]
+    ck_kernel = [str(file) for file in mount_path.iterdir() if file.suffix == ".bc"]
 
     # Furnish the kernels.
     with spice.KernelPool(kernels):
-
         # Get timerange for the pointing frame kernel.
         et_start, et_end, et_times = get_coverage(str(ck_kernel[0]))
         # Create a rotation matrix
