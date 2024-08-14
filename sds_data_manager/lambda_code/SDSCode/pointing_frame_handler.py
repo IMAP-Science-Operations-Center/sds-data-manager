@@ -1,4 +1,9 @@
-"""Generate Pointing Frame."""
+"""Generate Pointing Frame.
+
+References
+----------
+https://spiceypy.readthedocs.io/en/main/documentation.html.
+"""
 
 import logging
 import os
@@ -18,27 +23,50 @@ STEP = 1.5
 def get_coverage(ck_kernel):
     """Create the pointing frame.
 
+    Parameters
+    ----------
+    ck_kernel : str
+        Path of ck_kernel used to create the pointing frame.
+
     Returns
     -------
-    et_start : list
-        List of dictionary containing the dependency information.
-    et_end : list
-        List of dictionary containing the dependency information.
+    et_start : float
+        Start time of ck_kernel.
+    et_end : float
+        End time of ck_kernel.
+    et_times : numpy.ndarray
+        Array of times between et_start and et_end.
     """
-    id_imap_spacecraft = spice.gipool('FRAME_IMAP_SPACECRAFT', 0, 1)
+    # Get the spacecraft ID.
+    # https://spiceypy.readthedocs.io/en/main/documentation.html#spiceypy.spiceypy.gipool
+    id_imap_spacecraft = spice.gipool("FRAME_IMAP_SPACECRAFT", 0, 1)
 
-    # TODO: Query pointing start and stop times here
-    # instead of et_start and et_end.
-    cover = spice.ckcov(str(ck_kernel[0]), int(id_imap_spacecraft),
-                        True, "SEGMENT", 0, "TDB")
+    # TODO: Queried pointing start and stop times here.
+
+    # Get the coverage window
+    # https://spiceypy.readthedocs.io/en/main/documentation.html#spiceypy.spiceypy.ckcov
+    cover = spice.ckcov(ck_kernel, int(id_imap_spacecraft), True, "SEGMENT", 0, "TDB")
     et_start, et_end = spice.wnfetd(cover, 0)
-
     et_times = np.arange(et_start, et_end, STEP)
+
     return et_start, et_end, et_times
 
 
 def average_quaternions(et_times):
-    """Average quaternions."""
+    """Average the quarternions.
+
+    Parameters
+    ----------
+    et_times : numpy.ndarray
+        Array of times between et_start and et_end.
+
+    Returns
+    -------
+    q_avg : np.array
+        Average quaternion.
+    z_eclip_time : list
+
+    """
     body_quats = []
     z_eclip_time = []
     aggregate = np.zeros((4, 4))
@@ -99,7 +127,7 @@ def create_pointing_frame():
     ck_kernel = [str(file) for file in mount_path.iterdir() if file.suffix == ".bc"]
 
     with spice.KernelPool(kernels):
-        et_start, et_end, et_times = get_coverage(ck_kernel)
+        et_start, et_end, et_times = get_coverage(str(ck_kernel[0]))
         rotation_matrix, _ = create_rotation_matrix(et_times)
 
         # Convert the rotation matrix to a quaternion
@@ -110,12 +138,14 @@ def create_pointing_frame():
 
         handle = spice.ckopn(str(path_to_imap_dps), "CK", 0)
         id_imap_sclk = spice.gipool("CK_-43000_SCLK", 0, 1)
-        sclk_begtim = spice.sce2c(int(id_imap_sclk), et_start)  # Convert start time to SCLK
+        sclk_begtim = spice.sce2c(
+            int(id_imap_sclk), et_start
+        )  # Convert start time to SCLK
         sclk_endtim = spice.sce2c(int(id_imap_sclk), et_end)
 
         et_start1 = sclk_begtim
         et_end1 = sclk_endtim
-        id_imap_dps = spice.gipool('FRAME_IMAP_DPS', 0, 1)
+        id_imap_dps = spice.gipool("FRAME_IMAP_DPS", 0, 1)
 
         spice.ckw02(
             handle,
