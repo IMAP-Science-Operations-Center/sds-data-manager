@@ -1,25 +1,28 @@
+"""Tests Pointing Frame Generation."""
+
 import shutil
 import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import planetmapper
 import pytest
-import numpy as np
 import spiceypy as spice
 from planetmapper.kernel_downloader import download_urls
 
 from sds_data_manager.lambda_code.SDSCode.pointing_frame_handler import (
-    create_pointing_frame,
-    get_coverage,
-    create_rotation_matrix,
     average_quaternions,
+    create_pointing_frame,
+    create_rotation_matrix,
+    get_coverage,
 )
 
 
 @pytest.fixture()
 def kernel_path(tmp_path):
-    """Download the required NAIF kernels."""
+    """Create path to kernels."""
+    # Download the required NAIF kernels.
     planetmapper.set_kernel_path(tmp_path)
     download_urls(
         "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de430.bsp"
@@ -55,12 +58,8 @@ def kernel_path(tmp_path):
 
 
 @pytest.fixture()
-def setup_environment(kernel_path, monkeypatch):
-    """Set up environment and create pointing frame."""
-    # Set the environment variable
-    monkeypatch.setenv("EFS_MOUNT_PATH", str(kernel_path))
-
-    # Prepare kernels and ck_kernel lists
+def create_kernel_list(kernel_path):
+    """Create kernel lists."""
     kernels = [str(file) for file in kernel_path.iterdir()]
     ck_kernel = [
         str(file) for file in kernel_path.iterdir() if file.name == "imap_spin.bc"
@@ -69,76 +68,79 @@ def setup_environment(kernel_path, monkeypatch):
     return kernels, ck_kernel
 
 
-def test_get_coverage(setup_environment):
-    """Tests create_pointing_frame function."""
-    kernels, ck_kernel = setup_environment
+def test_get_coverage(create_kernel_list):
+    """Tests get_coverage function."""
+    kernels, ck_kernel = create_kernel_list
 
     with spice.KernelPool(kernels):
-        et_start, et_end, et_times = get_coverage(ck_kernel)
+        et_start, et_end, et_times = get_coverage(str(ck_kernel[0]))
 
-    # TODO: Change for queried start/stop times.
     assert et_start == 802008069.184905
     assert et_end == 802094467.184905
 
 
-def test_create_pointing_frame(monkeypatch, kernel_path):
+def test_create_pointing_frame(monkeypatch, kernel_path, create_kernel_list):
     """Tests create_pointing_frame function."""
     monkeypatch.setenv("EFS_MOUNT_PATH", str(kernel_path))
+    _, ck_kernel = create_kernel_list
     create_pointing_frame()
+
+    # After imap_dps.bc has been created.
     kernels = [str(file) for file in kernel_path.iterdir()]
-    ck_kernel = [
-        str(file) for file in kernel_path.iterdir() if file.name == "imap_spin.bc"
-    ]
 
     with spice.KernelPool(kernels):
-        et_start, et_end, et_times = get_coverage(ck_kernel)
+        et_start, et_end, et_times = get_coverage(str(ck_kernel[0]))
 
-        rot1 = spice.pxform("ECLIPJ2000", "IMAP_DPS", et_start + 100)
-        rot2 = spice.pxform("ECLIPJ2000", "IMAP_DPS", et_start + 1000)
+        rotation_matrix_1 = spice.pxform("ECLIPJ2000", "IMAP_DPS", et_start + 100)
+        rotation_matrix_2 = spice.pxform("ECLIPJ2000", "IMAP_DPS", et_start + 1000)
 
-    assert np.array_equal(rot1, rot2)
+    # All the rotation matrices should be the same.
+    assert np.array_equal(rotation_matrix_1, rotation_matrix_2)
 
     # Nick Dutton's MATLAB code result
-    rot1_expected = np.array([[0.0000, 0.0000, 1.0000],
-                             [0.9104, -0.4136, 0.0000],
-                             [0.4136, 0.9104, 0.0000]])
-    np.testing.assert_allclose(rot1, rot1_expected, atol=1e-4)
+    rotation_matrix_expected = np.array(
+        [[0.0000, 0.0000, 1.0000], [0.9104, -0.4136, 0.0000], [0.4136, 0.9104, 0.0000]]
+    )
+    np.testing.assert_allclose(rotation_matrix_1, rotation_matrix_expected, atol=1e-4)
 
 
-def test_something(setup_environment):
-    """Tests coordinate conversion and visualization."""
-    kernels, ck_kernel = setup_environment
-
-    az_z_eclip_list = []
-    el_z_eclip_list = []
+def test_z_axis(create_kernel_list):
+    """Tests Inertial z axis and provides visualization."""
+    kernels, ck_kernel = create_kernel_list
 
     with spice.KernelPool(kernels):
-        et_start, et_end, et_times = get_coverage(ck_kernel)
-        # Create visualization
+        et_start, et_end, et_times = get_coverage(str(ck_kernel[0]))
+
+        # Converts rectangular coordinates to spherical coordinates.
         q_avg, z_eclip_time = average_quaternions(et_times)
         z_avg_expected = spice.q2m(list(q_avg))[:, 2]
         _, z_avg = create_rotation_matrix(et_times)
 
-        assert z_avg == z_avg_expected
+        assert np.array_equal(z_avg, z_avg_expected)
 
+        # Create visualization
+        declination_list = []
         for time in z_eclip_time:
-            _, az_z_eclip, el_z_eclip = spice.recrad(list(time))
-            az_z_eclip_list.append(az_z_eclip)
-            el_z_eclip_list.append(el_z_eclip)
+            _, _, declination = spice.recrad(list(time))
+            declination_list.append(declination)
 
-        _, az_avg, el_avg = spice.recrad(list(z_avg))
+        # Average declination.
+        _, _, avg_declination = spice.recrad(list(z_avg))
 
     # Plotting for visualization
     plt.figure()
-
-    time_steps = np.arange(et_start, et_end, (et_end - et_start) / len(el_z_eclip_list))
-
-    plt.plot(time_steps, np.array(el_z_eclip_list) * 180 / np.pi, '-b', label='simulated attitude')
-    plt.plot(time_steps, np.full(len(time_steps), el_avg * 180 / np.pi), '-r', linewidth=2,
-             label='mean z-axis for DPS frame')
-
-    plt.xlabel('Ephemeris Time TDB')
-    plt.ylabel('Spacecraft Spin Axis (ecliptic Inertial) Declination')
+    plt.plot(
+        et_times, np.array(declination_list) * 180 / np.pi, "-b", label="Declination"
+    )
+    plt.plot(
+        et_times,
+        np.full(len(et_times), avg_declination * 180 / np.pi),
+        "-r",
+        linewidth=2,
+        label="mean z-axis for pointing frame",
+    )
+    plt.xlabel("Ephemeris Time")
+    plt.ylabel("Spacecraft Spin Axis Declination")
+    plt.ticklabel_format(useOffset=False)
     plt.legend()
-
     plt.show()
