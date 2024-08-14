@@ -98,6 +98,12 @@ def test_create_pointing_frame(monkeypatch, kernel_path):
 
     assert np.array_equal(rot1, rot2)
 
+    # Nick Dutton's MATLAB code result
+    rot1_expected = np.array([[0.0000, 0.0000, 1.0000],
+                             [0.9104, -0.4136, 0.0000],
+                             [0.4136, 0.9104, 0.0000]])
+    np.testing.assert_allclose(rot1, rot1_expected, atol=1e-4)
+
 
 def test_something(setup_environment):
     """Tests coordinate conversion and visualization."""
@@ -109,8 +115,11 @@ def test_something(setup_environment):
     with spice.KernelPool(kernels):
         et_start, et_end, et_times = get_coverage(ck_kernel)
         # Create visualization
+        q_avg, z_eclip_time = average_quaternions(et_times)
+        z_avg_expected = spice.q2m(list(q_avg))[:, 2]
         _, z_avg = create_rotation_matrix(et_times)
-        _, z_eclip_time = average_quaternions(et_times)
+
+        assert z_avg == z_avg_expected
 
         for time in z_eclip_time:
             _, az_z_eclip, el_z_eclip = spice.recrad(list(time))
