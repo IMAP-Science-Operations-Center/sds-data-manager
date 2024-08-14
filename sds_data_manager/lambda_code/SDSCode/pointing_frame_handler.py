@@ -53,7 +53,7 @@ def get_coverage(ck_kernel):
 
 
 def average_quaternions(et_times):
-    """Average the quarternions.
+    """Average the quaternions.
 
     Parameters
     ----------
@@ -70,7 +70,7 @@ def average_quaternions(et_times):
     z_eclip_time = []
     aggregate = np.zeros((4, 4))
 
-    for tdb in et_times[0:-2]:
+    for tdb in et_times:
         # Rotation matrix from IMAP spacecraft frame to ECLIPJ2000.
         body_rots = spice.pxform("IMAP_SPACECRAFT", "ECLIPJ2000", tdb)
         # Convert rotation matrix to quaternion.
@@ -83,7 +83,7 @@ def average_quaternions(et_times):
         if body_quat[0] < 0:
             body_quat = -body_quat
 
-        # Aggregate quarternions into a single matrix.
+        # Aggregate quaternions into a single matrix.
         aggregate += np.outer(body_quat, body_quat)
 
     # Reference: Claus Gramkow "On Averaging Rotations"
@@ -107,21 +107,34 @@ def average_quaternions(et_times):
 
 
 def create_rotation_matrix(et_times):
+    """Create a rotation matrix.
+
+    Parameters
+    ----------
+    et_times : numpy.ndarray
+        Array of times between et_start and et_end.
+
+    Returns
+    -------
+    rotation_matrix : np.array
+        Rotation matrix.
+    z_avg : np.array
+        Inertial z axis.
+    """
+    # Averaged quaternions.
     q_avg, _ = average_quaternions(et_times)
 
-    # Get inertial z axis
+    # TODO: Ask Nick if this part is necessary.
+    # Converts the averaged quaternion (q_avg) into a rotation matrix
+    # and get inertial z axis.
     z_avg = spice.q2m(list(q_avg))[:, 2]
-
-    # Build the DPS frame
-    # y_avg is perpendicular to both z_avg and the standard Z-axis
+    # y_avg is perpendicular to both z_avg and the standard Z-axis.
     y_avg = np.cross(z_avg, [0, 0, 1])
-    # This calculates the cross product of y_avg and z_avg to get the
-    # x-axis, which is perpendicular to both y_avg and z_avg.
+    # x_avg is perpendicular to y_avg and z_avg.
     x_avg = np.cross(y_avg, z_avg)
 
     # Construct the rotation matrix from x_avg, y_avg, z_avg
-    rotation_matrix = np.vstack([x_avg, y_avg, z_avg])
-    rotation_matrix = np.ascontiguousarray(rotation_matrix)
+    rotation_matrix = np.array([x_avg, y_avg, z_avg])
 
     return rotation_matrix, z_avg
 
