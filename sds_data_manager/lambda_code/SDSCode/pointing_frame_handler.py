@@ -140,7 +140,6 @@ def create_rotation_matrix(et_times):
     # Averaged quaternions.
     q_avg, _ = average_quaternions(et_times)
 
-    # TODO: Ask Nick if this part is necessary.
     # Converts the averaged quaternion (q_avg) into a rotation matrix
     # and get inertial z axis.
     # https://spiceypy.readthedocs.io/en/main/documentation.html#spiceypy.spiceypy.q2m
