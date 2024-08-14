@@ -3,7 +3,7 @@
 Notes
 ----------
 Kernels that are required to run this code:
-1. 
+1.
 
 References
 ----------
@@ -154,7 +154,7 @@ def create_pointing_frame():
 
     Returns
     -------
-    path_to_imap_dps : str
+    path_to_pointing_frame : str
         Path to dps frame.
     """
     # Mount path to EFS.
@@ -178,11 +178,11 @@ def create_pointing_frame():
         q_avg = spice.m2q(rotation_matrix)
 
         # TODO: come up with naming convention.
-        path_to_imap_dps = mount_path / "imap_dps.bc"
+        path_to_pointing_frame = mount_path / "imap_dps.bc"
 
         # Open a new CK file, returning the handle of the opened file.
         # https://spiceypy.readthedocs.io/en/main/documentation.html#spiceypy.spiceypy.ckopn
-        handle = spice.ckopn(str(path_to_imap_dps), "CK", 0)
+        handle = spice.ckopn(str(path_to_pointing_frame), "CK", 0)
         # Get the SCLK ID.
         # https://spiceypy.readthedocs.io/en/main/documentation.html#spiceypy.spiceypy.gipool
         id_imap_sclk = spice.gipool("CK_-43000_SCLK", 0, 1)
@@ -195,24 +195,42 @@ def create_pointing_frame():
         # https://spiceypy.readthedocs.io/en/main/documentation.html#spiceypy.spiceypy.gipool
         id_imap_dps = spice.gipool("FRAME_IMAP_DPS", 0, 1)
 
+        # Create the pointing frame kernel.
+        # https://spiceypy.readthedocs.io/en/main/documentation.html#spiceypy.spiceypy.ckw02
         spice.ckw02(
+            # Handle of an open CK file.
             handle,
-            sclk_begtim,  # Single start time
-            sclk_endtim,  # Single stop time
-            int(id_imap_dps),  # Instrument ID
+            # Start time of the segment.
+            sclk_begtim,
+            # End time of the segment.
+            sclk_endtim,
+            # Pointing frame ID.
+            int(id_imap_dps),
+            # Reference frame.
             "ECLIPJ2000",  # Reference frame
-            "IMAP_DPS",  # Segment identifier
-            1,  # Only one record
-            np.array([sclk_begtim]),  # Single start time
+            # Identifier.
+            "IMAP_DPS",
+            # Number of pointing intervals.
+            1,
+            # Start times of individual pointing records within segment.
+            # Since there is only a single record this is equal to sclk_begtim.
+            np.array([sclk_begtim]),
+            # End times of individual pointing records within segment.
+            # Since there is only a single record this is equal to sclk_endtim.
             np.array([sclk_endtim]),  # Single stop time
-            q_avg,  # quaternion
-            np.array([0.0, 0.0, 0.0]),  # Single angular velocity vector
-            np.array([1.0]),  # RATES (seconds per tick)
+            # Average quaternion.
+            q_avg,
+            # 0.0 Angular rotation terms.
+            np.array([0.0, 0.0, 0.0]),
+            # Rates (seconds per tick) at which the quaternion and
+            # angular velocity change.
+            np.array([1.0]),
         )
 
+        # Close CK file.
         spice.ckcls(handle)
 
-    return path_to_imap_dps
+    return path_to_pointing_frame
 
 
 def lambda_handler(events: dict, context):
@@ -220,5 +238,7 @@ def lambda_handler(events: dict, context):
     logger.info(f"Events: {events}")
     logger.info(f"Context: {context}")
 
-    # Create the pointing frame and save it to EFS
+    # TODO: Decide where this lambda goes. After EFS write lambda?
+
+    # Create the pointing frame and save it to EFS.
     create_pointing_frame()
