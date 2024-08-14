@@ -10,6 +10,7 @@ Kernels that are required to run this code:
 5. naif0012.tls - standard NAIF leapsecond kernel
 6. imap_spin.bc - test attitude kernel available at:
 https://lasp.colorado.edu/galaxy/display/IMAP/Data
+This needs to be placed in tests/test-data/spice/imap_spin.bc
 
 References
 ----------
