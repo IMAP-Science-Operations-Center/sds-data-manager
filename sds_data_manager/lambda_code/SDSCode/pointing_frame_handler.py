@@ -65,19 +65,25 @@ def average_quaternions(et_times):
     q_avg : np.array
         Average quaternion.
     z_eclip_time : list
-
     """
     body_quats = []
     z_eclip_time = []
     aggregate = np.zeros((4, 4))
 
     for tdb in et_times[0:-2]:
+        # Rotation matrix from IMAP spacecraft frame to ECLIPJ2000.
         body_rots = spice.pxform("IMAP_SPACECRAFT", "ECLIPJ2000", tdb)
+        # Convert rotation matrix to quaternion.
         body_quat = spice.m2q(body_rots)
         body_quats.append(body_quat)
+        # z-axis of the ECLIPJ2000 frame.
         z_eclip_time.append(body_rots[:, 2])
+
+        # Standardize the quaternion so that they may be compared.
         if body_quat[0] < 0:
             body_quat = -body_quat
+
+        # Aggregate quarternions into a single matrix.
         aggregate += np.outer(body_quat, body_quat)
 
     # Reference: Claus Gramkow "On Averaging Rotations"
