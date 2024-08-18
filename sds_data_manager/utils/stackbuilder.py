@@ -4,6 +4,7 @@ from pathlib import Path
 
 import imap_data_access
 from aws_cdk import App, Environment, Stack
+from aws_cdk import aws_batch as batch
 from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
@@ -12,7 +13,6 @@ from aws_cdk import aws_rds as rds
 from sds_data_manager.constructs import (
     api_gateway_construct,
     backup_bucket_construct,
-    batch_compute_resources,
     data_bucket_construct,
     database_construct,
     ecr_construct,
@@ -25,6 +25,7 @@ from sds_data_manager.constructs import (
     lambda_layer_construct,
     monitoring_construct,
     networking_construct,
+    processing_construct,
     route53_hosted_zone,
     sds_api_manager_construct,
     sqs_construct,
@@ -201,23 +202,21 @@ def build_sds(
     )
 
     # This valid instrument list is from imap-data-access package
+    processing_volumes = [
+        batch.EfsVolume(
+            name=f"{efs_instance.volume_name}-ECS-mount",
+            access_point_id=efs_instance.spice_access_point.access_point_id,
+            file_system=efs_instance.efs,
+            container_path="/mnt/spice",
+        )
+    ]
+    processing = processing_construct.ProcessingConstruct(
+        sdc_stack, "ProcessingConstruct", vpc=networking.vpc, volumes=processing_volumes
+    )
     for instrument in imap_data_access.VALID_INSTRUMENTS:
-        ecr = ecr_construct.EcrConstruct(
-            scope=sdc_stack,
-            construct_id=f"{instrument}Ecr",
-            instrument_name=f"{instrument}",
-        )
-
-        batch_compute_resources.FargateBatchResources(
-            scope=sdc_stack,
-            construct_id=f"{instrument}BatchJob",
-            vpc=networking.vpc,
-            processing_step_name=instrument,
-            data_bucket=data_bucket.data_bucket,
-            repo=ecr.container_repo,
-            db_secret_name=db_secret_name,
-            efs_instance=efs_instance,
-        )
+        for step in ["", "-l3"]:
+            # "swe" or "swe-l3"
+            processing.add_job(f"{instrument.lower()}{step}")
 
     # Create SQS pipeline for each instrument and add it to instrument_sqs
     instrument_sqs = sqs_construct.SqsConstruct(
