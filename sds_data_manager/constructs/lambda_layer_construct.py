@@ -2,14 +2,17 @@
 
 import aws_cdk as cdk
 from aws_cdk import aws_lambda as lambda_
-from constructs import Construct
 
 
-class LambdaLayerConstruct(Construct):
-    """Lambda Layer Construct."""
+class IMAPLambdaLayer(lambda_.LayerVersion):
+    """Lambda Layer."""
 
     def __init__(
-        self, scope: Construct, id: str, layer_dependencies_dir: str, **kwargs
+        self,
+        id: str,
+        layer_dependencies_dir: str,
+        runtime=lambda_.Runtime.PYTHON_3_12,
+        **kwargs,
     ) -> None:
         """Create layer.
 
@@ -19,21 +22,19 @@ class LambdaLayerConstruct(Construct):
 
         Parameters
         ----------
-        scope : obj
-            Parent construct
         id : str
             A unique string identifier for this construct
         layer_dependencies_dir : str
             Directory containing the lambda layer requirements.txt file
+        runtime : lambda_.Runtime, optional
+            Lambda runtime, by default lambda_.Runtime.PYTHON_3_12
         kwargs : dict
             Keyword arguments
         """
-        super().__init__(scope, id, **kwargs)
-
         code_bundle = lambda_.Code.from_asset(
             layer_dependencies_dir,
             bundling=cdk.BundlingOptions(
-                image=lambda_.Runtime.PYTHON_3_12.bundling_image,
+                image=runtime.bundling_image,
                 command=[
                     "bash",
                     "-c",
@@ -45,9 +46,6 @@ class LambdaLayerConstruct(Construct):
             ),
         )
 
-        self.layer = lambda_.LayerVersion(
-            self,
-            id=f"{id}-Layer",
-            code=code_bundle,
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+        super().__init__(
+            id=f"{id}-Layer", code=code_bundle, compatible_runtimes=[runtime], **kwargs
         )

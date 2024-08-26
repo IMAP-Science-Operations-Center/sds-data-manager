@@ -135,11 +135,11 @@ def build_sds(
     lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
 
     lambda_code = lambda_.Code.from_asset(str(lambda_code_directory))
-    db_lambda_layer = lambda_layer_construct.LambdaLayerConstruct(
+    db_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
         scope=sdc_stack,
         id="DatabaseDependencies",
         layer_dependencies_dir=str(layer_code_directory),
-    ).layer
+    )
 
     # Get RDS properties from account_config
     rds_size = account_config.get("rds_size", "SMALL")
