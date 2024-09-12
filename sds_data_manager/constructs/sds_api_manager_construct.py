@@ -54,8 +54,6 @@ class SdsApiManager(Construct):
             Keyword arguments
         """
         super().__init__(scope, construct_id, **kwargs)
-        # Get the current region
-        region = env.region
 
         s3_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
@@ -88,6 +86,7 @@ class SdsApiManager(Construct):
             environment={
                 "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
+                "REGION": env.region,
             },
             layers=layers,
             architecture=lambda_.Architecture.ARM_64,
@@ -117,7 +116,7 @@ class SdsApiManager(Construct):
             vpc=vpc,
             security_groups=[rds_security_group],
             environment={
-                "REGION": region,
+                "REGION": env.region,
                 "SECRET_NAME": db_secret_name,
             },
             layers=layers,
@@ -141,6 +140,7 @@ class SdsApiManager(Construct):
             timeout=cdk.Duration.minutes(1),
             environment={
                 "S3_BUCKET": data_bucket.bucket_name,
+                "REGION": env.region,
             },
             layers=layers,
             architecture=lambda_.Architecture.ARM_64,

@@ -1,4 +1,9 @@
-"""Define lambda to support the upload API."""
+"""Define lambda to support the upload API.
+
+To avoid any 307 redirects we use s3v4 signing method.
+This method includes the region in the URL, so when the user uploads a file,
+the URL will point directly to the correct regional S3 endpoint.
+"""
 
 import json
 import logging
@@ -12,7 +17,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 BUCKET_NAME = os.getenv("S3_BUCKET")
-S3_CLIENT = boto3.client("s3")
+REGION = os.getenv("REGION")
+# The default presigned url signature does not include the region information
+# within the signature and we should be hitting the actual s3 region endpoint
+# to avoid any 307 redirects. (Generally only an issue on newly created buckets
+# where the DNS records haven't propagated yet)
+S3_CLIENT = boto3.client(
+    "s3", region_name=REGION, config=botocore.client.Config(signature_version="s3v4")
+)
 
 
 def _file_exists(s3_key_path):
