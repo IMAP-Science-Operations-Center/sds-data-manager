@@ -28,6 +28,7 @@ from sds_data_manager.constructs import (
     route53_hosted_zone,
     sds_api_manager_construct,
     sqs_construct,
+    website_hosting,
 )
 
 
@@ -76,6 +77,12 @@ def build_sds(
             domain_name,
             create_new_hosted_zone=True,
         )
+
+    # Make the website stack only if we have a domain name
+    # This needs to be deployed in us-east-1 for the CloudFront SSL certs
+    if domain is not None:
+        website_stack = Stack(scope, "WebsiteStack", env=us_east_env)
+        website_hosting.Website(website_stack, "WebsiteConstruct", domain=domain)
 
     sdc_stack = Stack(scope, "SDCStack", cross_region_references=True, env=env)
 
