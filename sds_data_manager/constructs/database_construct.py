@@ -94,6 +94,7 @@ class SdpDatabase(Construct):
         self.rds_creds = rds.DatabaseSecret(
             self, "RdsCredentials", secret_name=self.secret_name, username=username
         )
+        self.rds_creds.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
         # Subnets for RDS
         self.rds_subnet_selection = ec2.SubnetSelection(
