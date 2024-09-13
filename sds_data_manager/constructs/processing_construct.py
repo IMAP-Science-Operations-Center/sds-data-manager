@@ -92,6 +92,7 @@ class ProcessingConstruct(Construct):
             container=batch.EcsFargateContainerDefinition(
                 self,
                 f"FargateContainer-{job_name}",
+                assign_public_ip=True,  # Required to pull ECR images
                 image=ecs.ContainerImage.from_ecr_repository(
                     repository=container_repo, tag="latest"
                 ),
