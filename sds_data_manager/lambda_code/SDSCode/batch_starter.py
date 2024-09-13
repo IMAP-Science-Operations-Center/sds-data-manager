@@ -340,7 +340,7 @@ def try_to_submit_job(session, job_info):
     # Get the necessary AWS information
     # NOTE: These are here for easier mocking in tests rather than at the module level
     step = "-l3" if data_level >= "l3" else ""
-    job_definition = f"ProcessingJob-{instrument}-{step}"
+    job_definition = f"ProcessingJob-{instrument}{step}"
     job_queue = "ProcessingJobQueue"
     BATCH_CLIENT.submit_job(
         jobName=job_name,

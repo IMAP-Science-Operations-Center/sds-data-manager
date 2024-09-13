@@ -48,6 +48,7 @@ class ProcessingConstruct(Construct):
         compute_environment = batch.FargateComputeEnvironment(
             self,
             "ProcessingComputeEnvironment-spot",
+            compute_environment_name="ProcessingComputeEnvironment-spot",
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             spot=True,
@@ -57,6 +58,7 @@ class ProcessingConstruct(Construct):
         self.job_queue = batch.JobQueue(
             self,
             "ProcessingJobQueue",
+            job_queue_name="ProcessingJobQueue",
             compute_environments=[
                 batch.OrderedComputeEnvironment(
                     compute_environment=compute_environment, order=1
@@ -86,6 +88,7 @@ class ProcessingConstruct(Construct):
         batch.EcsJobDefinition(
             self,
             f"ProcessingJob-{job_name}",
+            job_definition_name=f"ProcessingJob-{job_name}",
             container=batch.EcsFargateContainerDefinition(
                 self,
                 f"FargateContainer-{job_name}",
