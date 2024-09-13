@@ -79,6 +79,8 @@ class ProcessingConstruct(Construct):
             self,
             f"ECR-{job_name}",
             repository_name=f"{job_name}-repo",
+            empty_on_delete=True,
+            removal_policy=cdk.RemovalPolicy.DESTROY,
         )
         # Create the job definition
         batch.EcsJobDefinition(

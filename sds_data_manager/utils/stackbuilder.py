@@ -208,6 +208,8 @@ def build_sds(
             access_point_id=efs_instance.spice_access_point.access_point_id,
             file_system=efs_instance.efs,
             container_path="/mnt/spice",
+            enable_transit_encryption=True,
+            transit_encryption_port=2049,
         )
     ]
     processing = processing_construct.ProcessingConstruct(
