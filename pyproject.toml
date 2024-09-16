@@ -109,4 +109,6 @@ lint.ignore = ["D104", "D203", "D213", "D300", "D413", "S101", "S104", "PLR0913"
 # TODO: Too many statements, this could be refactored to separate
 #       it into a few smaller pieces
 "sds_data_manager/utils/stackbuilder.py" = ["PLR0915"]
+# subprocess calls within these modules are expected
+"tests/lambda_endpoints/conftest.py" = ["S"]
 "tests/infrastructure/test_website_cloudfront_function.py" = ["S"]
