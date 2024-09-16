@@ -67,14 +67,16 @@ class IalirtIngestLambda(Construct):
                 name="met",
                 type=ddb.AttributeType.NUMBER,
             ),
-            # Sort key (SK) = Ingest Time (ISO).
-            sort_key=ddb.Attribute(
-                name="ingest_time",
-                type=ddb.AttributeType.STRING,
-            ),
-            # Define the read and write capacity units.
-            # TODO: change to provisioned capacity mode in production.
             billing_mode=ddb.BillingMode.PAY_PER_REQUEST,  # On-Demand capacity mode.
+        )
+
+        # Add a GSI for ingest time.
+        table.add_global_secondary_index(
+            index_name="ingest_time",
+            partition_key=ddb.Attribute(
+                name="ingest_time", type=ddb.AttributeType.STRING
+            ),
+            projection_type=ddb.ProjectionType.ALL
         )
         return table
 

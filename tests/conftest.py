@@ -20,12 +20,22 @@ def table():
             KeySchema=[
                 # Partition key
                 {"AttributeName": "met", "KeyType": "HASH"},
-                # Sort key
-                {"AttributeName": "ingest_time", "KeyType": "RANGE"},
             ],
             AttributeDefinitions=[
                 {"AttributeName": "met", "AttributeType": "N"},
                 {"AttributeName": "ingest_time", "AttributeType": "S"},
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    "IndexName": "ingest_time",
+                    "KeySchema": [
+                        {
+                            "AttributeName": "ingest_time",
+                            "KeyType": "HASH"
+                        },
+                    ],
+                    "Projection": {"ProjectionType": "ALL"},
+                },
             ],
             BillingMode="PAY_PER_REQUEST",
         )
