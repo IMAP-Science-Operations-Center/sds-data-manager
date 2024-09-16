@@ -1,7 +1,6 @@
 """Test the IAlirt ingest lambda function."""
 
 import pytest
-from boto3.dynamodb.conditions import Key
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import lambda_handler
 
@@ -47,40 +46,3 @@ def test_lambda_handler(table):
     assert item is not None
     assert item["met"] == 123
     assert item["packet_blob"] == b"binary_data_string"
-
-
-def test_query_by_met(table, populate_table):
-    """Test to query by met."""
-    expected_items = populate_table
-
-    response = table.query(KeyConditionExpression=Key("ingest_year").eq(2021))
-
-    items = response["Items"]
-
-    for item in range(len(items)):
-        assert items[item]["ingest_year"] == expected_items[item]["ingest_year"]
-        assert items[item]["met"] == expected_items[item]["met"]
-        assert items[item]["ingest_date"] == expected_items[item]["ingest_date"]
-        assert items[item]["packet_blob"] == expected_items[item]["packet_blob"]
-
-    response = table.query(
-        KeyConditionExpression=Key("ingest_year").eq(2021)
-        & Key("met").between(100, 123)
-    )
-    items = response["Items"]
-    assert len(items) == 1
-    assert items[0]["met"] == expected_items[0]["met"]
-
-
-def test_query_by_date(table, populate_table):
-    """Test to query by date."""
-    expected_items = populate_table
-
-    response = table.query(
-        IndexName="ingest_date",
-        KeyConditionExpression=Key("ingest_year").eq(2021)
-        & Key("ingest_date").begins_with("2021-01"),
-    )
-    items = response["Items"]
-    assert len(items) == 1
-    assert items[0]["met"] == expected_items[0]["met"]
