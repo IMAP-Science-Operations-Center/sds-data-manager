@@ -62,21 +62,34 @@ class IalirtIngestLambda(Construct):
             # Restore data to any point in time within the last 35 days.
             # TODO: change to True in production.
             point_in_time_recovery=False,
-            # Partition key (PK) = Mission Elapsed Time (MET).
+            # Partition key (PK) = ingest year (YYYY).
             partition_key=ddb.Attribute(
+                name="ingest_year",
+                type=ddb.AttributeType.NUMBER,
+            ),
+            # Sort key (SK) = Mission Elapsed Time (MET).
+            sort_key=ddb.Attribute(
                 name="met",
                 type=ddb.AttributeType.NUMBER,
             ),
+            # Define the read and write capacity units.
+            # TODO: change to provisioned capacity mode in production.
             billing_mode=ddb.BillingMode.PAY_PER_REQUEST,  # On-Demand capacity mode.
         )
 
         # Add a GSI for ingest time.
         table.add_global_secondary_index(
-            index_name="ingest_time",
+            index_name="ingest_date",
+            # Partition key (PK) = ingest year (YYYY).
             partition_key=ddb.Attribute(
-                name="ingest_time", type=ddb.AttributeType.STRING
+                name="ingest_year", type=ddb.AttributeType.NUMBER
             ),
-            projection_type=ddb.ProjectionType.ALL
+            # Sort key (SK) = Ingest Time (ISO).
+            sort_key=ddb.Attribute(
+                name="ingest_date",
+                type=ddb.AttributeType.STRING,
+            ),
+            projection_type=ddb.ProjectionType.ALL,
         )
         return table
 

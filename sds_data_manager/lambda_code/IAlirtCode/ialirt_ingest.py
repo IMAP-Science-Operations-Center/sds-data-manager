@@ -39,8 +39,9 @@ def lambda_handler(event, context):
 
     # TODO: item is temporary and will be replaced with actual packet data.
     item = {
+        "ingest_year": 2021,
         "met": 123,
-        "ingest_time": "2021-01-01T00:00:00Z",
+        "ingest_date": "2021-01-01T00:00:00Z",
         "packet_blob": b"binary_data_string",
     }
 

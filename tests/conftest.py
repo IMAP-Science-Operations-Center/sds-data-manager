@@ -19,19 +19,23 @@ def table():
             TableName="imap-data-table",
             KeySchema=[
                 # Partition key
-                {"AttributeName": "met", "KeyType": "HASH"},
+                {"AttributeName": "ingest_year", "KeyType": "HASH"},
+                # Sort key
+                {"AttributeName": "met", "KeyType": "RANGE"},
             ],
             AttributeDefinitions=[
+                {"AttributeName": "ingest_year", "AttributeType": "N"},
                 {"AttributeName": "met", "AttributeType": "N"},
-                {"AttributeName": "ingest_time", "AttributeType": "S"},
+                {"AttributeName": "ingest_date", "AttributeType": "S"},
             ],
             GlobalSecondaryIndexes=[
                 {
-                    "IndexName": "ingest_time",
+                    "IndexName": "ingest_date",
                     "KeySchema": [
+                        {"AttributeName": "ingest_year", "KeyType": "HASH"},
                         {
-                            "AttributeName": "ingest_time",
-                            "KeyType": "HASH"
+                            "AttributeName": "ingest_date",
+                            "KeyType": "RANGE",
                         },
                     ],
                     "Projection": {"ProjectionType": "ALL"},

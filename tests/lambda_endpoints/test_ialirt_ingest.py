@@ -1,7 +1,6 @@
 """Test the IAlirt ingest lambda function."""
 
 import pytest
-import boto3
 from boto3.dynamodb.conditions import Key
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import lambda_handler
@@ -12,20 +11,22 @@ def populate_table(table):
     """Populate DynamoDB table."""
     items = [
         {
+            "ingest_year": 2021,
             "met": 123,
-            "ingest_time": "2021-01-01T00:00:00Z",
+            "ingest_date": "2021-01-01T00:00:00Z",
             "packet_blob": b"binary_data_string",
         },
         {
+            "ingest_year": 2021,
             "met": 124,
-            "ingest_time": "2021-01-01T00:00:01Z",
+            "ingest_date": "2021-02-01T00:00:00Z",
             "packet_blob": b"binary_data_string",
         },
     ]
     for item in items:
         table.put_item(Item=item)
 
-    return item
+    return items
 
 
 def test_lambda_handler(table):
@@ -37,6 +38,7 @@ def test_lambda_handler(table):
 
     response = table.get_item(
         Key={
+            "ingest_year": 2021,
             "met": 123,
         }
     )
@@ -48,53 +50,37 @@ def test_lambda_handler(table):
 
 
 def test_query_by_met(table, populate_table):
-    """Test to query irregular packet length."""
-    response = table.query(KeyConditionExpression=Key("met").eq(124))
+    """Test to query by met."""
+    expected_items = populate_table
+
+    response = table.query(KeyConditionExpression=Key("ingest_year").eq(2021))
 
     items = response["Items"]
-    assert items[0]["met"] == 124
 
-
-def test_batch_get_met_range(table, populate_table):
-    """Test querying a range of met values using BatchGetItem."""
-    met_values = [123, 124]
-    dynamodb = boto3.client("dynamodb")
-
-    response = dynamodb.batch_get_item(
-        RequestItems={
-            table.table_name: {
-                "Keys": [{"met": {"N": str(met)}} for met in met_values]
-            }
-        }
-    )
-
-    items = response.get("Responses", {}).get(table.table_name, [])
-
-    assert int(items[0]["met"]["N"]) == met_values[0]
-    assert int(items[1]["met"]["N"]) == met_values[1]
-    assert items[0]["packet_blob"]["B"] == b"binary_data_string"
-    assert items[1]["packet_blob"]["B"] == b"binary_data_string"
-
-
-def test_query_ingest_time_range(table, populate_table):
-    """Test querying a range of ingest_time values using the GSI."""
+    for item in range(len(items)):
+        assert items[item]["ingest_year"] == expected_items[item]["ingest_year"]
+        assert items[item]["met"] == expected_items[item]["met"]
+        assert items[item]["ingest_date"] == expected_items[item]["ingest_date"]
+        assert items[item]["packet_blob"] == expected_items[item]["packet_blob"]
 
     response = table.query(
-        IndexName="ingest_time",
-        KeyConditionExpression=Key("ingest_time").eq("2021-01-01T00:00:01Z"),
+        KeyConditionExpression=Key("ingest_year").eq(2021)
+        & Key("met").between(100, 123)
     )
-    item = response.get("Items")
+    items = response["Items"]
+    assert len(items) == 1
+    assert items[0]["met"] == expected_items[0]["met"]
+
+
+def test_query_by_date(table, populate_table):
+    """Test to query by date."""
+    expected_items = populate_table
 
     response = table.query(
-        IndexName="ingest_time",
-        KeyConditionExpression=Key("ingest_time").between("2021-01-01T00:00:00Z", "2021-01-01T00:00:02Z")
+        IndexName="ingest_date",
+        KeyConditionExpression=Key("ingest_year").eq(2021)
+        & Key("ingest_date").begins_with("2021-01"),
     )
-
-    items = response.get("Items", [])
-
-    # Assert the data is correct
-    assert items[0]["ingest_time"] == "2021-01-01T00:00:00Z"
-    assert items[1]["ingest_time"] == "2021-01-01T00:00:01Z"
-
-    assert items[0]["packet_blob"] == b"binary_data_string"
-    assert items[1]["packet_blob"] == b"binary_data_string"
+    items = response["Items"]
+    assert len(items) == 1
+    assert items[0]["met"] == expected_items[0]["met"]
