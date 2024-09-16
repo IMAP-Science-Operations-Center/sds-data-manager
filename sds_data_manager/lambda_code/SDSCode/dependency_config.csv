@@ -67,7 +67,8 @@ hit, l1a, hk, hit, l1b, hk, HARD, DOWNSTREAM
 
 # <---- IDEX Dependencies ---->
 
-idex, l0, raw, idex, l1, sci, HARD, DOWNSTREAM
+idex, l0, raw, idex, l1a, sci, HARD, DOWNSTREAM
+idex, l1a, raw, idex, l1b, sci, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
 lo, l0, de, lo, l1a, de, HARD, DOWNSTREAM
