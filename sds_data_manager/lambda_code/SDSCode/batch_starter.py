@@ -2,7 +2,6 @@
 
 import json
 import logging
-import os
 from datetime import datetime
 
 import boto3
@@ -340,16 +339,9 @@ def try_to_submit_job(session, job_info):
     job_name = f"{instrument}-{data_level}-{descriptor}-job-{processing_job.id}"
     # Get the necessary AWS information
     # NOTE: These are here for easier mocking in tests rather than at the module level
-    region = os.getenv("REGION")
-    account = os.getenv("ACCOUNT")
-    job_definition = (
-        f"arn:aws:batch:{region}:{account}:job-definition/"
-        f"fargate-batch-job-definition{instrument}"
-    )
-    job_queue = (
-        f"arn:aws:batch:{region}:{account}:job-queue/"
-        f"{instrument}-fargate-batch-job-queue"
-    )
+    step = "-l3" if data_level >= "l3" else ""
+    job_definition = f"ProcessingJob-{instrument}{step}"
+    job_queue = "ProcessingJobQueue"
     BATCH_CLIENT.submit_job(
         jobName=job_name,
         jobQueue=job_queue,
