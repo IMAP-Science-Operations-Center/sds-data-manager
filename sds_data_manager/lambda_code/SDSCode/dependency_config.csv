@@ -112,7 +112,8 @@ swapi, l0, raw, swapi, l1, all, HARD, DOWNSTREAM
 
 # <---- TEST SWAPI L3 Dependencies ---->
 
-swapi, l2, fake-swapi-l2, swapi, l3a, all, HARD, DOWNSTREAM
+swapi, l2, sci, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, l2, sci, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 
 # <---- SWE Dependencies ---->
 
