@@ -107,6 +107,8 @@ lint.ignore = ["D104", "D203", "D213", "D300", "D413", "S101", "S104", "PLR0913"
 
 [tool.ruff.lint.per-file-ignores]
 # TODO: Too many statements, this could be refactored to separate
-#       the single stack out into a few smaller pieces
-"sds_data_manager/stacks/sds_data_manager_construct.py" = ["PLR0915"]
+#       it into a few smaller pieces
+"sds_data_manager/utils/stackbuilder.py" = ["PLR0915"]
+# subprocess calls within these modules are expected
 "tests/lambda_endpoints/conftest.py" = ["S"]
+"tests/infrastructure/test_website_cloudfront_function.py" = ["S"]

@@ -1,5 +1,6 @@
 """Configure the EFS."""
 
+import aws_cdk as cdk
 from aws_cdk import (
     Duration,
     Environment,
@@ -98,6 +99,7 @@ class EFSConstruct(Construct):
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
             ),
+            removal_policy=cdk.RemovalPolicy.DESTROY,
         )
 
         # Make an access point for others to be able to access the drive
