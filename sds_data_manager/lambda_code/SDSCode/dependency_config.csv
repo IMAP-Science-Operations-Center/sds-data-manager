@@ -111,6 +111,11 @@ mag, l1b, burst-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
 
 swapi, l0, raw, swapi, l1, all, HARD, DOWNSTREAM
 
+# <---- TEST SWAPI L3 Dependencies ---->
+
+swapi, l2, sci, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, l2, sci, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+
 # <---- SWE Dependencies ---->
 
 swe, l0, raw, swe, l1a, sci, HARD, DOWNSTREAM
