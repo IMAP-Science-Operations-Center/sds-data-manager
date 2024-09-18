@@ -1,0 +1,12 @@
+# Dockerfile that installs imap_processing and its dependencies
+FROM public.ecr.aws/docker/library/python:3.12-slim
+
+# Install the imap_processing package
+# --pre will get pre-released versions as well
+RUN pip install --pre imap_processing
+
+WORKDIR /app/data
+ENV IMAP_DATA_DIR /app/data
+
+# Define the entrypoint of the container
+ENTRYPOINT ["imap_cli"]

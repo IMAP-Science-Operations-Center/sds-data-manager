@@ -45,6 +45,10 @@ def lambda_handler(event, context):
     error. Otherwise, it returns pre-signed s3 url that user can use to download
     data from s3.
 
+    To avoid any 307 redirects we use s3v4 signing method.
+    This method includes the region in the URL, so when the user uploads a file,
+    the URL will point directly to the correct regional S3 endpoint.
+
     Parameters
     ----------
     event : dict
@@ -74,9 +78,18 @@ def lambda_handler(event, context):
         return http_response(status_code=400, body=response_body)
 
     bucket = os.getenv("S3_BUCKET")
+    region = os.getenv("REGION")
     filepath = path_params
 
-    s3_client = boto3.client("s3")
+    # The default presigned url signature does not include the region information
+    # within the signature and we should be hitting the actual s3 region endpoint
+    # to avoid any 307 redirects. (Generally only an issue on newly created buckets
+    # where the DNS records haven't propagated yet)
+    s3_client = boto3.client(
+        "s3",
+        region_name=region,
+        config=botocore.client.Config(signature_version="s3v4"),
+    )
 
     # check if object exists
     try:

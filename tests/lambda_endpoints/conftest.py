@@ -1,11 +1,13 @@
 """Setup testing environment to test lambda handler code."""
 
+import subprocess
 from unittest.mock import patch
 
 import boto3
 import pytest
 from moto import mock_events, mock_s3
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import Base
@@ -77,17 +79,45 @@ def events_client():
         yield boto3.client("events", region_name="us-west-2")
 
 
-# NOTE: This test_engine scope is function.
-# With this scope, all the changes to the database
-# is only visible in each test function. It gets
-# cleaned up after each function.
+# Check if postgres is available on the system. If it is returncode == 0
+POSTGRES_AVAILABLE = (
+    subprocess.run("which psql", shell=True, check=False).returncode == 0
+)
+
+if POSTGRES_AVAILABLE:
+
+    @pytest.fixture()
+    def connection(postgresql):
+        """Use a postgres connection string."""
+        return f"postgresql+psycopg://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
+else:
+
+    @pytest.fixture()
+    def connection():
+        """Fallback to sqlite in memory database."""
+        return "sqlite:///:memory:"
+
+
+# NOTE: The default scope is function, so each test function will
+#       get a new database session and start fresh each time.
 @pytest.fixture()
-def test_engine():
-    """Create an in-memory SQLite database engine."""
-    with patch.object(db, "get_engine") as mock_engine:
-        engine = create_engine("sqlite:///:memory:")
-        mock_engine.return_value = engine
+def session(connection):
+    """Create a test postgres database engine."""
+    with patch.object(db, "Session") as mock_session:
+        engine = create_engine(connection)
+
+        # Create the tables and session
         Base.metadata.create_all(engine)
-        # When we use yield, it waits until session is complete
-        # and waits for to be called whereas return exits fast.
-        yield engine
+
+        with sessionmaker(bind=engine)() as session:
+            # Attach this session to the mocked module's Session call
+            mock_session.return_value = session
+
+            # Provide the session to the tests
+            yield session
+
+            # Cleanup after the test
+            session.rollback()
+            session.close()
+            # Drop tables to ensure clean state for next test
+            Base.metadata.drop_all(engine)

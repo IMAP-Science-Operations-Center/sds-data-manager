@@ -23,11 +23,11 @@
     },
     "dev": {
       "account": "449431850278",
-      "domain_name": "imap-mission.com",
+      "domain_name": "dev.imap-mission.com",
       "region": "us-west-2"
     },
     "prod": {
-      "account": "123456789012",
+      "account": "593025701104",
       "domain_name": "imap-mission.com",
       "region": "us-west-2"
     },

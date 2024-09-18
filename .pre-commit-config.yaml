@@ -4,7 +4,7 @@ ci:
   skip: [poetry-lock, poetry-export]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       - id: check-added-large-files
       - id: detect-aws-credentials
@@ -15,7 +15,7 @@ repos:
       - id: no-commit-to-branch
         args: [--branch, main, --branch, dev]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.3.4'
+    rev: 'v0.5.0'
     hooks:
     - id: ruff
       args: [--fix]
@@ -27,5 +27,5 @@ repos:
       - id: poetry-lock
         args: [--no-update]
       - id: poetry-export
-        args: ["-f", "requirements.txt", "-o", "sds_data_manager/lambda_code/requirements.txt", "--only", "lambda-dev"]
+        args: ["-f", "requirements.txt", "-o", "lambda_layer/python/requirements.txt", "--only", "lambda-dev"]
         verbose: true

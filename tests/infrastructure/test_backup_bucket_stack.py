@@ -3,19 +3,19 @@
 import pytest
 from aws_cdk.assertions import Match, Template
 
-from sds_data_manager.stacks.backup_bucket_stack import BackupBucket
+from sds_data_manager.constructs.backup_bucket_construct import BackupBucket
 
 
-@pytest.fixture(scope="module")
-def template(app):
+@pytest.fixture()
+def template(stack):
     """Return a template for the backup bucket stack."""
-    backup = BackupBucket(
-        app,
+    BackupBucket(
+        stack,
         construct_id="BackupBucket-test",
         source_account="0",
     )
 
-    template = Template.from_stack(backup)
+    template = Template.from_stack(stack)
 
     return template
 

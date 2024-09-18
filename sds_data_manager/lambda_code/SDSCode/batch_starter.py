@@ -1,28 +1,34 @@
 """Functions for supporting the batch starter component of the architecture."""
 
+import json
 import logging
-import os
 from datetime import datetime
 
 import boto3
 from imap_data_access import ScienceFilePath
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from .database import database as db
 from .database import models
-from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Create a batch client
+BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 
-def get_dependency(instrument, data_level, descriptor, direction, relationship):
-    """Make query to dependency table to get dependency.
+
+def get_dependencies(
+    session, instrument, data_level, descriptor, direction, relationship
+):
+    """Make a query to the dependency table to get all dependencies.
 
     Parameters
     ----------
+    session : orm session
+        Database session.
     instrument : str
         Primary instrument that we are looking for its dependency.
     data_level : str
@@ -37,40 +43,44 @@ def get_dependency(instrument, data_level, descriptor, direction, relationship):
 
     Returns
     -------
-    dependency : list
+    dependencies : list
         List of dictionary containing the dependency information.
     """
-    dependency = []
+    dependencies = []
 
-    with Session(db.get_engine()) as session:
-        query = select(models.PreProcessingDependency.__table__).where(
-            models.PreProcessingDependency.primary_instrument == instrument,
-            models.PreProcessingDependency.primary_data_level == data_level,
-            models.PreProcessingDependency.primary_descriptor == descriptor,
-            models.PreProcessingDependency.direction == direction,
-            models.PreProcessingDependency.relationship == relationship,
+    query = select(models.PreProcessingDependency.__table__).where(
+        models.PreProcessingDependency.primary_instrument == instrument,
+        models.PreProcessingDependency.primary_data_level == data_level,
+        models.PreProcessingDependency.primary_descriptor == descriptor,
+        models.PreProcessingDependency.direction == direction,
+        models.PreProcessingDependency.relationship == relationship,
+    )
+    results = session.execute(query).all()
+
+    for result in results:
+        dependencies.append(
+            {
+                "instrument": result.dependent_instrument,
+                "data_level": result.dependent_data_level,
+                "descriptor": result.dependent_descriptor,
+            }
         )
-        results = session.execute(query).all()
-        for result in results:
-            dependency.append(
-                {
-                    "instrument": result.dependent_instrument,
-                    "data_level": result.dependent_data_level,
-                    "descriptor": result.dependent_descriptor,
-                }
-            )
-    return dependency
+    return dependencies
 
 
-def query_instrument(session, upstream_dependency, start_date, version):
+def get_file(session, instrument, data_level, descriptor, start_date, version):
     """Query to database to get the first FileCatalog record.
 
     Parameters
     ----------
     session : orm session
         Database session.
-    upstream_dependency : dict
-        Dictionary of upstream dependency.
+    instrument : str
+        Instrument name.
+    data_level : str
+        Data level.
+    descriptor : str
+        Data descriptor.
     start_date : str
         Start date of the event data.
     version : str
@@ -82,10 +92,6 @@ def query_instrument(session, upstream_dependency, start_date, version):
         The first FileCatalog record matching the query criteria.
         None is returned if no record matches the criteria.
     """
-    instrument = upstream_dependency["instrument"]
-    data_level = upstream_dependency["data_level"]
-    descriptor = upstream_dependency["descriptor"]
-
     # TODO: narrow down the query using end_date.
     # This will give ability to query range of time.
     # Eg. when we are query 3 months of data to create
@@ -98,9 +104,9 @@ def query_instrument(session, upstream_dependency, start_date, version):
         .filter(
             models.FileCatalog.instrument == instrument,
             models.FileCatalog.data_level == data_level,
-            models.FileCatalog.version == version,
             models.FileCatalog.descriptor == descriptor,
             models.FileCatalog.start_date == datetime.strptime(start_date, "%Y%m%d"),
+            models.FileCatalog.version == version,
         )
         .first()
     )
@@ -108,7 +114,7 @@ def query_instrument(session, upstream_dependency, start_date, version):
     return record
 
 
-def query_downstream_dependencies(session, filename_components):
+def get_downstream_dependencies(session, filename_components):
     """Get information of downstream dependents.
 
     Parameters
@@ -124,7 +130,8 @@ def query_downstream_dependencies(session, filename_components):
         Dictionary containing components with dates and versions appended.
     """
     # Get downstream dependency data
-    downstream_dependents = get_dependency(
+    downstream_dependents = get_dependencies(
+        session=session,
         instrument=filename_components["instrument"],
         data_level=filename_components["data_level"],
         descriptor=filename_components["descriptor"],
@@ -145,159 +152,178 @@ def query_downstream_dependencies(session, filename_components):
     return downstream_dependents
 
 
-def query_upstream_dependencies(session, downstream_dependents):
-    """Find dependency information for each instrument.
-
-    This function looks for upstream dependency of current downstream
-    dependents.
+def is_job_in_processing_table(
+    session: db.Session,
+    instrument: str,
+    data_level: str,
+    descriptor: str,
+    start_date: str,
+    version: str,
+):
+    """Check if the job is already running.
 
     Parameters
     ----------
     session : orm session
         Database session.
-    downstream_dependents : list of dict
-        Dictionary containing components with dates and versions appended.
-
-    Returns
-    -------
-    instruments_to_process : list of dict
-        A list of dictionaries containing the prepared command.
-    """
-    instruments_to_process = []
-
-    # Iterate over each downstream dependent
-    for dependent in downstream_dependents:
-        instrument = dependent["instrument"]
-        data_level = dependent["data_level"]
-        descriptor = dependent["descriptor"]
-        start_date = dependent["start_date"]
-        version = dependent["version"]
-
-        # For each downstream dependent, find its upstream dependencies
-        upstream_dependencies = get_dependency(
-            instrument=instrument,
-            data_level=data_level,
-            descriptor=descriptor,
-            direction="UPSTREAM",
-            relationship="HARD",
-        )
-
-        all_dependencies_available = True  # Initialize the flag
-        for upstream_dependency in upstream_dependencies:
-            # Check to see if each upstream dependency is available
-            record = query_instrument(session, upstream_dependency, start_date, version)
-            if record is None:
-                all_dependencies_available = (
-                    False  # Set flag to false if any dependency is missing
-                )
-                logger.info(
-                    f"Missing dependency: {upstream_dependency['instrument']}, "
-                    f"{upstream_dependency['data_level']}, "
-                    f"{upstream_dependency['descriptor']}, "
-                    f"{version}"
-                )
-                logger.info(
-                    f"Failed to kickoff this downstream dependent: {dependent}, "
-                    "because it requires data for all these upstream "
-                    f" dependencies: {upstream_dependencies}"
-                )
-                break  # Exit the loop early as we already found a missing dependency
-            else:
-                logger.info(
-                    f"Dependency found: {upstream_dependency['instrument']}, "
-                    f"{upstream_dependency['data_level']}, "
-                    f"{upstream_dependency['descriptor']}, "
-                    f"{version}"
-                )
-                # Add additional information to the upstream dependency
-                additional_info = {
-                    "start_date": start_date,
-                    "version": version,
-                }
-                upstream_dependency.update(additional_info)
-
-        # If all dependencies are available, prepare the data for batch job
-        if all_dependencies_available:
-            # These are the keys the upstream_dependencies should contain:
-            # {
-            #     'instrument': 'swe',
-            #     'data_level': 'l0',
-            #     'descriptor': 'lveng-hk',
-            #     'start_date': '20231212',
-            #     'version': 'v001',
-            # },
-            prepared_data = prepare_data(
-                instrument=instrument,
-                data_level=data_level,
-                start_date=start_date,
-                version=version,
-                upstream_dependencies=upstream_dependencies,
-            )
-            instruments_to_process.append({"command": prepared_data})
-            logger.info(f"All dependencies for {instrument} present.")
-            logger.info(
-                f"For this downstream dependent: {dependent}, "
-                "all these upstream dependencies data are available: "
-                f"{upstream_dependencies}"
-            )
-        else:
-            logger.info(f"Some dependencies for {instrument} are missing.")
-
-    return instruments_to_process
-
-
-def prepare_data(instrument, data_level, start_date, version, upstream_dependencies):
-    """Prepare data for batch job.
-
-    Parameters
-    ----------
     instrument : str
         Instrument.
     data_level : str
         Data level.
+    descriptor : str
+        Data descriptor.
     start_date : str
-        Data start date.
+        Start date.
     version : str
-        version.
-    upstream_dependencies : list of dict
-        A list of dictionaries containing dependency instrument,
-        data level, and version.
+        Data version.
 
     Returns
     -------
-    prepared_data : str
-        Data to submit to batch job.
+    bool
+        True if duplicate job is found, False otherwise.
     """
-    # Prepare batch job command
-    # NOTE: Batch job expects command like this:
-    # "Command": [
-    #     "--instrument", "mag",
-    #     "--data-level", "l1a",
-    #     "--start-date", "20231212",
-    #     "--version", "v001",
-    #     "--dependency", """[
-    #         {
-    #             'instrument': 'swe',
-    #             'data_level': 'l0',
-    #             'descriptor': 'lveng-hk',
-    #             'start_date': '20231212',
-    #             'version': 'v001',
-    #         },
-    #         {
-    #             'instrument': 'mag',
-    #             'data_level': 'l0',
-    #             'descriptor': 'lveng-hk',
-    #             'start_date': '20231212',
-    #             'version': 'v001',
-    #         }]""",
-    #    "--repointing", 1,
-    #     "--upload-to-sdc"
-    # ]
-    prepared_data = [
+    # check in the processing table if the job is already in progress
+    # for this instrument, data level, version, and descriptor
+    query = select(models.ProcessingJob.__table__).where(
+        models.ProcessingJob.instrument == instrument,
+        models.ProcessingJob.data_level == data_level,
+        models.ProcessingJob.descriptor == descriptor,
+        models.ProcessingJob.start_date == datetime.strptime(start_date, "%Y%m%d"),
+        models.ProcessingJob.version == version,
+        models.ProcessingJob.status.in_(
+            [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
+        ),
+    )
+
+    results = session.execute(query).all()
+    if results:
+        return True
+    return False
+
+
+def try_to_submit_job(session, job_info):
+    """Try to submit a batch job with the given job information.
+
+    Go through the job information to retrieve all necessary input files
+    (upstream dependencies). If any are missing, return. If we have
+    all the necessary input files, submit the job to the batch queue.
+
+    Parameters
+    ----------
+    session : orm session
+        Database session.
+    job_info : dict
+        Dictionary containing components with dates and versions appended.
+
+    Returns
+    -------
+    bool
+        Whether or not this job is ready to be processed.
+    """
+    instrument = job_info["instrument"]
+    data_level = job_info["data_level"]
+    descriptor = job_info["descriptor"]
+    start_date = job_info["start_date"]
+    version = job_info["version"]
+
+    logger.info("Checking for job in progress before looking for dependencies.")
+
+    if is_job_in_processing_table(
+        session=session,
+        instrument=instrument,
+        data_level=data_level,
+        descriptor=descriptor,
+        start_date=start_date,
+        version=version,
+    ):
+        logger.info(
+            f"Job already in progress for {instrument}, {data_level}, "
+            f"{descriptor}, {start_date}, {version}"
+        )
+        return
+
+    # Find the files that this job depends on
+    upstream_dependencies = get_dependencies(
+        session=session,
+        instrument=instrument,
+        data_level=data_level,
+        descriptor=descriptor,
+        direction="UPSTREAM",
+        relationship="HARD",
+    )
+
+    for upstream_dependency in upstream_dependencies:
+        upstream_instrument = upstream_dependency["instrument"]
+        upstream_data_level = upstream_dependency["data_level"]
+        upstream_descriptor = upstream_dependency["descriptor"]
+
+        # Check to see if each upstream dependency file is available
+        # TODO: Update start_date / version request to be more specific
+        #       Currently we are using the same as the job product, but the versions
+        #       may not match exactly if one dependency updates before another
+        upstream_start_date = start_date
+        upstream_version = version
+        upstream_dependency.update(
+            {"start_date": upstream_start_date, "version": upstream_version}
+        )
+        record = get_file(
+            session,
+            upstream_instrument,
+            upstream_data_level,
+            upstream_descriptor,
+            upstream_start_date,
+            upstream_version,
+        )
+        if record is None:
+            logger.info(
+                f"Dependency not found: {upstream_instrument}, "
+                f"{upstream_data_level}, "
+                f"{upstream_descriptor}, "
+                f"{upstream_start_date}, "
+                f"{upstream_version}"
+            )
+            return  # Exit the loop early as we already found a missing dependency
+    logger.info(f"All dependencies found for the job: {job_info}")
+
+    # All of our upstream requirements have been met.
+    # Try to insert a record into the Processing Jobs table
+    # If this job already exists, then we will get an integrity error
+    # and know that some other process has already taken care of it
+    processing_job = models.ProcessingJob(
+        status=models.Status.INPROGRESS,
+        instrument=instrument,
+        data_level=data_level,
+        descriptor=descriptor,
+        start_date=datetime.strptime(start_date, "%Y%m%d"),
+        version=version,
+    )
+
+    try:
+        session.add(processing_job)
+        session.commit()
+    except IntegrityError:
+        logger.info(f"Job already completed or in progress: {processing_job}")
+        return
+
+    logger.info(
+        f"Wrote job INPROGRESS to Processing Jobs Table with id: {processing_job.id}"
+    )
+
+    # FYI, these are the keys the upstream_dependencies should contain:
+    # {
+    #     'instrument': 'swe',
+    #     'data_level': 'l0',
+    #     'descriptor': 'lveng-hk',
+    #     'start_date': '20231212',
+    #     'version': 'v001',
+    # },
+    batch_command = [
         "--instrument",
         instrument,
         "--data-level",
         data_level,
+        "--descriptor",
+        descriptor,
         "--start-date",
         start_date,
         "--version",
@@ -306,155 +332,49 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
         f"{upstream_dependencies}",
         "--upload-to-sdc",
     ]
-    # TODO: Add repointing information to the command
 
-    return prepared_data
-
-
-def send_lambda_put_event(command_parameters):
-    r"""Send custom PutEvent to EventBridge.
-
-    Example of what PutEvent looks like:
-    event = {
-        "Source": "imap.lambda",
-        "DetailType": "Job Started",
-        "Detail": {
-            "status": "INPROGRESS",
-            "dependency": "[{
-                "codice": "s3-test",
-                "mag": "s3-filepath"
-            }]")
+    # NOTE: The batch job name should contain only alphanumeric characters and hyphens
+    # Eg. "codice-l1a-sci-job-1"
+    # The `processing_job.id` is used later for updating the job processing table
+    job_name = f"{instrument}-{data_level}-{descriptor}-job-{processing_job.id}"
+    # Get the necessary AWS information
+    # NOTE: These are here for easier mocking in tests rather than at the module level
+    step = "-l3" if data_level >= "l3" else ""
+    job_definition = f"ProcessingJob-{instrument}{step}"
+    job_queue = "ProcessingJobQueue"
+    BATCH_CLIENT.submit_job(
+        jobName=job_name,
+        jobQueue=job_queue,
+        jobDefinition=job_definition,
+        containerOverrides={
+            "command": batch_command,
         },
-    }
-
-    Parameters
-    ----------
-    command_parameters : str
-        IMAP cli command input parameters.
-        Example of input:
-            "Command": [
-            "--instrument", "mag",
-            "--data-level", "l1a",
-            "--start-date", "20231212",
-            "--version", "v001",
-            "--dependency", \"""[
-                {
-                    'instrument': 'swe',
-                    'data_level': 'l0',
-                    'descriptor': 'lveng-hk',
-                    'start_date': '20231212',
-                    'version': 'v001',
-                },
-                {
-                    'instrument': 'mag',
-                    'data_level': 'l0',
-                    'descriptor': 'lveng-hk',
-                    'start_date': '20231212',
-                    'version': 'v001',
-                }]\""",
-            "--upload-to-sdc"
-        ]
-
-    Returns
-    -------
-    dict
-        EventBridge response
-    """
-    event_client = boto3.client("events")
-
-    # Get event inputs ready
-    instrument = command_parameters[1]
-    data_level = command_parameters[3]
-    start_date = command_parameters[5]
-    version = command_parameters[7]
-    dependency = command_parameters[9]
-
-    # Create event["detail"] information
-    detail = {
-        "status": models.Status.INPROGRESS.value,
-        "instrument": instrument,
-        "data_level": data_level,
-        "start_date": start_date,
-        "version": version,
-        "dependency": dependency,
-    }
-
-    # create PutEvent dictionary
-    event = IMAPLambdaPutEvent(detail_type="Job Started", detail=detail)
-    event_data = event.to_event()
-
-    logger.info(f"Sending event to EventBridge - {event_data}")
-    # Send event to EventBridge
-    response = event_client.put_events(Entries=[event_data])
-    return response
+    )
+    logger.info(f"Submitted job {job_name} with this command: {batch_command}")
 
 
-def lambda_handler(event: dict, context):
+def lambda_handler(events: dict, context):
     """Lambda handler."""
-    logger.info(f"Event: {event}")
+    logger.info(f"Events: {events}")
     logger.info(f"Context: {context}")
 
-    # Event details:
-    filename = event["detail"]["object"]["key"]
-    components = ScienceFilePath.extract_filename_components(filename)
-    logger.info(f"Parsed filename - {components}")
-    instrument = components["instrument"]
+    with db.Session() as session:
+        # Since the SQS events can be batched together, we need to loop through
+        # each event. In this loop, "event" represents one file landing.
+        for event in events["Records"]:
+            # Event details:
+            logger.info(f"Individual event: {event}")
+            body = json.loads(event["body"])
 
-    # Get information for the batch job.
-    region = os.getenv("REGION")
-    account = os.getenv("ACCOUNT")
-    # Create a batch client
-    batch_client = boto3.client("batch")
+            filename = body["detail"]["object"]["key"]
+            logger.info(f"Retrieved filename: {filename}")
+            components = ScienceFilePath.extract_filename_components(filename)
 
-    job_definition = (
-        f"arn:aws:batch:{region}:{account}:job-definition/"
-        f"fargate-batch-job-definition{instrument}"
-    )
-    job_queue = (
-        f"arn:aws:batch:{region}:{account}:job-queue/"
-        f"{instrument}-fargate-batch-job-queue"
-    )
-
-    # Get database engine.
-    engine = db.get_engine()
-
-    with Session(engine) as session:
-        # Downstream dependents are the instruments that
-        # depend on the current instrument.
-        downstream_dependents = query_downstream_dependencies(session, components)
-
-        # Check if every downstream dependents
-        # have all upstream dependencies. This helps to determine if
-        # we can start the batch job.
-        downstream_instruments_to_process = query_upstream_dependencies(
-            session, downstream_dependents
-        )
-
-        # No instruments to process
-        if not downstream_instruments_to_process:
-            logger.info("No instruments_to_process. Skipping further processing.")
-            return
-
-        # Start Batch Job execution for those that has all dependencies
-        for downstream_data in downstream_instruments_to_process:
-            command = downstream_data["command"]
-            logger.info(f"Submitting job with this command - {command}")
-            # NOTE: The batch job name should contain only
-            # alphanumeric characters and hyphens.
-            level_to_process = command[3]
-            # Eg. "codice-l1a-job"
-            job_name = f"{instrument}-{level_to_process}-job"
-            logger.info("Job name: %s", job_name)
-            response = batch_client.submit_job(
-                jobName=job_name,
-                jobQueue=job_queue,
-                jobDefinition=job_definition,
-                containerOverrides={
-                    "command": command,
-                },
+            # Potential jobs are the instruments that depend on the current file.
+            potential_jobs = get_downstream_dependencies(session, components)
+            logger.info(
+                f"Potential jobs found [{len(potential_jobs)}]: {potential_jobs}"
             )
-            logger.info(f"Submitted job - {response}")
-            # Send EventBridge event to indexer lambda
-            logger.info("Sending EventBridge event to indexer lambda.")
-            send_lambda_put_event(command)
-            logger.info("EventBridge event sent.")
+
+            for job in potential_jobs:
+                try_to_submit_job(session, job)

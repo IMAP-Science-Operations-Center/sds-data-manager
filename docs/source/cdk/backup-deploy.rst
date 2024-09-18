@@ -12,7 +12,7 @@ Steps for deploying
 #. Set your ``AWS_PROFILE`` environment variable to the backup account profile
 #. Set the ``source_account`` variable in the "backup" section of the cdk.json file to the account number for the _source_ bucket (where the backed up items originate)
 #. Update the ``account_name`` variable in the ``cdk.json`` file to "backup"
-#. Finally, you will need to copy the Role arn deployed in SdsDataManager into :file:`sds_data_manager/stacks/backup_bucket_stack.py`. This arn can be found by going to the IAM console in the source account and searching for "BackupRole".
+#. Finally, you will need to copy the Role arn deployed in SdsDataManager into :file:`sds_data_manager/stacks/backup_bucket_construct.py`. This arn can be found by going to the IAM console in the source account and searching for "BackupRole".
 #. Run your ``cdk bootstrap`` command if you haven't already done so for the backup account.
 #. Run ``cdk synth --context account_name=backup`` and check to confirm that the only stack being deployed is the "BackupBucket" stack
 #. Run ``cdk deploy --context account_name=backup`` to deploy!

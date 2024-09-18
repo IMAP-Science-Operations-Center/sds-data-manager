@@ -1,20 +1,20 @@
-"""Test the monitoring stack."""
+"""Test the monitoring."""
 
 import pytest
 from aws_cdk.assertions import Template
 
-from sds_data_manager.stacks.monitoring_stack import MonitoringStack
+from sds_data_manager.constructs.monitoring_construct import MonitoringConstruct
 
 
-@pytest.fixture(scope="module")
-def template(app):
+@pytest.fixture()
+def template(stack):
     """Return a template monitoring stack."""
-    monitor = MonitoringStack(
-        app,
+    MonitoringConstruct(
+        stack,
         construct_id="MonitorTest",
     )
 
-    template = Template.from_stack(monitor)
+    template = Template.from_stack(stack)
     return template
 
 

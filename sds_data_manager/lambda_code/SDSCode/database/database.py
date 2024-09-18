@@ -2,9 +2,11 @@
 
 import json
 import os
+from contextlib import contextmanager
 
 import boto3
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 def get_engine():
@@ -23,3 +25,12 @@ def get_engine():
     db_uri = f'postgresql://{db_config["username"]}:{db_config["password"]}@{db_config["host"]}:{db_config["port"]}/{db_config["dbname"]}'
 
     return create_engine(db_uri)
+
+
+@contextmanager
+def Session():  # noqa: N802
+    """Create session from engine.
+
+    Setting it up this way allows us to more easily mock this behavior in tests.
+    """
+    yield sessionmaker(get_engine())()

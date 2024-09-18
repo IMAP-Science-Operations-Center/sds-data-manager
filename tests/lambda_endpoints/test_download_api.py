@@ -14,6 +14,7 @@ def test_object_exists(spice_file):
     response = download_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 302
     assert "Location" in response["headers"]
+    assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in response["headers"]["Location"]
     assert "download_url" in response["body"]
 
 

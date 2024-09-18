@@ -41,7 +41,10 @@ codice, l1a, lo-ialirt, codice, l1b, lo-ialirt, HARD, DOWNSTREAM
 codice, l1a, hi-ialirt, codice, l1b, hi-ialirt, HARD, DOWNSTREAM
 
 # <---- GLOWS Dependencies ---->
-# TODO: add GLOWS l0 to l1a dependencies
+glows, l0, raw, glows, l1a, all, HARD, DOWNSTREAM
+
+glows, l1a, de, glows, l1b, de, HARD, DOWNSTREAM
+glows, l1a, hist, glows, l1b, hist, HARD, DOWNSTREAM
 
 # <---- HI Dependencies ---->
 
@@ -64,7 +67,8 @@ hit, l1a, hk, hit, l1b, hk, HARD, DOWNSTREAM
 
 # <---- IDEX Dependencies ---->
 
-idex, l0, raw, idex, l1, sci, HARD, DOWNSTREAM
+idex, l0, raw, idex, l1a, sci, HARD, DOWNSTREAM
+idex, l1a, sci, idex, l1b, sci, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
 lo, l0, raw, lo, l1a, all, HARD, DOWNSTREAM
@@ -89,19 +93,25 @@ lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 
 mag, l0, raw, mag, l1a, all, HARD, DOWNSTREAM
 
-mag, l1a, normal-mago, mag, l1b, normal-mago, HARD, DOWNSTREAM
-mag, l1a, normal-magi, mag, l1b, normal-magi, HARD, DOWNSTREAM
+mag, l1a, norm-mago, mag, l1b, norm-mago, HARD, DOWNSTREAM
+mag, l1a, norm-magi, mag, l1b, norm-magi, HARD, DOWNSTREAM
 mag, l1a, burst-mago, mag, l1b, burst-mago, HARD, DOWNSTREAM
 mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
 
-mag, l1b, normal-mago, mag, l1c, normal-mago, HARD, DOWNSTREAM
-mag, l1b, normal-magi, mag, l1c, normal-magi, HARD, DOWNSTREAM
-mag, l1b, burst-mago, mag, l1c, burst-mago, HARD, DOWNSTREAM
-mag, l1b, burst-magi, mag, l1c, burst-magi, HARD, DOWNSTREAM
+mag, l1b, norm-mago, mag, l1c, norm-mago, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1c, norm-mago, HARD, DOWNSTREAM
+mag, l1b, norm-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 
 swapi, l0, raw, swapi, l1, all, HARD, DOWNSTREAM
+swapi, l1, sci, swapi, l2, sci, HARD, DOWNSTREAM
+
+# <---- TEST SWAPI L3 Dependencies ---->
+
+swapi, l2, sci, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, l2, sci, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 
 # <---- SWE Dependencies ---->
 
