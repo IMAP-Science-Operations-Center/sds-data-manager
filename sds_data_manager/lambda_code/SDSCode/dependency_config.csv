@@ -67,11 +67,7 @@ hit, l1a, hk, hit, l1b, hk, HARD, DOWNSTREAM
 idex, l0, raw, idex, l1, sci, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
-lo, l0, de, lo, l1a, de, HARD, DOWNSTREAM
-lo, l0, histogram, lo, l1a, histogram, HARD, DOWNSTREAM
-lo, l0, star, lo, l1a, star, HARD, DOWNSTREAM
-lo, l0, spin, lo, l1a, spin, HARD, DOWNSTREAM
-lo, l0, hk, lo, l1a, hk, HARD, DOWNSTREAM
+lo, l0, raw, lo, l1a, all, HARD, DOWNSTREAM
 
 lo, l1a, de, lo, l1b, de, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, de, HARD, DOWNSTREAM
