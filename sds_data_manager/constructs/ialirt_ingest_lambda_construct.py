@@ -64,7 +64,7 @@ class IalirtIngestLambda(Construct):
             point_in_time_recovery=False,
             # Partition key (PK) = ingest year (YYYY).
             partition_key=ddb.Attribute(
-                name="ingest_year",
+                name="apid",
                 type=ddb.AttributeType.NUMBER,
             ),
             # Sort key (SK) = Mission Elapsed Time (MET).
@@ -81,9 +81,7 @@ class IalirtIngestLambda(Construct):
         table.add_global_secondary_index(
             index_name="ingest_date",
             # Partition key (PK) = ingest year (YYYY).
-            partition_key=ddb.Attribute(
-                name="ingest_year", type=ddb.AttributeType.NUMBER
-            ),
+            partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
             # Sort key (SK) = Ingest Time (ISO).
             sort_key=ddb.Attribute(
                 name="ingest_date",

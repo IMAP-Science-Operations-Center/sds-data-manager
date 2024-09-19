@@ -10,13 +10,13 @@ def populate_table(table):
     """Populate DynamoDB table."""
     items = [
         {
-            "ingest_year": 2021,
+            "apid": 478,
             "met": 123,
             "ingest_date": "2021-01-01T00:00:00Z",
             "packet_blob": b"binary_data_string",
         },
         {
-            "ingest_year": 2021,
+            "apid": 478,
             "met": 124,
             "ingest_date": "2021-02-01T00:00:00Z",
             "packet_blob": b"binary_data_string",
@@ -37,7 +37,7 @@ def test_lambda_handler(table):
 
     response = table.get_item(
         Key={
-            "ingest_year": 2021,
+            "apid": 478,
             "met": 123,
         }
     )

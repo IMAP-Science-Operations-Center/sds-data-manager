@@ -9,13 +9,13 @@ def populate_table(table):
     """Populate DynamoDB table."""
     items = [
         {
-            "ingest_year": 2021,
+            "apid": 478,
             "met": 123,
             "ingest_date": "2021-01-01T00:00:00Z",
             "packet_blob": b"binary_data_string",
         },
         {
-            "ingest_year": 2021,
+            "apid": 478,
             "met": 124,
             "ingest_date": "2021-02-01T00:00:00Z",
             "packet_blob": b"binary_data_string",
@@ -31,19 +31,18 @@ def test_query_by_met(table, populate_table):
     """Test to query by met."""
     expected_items = populate_table
 
-    response = table.query(KeyConditionExpression=Key("ingest_year").eq(2021))
+    response = table.query(KeyConditionExpression=Key("apid").eq(478))
 
     items = response["Items"]
 
     for item in range(len(items)):
-        assert items[item]["ingest_year"] == expected_items[item]["ingest_year"]
+        assert items[item]["apid"] == expected_items[item]["apid"]
         assert items[item]["met"] == expected_items[item]["met"]
         assert items[item]["ingest_date"] == expected_items[item]["ingest_date"]
         assert items[item]["packet_blob"] == expected_items[item]["packet_blob"]
 
     response = table.query(
-        KeyConditionExpression=Key("ingest_year").eq(2021)
-        & Key("met").between(100, 123)
+        KeyConditionExpression=Key("apid").eq(478) & Key("met").between(100, 123)
     )
     items = response["Items"]
     assert len(items) == 1
@@ -56,7 +55,7 @@ def test_query_by_date(table, populate_table):
 
     response = table.query(
         IndexName="ingest_date",
-        KeyConditionExpression=Key("ingest_year").eq(2021)
+        KeyConditionExpression=Key("apid").eq(478)
         & Key("ingest_date").begins_with("2021-01"),
     )
     items = response["Items"]

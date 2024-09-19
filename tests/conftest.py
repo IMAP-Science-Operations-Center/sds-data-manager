@@ -19,12 +19,12 @@ def table():
             TableName="imap-data-table",
             KeySchema=[
                 # Partition key
-                {"AttributeName": "ingest_year", "KeyType": "HASH"},
+                {"AttributeName": "apid", "KeyType": "HASH"},
                 # Sort key
                 {"AttributeName": "met", "KeyType": "RANGE"},
             ],
             AttributeDefinitions=[
-                {"AttributeName": "ingest_year", "AttributeType": "N"},
+                {"AttributeName": "apid", "AttributeType": "N"},
                 {"AttributeName": "met", "AttributeType": "N"},
                 {"AttributeName": "ingest_date", "AttributeType": "S"},
             ],
@@ -32,7 +32,7 @@ def table():
                 {
                     "IndexName": "ingest_date",
                     "KeySchema": [
-                        {"AttributeName": "ingest_year", "KeyType": "HASH"},
+                        {"AttributeName": "apid", "KeyType": "HASH"},
                         {
                             "AttributeName": "ingest_date",
                             "KeyType": "RANGE",
