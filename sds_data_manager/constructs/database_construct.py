@@ -155,3 +155,44 @@ class SdpDatabase(Construct):
         # Add an explicit dependency on the RDS instance because we need the secret
         # populated with the DB credentials before we can create the schema.
         db_custom_resource.node.add_dependency(db)
+
+    def add_synchronizer(self, code, layers, bucket_name, vpc):
+        """Add synchronizer lambda.
+
+        This is a separate lambda function that is used to synchronize the database
+        with the s3 bucket. It is currently implemented requiring a manual trigger
+        by the user. If there are discrepancies between the database and the s3 bucket,
+        we want a user to take action explicitly rather than automatically syncing
+        at night currently. This can be revisited in the future.
+
+        Parameters
+        ----------
+        code : lambda_.Code
+            Lambda code bundle to create the initial DB schema.
+        layers : list
+            List of Lambda layers to attach to the lambda function.
+        bucket_name : str
+            S3 bucket name.
+        vpc : ec2.Vpc
+            Virtual private cloud that this lambda should be placed in.
+        """
+        lambda_.Function(
+            self,
+            id="db-synchronizer",
+            function_name="db-synchronizer",
+            code=code,
+            handler="SDSCode.database.synchronizer.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.seconds(180),
+            memory_size=2048,
+            allow_public_subnet=True,
+            vpc=vpc,
+            vpc_subnets=self.rds_subnet_selection,
+            security_groups=[self.rds_security_group],
+            environment={
+                "S3_BUCKET": bucket_name,
+                "SECRET_NAME": self.secret_name,
+            },
+            layers=layers,
+            architecture=lambda_.Architecture.ARM_64,
+        )
