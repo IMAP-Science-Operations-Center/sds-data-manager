@@ -6,6 +6,7 @@ Each class within maps to a table in the database.
 
 from enum import Enum
 
+import imap_data_access
 from sqlalchemy import (
     Boolean,
     Column,
@@ -22,42 +23,19 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
-# Instrument name Enums for the file catalog table
+# Instrument name Enums for the ScienceFiles table
 INSTRUMENTS = SqlEnum(
-    "codice",
-    "glows",
-    "hi",
-    "hit",
-    "idex",
-    "lo",
-    "mag",
-    "swapi",
-    "swe",
-    "ultra",
+    *imap_data_access.VALID_INSTRUMENTS,
     name="instrument",
 )
 
-# data level enums for the file catalog table
+# data level enums for the ScienceFiles table
 DATA_LEVELS = SqlEnum(
-    "l0",
-    "l1",
-    "l1a",
-    "l1b",
-    "l1c",
-    "l1ca",
-    "l1cb",
-    "l1d",
-    "l2",
-    "l2pre",
-    "l3",
-    "l3a",
-    "l3b",
-    "l3c",
-    "l3d",
+    *imap_data_access.VALID_DATALEVELS,
     name="data_level",
 )
 
-# extension enums for the file catalog table
+# extension enums for the ScienceFiles table
 EXTENSIONS = SqlEnum("pkts", "cdf", name="extensions")
 
 # "upstream" dependency means an instrument's processing depends on the existence
@@ -145,24 +123,12 @@ class ProcessingJob(Base):
     )
 
 
-class FileCatalog(Base):
-    """File catalog table."""
+class ScienceFiles(Base):
+    """Science files table."""
 
-    __tablename__ = "file_catalog"
-    __table_args__ = (
-        UniqueConstraint(
-            "id",
-            "file_path",
-            "instrument",
-            "data_level",
-            "start_date",
-            name="file_catalog_uc",
-        ),
-    )
+    __tablename__ = "science_files"
 
-    # TODO: determine cap for strings
-    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
-    file_path = Column(String, nullable=False)
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
     instrument = Column(INSTRUMENTS, nullable=False)
     data_level = Column(DATA_LEVELS, nullable=False)
     # TODO: determine character limit for descriptor
@@ -171,6 +137,32 @@ class FileCatalog(Base):
     repointing = Column(Integer, nullable=True)
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(EXTENSIONS, nullable=False)
+    ingestion_date = Column(DateTime(timezone=True))
+
+
+class SPICEFiles(Base):
+    """SPICE files table."""
+
+    __tablename__ = "spice_files"
+
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    version = Column(String(4), nullable=True)  # vXXX
+    extension = Column(String, nullable=False)
+    ingestion_date = Column(DateTime(timezone=True))
+
+
+class AncillaryFiles(Base):
+    """Ancillary files table."""
+
+    __tablename__ = "ancillary_files"
+
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    version = Column(String(4), nullable=False)  # vXXX
+    extension = Column(String, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
 
 
@@ -245,6 +237,3 @@ class Version(Base):
     # Data version is a string of the form vXXX
     data_version = Column(String(4), nullable=False)
     updated_date = Column(DateTime, nullable=False)
-
-
-# TODO: Create table for SPICE file tracking

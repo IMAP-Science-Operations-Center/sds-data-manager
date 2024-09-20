@@ -69,7 +69,7 @@ def get_dependencies(
 
 
 def get_file(session, instrument, data_level, descriptor, start_date, version):
-    """Query to database to get the first FileCatalog record.
+    """Query to database to get the first ScienceFiles record.
 
     Parameters
     ----------
@@ -88,8 +88,8 @@ def get_file(session, instrument, data_level, descriptor, start_date, version):
 
     Returns
     -------
-    record : models.FileCatalog or None
-        The first FileCatalog record matching the query criteria.
+    record : models.ScienceFiles or None
+        The first ScienceFiles record matching the query criteria.
         None is returned if no record matches the criteria.
     """
     # TODO: narrow down the query using end_date.
@@ -100,13 +100,13 @@ def get_file(session, instrument, data_level, descriptor, start_date, version):
     # using table.start_date >= start_date and
     # table.end_date <= end_date.
     record = (
-        session.query(models.FileCatalog)
+        session.query(models.ScienceFiles)
         .filter(
-            models.FileCatalog.instrument == instrument,
-            models.FileCatalog.data_level == data_level,
-            models.FileCatalog.descriptor == descriptor,
-            models.FileCatalog.start_date == datetime.strptime(start_date, "%Y%m%d"),
-            models.FileCatalog.version == version,
+            models.ScienceFiles.instrument == instrument,
+            models.ScienceFiles.data_level == data_level,
+            models.ScienceFiles.descriptor == descriptor,
+            models.ScienceFiles.start_date == datetime.strptime(start_date, "%Y%m%d"),
+            models.ScienceFiles.version == version,
         )
         .first()
     )

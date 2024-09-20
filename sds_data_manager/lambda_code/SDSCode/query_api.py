@@ -36,16 +36,16 @@ def lambda_handler(event, context):
     # add session, pick model like in indexer and add query to filter_as
     query_params = event["queryStringParameters"]
 
-    # select the file catalog for the query
-    query = select(models.FileCatalog.__table__)
+    # select the science files table for the query
+    query = select(models.ScienceFiles.__table__)
     # get a list of all valid search parameters
     valid_parameters = [
         column.key
-        for column in models.FileCatalog.__table__.columns
+        for column in models.ScienceFiles.__table__.columns
         if column.key not in ["id"]
     ]
     # Up until this point, valid_parameters are the same as the
-    # columns in the FileCatalog table. And looks like we removed
+    # columns in the ScienceFiles table. And looks like we removed
     # the "id" column from the list. But we also need to add
     # 'end_date' to the list of valid_parameters.
     valid_parameters.append("end_date")
@@ -74,24 +74,24 @@ def lambda_handler(event, context):
         # setup the correct "where" time condition
         if param == "start_date":
             query = query.where(
-                models.FileCatalog.start_date
+                models.ScienceFiles.start_date
                 >= datetime.datetime.strptime(value, "%Y%m%d")
             )
         elif param == "end_date":
             # TODO: Need to discuss as a team how to handle date queries. For now,
             # the date queries will only look at the file start_date.
             query = query.where(
-                models.FileCatalog.start_date
+                models.ScienceFiles.start_date
                 <= datetime.datetime.strptime(value, "%Y%m%d")
             )
         # all non-time string matching parameters
         else:
-            query = query.where(getattr(models.FileCatalog, param) == value)
+            query = query.where(getattr(models.ScienceFiles, param) == value)
 
     # We want to order the query returns by the filename
     # This will implicitly sort by: instrument, data level, descriptor, start_date, ...
     # Default for the table is by the ascending id so by insertion order
-    query = query.order_by(models.FileCatalog.file_path)
+    query = query.order_by(models.ScienceFiles.file_path)
 
     with db.Session() as session:
         search_results = session.execute(query).all()
@@ -108,7 +108,6 @@ def lambda_handler(event, context):
             # If the datetime has a timezone, convert it to UTC and remove the timezone
             d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
         result["ingestion_date"] = d.strftime("%Y-%m-%d %H:%M:%S")
-        del result["id"]
 
     logger.info(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)

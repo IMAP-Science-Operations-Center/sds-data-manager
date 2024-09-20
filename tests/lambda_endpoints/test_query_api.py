@@ -26,8 +26,8 @@ def _populate_test_data(session):
         ),
     }
 
-    # Add data to the file catalog and return the session
-    session.add(models.FileCatalog(**metadata_params))
+    # Add data to the ScienceFiles table and return the session
+    session.add(models.ScienceFiles(**metadata_params))
     session.commit()
 
 
@@ -211,8 +211,8 @@ def test_sorting_of_query(session):
         ]
     )
 
-    # Add data to the file catalog
-    session.add(models.FileCatalog(**metadata_params2))
+    # Add data to the ScienceFiles table
+    session.add(models.ScienceFiles(**metadata_params2))
     session.commit()
 
     event = {"queryStringParameters": {"start_date": "20251101"}}

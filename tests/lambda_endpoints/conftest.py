@@ -36,11 +36,11 @@ def science_file():
 @pytest.fixture(scope="module")
 def spice_file():
     """Path to a valid spice file."""
-    return "imap/spice/ck/test_v000.bc"
+    return "spice/ck/test_v000.bc"
 
 
 @pytest.fixture(autouse=True, scope="module")
-def s3_client(science_file, spice_file):
+def s3_client():
     """Mock S3 Client, so we don't need network requests."""
     with mock_s3():
         s3_client = boto3.client("s3", region_name="us-east-1")
@@ -48,26 +48,6 @@ def s3_client(science_file, spice_file):
         s3_client.create_bucket(
             Bucket=BUCKET_NAME,
         )
-        result = s3_client.list_buckets()
-        assert len(result["Buckets"]) == 1
-        assert result["Buckets"][0]["Name"] == BUCKET_NAME
-
-        # upload testing files
-        for key in [
-            science_file,
-            spice_file,
-            # These are expected by the indexer
-            "imap/swapi/l1/2023/01/imap_swapi_l1_sci-1min_20230724_v001.cdf",
-            "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts",
-        ]:
-            s3_client.put_object(
-                Bucket=BUCKET_NAME,
-                Key=key,
-                Body=b"",
-            )
-
-        file_list = s3_client.list_objects(Bucket=BUCKET_NAME)["Contents"]
-        assert len(file_list) == 4
 
         yield s3_client
 

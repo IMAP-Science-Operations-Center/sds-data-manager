@@ -10,7 +10,6 @@ from imap_data_access import ScienceFilePath
 
 from .database import database as db
 from .database import models
-from .database_handler import update_file_catalog_table
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup
@@ -131,7 +130,7 @@ def s3_event_handler(event):
     """S3 events handler.
 
     S3 event handler takes s3 event and then writes information to
-    file catalog table. It also sends event to the batch starter
+    the proper file table. It also sends event to the batch starter
     lambda once it finishes writing information to database.
 
     Parameters
@@ -154,7 +153,7 @@ def s3_event_handler(event):
     # data types
 
     # setup a dictionary of metadata parameters to unpack in the
-    # file catalog table. Eg.
+    # ScienceFiles table. Eg.
     # {
     #     "file_path": None,
     #     "instrument": self.instrument,
@@ -179,9 +178,9 @@ def s3_event_handler(event):
     ingestion_date_object = get_file_creation_date(s3_filepath)
 
     file_params["ingestion_date"] = ingestion_date_object
-    with db.Session() as session:
-        update_file_catalog_table(session, file_params)
-    logger.info("Wrote data to file catalog table")
+    with db.Session() as session, session.begin():
+        session.add(models.ScienceFiles(**file_params))
+    logger.info("Wrote data to the ScienceFiles table")
 
     # Send event from this lambda for Batch starter
     # lambda

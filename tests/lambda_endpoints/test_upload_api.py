@@ -32,13 +32,13 @@ def setup_s3(s3_client):
         yield s3_client
 
 
-def test_spice_file_upload(spice_file):
+def test_spice_file_upload(s3_client, spice_file):
     """Test spice files being uploaded."""
     event = {
         "version": "2.0",
         "routeKey": "$default",
         "rawPath": "/",
-        "pathParameters": {"proxy": spice_file.replace("v000", "v001")},
+        "pathParameters": {"proxy": spice_file},
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 200
@@ -46,7 +46,12 @@ def test_spice_file_upload(spice_file):
     # Try to upload over a pre-existing file and we should get a 409
     # Note that we are using pre-signed urls so we haven't actually
     # uploaded anything in the previous call, only gotten back a url
-    # So we need to look at one of the original files uploaded
+    # So we need to upload a file to s3 to simulate a pre-existing file
+    s3_client.put_object(
+        Bucket=os.getenv("S3_BUCKET"),
+        Key=spice_file,
+        Body=b"test",
+    )
     event = {
         "version": "2.0",
         "routeKey": "$default",
@@ -57,18 +62,23 @@ def test_spice_file_upload(spice_file):
     assert response["statusCode"] == 409
 
 
-def test_science_file_upload(science_file):
+def test_science_file_upload(s3_client, science_file):
     """Test science files being uploaded."""
     event = {
         "version": "2.0",
         "routeKey": "$default",
         "rawPath": "/",
-        "pathParameters": {"proxy": science_file.replace("v000", "v001")},
+        "pathParameters": {"proxy": science_file},
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 200
 
     # Try to upload again and we should get a 409 duplicate error
+    s3_client.put_object(
+        Bucket=os.getenv("S3_BUCKET"),
+        Key=science_file,
+        Body=b"test",
+    )
     event = {
         "version": "2.0",
         "routeKey": "$default",

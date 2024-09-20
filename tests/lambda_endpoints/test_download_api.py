@@ -3,13 +3,19 @@
 from sds_data_manager.lambda_code.SDSCode import download_api
 
 
-def test_object_exists(spice_file):
-    """Test that this object exists within s3."""
+def test_object_exists(s3_client):
+    """Test that we get a presigned url back for an object that exists."""
+    science_file = "imap/swe/l1a/2010/01/imap_swe_l1a_test_20100101_v000.cdf"
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=science_file,
+        Body=b"test",
+    )
     event = {
         "version": "2.0",
         "routeKey": "$default",
         "rawPath": "/",
-        "pathParameters": {"proxy": spice_file},
+        "pathParameters": {"proxy": science_file},
     }
     response = download_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 302

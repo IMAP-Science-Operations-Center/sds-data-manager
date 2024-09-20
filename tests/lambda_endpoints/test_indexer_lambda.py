@@ -115,20 +115,23 @@ def test_batch_job_event(session, events_client):
     assert processing_job.status == models.Status.SUCCEEDED
 
 
-def test_s3_event(session, events_client):
+def test_s3_event(session, s3_client, events_client):
     """Test s3 event."""
-    # Took out unused parameters from event
+    filepath = "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=filepath,
+        Body=b"test",
+    )
     event = {
         "detail-type": "Object Created",
         "source": "aws.s3",
         "time": "2024-01-16T17:35:08Z",
         "detail": {
             "version": "0",
-            "bucket": {"name": "sds-data-123456789012"},
+            "bucket": {"name": "test-data-bucket"},
             "object": {
-                "key": (
-                    "imap/hit/l0/2024/01/" "imap_hit_l0_sci-test_20240101_v001.pkts"
-                ),
+                "key": (filepath),
                 "reason": "PutObject",
             },
         },
@@ -138,7 +141,7 @@ def test_s3_event(session, events_client):
     assert returned_value["statusCode"] == 200
 
     # Check that data was written to database by lambda
-    result = session.query(models.FileCatalog).all()
+    result = session.query(models.ScienceFiles).all()
     assert len(result) == 1
     assert (
         result[0].file_path
@@ -150,7 +153,7 @@ def test_s3_event(session, events_client):
 
     # Test for bad filename input
     event["detail"]["object"]["key"] = (
-        "imap/hit/l0/2024/01/" "imap_hit_l0_sci-test_20240101_v001.cdf"
+        "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.cdf"
     )
 
     expected_msg = (
@@ -158,10 +161,8 @@ def test_s3_event(session, events_client):
         " and cdf for data level higher than l0 \n"
     )
 
-    with pytest.raises(ScienceFilePath.InvalidScienceFileError) as excinfo:
+    with pytest.raises(ScienceFilePath.InvalidScienceFileError, match=expected_msg):
         ScienceFilePath(os.path.basename(event["detail"]["object"]["key"]))
-    # Wrote this test outside because pre-commit complains
-    assert str(excinfo.value) == expected_msg
 
 
 def test_unknown_event(session):

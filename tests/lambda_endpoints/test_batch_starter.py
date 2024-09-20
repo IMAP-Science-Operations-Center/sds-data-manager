@@ -18,8 +18,8 @@ from sds_data_manager.lambda_code.SDSCode.batch_starter import (
 )
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
-    FileCatalog,
     ProcessingJob,
+    ScienceFiles,
 )
 from sds_data_manager.lambda_code.SDSCode.dependency_config import (
     all_dependents,
@@ -41,11 +41,11 @@ def _populate_dependency_table(session):
 
 
 def _populate_file_catalog(session):
-    """Add records to the file catalog."""
+    """Add records to the ScienceFiles table."""
     # Setup: Add records to the database
     test_records = [
-        FileCatalog(
-            file_path="/path/to/file",
+        ScienceFiles(
+            file_path="/path/to/file1",
             instrument="ultra",
             data_level="l2",
             descriptor="sci",
@@ -56,8 +56,8 @@ def _populate_file_catalog(session):
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
         ),
-        FileCatalog(
-            file_path="/path/to/file",
+        ScienceFiles(
+            file_path="/path/to/file2",
             instrument="hit",
             data_level="l0",
             descriptor="sci",
@@ -68,8 +68,8 @@ def _populate_file_catalog(session):
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
         ),
-        FileCatalog(
-            file_path="/path/to/file",
+        ScienceFiles(
+            file_path="/path/to/file3",
             instrument="swe",
             data_level="l0",
             descriptor="raw",
@@ -80,8 +80,8 @@ def _populate_file_catalog(session):
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
         ),
-        FileCatalog(
-            file_path="/path/to/file",
+        ScienceFiles(
+            file_path="/path/to/file4",
             instrument="swe",
             data_level="l1a",
             descriptor="sci",
@@ -93,8 +93,8 @@ def _populate_file_catalog(session):
             ),
         ),
         # Adding files to test for duplicate job
-        FileCatalog(
-            file_path="/path/to/file",
+        ScienceFiles(
+            file_path="/path/to/file5",
             instrument="lo",
             data_level="l1a",
             descriptor="de",
@@ -105,8 +105,8 @@ def _populate_file_catalog(session):
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
         ),
-        FileCatalog(
-            file_path="/path/to/file",
+        ScienceFiles(
+            file_path="/path/to/file6",
             instrument="lo",
             data_level="l1a",
             descriptor="spin",
