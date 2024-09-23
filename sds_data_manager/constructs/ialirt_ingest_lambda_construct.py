@@ -62,7 +62,7 @@ class IalirtIngestLambda(Construct):
             # Restore data to any point in time within the last 35 days.
             # TODO: change to True in production.
             point_in_time_recovery=False,
-            # Partition key (PK) = ingest year (YYYY).
+            # Partition key (PK) = APID.
             partition_key=ddb.Attribute(
                 name="apid",
                 type=ddb.AttributeType.NUMBER,
@@ -80,7 +80,7 @@ class IalirtIngestLambda(Construct):
         # Add a GSI for ingest time.
         table.add_global_secondary_index(
             index_name="ingest_time",
-            # Partition key (PK) = ingest year (YYYY).
+            # Partition key (PK) = APID.
             partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
             # Sort key (SK) = Ingest Time (ISO).
             sort_key=ddb.Attribute(
