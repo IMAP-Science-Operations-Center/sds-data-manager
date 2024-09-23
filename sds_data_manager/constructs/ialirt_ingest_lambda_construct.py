@@ -79,12 +79,12 @@ class IalirtIngestLambda(Construct):
 
         # Add a GSI for ingest time.
         table.add_global_secondary_index(
-            index_name="ingest_date",
+            index_name="ingest_time",
             # Partition key (PK) = ingest year (YYYY).
             partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
             # Sort key (SK) = Ingest Time (ISO).
             sort_key=ddb.Attribute(
-                name="ingest_date",
+                name="ingest_time",
                 type=ddb.AttributeType.STRING,
             ),
             projection_type=ddb.ProjectionType.ALL,

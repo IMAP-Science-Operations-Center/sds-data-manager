@@ -41,7 +41,7 @@ def lambda_handler(event, context):
     item = {
         "apid": 478,
         "met": 123,
-        "ingest_date": "2021-01-01T00:00:00Z",
+        "ingest_time": "2021-01-01T00:00:00Z",
         "packet_blob": b"binary_data_string",
     }
 

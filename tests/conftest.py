@@ -26,15 +26,15 @@ def table():
             AttributeDefinitions=[
                 {"AttributeName": "apid", "AttributeType": "N"},
                 {"AttributeName": "met", "AttributeType": "N"},
-                {"AttributeName": "ingest_date", "AttributeType": "S"},
+                {"AttributeName": "ingest_time", "AttributeType": "S"},
             ],
             GlobalSecondaryIndexes=[
                 {
-                    "IndexName": "ingest_date",
+                    "IndexName": "ingest_time",
                     "KeySchema": [
                         {"AttributeName": "apid", "KeyType": "HASH"},
                         {
-                            "AttributeName": "ingest_date",
+                            "AttributeName": "ingest_time",
                             "KeyType": "RANGE",
                         },
                     ],
