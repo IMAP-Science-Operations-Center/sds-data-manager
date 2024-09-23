@@ -59,8 +59,7 @@ hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 
 # <---- HIT Dependencies ---->
 
-hit, l0, sci, hit, l1a, sci, HARD, DOWNSTREAM
-hit, l0, hk, hit, l1a, hk, HARD, DOWNSTREAM
+hit, l0, raw, hit, l1a, all, HARD, DOWNSTREAM
 
 hit, l1a, sci, hit, l1b, sci, HARD, DOWNSTREAM
 hit, l1a, hk, hit, l1b, hk, HARD, DOWNSTREAM
