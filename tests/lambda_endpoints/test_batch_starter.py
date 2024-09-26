@@ -1,6 +1,5 @@
 """Tests the batch starter."""
 
-import copy
 from datetime import datetime
 from unittest.mock import Mock, patch
 
@@ -10,7 +9,6 @@ from sqlalchemy.exc import IntegrityError
 
 from sds_data_manager.lambda_code.SDSCode import batch_starter
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
-    get_dependencies,
     get_downstream_dependencies,
     get_file,
     is_job_in_processing_table,
@@ -21,23 +19,8 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
     FileCatalog,
     ProcessingJob,
 )
-from sds_data_manager.lambda_code.SDSCode.dependency_config import (
-    all_dependents,
-    downstream_dependents,
-    upstream_dependents,
-)
 
 from .conftest import POSTGRES_AVAILABLE
-
-
-def _populate_dependency_table(session):
-    """Add test data to database."""
-    # We need to deepcopy these, otherwise there is an old
-    # reference hanging around that prevents the continual
-    # addition of these records to the database for each new
-    # test.
-    session.add_all(copy.deepcopy(all_dependents))
-    session.commit()
 
 
 def _populate_file_catalog(session):
@@ -138,127 +121,6 @@ def _populate_processing_table(session):
     session.commit()
 
 
-def test_reverse_direction():
-    """Test PreProcessingDependency reverse_direction method."""
-    # Test that they have the same length
-    assert len(downstream_dependents) == len(upstream_dependents)
-    # Check that first downstream dependent is the reverse of the
-    # first upstream dependent
-    first_reversed_dependent = upstream_dependents[0]
-    assert (
-        downstream_dependents[0].relationship == first_reversed_dependent.relationship
-    )
-    assert (
-        downstream_dependents[0].dependent_descriptor
-        == first_reversed_dependent.primary_descriptor
-    )
-    assert (
-        downstream_dependents[0].dependent_data_level
-        == first_reversed_dependent.primary_data_level
-    )
-    assert (
-        downstream_dependents[0].dependent_instrument
-        == first_reversed_dependent.primary_instrument
-    )
-    assert (
-        downstream_dependents[0].primary_descriptor
-        == first_reversed_dependent.dependent_descriptor
-    )
-    assert (
-        downstream_dependents[0].primary_data_level
-        == first_reversed_dependent.dependent_data_level
-    )
-    assert (
-        downstream_dependents[0].primary_instrument
-        == first_reversed_dependent.dependent_instrument
-    )
-
-    # Check that first downstream dependent is same as the reverse of the
-    # first upstream dependent
-    first_reversed_dependent = upstream_dependents[0].reverse_direction()
-    assert downstream_dependents[0].direction == first_reversed_dependent.direction
-    assert (
-        downstream_dependents[0].relationship == first_reversed_dependent.relationship
-    )
-    assert (
-        downstream_dependents[0].dependent_descriptor
-        == first_reversed_dependent.dependent_descriptor
-    )
-    assert (
-        downstream_dependents[0].dependent_data_level
-        == first_reversed_dependent.dependent_data_level
-    )
-    assert (
-        downstream_dependents[0].dependent_instrument
-        == first_reversed_dependent.dependent_instrument
-    )
-    assert (
-        downstream_dependents[0].primary_descriptor
-        == first_reversed_dependent.primary_descriptor
-    )
-    assert (
-        downstream_dependents[0].primary_data_level
-        == first_reversed_dependent.primary_data_level
-    )
-    assert (
-        downstream_dependents[0].primary_instrument
-        == first_reversed_dependent.primary_instrument
-    )
-
-
-def test_pre_processing_dependency(session):
-    """Test pre-processing dependency."""
-    _populate_dependency_table(session)
-    # upstream dependency
-    upstream_dependency = get_dependencies(
-        session=session,
-        instrument="mag",
-        data_level="l1a",
-        descriptor="all",
-        relationship="HARD",
-        direction="UPSTREAM",
-    )
-
-    assert upstream_dependency[0]["instrument"] == "mag"
-    assert upstream_dependency[0]["data_level"] == "l0"
-    assert upstream_dependency[0]["descriptor"] == "raw"
-
-    # downstream dependency
-    downstream_dependency = get_dependencies(
-        session=session,
-        instrument="mag",
-        data_level="l1b",
-        descriptor="norm-mago",
-        relationship="HARD",
-        direction="DOWNSTREAM",
-    )
-
-    assert downstream_dependency[0]["instrument"] == "mag"
-    assert downstream_dependency[0]["data_level"] == "l1c"
-    assert downstream_dependency[0]["descriptor"] == "norm-mago"
-
-
-def test_duplicate_dependencies(session):
-    """Tests the unique constraint in the dependency table."""
-    _populate_dependency_table(session)
-    _populate_dependency_table(session)
-
-    upstream_dependency = get_dependencies(
-        session=session,
-        instrument="mag",
-        data_level="l1a",
-        descriptor="all",
-        relationship="HARD",
-        direction="UPSTREAM",
-    )
-
-    assert upstream_dependency[0]["instrument"] == "mag"
-    assert upstream_dependency[0]["data_level"] == "l0"
-    assert upstream_dependency[0]["descriptor"] == "raw"
-
-    assert len(upstream_dependency) == 1
-
-
 def test_get_file(session):
     """Tests the get_file function."""
     _populate_file_catalog(session)
@@ -292,7 +154,6 @@ def test_get_file(session):
 
 def test_get_downstream_dependencies(session):
     "Tests get_downstream_dependencies function."
-    _populate_dependency_table(session)
     filename = "imap_hit_l1a_sci_20240101_v001.cdf"
     file_params = ScienceFilePath.extract_filename_components(filename)
 
@@ -313,7 +174,6 @@ def test_lambda_handler(
     session,
 ):
     """Tests ``lambda_handler`` function."""
-    _populate_dependency_table(session)
     _populate_file_catalog(session)
 
     events = {

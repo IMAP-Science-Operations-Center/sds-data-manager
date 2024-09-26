@@ -174,51 +174,6 @@ class FileCatalog(Base):
     ingestion_date = Column(DateTime(timezone=True))
 
 
-class PreProcessingDependency(Base):
-    """Preprocessing dependency table."""
-
-    __tablename__ = "preprocessing_dependency"
-    __table_args__ = (
-        UniqueConstraint(
-            "id",
-            "primary_instrument",
-            "primary_data_level",
-            "primary_descriptor",
-            "dependent_instrument",
-            "dependent_data_level",
-            "dependent_descriptor",
-            "relationship",
-            "direction",
-            name="preprocessing_dependency_uc",
-        ),
-    )
-
-    # TODO: improve this table after February demo
-    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
-    primary_instrument = Column(INSTRUMENTS, nullable=False)
-    primary_data_level = Column(DATA_LEVELS, nullable=False)
-    primary_descriptor = Column(String, nullable=False)
-    dependent_instrument = Column(INSTRUMENTS, nullable=False)
-    dependent_data_level = Column(DATA_LEVELS, nullable=False)
-    dependent_descriptor = Column(String, nullable=False)
-    relationship = Column(DEPENDENCY_RELATIONSHIPS, nullable=False)
-    direction = Column(DEPENDENCY_DIRECTIONS, nullable=False)
-
-    # This can not be used for inter-instrument dependencies.
-    def reverse_direction(self):
-        "PreProcessingDependency instance with reversed direction."
-        return PreProcessingDependency(
-            primary_instrument=self.dependent_instrument,
-            primary_data_level=self.dependent_data_level,
-            primary_descriptor=self.dependent_descriptor,
-            dependent_instrument=self.primary_instrument,
-            dependent_data_level=self.primary_data_level,
-            dependent_descriptor=self.primary_descriptor,
-            relationship=self.relationship,
-            direction="UPSTREAM" if self.direction == "DOWNSTREAM" else "DOWNSTREAM",
-        )
-
-
 class Version(Base):
     """Version table."""
 
