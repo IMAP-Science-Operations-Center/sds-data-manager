@@ -5,8 +5,9 @@ from boto3.dynamodb.conditions import Key
 
 
 @pytest.fixture()
-def populate_ingest_table(ingest_table):
+def populate_ingest_table(setup_dynamodb):
     """Populate DynamoDB table."""
+    ingest_table = setup_dynamodb["ingest_table"]
     items = [
         {
             "apid": 478,
@@ -28,8 +29,9 @@ def populate_ingest_table(ingest_table):
 
 
 @pytest.fixture()
-def populate_algorithm_table(algorithm_table):
+def populate_algorithm_table(setup_dynamodb):
     """Populate DynamoDB table."""
+    algorithm_table = setup_dynamodb["algorithm_table"]
     items = [
         {
             "instrument": "hit",
@@ -50,8 +52,9 @@ def populate_algorithm_table(algorithm_table):
     return items
 
 
-def test_ingest_query_by_met(ingest_table, populate_ingest_table):
+def test_ingest_query_by_met(setup_dynamodb, populate_ingest_table):
     """Test to query by met."""
+    ingest_table = setup_dynamodb["ingest_table"]
     expected_items = populate_ingest_table
 
     response = ingest_table.query(KeyConditionExpression=Key("apid").eq(478))
@@ -69,8 +72,9 @@ def test_ingest_query_by_met(ingest_table, populate_ingest_table):
     assert items[0]["met"] == expected_items[0]["met"]
 
 
-def test_ingest_query_by_date(ingest_table, populate_ingest_table):
+def test_ingest_query_by_date(setup_dynamodb, populate_ingest_table):
     """Test to query by date."""
+    ingest_table = setup_dynamodb["ingest_table"]
     expected_items = populate_ingest_table
 
     response = ingest_table.query(
@@ -83,8 +87,9 @@ def test_ingest_query_by_date(ingest_table, populate_ingest_table):
     assert items[0] == expected_items[0]
 
 
-def test_algorithm_query_by_met(algorithm_table, populate_algorithm_table):
+def test_algorithm_query_by_met(setup_dynamodb, populate_algorithm_table):
     """Test to query by met."""
+    algorithm_table = setup_dynamodb["algorithm_table"]
     expected_items = populate_algorithm_table
 
     response = algorithm_table.query(KeyConditionExpression=Key("instrument").eq("hit"))
@@ -103,8 +108,9 @@ def test_algorithm_query_by_met(algorithm_table, populate_algorithm_table):
     assert items[0]["met"] == expected_items[0]["met"]
 
 
-def test_algorithm_query_by_date(algorithm_table, populate_algorithm_table):
+def test_algorithm_query_by_date(setup_dynamodb, populate_algorithm_table):
     """Test to query by date."""
+    algorithm_table = setup_dynamodb["algorithm_table"]
     expected_items = populate_algorithm_table
 
     response = algorithm_table.query(
