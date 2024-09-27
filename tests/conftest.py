@@ -8,15 +8,15 @@ from moto import mock_dynamodb
 
 
 @pytest.fixture()
-def table():
+def ingest_table():
     """Initialize DynamoDB resource and create table."""
     os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
-    os.environ["TABLE_NAME"] = "imap-data-table"
+    os.environ["INGEST_TABLE"] = "imap-ingest-table"
 
     with mock_dynamodb():
         dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
         table = dynamodb.create_table(
-            TableName="imap-data-table",
+            TableName="imap-ingest-table",
             KeySchema=[
                 # Partition key
                 {"AttributeName": "apid", "KeyType": "HASH"},
@@ -35,6 +35,46 @@ def table():
                         {"AttributeName": "apid", "KeyType": "HASH"},
                         {
                             "AttributeName": "ingest_time",
+                            "KeyType": "RANGE",
+                        },
+                    ],
+                    "Projection": {"ProjectionType": "ALL"},
+                },
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        yield table
+        table.delete()
+
+
+@pytest.fixture()
+def algorithm_table():
+    """Initialize DynamoDB resource and create table."""
+    os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+    os.environ["ALGORITHM_TABLE"] = "imap-algorithm-table"
+
+    with mock_dynamodb():
+        dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
+        table = dynamodb.create_table(
+            TableName="imap-algorithm-table",
+            KeySchema=[
+                # Partition key
+                {"AttributeName": "instrument", "KeyType": "HASH"},
+                # Sort key
+                {"AttributeName": "met", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "instrument", "AttributeType": "S"},
+                {"AttributeName": "met", "AttributeType": "N"},
+                {"AttributeName": "insert_time", "AttributeType": "S"},
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    "IndexName": "insert_time",
+                    "KeySchema": [
+                        {"AttributeName": "instrument", "KeyType": "HASH"},
+                        {
+                            "AttributeName": "insert_time",
                             "KeyType": "RANGE",
                         },
                     ],
