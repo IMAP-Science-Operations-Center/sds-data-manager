@@ -6,7 +6,7 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import lambda_handler
 
 
 @pytest.fixture()
-def populate_table(ingest_table):
+def populate_table(db_table):
     """Populate DynamoDB table."""
     items = [
         {
@@ -23,19 +23,19 @@ def populate_table(ingest_table):
         },
     ]
     for item in items:
-        ingest_table.put_item(Item=item)
+        db_table.put_item(Item=item)
 
     return items
 
 
-def test_lambda_handler(ingest_table):
+def test_lambda_handler(db_table):
     """Test the lambda_handler function."""
     # Mock event data
     event = {"detail": {"object": {"key": "packets/file.txt"}}}
 
     lambda_handler(event, {})
 
-    response = ingest_table.get_item(
+    response = db_table.get_item(
         Key={
             "apid": 478,
             "met": 123,
