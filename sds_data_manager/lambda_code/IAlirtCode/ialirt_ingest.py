@@ -10,8 +10,6 @@ from boto3.dynamodb.conditions import Key
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-dynamodb = boto3.resource("dynamodb")
-
 
 def lambda_handler(event, context):
     """Create metadata and add it to the database.
@@ -34,8 +32,9 @@ def lambda_handler(event, context):
     logger.info("Received event: %s", json.dumps(event))
 
     ingest_table_name = os.environ.get("INGEST_TABLE")
-    ingest_table = dynamodb.Table(ingest_table_name)
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
+    dynamodb = boto3.resource("dynamodb")
+    ingest_table = dynamodb.Table(ingest_table_name)
     algorithm_table = dynamodb.Table(algorithm_table_name)
 
     s3_filepath = event["detail"]["object"]["key"]
