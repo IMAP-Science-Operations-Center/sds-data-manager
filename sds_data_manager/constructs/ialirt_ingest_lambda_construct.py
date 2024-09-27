@@ -41,26 +41,15 @@ class IalirtIngestLambda(Construct):
 
         # Create DynamoDB Table
         self.packet_data_table = self.create_ingest_dynamodb_table()
-
-        # Create Lambda Function
-        self.ialirt_ingest_lambda = self.create_ingest_lambda_function(
-            ialirt_bucket, self.packet_data_table
-        )
-
-        # Create Ingest Event Rule
-        self.create_ingest_event_rule(ialirt_bucket, self.ialirt_ingest_lambda)
-
         self.algorithm_data_table = self.create_algorithm_dynamodb_table()
 
         # Create Lambda Function
-        self.ialirt_algorithm_lambda = self.create_algorithm_lambda_function(
-            self.packet_data_table, self.algorithm_data_table
+        self.ialirt_ingest_lambda = self.create_lambda_function(
+            ialirt_bucket, self.packet_data_table, self.algorithm_data_table
         )
 
-        # Create Algorithm Event Rule
-        self.create_algorithm_event_rule(
-            self.ialirt_ingest_lambda, self.ialirt_algorithm_lambda
-        )
+        # Create Event Rule
+        self.create_event_rule(ialirt_bucket, self.ialirt_ingest_lambda)
 
     def create_ingest_dynamodb_table(self) -> aws_dynamodb.Table:
         """Create and return the DynamoDB table."""
@@ -146,8 +135,11 @@ class IalirtIngestLambda(Construct):
         )
         return table
 
-    def create_ingest_lambda_function(
-        self, ialirt_bucket: aws_s3.Bucket, packet_data_table: aws_dynamodb.Table
+    def create_lambda_function(
+        self,
+        ialirt_bucket: aws_s3.Bucket,
+        packet_data_table: aws_dynamodb.Table,
+        algorithm_data_table: aws_dynamodb.Table,
     ) -> lambda_alpha_.PythonFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -191,65 +183,20 @@ class IalirtIngestLambda(Construct):
             role=lambda_role,
             environment={
                 "INGEST_TABLE": packet_data_table.table_name,
+                "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
             },
         )
 
         packet_data_table.grant_read_write_data(ialirt_ingest_lambda)
+        algorithm_data_table.grant_read_write_data(ialirt_ingest_lambda)
 
         # The resource is deleted when the stack is deleted.
         ialirt_ingest_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
         return ialirt_ingest_lambda
 
-    def create_algorithm_lambda_function(
-        self,
-        packet_data_table: aws_dynamodb.Table,
-        algorithm_data_table: aws_dynamodb.Table,
-    ) -> lambda_alpha_.PythonFunction:
-        """Create and return the Lambda function."""
-        lambda_role = iam.Role(
-            self,
-            "IalirtAlgorithmLambdaRole",
-            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
-            managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "service-role/AWSLambdaBasicExecutionRole"
-                ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonDynamoDBFullAccess"
-                ),
-            ],
-        )
-
-        ialirt_algorithm_lambda = lambda_alpha_.PythonFunction(
-            self,
-            id="IalirtAlgorithmLambda",
-            function_name="ialirt-algorithm",
-            entry=str(
-                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
-            ),
-            index="IAlirtCode/ialirt_algorithm.py",
-            handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            timeout=cdk.Duration.minutes(1),
-            memory_size=1000,
-            role=lambda_role,
-            environment={
-                "INGEST_TABLE": packet_data_table.table_name,
-                "ALGORITHM_TABLE": algorithm_data_table.table_name,
-            },
-        )
-
-        packet_data_table.grant_read_write_data(ialirt_algorithm_lambda)
-        algorithm_data_table.grant_read_write_data(ialirt_algorithm_lambda)
-
-        # The resource is deleted when the stack is deleted.
-        ialirt_algorithm_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-
-        return ialirt_algorithm_lambda
-
-    def create_ingest_event_rule(
+    def create_event_rule(
         self,
         ialirt_bucket: aws_s3.Bucket,
         ialirt_ingest_lambda: lambda_alpha_.PythonFunction,
@@ -272,31 +219,4 @@ class IalirtIngestLambda(Construct):
         # Add the Lambda function as the target for the rules
         ialirt_data_arrival_rule.add_target(
             targets.LambdaFunction(ialirt_ingest_lambda)
-        )
-
-    def create_algorithm_event_rule(
-        self,
-        ialirt_ingest_lambda: lambda_alpha_.PythonFunction,
-        ialirt_algorithm_lambda: lambda_alpha_.PythonFunction,
-    ) -> None:
-        """Trigger algorithm lambda on completion of ingest lambda."""
-        ingest_completion_rule = events.Rule(
-            self,
-            "IalirtIngestCompletionRule",
-            rule_name="ialirt-ingest-completion",
-            event_pattern=events.EventPattern(
-                source=["aws.lambda"],
-                detail_type=["Lambda Function Invocation Result"],
-                detail={
-                    "eventSource": ["lambda.amazonaws.com"],
-                    "eventName": ["Invoke"],
-                    "requestParameters": {
-                        "functionName": [ialirt_ingest_lambda.function_name]
-                    },
-                    "responseElements": {"statusCode": [200]},
-                },
-            ),
-        )
-        ingest_completion_rule.add_target(
-            targets.LambdaFunction(ialirt_algorithm_lambda)
         )

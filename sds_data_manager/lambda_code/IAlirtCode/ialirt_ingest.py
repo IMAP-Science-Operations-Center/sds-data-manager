@@ -5,6 +5,7 @@ import logging
 import os
 
 import boto3
+from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -29,16 +30,21 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
+    # TODO: these steps will be put into different functions.
     logger.info("Received event: %s", json.dumps(event))
 
-    table_name = os.environ.get("INGEST_TABLE")
-    table = dynamodb.Table(table_name)
+    ingest_table_name = os.environ.get("INGEST_TABLE")
+    ingest_table = dynamodb.Table(ingest_table_name)
+    algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
+    algorithm_table = dynamodb.Table(algorithm_table_name)
 
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
 
-    # TODO: item is temporary and will be replaced with actual packet data.
+    # TODO: Each of these steps in temporary, but provides an idea
+    #  of how the lambda will be used.
+    # 1. Ingest Data to Ingest Table.
     item = {
         "apid": 478,
         "met": 123,
@@ -46,5 +52,20 @@ def lambda_handler(event, context):
         "packet_blob": b"binary_data_string",
     }
 
-    table.put_item(Item=item)
+    ingest_table.put_item(Item=item)
+    logger.info("Successfully wrote item to DynamoDB: %s", item)
+
+    # 2. Query Ingest Table for previous times as required by instrument.
+    response = ingest_table.query(KeyConditionExpression=Key("apid").eq(478))
+    items = response["Items"]
+    logger.info("Scan successful. Retrieved items: %s", items)
+
+    # 3. After processing insert data into Algorithm Table.
+    item = {
+        "instrument": "hit",
+        "met": 123,
+        "insert_time": "2021-01-01T00:00:00Z",
+        "data_product_1": str(1234.56),
+    }
+    algorithm_table.put_item(Item=item)
     logger.info("Successfully wrote item to DynamoDB: %s", item)
