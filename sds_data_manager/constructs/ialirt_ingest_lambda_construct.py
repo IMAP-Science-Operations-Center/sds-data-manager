@@ -104,9 +104,9 @@ class IalirtIngestLambda(Construct):
             # Restore data to any point in time within the last 35 days.
             # TODO: change to True in production.
             point_in_time_recovery=False,
-            # Partition key (PK) = instrument.
+            # Partition key (PK) = instrument product_name.
             partition_key=ddb.Attribute(
-                name="instrument",
+                name="product_name",
                 type=ddb.AttributeType.STRING,
             ),
             # Sort key (SK) = Mission Elapsed Time (MET).
@@ -122,9 +122,9 @@ class IalirtIngestLambda(Construct):
         # Add a GSI for ingest time.
         table.add_global_secondary_index(
             index_name="insert_time",
-            # Partition key (PK) = instrument.
+            # Partition key (PK) = instrument product_name.
             partition_key=ddb.Attribute(
-                name="instrument", type=ddb.AttributeType.STRING
+                name="product_name", type=ddb.AttributeType.STRING
             ),
             # Sort key (SK) = Insert Time (ISO).
             sort_key=ddb.Attribute(

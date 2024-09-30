@@ -34,13 +34,13 @@ def populate_algorithm_table(setup_dynamodb):
     algorithm_table = setup_dynamodb["algorithm_table"]
     items = [
         {
-            "instrument": "hit",
+            "product_name": "hit_product_1",
             "met": 123,
             "insert_time": "2021-01-01T00:00:00Z",
             "data_product_1": str(1234.56),
         },
         {
-            "instrument": "hit",
+            "product_name": "hit_product_1",
             "met": 124,
             "insert_time": "2021-02-01T00:00:00Z",
             "data_product_2": str(101.3),
@@ -92,7 +92,9 @@ def test_algorithm_query_by_met(setup_dynamodb, populate_algorithm_table):
     algorithm_table = setup_dynamodb["algorithm_table"]
     expected_items = populate_algorithm_table
 
-    response = algorithm_table.query(KeyConditionExpression=Key("instrument").eq("hit"))
+    response = algorithm_table.query(
+        KeyConditionExpression=Key("product_name").eq("hit_product_1")
+    )
 
     items = response["Items"]
 
@@ -100,7 +102,7 @@ def test_algorithm_query_by_met(setup_dynamodb, populate_algorithm_table):
         assert items[item] == expected_items[item]
 
     response = algorithm_table.query(
-        KeyConditionExpression=Key("instrument").eq("hit")
+        KeyConditionExpression=Key("product_name").eq("hit_product_1")
         & Key("met").between(100, 123)
     )
     items = response["Items"]
@@ -115,7 +117,7 @@ def test_algorithm_query_by_date(setup_dynamodb, populate_algorithm_table):
 
     response = algorithm_table.query(
         IndexName="insert_time",
-        KeyConditionExpression=Key("instrument").eq("hit")
+        KeyConditionExpression=Key("product_name").eq("hit_product_1")
         & Key("insert_time").begins_with("2021-01"),
     )
     items = response["Items"]

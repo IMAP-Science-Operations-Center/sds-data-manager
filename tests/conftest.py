@@ -48,12 +48,12 @@ def setup_dynamodb():
             TableName=os.environ["ALGORITHM_TABLE"],
             KeySchema=[
                 # Partition key
-                {"AttributeName": "instrument", "KeyType": "HASH"},
+                {"AttributeName": "product_name", "KeyType": "HASH"},
                 # Sort key
                 {"AttributeName": "met", "KeyType": "RANGE"},
             ],
             AttributeDefinitions=[
-                {"AttributeName": "instrument", "AttributeType": "S"},
+                {"AttributeName": "product_name", "AttributeType": "S"},
                 {"AttributeName": "met", "AttributeType": "N"},
                 {"AttributeName": "insert_time", "AttributeType": "S"},
             ],
@@ -61,7 +61,7 @@ def setup_dynamodb():
                 {
                     "IndexName": "insert_time",  # Unique index name
                     "KeySchema": [
-                        {"AttributeName": "instrument", "KeyType": "HASH"},
+                        {"AttributeName": "product_name", "KeyType": "HASH"},
                         {"AttributeName": "insert_time", "KeyType": "RANGE"},
                     ],
                     "Projection": {"ProjectionType": "ALL"},

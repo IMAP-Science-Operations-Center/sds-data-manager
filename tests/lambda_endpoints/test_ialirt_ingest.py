@@ -54,7 +54,7 @@ def test_lambda_handler(setup_dynamodb):
 
     response = algorithm_table.get_item(
         Key={
-            "instrument": "hit",
+            "product_name": "hit_product_1",
             "met": 123,
         }
     )
