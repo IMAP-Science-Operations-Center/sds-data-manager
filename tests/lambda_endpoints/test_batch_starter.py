@@ -238,6 +238,27 @@ def test_pre_processing_dependency(session):
     assert downstream_dependency[0]["descriptor"] == "norm-mago"
 
 
+def test_duplicate_dependencies(session):
+    """Tests the unique constraint in the dependency table."""
+    _populate_dependency_table(session)
+    _populate_dependency_table(session)
+
+    upstream_dependency = get_dependencies(
+        session=session,
+        instrument="mag",
+        data_level="l1a",
+        descriptor="all",
+        relationship="HARD",
+        direction="UPSTREAM",
+    )
+
+    assert upstream_dependency[0]["instrument"] == "mag"
+    assert upstream_dependency[0]["data_level"] == "l0"
+    assert upstream_dependency[0]["descriptor"] == "raw"
+
+    assert len(upstream_dependency) == 1
+
+
 def test_get_file(session):
     """Tests the get_file function."""
     _populate_file_catalog(session)

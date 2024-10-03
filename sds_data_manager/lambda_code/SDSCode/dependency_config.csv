@@ -115,8 +115,8 @@ swapi, l2, sci, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 # <---- SWE Dependencies ---->
 
 swe, l0, raw, swe, l1a, sci, HARD, DOWNSTREAM
-
 swe, l1a, sci, swe, l1b, sci, HARD, DOWNSTREAM
+swe, l1b, sci, swe, l2, sci, HARD, DOWNSTREAM
 
 # <---- ULTRA Dependencies ---->
 

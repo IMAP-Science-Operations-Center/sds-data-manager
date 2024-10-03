@@ -169,6 +169,12 @@ def build_sds(
         code=lambda_code,
         layers=[db_lambda_layer],
     )
+    rds_construct.add_synchronizer(
+        code=lambda_code,
+        layers=[db_lambda_layer],
+        bucket_name=data_bucket.data_bucket.bucket_name,
+        vpc=networking.vpc,
+    )
 
     indexer_lambda_construct.IndexerLambda(
         scope=sdc_stack,

@@ -214,7 +214,7 @@ class EFSWriteLambda(Construct):
                     "bucket": {"name": [data_bucket.bucket_name]},
                     "object": {
                         "key": [
-                            {"prefix": "imap/spice/imap"},
+                            {"prefix": "spice/"},
                             {"suffix": "ah.a"},
                             {"suffix": ".bsp"},
                         ]

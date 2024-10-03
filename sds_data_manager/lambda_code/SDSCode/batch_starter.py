@@ -58,13 +58,13 @@ def get_dependencies(
     results = session.execute(query).all()
 
     for result in results:
-        dependencies.append(
-            {
-                "instrument": result.dependent_instrument,
-                "data_level": result.dependent_data_level,
-                "descriptor": result.dependent_descriptor,
-            }
-        )
+        dep = {
+            "instrument": result.dependent_instrument,
+            "data_level": result.dependent_data_level,
+            "descriptor": result.dependent_descriptor,
+        }
+        if dep not in dependencies:
+            dependencies.append(dep)
     return dependencies
 
 
