@@ -9,6 +9,7 @@ from imap_data_access import ScienceFilePath
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from . import dependency_config
 from .database import database as db
 from .database import models
 
@@ -20,24 +21,20 @@ logger.setLevel(logging.INFO)
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 
 
-def get_dependencies(
-    session, instrument, data_level, descriptor, direction, relationship
-):
-    """Make a query to the dependency table to get all dependencies.
+def get_dependencies(node, direction, relationship):
+    """Lookup the dependencies for the given ``node``.
+
+    A ``node`` is an identifier of the data product, which can be an
+    (instrument, data_level, descriptor) tuple, SPICE file identifiers,
+    or ancillary data file identifiers.
 
     Parameters
     ----------
-    session : orm session
-        Database session.
-    instrument : str
-        Primary instrument that we are looking for its dependency.
-    data_level : str
-        Primary data level.
-    descriptor : str
-        Primary data descriptor.
-    direction: str
+    node : tuple
+        Quantities that uniquely identify a data product.
+    direction : str
         Whether it's UPSTREAM or DOWNSTREAM dependency.
-    relationship: str
+    relationship : str
         Whether it's HARD or SOFT dependency.
         HARD means it's required and SOFT means it's nice to have.
 
@@ -46,25 +43,13 @@ def get_dependencies(
     dependencies : list
         List of dictionary containing the dependency information.
     """
-    dependencies = []
+    dependencies = dependency_config.DEPENDENCIES[relationship][direction].get(node, [])
+    # Add keys for a dict-like representation
+    dependencies = [
+        {"instrument": dep[0], "data_level": dep[1], "descriptor": dep[2]}
+        for dep in dependencies
+    ]
 
-    query = select(models.PreProcessingDependency.__table__).where(
-        models.PreProcessingDependency.primary_instrument == instrument,
-        models.PreProcessingDependency.primary_data_level == data_level,
-        models.PreProcessingDependency.primary_descriptor == descriptor,
-        models.PreProcessingDependency.direction == direction,
-        models.PreProcessingDependency.relationship == relationship,
-    )
-    results = session.execute(query).all()
-
-    for result in results:
-        dep = {
-            "instrument": result.dependent_instrument,
-            "data_level": result.dependent_data_level,
-            "descriptor": result.dependent_descriptor,
-        }
-        if dep not in dependencies:
-            dependencies.append(dep)
     return dependencies
 
 
@@ -131,10 +116,11 @@ def get_downstream_dependencies(session, filename_components):
     """
     # Get downstream dependency data
     downstream_dependents = get_dependencies(
-        session=session,
-        instrument=filename_components["instrument"],
-        data_level=filename_components["data_level"],
-        descriptor=filename_components["descriptor"],
+        node=(
+            filename_components["instrument"],
+            filename_components["data_level"],
+            filename_components["descriptor"],
+        ),
         direction="DOWNSTREAM",
         relationship="HARD",
     )
@@ -244,10 +230,7 @@ def try_to_submit_job(session, job_info):
 
     # Find the files that this job depends on
     upstream_dependencies = get_dependencies(
-        session=session,
-        instrument=instrument,
-        data_level=data_level,
-        descriptor=descriptor,
+        node=(instrument, data_level, descriptor),
         direction="UPSTREAM",
         relationship="HARD",
     )

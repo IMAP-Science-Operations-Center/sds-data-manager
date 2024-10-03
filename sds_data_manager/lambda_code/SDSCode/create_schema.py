@@ -8,7 +8,6 @@ import logging
 
 from SDSCode.database import database as db
 from SDSCode.database.models import Base
-from SDSCode.dependency_config import all_dependents
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -28,7 +27,3 @@ def lambda_handler(event, context):
 
     # Create tables
     Base.metadata.create_all(db.get_engine())
-
-    with db.Session() as session:
-        session.add_all(all_dependents)
-        session.commit()
