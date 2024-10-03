@@ -56,7 +56,7 @@ def lambda_handler(event, context):
     # Fetch database entries
     with db.Session() as session:
         with session.begin():
-            query = select(models.FileCatalog.file_path)
+            query = select(models.ScienceFiles.file_path)
             search_results = session.execute(query).all()
 
         # result is a one-element tuple, so we need to extract the filepath
@@ -93,12 +93,12 @@ def lambda_handler(event, context):
 
             file_params["file_path"] = filename
             file_params["ingestion_date"] = s3_files_dict[filename]
-            records_to_add.append(models.FileCatalog(**file_params))
+            records_to_add.append(models.ScienceFiles(**file_params))
         session.add_all(records_to_add)
 
         # Remove database entries for files that were deleted from s3
-        delete_statement = delete(models.FileCatalog).where(
-            models.FileCatalog.file_path.in_(db_only_files)
+        delete_statement = delete(models.ScienceFiles).where(
+            models.ScienceFiles.file_path.in_(db_only_files)
         )
 
         session.execute(delete_statement)

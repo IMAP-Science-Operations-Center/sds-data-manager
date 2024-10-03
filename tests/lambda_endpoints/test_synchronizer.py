@@ -8,7 +8,7 @@ from sds_data_manager.lambda_code.SDSCode.database import models, synchronizer
 def cleanup_bucket(s3_client):
     """Remove all objects from the test bucket."""
     items = s3_client.list_objects_v2(Bucket="test-data-bucket")
-    for item in items["Contents"]:
+    for item in items.get("Contents", []):
         s3_client.delete_object(Bucket="test-data-bucket", Key=item["Key"])
 
 
@@ -20,13 +20,13 @@ def test_synchronizer_extra_s3(session, s3_client):
     s3_client.put_object(Bucket="test-data-bucket", Key=filepath, Body=b"")
 
     with session.begin():
-        nfiles = session.query(models.FileCatalog).count()
+        nfiles = session.query(models.ScienceFiles).count()
     assert nfiles == 0
 
     synchronizer.lambda_handler(event={}, context={})
 
     with session.begin():
-        files = session.query(models.FileCatalog).all()
+        files = session.query(models.ScienceFiles).all()
     assert len(files) == 1
 
     item = files[0]
@@ -58,14 +58,14 @@ def test_synchronizer_extra_db(session, s3_client):
 
     # # Add data to the file catalog and return the session
     with session.begin():
-        session.add(models.FileCatalog(**metadata_params))
+        session.add(models.ScienceFiles(**metadata_params))
 
     with session.begin():
-        nfiles = session.query(models.FileCatalog).count()
+        nfiles = session.query(models.ScienceFiles).count()
     assert nfiles == 1
 
     synchronizer.lambda_handler(event={}, context={})
 
     with session.begin():
-        nfiles = session.query(models.FileCatalog).count()
+        nfiles = session.query(models.ScienceFiles).count()
     assert nfiles == 0
