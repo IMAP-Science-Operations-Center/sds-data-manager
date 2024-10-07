@@ -11,7 +11,7 @@ from sds_data_manager.constructs.networking_construct import NetworkingConstruct
 from sds_data_manager.constructs.sds_api_manager_construct import SdsApiManager
 
 
-@pytest.fixture()
+@pytest.fixture
 def template(stack, env):
     """Return the data bucket stack."""
     data_bucket = DataBucketConstruct(stack, "indexer-data-bucket", env=env)
