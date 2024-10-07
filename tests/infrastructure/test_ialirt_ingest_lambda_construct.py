@@ -4,7 +4,7 @@ import pytest
 from boto3.dynamodb.conditions import Key
 
 
-@pytest.fixture()
+@pytest.fixture
 def populate_table(table):
     """Populate DynamoDB table."""
     items = [

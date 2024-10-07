@@ -52,7 +52,7 @@ def s3_client():
         yield s3_client
 
 
-@pytest.fixture()
+@pytest.fixture
 def events_client():
     """Mock EventBridge client."""
     with mock_events():
@@ -66,13 +66,13 @@ POSTGRES_AVAILABLE = (
 
 if POSTGRES_AVAILABLE:
 
-    @pytest.fixture()
+    @pytest.fixture
     def connection(postgresql):
         """Use a postgres connection string."""
         return f"postgresql+psycopg://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
 else:
 
-    @pytest.fixture()
+    @pytest.fixture
     def connection():
         """Fallback to sqlite in memory database."""
         return "sqlite:///:memory:"
@@ -80,7 +80,7 @@ else:
 
 # NOTE: The default scope is function, so each test function will
 #       get a new database session and start fresh each time.
-@pytest.fixture()
+@pytest.fixture
 def session(connection):
     """Create a test postgres database engine."""
     with patch.object(db, "Session") as mock_session:

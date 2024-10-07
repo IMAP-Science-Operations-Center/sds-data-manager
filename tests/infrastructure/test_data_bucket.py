@@ -6,7 +6,7 @@ from aws_cdk.assertions import Match, Template
 from sds_data_manager.constructs.data_bucket_construct import DataBucketConstruct
 
 
-@pytest.fixture()
+@pytest.fixture
 def template(stack, env):
     """Return a template for the data bucket stack."""
     DataBucketConstruct(stack, "data-bucket", env=env)

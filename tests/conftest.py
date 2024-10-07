@@ -7,7 +7,7 @@ import pytest
 from moto import mock_dynamodb
 
 
-@pytest.fixture()
+@pytest.fixture
 def table():
     """Initialize DynamoDB resource and create table."""
     os.environ["AWS_DEFAULT_REGION"] = "us-west-2"

@@ -31,7 +31,7 @@ def _populate_test_data(session):
     session.commit()
 
 
-@pytest.fixture()
+@pytest.fixture
 def expected_response():
     """Return the expected response."""
     expected_response = json.dumps(
