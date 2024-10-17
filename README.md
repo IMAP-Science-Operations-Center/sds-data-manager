@@ -35,7 +35,7 @@ If you're running locally, you can install the Python requirements with Poetry.
 To setup versioning
 
 ```
-poetry self add "poetry-dynamic-versioning[plugin]"
+poetry self add poetry-dynamic-versioning
 ```
 
 To install without the extras
