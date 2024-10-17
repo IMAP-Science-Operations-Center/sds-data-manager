@@ -30,7 +30,15 @@ To start a new development environment, click the button for "Code" in the upper
 If you are running locally, you will need to install [cdk](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and [poetry](https://python-poetry.org/docs/#installation).
 
 ### Poetry set up
-If you're running locally, you can install the Python requirements with Poetry:
+If you're running locally, you can install the Python requirements with Poetry.
+
+To setup versioning
+
+```
+poetry self add "poetry-dynamic-versioning[plugin]"
+```
+
+To install without the extras
 
 ```
 poetry install
