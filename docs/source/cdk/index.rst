@@ -8,3 +8,4 @@ CDK Development
     cdk-deployment-personal-aws
     backup-deploy
     s3-replication
+    ialirt-setup
