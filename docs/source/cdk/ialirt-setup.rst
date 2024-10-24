@@ -42,9 +42,13 @@ Nexus Repo
     docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y
 #. Images may be viewed on the Nexus website: https://artifacts.pdmz.lasp.colorado.edu
 
+CDK Deployment
+~~~~~~~~~~~~~
+:ref:`cdk-deployment`
+
 ECS Recognition of a New Image
 ~~~~~~~~~~~~~
-#. To have ECS recognize a new image the cdk must be redeployed::
+To have ECS recognize a new image the cdk must be redeployed::
 
-    aws ecs update-service --cluster <cluster name> --service <service name> --force-new-deployment --image lasp-registry.colorado.edu/ialirt/ialirt:<highest-version>
+    aws ecs update-service --cluster <cluster name> --service <service name> --force-new-deployment
 
