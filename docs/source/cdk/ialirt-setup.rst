@@ -19,6 +19,8 @@ For development we will keep the major changes at 0.
 
 Nexus Repo
 ~~~~~~~~~
+We will have a versioned image and latest image in the Nexus repo. The versioned image will be tagged with the version number (e.g., 1.0) and the latest image will be the same as the most recent version. The reason that we do this is to ease the ability to switch out images in ECS.
+
 #. Check that you are not already logged in by running::
 
     cat ~/.docker/config.json
@@ -36,11 +38,17 @@ Nexus Repo
 #. Tag with the Nexus registry URL::
 
     docker tag ialirt:X.Y docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y
+    docker tag ialirt:X.Y docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
 
 #. Push the image::
 
     docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y
+    docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
 #. Images may be viewed on the Nexus website: https://artifacts.pdmz.lasp.colorado.edu
+#. To verify that the latest image and the most recent version image are the same, run the following and compare the image IDs::
+
+    docker inspect --format='{{.Id}}' docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y
+    docker inspect --format='{{.Id}}' docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
 
 CDK Deployment
 ~~~~~~~~~~~~~
@@ -50,5 +58,5 @@ ECS Recognition of a New Image
 ~~~~~~~~~~~~~
 To have ECS recognize a new image the cdk must be redeployed::
 
-    aws ecs update-service --cluster <cluster name> --service <service name> --force-new-deployment
+    aws ecs update-service --cluster <cluster name> --service <service name> --force-new-deployment --deployment-configuration maximumPercent=200,minimumHealthyPercent=0
 
