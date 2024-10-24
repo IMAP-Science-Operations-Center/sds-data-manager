@@ -44,4 +44,7 @@ Nexus Repo
 
 ECS Recognition of a New Image
 ~~~~~~~~~~~~~
-To have ECS recognize a new image the cdk must be redeployed.
+#. To have ECS recognize a new image the cdk must be redeployed::
+
+    aws ecs update-service --cluster <cluster name> --service <service name> --force-new-deployment --image lasp-registry.colorado.edu/ialirt/ialirt:<highest-version>
+
