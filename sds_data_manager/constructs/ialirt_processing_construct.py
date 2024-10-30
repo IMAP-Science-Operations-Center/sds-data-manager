@@ -270,6 +270,8 @@ class IalirtProcessing(Construct):
             self,
             f"AsgCapacityProvider{processing_name}",
             auto_scaling_group=auto_scaling_group,
+            enable_managed_termination_protection=False,
+            enable_managed_scaling=False,
         )
 
         self.ecs_cluster.add_asg_capacity_provider(capacity_provider)
