@@ -40,14 +40,22 @@ def lambda_handler(event, context):
         corresponding status code in case of failure.
 
     """
-    # https://api.dev.imap-mission.com/query?start=YYYYDOYHHMMSS&end=YYYYDOYHHMMSS
     query_params = event.get("queryStringParameters", {})
 
     start_str = query_params.get("start")
     end_str = query_params.get("end")
 
-    start_time = datetime.strptime(start_str, "%Y%j%H%M%S")
-    end_time = datetime.strptime(end_str, "%Y%j%H%M%S")
+    try:
+        start_time = datetime.strptime(start_str, "%Y%j%H%M%S")
+        end_time = datetime.strptime(end_str, "%Y%j%H%M%S")
+    except ValueError:
+        return {
+            "statusCode": 400,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(
+                {"error": "Invalid date format. Expected format: YYYYDOYHHMMSS"}
+            ),
+        }
     prefix = start_time.strftime("logs/%Y/%j/")
 
     bucket = os.getenv("S3_BUCKET")
