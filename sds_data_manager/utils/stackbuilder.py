@@ -16,6 +16,7 @@ from sds_data_manager.constructs import (
     data_bucket_construct,
     database_construct,
     efs_construct,
+    ialirt_api_manager_construct,
     ialirt_bucket_construct,
     ialirt_ingest_lambda_construct,
     ialirt_processing_construct,
@@ -262,6 +263,17 @@ def build_sds(
     # I-ALiRT IOIS S3 bucket
     ialirt_bucket = ialirt_bucket_construct.IAlirtBucketConstruct(
         scope=ialirt_stack, construct_id="IAlirtBucket", env=env
+    )
+
+    ialirt_api_manager_construct.IalirtApiManager(
+        scope=sdc_stack,
+        construct_id="IAlirtApiManager",
+        code=lambda_code,
+        api=api,
+        env=env,
+        data_bucket=ialirt_bucket.ialirt_bucket,
+        vpc=networking.vpc,
+        layers=[db_lambda_layer],
     )
 
     # All traffic to I-ALiRT is directed to listed container ports
