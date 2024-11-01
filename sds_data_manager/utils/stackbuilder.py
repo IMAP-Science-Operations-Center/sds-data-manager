@@ -266,7 +266,7 @@ def build_sds(
     )
 
     ialirt_api_manager_construct.IalirtApiManager(
-        scope=sdc_stack,
+        scope=ialirt_stack,
         construct_id="IAlirtApiManager",
         code=lambda_code,
         api=api,
