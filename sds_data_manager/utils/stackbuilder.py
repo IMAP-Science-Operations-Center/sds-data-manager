@@ -262,7 +262,7 @@ def build_sds(
 
     # I-ALiRT IOIS S3 bucket
     ialirt_bucket = ialirt_bucket_construct.IAlirtBucketConstruct(
-        scope=ialirt_stack, construct_id="IAlirtBucket", env=env
+        scope=ialirt_stack, construct_id="IAlirtBucket"
     )
 
     ialirt_api_manager_construct.IalirtApiManager(

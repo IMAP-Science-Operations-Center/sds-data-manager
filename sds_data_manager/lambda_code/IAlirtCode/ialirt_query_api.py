@@ -48,7 +48,7 @@ def lambda_handler(event, context):
 
     start_time = datetime.strptime(start_str, "%Y%j%H%M%S")
     end_time = datetime.strptime(end_str, "%Y%j%H%M%S")
-    prefix = start_time.strftime("%Y/%j/")
+    prefix = start_time.strftime("logs/%Y/%j/")
 
     bucket = os.getenv("S3_BUCKET")
     region = os.getenv("REGION")

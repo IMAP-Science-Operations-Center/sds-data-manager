@@ -1,4 +1,4 @@
-"""Configure the SDS API Manager."""
+"""Configure the I-ALiRT API Manager."""
 
 import aws_cdk as cdk
 from aws_cdk import aws_iam as iam
@@ -62,7 +62,7 @@ class IalirtApiManager(Construct):
             id="QueryAPILambda",
             function_name="query-api-handler",
             code=code,
-            handler="SDSCode.query_api.lambda_handler",
+            handler="IAlirtCode.ialirt_query_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
