@@ -268,12 +268,11 @@ def build_sds(
     ialirt_api_manager_construct.IalirtApiManager(
         scope=ialirt_stack,
         construct_id="IAlirtApiManager",
-        code=lambda_code,
+        code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
         api=api,
         env=env,
         data_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
-        layers=[db_lambda_layer],
     )
 
     # All traffic to I-ALiRT is directed to listed container ports

@@ -20,7 +20,6 @@ class IalirtApiManager(Construct):
         env: cdk.Environment,
         data_bucket,
         vpc,
-        layers: list,
         **kwargs,
     ) -> None:
         """Initialize the SdsApiManagerConstruct.
@@ -59,7 +58,7 @@ class IalirtApiManager(Construct):
         # query API lambda
         query_api_lambda = lambda_.Function(
             self,
-            id="QueryAPILambda",
+            id="IAlirtCodeQueryAPILambda",
             function_name="query-api-handler",
             code=code,
             handler="IAlirtCode.ialirt_query_api.lambda_handler",
@@ -72,12 +71,12 @@ class IalirtApiManager(Construct):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "REGION": env.region,
             },
-            layers=layers,
+            #layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 
         api.add_route(
-            route="query",
+            route="ialirt-log-query",
             http_method="GET",
             lambda_function=query_api_lambda,
         )
@@ -85,7 +84,7 @@ class IalirtApiManager(Construct):
         # download API lambda
         download_api = lambda_.Function(
             self,
-            id="DownloadAPILambda",
+            id="IAlirtCodeDownloadAPILambda",
             function_name="download-api-handler",
             code=code,
             handler="SDSCode.download_api.lambda_handler",
@@ -95,14 +94,14 @@ class IalirtApiManager(Construct):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "REGION": env.region,
             },
-            layers=layers,
+            #layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 
         download_api.add_to_role_policy(s3_read_policy)
 
         api.add_route(
-            route="download",
+            route="ialirt-log-download",
             http_method="GET",
             lambda_function=download_api,
             use_path_params=True,
