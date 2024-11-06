@@ -265,18 +265,16 @@ def build_sds(
     )
 
     # All traffic to I-ALiRT is directed to listed container ports
-    ialirt_ports = {"Primary": [8080, 8081], "Secondary": [80]}
-    container_ports = {"Primary": 8080, "Secondary": 80}
+    ports = {"Primary": [80, 8080]}  # , "Secondary": [80]}
     ialirt_secret_name = "nexus-credentials"  # noqa
 
-    for primary_or_secondary in ialirt_ports:
+    for primary_or_secondary in ports:
         ialirt_processing_construct.IalirtProcessing(
             scope=ialirt_stack,
             construct_id=f"IalirtProcessing{primary_or_secondary}",
             vpc=networking.vpc,
             processing_name=primary_or_secondary,
-            ialirt_ports=ialirt_ports[primary_or_secondary],
-            container_port=container_ports[primary_or_secondary],
+            ports=ports[primary_or_secondary],
             ialirt_bucket=ialirt_bucket.ialirt_bucket,
             secret_name=ialirt_secret_name,
         )

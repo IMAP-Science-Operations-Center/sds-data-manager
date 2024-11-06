@@ -7,7 +7,7 @@ https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbou
 https://aws.amazon.com/elasticloadbalancing/features/#Product_comparisons
 """
 
-from aws_cdk import CfnOutput, RemovalPolicy
+from aws_cdk import CfnOutput, Duration, RemovalPolicy
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecs as ecs
@@ -27,8 +27,7 @@ class IalirtProcessing(Construct):
         construct_id: str,
         vpc: ec2.Vpc,
         processing_name: str,
-        ialirt_ports: list[int],
-        container_port: int,
+        ports: list[int],
         ialirt_bucket: s3.Bucket,
         secret_name: str,
         **kwargs,
@@ -45,10 +44,8 @@ class IalirtProcessing(Construct):
             VPC into which to put the resources that require networking.
         processing_name : str
             Name of the processing stack.
-        ialirt_ports : list[int]
-            List of ports to listen on for incoming traffic.
-        container_port : int
-            Port to be used by the container.
+        ports : list[int]
+            List of ports to listen on for incoming traffic and used by container.
         ialirt_bucket: s3.Bucket
             S3 bucket
         secret_name : str,
@@ -59,8 +56,7 @@ class IalirtProcessing(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
-        self.ports = ialirt_ports
-        self.container_port = container_port
+        self.ports = ports
         self.vpc = vpc
         self.s3_bucket_name = ialirt_bucket.bucket_name
         self.secret_name = secret_name
@@ -89,14 +85,14 @@ class IalirtProcessing(Construct):
         )
 
         # Only allow traffic from the NLB security group
-        self.ecs_security_group.add_ingress_rule(
-            peer=ec2.Peer.security_group_id(
-                self.load_balancer_security_group.security_group_id
-            ),
-            connection=ec2.Port.tcp(self.container_port),
-            description=f"Allow inbound traffic from the NLB on "
-            f"TCP port {self.container_port}",
-        )
+        for port in self.ports:
+            self.ecs_security_group.add_ingress_rule(
+                peer=ec2.Peer.security_group_id(
+                    self.load_balancer_security_group.security_group_id
+                ),
+                connection=ec2.Port.tcp(port),
+                description=f"Allow inbound traffic from the NLB on TCP port {port}",
+            )
 
     def create_load_balancer_security_group(self, processing_name):
         """Create and return a security group for load balancers."""
@@ -207,8 +203,8 @@ class IalirtProcessing(Construct):
             # Allowable values:
             # https://docs.aws.amazon.com/cdk/api/v2/docs/
             # aws-cdk-lib.aws_ecs.TaskDefinition.html#cpu
-            memory_limit_mib=512,
-            cpu=256,
+            memory_limit_mib=1024,
+            cpu=512,
             logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirt{processing_name}"),
             environment={"S3_BUCKET": self.s3_bucket_name},
             # Ensure the ECS task is running in privileged mode,
@@ -216,15 +212,15 @@ class IalirtProcessing(Construct):
             privileged=True,
         )
 
-        # Map ports to container
-        # NLB needs to know which port on the EC2 instances
-        # it should forward the traffic to
-        port_mapping = ecs.PortMapping(
-            container_port=self.container_port,
-            host_port=self.container_port,
-            protocol=ecs.Protocol.TCP,
-        )
-        container.add_port_mappings(port_mapping)
+        # Maps the port on the ECS host
+        # corresponding container_port.
+        for port in self.ports:
+            port_mapping = ecs.PortMapping(
+                container_port=port,
+                host_port=port,
+                protocol=ecs.Protocol.TCP,
+            )
+            container.add_port_mappings(port_mapping)
 
         # ECS Service is a configuration that
         # ensures application can run and maintain
@@ -239,6 +235,7 @@ class IalirtProcessing(Construct):
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
             ),
+            health_check_grace_period=Duration.seconds(300),
         )
 
     def add_autoscaling(self, processing_name):
@@ -250,7 +247,7 @@ class IalirtProcessing(Construct):
             self,
             f"AutoScalingGroup{processing_name}",
             instance_type=ec2.InstanceType.of(
-                ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.MICRO
+                ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL
             ),
             machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
             vpc=self.vpc,
@@ -258,6 +255,13 @@ class IalirtProcessing(Construct):
         )
 
         auto_scaling_group.apply_removal_policy(RemovalPolicy.DESTROY)
+
+        # Attach the AmazonSSMManagedInstanceCore policy for SSM access
+        auto_scaling_group.role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name(
+                "AmazonSSMManagedInstanceCore"
+            )
+        )
 
         # integrates ECS with EC2 Auto Scaling Groups
         # to manage the scaling and provisioning of the underlying
@@ -301,8 +305,8 @@ class IalirtProcessing(Construct):
 
             # Register the ECS service as a target for the listener
             listener.add_targets(
-                f"Target{processing_name}{self.container_port}",
-                port=self.container_port,
+                f"Target{processing_name}{port}",
+                port=port,
                 targets=[self.ecs_service],
             )
 
