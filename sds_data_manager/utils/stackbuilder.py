@@ -265,7 +265,7 @@ def build_sds(
     )
 
     # All traffic to I-ALiRT is directed to listed container ports
-    ports = {"Primary": [1234, 1235]}  # , "Secondary": [80]}
+    ports = {"Primary": [1234, 1235], "Secondary": [1236]}
     ialirt_secret_name = "nexus-credentials"  # noqa
 
     for primary_or_secondary in ports:

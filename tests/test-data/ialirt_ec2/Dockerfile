@@ -27,8 +27,8 @@ COPY entrypoint.sh /app/entrypoint.sh
 # Make the scripts executable
 RUN chmod +x /app/mount_s3.sh /app/start_flask.sh /app/entrypoint.sh
 
-# Make port 8080 available to the world outside this container
-# Note: The port number is changed from 8080 to 80 for the secondary system.
+# Make ports available to the world outside this container
+# Note: The port numbers are changed for the secondary system.
 EXPOSE 1234 1235
 
 # Set the AWS region

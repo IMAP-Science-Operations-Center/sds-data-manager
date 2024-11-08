@@ -7,7 +7,7 @@ https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbou
 https://aws.amazon.com/elasticloadbalancing/features/#Product_comparisons
 """
 
-from aws_cdk import CfnOutput, Duration, RemovalPolicy
+from aws_cdk import CfnOutput, RemovalPolicy
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecs as ecs
@@ -212,8 +212,9 @@ class IalirtProcessing(Construct):
             privileged=True,
         )
 
-        # Maps the port on the ECS host
-        # corresponding container_port.
+        # Map ports to container
+        # NLB needs to know which port on the EC2 instances
+        # it should forward the traffic to
         for port in self.ports:
             port_mapping = ecs.PortMapping(
                 container_port=port,
@@ -235,7 +236,6 @@ class IalirtProcessing(Construct):
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
             ),
-            health_check_grace_period=Duration.seconds(300),
         )
 
     def add_autoscaling(self, processing_name):
@@ -305,14 +305,17 @@ class IalirtProcessing(Construct):
 
             # Register the ECS service as a target for the listener
             listener.add_targets(
-                f"TargetGroup{processing_name}{port}",
+                f"Target{processing_name}{port}",
                 port=port,
+                # Specifies the container and port to route traffic to.
                 targets=[
                     self.ecs_service.load_balancer_target(
                         container_name=f"IalirtContainer{processing_name}",
                         container_port=port,
                     )
                 ],
+                # Configures health checks for the target group
+                # to ensure traffic is routed only to healthy ECS tasks.
                 health_check=elbv2.HealthCheck(
                     enabled=True,
                     port=str(port),
