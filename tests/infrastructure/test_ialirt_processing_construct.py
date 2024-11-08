@@ -20,9 +20,9 @@ def get_nlb_dns(stack_name, port, container_name):
 @pytest.mark.xfail(reason="Will fail unless IALiRT stack is deployed.")
 def test_nlb_response():
     """Test to ensure the NLB responds with HTTP 200 status."""
-    ports = {"Primary": [1234, 1235], "Secondary": [1234, 1235]}
+    ialirt_ports = {"Primary": [1234, 1235], "Secondary": [1236]}
 
-    for stack_name, ports in ports.items():
+    for stack_name, ports in ialirt_ports.items():
         for port in ports:
             nlb_dns = get_nlb_dns(f"IalirtProcessing{stack_name}", port, stack_name)
             print(f"Testing URL: {nlb_dns}")
