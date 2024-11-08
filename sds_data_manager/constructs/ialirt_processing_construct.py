@@ -197,7 +197,7 @@ class IalirtProcessing(Construct):
         container = task_definition.add_container(
             f"IalirtContainer{processing_name}",
             image=ecs.ContainerImage.from_registry(
-                f"lasp-registry.colorado.edu/ialirt/ialirt-{processing_name.lower()}:test",
+                f"lasp-registry.colorado.edu/ialirt/ialirt-{processing_name.lower()}:latest",
                 credentials=nexus_secret,
             ),
             # Allowable values:
