@@ -197,7 +197,7 @@ class IalirtProcessing(Construct):
         container = task_definition.add_container(
             f"IalirtContainer{processing_name}",
             image=ecs.ContainerImage.from_registry(
-                f"lasp-registry.colorado.edu/ialirt/ialirt-{processing_name.lower()}:latest",
+                f"lasp-registry.colorado.edu/ialirt/ialirt-{processing_name.lower()}:test",
                 credentials=nexus_secret,
             ),
             # Allowable values:
@@ -305,9 +305,19 @@ class IalirtProcessing(Construct):
 
             # Register the ECS service as a target for the listener
             listener.add_targets(
-                f"Target{processing_name}{port}",
+                f"TargetGroup{processing_name}{port}",
                 port=port,
-                targets=[self.ecs_service],
+                targets=[
+                    self.ecs_service.load_balancer_target(
+                        container_name=f"IalirtContainer{processing_name}",
+                        container_port=port,
+                    )
+                ],
+                health_check=elbv2.HealthCheck(
+                    enabled=True,
+                    port=str(port),
+                    protocol=elbv2.Protocol.TCP,
+                ),
             )
 
             # This simply prints the DNS name of the
