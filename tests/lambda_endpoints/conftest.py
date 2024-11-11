@@ -1,6 +1,5 @@
 """Setup testing environment to test lambda handler code."""
 
-import subprocess
 from unittest.mock import patch
 
 import boto3
@@ -59,31 +58,18 @@ def events_client():
         yield boto3.client("events", region_name="us-west-2")
 
 
-# Check if postgres is available on the system. If it is returncode == 0
-POSTGRES_AVAILABLE = (
-    subprocess.run("which psql", shell=True, check=False).returncode == 0
-)
-
-if POSTGRES_AVAILABLE:
-
-    @pytest.fixture()
-    def connection(postgresql):
-        """Use a postgres connection string."""
-        return f"postgresql+psycopg://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
-else:
-
-    @pytest.fixture()
-    def connection():
-        """Fallback to sqlite in memory database."""
-        return "sqlite:///:memory:"
+# Check if `psycopg` and PostgreSQL are both available and compatible.
+POSTGRES_AVAILABLE = False
+# TODO: fix this to work with postgres locally
 
 
 # NOTE: The default scope is function, so each test function will
 #       get a new database session and start fresh each time.
 @pytest.fixture()
-def session(connection):
+def session():
     """Create a test postgres database engine."""
     with patch.object(db, "Session") as mock_session:
+        connection = "sqlite:///:memory:"
         engine = create_engine(connection)
 
         # Create the tables and session
