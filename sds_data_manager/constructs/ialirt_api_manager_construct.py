@@ -20,6 +20,7 @@ class IalirtApiManager(Construct):
         env: cdk.Environment,
         data_bucket,
         vpc,
+        layers: list,
         **kwargs,
     ) -> None:
         """Initialize the SdsApiManagerConstruct.
@@ -71,7 +72,7 @@ class IalirtApiManager(Construct):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "REGION": env.region,
             },
-            #layers=layers,
+            layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 
@@ -94,7 +95,7 @@ class IalirtApiManager(Construct):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "REGION": env.region,
             },
-            #layers=layers,
+            layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 

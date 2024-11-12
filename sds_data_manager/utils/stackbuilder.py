@@ -262,7 +262,13 @@ def build_sds(
 
     # I-ALiRT IOIS S3 bucket
     ialirt_bucket = ialirt_bucket_construct.IAlirtBucketConstruct(
-        scope=ialirt_stack, construct_id="IAlirtBucket"
+        scope=ialirt_stack, construct_id="IAlirtBucket", env=env
+    )
+
+    ialirt_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
+        scope=ialirt_stack,
+        id="IAlirtDependencies",
+        layer_dependencies_dir=str(layer_code_directory),
     )
 
     ialirt_api_manager_construct.IalirtApiManager(
@@ -273,6 +279,7 @@ def build_sds(
         env=env,
         data_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
+        layers=[ialirt_lambda_layer],
     )
 
     # All traffic to I-ALiRT is directed to listed container ports
