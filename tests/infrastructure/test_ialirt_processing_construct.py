@@ -25,7 +25,6 @@ def test_nlb_response():
     for container_name, ports in ialirt_ports.items():
         for port in ports:
             nlb_dns = get_nlb_dns("IalirtStack", port, container_name)
-            print(f"Testing URL: {nlb_dns}")
             # Specify a timeout for the request
             response = requests.get(nlb_dns, timeout=10)  # timeout in seconds
             assert (
