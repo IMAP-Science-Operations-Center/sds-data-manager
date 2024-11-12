@@ -1,5 +1,6 @@
 """Configure the IAlirt bucket."""
 
+import aws_cdk as cdk
 from aws_cdk import RemovalPolicy
 from aws_cdk import aws_s3 as s3
 from constructs import Construct
@@ -12,6 +13,7 @@ class IAlirtBucketConstruct(Construct):
         self,
         scope: Construct,
         construct_id: str,
+        env: cdk.Environment,
         **kwargs,
     ) -> None:
         """Create data bucket.
@@ -29,12 +31,14 @@ class IAlirtBucketConstruct(Construct):
 
         """
         super().__init__(scope, construct_id, **kwargs)
+        # Get the current account number so we can use it in the bucket names
+        account = env.account
 
         # This is the S3 bucket used to mount to the container.
         self.ialirt_bucket = s3.Bucket(
             self,
             "IAlirtBucket",
-            bucket_name="ialirt",
+            bucket_name=f"ialirt-{account}",
             versioned=True,
             event_bridge_enabled=True,
             removal_policy=RemovalPolicy.DESTROY,

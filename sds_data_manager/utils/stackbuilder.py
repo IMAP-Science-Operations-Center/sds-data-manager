@@ -271,11 +271,24 @@ def build_sds(
         layer_dependencies_dir=str(layer_code_directory),
     )
 
+    ialirt_monitoring = monitoring_construct.MonitoringConstruct(
+        scope=ialirt_stack,
+        construct_id="IAlirtMonitoringConstruct",
+    )
+
+    ialirt_api = api_gateway_construct.ApiGateway(
+        scope=ialirt_stack,
+        construct_id="IAlirtApiGateway",
+        domain_construct=domain,
+        certificate=root_certificate,
+    )
+    ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)
+
     ialirt_api_manager_construct.IalirtApiManager(
         scope=ialirt_stack,
         construct_id="IAlirtApiManager",
         code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
-        api=api,
+        api=ialirt_api,
         env=env,
         data_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
