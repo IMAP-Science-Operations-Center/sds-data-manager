@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 from datetime import datetime
 
 import boto3
@@ -41,7 +42,8 @@ def lambda_handler(event, context):
 
     """
     query_params = event.get("queryStringParameters", {})
-
+    print("queryStringParameters")
+    print(query_params)
     start_str = query_params.get("start")
     end_str = query_params.get("end")
 
@@ -56,7 +58,6 @@ def lambda_handler(event, context):
                 {"error": "Invalid date format. Expected format: YYYYDOYHHMMSS"}
             ),
         }
-    prefix = start_time.strftime("logs/%Y/%j/")
 
     bucket = os.getenv("S3_BUCKET")
     region = os.getenv("REGION")
@@ -69,15 +70,23 @@ def lambda_handler(event, context):
 
     # TODO: may change this based on number of objects in directory.
     # Max 1000 objects can be listed in one call.
-    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
-
+    response = s3_client.list_objects_v2(Bucket=bucket, Prefix="logs/")
+    print('response')
+    print(response)
     matching_files = []
 
     for obj in response.get("Contents", []):
+        # TODO: change filename to flight_iois_X.log.YYYY-DOYTHH:MM:SS.ssssss
         # Parse the timestamp from the filename (adjust this to your naming format)
-        filename = obj["Key"].split("/")[-1]
-        date_str = filename.split("_flight_")[1].split(".")[0]
-        file_date = datetime.strptime(date_str, "%Y_%j_%H_%M_%S")
+        print(obj["Key"])
+        match = re.search(r'(\d{4}-\d{3}T\d{2}-\d{2}-\d{2})_(\d{6})', obj["Key"])
+
+        if not match:
+            print(f"Skipping non-log key: {obj['Key']}")
+            continue
+
+        timestamp_str, microseconds = match.groups()
+        file_date = datetime.strptime(timestamp_str, "%Y-%jT%H-%M-%S").replace(microsecond=int(microseconds))
 
         if start_time <= file_date <= end_time:
             matching_files.append(
