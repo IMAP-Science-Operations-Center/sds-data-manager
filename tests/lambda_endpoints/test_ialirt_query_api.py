@@ -12,17 +12,17 @@ def test_query_within_date_range(s3_client):
     # Adding files within and outside of the desired date range
     s3_client.put_object(
         Bucket="test-data-bucket",
-        Key="logs/2023/141/IOIS_msgs_flight_2023_141_16_54_46.txt",
+        Key="logs/flight_iois_1.log.2023-141T16-54-46_123456.txt",
         Body=b"test",
     )
     s3_client.put_object(
         Bucket="test-data-bucket",
-        Key="logs/2024/141/IOIS_msgs_flight_2024_141_16_54_46.txt",
+        Key="logs/flight_iois_1.log.2024-141T16-54-46_123456.txt",
         Body=b"test",
     )
     s3_client.put_object(
         Bucket="test-data-bucket",
-        Key="logs/2025/141/IOIS_msgs_flight_2025_141_16_54_46.txt",
+        Key="logs/flight_iois_1.log.2025-141T16-54-46_123456.txt",
         Body=b"test",
     )
 

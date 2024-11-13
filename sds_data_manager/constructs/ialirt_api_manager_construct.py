@@ -50,11 +50,14 @@ class IalirtApiManager(Construct):
 
         s3_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["s3:GetObject"],
+            actions=["s3:ListBucket"],
             resources=[
-                f"{data_bucket.bucket_arn}/*",
+                data_bucket.bucket_arn,
             ],
         )
+
+        s3_read_policy.add_actions("s3:GetObject")
+        s3_read_policy.add_resources(f"{data_bucket.bucket_arn}/*")
 
         # query API lambda
         query_api_lambda = lambda_.Function(
@@ -75,6 +78,8 @@ class IalirtApiManager(Construct):
             layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
+
+        query_api_lambda.add_to_role_policy(s3_read_policy)
 
         api.add_route(
             route="ialirt-log-query",
