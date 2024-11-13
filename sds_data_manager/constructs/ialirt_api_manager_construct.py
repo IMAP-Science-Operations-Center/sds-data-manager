@@ -86,29 +86,3 @@ class IalirtApiManager(Construct):
             http_method="GET",
             lambda_function=query_api_lambda,
         )
-
-        # download API lambda
-        download_api = lambda_.Function(
-            self,
-            id="IAlirtCodeDownloadAPILambda",
-            function_name="download-api-handler",
-            code=code,
-            handler="SDSCode.download_api.lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            timeout=cdk.Duration.minutes(1),
-            environment={
-                "S3_BUCKET": data_bucket.bucket_name,
-                "REGION": env.region,
-            },
-            layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
-        )
-
-        download_api.add_to_role_policy(s3_read_policy)
-
-        api.add_route(
-            route="ialirt-log-download",
-            http_method="GET",
-            lambda_function=download_api,
-            use_path_params=True,
-        )

@@ -28,7 +28,7 @@ def lambda_handler(event, context):
 
     Notes
     -----
-    Based on filename flight_iois_1.log.YYYY-DOYTHH-MM-SS_ssssss.txt
+    Based on filename flight_iois_X.log.YYYY-DOYTHH:MM:SS.ssssss.txt
     """
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
