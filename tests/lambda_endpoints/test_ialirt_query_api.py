@@ -12,7 +12,7 @@ def test_query_within_date_range(s3_client):
     # Adding files within and outside of the desired date range
     s3_client.put_object(
         Bucket="test-data-bucket",
-        Key="logs/flight_iois_1.log.2023-141T16-54-46_123456.txt",
+        Key="logs/flight_iois_1.log.2024-141T16-55-46_123456.txt",
         Body=b"test",
     )
     s3_client.put_object(
@@ -26,22 +26,23 @@ def test_query_within_date_range(s3_client):
         Body=b"test",
     )
 
-    event = {
-        "queryStringParameters": {"start": "2024141165445", "end": "2024141165447"}
-    }
+    event = {"queryStringParameters": {"year": "2024", "doy": "141", "instance": "1"}}
 
     response = ialirt_query_api.lambda_handler(event=event, context=None)
     response_data = json.loads(response["body"])
 
     assert response["statusCode"] == 200
-    assert len(response_data["files"]) == 1
+    assert response_data["files"] == [
+        "flight_iois_1.log.2024-141T16-54-46_123456.txt",
+        "flight_iois_1.log.2024-141T16-55-46_123456.txt",
+    ]
 
 
 def test_invalid_date_format():
     """Test that an error is returned for invalid date formats."""
-    event = {"queryStringParameters": {"start": "invalid_date", "end": "invalid_date"}}
+    event = {"queryStringParameters": {"year": "invalid_date", "doy": "invalid_date"}}
 
     response = ialirt_query_api.lambda_handler(event=event, context=None)
 
     assert response["statusCode"] == 400
-    assert "Invalid date format" in response["body"]
+    assert "Invalid year or day format. Use YYYY and DOY." in response["body"]

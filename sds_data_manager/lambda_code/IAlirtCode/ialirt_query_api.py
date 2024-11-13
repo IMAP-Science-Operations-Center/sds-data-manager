@@ -3,7 +3,6 @@
 import json
 import logging
 import os
-import re
 from datetime import datetime
 
 import boto3
@@ -39,6 +38,7 @@ def lambda_handler(event, context):
     query_params = event["queryStringParameters"]
     year = query_params.get("year")
     doy = query_params.get("doy")
+    instance = query_params.get("instance")
 
     try:
         day = datetime.strptime(f"{year}{doy}", "%Y%j")
@@ -50,7 +50,8 @@ def lambda_handler(event, context):
                 {"error": "Invalid year or day format. Use YYYY and DOY."}
             ),
         }
-    prefix = day.strftime("logs/flight_iois_1.log.%Y%j")
+
+    prefix = day.strftime(f"logs/flight_iois_{instance}.log.%Y-%j")
 
     bucket = os.getenv("S3_BUCKET")
     region = os.getenv("REGION")
@@ -62,29 +63,16 @@ def lambda_handler(event, context):
     )
 
     response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    print('response')
-    print(response)
-    matching_files = []
+    files = []
 
     for obj in response.get("Contents", []):
-
         filename = obj["Key"].split("/")[-1]
-        match = re.search(r'(\d{4}-\d{3}T\d{2}-\d{2}-\d{2})_(\d{6})', obj["Key"])
-
-        if not match:
-            logger.info(f"Skipping non-log key: {obj['Key']}")
-            continue
-
-        timestamp_str, microseconds = match.groups()
-        file_date = datetime.strptime(timestamp_str, "%Y-%jT%H-%M-%S").replace(microsecond=int(microseconds))
-
-        if start_time <= file_date <= end_time:
-            matching_files.append(filename)
+        files.append(filename)
 
     response = {
         "statusCode": 200,
         "headers": {"Content-Type": "application/json"},
-        "body": json.dumps({"files": matching_files}),
+        "body": json.dumps({"files": files}),
     }
 
     return response
