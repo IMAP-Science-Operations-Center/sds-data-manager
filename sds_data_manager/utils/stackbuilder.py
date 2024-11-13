@@ -258,7 +258,7 @@ def build_sds(
         efs_construct=efs_instance,
     )
 
-    ialirt_stack = Stack(scope, "IalirtStack", env=env)
+    ialirt_stack = Stack(scope, "IalirtStack", cross_region_references=True, env=env)
 
     # I-ALiRT IOIS S3 bucket
     ialirt_bucket = ialirt_bucket_construct.IAlirtBucketConstruct(
