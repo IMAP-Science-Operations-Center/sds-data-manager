@@ -252,6 +252,7 @@ class IalirtProcessing(Construct):
             machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
             vpc=self.vpc,
             desired_capacity=1,
+            key_name=f"keypair-{processing_name.lower()}",
         )
 
         auto_scaling_group.apply_removal_policy(RemovalPolicy.DESTROY)

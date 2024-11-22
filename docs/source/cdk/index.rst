@@ -9,3 +9,4 @@ CDK Development
     backup-deploy
     s3-replication
     ialirt-setup
+    ialirt-ssh-access
