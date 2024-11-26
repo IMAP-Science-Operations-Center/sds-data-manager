@@ -21,38 +21,6 @@ logger.setLevel(logging.INFO)
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 
 
-def get_dependencies(node, direction, relationship):
-    """Lookup the dependencies for the given ``node``.
-
-    A ``node`` is an identifier of the data product, which can be an
-    (instrument, data_level, descriptor) tuple, SPICE file identifiers,
-    or ancillary data file identifiers.
-
-    Parameters
-    ----------
-    node : tuple
-        Quantities that uniquely identify a data product.
-    direction : str
-        Whether it's UPSTREAM or DOWNSTREAM dependency.
-    relationship : str
-        Whether it's HARD or SOFT dependency.
-        HARD means it's required and SOFT means it's nice to have.
-
-    Returns
-    -------
-    dependencies : list
-        List of dictionary containing the dependency information.
-    """
-    dependencies = dependency_config.DEPENDENCIES[relationship][direction].get(node, [])
-    # Add keys for a dict-like representation
-    dependencies = [
-        {"instrument": dep[0], "data_level": dep[1], "descriptor": dep[2]}
-        for dep in dependencies
-    ]
-
-    return dependencies
-
-
 def get_file(session, instrument, data_level, descriptor, start_date, version):
     """Query to database to get the first ScienceFiles record.
 
@@ -115,7 +83,7 @@ def get_downstream_dependencies(session, filename_components):
         Dictionary containing components with dates and versions appended.
     """
     # Get downstream dependency data
-    downstream_dependents = get_dependencies(
+    downstream_dependents = dependency_config.get_dependencies(
         node=(
             filename_components["instrument"],
             filename_components["data_level"],
@@ -229,7 +197,7 @@ def try_to_submit_job(session, job_info):
         return
 
     # Find the files that this job depends on
-    upstream_dependencies = get_dependencies(
+    upstream_dependencies = dependency_config.get_dependencies(
         node=(instrument, data_level, descriptor),
         direction="UPSTREAM",
         relationship="HARD",
