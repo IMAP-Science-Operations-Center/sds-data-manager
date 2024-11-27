@@ -341,22 +341,16 @@ def lambda_hander(event, context):
                 "data_source": "hit",
                 "data_type": "l1a",
                 "descriptor": "all",
-                "version": "v001",
-                "start_date": "20240101",
             },
             {
                 "data_source": "hit",
                 "data_type": "l1b",
                 "descriptor": "hk",
-                "version": "v001",
-                "start_date": "20240101",
             },
             {
                 "data_source": "sc_attitude",
                 "data_type": "spice",
                 "descriptor": "historical",
-                "version": "01",
-                "start_date": "20240101",
             },
         ]
     """

@@ -4,7 +4,6 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 
 import pytest
-from imap_data_access import ScienceFilePath
 from sqlalchemy.exc import IntegrityError
 
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -14,7 +13,6 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
-    get_downstream_dependencies,
     get_file,
     is_job_in_processing_table,
     lambda_handler,
@@ -152,30 +150,25 @@ def test_get_file(session):
     assert record is None
 
 
-def test_get_downstream_dependencies(session):
-    "Tests get_downstream_dependencies function."
-    filename = "imap_hit_l1a_count-rates_20240101_v001.cdf"
-    file_params = ScienceFilePath.extract_filename_components(filename)
-
-    complete_dependents = get_downstream_dependencies(session, file_params)
-    expected_complete_dependent = {
-        "instrument": "hit",
-        "data_level": "l1b",
-        "descriptor": "all",
-        "version": "v001",
-        "start_date": "20240101",
-    }
-    assert len(complete_dependents) == 1
-
-    assert complete_dependents[0] == expected_complete_dependent
-
-
-@patch("your_module.LAMBDA_CLIENT.invoke", return_value={})
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.LAMBDA_CLIENT.invoke"
+)
 def test_lambda_handler(
+    lambda_client_mock,
     session,
 ):
     """Tests ``lambda_handler`` function."""
     _populate_file_catalog(session)
+
+    # Different return response for each call to the lambda invoke
+    lambda_client_mock.side_effect = [
+        # Downstream dependencies call by the first lambda invoke
+        [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}],
+        # Upstream dependencies called by the second lambda invoke
+        [{"data_source": "swe", "data_type": "l0", "descriptor": "raw"}],
+        # Downstream dependencies call by the first lambda invoke
+        [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}],
+    ]
 
     events = {
         "Records": [
@@ -197,6 +190,26 @@ def test_lambda_handler(
         # so make sure it is still only called once from our previous iteration.
         lambda_handler(events, context)
         mock_batch_client.submit_job.assert_called_once()
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.LAMBDA_CLIENT.invoke"
+)
+def test_lambda_handler_multiple_events(lambda_client_mock, session):
+    """Tests ``lambda_handler`` function with multiple events."""
+    _populate_file_catalog(session)
+
+    # Test Multiple Events:
+    # Mock invoke to return different responses for each event
+    lambda_client_mock.side_effect = [
+        # dependencies call by the first event
+        [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}],
+        [{"data_source": "swe", "data_type": "l0", "descriptor": "raw"}],
+        # dependencies call by the second event
+        [{"data_source": "swe", "data_type": "l1b", "descriptor": "sci"}],
+        [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}],
+    ]
+
     multiple_events = {
         "Records": [
             {
@@ -206,14 +219,16 @@ def test_lambda_handler(
             },
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_swe_l1a_sci_20240101_v001.pkts"}}'
+                '{"object": {"key": "imap_swe_l1a_sci_20240101_v001.cdf"}}'
                 "}"
             },
         ]
     }
+
+    context = {"context": "sample_context"}
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(multiple_events, context)
-        mock_batch_client.submit_job.assert_called_once()
+        assert mock_batch_client.submit_job.call_count == 2
 
 
 def test_is_job_in_status_table(session):
