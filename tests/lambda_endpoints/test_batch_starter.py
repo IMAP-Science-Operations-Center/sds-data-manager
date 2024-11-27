@@ -170,6 +170,7 @@ def test_get_downstream_dependencies(session):
     assert complete_dependents[0] == expected_complete_dependent
 
 
+@patch("your_module.LAMBDA_CLIENT.invoke", return_value={})
 def test_lambda_handler(
     session,
 ):

@@ -5,13 +5,13 @@ import logging
 from datetime import datetime
 
 import boto3
+import imap_data_access
 from imap_data_access import ScienceFilePath
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from ..database import database as db
 from ..database import models
-from . import dependency_config
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ logger.setLevel(logging.INFO)
 
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
+LAMBDA_CLIENT = boto3.client("lambda", region_name="us-west-2")
 
 
 def get_file(session, instrument, data_level, descriptor, start_date, version):
@@ -65,45 +66,6 @@ def get_file(session, instrument, data_level, descriptor, start_date, version):
     )
 
     return record
-
-
-def get_downstream_dependencies(session, filename_components):
-    """Get information of downstream dependents.
-
-    Parameters
-    ----------
-    session : orm session
-        Database session.
-    filename_components : dict
-        Dictionary containing components of the filename.
-
-    Returns
-    -------
-    downstream_dependents : list of dict
-        Dictionary containing components with dates and versions appended.
-    """
-    # Get downstream dependency data
-    downstream_dependents = dependency_config.get_dependencies(
-        node=(
-            filename_components["instrument"],
-            filename_components["data_level"],
-            filename_components["descriptor"],
-        ),
-        direction="DOWNSTREAM",
-        relationship="HARD",
-    )
-
-    for dependent in downstream_dependents:
-        # TODO: query the version table here for appropriate version
-        #  of each downstream_dependent.
-        dependent["version"] = filename_components["version"]  # placeholder
-
-        # TODO: add repointing table query if dependent is ENA or GLOWS
-        # Use start_date to query repointing table.
-        # Add pointing number to dependent.
-        dependent["start_date"] = filename_components["start_date"]
-
-    return downstream_dependents
 
 
 def is_job_in_processing_table(
@@ -155,7 +117,7 @@ def is_job_in_processing_table(
     return False
 
 
-def try_to_submit_job(session, job_info):
+def try_to_submit_job(session, job_info, start_date, version):
     """Try to submit a batch job with the given job information.
 
     Go through the job information to retrieve all necessary input files
@@ -168,17 +130,19 @@ def try_to_submit_job(session, job_info):
         Database session.
     job_info : dict
         Dictionary containing components with dates and versions appended.
+    start_date : str
+        Start date of the data.
+    version : str
+        Version of the data.
 
     Returns
     -------
     bool
         Whether or not this job is ready to be processed.
     """
-    instrument = job_info["instrument"]
-    data_level = job_info["data_level"]
+    instrument = job_info["data_source"]
+    data_level = job_info["data_type"]
     descriptor = job_info["descriptor"]
-    start_date = job_info["start_date"]
-    version = job_info["version"]
 
     logger.info("Checking for job in progress before looking for dependencies.")
 
@@ -197,21 +161,25 @@ def try_to_submit_job(session, job_info):
         return
 
     # Find the files that this job depends on
-    upstream_dependencies = dependency_config.get_dependencies(
-        node=(instrument, data_level, descriptor),
-        direction="UPSTREAM",
-        relationship="HARD",
+    dependency_event_msg = {
+        "data_source": instrument,
+        "data_type": data_level,
+        "descriptor": descriptor,
+        "dependency_type": "UPSTREAM",
+        "relationship": "HARD",
+    }
+
+    upstream_dependencies = LAMBDA_CLIENT.invoke(
+        FunctionName="dependency-lambda",
+        InvocationType="RequestResponse",
+        Payload=json.dumps(dependency_event_msg),
     )
 
     for upstream_dependency in upstream_dependencies:
-        upstream_instrument = upstream_dependency["instrument"]
-        upstream_data_level = upstream_dependency["data_level"]
+        upstream_source = upstream_dependency["data_source"]
+        upstream_data_type = upstream_dependency["data_type"]
         upstream_descriptor = upstream_dependency["descriptor"]
 
-        # Check to see if each upstream dependency file is available
-        # TODO: Update start_date / version request to be more specific
-        #       Currently we are using the same as the job product, but the versions
-        #       may not match exactly if one dependency updates before another
         upstream_start_date = start_date
         upstream_version = version
         upstream_dependency.update(
@@ -219,16 +187,16 @@ def try_to_submit_job(session, job_info):
         )
         record = get_file(
             session,
-            upstream_instrument,
-            upstream_data_level,
+            upstream_source,
+            upstream_data_type,
             upstream_descriptor,
             upstream_start_date,
             upstream_version,
         )
         if record is None:
             logger.info(
-                f"Dependency not found: {upstream_instrument}, "
-                f"{upstream_data_level}, "
+                f"Dependency not found: {upstream_source}, "
+                f"{upstream_data_type}, "
                 f"{upstream_descriptor}, "
                 f"{upstream_start_date}, "
                 f"{upstream_version}"
@@ -260,14 +228,29 @@ def try_to_submit_job(session, job_info):
         f"Wrote job INPROGRESS to Processing Jobs Table with id: {processing_job.id}"
     )
 
-    # FYI, these are the keys the upstream_dependencies should contain:
-    # {
-    #     'instrument': 'swe',
-    #     'data_level': 'l0',
-    #     'descriptor': 'lveng-hk',
+    # FYI, upstream_dependencies in the command below should contain these keys:
+    #   'data_source',
+    #   'data_type',
+    #   'descriptor',
+    #   'start_date',
+    #   'version'
+    # Example list of upstream_dependencies in the command below:
+    # [
+    #   {
+    #     'data_source': 'swe',
+    #     'data_type': 'l1b',
+    #     'descriptor': 'sci',
     #     'start_date': '20231212',
     #     'version': 'v001',
-    # },
+    #   },
+    #   {
+    #     'data_source': 'sc_attitude',
+    #     'data_type': 'spice',
+    #     'descriptor': 'historical',
+    #     'start_date': '20231212',
+    #     'version': '01',
+    #   },
+    # ]
     batch_command = [
         "--instrument",
         instrument,
@@ -309,23 +292,77 @@ def lambda_handler(events: dict, context):
     logger.info(f"Events: {events}")
     logger.info(f"Context: {context}")
 
-    with db.Session() as session:
-        # Since the SQS events can be batched together, we need to loop through
-        # each event. In this loop, "event" represents one file landing.
-        for event in events["Records"]:
-            # Event details:
-            logger.info(f"Individual event: {event}")
-            body = json.loads(event["body"])
+    # Since the SQS events can be batched together, we need to loop through
+    # each event. In this loop, "event" represents one file landing.
+    for event in events["Records"]:
+        # Event details:
+        logger.info(f"Individual event: {event}")
+        body = json.loads(event["body"])
 
-            filename = body["detail"]["object"]["key"]
-            logger.info(f"Retrieved filename: {filename}")
+        filename = body["detail"]["object"]["key"]
+        logger.info(f"Retrieved filename: {filename}")
+
+        dependency_event_msg = {
+            "dependency_type": "DOWNSTREAM",
+            "relationship": "HARD",
+        }
+
+        # Try to create a SPICE file first
+        file_obj = None
+
+        # TODO: decide how we want to set start date and version
+        # for SPICE or ancillary files and may be sciece files
+        # during reprocessing.
+        start_date = ""
+        version = ""
+
+        try:
+            file_obj = imap_data_access.SPICEFilePath(filename)
+            # Temporarily way to identify SPICE files
+            # TODO: Update event message once
+            # imap-data-access is updated
+            dependency_event_msg.update({"data_type": "spice"})
+
+        except imap_data_access.SPICEFilePath.InvalidSPICEFileError:
+            # Not a SPICE file, continue on to science files
+            pass
+
+        try:
+            # file_obj will be None if it's not a SPICE file
+            file_obj = file_obj or imap_data_access.ScienceFilePath(filename)
             components = ScienceFilePath.extract_filename_components(filename)
+            start_date = components["start_date"]
+            version = components["version"]
 
-            # Potential jobs are the instruments that depend on the current file.
-            potential_jobs = get_downstream_dependencies(session, components)
-            logger.info(
-                f"Potential jobs found [{len(potential_jobs)}]: {potential_jobs}"
+            dependency_event_msg.update(
+                {
+                    "data_source": components["instrument"],
+                    "data_type": components["data_level"],
+                    "descriptor": components["descriptor"],
+                }
             )
+        except imap_data_access.ScienceFilePath.InvalidScienceFileError as e:
+            # No science file type matched, return an error with the
+            # exception message indicating how to fix it to the user
+            logger.error(str(e))
+            return {"statusCode": 400, "body": str(e)}
 
+        # TODO: add ancillary file handling here
+
+        # TODO: remove this if statement once SPICE files are handled
+        if dependency_event_msg["data_type"] == "spice":
+            continue
+
+        # Potential jobs are the instruments that depend on the current file,
+        # which are the downstream dependencies.
+        potential_jobs = LAMBDA_CLIENT.invoke(
+            FunctionName="dependency-lambda",
+            InvocationType="RequestResponse",
+            Payload=json.dumps(dependency_event_msg),
+        )
+
+        logger.info(f"Potential jobs found [{len(potential_jobs)}]: {potential_jobs}")
+
+        with db.Session() as session:
             for job in potential_jobs:
-                try_to_submit_job(session, job)
+                try_to_submit_job(session, job, start_date, version)

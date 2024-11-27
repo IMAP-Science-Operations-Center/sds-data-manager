@@ -1,9 +1,15 @@
 """Dependency tracking module."""
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 
 import imap_data_access
+
+# Logger setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 @dataclass
@@ -200,7 +206,7 @@ class DependencyConfig:
             for hard_soft in self.relationship.valid_relationship
         }
 
-        with open("dependency_config.csv") as f:
+        with open(Path(__file__).parent / "dependency_config.csv") as f:
             for line in f:
                 # NOTE: remove extra ',,,,,,,' if you edited the csv file in excel.
                 if len(line) <= 1 or line.startswith("#"):
@@ -231,7 +237,9 @@ class DependencyConfig:
                 if not self._validate_node(parent_node) or not self._validate_node(
                     child_node
                 ):
-                    print(f"Parent node: {parent_node}, Child node: {child_node}")
+                    logger.debug(
+                        f"Parent node: {parent_node}, Child node: {child_node}"
+                    )
                     raise ValueError(
                         "Data product must have: (source, type, descriptor)"
                     )
@@ -262,13 +270,13 @@ class DependencyConfig:
             True if node is valid, False otherwise.
         """
         if len(node) != 3:
+            logger.debug("Missing source, type, or descriptor")
             return False
         if node[0] not in self.data_source.valid_source:
             return False
         if node[1] not in self.data_type.valid_type:
             return False
-        if node[2] not in self.data_descriptor.valid_descriptor:
-            return False
+        # TODO: Add descriptor validation once we define all data products
         return True
 
 
@@ -299,8 +307,77 @@ def get_dependencies(node, dependency_type, relationship):
     )
     # Add keys for a dict-like representation
     dependencies = [
-        {"instrument": dep[0], "data_level": dep[1], "descriptor": dep[2]}
+        {"data_source": dep[0], "data_type": dep[1], "descriptor": dep[2]}
         for dep in dependencies
     ]
 
     return dependencies
+
+
+def lambda_hander(event, context):
+    """Lambda handler for dependency tracking.
+
+    Parameters
+    ----------
+    event : dict
+        If dependency is requested, event input will be:
+            {
+                "data_source": "hit",
+                "data_type": "l0",
+                "descriptor": "raw",
+                "dependency_type": "UPSTREAM",
+                "relationship": "HARD",
+            }
+
+    context : dict
+        Context dictionary.
+
+    Returns
+    -------
+    dependencies : list of dict
+        Dictionary containing the dependencies.
+        [
+            {
+                "data_source": "hit",
+                "data_type": "l1a",
+                "descriptor": "all",
+                "version": "v001",
+                "start_date": "20240101",
+            },
+            {
+                "data_source": "hit",
+                "data_type": "l1b",
+                "descriptor": "hk",
+                "version": "v001",
+                "start_date": "20240101",
+            },
+            {
+                "data_source": "sc_attitude",
+                "data_type": "spice",
+                "descriptor": "historical",
+                "version": "01",
+                "start_date": "20240101",
+            },
+        ]
+    """
+    logger.info(f"Event: {event}")
+
+    # check upstream dependencies
+    if event.get("dependency_type") == "UPSTREAM":
+        return get_dependencies(
+            (event["data_source"], event["data_type"], event["descriptor"]),
+            event["dependency_type"],
+            event["relationship"],
+        )
+
+    # check downstream dependencies
+    elif event.get("dependency_type") == "DOWNSTREAM":
+        return get_dependencies(
+            (event["data_source"], event["data_type"], event["descriptor"]),
+            event["dependency_type"],
+            event["relationship"],
+        )
+
+    # TODO: add reprocessing dependencies
+    else:
+        raise ValueError("Invalid dependency type")
