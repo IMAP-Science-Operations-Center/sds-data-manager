@@ -356,22 +356,9 @@ def lambda_hander(event, context):
     """
     logger.info(f"Event: {event}")
 
-    # check upstream dependencies
-    if event.get("dependency_type") == "UPSTREAM":
-        return get_dependencies(
-            (event["data_source"], event["data_type"], event["descriptor"]),
-            event["dependency_type"],
-            event["relationship"],
-        )
-
-    # check downstream dependencies
-    elif event.get("dependency_type") == "DOWNSTREAM":
-        return get_dependencies(
-            (event["data_source"], event["data_type"], event["descriptor"]),
-            event["dependency_type"],
-            event["relationship"],
-        )
-
     # TODO: add reprocessing dependencies
-    else:
-        raise ValueError("Invalid dependency type")
+    return get_dependencies(
+        (event["data_source"], event["data_type"], event["descriptor"]),
+        event["dependency_type"],
+        event["relationship"],
+    )

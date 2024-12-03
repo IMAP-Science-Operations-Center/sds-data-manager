@@ -307,15 +307,16 @@ def lambda_handler(events: dict, context):
             "relationship": "HARD",
         }
 
-        # Try to create a SPICE file first
-        file_obj = None
-
         # TODO: decide how we want to set start date and version
         # for SPICE or ancillary files and may be sciece files
         # during reprocessing.
         start_date = ""
         version = ""
 
+        # TODO: How to handle repointing
+
+        # Try to create a SPICE file first
+        file_obj = None
         try:
             file_obj = imap_data_access.SPICEFilePath(filename)
             # Temporarily way to identify SPICE files
