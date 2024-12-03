@@ -28,7 +28,19 @@ def lambda_handler(event, context):
 
     Notes
     -----
-    Based on filename flight_iois_X.log.YYYY-DOYTHH:MM:SS.ssssss.txt
+    Based on filename flight_iois_X.log.YYYY-DOYTHH:MM:SS.ssssss.txt.
+    This is the log file produced by IOIS for each instance.
+
+    Example
+    -------
+    Below is an event example:
+    {
+        "queryStringParameters": {
+            "year": "2024",
+            "doy": "141",
+            "instance": "1"
+        }
+    }
     """
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
