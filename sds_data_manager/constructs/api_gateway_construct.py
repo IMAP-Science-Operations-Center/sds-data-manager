@@ -4,6 +4,7 @@ Sets up api gateway, creates routes, and creates methods that are linked to the
 lambda function.
 
 An example of the format of the url: https://api.prod.imap-mission.com/query
+https://ialirtapi.prod.imap-mission.com/ialirt-log-query
 """
 
 from aws_cdk import Duration, aws_sns
@@ -28,6 +29,7 @@ class ApiGateway(Construct):
         construct_id: str,
         domain_construct: DomainConstruct = None,
         certificate: acm.Certificate = None,
+        ialirt_prefix: str = "",
         **kwargs,
     ) -> None:
         """Construct the API Gateway Construct.
@@ -42,17 +44,20 @@ class ApiGateway(Construct):
             Custom domain, hosted zone
         certificate : Certificate
             SSL certificate for the custom domain (in the same region)
+        ialirt_prefix : str
+            Prefix for ialirt domain, Optional
         kwargs : dict
             Keyword arguments
 
         """
         super().__init__(scope, construct_id, **kwargs)
+        self.prefix = ialirt_prefix
 
         # Create a single API Gateway
         self.api = apigw.RestApi(
             self,
-            "RestApi",
-            rest_api_name="RestApi",
+            f"{self.prefix}RestApi",
+            rest_api_name=f"{self.prefix}RestApi",
             description="API Gateway for lambda function endpoints.",
             endpoint_types=[apigw.EndpointType.REGIONAL],
         )
@@ -61,8 +66,8 @@ class ApiGateway(Construct):
         if domain_construct is not None:
             custom_domain = apigw.DomainName(
                 self,
-                "RestAPI-DomainName",
-                domain_name=f"api.{domain_construct.domain_name}",
+                f"{self.prefix}RestAPI-DomainName",
+                domain_name=f"{self.prefix.lower()}api.{domain_construct.domain_name}",
                 certificate=certificate,
                 endpoint_type=apigw.EndpointType.REGIONAL,
             )
@@ -70,7 +75,7 @@ class ApiGateway(Construct):
             # Route domain to api gateway
             apigw.BasePathMapping(
                 self,
-                "RestAPI-BasePathMapping",
+                f"{self.prefix}RestAPI-BasePathMapping",
                 domain_name=custom_domain,
                 rest_api=self.api,
             )
@@ -78,9 +83,9 @@ class ApiGateway(Construct):
             # Add record to Route53
             route53.ARecord(
                 self,
-                "RestAPI-AliasRecord",
+                f"{self.prefix}RestAPI-AliasRecord",
                 zone=domain_construct.hosted_zone,
-                record_name=f"api.{domain_construct.domain_name}",
+                record_name=f"{self.prefix.lower()}api.{domain_construct.domain_name}",
                 target=route53.RecordTarget.from_alias(
                     targets.ApiGatewayDomain(custom_domain)
                 ),
@@ -112,8 +117,8 @@ class ApiGateway(Construct):
         # Define the alarm
         cloudwatch_alarm = cloudwatch.Alarm(
             self,
-            "apigw-cw-alarm",
-            alarm_name="apigw-cw-alarm",
+            f"{self.prefix.lower()}apigw-cw-alarm",
+            alarm_name=f"{self.prefix.lower()}apigw-cw-alarm",
             alarm_description="API Gateway latency is high",
             actions_enabled=True,
             metric=metric,
