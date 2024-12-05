@@ -281,7 +281,7 @@ def build_sds(
         construct_id="IAlirtApiGateway",
         domain_construct=domain,
         certificate=root_certificate,
-        ialirt_prefix="Ialirt",
+        ialirt_prefix="IAlirt",
     )
     ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)
 
