@@ -9,6 +9,7 @@ defined ports, allowing external access for testing.
 import multiprocessing
 import os
 
+import requests
 from flask import Flask
 
 
@@ -28,6 +29,18 @@ def create_app(port):
         """List files in the mounted S3 bucket."""
         files = os.listdir("/mnt/s3/packets")
         return "<br>".join(files)
+
+    @app.route("/test")
+    def outbound_test():
+        """Test outbound connectivity by making an HTTP request."""
+        try:
+            response = requests.get("https://api.ipify.org?format=json", timeout=5)
+            return (
+                f"Port {port}: Outbound request successful! "
+                f"Public IP: {response.json()['ip']}"
+            )
+        except requests.RequestException as e:
+            return f"Port {port}: Outbound request failed! Error: {e!s}", 500
 
     app.run(host="0.0.0.0", port=port)
 

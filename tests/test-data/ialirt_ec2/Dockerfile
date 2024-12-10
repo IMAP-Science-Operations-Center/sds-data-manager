@@ -5,7 +5,7 @@ COPY . /app
 WORKDIR /app
 
 # Install Flask
-RUN pip install flask
+RUN pip install flask requests
 
 # Non-interactive frontend for apt-get
 ARG DEBIAN_FRONTEND=noninteractive
