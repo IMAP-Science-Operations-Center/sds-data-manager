@@ -292,8 +292,6 @@ class IalirtProcessing(Construct):
         # This auto-scaling group is used to manage the
         # number of instances in the ECS cluster. If an instance
         # becomes unhealthy, the auto-scaling group will replace it.
-
-        # TODO
         auto_scaling_group = autoscaling.AutoScalingGroup(
             self,
             f"AutoScalingGroup",
@@ -330,11 +328,7 @@ class IalirtProcessing(Construct):
         # Allow inbound traffic from the Network Load Balancer
         # to the security groups associated with the EC2 instances
         # within the Auto Scaling Group.
-        for port in self.primary_ports:
-            auto_scaling_group.connections.allow_from(
-                self.load_balancer, ec2.Port.tcp(port)
-            )
-        for port in self.secondary_ports:
+        for port in self.primary_ports + self.secondary_ports:
             auto_scaling_group.connections.allow_from(
                 self.load_balancer, ec2.Port.tcp(port)
             )
