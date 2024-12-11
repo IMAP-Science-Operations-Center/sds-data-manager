@@ -307,16 +307,15 @@ def build_sds(
     ports = {"Primary": [1234, 1235], "Secondary": [1236]}
     ialirt_secret_name = "nexus-credentials"  # noqa
 
-    for primary_or_secondary in ports:
-        ialirt_processing_construct.IalirtProcessing(
-            scope=ialirt_stack,
-            construct_id=f"IalirtProcessing{primary_or_secondary}",
-            vpc=networking.vpc,
-            processing_name=primary_or_secondary,
-            ports=ports[primary_or_secondary],
-            ialirt_bucket=ialirt_bucket.ialirt_bucket,
-            secret_name=ialirt_secret_name,
-        )
+    ialirt_processing_construct.IalirtProcessing(
+        scope=ialirt_stack,
+        construct_id="IalirtProcessing",
+        vpc=networking.vpc,
+        primary_ports=ports["Primary"],
+        secondary_ports=ports["Secondary"],
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
+        secret_name=ialirt_secret_name,
+    )
 
     # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
     ialirt_ingest_lambda_construct.IalirtIngestLambda(

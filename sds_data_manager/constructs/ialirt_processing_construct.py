@@ -86,7 +86,7 @@ class IalirtProcessing(Construct):
         )
 
         # Only allow traffic from the NLB security group
-        for port in self.ports:
+        for port in self.primary_ports + self.secondary_ports:
             self.ecs_security_group.add_ingress_rule(
                 peer=ec2.Peer.security_group_id(
                     self.load_balancer_security_group.security_group_id
@@ -108,7 +108,7 @@ class IalirtProcessing(Construct):
         # Allow inbound and outbound traffic from a specific port and IP.
         # IPs: LASP IP, BlueNet (tlm relay)
         ip_ranges = ["128.138.131.0/24", "198.118.1.14/32"]
-        for port in self.ports:
+        for port in self.primary_ports + self.secondary_ports:
             for ip_range in ip_ranges:
                 self.load_balancer_security_group.add_ingress_rule(
                     # TODO: allow IP addresses from partners
@@ -189,7 +189,7 @@ class IalirtProcessing(Construct):
         # Network Load Balancers (NLB).
         primary_task_definition = ecs.Ec2TaskDefinition(
             self,
-            f"IalirtTaskDef",
+            f"IalirtTaskDefPrimary",
             network_mode=ecs.NetworkMode.AWS_VPC,
             task_role=task_role,
             execution_role=execution_role,
@@ -197,7 +197,7 @@ class IalirtProcessing(Construct):
 
         secondary_task_definition = ecs.Ec2TaskDefinition(
             self,
-            f"IalirtTaskDef",
+            f"IalirtTaskDefSecondary",
             network_mode=ecs.NetworkMode.AWS_VPC,
             task_role=task_role,
             execution_role=execution_role,
@@ -380,38 +380,38 @@ class IalirtProcessing(Construct):
                 ),
             )
 
-            # Create a listener for each port specified
-            for port in self.secondary_ports:
-                listener = self.load_balancer.add_listener(
-                    f"ListenerSecondary{port}",
-                    port=port,
-                    protocol=elbv2.Protocol.TCP,
-                )
-
-                # Register the ECS service as a target for the listener
-                listener.add_targets(
-                    f"TargetSecondary{port}",
-                    port=port,
-                    # Specifies the container and port to route traffic to.
-                    targets=[
-                        self.secondary_ecs_service.load_balancer_target(
-                            container_name=f"IalirtContainerSecondary",
-                            container_port=port,
-                        )
-                    ],
-                    # Configures health checks for the target group
-                    # to ensure traffic is routed only to healthy ECS tasks.
-                    health_check=elbv2.HealthCheck(
-                        enabled=True,
-                        port=str(port),
-                        protocol=elbv2.Protocol.TCP,
-                    ),
-                )
-
-            # This simply prints the DNS name of the
-            # load balancer in the terminal.
-            CfnOutput(
-                self,
-                f"LoadBalancerDNS{port}",
-                value=f"http://{self.load_balancer.load_balancer_dns_name}:{port}",
+        # Create a listener for each port specified
+        for port in self.secondary_ports:
+            listener = self.load_balancer.add_listener(
+                f"ListenerSecondary{port}",
+                port=port,
+                protocol=elbv2.Protocol.TCP,
             )
+
+            # Register the ECS service as a target for the listener
+            listener.add_targets(
+                f"TargetSecondary{port}",
+                port=port,
+                # Specifies the container and port to route traffic to.
+                targets=[
+                    self.secondary_ecs_service.load_balancer_target(
+                        container_name=f"IalirtContainerSecondary",
+                        container_port=port,
+                     )
+                ],
+                # Configures health checks for the target group
+                # to ensure traffic is routed only to healthy ECS tasks.
+                health_check=elbv2.HealthCheck(
+                    enabled=True,
+                    port=str(port),
+                    protocol=elbv2.Protocol.TCP,
+                ),
+            )
+
+        # This simply prints the DNS name of the
+        # load balancer in the terminal.
+        CfnOutput(
+            self,
+            f"LoadBalancerDNS",
+            value=f"http://{self.load_balancer.load_balancer_dns_name}",
+        )
