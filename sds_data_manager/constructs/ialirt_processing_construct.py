@@ -79,7 +79,7 @@ class IalirtProcessing(Construct):
         """Create and return a security group for containers."""
         self.ecs_security_group = ec2.SecurityGroup(
             self,
-            f"IalirtEcsSecurityGroup",
+            "IalirtEcsSecurityGroup",
             vpc=self.vpc,
             description="Security group for Ialirt",
             allow_all_outbound=True,
@@ -100,7 +100,7 @@ class IalirtProcessing(Construct):
         # Create a security group for the NLB
         self.load_balancer_security_group = ec2.SecurityGroup(
             self,
-            f"NLBSecurityGroup",
+            "NLBSecurityGroup",
             vpc=self.vpc,
             description="Security group for the Ialirt NLB",
         )
@@ -127,19 +127,17 @@ class IalirtProcessing(Construct):
     def add_compute_resources(self):
         """Add ECS compute resources for a container."""
         # ECS Cluster manages EC2 instances on which containers are deployed.
-        self.ecs_cluster = ecs.Cluster(
-            self, f"IalirtCluster", vpc=self.vpc
-        )
+        self.ecs_cluster = ecs.Cluster(self, "IalirtCluster", vpc=self.vpc)
 
         # Retrieve the secret from Secrets Manager.
         nexus_secret = secretsmanager.Secret.from_secret_name_v2(
-            self, f"NexusCredentials", secret_name=self.secret_name
+            self, "NexusCredentials", secret_name=self.secret_name
         )
 
         # Add IAM role and policy for S3 access
         task_role = iam.Role(
             self,
-            f"IalirtTaskRole",
+            "IalirtTaskRole",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
         )
 
@@ -163,7 +161,7 @@ class IalirtProcessing(Construct):
         # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/private-auth.html
         execution_role = iam.Role(
             self,
-            f"IalirtTaskExecutionRole",
+            "IalirtTaskExecutionRole",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -189,7 +187,7 @@ class IalirtProcessing(Construct):
         # Network Load Balancers (NLB).
         primary_task_definition = ecs.Ec2TaskDefinition(
             self,
-            f"IalirtTaskDefPrimary",
+            "IalirtTaskDefPrimary",
             network_mode=ecs.NetworkMode.AWS_VPC,
             task_role=task_role,
             execution_role=execution_role,
@@ -197,7 +195,7 @@ class IalirtProcessing(Construct):
 
         secondary_task_definition = ecs.Ec2TaskDefinition(
             self,
-            f"IalirtTaskDefSecondary",
+            "IalirtTaskDefSecondary",
             network_mode=ecs.NetworkMode.AWS_VPC,
             task_role=task_role,
             execution_role=execution_role,
@@ -206,17 +204,17 @@ class IalirtProcessing(Construct):
         # Adds a container to the ECS task definition
         # Logging is configured to use AWS CloudWatch Logs.
         primary_container = primary_task_definition.add_container(
-            f"IalirtContainerPrimary",
+            "IalirtContainerPrimary",
             image=ecs.ContainerImage.from_registry(
-                f"lasp-registry.colorado.edu/ialirt/ialirt-primary:latest",
+                "lasp-registry.colorado.edu/ialirt/ialirt-primary:latest",
                 credentials=nexus_secret,
             ),
             # Allowable values:
             # https://docs.aws.amazon.com/cdk/api/v2/docs/
             # aws-cdk-lib.aws_ecs.TaskDefinition.html#cpu
-            memory_limit_mib=1024,
-            cpu=512,
-            logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirtprimary"),
+            memory_limit_mib=512,
+            cpu=256,
+            logging=ecs.LogDrivers.aws_logs(stream_prefix="Ialirtprimary"),
             environment={"S3_BUCKET": self.s3_bucket_name},
             # Ensure the ECS task is running in privileged mode,
             # which allows the container to use FUSE.
@@ -224,17 +222,17 @@ class IalirtProcessing(Construct):
         )
 
         secondary_container = secondary_task_definition.add_container(
-            f"IalirtContainerSecondary",
+            "IalirtContainerSecondary",
             image=ecs.ContainerImage.from_registry(
-                f"lasp-registry.colorado.edu/ialirt/ialirt-secondary:latest",
+                "lasp-registry.colorado.edu/ialirt/ialirt-secondary:latest",
                 credentials=nexus_secret,
             ),
             # Allowable values:
             # https://docs.aws.amazon.com/cdk/api/v2/docs/
             # aws-cdk-lib.aws_ecs.TaskDefinition.html#cpu
-            memory_limit_mib=1024,
-            cpu=512,
-            logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirtsecondary"),
+            memory_limit_mib=512,
+            cpu=256,
+            logging=ecs.LogDrivers.aws_logs(stream_prefix="Ialirtsecondary"),
             environment={"S3_BUCKET": self.s3_bucket_name},
             # Ensure the ECS task is running in privileged mode,
             # which allows the container to use FUSE.
@@ -265,7 +263,7 @@ class IalirtProcessing(Construct):
         # instances of a task definition.
         self.primary_ecs_service = ecs.Ec2Service(
             self,
-            f"IalirtServicePrimary",
+            "IalirtServicePrimary",
             cluster=self.ecs_cluster,
             task_definition=primary_task_definition,
             security_groups=[self.ecs_security_group],
@@ -277,7 +275,7 @@ class IalirtProcessing(Construct):
 
         self.secondary_ecs_service = ecs.Ec2Service(
             self,
-            f"IalirtServiceSecondary",
+            "IalirtServiceSecondary",
             cluster=self.ecs_cluster,
             task_definition=secondary_task_definition,
             security_groups=[self.ecs_security_group],
@@ -294,9 +292,9 @@ class IalirtProcessing(Construct):
         # becomes unhealthy, the auto-scaling group will replace it.
         auto_scaling_group = autoscaling.AutoScalingGroup(
             self,
-            f"AutoScalingGroup",
+            "AutoScalingGroup",
             instance_type=ec2.InstanceType.of(
-                ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL
+                ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.LARGE
             ),
             machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
             vpc=self.vpc,
@@ -317,7 +315,7 @@ class IalirtProcessing(Construct):
         # EC2 instances based on the requirements of ECS tasks
         capacity_provider = ecs.AsgCapacityProvider(
             self,
-            f"AsgCapacityProvider",
+            "AsgCapacityProvider",
             auto_scaling_group=auto_scaling_group,
             enable_managed_termination_protection=False,
             enable_managed_scaling=False,
@@ -339,7 +337,7 @@ class IalirtProcessing(Construct):
         # place it in a public subnet.
         self.load_balancer = elbv2.NetworkLoadBalancer(
             self,
-            f"IalirtNLB",
+            "IalirtNLB",
             vpc=self.vpc,
             security_groups=[self.load_balancer_security_group],
             internet_facing=True,
@@ -361,7 +359,7 @@ class IalirtProcessing(Construct):
                 # Specifies the container and port to route traffic to.
                 targets=[
                     self.primary_ecs_service.load_balancer_target(
-                        container_name=f"IalirtContainerPrimary",
+                        container_name="IalirtContainerPrimary",
                         container_port=port,
                     )
                 ],
@@ -389,9 +387,9 @@ class IalirtProcessing(Construct):
                 # Specifies the container and port to route traffic to.
                 targets=[
                     self.secondary_ecs_service.load_balancer_target(
-                        container_name=f"IalirtContainerSecondary",
+                        container_name="IalirtContainerSecondary",
                         container_port=port,
-                     )
+                    )
                 ],
                 # Configures health checks for the target group
                 # to ensure traffic is routed only to healthy ECS tasks.
@@ -406,6 +404,6 @@ class IalirtProcessing(Construct):
         # load balancer in the terminal.
         CfnOutput(
             self,
-            f"LoadBalancerDNS",
+            "LoadBalancerDNS",
             value=f"http://{self.load_balancer.load_balancer_dns_name}",
         )
