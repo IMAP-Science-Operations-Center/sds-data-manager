@@ -187,7 +187,15 @@ class IalirtProcessing(Construct):
         # Specifies the networking mode as AWS_VPC.
         # ECS tasks in AWS_VPC mode can be registered with
         # Network Load Balancers (NLB).
-        task_definition = ecs.Ec2TaskDefinition(
+        primary_task_definition = ecs.Ec2TaskDefinition(
+            self,
+            f"IalirtTaskDef",
+            network_mode=ecs.NetworkMode.AWS_VPC,
+            task_role=task_role,
+            execution_role=execution_role,
+        )
+
+        secondary_task_definition = ecs.Ec2TaskDefinition(
             self,
             f"IalirtTaskDef",
             network_mode=ecs.NetworkMode.AWS_VPC,
@@ -197,7 +205,7 @@ class IalirtProcessing(Construct):
 
         # Adds a container to the ECS task definition
         # Logging is configured to use AWS CloudWatch Logs.
-        primary_container = task_definition.add_container(
+        primary_container = primary_task_definition.add_container(
             f"IalirtContainerPrimary",
             image=ecs.ContainerImage.from_registry(
                 f"lasp-registry.colorado.edu/ialirt/ialirt-primary:latest",
@@ -215,7 +223,7 @@ class IalirtProcessing(Construct):
             privileged=True,
         )
 
-        secondary_container = task_definition.add_container(
+        secondary_container = secondary_task_definition.add_container(
             f"IalirtContainerSecondary",
             image=ecs.ContainerImage.from_registry(
                 f"lasp-registry.colorado.edu/ialirt/ialirt-secondary:latest",
@@ -259,7 +267,7 @@ class IalirtProcessing(Construct):
             self,
             f"IalirtServicePrimary",
             cluster=self.ecs_cluster,
-            task_definition=task_definition,
+            task_definition=primary_task_definition,
             security_groups=[self.ecs_security_group],
             desired_count=1,
             vpc_subnets=ec2.SubnetSelection(
@@ -271,7 +279,7 @@ class IalirtProcessing(Construct):
             self,
             f"IalirtServiceSecondary",
             cluster=self.ecs_cluster,
-            task_definition=task_definition,
+            task_definition=secondary_task_definition,
             security_groups=[self.ecs_security_group],
             desired_count=1,
             vpc_subnets=ec2.SubnetSelection(
@@ -358,7 +366,7 @@ class IalirtProcessing(Construct):
                 port=port,
                 # Specifies the container and port to route traffic to.
                 targets=[
-                    self.ecs_service.load_balancer_target(
+                    self.primary_ecs_service.load_balancer_target(
                         container_name=f"IalirtContainerPrimary",
                         container_port=port,
                     )
@@ -371,34 +379,6 @@ class IalirtProcessing(Construct):
                     protocol=elbv2.Protocol.TCP,
                 ),
             )
-
-            # Create a listener for each port specified
-            for port in self.primary_ports:
-                listener = self.load_balancer.add_listener(
-                    f"ListenerPrimary{port}",
-                    port=port,
-                    protocol=elbv2.Protocol.TCP,
-                )
-
-                # Register the ECS service as a target for the listener
-                listener.add_targets(
-                    f"TargetPrimary{port}",
-                    port=port,
-                    # Specifies the container and port to route traffic to.
-                    targets=[
-                        self.ecs_service.load_balancer_target(
-                            container_name=f"IalirtContainerPrimary",
-                            container_port=port,
-                        )
-                    ],
-                    # Configures health checks for the target group
-                    # to ensure traffic is routed only to healthy ECS tasks.
-                    health_check=elbv2.HealthCheck(
-                        enabled=True,
-                        port=str(port),
-                        protocol=elbv2.Protocol.TCP,
-                    ),
-                )
 
             # Create a listener for each port specified
             for port in self.secondary_ports:
@@ -414,7 +394,7 @@ class IalirtProcessing(Construct):
                     port=port,
                     # Specifies the container and port to route traffic to.
                     targets=[
-                        self.ecs_service.load_balancer_target(
+                        self.secondary_ecs_service.load_balancer_target(
                             container_name=f"IalirtContainerSecondary",
                             container_port=port,
                         )
