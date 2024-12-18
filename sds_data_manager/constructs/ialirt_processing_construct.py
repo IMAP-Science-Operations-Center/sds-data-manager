@@ -104,22 +104,24 @@ class IalirtProcessing(Construct):
             description="Security group for the Ialirt NLB",
         )
 
-        # Allow inbound and outbound traffic from a specific port and
-        # LASP IP address range.
+        # Allow inbound and outbound traffic from a specific port and IP.
+        # IPs: LASP IP, BlueNet (tlm relay)
+        ip_ranges = ["128.138.131.0/24", "198.118.1.14/32"]
         for port in self.ports:
-            self.load_balancer_security_group.add_ingress_rule(
-                # TODO: allow IP addresses from partners
-                peer=ec2.Peer.ipv4("128.138.131.0/24"),
-                connection=ec2.Port.tcp(port),
-                description=f"Allow inbound traffic on TCP port {port}",
-            )
+            for ip_range in ip_ranges:
+                self.load_balancer_security_group.add_ingress_rule(
+                    # TODO: allow IP addresses from partners
+                    peer=ec2.Peer.ipv4(ip_range),
+                    connection=ec2.Port.tcp(port),
+                    description=f"Allow inbound traffic on TCP port {port}",
+                )
 
-            # Allow outbound traffic.
-            self.load_balancer_security_group.add_egress_rule(
-                peer=ec2.Peer.ipv4("128.138.131.0/24"),
-                connection=ec2.Port.tcp(port),
-                description=f"Allow outbound traffic on TCP port {port}",
-            )
+                # Allow outbound traffic.
+                self.load_balancer_security_group.add_egress_rule(
+                    peer=ec2.Peer.ipv4(ip_range),
+                    connection=ec2.Port.tcp(port),
+                    description=f"Allow outbound traffic on TCP port {port}",
+                )
 
     def add_compute_resources(self, processing_name):
         """Add ECS compute resources for a container."""
