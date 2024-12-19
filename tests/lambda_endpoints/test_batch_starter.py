@@ -4,7 +4,6 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 
 import pytest
-from imap_data_access import ScienceFilePath
 from sqlalchemy.exc import IntegrityError
 
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -14,7 +13,6 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
-    get_downstream_dependencies,
     get_file,
     is_job_in_processing_table,
     lambda_handler,
@@ -152,24 +150,6 @@ def test_get_file(session):
     assert record is None
 
 
-def test_get_downstream_dependencies(session):
-    "Tests get_downstream_dependencies function."
-    filename = "imap_hit_l1a_count-rates_20240101_v001.cdf"
-    file_params = ScienceFilePath.extract_filename_components(filename)
-
-    complete_dependents = get_downstream_dependencies(session, file_params)
-    expected_complete_dependent = {
-        "instrument": "hit",
-        "data_level": "l1b",
-        "descriptor": "all",
-        "version": "v001",
-        "start_date": "20240101",
-    }
-    assert len(complete_dependents) == 1
-
-    assert complete_dependents[0] == expected_complete_dependent
-
-
 def test_lambda_handler(
     session,
 ):
@@ -196,6 +176,14 @@ def test_lambda_handler(
         # so make sure it is still only called once from our previous iteration.
         lambda_handler(events, context)
         mock_batch_client.submit_job.assert_called_once()
+
+
+def test_lambda_handler_multiple_events(session):
+    """Tests ``lambda_handler`` function with multiple events."""
+    _populate_file_catalog(session)
+
+    # Test Multiple Events:
+
     multiple_events = {
         "Records": [
             {
@@ -205,14 +193,39 @@ def test_lambda_handler(
             },
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_swe_l1a_sci_20240101_v001.pkts"}}'
+                '{"object": {"key": "imap_swe_l1a_sci_20240101_v001.cdf"}}'
                 "}"
             },
         ]
     }
+
+    context = {"context": "sample_context"}
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(multiple_events, context)
-        mock_batch_client.submit_job.assert_called_once()
+        assert mock_batch_client.submit_job.call_count == 2
+
+
+def test_spice_file():
+    """Tests ``lambda_handler`` function with spice file."""
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_yyyy_doy_yyyy_doy.spin.csv"}}'
+                "}"
+            }
+        ]
+    }
+
+    context = {"context": "sample_context"}
+
+    # Test that value error is raised for SPICE file right now.
+    # TODO: undo this and add correct tests when it's implemented.
+    with pytest.raises(
+        ValueError,
+        match="File handling imap_yyyy_doy_yyyy_doy.spin.csv is not implemented yet",
+    ):
+        lambda_handler(events, context)
 
 
 def test_is_job_in_status_table(session):

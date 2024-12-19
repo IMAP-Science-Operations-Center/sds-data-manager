@@ -1,4 +1,4 @@
-# primary_instrument, primary_data_level, primary_descriptor, dependent_instrument, dependent_data_level, dependent_descriptor, relationship, direction
+# primary_source, primary_data_type, primary_descriptor, dependent_source, dependent_data_type, dependent_descriptor, relationship, dependency_type
 
 # <---- CoDICE Dependencies ---->
 

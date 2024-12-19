@@ -8,7 +8,6 @@ from aws_cdk.assertions import Template
 from sds_data_manager.constructs.data_bucket_construct import DataBucketConstruct
 from sds_data_manager.constructs.database_construct import SdpDatabase
 from sds_data_manager.constructs.indexer_lambda_construct import IndexerLambda
-from sds_data_manager.constructs.monitoring_construct import MonitoringConstruct
 from sds_data_manager.constructs.networking_construct import NetworkingConstruct
 
 
@@ -34,9 +33,6 @@ def template(stack, env, code):
         code=code,
         layers=[],
     )
-    monitoring_construct = MonitoringConstruct(
-        stack, construct_id="MonitoringConstruct"
-    )
     IndexerLambda(
         stack,
         "indexer-lambda",
@@ -46,7 +42,6 @@ def template(stack, env, code):
         vpc_subnets=database_construct.rds_subnet_selection,
         rds_security_group=database_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
-        sns_topic=monitoring_construct.sns_topic_notifications,
         layers=[],
     )
 

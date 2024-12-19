@@ -2,6 +2,7 @@
 
 import aws_cdk as cdk
 from aws_cdk import aws_lambda as lambda_
+from constructs import Construct
 
 
 class IMAPLambdaLayer(lambda_.LayerVersion):
@@ -9,6 +10,7 @@ class IMAPLambdaLayer(lambda_.LayerVersion):
 
     def __init__(
         self,
+        scope: Construct,
         id: str,
         layer_dependencies_dir: str,
         runtime=lambda_.Runtime.PYTHON_3_12,
@@ -22,6 +24,8 @@ class IMAPLambdaLayer(lambda_.LayerVersion):
 
         Parameters
         ----------
+        scope : Construct
+            The App object in which to create this Construct
         id : str
             A unique string identifier for this construct
         layer_dependencies_dir : str
@@ -47,5 +51,9 @@ class IMAPLambdaLayer(lambda_.LayerVersion):
         )
 
         super().__init__(
-            id=f"{id}-Layer", code=code_bundle, compatible_runtimes=[runtime], **kwargs
+            scope,
+            id=f"{id}-Layer",
+            code=code_bundle,
+            compatible_runtimes=[runtime],
+            **kwargs,
         )
