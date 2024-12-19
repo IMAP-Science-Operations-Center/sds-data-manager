@@ -46,7 +46,7 @@ glows, l0, raw, glows, l1a, all, HARD, DOWNSTREAM
 glows, l1a, de, glows, l1b, de, HARD, DOWNSTREAM
 glows, l1a, hist, glows, l1b, hist, HARD, DOWNSTREAM
 
-glows, l2, hist, glows, l3a, histogram, HARD, DOWNSTREAM
+glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
 
 # <---- HI Dependencies ---->
 
