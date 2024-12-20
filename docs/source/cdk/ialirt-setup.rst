@@ -6,7 +6,7 @@ Secrets Manager
 
 Ensure you have a secret in AWS Secrets Manager with a username and password for the Nexus repo. The secret should be named `nexus-repo` and can be created using the following command::
 
-    aws secretsmanager create-secret --name nexus-repo --description "Credentials for Nexus Docker registry" --secret-string '{"username":"your-username", "password":"your-password"}'
+    aws secretsmanager create-secret --name nexus-credentials --description "Credentials for Nexus Docker registry" --secret-string '{"username":"your-username", "password":"your-password"}'
 
 Image Versioning
 ~~~~~~~~~
