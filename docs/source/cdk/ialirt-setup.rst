@@ -33,12 +33,12 @@ We will have a versioned image and latest image in the Nexus repo. The versioned
 #.  Determine the appropriate version for your image based on the semantic versioning scheme (MAJOR.MINOR).
 #. Build the image and tag it with the Nexus registry URL::
 
-    docker build -t ialirt:X.Y --rm . --no-cache
+    docker build -t ialirt-<primary or secondary>:X.Y --rm . --no-cache
 
 #. Tag with the Nexus registry URL::
 
-    docker tag ialirt:X.Y docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:X.Y
-    docker tag ialirt:X.Y docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:latest
+    docker tag ialirt-<primary or secondary>:X.Y docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:X.Y
+    docker tag ialirt-<primary or secondary>:X.Y docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:latest
 
 #. Push the image::
 
