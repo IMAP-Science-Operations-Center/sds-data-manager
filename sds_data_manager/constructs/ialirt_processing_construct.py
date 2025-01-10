@@ -183,7 +183,7 @@ class IalirtProcessing(Construct):
         # Network Load Balancers (NLB).
         task_definition = ecs.Ec2TaskDefinition(
             self,
-            f"IalirtTaskDef",
+            "IalirtTaskDef",
             network_mode=ecs.NetworkMode.AWS_VPC,
             task_role=task_role,
             execution_role=execution_role,
@@ -192,9 +192,9 @@ class IalirtProcessing(Construct):
         # Adds a container to the ECS task definition
         # Logging is configured to use AWS CloudWatch Logs.
         container = task_definition.add_container(
-            f"IalirtContainer",
+            "IalirtContainer",
             image=ecs.ContainerImage.from_registry(
-                f"lasp-registry.colorado.edu/ialirt/ialirt-primary:latest",
+                "lasp-registry.colorado.edu/ialirt/ialirt:latest",
                 credentials=nexus_secret,
             ),
             # Allowable values:
@@ -225,7 +225,7 @@ class IalirtProcessing(Construct):
         # instances of a task definition.
         self.ecs_service = ecs.Ec2Service(
             self,
-            f"IalirtService",
+            "IalirtService",
             cluster=self.ecs_cluster,
             task_definition=task_definition,
             security_groups=[self.ecs_security_group],
@@ -309,7 +309,7 @@ class IalirtProcessing(Construct):
                 # Specifies the container and port to route traffic to.
                 targets=[
                     self.ecs_service.load_balancer_target(
-                        container_name=f"IalirtContainer",
+                        container_name="IalirtContainer",
                         container_port=port,
                     )
                 ],
