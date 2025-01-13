@@ -33,22 +33,22 @@ We will have a versioned image and latest image in the Nexus repo. The versioned
 #.  Determine the appropriate version for your image based on the semantic versioning scheme (IOIS_MAJOR.IOIS_MINOR.DOCKER_VERSION).
 #. Build the image and tag it with the Nexus registry URL::
 
-    docker build -t ialirt-<primary or secondary>:X.Y.Z --rm . --no-cache
+    docker build -t ialirt:X.Y.Z --rm . --no-cache
 
 #. Tag with the Nexus registry URL::
 
-    docker tag ialirt-<primary or secondary>:X.Y.Z docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:X.Y.Z
-    docker tag ialirt-<primary or secondary>:X.Y.Z docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:latest
+    docker tag ialirt:X.Y.Z docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y.Z
+    docker tag ialirt:X.Y.Z docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
 
 #. Push the image::
 
-    docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:X.Y.Z
-    docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:latest
+    docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y.Z
+    docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
 #. Images may be viewed on the Nexus website: https://artifacts.pdmz.lasp.colorado.edu
 #. To verify that the latest image and the most recent version image are the same, run the following and compare the image IDs::
 
-    docker inspect --format='{{.Id}}' docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:X.Y.Z
-    docker inspect --format='{{.Id}}' docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt-<primary or secondary>:latest
+    docker inspect --format='{{.Id}}' docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y.Z
+    docker inspect --format='{{.Id}}' docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
 
 CDK Deployment
 ~~~~~~~~~~~~~
