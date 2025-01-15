@@ -302,6 +302,21 @@ class IalirtProcessing(Construct):
                 protocol=elbv2.Protocol.TCP,
             )
 
+            # Modify the listener attributes to set the TCP idle timeout
+            # Use node.default_child to get access to the L1 construct
+            # and modify its properties.
+            # https://docs.aws.amazon.com/cdk/v2/guide/cfn_layer.html
+            cfn_listener = listener.node.default_child
+            cfn_listener.add_property_override(
+                "ListenerAttributes",
+                [
+                    {
+                        "Key": "tcp.idle_timeout.seconds",
+                        "Value": str(6000),
+                    }
+                ],
+            )
+
             # Register the ECS service as a target for the listener
             listener.add_targets(
                 f"Target{port}",
