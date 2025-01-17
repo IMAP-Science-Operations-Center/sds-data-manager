@@ -54,7 +54,7 @@ def test_lambda_handler(setup_dynamodb):
 
     response = algorithm_table.get_item(
         Key={
-            "product_name": "hit_product_1",
+            "apid": 478,
             "met": 123,
         }
     )
@@ -62,4 +62,6 @@ def test_lambda_handler(setup_dynamodb):
 
     assert item is not None
     assert item["met"] == 123
+    assert item["insert_time"] == "2021-01-01T00:00:00Z"
+    assert item["product_name"] == "hit_product_1"
     assert item["data_product_1"] == str(1234.56)

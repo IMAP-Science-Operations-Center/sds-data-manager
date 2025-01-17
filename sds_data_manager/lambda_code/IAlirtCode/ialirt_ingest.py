@@ -61,9 +61,10 @@ def lambda_handler(event, context):
 
     # 3. After processing insert data into Algorithm Table.
     item = {
-        "product_name": "hit_product_1",
+        "apid": 478,
         "met": 123,
         "insert_time": "2021-01-01T00:00:00Z",
+        "product_name": "hit_product_1",
         "data_product_1": str(1234.56),
     }
     algorithm_table.put_item(Item=item)
