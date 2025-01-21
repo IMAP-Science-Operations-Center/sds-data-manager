@@ -1,4 +1,4 @@
-"""Test the IAlirt ingest lambda function."""
+"""Test the I-Alirt ingest lambda function."""
 
 import pytest
 
