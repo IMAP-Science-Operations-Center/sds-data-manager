@@ -7,7 +7,7 @@ https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbou
 https://aws.amazon.com/elasticloadbalancing/features/#Product_comparisons
 """
 
-from aws_cdk import CfnOutput, Duration, RemovalPolicy
+from aws_cdk import CfnOutput, RemovalPolicy
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecs as ecs
@@ -334,10 +334,6 @@ class IalirtProcessing(Construct):
                     enabled=True,
                     port=str(7568),
                     protocol=elbv2.Protocol.TCP,
-                    interval=Duration.seconds(60),
-                    timeout=Duration.seconds(30),
-                    unhealthy_threshold_count=5,
-                    healthy_threshold_count=5,
                 ),
             )
 
