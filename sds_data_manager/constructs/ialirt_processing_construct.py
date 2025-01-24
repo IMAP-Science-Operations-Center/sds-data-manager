@@ -202,7 +202,7 @@ class IalirtProcessing(Construct):
             # aws-cdk-lib.aws_ecs.TaskDefinition.html#cpu
             memory_limit_mib=512,
             cpu=256,
-            logging=ecs.LogDrivers.aws_logs(stream_prefix="Ialirtsecondary"),
+            logging=ecs.LogDrivers.aws_logs(stream_prefix="Ialirt"),
             environment={"S3_BUCKET": self.s3_bucket_name},
             # Ensure the ECS task is running in privileged mode,
             # which allows the container to use FUSE.
