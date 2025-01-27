@@ -1,5 +1,4 @@
 """Define lambda to support the catalog API."""
-
 import logging
 
 # Logger setup
