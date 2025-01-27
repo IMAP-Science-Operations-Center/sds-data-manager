@@ -29,7 +29,7 @@ RUN chmod +x /app/mount_s3.sh /app/start_flask.sh /app/entrypoint.sh
 
 # Make ports available to the world outside this container
 # Note: The port numbers are changed for the secondary system.
-EXPOSE 1234 1235
+EXPOSE 7526 7560 7564 7566 7568
 
 # Set the AWS region
 ENV AWS_REGION us-west-2

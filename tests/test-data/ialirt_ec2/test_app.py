@@ -64,7 +64,7 @@ def create_and_save_file(port):
 
 
 if __name__ == "__main__":
-    ports = [1234, 1235]
+    ports = [7526, 7560, 7564, 7566, 7568]
     for port in ports:
         create_and_save_file(port)
     processes = [
