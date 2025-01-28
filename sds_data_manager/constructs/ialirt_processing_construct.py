@@ -7,7 +7,7 @@ https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbou
 https://aws.amazon.com/elasticloadbalancing/features/#Product_comparisons
 """
 
-from aws_cdk import CfnOutput, RemovalPolicy, Duration
+from aws_cdk import CfnOutput, Duration, RemovalPolicy
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecs as ecs
@@ -194,14 +194,14 @@ class IalirtProcessing(Construct):
         container = task_definition.add_container(
             "IalirtContainer",
             image=ecs.ContainerImage.from_registry(
-                "lasp-registry.colorado.edu/ialirt/ialirt:test",
+                "lasp-registry.colorado.edu/ialirt/ialirt:latest",
                 credentials=nexus_secret,
             ),
             # Allowable values:
             # https://docs.aws.amazon.com/cdk/api/v2/docs/
             # aws-cdk-lib.aws_ecs.TaskDefinition.html#cpu
-            memory_limit_mib=30720,
-            cpu=4096,
+            memory_limit_mib=512,
+            cpu=256,
             logging=ecs.LogDrivers.aws_logs(stream_prefix="Ialirt"),
             environment={"S3_BUCKET": self.s3_bucket_name},
             # Ensure the ECS task is running in privileged mode,
@@ -230,7 +230,7 @@ class IalirtProcessing(Construct):
             task_definition=task_definition,
             security_groups=[self.ecs_security_group],
             desired_count=1,
-            health_check_grace_period=Duration.seconds(600),
+            health_check_grace_period=Duration.seconds(3600),
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
             ),
@@ -307,16 +307,16 @@ class IalirtProcessing(Construct):
             # Use node.default_child to get access to the L1 construct
             # and modify its properties.
             # https://docs.aws.amazon.com/cdk/v2/guide/cfn_layer.html
-            # cfn_listener = listener.node.default_child
-            # cfn_listener.add_property_override(
-            #     "ListenerAttributes",
-            #     [
-            #         {
-            #             "Key": "tcp.idle_timeout.seconds",
-            #             "Value": str(6000),
-            #         }
-            #     ],
-            # )
+            cfn_listener = listener.node.default_child
+            cfn_listener.add_property_override(
+                "ListenerAttributes",
+                [
+                    {
+                        "Key": "tcp.idle_timeout.seconds",
+                        "Value": str(6000),
+                    }
+                ],
+            )
 
             # Register the ECS service as a target for the listener
             listener.add_targets(
