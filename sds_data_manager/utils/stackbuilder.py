@@ -272,36 +272,36 @@ def build_sds(
         scope=ialirt_stack, construct_id="IAlirtBucket", env=env
     )
 
-    # ialirt_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
-    #     scope=ialirt_stack,
-    #     id="IAlirtDependencies",
-    #     layer_dependencies_dir=str(layer_code_directory),
-    # )
-    #
-    # ialirt_monitoring = monitoring_construct.MonitoringConstruct(
-    #     scope=ialirt_stack,
-    #     construct_id="IAlirtMonitoringConstruct",
-    # )
-    #
-    # ialirt_api = api_gateway_construct.ApiGateway(
-    #     scope=ialirt_stack,
-    #     construct_id="IAlirtApiGateway",
-    #     domain_construct=domain,
-    #     certificate=root_certificate,
-    #     ialirt_prefix="IAlirt",
-    # )
-    # ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)
-    #
-    # ialirt_api_manager_construct.IalirtApiManager(
-    #     scope=ialirt_stack,
-    #     construct_id="IAlirtApiManager",
-    #     code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
-    #     api=ialirt_api,
-    #     env=env,
-    #     data_bucket=ialirt_bucket.ialirt_bucket,
-    #     vpc=networking.vpc,
-    #     layers=[ialirt_lambda_layer],
-    # )
+    ialirt_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
+        scope=ialirt_stack,
+        id="IAlirtDependencies",
+        layer_dependencies_dir=str(layer_code_directory),
+    )
+
+    ialirt_monitoring = monitoring_construct.MonitoringConstruct(
+        scope=ialirt_stack,
+        construct_id="IAlirtMonitoringConstruct",
+    )
+
+    ialirt_api = api_gateway_construct.ApiGateway(
+        scope=ialirt_stack,
+        construct_id="IAlirtApiGateway",
+        domain_construct=domain,
+        certificate=root_certificate,
+        ialirt_prefix="IAlirt",
+    )
+    ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)
+
+    ialirt_api_manager_construct.IalirtApiManager(
+        scope=ialirt_stack,
+        construct_id="IAlirtApiManager",
+        code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
+        api=ialirt_api,
+        env=env,
+        data_bucket=ialirt_bucket.ialirt_bucket,
+        vpc=networking.vpc,
+        layers=[ialirt_lambda_layer],
+    )
 
     # All traffic to I-ALiRT is directed to listed container ports
     ialirt_ports = [7526, 7560, 7564, 7566, 7568]
@@ -316,12 +316,12 @@ def build_sds(
         secret_name=ialirt_secret_name,
     )
 
-    # # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
-    # ialirt_ingest_lambda_construct.IalirtIngestLambda(
-    #     scope=ialirt_stack,
-    #     construct_id="IalirtIngestLambda",
-    #     ialirt_bucket=ialirt_bucket.ialirt_bucket,
-    # )
+    # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
+    ialirt_ingest_lambda_construct.IalirtIngestLambda(
+        scope=ialirt_stack,
+        construct_id="IalirtIngestLambda",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
+    )
 
 
 def build_backup(scope: App, env: Environment, source_account: str):
