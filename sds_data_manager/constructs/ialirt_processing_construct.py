@@ -331,6 +331,8 @@ class IalirtProcessing(Construct):
                 ],
                 # Configures health checks for the target group
                 # to ensure traffic is routed only to healthy ECS tasks.
+                # Port 7568 is a dummy port used by IOIS to check the
+                # health of the container.
                 health_check=elbv2.HealthCheck(
                     enabled=True,
                     port=str(7568),
