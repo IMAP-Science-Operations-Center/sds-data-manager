@@ -250,6 +250,10 @@ class IalirtProcessing(Construct):
             machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
             vpc=self.vpc,
             desired_capacity=2,
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PUBLIC,
+                availability_zones=["us-west-2b", "us-west-2c"],
+            ),
         )
 
         auto_scaling_group.apply_removal_policy(RemovalPolicy.DESTROY)
