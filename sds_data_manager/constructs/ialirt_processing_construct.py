@@ -77,7 +77,7 @@ class IalirtProcessing(Construct):
                 self.ecs_security_group.add_ingress_rule(
                     # TODO: allow IP addresses from partners
                     peer=ec2.Peer.ipv4(ip_range),
-                    connection=ec2.Port.tcp(port),
+                    connection=ec2.Port.all_tcp(),
                     description=f"Allow inbound traffic on TCP port {port}",
                 )
 
@@ -175,17 +175,6 @@ class IalirtProcessing(Construct):
             privileged=True,
         )
 
-        # Map ports to container
-        # ECS needs to know which port on the EC2 instances
-        # it should forward the traffic to
-        for port in self.ports:
-            port_mapping = ecs.PortMapping(
-                container_port=port,
-                host_port=port,
-                protocol=ecs.Protocol.TCP,
-            )
-            container.add_port_mappings(port_mapping)
-
         # ECS Service is a configuration that
         # ensures application can run and maintain
         # instances of a task definition.
@@ -195,7 +184,6 @@ class IalirtProcessing(Construct):
             cluster=self.ecs_cluster,
             task_definition=task_definition,
             desired_count=1,
-            health_check_grace_period=Duration.seconds(3600),
         )
 
     def add_autoscaling(self):
@@ -212,7 +200,9 @@ class IalirtProcessing(Construct):
             ),
             machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
             vpc=self.vpc,
-            desired_capacity=2,
+            desired_capacity=1,
+            min_capacity=1,
+            max_capacity=2, # Allow one extra instance during updates
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PUBLIC,
             ),
