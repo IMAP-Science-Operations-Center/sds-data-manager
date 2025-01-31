@@ -1,17 +1,10 @@
 """Configure the i-alirt processing stack.
-
-This is the module containing the general stack to be built for computation of
-I-ALiRT algorithms. It was built using best practices as shown here:
-
-https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbound.html
-https://aws.amazon.com/elasticloadbalancing/features/#Product_comparisons
 """
 
 from aws_cdk import CfnOutput, Duration, RemovalPolicy
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecs as ecs
-from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secretsmanager
@@ -58,16 +51,11 @@ class IalirtProcessing(Construct):
         self.s3_bucket_name = ialirt_bucket.bucket_name
         self.secret_name = secret_name
 
-        # Add a security group in which network load balancer will reside
-        self.create_load_balancer_security_group()
-
         # Create security group in which containers will reside
         self.create_ecs_security_group()
 
         # Add an ecs service and cluster for each container
         self.add_compute_resources()
-        # Add load balancer for each container
-        self.add_load_balancer()
         # Add autoscaling for each container
         self.add_autoscaling()
 
@@ -81,32 +69,12 @@ class IalirtProcessing(Construct):
             allow_all_outbound=True,
         )
 
-        # Only allow traffic from the NLB security group
-        for port in self.ports:
-            self.ecs_security_group.add_ingress_rule(
-                peer=ec2.Peer.security_group_id(
-                    self.load_balancer_security_group.security_group_id
-                ),
-                connection=ec2.Port.tcp(port),
-                description=f"Allow inbound traffic from the NLB on TCP port {port}",
-            )
-
-    def create_load_balancer_security_group(self):
-        """Create and return a security group for load balancers."""
-        # Create a security group for the NLB
-        self.load_balancer_security_group = ec2.SecurityGroup(
-            self,
-            "NLBSecurityGroup",
-            vpc=self.vpc,
-            description="Security group for the Ialirt NLB",
-        )
-
         # Allow inbound and outbound traffic from a specific port and IP.
         # IPs: LASP IP, BlueNet (tlm relay)
         ip_ranges = ["128.138.131.0/24", "198.118.1.14/32"]
         for port in self.ports:
             for ip_range in ip_ranges:
-                self.load_balancer_security_group.add_ingress_rule(
+                self.ecs_security_group.add_ingress_rule(
                     # TODO: allow IP addresses from partners
                     peer=ec2.Peer.ipv4(ip_range),
                     connection=ec2.Port.tcp(port),
@@ -114,7 +82,7 @@ class IalirtProcessing(Construct):
                 )
 
                 # Allow outbound traffic.
-                self.load_balancer_security_group.add_egress_rule(
+                self.ecs_security_group.add_egress_rule(
                     peer=ec2.Peer.ipv4(ip_range),
                     connection=ec2.Port.tcp(port),
                     description=f"Allow outbound traffic on TCP port {port}",
@@ -179,12 +147,10 @@ class IalirtProcessing(Construct):
         )
 
         # Specifies the networking mode as AWS_VPC.
-        # ECS tasks in AWS_VPC mode can be registered with
-        # Network Load Balancers (NLB).
         task_definition = ecs.Ec2TaskDefinition(
             self,
             "IalirtTaskDef",
-            network_mode=ecs.NetworkMode.AWS_VPC,
+            network_mode=ecs.NetworkMode.HOST,
             task_role=task_role,
             execution_role=execution_role,
         )
@@ -194,7 +160,7 @@ class IalirtProcessing(Construct):
         container = task_definition.add_container(
             "IalirtContainer",
             image=ecs.ContainerImage.from_registry(
-                "lasp-registry.colorado.edu/ialirt/ialirt:latest",
+                "lasp-registry.colorado.edu/ialirt/ialirt:test",
                 credentials=nexus_secret,
             ),
             # Allowable values:
@@ -210,7 +176,7 @@ class IalirtProcessing(Construct):
         )
 
         # Map ports to container
-        # NLB needs to know which port on the EC2 instances
+        # ECS needs to know which port on the EC2 instances
         # it should forward the traffic to
         for port in self.ports:
             port_mapping = ecs.PortMapping(
@@ -228,12 +194,8 @@ class IalirtProcessing(Construct):
             "IalirtService",
             cluster=self.ecs_cluster,
             task_definition=task_definition,
-            security_groups=[self.ecs_security_group],
             desired_count=1,
             health_check_grace_period=Duration.seconds(3600),
-            vpc_subnets=ec2.SubnetSelection(
-                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
-            ),
         )
 
     def add_autoscaling(self):
@@ -241,6 +203,7 @@ class IalirtProcessing(Construct):
         # This auto-scaling group is used to manage the
         # number of instances in the ECS cluster. If an instance
         # becomes unhealthy, the auto-scaling group will replace it.
+
         auto_scaling_group = autoscaling.AutoScalingGroup(
             self,
             "AutoScalingGroup",
@@ -252,8 +215,9 @@ class IalirtProcessing(Construct):
             desired_capacity=2,
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PUBLIC,
-                availability_zones=["us-west-2b", "us-west-2c"],
             ),
+            associate_public_ip_address=True,
+            security_group=self.ecs_security_group,
         )
 
         auto_scaling_group.apply_removal_policy(RemovalPolicy.DESTROY)
@@ -277,87 +241,3 @@ class IalirtProcessing(Construct):
         )
 
         self.ecs_cluster.add_asg_capacity_provider(capacity_provider)
-
-        # Allow inbound traffic from the Network Load Balancer
-        # to the security groups associated with the EC2 instances
-        # within the Auto Scaling Group.
-        for port in self.ports:
-            auto_scaling_group.connections.allow_from(
-                self.load_balancer, ec2.Port.tcp(port)
-            )
-
-    def add_load_balancer(self):
-        """Add a load balancer for a container."""
-        # Create the Network Load Balancer and
-        # place it in a public subnet.
-        selected_subnets = ec2.SubnetSelection(
-            availability_zones=["us-west-2b", "us-west-2c"],
-            subnet_type=ec2.SubnetType.PUBLIC,
-        )
-
-        self.load_balancer = elbv2.NetworkLoadBalancer(
-            self,
-            "IalirtNLB",
-            vpc=self.vpc,
-            security_groups=[self.load_balancer_security_group],
-            internet_facing=True,
-            vpc_subnets=selected_subnets,
-            cross_zone_enabled=True,
-        )
-
-        # Create a listener for each port specified
-        for port in self.ports:
-            listener = self.load_balancer.add_listener(
-                f"Listener{port}",
-                port=port,
-                protocol=elbv2.Protocol.TCP,
-            )
-
-            # Modify the listener attributes to set the TCP idle timeout
-            # Use node.default_child to get access to the L1 construct
-            # and modify its properties.
-            # https://docs.aws.amazon.com/cdk/v2/guide/cfn_layer.html
-            cfn_listener = listener.node.default_child
-            cfn_listener.add_property_override(
-                "ListenerAttributes",
-                [
-                    {
-                        "Key": "tcp.idle_timeout.seconds",
-                        "Value": str(6000),
-                    }
-                ],
-            )
-
-            # Register the ECS service as a target for the listener
-            listener.add_targets(
-                f"Target{port}",
-                port=port,
-                # Specifies the container and port to route traffic to.
-                targets=[
-                    self.ecs_service.load_balancer_target(
-                        container_name="IalirtContainer",
-                        container_port=port,
-                    )
-                ],
-                # Configures health checks for the target group
-                # to ensure traffic is routed only to healthy ECS tasks.
-                # Port 7568 is a dummy port used by IOIS to check the
-                # health of the container.
-                health_check=elbv2.HealthCheck(
-                    enabled=True,
-                    port=str(7568),
-                    protocol=elbv2.Protocol.TCP,
-                    interval=Duration.seconds(60),
-                    timeout=Duration.seconds(30),
-                    unhealthy_threshold_count=5,
-                    healthy_threshold_count=5,
-                ),
-            )
-
-            # This simply prints the DNS name of the
-            # load balancer in the terminal.
-            CfnOutput(
-                self,
-                f"LoadBalancerDNS{port}",
-                value=f"http://{self.load_balancer.load_balancer_dns_name}:{port}",
-            )
