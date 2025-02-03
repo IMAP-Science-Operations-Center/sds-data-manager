@@ -13,6 +13,7 @@ logger.setLevel(logging.INFO)
 # Create a batch client
 SECRETS = boto3.client("secretsmanager", region_name="us-west-2")
 EC2 = boto3.client("ec2", region_name="us-west-2")
+ASG = boto3.client("autoscaling", region_name="us-west-2")
 
 
 def check_existing_eip(instance_id):
@@ -127,6 +128,34 @@ def assign_elastic_ip(instance_id, eip_allocation_ids):
 
     logger.error("No available Elastic IPs found to assign.")
     return None  # No available EIPs found
+
+
+def complete_lifecycle_action(asg_name, lifecycle_hook_name, lifecycle_token, result):
+    """Complete the Auto Scaling Lifecycle Hook.
+
+    Parameters
+    ----------
+    asg_name : str
+        The name of the Auto Scaling Group.
+    lifecycle_hook_name : str
+        The name of the lifecycle hook.
+    lifecycle_token : str
+        The lifecycle action token.
+    result : str
+        The result of the lifecycle action ('CONTINUE' or 'ABANDON').
+
+    """
+    try:
+        response = ASG.complete_lifecycle_action(
+            AutoScalingGroupName=asg_name,
+            LifecycleHookName=lifecycle_hook_name,
+            LifecycleActionToken=lifecycle_token,
+            LifecycleActionResult=result
+        )
+        logger.info("Completed lifecycle action: %s", result)
+    except Exception as e:
+        logger.error("Error completing lifecycle action: %s", str(e))
+
 
 
 def lambda_handler(event, context):
