@@ -1,7 +1,6 @@
-"""Configure the i-alirt processing stack.
-"""
+"""Configure the i-alirt processing stack."""
 
-from aws_cdk import CfnOutput, Duration, RemovalPolicy
+from aws_cdk import RemovalPolicy
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecs as ecs
@@ -77,7 +76,7 @@ class IalirtProcessing(Construct):
                 self.ecs_security_group.add_ingress_rule(
                     # TODO: allow IP addresses from partners
                     peer=ec2.Peer.ipv4(ip_range),
-                    connection=ec2.Port.all_tcp(),
+                    connection=ec2.Port.tcp(port),
                     description=f"Allow inbound traffic on TCP port {port}",
                 )
 
@@ -157,7 +156,7 @@ class IalirtProcessing(Construct):
 
         # Adds a container to the ECS task definition
         # Logging is configured to use AWS CloudWatch Logs.
-        container = task_definition.add_container(
+        task_definition.add_container(
             "IalirtContainer",
             image=ecs.ContainerImage.from_registry(
                 "lasp-registry.colorado.edu/ialirt/ialirt:test",
@@ -202,7 +201,7 @@ class IalirtProcessing(Construct):
             vpc=self.vpc,
             desired_capacity=1,
             min_capacity=1,
-            max_capacity=2, # Allow one extra instance during updates
+            max_capacity=2,  # Allow one extra instance during updates
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PUBLIC,
             ),
