@@ -145,7 +145,11 @@ class IalirtProcessing(Construct):
             )
         )
 
-        # Specifies the networking mode as AWS_VPC.
+        # Specifies the networking mode as HOST.
+        # In "HOST" you can access the container using the EC2 public IP
+        # that is automatically assigned.
+        # The ECS tasks to automatically inherit the EC2 instance
+        # Elastic IP so that they always use a publicly accessible IP address.
         task_definition = ecs.Ec2TaskDefinition(
             self,
             "IalirtTaskDef",
