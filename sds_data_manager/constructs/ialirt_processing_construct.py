@@ -159,7 +159,7 @@ class IalirtProcessing(Construct):
         task_definition.add_container(
             "IalirtContainer",
             image=ecs.ContainerImage.from_registry(
-                "lasp-registry.colorado.edu/ialirt/ialirt:test",
+                "lasp-registry.colorado.edu/ialirt/ialirt:latest",
                 credentials=nexus_secret,
             ),
             # Allowable values:
@@ -190,7 +190,6 @@ class IalirtProcessing(Construct):
         # This auto-scaling group is used to manage the
         # number of instances in the ECS cluster. If an instance
         # becomes unhealthy, the auto-scaling group will replace it.
-
         auto_scaling_group = autoscaling.AutoScalingGroup(
             self,
             "AutoScalingGroup",
