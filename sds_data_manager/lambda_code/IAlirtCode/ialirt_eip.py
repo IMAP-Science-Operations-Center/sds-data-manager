@@ -23,17 +23,20 @@ def get_eip_allocation_id():
 
     secret_string = secrets.get_secret_value(SecretId=secret_name)["SecretString"]
     secret_data = json.loads(secret_string)
-    eip_id = secret_data.items()
-    logger.info("Retrieved Elastic IP from Secrets Manager: %s", eip_id)
+    eip_allocation_id = secret_data.get("eip_allocation_id")
+    logger.info("Retrieved Elastic IP from Secrets Manager: %s", eip_allocation_id)
 
-    return eip_id
+    return eip_allocation_id
 
 
 def assign_elastic_ip(instance_id, eip_allocation_id):
     """Assign an available Elastic IP to the specified EC2 instance."""
     ec2 = boto3.client("ec2", region_name="us-west-2")
+    response = ec2.describe_addresses(AllocationIds=[eip_allocation_id])
     # Disassociate any existing Elastic IP and associate the new one
-    ec2.disassociate_address(AllocationId=eip_allocation_id)
+    if 'AssociationId' in response["Addresses"][0]:
+        association_id = response['Addresses'][0]['AssociationId']
+        ec2.disassociate_address(AssociationId=association_id)
     ec2.associate_address(InstanceId=instance_id, AllocationId=eip_allocation_id)
 
 
