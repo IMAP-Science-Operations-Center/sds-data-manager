@@ -236,7 +236,7 @@ class IalirtProcessing(Construct):
             "IalirtEipLambdaRole",
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name("AWSLambdaBasicExecutionRole"),
+                iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole"),
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2FullAccess"),
                 iam.ManagedPolicy.from_aws_managed_policy_name("AutoScalingFullAccess"),
             ],
@@ -256,9 +256,7 @@ class IalirtProcessing(Construct):
             memory_size=1000,
             role=lambda_role,
             environment={
-                "EIP_SECRET_ARN": eip_allocation_ids.secret_arn,
-                "REGION": self.region,
-                "SECRET_NAME": self.secret_name,
+                "EIP_SECRET_NAME": self.eip_secret_name,
             },
         )
 

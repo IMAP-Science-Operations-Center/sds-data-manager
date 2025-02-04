@@ -24,6 +24,7 @@ def _set_env(monkeypatch):
     monkeypatch.setenv("AWS_SECURITY_TOKEN", "testing")
     monkeypatch.setenv("AWS_SESSION_TOKEN", "testing")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    monkeypatch.setenv("EIP_SECRET_NAME", "eip-credentials")
 
 
 @pytest.fixture(scope="module")
