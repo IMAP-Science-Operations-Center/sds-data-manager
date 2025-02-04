@@ -1,6 +1,7 @@
 """Configure the i-alirt processing stack."""
 
 import pathlib
+import aws_cdk as cdk
 
 from aws_cdk import Duration, RemovalPolicy
 from aws_cdk import aws_autoscaling as autoscaling
@@ -23,6 +24,7 @@ class IalirtProcessing(Construct):
         self,
         scope: Construct,
         construct_id: str,
+        env: cdk.Environment,
         vpc: ec2.Vpc,
         ports: list[int],
         ialirt_bucket: s3.Bucket,
@@ -59,6 +61,7 @@ class IalirtProcessing(Construct):
         self.s3_bucket_name = ialirt_bucket.bucket_name
         self.secret_name = secret_name
         self.eip_secret_name = eip_secret_name
+        self.region = env.region
 
         # Create security group in which containers will reside
         self.create_ecs_security_group()
@@ -202,6 +205,7 @@ class IalirtProcessing(Construct):
     def create_autoscaling_event_rule(
             self,
             assign_eip_lambda: lambda_alpha_.PythonFunction,
+            auto_scaling_group: autoscaling.AutoScalingGroup,
     ) -> None:
         """Create an EventBridge rule to trigger Lambda on Auto Scaling Group instance launch."""
 
@@ -213,7 +217,7 @@ class IalirtProcessing(Construct):
             event_pattern=events.EventPattern(
                 source=["aws.autoscaling"],
                 detail_type=["EC2 Instance-launch Lifecycle Action"],
-                detail={"AutoScalingGroupName": [{"exists": True}]},
+                detail={"AutoScalingGroupName": [auto_scaling_group.auto_scaling_group_name]},
             ),
         )
 
@@ -295,24 +299,27 @@ class IalirtProcessing(Construct):
 
         auto_scaling_group.apply_removal_policy(RemovalPolicy.DESTROY)
         eip_lambda = self.create_lambda_function(eip_allocation_ids)
-        self.create_autoscaling_event_rule(eip_lambda)
+        self.create_autoscaling_event_rule(eip_lambda, auto_scaling_group)
+
 
         # Attach the AmazonSSMManagedInstanceCore policy for SSM access
         auto_scaling_group.role.add_managed_policy(
-            iam.ManagedPolicy.from_aws_managed_policy_name(
-                "AmazonSSMManagedInstanceCore",
-                "AmazonEventBridgeFullAccess",
-            )
+            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore")
+        )
+        # Add EventBridgeFullAccess policy for EventBridge access
+        auto_scaling_group.role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEventBridgeFullAccess")
         )
 
         autoscaling.LifecycleHook(
+            self,
+            "EipAssignmentHook",
             auto_scaling_group=auto_scaling_group,
             lifecycle_transition=autoscaling.LifecycleTransition.INSTANCE_LAUNCHING,
             default_result=autoscaling.DefaultResult.CONTINUE,  # Continue if timeout occurs
             heartbeat_timeout=Duration.minutes(5),  # Allow up to 5 minutes for EIP assignment
             lifecycle_hook_name="EipAssignmentHook",
             notification_metadata="EIP Assignment Lifecycle Hook",
-            notification_target=autoscaling.ILifecycleHookTarget.to_event_bridge(),
         )
 
         # integrates ECS with EC2 Auto Scaling Groups
