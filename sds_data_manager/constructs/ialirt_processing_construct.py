@@ -294,7 +294,7 @@ class IalirtProcessing(Construct):
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PUBLIC,
             ),
-            associate_public_ip_address=True,
+            associate_public_ip_address=False,
             security_group=self.ecs_security_group,
         )
 

@@ -34,10 +34,22 @@ def assign_elastic_ip(instance_id, eip_allocation_id):
     ec2 = boto3.client("ec2", region_name="us-west-2")
     response = ec2.describe_addresses(AllocationIds=[eip_allocation_id])
     # Disassociate any existing Elastic IP and associate the new one
-    if 'AssociationId' in response["Addresses"][0]:
-        association_id = response['Addresses'][0]['AssociationId']
+    if "AssociationId" in response["Addresses"][0]:
+        association_id = response["Addresses"][0]["AssociationId"]
         ec2.disassociate_address(AssociationId=association_id)
     ec2.associate_address(InstanceId=instance_id, AllocationId=eip_allocation_id)
+
+
+def complete_lifecycle_action(asg_name, lifecycle_hook_name, lifecycle_token, result):
+    """Complete the Auto Scaling Lifecycle Hook."""
+    ec2_client = boto3.client("autoscaling", region_name="us-west-2")
+    ec2_client.complete_lifecycle_action(
+        AutoScalingGroupName=asg_name,
+        LifecycleHookName=lifecycle_hook_name,
+        LifecycleActionToken=lifecycle_token,
+        LifecycleActionResult=result,
+    )
+    logger.info("Completed lifecycle action with result: %s", result)
 
 
 def lambda_handler(event, context):
@@ -69,3 +81,11 @@ def lambda_handler(event, context):
 
     # Assign Elastic IP to the instance.
     assign_elastic_ip(instance_id, eip_allocation_id)
+
+    # Complete the lifecycle action
+    lifecycle_token = event["detail"]["LifecycleActionToken"]
+    asg_name = event["detail"]["AutoScalingGroupName"]
+    lifecycle_hook_name = event["detail"]["LifecycleHookName"]
+    complete_lifecycle_action(
+        asg_name, lifecycle_hook_name, lifecycle_token, "CONTINUE"
+    )
