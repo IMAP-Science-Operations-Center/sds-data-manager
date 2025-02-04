@@ -6,28 +6,35 @@ import os
 
 import boto3
 
-# Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def get_eip_allocation_ids():
+def get_eip_allocation_id():
     """Retrieve Elastic IP allocation IDs from AWS Secrets Manager.
 
     Returns
     -------
-    list[str]
-        A list of Elastic IP allocation IDs.
+    eip_id: str
+        Elastic IP allocation ID.
     """
     secret_name = os.getenv("EIP_SECRET_NAME")
-    SECRETS = boto3.client("secretsmanager", region_name="us-west-2")
+    secrets = boto3.client("secretsmanager", region_name="us-west-2")
 
-    secret_string = SECRETS.get_secret_value(SecretId=secret_name)["SecretString"]
+    secret_string = secrets.get_secret_value(SecretId=secret_name)["SecretString"]
     secret_data = json.loads(secret_string)
-    eip_ids = [value for key, value in secret_data.items() if key.startswith("eip_allocation_id")]
-    logger.info("Retrieved %d Elastic IPs from Secrets Manager: %s", len(eip_ids), eip_ids)
+    eip_id = secret_data.items()
+    logger.info("Retrieved Elastic IP from Secrets Manager: %s", eip_id)
 
-    return eip_ids
+    return eip_id
+
+
+def assign_elastic_ip(instance_id, eip_allocation_id):
+    """Assign an available Elastic IP to the specified EC2 instance."""
+    ec2 = boto3.client("ec2", region_name="us-west-2")
+    # Disassociate any existing Elastic IP and associate the new one
+    ec2.disassociate_address(AllocationId=eip_allocation_id)
+    ec2.associate_address(InstanceId=instance_id, AllocationId=eip_allocation_id)
 
 
 def lambda_handler(event, context):
@@ -50,9 +57,12 @@ def lambda_handler(event, context):
     logger.info("Instance %s has been launched.", instance_id)
 
     # Retrieve Elastic IP allocation IDs from Secrets Manager
-    eip_allocation_ids = get_eip_allocation_ids()
+    eip_allocation_id = get_eip_allocation_id()
 
-    if eip_allocation_ids:
-        logger.info("Available Elastic IPs: %s", eip_allocation_ids)
+    if eip_allocation_id:
+        logger.info("Available Elastic IPs: %s", eip_allocation_id)
     else:
         logger.warning("No available Elastic IPs found.")
+
+    # Assign Elastic IP to the instance.
+    assign_elastic_ip(instance_id, eip_allocation_id)

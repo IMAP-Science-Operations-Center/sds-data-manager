@@ -8,6 +8,10 @@ Ensure you have a secret in AWS Secrets Manager with a username and password for
 
     aws secretsmanager create-secret --name nexus-credentials --description "Credentials for Nexus Docker registry" --secret-string '{"username":"your-username", "password":"your-password"}'
 
+Also ensure you have created a static elastic ip that will be assigned to the EC2::
+
+    aws ec2 allocate-address --domain vpc
+    aws secretsmanager create-secret --name allocation-credentials --description "Credentials for Static EIP" --secret-string '{"eip_allocation_id":"<eip_allocation_id>"}'
 Image Versioning
 ~~~~~~~~~
 We will rely on semantic versioning for the images MAJOR.MINOR (e.g., 1.0).
@@ -44,6 +48,7 @@ We will have a versioned image and latest image in the Nexus repo. The versioned
 
     docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y.Z
     docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
+
 #. Images may be viewed on the Nexus website: https://artifacts.pdmz.lasp.colorado.edu
 #. To verify that the latest image and the most recent version image are the same, run the following and compare the image IDs::
 
