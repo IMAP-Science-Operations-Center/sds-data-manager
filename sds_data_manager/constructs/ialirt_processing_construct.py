@@ -210,7 +210,20 @@ class IalirtProcessing(Construct):
         auto_scaling_group: autoscaling.AutoScalingGroup,
     ) -> None:
         """Create Rule to trigger Lambda on Auto Scaling Group instance launch."""
-        # Create the EventBridge rule
+        # If the instance goes to a running state, make certain that it has
+        # the proper Elastic IP to it. If it does not, assign the proper Elastic IP.
+        deploy_rule = events.Rule(
+            self,
+            "AssignEipOnEc2InstanceLaunch",
+            rule_name="assign-eip-ec2-instance-launch",
+            event_pattern=events.EventPattern(
+                source=["aws.ec2"],
+                detail_type=["EC2 Instance State-change Notification"],
+                detail={
+                    "state": ["running"],
+                },
+            ),
+        )
         asg_lifecycle_rule = events.Rule(
             self,
             "AssignEipOnInstanceLaunch",
@@ -225,6 +238,7 @@ class IalirtProcessing(Construct):
         )
 
         # Add the Lambda function as the target
+        deploy_rule.add_target(targets.LambdaFunction(assign_eip_lambda))
         asg_lifecycle_rule.add_target(targets.LambdaFunction(assign_eip_lambda))
 
     def create_lambda_function(

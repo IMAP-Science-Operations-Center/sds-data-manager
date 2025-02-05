@@ -1,5 +1,3 @@
-"""IALiRT Elastic IP Debugging Lambda."""
-
 import json
 import logging
 import os
@@ -11,13 +9,6 @@ logger.setLevel(logging.INFO)
 
 
 def get_eip_allocation_id():
-    """Retrieve Elastic IP allocation IDs from AWS Secrets Manager.
-
-    Returns
-    -------
-    eip_id: str
-        Elastic IP allocation ID.
-    """
     secret_name = os.getenv("EIP_SECRET_NAME")
     secrets = boto3.client("secretsmanager", region_name="us-west-2")
 
@@ -30,18 +21,31 @@ def get_eip_allocation_id():
 
 
 def assign_elastic_ip(instance_id, eip_allocation_id):
-    """Assign an available Elastic IP to the specified EC2 instance."""
     ec2 = boto3.client("ec2", region_name="us-west-2")
-    response = ec2.describe_addresses(AllocationIds=[eip_allocation_id])
-    # Disassociate any existing Elastic IP and associate the new one
-    if "AssociationId" in response["Addresses"][0]:
-        association_id = response["Addresses"][0]["AssociationId"]
+    eip_description = ec2.describe_addresses(AllocationIds=[eip_allocation_id])
+    logger.info("response: %s", eip_description)
+    # Describe the instance properties
+    ec2_description = ec2.describe_instances(InstanceIds=[instance_id])
+    logger.info("response2: %s", ec2_description)
+    if (
+        ec2_description["Addresses"][0]["PublicIp"]
+        == ec2_description["Addresses"][0]["PublicIp"]
+    ):
+        logger.info("Elastic IP is already associated with this instance.")
+        return
+    elif "AssociationId" in eip_description["Addresses"][0]:
+        # Allocation ID is associated with another instance
+        # and needs to be disassociated.
+        association_id = eip_description["Addresses"][0]["AssociationId"]
         ec2.disassociate_address(AssociationId=association_id)
+        logger.info("Elastic IP disassociated from old instance.")
+
+    # Associate the Elastic IP with instance if not already associated with it.
     ec2.associate_address(InstanceId=instance_id, AllocationId=eip_allocation_id)
+    logger.info("Elastic IP associated with instance %s", instance_id)
 
 
 def complete_lifecycle_action(asg_name, lifecycle_hook_name, lifecycle_token, result):
-    """Complete the Auto Scaling Lifecycle Hook."""
     ec2_client = boto3.client("autoscaling", region_name="us-west-2")
     ec2_client.complete_lifecycle_action(
         AutoScalingGroupName=asg_name,
@@ -68,9 +72,6 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event, indent=2))
 
-    instance_id = event["detail"].get("EC2InstanceId")
-    logger.info("Instance %s has been launched.", instance_id)
-
     # Retrieve Elastic IP allocation IDs from Secrets Manager
     eip_allocation_id = get_eip_allocation_id()
 
@@ -79,13 +80,25 @@ def lambda_handler(event, context):
     else:
         logger.warning("No available Elastic IPs found.")
 
+    details = event["detail"]
+    if "EC2InstanceId" in details:
+        # Instance launch event.
+        instance_id = details.get("EC2InstanceId")
+    else:
+        # Deployment event.
+        instance_id = details["instance-id"]
+
     # Assign Elastic IP to the instance.
     assign_elastic_ip(instance_id, eip_allocation_id)
 
-    # Complete the lifecycle action
-    lifecycle_token = event["detail"]["LifecycleActionToken"]
-    asg_name = event["detail"]["AutoScalingGroupName"]
-    lifecycle_hook_name = event["detail"]["LifecycleHookName"]
-    complete_lifecycle_action(
-        asg_name, lifecycle_hook_name, lifecycle_token, "CONTINUE"
-    )
+    if "EC2InstanceId" in details:
+        # Complete the lifecycle action
+        lifecycle_token = event["detail"]["LifecycleActionToken"]
+        asg_name = event["detail"]["AutoScalingGroupName"]
+        lifecycle_hook_name = event["detail"]["LifecycleHookName"]
+        complete_lifecycle_action(
+            asg_name, lifecycle_hook_name, lifecycle_token, "CONTINUE"
+        )
+        logger.info("Lifecycle Action Completed")
+    else:
+        logger.info("Instance launch event completed.")
