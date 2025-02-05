@@ -3,16 +3,16 @@
 import json
 
 import boto3
-from moto import mock_secretsmanager
+from moto import mock_ec2, mock_secretsmanager
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_eip import (
+    assign_elastic_ip,
     get_eip_allocation_id,
-    lambda_handler,
 )
 
 
 @mock_secretsmanager
-def test_lambda_handler():
+def test_get_eip_allocation_id():
     """Tests the lambda handler."""
     client = boto3.client("secretsmanager", region_name="us-west-2")
 
@@ -24,5 +24,50 @@ def test_lambda_handler():
     eip_allocation_ids = get_eip_allocation_id()
     assert eip_allocation_ids == ["eip-12345678"]
 
-    event = {"detail": {"EC2InstanceId": "i-0123456789abcdef0"}}
-    lambda_handler(event, {})
+
+from moto import mock_secretsmanager
+
+
+@mock_secretsmanager
+def test_get_eip_allocation_id():
+    """Test the retrieval of the EIP allocation ID from Secrets Manager."""
+    client = boto3.client("secretsmanager", region_name="us-west-2")
+
+    # Mock secret data
+    secret_name = "allocation-credentials"  # noqa
+    secret_data = {"eip_allocation_id": "eip-12345678"}
+    client.create_secret(Name=secret_name, SecretString=json.dumps(secret_data))
+
+    eip_allocation_ids = get_eip_allocation_id()
+    assert eip_allocation_ids == ["eip-12345678"]
+
+
+@mock_ec2
+def test_assign_elastic_ip():
+    """Test the assign_elastic_ip function."""
+    # Mock EC2 client
+    ec2_client = boto3.client("ec2", region_name="us-west-2")
+
+    # Create a mock EC2 instance
+    instance_response = ec2_client.run_instances(
+        ImageId="ami-0abcdef1234567890", InstanceType="t2.micro", MinCount=1, MaxCount=1
+    )
+    instance_id = instance_response["Instances"][0]["InstanceId"]
+
+    # Allocate a new EIP and get the AllocationId
+    eip_response = ec2_client.allocate_address(Domain="vpc")
+    eip_allocation_id = eip_response["AllocationId"]
+
+    # Before the test, associate the EIP to the instance
+    ec2_client.associate_address(InstanceId=instance_id, AllocationId=eip_allocation_id)
+
+    # Verify that the address is associated
+    response = ec2_client.describe_addresses(AllocationIds=[eip_allocation_id])
+    assert response["Addresses"][0]["AllocationId"] == eip_allocation_id
+
+    # Run the function to assign the EIP
+    assign_elastic_ip(instance_id, eip_allocation_id)
+
+    # Verify that the address is still associated
+    response = ec2_client.describe_addresses(AllocationIds=[eip_allocation_id])
+    assert response["Addresses"][0]["AllocationId"] == eip_allocation_id
