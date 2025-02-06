@@ -6,6 +6,7 @@ from moto import mock_ec2
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_eip import (
     assign_elastic_ip,
     get_or_allocate_eip,
+    lambda_handler,
 )
 
 
@@ -80,3 +81,18 @@ def test_assign_elastic_ip_disassociate(caplog):
     with caplog.at_level("INFO"):
         assign_elastic_ip(instance_id_1, eip_allocation_id, "deploy")
         assert "Elastic IP disassociated from old instance." in caplog.text
+
+
+@mock_ec2
+def test_lambda_handler_deploy(monkeypatch):
+    """Test lambda_handler function."""
+    monkeypatch.setattr(
+        "sds_data_manager.lambda_code.IAlirtCode.ialirt_eip.assign_elastic_ip",
+        lambda instance_id, eip_allocation_id, eventtype: None,
+    )
+
+    # Create a minimal event that uses the deploy branch.
+    event = {"detail": {"instance-id": "i-0abcdef1234567890"}}
+
+    # Call lambda_handler with a dummy context (None).
+    lambda_handler(event, None)
