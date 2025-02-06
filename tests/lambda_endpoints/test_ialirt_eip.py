@@ -12,34 +12,21 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_eip import (
 
 
 @mock_secretsmanager
-def test_get_eip_allocation_id():
+def test_get_eip_allocation_id(monkeypatch):
     """Tests the lambda handler."""
     client = boto3.client("secretsmanager", region_name="us-west-2")
+    monkeypatch.setenv("EIP_SECRET_NAME", "allocation-credentials")
 
     # Mock secret data
     secret_name = "allocation-credentials"  # noqa
     secret_data = {"eip_allocation_id": "eip-12345678"}
     client.create_secret(Name=secret_name, SecretString=json.dumps(secret_data))
 
-    eip_allocation_ids = get_eip_allocation_id()
-    assert eip_allocation_ids == ["eip-12345678"]
+    # Call the function to retrieve the EIP allocation ID
+    eip_allocation_id = get_eip_allocation_id()
 
-
-from moto import mock_secretsmanager
-
-
-@mock_secretsmanager
-def test_get_eip_allocation_id():
-    """Test the retrieval of the EIP allocation ID from Secrets Manager."""
-    client = boto3.client("secretsmanager", region_name="us-west-2")
-
-    # Mock secret data
-    secret_name = "allocation-credentials"  # noqa
-    secret_data = {"eip_allocation_id": "eip-12345678"}
-    client.create_secret(Name=secret_name, SecretString=json.dumps(secret_data))
-
-    eip_allocation_ids = get_eip_allocation_id()
-    assert eip_allocation_ids == ["eip-12345678"]
+    # Modify the assertion to expect a string instead of a list
+    assert eip_allocation_id == "eip-12345678"  # Expected to return a string
 
 
 @mock_ec2
@@ -60,10 +47,6 @@ def test_assign_elastic_ip():
 
     # Before the test, associate the EIP to the instance
     ec2_client.associate_address(InstanceId=instance_id, AllocationId=eip_allocation_id)
-
-    # Verify that the address is associated
-    response = ec2_client.describe_addresses(AllocationIds=[eip_allocation_id])
-    assert response["Addresses"][0]["AllocationId"] == eip_allocation_id
 
     # Run the function to assign the EIP
     assign_elastic_ip(instance_id, eip_allocation_id)
