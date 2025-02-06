@@ -154,8 +154,8 @@ greenlet==3.0.3 ; python_version >= "3.9" and python_version < "4" and (platform
 idna==3.6 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:9ecdbbd083b06798ae1e86adcbfe8ab1479cf864e4ee30fe4e46a003d12491ca \
     --hash=sha256:c05567e9c24a6b9faaa835c4821bad0590fbb9d5779e7caa6e1cc4978e7eb24f
-imap-data-access==0.12.0 ; python_version >= "3.9" and python_version < "4" \
-    --hash=sha256:a8504771542ad1e28823be78fe04fc04f5de53af993ee80fee84a4d85951c628
+imap-data-access==0.13.0 ; python_version >= "3.9" and python_version < "4" \
+    --hash=sha256:e059f601161ee7c98c25cda2260641c0e0d11bfa1c74d4b340c492dc897f9217
 psycopg2-binary==2.9.9 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:03ef7df18daf2c4c07e2695e8cfd5ee7f748a1d54d802330985a78d2a5a6dca9 \
     --hash=sha256:0a602ea5aff39bb9fac6308e9c9d82b9a35c2bf288e184a816002c9fae930b77 \
