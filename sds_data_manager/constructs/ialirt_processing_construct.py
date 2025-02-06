@@ -29,7 +29,6 @@ class IalirtProcessing(Construct):
         ports: list[int],
         ialirt_bucket: s3.Bucket,
         secret_name: str,
-        eip_secret_name: str,
         **kwargs,
     ) -> None:
         """Construct the i-alirt processing stack.
@@ -50,8 +49,6 @@ class IalirtProcessing(Construct):
             S3 bucket
         secret_name : str,
             Database secret_name for Secrets Manager
-        eip_secret_name : str,
-            EIP secret_name for Secrets Manager
         kwargs : dict
             Keyword arguments
 
@@ -62,7 +59,6 @@ class IalirtProcessing(Construct):
         self.vpc = vpc
         self.s3_bucket_name = ialirt_bucket.bucket_name
         self.secret_name = secret_name
-        self.eip_secret_name = eip_secret_name
         self.region = env.region
 
         # Create security group in which containers will reside
@@ -240,7 +236,6 @@ class IalirtProcessing(Construct):
 
     def create_lambda_function(
         self,
-        eip_allocation_id: secretsmanager.Secret,
     ) -> lambda_alpha_.PythonFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -261,7 +256,7 @@ class IalirtProcessing(Construct):
             id="IalirtAssignEipLambda",
             function_name="ialirt-eip",
             entry=str(
-                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
+                pathlib.Path(__file__).parent.parent.joinpath("lambda_code").resolve()
             ),
             index="IAlirtCode/ialirt_eip.py",
             handler="lambda_handler",
@@ -269,13 +264,7 @@ class IalirtProcessing(Construct):
             timeout=Duration.minutes(1),
             memory_size=1000,
             role=lambda_role,
-            environment={
-                "EIP_SECRET_NAME": self.eip_secret_name,
-            },
         )
-
-        # Grant Lambda permission to access Secrets Manager
-        eip_allocation_id.grant_read(eip_lambda)
 
         # The resource is deleted when the stack is deleted.
         eip_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
@@ -284,10 +273,6 @@ class IalirtProcessing(Construct):
 
     def add_autoscaling(self):
         """Add autoscaling resources."""
-        eip_allocation_id = secretsmanager.Secret.from_secret_name_v2(
-            self, "IalirtEipCredentials", secret_name=self.eip_secret_name
-        )
-
         # This auto-scaling group is used to manage the
         # number of instances in the ECS cluster. If an instance
         # becomes unhealthy, the auto-scaling group will replace it.
@@ -310,7 +295,7 @@ class IalirtProcessing(Construct):
         )
 
         auto_scaling_group.apply_removal_policy(RemovalPolicy.DESTROY)
-        eip_lambda = self.create_lambda_function(eip_allocation_id)
+        eip_lambda = self.create_lambda_function()
         self.create_autoscaling_event_rule(eip_lambda, auto_scaling_group)
 
         # Attach the AmazonSSMManagedInstanceCore policy for SSM access

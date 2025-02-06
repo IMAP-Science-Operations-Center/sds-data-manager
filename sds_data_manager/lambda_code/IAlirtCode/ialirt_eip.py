@@ -2,7 +2,6 @@
 
 import json
 import logging
-import os
 
 import boto3
 
@@ -10,23 +9,36 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def get_eip_allocation_id() -> str:
-    """Get EIP Allocation ID from Secrets Manager.
+def get_or_allocate_eip() -> str:
+    """Get or Create EIP Allocation ID.
 
     Returns
     -------
-    eip_allocation_id : str
+    allocation_id : str
         Elastic IP Allocation ID.
     """
-    secret_name = os.getenv("EIP_SECRET_NAME")
-    secrets = boto3.client("secretsmanager", region_name="us-west-2")
-
-    secret_string = secrets.get_secret_value(SecretId=secret_name)["SecretString"]
-    secret_data = json.loads(secret_string)
-    eip_allocation_id = secret_data.get("eip_allocation_id")
-    logger.info("Retrieved Elastic IP from Secrets Manager: %s", eip_allocation_id)
-
-    return eip_allocation_id
+    tag_name = "I-Alirt EIP"
+    ec2 = boto3.client("ec2", region_name="us-west-2")
+    eip_description = ec2.describe_addresses(
+        Filters=[{"Name": "tag:Name", "Values": [tag_name]}]
+    )
+    addresses = eip_description.get("Addresses", [])
+    if addresses:
+        allocation_id = addresses[0]["AllocationId"]
+        logger.info("Found existing EIP allocation: %s", allocation_id)
+        return allocation_id
+    else:
+        response = ec2.allocate_address(Domain="vpc")
+        allocation_id = response["AllocationId"]
+        public_ip = response["PublicIp"]
+        logger.info(
+            "Allocated new EIP: %s (Allocation ID: %s)", public_ip, allocation_id
+        )
+        ec2.create_tags(
+            Resources=[allocation_id],
+            Tags=[{"Key": "Name", "Value": tag_name}],
+        )
+        return allocation_id
 
 
 def assign_elastic_ip(instance_id: str, eip_allocation_id: str, eventtype: str):
@@ -74,12 +86,8 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event, indent=2))
 
-    eip_allocation_id = get_eip_allocation_id()
-
-    if eip_allocation_id:
-        logger.info("Available Elastic IPs: %s", eip_allocation_id)
-    else:
-        logger.warning("No available Elastic IPs found.")
+    eip_allocation_id = get_or_allocate_eip()
+    logger.info("Using Elastic IP allocation ID: %s", eip_allocation_id)
 
     details = event["detail"]
     if "EC2InstanceId" in details:
@@ -103,6 +111,5 @@ def lambda_handler(event, context):
             LifecycleActionResult="CONTINUE",
         )
         logger.info("Completed lifecycle action with result CONTINUE")
-        logger.info("Lifecycle Action Completed")
     else:
         logger.info("Instance deploy event completed.")

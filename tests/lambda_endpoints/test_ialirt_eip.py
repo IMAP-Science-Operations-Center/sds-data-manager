@@ -1,32 +1,28 @@
 """Test the I-Alirt EIP lambda function."""
 
-import json
-
 import boto3
-from moto import mock_ec2, mock_secretsmanager
+from moto import mock_ec2
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_eip import (
     assign_elastic_ip,
-    get_eip_allocation_id,
+    get_or_allocate_eip,
 )
 
 
-@mock_secretsmanager
-def test_get_eip_allocation_id(monkeypatch):
-    """Tests the lambda handler."""
-    client = boto3.client("secretsmanager", region_name="us-west-2")
-    monkeypatch.setenv("EIP_SECRET_NAME", "allocation-credentials")
+@mock_ec2
+def test_get_or_allocate_eip():
+    """Tests the get_or_allocate_eip function using a mocked EC2 client."""
+    ec2 = boto3.client("ec2", region_name="us-west-2")
 
-    # Mock secret data
-    secret_name = "allocation-credentials"  # noqa
-    secret_data = {"eip_allocation_id": "eip-12345678"}
-    client.create_secret(Name=secret_name, SecretString=json.dumps(secret_data))
+    allocation_id = get_or_allocate_eip()
+    addresses = ec2.describe_addresses().get("Addresses", [])
 
-    # Call the function to retrieve the EIP allocation ID
-    eip_allocation_id = get_eip_allocation_id()
+    # Assert that an address was allocated
+    assert addresses[0]["AllocationId"] == allocation_id
 
-    # Modify the assertion to expect a string instead of a list
-    assert eip_allocation_id == "eip-12345678"
+    # Verify that the allocated address has the proper tag
+    tags = addresses[0].get("Tags", [])
+    assert any(tag["Key"] == "Name" and tag["Value"] == "I-Alirt EIP" for tag in tags)
 
 
 @mock_ec2
