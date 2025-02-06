@@ -209,9 +209,7 @@ class IalirtProcessing(Construct):
         assign_eip_lambda: lambda_alpha_.PythonFunction,
         auto_scaling_group: autoscaling.AutoScalingGroup,
     ) -> None:
-        """Create Rule to trigger Lambda on Auto Scaling Group instance launch."""
-        # If the instance goes to a running state, make certain that it has
-        # the proper Elastic IP to it. If it does not, assign the proper Elastic IP.
+        """Create Rules to trigger Lambda on Auto Scaling Group instance launch."""
         deploy_rule = events.Rule(
             self,
             "AssignEipOnEc2InstanceLaunch",
@@ -237,7 +235,6 @@ class IalirtProcessing(Construct):
             ),
         )
 
-        # Add the Lambda function as the target
         deploy_rule.add_target(targets.LambdaFunction(assign_eip_lambda))
         asg_lifecycle_rule.add_target(targets.LambdaFunction(assign_eip_lambda))
 
