@@ -45,8 +45,6 @@ def assign_elastic_ip(instance_id: str, eip_allocation_id: str, eventtype: str):
     eip_description = ec2.describe_addresses(AllocationIds=[eip_allocation_id])
     ec2_description = ec2.describe_instances(InstanceIds=[instance_id])
     logger.info("eventtype%s", eventtype)
-    logger.info("Elastic IP Description: %s", eip_description)
-    logger.info("EC2 Description: %s", ec2_description)
 
     if (
         ec2_description["Reservations"][0]["Instances"][0]["PublicIpAddress"]
@@ -124,4 +122,4 @@ def lambda_handler(event, context):
         complete_lifecycle_action(asg_name, lifecycle_hook_name, lifecycle_token)
         logger.info("Lifecycle Action Completed")
     else:
-        logger.info("Instance launch event completed.")
+        logger.info("Instance deploy event completed.")

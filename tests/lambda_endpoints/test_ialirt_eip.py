@@ -30,7 +30,7 @@ def test_get_eip_allocation_id(monkeypatch):
 
 
 @mock_ec2
-def test_assign_elastic_ip():
+def test_assign_elastic_ip(caplog):
     """Test the assign_elastic_ip function."""
     # Mock EC2 client
     ec2_client = boto3.client("ec2", region_name="us-west-2")
@@ -45,12 +45,9 @@ def test_assign_elastic_ip():
     eip_response = ec2_client.allocate_address(Domain="vpc")
     eip_allocation_id = eip_response["AllocationId"]
 
-    # Before the test, associate the EIP to the instance
-    ec2_client.associate_address(InstanceId=instance_id, AllocationId=eip_allocation_id)
-
-    # Run the function to assign the EIP
-    assign_elastic_ip(instance_id, eip_allocation_id)
-
-    # Verify that the address is still associated
-    response = ec2_client.describe_addresses(AllocationIds=[eip_allocation_id])
-    assert response["Addresses"][0]["AllocationId"] == eip_allocation_id
+    with caplog.at_level("INFO"):
+        # Run the function to assign the EIP
+        assign_elastic_ip(instance_id, eip_allocation_id, "deploy")
+        assert f"Elastic IP associated with instance {instance_id}" in caplog.text
+        assign_elastic_ip(instance_id, eip_allocation_id, "deploy")
+        assert "Elastic IP is already associated with this instance." in caplog.text
