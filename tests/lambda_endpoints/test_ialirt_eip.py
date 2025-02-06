@@ -1,7 +1,6 @@
 """Test the I-Alirt EIP lambda function."""
 
 import json
-import pytest
 
 import boto3
 from moto import mock_ec2, mock_secretsmanager
@@ -27,7 +26,7 @@ def test_get_eip_allocation_id(monkeypatch):
     eip_allocation_id = get_eip_allocation_id()
 
     # Modify the assertion to expect a string instead of a list
-    assert eip_allocation_id == "eip-12345678"  # Expected to return a string
+    assert eip_allocation_id == "eip-12345678"
 
 
 @mock_ec2
@@ -77,7 +76,9 @@ def test_assign_elastic_ip_disassociate(caplog):
     eip_allocation_id = eip_response["AllocationId"]
 
     # Associate the EIP with the second instance
-    ec2_client.associate_address(InstanceId=instance_id_2, AllocationId=eip_allocation_id)
+    ec2_client.associate_address(
+        InstanceId=instance_id_2, AllocationId=eip_allocation_id
+    )
 
     # Run the function to assign the EIP to the first instance
     with caplog.at_level("INFO"):
@@ -90,8 +91,3 @@ def test_assign_elastic_ip_disassociate(caplog):
     response = ec2_client.describe_addresses(AllocationIds=[eip_allocation_id])
     assert response["Addresses"][0]["InstanceId"] == instance_id_1
     assert response["Addresses"][0]["AllocationId"] == eip_allocation_id
-
-    # Check that the association with the second instance has been removed
-    with pytest.raises(Exception):
-        ec2_client.describe_addresses(AllocationIds=[eip_allocation_id, instance_id_2])
-

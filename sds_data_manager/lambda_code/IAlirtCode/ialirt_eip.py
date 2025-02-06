@@ -61,30 +61,6 @@ def assign_elastic_ip(instance_id: str, eip_allocation_id: str, eventtype: str):
     logger.info("Elastic IP associated with instance %s", instance_id)
 
 
-def complete_lifecycle_action(
-    asg_name: str, lifecycle_hook_name: str, lifecycle_token: str
-):
-    """Complete the lifecycle transition.
-
-    Parameters
-    ----------
-    asg_name : str
-        AutoScaling Group Name.
-    lifecycle_hook_name : str
-        Lifecycle hook name.
-    lifecycle_token : str
-        Lifecycle token.
-    """
-    ec2_client = boto3.client("autoscaling", region_name="us-west-2")
-    ec2_client.complete_lifecycle_action(
-        AutoScalingGroupName=asg_name,
-        LifecycleHookName=lifecycle_hook_name,
-        LifecycleActionToken=lifecycle_token,
-        LifecycleActionResult="CONTINUE",
-    )
-    logger.info("Completed lifecycle action with result CONTINUE")
-
-
 def lambda_handler(event, context):
     """Assign Elastic IPs when an instance launches.
 
@@ -119,7 +95,14 @@ def lambda_handler(event, context):
         lifecycle_token = event["detail"]["LifecycleActionToken"]
         asg_name = event["detail"]["AutoScalingGroupName"]
         lifecycle_hook_name = event["detail"]["LifecycleHookName"]
-        complete_lifecycle_action(asg_name, lifecycle_hook_name, lifecycle_token)
+        ec2_client = boto3.client("autoscaling", region_name="us-west-2")
+        ec2_client.complete_lifecycle_action(
+            AutoScalingGroupName=asg_name,
+            LifecycleHookName=lifecycle_hook_name,
+            LifecycleActionToken=lifecycle_token,
+            LifecycleActionResult="CONTINUE",
+        )
+        logger.info("Completed lifecycle action with result CONTINUE")
         logger.info("Lifecycle Action Completed")
     else:
         logger.info("Instance deploy event completed.")
