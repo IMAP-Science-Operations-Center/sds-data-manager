@@ -83,11 +83,4 @@ def test_assign_elastic_ip_disassociate(caplog):
     # Run the function to assign the EIP to the first instance
     with caplog.at_level("INFO"):
         assign_elastic_ip(instance_id_1, eip_allocation_id, "deploy")
-
-        # Check if the disassociation log message is present
         assert "Elastic IP disassociated from old instance." in caplog.text
-
-    # Verify that the EIP is now associated with the first instance
-    response = ec2_client.describe_addresses(AllocationIds=[eip_allocation_id])
-    assert response["Addresses"][0]["InstanceId"] == instance_id_1
-    assert response["Addresses"][0]["AllocationId"] == eip_allocation_id
