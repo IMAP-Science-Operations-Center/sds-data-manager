@@ -38,6 +38,41 @@ def lambda_handler(event, context):
     key_expr = Key("apid").eq(478)
     query_kwargs = {"KeyConditionExpression": key_expr}
 
+    allowed_params = {
+        "met_start",
+        "met_end",
+        "insert_time_start",
+        "insert_time_end",
+        "product_name",
+    }
+
+    unexpected_params = set(params.keys()) - allowed_params
+    if unexpected_params:
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                {"message": f"Unexpected parameters: {', '.join(unexpected_params)}"}
+            ),
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+
+    if any(param.startswith("met") for param in params) and any(
+        param.startswith("insert_time") for param in params
+    ):
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                {"message": "Cannot query both MET and insert_time in the same request"}
+            ),
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+
     if ("met_start" in params and "met_end" in params) or (
         "insert_time_start" in params and "insert_time_end" in params
     ):

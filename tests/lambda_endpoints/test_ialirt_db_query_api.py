@@ -203,7 +203,6 @@ def test_query_with_multiple_filters(algorithm_table):
     assert items[0]["data"] == "item3"
 
 
-# TODO!
 def test_query_with_multiple_conditions(algorithm_table):
     """Test query API with multiple filters."""
     event = {
@@ -211,13 +210,24 @@ def test_query_with_multiple_conditions(algorithm_table):
             "met_start": "100",
             "met_end": "130",
             "product_name": "hit*",
-            "ingest_time": "2021-01*",
+            "insert_time": "2021-01*",
         }
     }
     response = ialirt_db_query_api.lambda_handler(event, context=None)
-    assert response["statusCode"] == 200
+    assert response["statusCode"] == 400
 
-    items = json.loads(response["body"])
-    assert len(items) == 2  # Both `hit_product_1` entries match
-    returned_data = sorted(item["data"] for item in items)
-    assert returned_data == ["item1", "item2"]
+
+def test_query_with_invalid_parameters(algorithm_table):
+    """Test query API with invalid parameters."""
+    event = {
+        "queryStringParameters": {
+            "met_bad": "100",
+        }
+    }
+    response = ialirt_db_query_api.lambda_handler(event, context=None)
+
+    assert response["statusCode"] == 400
+
+    expected_message = {"message": "Unexpected parameters: met_bad"}
+
+    assert json.loads(response["body"]) == expected_message
