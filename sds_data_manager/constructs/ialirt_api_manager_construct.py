@@ -1,6 +1,7 @@
 """Configure the I-ALiRT API Manager."""
 
 import aws_cdk as cdk
+from aws_cdk import aws_dynamodb as ddb
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from constructs import Construct
@@ -21,6 +22,7 @@ class IalirtApiManager(Construct):
         data_bucket,
         vpc,
         layers: list,
+        algorithm_table: ddb.Table,
         **kwargs,
     ) -> None:
         """Initialize the SdsApiManagerConstruct.
@@ -43,6 +45,8 @@ class IalirtApiManager(Construct):
             The VPC
         layers : list
             List of Lambda layers arns
+        algorithm_table : obj
+            The algorithm DynamoDB table
         kwargs : dict
             Keyword arguments
         """
@@ -136,3 +140,32 @@ class IalirtApiManager(Construct):
             lambda_function=catalog_api,
             use_path_params=True,
         )
+
+        ialirt_db_query_handler = lambda_.Function(
+            self,
+            "IAlirtDbQueryApiHandler",
+            function_name="ialirt-db-query-handler",
+            code=code,
+            handler="IAlirtCode.ialirt_db_query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            environment={
+                "TABLE_NAME": algorithm_table.table_name,
+                "REGION": env.region,
+
+            },
+            layers=layers,
+            architecture=lambda_.Architecture.ARM_64,
+        )
+
+        # Grant the lambda function read/write permissions on the DynamoDB table.
+        algorithm_table.grant_read_write_data(ialirt_db_query_handler)
+
+        api.add_route(
+            route="ialirt-db-query",
+            http_method="GET",
+            lambda_function=ialirt_db_query_handler,
+            use_path_params=True,
+        )
+

@@ -94,7 +94,7 @@ class IalirtIngestLambda(Construct):
 
     def create_algorithm_dynamodb_table(self) -> aws_dynamodb.Table:
         """Create and return the algorithm data product table."""
-        table = ddb.Table(
+        self.algorithm_data_table = ddb.Table(
             self,
             "IalirtAlgorithmDataTable",
             table_name="ialirt-algorithm-table",
@@ -120,7 +120,7 @@ class IalirtIngestLambda(Construct):
         )
 
         # Add a GSI for ingest time.
-        table.add_global_secondary_index(
+        self.algorithm_data_table.add_global_secondary_index(
             index_name="insert_time",
             # Partition key (PK) = APID.
             partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
@@ -133,7 +133,7 @@ class IalirtIngestLambda(Construct):
         )
 
         # Add a GSI for instrument product name.
-        table.add_global_secondary_index(
+        self.algorithm_data_table.add_global_secondary_index(
             index_name="product_name",
             # Partition key (PK) = APID.
             partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
@@ -144,7 +144,7 @@ class IalirtIngestLambda(Construct):
             ),
             projection_type=ddb.ProjectionType.ALL,
         )
-        return table
+        return self.algorithm_data_table
 
     def create_lambda_function(
         self,
