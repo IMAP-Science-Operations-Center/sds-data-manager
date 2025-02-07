@@ -272,6 +272,13 @@ def build_sds(
         scope=ialirt_stack, construct_id="IAlirtBucket", env=env
     )
 
+    # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
+    ingest = ialirt_ingest_lambda_construct.IalirtIngestLambda(
+        scope=ialirt_stack,
+        construct_id="IalirtIngestLambda",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
+    )
+
     ialirt_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
         scope=ialirt_stack,
         id="IAlirtDependencies",
@@ -301,6 +308,7 @@ def build_sds(
         data_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
         layers=[ialirt_lambda_layer],
+        algorithm_table=ingest.algorithm_data_table,
     )
 
     # All traffic to I-ALiRT is directed to listed container ports
@@ -314,13 +322,6 @@ def build_sds(
         ports=ialirt_ports,
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         secret_name=ialirt_secret_name,
-    )
-
-    # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
-    ialirt_ingest_lambda_construct.IalirtIngestLambda(
-        scope=ialirt_stack,
-        construct_id="IalirtIngestLambda",
-        ialirt_bucket=ialirt_bucket.ialirt_bucket,
     )
 
 

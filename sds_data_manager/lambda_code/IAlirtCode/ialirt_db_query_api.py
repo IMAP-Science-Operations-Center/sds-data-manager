@@ -1,34 +1,109 @@
-import os
+"""I-ALiRT Database Query lambda."""
+
 import json
+import logging
+import os
+
 import boto3
-from boto3.dynamodb.conditions import Key, Attr
+from boto3.dynamodb.conditions import Attr, Key
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
-    table_name = os.environ["TABLE_NAME"]
+    """Create metadata and add it to the database.
+
+    This function is an event handler for s3 ingest bucket.
+    It is also used to ingest data to the DynamoDB table.
+
+    Parameters
+    ----------
+    event : dict
+        The JSON formatted document with the data required for the
+        lambda function to process
+    context : LambdaContext
+        This object provides methods and properties that provide
+        information about the invocation, function,
+        and runtime environment.
+
+    """
+    table_name = os.environ["ALGORITHM_TABLE"]
     region = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
     dynamodb = boto3.resource("dynamodb", region_name=region)
     table = dynamodb.Table(table_name)
 
-    params = event["queryStringParameters"]
-    apid = int(params["apid"])
-    met_start = int(params["met_start"])
-    met_end = int(params["met_end"])
+    params = event.get("queryStringParameters", {})
 
-    key_expr = Key("apid").eq(apid) & Key("met").between(met_start, met_end)
+    key_expr = Key("apid").eq(478)
     query_kwargs = {"KeyConditionExpression": key_expr}
 
+    if ("met_start" in params and "met_end" in params) or (
+        "insert_time_start" in params and "insert_time_end" in params
+    ):
+        time_key = "met" if "met_start" in params else "insert_time"
+
+        start_value = (
+            int(params[f"{time_key}_start"])
+            if time_key == "met"
+            else params[f"{time_key}_start"]
+        )
+        end_value = (
+            int(params[f"{time_key}_end"])
+            if time_key == "met"
+            else params[f"{time_key}_end"]
+        )
+
+        key_expr &= Key(time_key).between(start_value, end_value)
+
+        if time_key == "insert_time":
+            query_kwargs["IndexName"] = "insert_time"
+
+    elif "met_start" in params or "insert_time_start" in params:
+        time_key = "met" if "met_start" in params else "insert_time"
+
+        start_value = (
+            int(params[f"{time_key}_start"])
+            if time_key == "met"
+            else params[f"{time_key}_start"]
+        )
+        key_expr &= Key(time_key).gte(start_value)
+
+        if time_key == "insert_time":
+            query_kwargs["IndexName"] = "insert_time"
+
+    elif "met_end" in params or "insert_time_end" in params:
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                {"message": "Cannot query by end time without start time"}
+            ),
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+
+    query_kwargs["KeyConditionExpression"] = key_expr
+
     if "product_name" in params:
-        query_kwargs["FilterExpression"] = Attr("product_name").eq(params["product_name"])
+        product_name_value = params["product_name"]
+
+        if product_name_value.endswith("*"):
+            query_kwargs["FilterExpression"] = Attr("product_name").begins_with(
+                product_name_value[:-1]
+            )
+        else:
+            query_kwargs["FilterExpression"] = Attr("product_name").eq(
+                product_name_value
+            )
 
     response = table.query(**query_kwargs)
-    items = response.get("Items", [])
-
     return {
         "statusCode": 200,
-        "body": json.dumps(items),
+        "body": json.dumps(response.get("Items", []), default=str),
         "headers": {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
-        }
+            "Access-Control-Allow-Origin": "*",
+        },
     }
