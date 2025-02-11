@@ -50,7 +50,8 @@ def algorithm_table(setup_dynamodb):
 
 
 def test_query_with_met_range(algorithm_table):
-    """Test GET /query?met_start=100&met_end=111."""
+    """Test query with met range."""
+    # GET /query?met_start=100&met_end=111
     event = {
         "queryStringParameters": {
             "met_start": "100",
@@ -67,7 +68,8 @@ def test_query_with_met_range(algorithm_table):
 
 
 def test_query_with_met_start(algorithm_table):
-    """Test GET /query?met_start=120."""
+    """Test query with met start."""
+    # GET /query?met_start=120
     event = {
         "queryStringParameters": {
             "met_start": "120",
@@ -82,7 +84,8 @@ def test_query_with_met_start(algorithm_table):
 
 
 def test_query_with_met_end(algorithm_table):
-    """Test GET /query?met_end=120."""
+    """Test query with met end."""
+    # GET /query?met_end=120
     event = {
         "queryStringParameters": {
             "met_end": "120",
@@ -91,6 +94,8 @@ def test_query_with_met_end(algorithm_table):
     response = ialirt_db_query_api.lambda_handler(event, context=None)
 
     assert response["statusCode"] == 400
+    expected_message = {"message": "Cannot query by end time without start time"}
+    assert json.loads(response["body"]) == expected_message
 
 
 def test_query_with_insert_time_range(algorithm_table):
@@ -118,7 +123,8 @@ def test_query_with_insert_time_range(algorithm_table):
 
 
 def test_query_with_insert_time_start(algorithm_table):
-    """Test GET /query?insert_time_start=<insert_time_start>."""
+    """Test with insert time start."""
+    # GET /query?insert_time_start=<insert_time_start>
     event = {
         "queryStringParameters": {
             "insert_time_start": "2021-01-02T00:00:00Z",
@@ -139,7 +145,8 @@ def test_query_with_insert_time_start(algorithm_table):
 
 
 def test_query_with_insert_time_end(algorithm_table):
-    """Test GET /query?insert_time_end=<insert_time_end>."""
+    """Test query with insert time end."""
+    # GET /query?insert_time_end=<insert_time_end>
     event = {
         "queryStringParameters": {
             "insert_time_end": "2021-01-02T00:00:00Z",
@@ -147,10 +154,13 @@ def test_query_with_insert_time_end(algorithm_table):
     }
     response = ialirt_db_query_api.lambda_handler(event, context=None)
     assert response["statusCode"] == 400
+    expected_message = {"message": "Cannot query by end time without start time"}
+    assert json.loads(response["body"]) == expected_message
 
 
 def test_query_no_results(algorithm_table):
-    """Test GET /query?met_start=<met_start>&met_end=<met_end>."""
+    """Test query if there are no results."""
+    # GET /query?met_start=<met_start>&met_end=<met_end>
     event = {
         "queryStringParameters": {
             "met_start": "200",
@@ -163,7 +173,8 @@ def test_query_no_results(algorithm_table):
 
 
 def test_query_with_product_name_prefix(algorithm_table):
-    """Test GET /query?product_name=hit*."""
+    """Test query with product name prefix."""
+    # GET /query?product_name=hit*
     event = {
         "queryStringParameters": {
             "product_name": "hit*",
@@ -176,7 +187,8 @@ def test_query_with_product_name_prefix(algorithm_table):
 
 
 def test_query_with_product_name(algorithm_table):
-    """Test GET /query?product_name=hit*."""
+    """Test query with product name."""
+    # GET /query?product_name=hit*
     event = {
         "queryStringParameters": {
             "product_name": "hit_product_1",
@@ -189,7 +201,8 @@ def test_query_with_product_name(algorithm_table):
 
 
 def test_query_with_multiple_filters(algorithm_table):
-    """Test GET /query?met_start=100&met_end=130&product_name=codicelo_product_1."""
+    """Test query with multiple filters."""
+    # GET /query?met_start=100&met_end=130&product_name=codicelo_product_1
     event = {
         "queryStringParameters": {
             "met_start": "100",
@@ -203,22 +216,29 @@ def test_query_with_multiple_filters(algorithm_table):
     assert items[0]["data"] == "item3"
 
 
-def test_query_with_multiple_conditions(algorithm_table):
+def test_query_with_different_time_queries(algorithm_table):
     """Test query API with multiple filters."""
+    # GET /query?met_start=100&met_end=130&product_name=hit*&
+    # insert_time_start=2021-01-02T00:00:00Z.
     event = {
         "queryStringParameters": {
             "met_start": "100",
             "met_end": "130",
             "product_name": "hit*",
-            "insert_time": "2021-01*",
+            "insert_time_start": "2021-01-02T00:00:00Z",
         }
     }
     response = ialirt_db_query_api.lambda_handler(event, context=None)
     assert response["statusCode"] == 400
+    expected_message = {
+        "message": "Cannot query both MET and insert_time in the same request"
+    }
+    assert json.loads(response["body"]) == expected_message
 
 
 def test_query_with_invalid_parameters(algorithm_table):
-    """Test query API with invalid parameters."""
+    """Test query with invalid parameters."""
+    # GET /query?met_bad=100.
     event = {
         "queryStringParameters": {
             "met_bad": "100",
@@ -227,7 +247,5 @@ def test_query_with_invalid_parameters(algorithm_table):
     response = ialirt_db_query_api.lambda_handler(event, context=None)
 
     assert response["statusCode"] == 400
-
     expected_message = {"message": "Unexpected parameters: met_bad"}
-
     assert json.loads(response["body"]) == expected_message
