@@ -151,9 +151,8 @@ class IalirtApiManager(Construct):
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
             environment={
-                "TABLE_NAME": algorithm_table.table_name,
+                "ALGORITHM_TABLE": algorithm_table.table_name,
                 "REGION": env.region,
-
             },
             layers=layers,
             architecture=lambda_.Architecture.ARM_64,
@@ -168,4 +167,3 @@ class IalirtApiManager(Construct):
             lambda_function=ialirt_db_query_handler,
             use_path_params=True,
         )
-

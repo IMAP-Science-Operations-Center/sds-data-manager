@@ -35,6 +35,16 @@ def lambda_handler(event, context):
 
     params = event.get("queryStringParameters", {})
 
+    if not params:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"message": "No query parameters provided"}),
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+
     key_expr = Key("apid").eq(478)
     query_kwargs = {"KeyConditionExpression": key_expr}
 
