@@ -33,6 +33,7 @@ def lambda_handler(event, context):
     dynamodb = boto3.resource("dynamodb", region_name=region)
     table = dynamodb.Table(table_name)
 
+    logger.info(f"Received event: {json.dumps(event)}")
     params = event.get("queryStringParameters", {})
 
     if not params:
