@@ -260,3 +260,21 @@ def test_query_with_no_parameters(algorithm_table):
     assert response["statusCode"] == 400
     expected_message = {"message": "No query parameters provided"}
     assert json.loads(response["body"]) == expected_message
+
+
+def test_query_with_mixed_parameters(algorithm_table):
+    """Test query with mixed parameters."""
+    # GET <invoke url>/query?met_start=100&insert_time_end=2021-01-02T00:00:00Z.
+    event = {
+        "queryStringParameters": {
+            "met_start": "100",
+            "insert_time_end": "2021-01-02T00:00:00Z",
+        }
+    }
+    response = ialirt_db_query_api.lambda_handler(event, context=None)
+
+    assert response["statusCode"] == 400
+    expected_message = {
+        "message": "Cannot query both MET and insert_time in the same request"
+    }
+    assert json.loads(response["body"]) == expected_message
