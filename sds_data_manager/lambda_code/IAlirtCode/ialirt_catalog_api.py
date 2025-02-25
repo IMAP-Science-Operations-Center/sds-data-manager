@@ -64,26 +64,20 @@ def lambda_handler(event, context) -> dict:
     end_date = datetime.strptime(event["end_date"], "%Y-%m-%d")
 
     if not day < end_date:
-        response_body = (
-            "The start date of the requested time frame is not before the "
-            "end date. Please supply a valid time range."
-        )
         return {
             "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
-            "body": response_body,
+            "body": "The start date of the requested time frame is not before the "
+            "end date. Please supply a valid time range.",
         }
 
     if end_date - day > timedelta(days=30):
-        response_body = (
-            "The end date of the requested time frame must not be more "
-            "than 30 days after the start date. Please supply a valid time"
-            " range."
-        )
         return {
             "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
-            "body": response_body,
+            "body": "The end date of the requested time frame must not be more "
+            "than 30 days after the start date. Please supply a valid time"
+            " range.",
         }
 
     bucket = os.getenv("S3_BUCKET")
@@ -100,14 +94,12 @@ def lambda_handler(event, context) -> dict:
         day_path = f"pointing_schedules/{event['station']}/{day.strftime('%Y%m%d')}/"
         files = s3_client.list_objects_v2(Bucket=bucket, Prefix=day_path)
         if "Contents" not in files.keys():
-            response_body = (
-                f"There are not files associated with the provided date {day}. "
-                f"Please supply a valid time range that is covered by existing files."
-            )
             return {
                 "statusCode": 404,
                 "headers": {"Content-Type": "application/json"},
-                "body": response_body,
+                "body": "There are not files associated with the provided date {day}. "
+                "Please supply a valid time range that is covered by existing "
+                "files.",
             }
         file_names = []
         dates_modified = []
