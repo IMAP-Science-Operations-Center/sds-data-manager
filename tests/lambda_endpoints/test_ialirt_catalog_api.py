@@ -8,9 +8,11 @@ from sds_data_manager.lambda_code.IAlirtCode import ialirt_catalog_api
 def test_bad_dates_ialirt_catalog_api(s3_client):
     """Test a failing call to the catalog endpoint due to bad dates."""
     event = {
-        "start_date": "2025-02-06",
-        "end_date": "2025-02-06",
-        "station": "station1",
+        "queryStringParameters": {
+            "start_date": "2025-02-06",
+            "end_date": "2025-02-06",
+            "station": "station1",
+        }
     }
     response = ialirt_catalog_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 400
@@ -24,9 +26,11 @@ def test_bad_dates_ialirt_catalog_api(s3_client):
 def test_too_large_time_range_ialirt_catalog_api(s3_client):
     """Test a failing call to the endpoint caused by dates that are too far apart."""
     event = {
-        "start_date": "2025-02-06",
-        "end_date": "2025-03-20",
-        "station": "station1",
+        "queryStringParameters": {
+            "start_date": "2025-02-06",
+            "end_date": "2025-03-20",
+            "station": "station1",
+        }
     }
     response = ialirt_catalog_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 400
@@ -40,9 +44,11 @@ def test_too_large_time_range_ialirt_catalog_api(s3_client):
 def test_no_files_ialirt_catalog_api(s3_client):
     """Test unsuccessful call to the endpoint caused by an empty response from s3."""
     event = {
-        "start_date": "2025-02-06",
-        "end_date": "2025-02-07",
-        "station": "station1",
+        "queryStringParameters": {
+            "start_date": "2025-02-06",
+            "end_date": "2025-02-07",
+            "station": "station1",
+        }
     }
     response = ialirt_catalog_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 404
@@ -63,9 +69,11 @@ def test_success_ialirt_catalog_api(s3_client):
         Body=b"Hello world 2",
     )
     event = {
-        "start_date": "2025-02-06",
-        "end_date": "2025-02-07",
-        "station": "station1",
+        "queryStringParameters": {
+            "start_date": "2025-02-06",
+            "end_date": "2025-02-07",
+            "station": "station1",
+        }
     }
     response = ialirt_catalog_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 200

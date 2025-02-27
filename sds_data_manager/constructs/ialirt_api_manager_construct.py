@@ -124,6 +124,7 @@ class IalirtApiManager(Construct):
             handler="IAlirtCode.ialirt_catalog_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
             environment={
                 "S3_BUCKET": data_bucket.bucket_name,
                 "REGION": env.region,
@@ -138,7 +139,6 @@ class IalirtApiManager(Construct):
             route="ialirt-catalog",
             http_method="GET",
             lambda_function=catalog_api,
-            use_path_params=True,
         )
 
         ialirt_db_query_handler = lambda_.Function(
