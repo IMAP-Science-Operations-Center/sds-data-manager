@@ -135,8 +135,10 @@ ultra, l0, raw, ultra, l1a, all, HARD, DOWNSTREAM
 
 # Ultra-45 products
 ultra, l1a, 45sensor-de, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-hk,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-aux,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-pset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin, ultra, l1c, 45sensor-pset, HARD, DOWNSTREAM
