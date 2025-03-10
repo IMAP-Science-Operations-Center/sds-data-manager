@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 
 import boto3
-from imap_data_access import ScienceFilePath
+from imap_data_access import AncillaryFilePath, ScienceFilePath
 
 from ..database import database as db
 from ..database import models
@@ -19,15 +19,17 @@ logger.setLevel(logging.INFO)
 s3 = boto3.client("s3")
 
 
-def get_file_creation_date(file_path):
-    """Get s3 file creation date.
+def get_file_ingestion_date(file_path):
+    """Get s3 file ingestion date.
 
     Parameters
     ----------
     file_path: str
         S3 object path. Eg. filepath/filename.ext
 
-    creation_date: datetime.datetime
+    Returns
+    -------
+    file_ingestion_date: datetime.datetime
         Last modified data of s3 file.
 
     """
@@ -39,11 +41,11 @@ def get_file_creation_date(file_path):
     logger.info(f"looking up ingestion date for {file_path}")
 
     response = s3_client.head_object(Bucket=bucket_name, Key=file_path)
-    file_creation_date = response["LastModified"]
+    file_ingestion_date = response["LastModified"]
 
     # LastModified looks like this:
     # 2024-01-25 23:35:26+00:00
-    return file_creation_date
+    return file_ingestion_date
 
 
 def http_response(headers=None, status_code=200, body="Success"):
@@ -78,7 +80,7 @@ def http_response(headers=None, status_code=200, body="Success"):
     }
 
 
-def send_event_from_indexer(filename):
+def send_event_from_indexer(filename, instrument_name):
     """Send custom PutEvent to EventBridge.
 
     Example of what PutEvent looks like:
@@ -97,6 +99,8 @@ def send_event_from_indexer(filename):
     ----------
     filename : str
         The filename to use in the PutEvent
+    instrument_name : str
+        The instrument name to use in the PutEvent
 
     Returns
     -------
@@ -104,16 +108,14 @@ def send_event_from_indexer(filename):
         EventBridge response
 
     """
-    logger.info("in send event function")
+    logger.info("Sending event function from indexer Lambda")
     event_client = boto3.client("events")
 
     # Create event["detail"] information
     # TODO: This is what batch starter expect
     # as input. Revisit this.
 
-    science_filepath = ScienceFilePath(filename)
-
-    detail = {"object": {"key": filename, "instrument": science_filepath.instrument}}
+    detail = {"object": {"key": filename, "instrument": instrument_name}}
 
     # create PutEvent dictionary
     event = IMAPLambdaPutEvent(detail_type="Processed File", detail=detail)
@@ -149,43 +151,89 @@ def s3_event_handler(event):
     s3_filepath = event["detail"]["object"]["key"]
 
     filename = os.path.basename(s3_filepath)
-    # TODO: add checks for SPICE or other
-    # data types
+    # SPICE will be handled in another lambda. This lambda handles
+    # science and ancillary files.
+    file_obj = None
+    try:
+        file_obj = ScienceFilePath(filename)
+        # setup a dictionary of metadata parameters to write to the
+        # ScienceFiles table. Eg.
+        # {
+        #     "file_path": None,
+        #     "instrument": self.instrument,
+        #     "data_level": self.data_level,
+        #     "descriptor": self.descriptor,
+        #     "start_date": datetime.strptime(self.startdate, "%Y%m%d"),
+        #     "repointing": self.repointing,
+        #     "version": self.version,
+        #     "extension": self.extension,
+        #     "ingestion_date": date_object,
+        # }
+        sci_params = file_obj.extract_filename_components(filename)
+        # delete mission key from metadata params
+        sci_params.pop("mission")
+        sci_params["data_level"] = sci_params.pop("data_level")
+        sci_params["start_date"] = datetime.strptime(
+            sci_params.pop("start_date"), "%Y%m%d"
+        )
+        if sci_params.get("end_date"):
+            sci_params["end_date"] = datetime.strptime(
+                sci_params.pop("end_date"), "%Y%m%d"
+            )
 
-    # setup a dictionary of metadata parameters to unpack in the
-    # ScienceFiles table. Eg.
-    # {
-    #     "file_path": None,
-    #     "instrument": self.instrument,
-    #     "data_level": self.data_level,
-    #     "descriptor": self.descriptor,
-    #     "start_date": datetime.strptime(self.startdate, "%Y%m%d"),
-    #     "repointing": self.repointing,
-    #     "version": self.version,
-    #     "extension": self.extension,
-    #     "ingestion_date": date_object,
-    # }
-    file_params = ScienceFilePath.extract_filename_components(filename)
-    # delete mission key from metadata params
-    file_params.pop("mission")
-    file_params["data_level"] = file_params.pop("data_level")
-    file_params["start_date"] = datetime.strptime(
-        file_params.pop("start_date"), "%Y%m%d"
-    )
+        sci_params["file_path"] = s3_filepath
+        ingestion_date_object = get_file_ingestion_date(s3_filepath)
 
-    file_params["file_path"] = s3_filepath
+        sci_params["ingestion_date"] = ingestion_date_object
+        with db.Session() as session, session.begin():
+            session.add(models.ScienceFiles(**sci_params))
+        logger.info("Wrote data to the ScienceFiles table")
+    except ScienceFilePath.InvalidScienceFileError:
+        logger.info(
+            f"Filename {filename} is not a valid SCIENCE file. Checking for"
+            " ancillary file."
+        )
+        try:
+            file_obj = AncillaryFilePath(filename)
+            # setup a dictionary of metadata parameters to write to the
+            # AncillaryFiles table. Eg.
+            # {
+            #     "file_path": None,
+            #     "instrument": self.instrument,
+            #     "descriptor": self.descriptor,
+            #     "start_date": datetime.strptime(self.startdate, "%Y%m%d"),
+            #     "end_date": datetime.strptime(self.enddate, "%Y%m%d"),
+            #     "version": self.version,
+            #     "extension": self.extension,
+            #     "ingestion_date": date_object,
+            # }
+            anc_params = file_obj.extract_filename_components(filename)
+            # delete mission key from metadata params
+            anc_params.pop("mission")
+            anc_params["start_date"] = datetime.strptime(
+                anc_params.pop("start_date"), "%Y%m%d"
+            )
+            if anc_params.get("end_date"):
+                anc_params["end_date"] = datetime.strptime(
+                    anc_params.pop("end_date"), "%Y%m%d"
+                )
+            anc_params["file_path"] = s3_filepath
+            ingestion_date_object = get_file_ingestion_date(s3_filepath)
+            anc_params["ingestion_date"] = ingestion_date_object
+            with db.Session() as session, session.begin():
+                session.add(models.AncillaryFiles(**anc_params))
+            logger.info("Wrote data to the AncillaryFiles table")
 
-    ingestion_date_object = get_file_creation_date(s3_filepath)
-
-    file_params["ingestion_date"] = ingestion_date_object
-    with db.Session() as session, session.begin():
-        session.add(models.ScienceFiles(**file_params))
-    logger.info("Wrote data to the ScienceFiles table")
+        except AncillaryFilePath.InvalidAncillaryFileError:
+            logger.error(f"Filename {filename} is not a valid ANCILLARY file.")
+            msg = "Error: file name does not match ancillary or science file paths."
+            return http_response(status_code=400, body=msg)
 
     # Send event from this lambda for Batch starter
     # lambda
-    send_event_from_indexer(filename)
+    send_event_from_indexer(filename, file_obj.instrument)
     logger.debug("S3 event handler complete")
+    return http_response(status_code=200, body="Success")
 
 
 def batch_event_handler(event):
@@ -277,23 +325,6 @@ def batch_event_handler(event):
     return http_response(status_code=200, body="Success")
 
 
-# Handlers mapping
-event_handlers = {
-    "aws.s3": s3_event_handler,
-    "aws.batch": batch_event_handler,
-}
-
-
-def handle_event(event, handler):
-    """Event handling logic."""
-    try:
-        handler(event)
-        return http_response(status_code=200, body="Success")
-    except ScienceFilePath.InvalidScienceFileError as e:
-        logger.error(str(e))
-        return http_response(status_code=400, body=str(e))
-
-
 def lambda_handler(event, context):
     """Create metadata and add it to the database.
 
@@ -315,9 +346,10 @@ def lambda_handler(event, context):
     logger.info("Received event: " + json.dumps(event, indent=2))
     source = event.get("source")
 
-    handler = event_handlers.get(source)
-    if handler:
-        return handle_event(event, handler)
+    if source == "aws.s3":
+        return s3_event_handler(event)
+    elif source == "aws.batch":
+        return batch_event_handler(event)
     else:
         logger.error("Unknown event source")
         return http_response(status_code=400, body="Unknown event source")

@@ -141,7 +141,10 @@ class AncillaryFiles(Base):
     __tablename__ = "ancillary_files"
 
     file_path = Column(String, nullable=False, primary_key=True, unique=True)
-    start_date = Column(DateTime, nullable=True)
+    instrument = Column(INSTRUMENTS, nullable=False)
+    # TODO: determine character limit for descriptor
+    descriptor = Column(String, nullable=False)
+    start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(String, nullable=False)
