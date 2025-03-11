@@ -34,6 +34,34 @@ def test_get_downstream_dependencies():
 
     assert dependents == expected_complete_dependent
 
+    # Add test for getting back ancillary dependency
+    event = {
+        "queryStringParameters": {
+            "dependency_type": "UPSTREAM",
+            "relationship": "HARD",
+            "data_source": "swe",
+            "data_type": "l1b",
+            "descriptor": "sci",
+        }
+    }
+    dependency_response = dependency.lambda_handler(event, None)
+    dependents = json.loads(dependency_response["body"])
+
+    expected_complete_dependent = [
+        {
+            "data_source": "swe",
+            "data_type": "l1a",
+            "descriptor": "sci",
+        },
+        {
+            "data_source": "swe",
+            "data_type": "ancillary",
+            "descriptor": "l1b-in-flight-cal",
+        },
+    ]
+    assert len(dependents) == 2
+    assert dependents == expected_complete_dependent
+
 
 def test_lambda_handler_no_dependencies():
     """Test lambda_handler when no dependencies are found."""
