@@ -209,6 +209,7 @@ def test_unknown_event(session):
 def test_send_lambda_put_event(events_client):
     """Test the ``send_event_from_indexer`` function."""
     filename = "imap_swapi_l1_sci-1min_20230724_v001.cdf"
+    file_obj = ScienceFilePath(filename)
 
-    result = send_event_from_indexer(filename, "swapi")
+    result = send_event_from_indexer(file_obj)
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200

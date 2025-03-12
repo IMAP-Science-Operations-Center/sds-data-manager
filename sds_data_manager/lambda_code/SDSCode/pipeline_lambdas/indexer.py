@@ -80,7 +80,7 @@ def http_response(headers=None, status_code=200, body="Success"):
     }
 
 
-def send_event_from_indexer(filename, instrument_name):
+def send_event_from_indexer(file_obj):
     """Send custom PutEvent to EventBridge.
 
     Example of what PutEvent looks like:
@@ -97,10 +97,8 @@ def send_event_from_indexer(filename, instrument_name):
 
     Parameters
     ----------
-    filename : str
+    file_obj : AncillaryFilePath, ScienceFilePath
         The filename to use in the PutEvent
-    instrument_name : str
-        The instrument name to use in the PutEvent
 
     Returns
     -------
@@ -115,7 +113,9 @@ def send_event_from_indexer(filename, instrument_name):
     # TODO: This is what batch starter expect
     # as input. Revisit this.
 
-    detail = {"object": {"key": filename, "instrument": instrument_name}}
+    detail = {
+        "object": {"key": str(file_obj.filename), "instrument": file_obj.instrument}
+    }
 
     # create PutEvent dictionary
     event = IMAPLambdaPutEvent(detail_type="Processed File", detail=detail)
@@ -231,7 +231,7 @@ def s3_event_handler(event):
 
     # Send event from this lambda for Batch starter
     # lambda
-    send_event_from_indexer(filename, file_obj.instrument)
+    send_event_from_indexer(file_obj)
     logger.debug("S3 event handler complete")
     return http_response(status_code=200, body="Success")
 
