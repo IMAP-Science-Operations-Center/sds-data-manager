@@ -67,6 +67,9 @@ hit, l1a, count-rates, hit, l1b, all, HARD, DOWNSTREAM
 hit, l1b, standard-rates, hit, l2, standard-fluxes, HARD, DOWNSTREAM
 hit, l1b, summed-rates, hit, l2, summed-fluxes, HARD, DOWNSTREAM
 hit, l1b, sectored-rates, hit, l2, sectored-fluxes, HARD, DOWNSTREAM
+hit, l2, sectored-fluxes, hit, l3, macropixel, HARD, DOWNSTREAM
+mag, l1d, norm-mago, hit, l3, macropixel, HARD, DOWNSTREAM
+hit, l1a, pulse-height-events , hit, l3, direct-event, HARD, DOWNSTREAM
 
 # <---- IDEX Dependencies ---->
 
