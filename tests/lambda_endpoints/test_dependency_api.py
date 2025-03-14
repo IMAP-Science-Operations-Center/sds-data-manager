@@ -16,7 +16,7 @@ def test_get_downstream_dependencies():
             "relationship": "HARD",
             "data_source": "hit",
             "data_type": "l1a",
-            "descriptor": "count-rates",
+            "descriptor": "counts",
         }
     }
 

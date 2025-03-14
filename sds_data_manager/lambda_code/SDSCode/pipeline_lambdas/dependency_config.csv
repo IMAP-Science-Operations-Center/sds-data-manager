@@ -63,13 +63,14 @@ hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 
 hit, l0, raw, hit, l1a, all, HARD, DOWNSTREAM
 hit, l0, raw, hit, l1b, hk, HARD, DOWNSTREAM
-hit, l1a, count-rates, hit, l1b, all, HARD, DOWNSTREAM
-hit, l1b, standard-rates, hit, l2, standard-fluxes, HARD, DOWNSTREAM
-hit, l1b, summed-rates, hit, l2, summed-fluxes, HARD, DOWNSTREAM
-hit, l1b, sectored-rates, hit, l2, sectored-fluxes, HARD, DOWNSTREAM
-hit, l2, sectored-fluxes, hit, l3, macropixel, HARD, DOWNSTREAM
+
+hit, l1a, counts, hit, l1b, all, HARD, DOWNSTREAM
+hit, l1b, standard-rates, hit, l2, standard-intensity, HARD, DOWNSTREAM
+hit, l1b, summed-rates, hit, l2, summed-intensity, HARD, DOWNSTREAM
+hit, l1b, sectored-rates, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, l2, macropixel-intensity, hit, l3, macropixel, HARD, DOWNSTREAM
 mag, l1d, norm-mago, hit, l3, macropixel, HARD, DOWNSTREAM
-hit, l1a, pulse-height-events, hit, l3, direct-event, HARD, DOWNSTREAM
+hit, l1a, direct-events, hit, l3, direct-events, HARD, DOWNSTREAM
 
 # <---- IDEX Dependencies ---->
 
@@ -138,8 +139,10 @@ ultra, l0, raw, ultra, l1a, all, HARD, DOWNSTREAM
 
 # Ultra-45 products
 ultra, l1a, 45sensor-de, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-hk,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-aux,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-pset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin, ultra, l1c, 45sensor-pset, HARD, DOWNSTREAM
