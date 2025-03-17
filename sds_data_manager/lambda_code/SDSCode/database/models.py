@@ -128,11 +128,21 @@ class SPICEFiles(Base):
     __tablename__ = "spice_files"
 
     file_path = Column(String, nullable=False, primary_key=True, unique=True)
-    start_date = Column(DateTime, nullable=True)
-    end_date = Column(DateTime, nullable=True)
-    version = Column(String(4), nullable=True)  # vXXX
-    extension = Column(String, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
+    file_root = Column(String)
+    kernel_type = Column(String)
+    min_date_j2000 = Column(Float)
+    max_date_j2000 = Column(Float)
+    file_intervals_j2000 = Column(JSON)
+    min_date_datetime = Column(DateTime(timezone=True))
+    max_date_datetime = Column(DateTime(timezone=True))
+    file_intervals_datetime = Column(JSON)
+    min_date_sclk = Column(String)
+    max_date_sclk = Column(String)
+    file_intervals_sclk = Column(JSON)
+    sclk_kernel = Column(String)
+    lsk_kernel = Column(String)
+    version = Column(Integer, nullable=True) )
 
 
 class AncillaryFiles(Base):
