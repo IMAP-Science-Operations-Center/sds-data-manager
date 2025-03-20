@@ -58,6 +58,7 @@ poetry shell
 
 If running in codespaces, this should already be done.
 
+When you update the dependencies, you will need to run `poetry lock` to update the lockfile and `poetry export -f requirements.txt -o lambda_layer/python/requirements.txt --with lambda-dev` to regenerate the requirements.txt file used in the Lambdas.
 
 ### AWS Setup
 
