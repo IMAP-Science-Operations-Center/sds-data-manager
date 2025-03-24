@@ -29,6 +29,9 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4"
+# WARNING - Please run this command when updateing `imap-data-access` to ensure that
+# the correct version and hash are used:
+#   poetry export -f requirements.txt -o lambda_layer/python/requirements.txt --with lambda-dev
 imap-data-access = ">=0.15.1"
 
 # Optional dependencies - install with `poetry install -E docs`
