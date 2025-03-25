@@ -137,7 +137,7 @@ class IndexerLambda(Construct):
         batch_job_status_rule.add_target(targets.LambdaFunction(indexer_lambda))
 
 class SPICEIndexerLambda(Construct):
-    """Creates a Lambda that writes SPICE files to EFS, and indexes them in the database"""
+    """Construct for the SPICE Indexer Lambda."""
 
     def __init__(
         self,
