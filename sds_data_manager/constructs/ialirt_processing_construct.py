@@ -26,7 +26,6 @@ class IalirtProcessing(Construct):
         construct_id: str,
         env: cdk.Environment,
         vpc: ec2.Vpc,
-        ports: list[int],
         ialirt_bucket: s3.Bucket,
         secret_name: str,
         **kwargs,
@@ -43,8 +42,6 @@ class IalirtProcessing(Construct):
             The environment in which to deploy the stack.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
-        ports : list[int]
-            List of ports to listen on for incoming traffic and used by container.
         ialirt_bucket: s3.Bucket
             S3 bucket
         secret_name : str,
@@ -55,7 +52,6 @@ class IalirtProcessing(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
-        self.ports = ports
         self.vpc = vpc
         self.s3_bucket_name = ialirt_bucket.bucket_name
         self.secret_name = secret_name
