@@ -8,16 +8,16 @@ from enum import Enum
 
 import imap_data_access
 from sqlalchemy import (
+    JSON,
     Column,
     DateTime,
+    Float,
     Identity,
     Index,
     Integer,
     String,
     UniqueConstraint,
     and_,
-    Float,
-    JSON
 )
 from sqlalchemy import (
     Enum as SqlEnum,

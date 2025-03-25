@@ -1,6 +1,7 @@
 """Configure the indexer lambda."""
 
 import aws_cdk as cdk
+from aws_cdk import Environment
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
@@ -8,9 +9,10 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
-from aws_cdk import Environment
 from constructs import Construct
+
 from .efs_construct import EFSConstruct
+
 
 class IndexerLambda(Construct):
     """Construct for indexer lambda."""
@@ -136,6 +138,7 @@ class IndexerLambda(Construct):
         imap_data_arrival_rule.add_target(targets.LambdaFunction(indexer_lambda))
         batch_job_status_rule.add_target(targets.LambdaFunction(indexer_lambda))
 
+
 class SPICEIndexerLambda(Construct):
     """Construct for the SPICE Indexer Lambda."""
 
@@ -197,9 +200,7 @@ class SPICEIndexerLambda(Construct):
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "service-role/AWSLambdaVPCAccessExecutionRole"
                 ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonS3FullAccess"
-                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess"),
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonElasticFileSystemFullAccess"
                 ),
@@ -218,13 +219,13 @@ class SPICEIndexerLambda(Construct):
             "SPICEIndexerLambda",
             function_name="spice-file-indexer",
             # Allow access to the EFS over NFS port
-            #allow_all_outbound=True,
+            # allow_all_outbound=True,
             runtime=lambda_.Runtime.PYTHON_3_12,
             code=code,
             handler="spice_lambda.lambda_function.lambda_handler",
             role=efs_lambda_role,
-            description='''Lambda that writes SPICE files to the EFS and indexes
-                           them in our database.''',
+            description="""Lambda that writes SPICE files to the EFS and indexes
+                           them in our database.""",
             # Access to the EFS requires to be within the VPC
             vpc=vpc,
             # Mount EFS access point to /mnt/data within the lambda
@@ -238,7 +239,7 @@ class SPICEIndexerLambda(Construct):
             security_groups=[rds_security_group],
             environment={
                 "EFS_SPICE_MOUNT_PATH": spice_mount_path,
-                "SECRET_NAME": db_secret_name
+                "SECRET_NAME": db_secret_name,
             },
         )
 

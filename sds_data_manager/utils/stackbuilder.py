@@ -268,7 +268,7 @@ def build_sds(
         scope=sdc_stack,
         construct_id="SPICEIndexerLambda",
         code=lambda_code,
-        db_secret_name = db_secret_name,
+        db_secret_name=db_secret_name,
         env=env,
         vpc=networking.vpc,
         layers=[db_lambda_layer],
