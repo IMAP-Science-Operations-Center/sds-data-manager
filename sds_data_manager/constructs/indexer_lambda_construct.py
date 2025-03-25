@@ -10,7 +10,7 @@ from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from aws_cdk import Environment
 from constructs import Construct
-from efs_construct import EFSConstruct
+from .efs_construct import EFSConstruct
 
 class IndexerLambda(Construct):
     """Construct for indexer lambda."""
