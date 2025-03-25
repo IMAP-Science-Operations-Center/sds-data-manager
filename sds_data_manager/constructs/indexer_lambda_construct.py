@@ -223,7 +223,8 @@ class SPICEIndexerLambda(Construct):
             code=code,
             handler="spice_lambda.lambda_function.lambda_handler",
             role=efs_lambda_role,
-            description="Lambda that writes SPICE files to the EFS and indexes them in our database.",
+            description='''Lambda that writes SPICE files to the EFS and indexes
+                           them in our database.''',
             # Access to the EFS requires to be within the VPC
             vpc=vpc,
             # Mount EFS access point to /mnt/data within the lambda
