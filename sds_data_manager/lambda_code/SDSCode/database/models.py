@@ -142,7 +142,7 @@ class SPICEFiles(Base):
     file_intervals_sclk = Column(JSON)
     sclk_kernel = Column(String)
     lsk_kernel = Column(String)
-    version = Column(Integer, nullable=True) )
+    version = Column(Integer, nullable=True)
 
 
 class AncillaryFiles(Base):
