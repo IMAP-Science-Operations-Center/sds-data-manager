@@ -80,26 +80,24 @@ class IalirtProcessing(Construct):
         )
 
         # Allow inbound and outbound traffic from a specific port and IP.
-        ip_ranges = [
-            "128.138.131.0/24",  # LASP IP
-            "198.118.1.14/32",  # BlueNet (tlm relay)
-            "193.174.22.3/32",  # Kiel
-        ]
-        for port in self.ports:
-            for ip_range in ip_ranges:
-                self.ecs_security_group.add_ingress_rule(
-                    # TODO: allow IP addresses from partners
-                    peer=ec2.Peer.ipv4(ip_range),
-                    connection=ec2.Port.tcp(port),
-                    description=f"Allow inbound traffic on TCP port {port}",
-                )
+        partner_access = {
+            "128.138.131.0/24": 7526,  # LASP (used for testing only)
+            "198.118.1.14/32": 7526,  # BlueNet (tlm relay)
+            "193.174.22.3/32": 7564,  # Kiel
+        }
 
-                # Allow outbound traffic.
-                self.ecs_security_group.add_egress_rule(
-                    peer=ec2.Peer.ipv4(ip_range),
-                    connection=ec2.Port.tcp(port),
-                    description=f"Allow outbound traffic on TCP port {port}",
-                )
+        for ip_range, port in partner_access.items():
+            self.ecs_security_group.add_ingress_rule(
+                peer=ec2.Peer.ipv4(ip_range),
+                connection=ec2.Port.tcp(port),
+                description=f"Allow inbound traffic on TCP port {port}",
+            )
+            # Allow outbound traffic.
+            self.ecs_security_group.add_egress_rule(
+                peer=ec2.Peer.ipv4(ip_range),
+                connection=ec2.Port.tcp(port),
+                description=f"Allow outbound traffic on TCP port {port}",
+            )
 
     def add_compute_resources(self):
         """Add ECS compute resources for a container."""
