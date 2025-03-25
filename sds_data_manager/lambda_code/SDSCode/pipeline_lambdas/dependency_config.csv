@@ -76,6 +76,7 @@ hit, l1a, direct-events, hit, l3, direct-events, HARD, DOWNSTREAM
 
 idex, l0, raw, idex, l1a, sci, HARD, DOWNSTREAM
 idex, l1a, sci, idex, l1b, sci, HARD, DOWNSTREAM
+idex, l1b, sci, idex, l2a, sci, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
 lo, l0, raw, lo, l1a, all, HARD, DOWNSTREAM

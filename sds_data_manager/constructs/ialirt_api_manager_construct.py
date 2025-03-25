@@ -109,7 +109,7 @@ class IalirtApiManager(Construct):
         download_api.add_to_role_policy(s3_read_policy)
 
         api.add_route(
-            route="ialirt-log-download",
+            route="ialirt-download",
             http_method="GET",
             lambda_function=download_api,
             use_path_params=True,
