@@ -71,6 +71,7 @@ SQLAlchemy = "<=3.0.0"
 
 
 # Used for installing with pip
+spiceypy = "^6.0.0"
 [tool.poetry.extras]
 doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 

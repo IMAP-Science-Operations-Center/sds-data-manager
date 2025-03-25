@@ -6,9 +6,11 @@ from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
+from aws_cdk import Environment
 from constructs import Construct
-
+from efs_construct import EFSConstruct
 
 class IndexerLambda(Construct):
     """Construct for indexer lambda."""
@@ -133,3 +135,129 @@ class IndexerLambda(Construct):
         # Add the Lambda function as the target for the rules
         imap_data_arrival_rule.add_target(targets.LambdaFunction(indexer_lambda))
         batch_job_status_rule.add_target(targets.LambdaFunction(indexer_lambda))
+
+class SPICEIndexerLambda(Construct):
+    """Creates a Lambda that writes SPICE files to EFS, and indexes them in the database"""
+
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        code: lambda_.Code,
+        db_secret_name: str,
+        env: Environment,
+        vpc: ec2.Vpc,
+        layers: list,
+        rds_security_group,
+        data_bucket: s3.Bucket,
+        efs_construct: EFSConstruct,
+        **kwargs,
+    ) -> None:
+        """Construct the EFS lambdas.
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        code : aws_lambda.Code
+            Lambda code bundle
+        db_secret_name : str
+            The DB secret name
+        env : Environment
+            Account and region
+        vpc : ec2.Vpc
+            VPC into which to put the resources that require networking.
+        layers : list
+            List of Lambda layers cdk.cdfnOutput names
+        rds_security_group : obj
+            The RDS security group
+        data_bucket : obj
+            The data bucket
+        efs_construct : obj
+            The EFS filesystem construct
+        kwargs : dict
+            Keyword arguments
+
+        """
+        super().__init__(scope, construct_id, **kwargs)
+
+        # Create a role for the SPICE lambda
+        # Grant the Lambda identity role access to the VPC/EFS
+        iam_role_name = "spice-lambda-role"
+        efs_lambda_role = iam.Role(
+            self,
+            iam_role_name,
+            role_name=iam_role_name,
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaBasicExecutionRole"
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaVPCAccessExecutionRole"
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonS3FullAccess"
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonElasticFileSystemFullAccess"
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "SecretsManagerReadWrite"
+                ),
+            ],
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+        )
+
+        # This access point is used by other resources to read from EFS
+        spice_mount_path = "/mnt/spice"
+
+        self.spice_ingest_lambda = lambda_.Function(
+            self,
+            "SPICEIndexerLambda",
+            function_name="spice-file-indexer",
+            # Allow access to the EFS over NFS port
+            #allow_all_outbound=True,
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            code=code,
+            handler="spice_lambda.lambda_function.lambda_handler",
+            role=efs_lambda_role,
+            description="Lambda that writes SPICE files to the EFS and indexes them in our database.",
+            # Access to the EFS requires to be within the VPC
+            vpc=vpc,
+            # Mount EFS access point to /mnt/data within the lambda
+            filesystem=lambda_.FileSystem.from_efs_access_point(
+                efs_construct.spice_access_point, spice_mount_path
+            ),
+            timeout=cdk.Duration.minutes(1),
+            architecture=lambda_.Architecture.X86_64,
+            layers=layers,
+            memory_size=1000,
+            security_groups=[rds_security_group],
+            environment={
+                "EFS_SPICE_MOUNT_PATH": spice_mount_path,
+                "SECRET_NAME": db_secret_name
+            },
+        )
+
+        # Define an EventBridge rule
+        event_rule = events.Rule(
+            self,
+            "EfsWriteLambdaS3EventRule",
+            event_pattern=events.EventPattern(
+                source=["aws.s3"],
+                detail_type=["Object Created"],
+                detail={
+                    "bucket": {"name": [data_bucket.bucket_name]},
+                    "object": {
+                        "key": [
+                            {"prefix": "spice/"},
+                        ]
+                    },
+                },
+            ),
+        )
+
+        # Add the Lambda function as the target for the rule
+        event_rule.add_target(targets.LambdaFunction(self.spice_ingest_lambda))

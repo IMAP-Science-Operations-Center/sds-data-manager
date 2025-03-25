@@ -263,13 +263,16 @@ def build_sds(
         api_domain=api.api_domain_name,
     )
 
-    # Create lambda that mounts EFS and writes data to EFS
-    efs_construct.EFSWriteLambda(
+    # Create lambda that mounts EFS and writes SPICE files to the EFS and the database
+    indexer_lambda_construct.SPICEIndexerLambda(
         scope=sdc_stack,
-        construct_id="EFSWriteLambda",
+        construct_id="SPICEIndexerLambda",
         code=lambda_code,
+        db_secret_name = db_secret_name,
         env=env,
         vpc=networking.vpc,
+        layers=[db_lambda_layer],
+        rds_security_group=rds_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
         efs_construct=efs_instance,
     )

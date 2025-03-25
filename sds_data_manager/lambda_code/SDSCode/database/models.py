@@ -16,6 +16,8 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     and_,
+    Float,
+    JSON
 )
 from sqlalchemy import (
     Enum as SqlEnum,
