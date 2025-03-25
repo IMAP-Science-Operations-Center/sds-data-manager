@@ -83,8 +83,8 @@ class IalirtProcessing(Construct):
         ip_ranges = [
             "128.138.131.0/24",  # LASP IP
             "198.118.1.14/32",  # BlueNet (tlm relay)
-            "193.174.22.3/32",
-        ]  # Kiel
+            "193.174.22.3/32",  # Kiel
+        ]
         for port in self.ports:
             for ip_range in ip_ranges:
                 self.ecs_security_group.add_ingress_rule(
