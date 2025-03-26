@@ -94,7 +94,7 @@ charset-normalizer==3.4.1 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:fc54db6c8593ef7d4b2a331b58653356cf04f67c960f584edb7c3d8c97e8f39e \
     --hash=sha256:fd4ec41f914fa74ad1b8304bbc634b3de73d2a0889bd32076342a573e0779e00 \
     --hash=sha256:ffc9202a29ab3920fa812879e95a9e78b2465fd10be7fcbd042899695d75e616
-greenlet==3.1.1 ; python_version < "3.14" and (platform_machine == "aarch64" or platform_machine == "ppc64le" or platform_machine == "x86_64" or platform_machine == "amd64" or platform_machine == "AMD64" or platform_machine == "win32" or platform_machine == "WIN32") and python_version >= "3.9" \
+greenlet==3.1.1 ; python_version < "3.14" and platform_machine == "aarch64" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "ppc64le" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "x86_64" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "amd64" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "AMD64" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "win32" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "WIN32" and python_version >= "3.9" \
     --hash=sha256:0153404a4bb921f0ff1abeb5ce8a5131da56b953eda6e14b88dc6bbc04d2049e \
     --hash=sha256:03a088b9de532cbfe2ba2034b2b85e82df37874681e8c470d6fb2f8c04d7e4b7 \
     --hash=sha256:04b013dc07c96f83134b1e99888e7a79979f1a247e2a9f59697fa14b5862ed01 \
