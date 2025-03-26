@@ -94,7 +94,7 @@ charset-normalizer==3.4.1 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:fc54db6c8593ef7d4b2a331b58653356cf04f67c960f584edb7c3d8c97e8f39e \
     --hash=sha256:fd4ec41f914fa74ad1b8304bbc634b3de73d2a0889bd32076342a573e0779e00 \
     --hash=sha256:ffc9202a29ab3920fa812879e95a9e78b2465fd10be7fcbd042899695d75e616
-greenlet==3.1.1 ; python_version < "3.14" and platform_machine == "aarch64" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "ppc64le" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "x86_64" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "amd64" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "AMD64" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "win32" and python_version >= "3.9" or python_version < "3.14" and platform_machine == "WIN32" and python_version >= "3.9" \
+greenlet==3.1.1 ; python_version < "3.14" and (platform_machine == "aarch64" or platform_machine == "ppc64le" or platform_machine == "x86_64" or platform_machine == "amd64" or platform_machine == "AMD64" or platform_machine == "win32" or platform_machine == "WIN32") and python_version >= "3.9" \
     --hash=sha256:0153404a4bb921f0ff1abeb5ce8a5131da56b953eda6e14b88dc6bbc04d2049e \
     --hash=sha256:03a088b9de532cbfe2ba2034b2b85e82df37874681e8c470d6fb2f8c04d7e4b7 \
     --hash=sha256:04b013dc07c96f83134b1e99888e7a79979f1a247e2a9f59697fa14b5862ed01 \
@@ -171,9 +171,9 @@ greenlet==3.1.1 ; python_version < "3.14" and platform_machine == "aarch64" and 
 idna==3.10 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9 \
     --hash=sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3
-imap-data-access==0.15.1 ; python_version >= "3.9" and python_version < "4" \
-    --hash=sha256:5db37072122f867150657ee78bedd553656893d52fc30fe5b60a5f855a238d39 \
-    --hash=sha256:68c11dfc9c1ca03daef09ea149eca8789a68a63c540dcb127c4c058c2f2e9aca
+imap-data-access==0.16.0 ; python_version >= "3.9" and python_version < "4" \
+    --hash=sha256:81a72104c0b80a4314c2b081a748718f99bc10dc775db333c7c1b34ae56a46e1 \
+    --hash=sha256:d87f3b038d84c259ba18a1a7a8f3e8c3873dd3625c270fbae9513d1e0184139e
 psycopg2-binary==2.9.10 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:04392983d0bb89a8717772a193cfaac58871321e3ec69514e1c4e0d4957b5aff \
     --hash=sha256:056470c3dc57904bbf63d6f534988bafc4e970ffd50f6271fc4ee7daad9498a5 \
