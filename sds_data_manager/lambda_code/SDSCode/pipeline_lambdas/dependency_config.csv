@@ -104,11 +104,27 @@ mag, l1a, norm-mago, mag, l1b, norm-mago, HARD, DOWNSTREAM
 mag, l1a, norm-magi, mag, l1b, norm-magi, HARD, DOWNSTREAM
 mag, l1a, burst-mago, mag, l1b, burst-mago, HARD, DOWNSTREAM
 mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
+mag, ancillary, l1b-calibration, mag, l1b, all, HARD, DOWNSTREAM
 
+# For L1C, we want to trigger on either burst or norm or both.
 mag, l1b, norm-mago, mag, l1c, norm-mago, SOFT, DOWNSTREAM
 mag, l1b, burst-mago, mag, l1c, norm-mago, SOFT, DOWNSTREAM
 mag, l1b, norm-magi, mag, l1c, norm-magi, SOFT, DOWNSTREAM
 mag, l1b, burst-magi, mag, l1c, norm-magi, SOFT, DOWNSTREAM
+
+mag, l1c, norm-mago, mag, l1d, norm, HARD, DOWNSTREAM
+mag, l1c, norm-magi, mag, l1d, norm, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1d, burst, HARD, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1d, burst, HARD, DOWNSTREAM
+mag, ancillary, l1d-calibration, mag, l1d, all, HARD, DOWNSTREAM
+
+# For level 2, we actually only want to trigger on the arrival of the offsets file.
+# This offsets file is tightly tied to the L1C and L1B files, so those files will be
+# retrieved out of the ancillary file and not through the dependency API.
+mag, ancillary, offsets-burst, mag, l2, burst, HARD, DOWNSTREAM
+mag, ancillary, offsets-norm, mag, l2, norm, HARD, DOWNSTREAM
+mag, ancillary, l2-calibration, mag, l2, all, HARD, DOWNSTREAM
+
 
 # <---- SWAPI Dependencies ---->
 
