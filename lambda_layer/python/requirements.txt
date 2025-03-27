@@ -171,9 +171,9 @@ greenlet==3.1.1 ; python_version < "3.14" and (platform_machine == "aarch64" or 
 idna==3.10 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9 \
     --hash=sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3
-imap-data-access==0.15.1 ; python_version >= "3.9" and python_version < "4" \
-    --hash=sha256:5db37072122f867150657ee78bedd553656893d52fc30fe5b60a5f855a238d39 \
-    --hash=sha256:68c11dfc9c1ca03daef09ea149eca8789a68a63c540dcb127c4c058c2f2e9aca
+imap-data-access==0.16.0 ; python_version >= "3.9" and python_version < "4" \
+    --hash=sha256:81a72104c0b80a4314c2b081a748718f99bc10dc775db333c7c1b34ae56a46e1 \
+    --hash=sha256:d87f3b038d84c259ba18a1a7a8f3e8c3873dd3625c270fbae9513d1e0184139e
 numpy==2.0.2 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:0123ffdaa88fa4ab64835dcbde75dcdf89c453c922f18dced6e27c90d1d0ec5a \
     --hash=sha256:11a76c372d1d37437857280aa142086476136a8c0f373b2e648ab2c8f18fb195 \
