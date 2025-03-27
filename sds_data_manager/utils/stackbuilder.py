@@ -320,8 +320,6 @@ def build_sds(
         algorithm_table=ingest.algorithm_data_table,
     )
 
-    # All traffic to I-ALiRT is directed to listed container ports
-    ialirt_ports = [7526, 7560, 7564, 7566, 7568]
     ialirt_secret_name = "nexus-credentials"  # noqa
 
     ialirt_processing_construct.IalirtProcessing(
@@ -329,7 +327,6 @@ def build_sds(
         construct_id="IalirtProcessing",
         env=env,
         vpc=networking.vpc,
-        ports=ialirt_ports,
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         secret_name=ialirt_secret_name,
     )
