@@ -77,7 +77,6 @@ class IndexerLambda(Construct):
                 "SECRET_NAME": db_secret_name,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         # Adding events and s3 permission because indexer

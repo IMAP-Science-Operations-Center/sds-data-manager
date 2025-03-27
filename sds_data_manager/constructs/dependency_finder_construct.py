@@ -48,7 +48,6 @@ class DependencyFinder(Construct):
             memory_size=512,
             timeout=Duration.minutes(1),
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         api.add_route(

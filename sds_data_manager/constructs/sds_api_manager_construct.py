@@ -89,7 +89,6 @@ class SdsApiManager(Construct):
                 "REGION": env.region,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
         upload_api_lambda.add_to_role_policy(s3_read_policy)
@@ -120,7 +119,6 @@ class SdsApiManager(Construct):
                 "SECRET_NAME": db_secret_name,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         api.add_route(
@@ -143,7 +141,6 @@ class SdsApiManager(Construct):
                 "REGION": env.region,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         download_api.add_to_role_policy(s3_read_policy)
@@ -171,7 +168,6 @@ class SdsApiManager(Construct):
                 "SECRET_NAME": db_secret_name,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         rds_secret = secrets.Secret.from_secret_name_v2(

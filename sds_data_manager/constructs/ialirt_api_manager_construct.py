@@ -78,7 +78,6 @@ class IalirtApiManager(Construct):
                 "REGION": env.region,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         query_api_lambda.add_to_role_policy(s3_read_policy)
@@ -103,7 +102,6 @@ class IalirtApiManager(Construct):
                 "REGION": env.region,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         download_api.add_to_role_policy(s3_read_policy)
@@ -130,7 +128,6 @@ class IalirtApiManager(Construct):
                 "REGION": env.region,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         catalog_api.add_to_role_policy(s3_read_policy)
@@ -155,7 +152,6 @@ class IalirtApiManager(Construct):
                 "REGION": env.region,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         # Grant the lambda function read/write permissions on the DynamoDB table.

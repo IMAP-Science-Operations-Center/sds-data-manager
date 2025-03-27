@@ -138,7 +138,6 @@ class SdpDatabase(Construct):
                 "SECRET_NAME": self.secret_name,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", self.secret_name
@@ -194,5 +193,4 @@ class SdpDatabase(Construct):
                 "SECRET_NAME": self.secret_name,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
