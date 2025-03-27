@@ -222,7 +222,7 @@ class SPICEIndexerLambda(Construct):
             # allow_all_outbound=True,
             runtime=lambda_.Runtime.PYTHON_3_12,
             code=code,
-            handler="spice_lambda.lambda_function.lambda_handler",
+            handler="pipeline_lambdas.spice_indexer.lambda_handler",
             role=efs_lambda_role,
             description="""Lambda that writes SPICE files to the EFS and indexes
                            them in our database.""",
