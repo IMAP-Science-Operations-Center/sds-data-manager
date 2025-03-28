@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
 
-def test_s3_sci_event(session, s3_client, events_client):
+def test_s3_spice_event(session, s3_client, events_client):
     """Test s3 event."""
     current_path = os.path.dirname(os.path.abspath(__file__))
     filepath = "imap/spice/ck/imap_2025_118_2025_120_001.ah.bc"
@@ -47,3 +47,9 @@ def test_s3_sci_event(session, s3_client, events_client):
         shutil.copy(source_path, destination_path)
     
     spice_indexer.lambda_handler(event, None)
+
+    # Verify that the file was moved
+    assert os.path.exists("/tmp/imap/ck/imap_2025_118_2025_120_001.ah.bc")
+
+    # Verify that the database was populated appropriately
+    result = session.query(models.SPICEFiles).all()

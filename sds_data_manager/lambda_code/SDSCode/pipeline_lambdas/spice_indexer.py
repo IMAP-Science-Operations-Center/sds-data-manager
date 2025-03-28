@@ -59,26 +59,36 @@ def get_coverage_dictionary(spice_file, coverage_function, function_arguments):
         raise Exception(f"Unable to gather coverage information from file {spice_file} due to error {str(e)}.  Not indexing!")  
     return results_J2000, results_datetime, results_sclk
 
-def index_spice_file(spice_file, latest_lsk, latest_sclk):
+def index_spice_file(spice_file, spice_mount_path):
     spice_file = str(spice_file)
     spice_metadata = SPICEFilePath.extract_filename_components(spice_file)
-    if spice_metadata['start_date']==minimum_mission_time or spice_metadata['end_date']==maximum_mission_time:
-        file_coverage_datetime = DEFAULT_DATETIME_INTERVAL
-        file_coverage_J2000 = [[spiceypy.datetime2et(minimum_mission_time), spiceypy.datetime2et(maximum_mission_time)]]
-        file_coverage_sclk =  [[spiceypy.sce2s(SPACECRAFT_ID, minimum_mission_time), spiceypy.sce2s(SPACECRAFT_ID, maximum_mission_time)]]
-    else:
-        coverage_function = spiceypy.spkcov
-        function_arguments = {'idcode':SPACECRAFT_ID*1000,
-                                'cover': spiceypy.cell_double(10000)
-                                }
-        if 'attitude' in spice_metadata['type']:
-            coverage_function = spiceypy.ckcov
-            function_arguments['needav'] = False
-            function_arguments['level'] = 'INTERVAL'
-            function_arguments['tol'] =  0.0
-            function_arguments['timsys'] = 'TDB'
-            
-        file_coverage_J2000, file_coverage_datetime, file_coverage_sclk = get_coverage_dictionary(spice_file, coverage_function, function_arguments)   
+    try:
+        latest_lsk, latest_sclk = furnish_lsk_sclk(spice_mount_path)
+        spice_metadata = SPICEFilePath.extract_filename_components(spice_file)
+        if spice_metadata['start_date']==minimum_mission_time or spice_metadata['end_date']==maximum_mission_time:
+            file_coverage_datetime = DEFAULT_DATETIME_INTERVAL
+            file_coverage_J2000 = [[spiceypy.datetime2et(minimum_mission_time), spiceypy.datetime2et(maximum_mission_time)]]
+            file_coverage_sclk =  [[spiceypy.sce2s(SPACECRAFT_ID, minimum_mission_time), spiceypy.sce2s(SPACECRAFT_ID, maximum_mission_time)]]
+        else:
+            coverage_function = spiceypy.spkcov
+            function_arguments = {'idcode':SPACECRAFT_ID*1000,
+                                    'cover': spiceypy.cell_double(10000)
+                                    }
+            if 'attitude' in spice_metadata['type']:
+                coverage_function = spiceypy.ckcov
+                function_arguments['needav'] = False
+                function_arguments['level'] = 'INTERVAL'
+                function_arguments['tol'] =  0.0
+                function_arguments['timsys'] = 'TDB'
+                
+            file_coverage_J2000, file_coverage_datetime, file_coverage_sclk = get_coverage_dictionary(spice_file, coverage_function, function_arguments)  
+    except Exception as e:
+        if spice_metadata['type'] in ('leapseconds', 'spacecraft_clock'):
+            file_coverage_datetime = DEFAULT_DATETIME_INTERVAL
+            file_coverage_J2000 = [[0, 0]]
+            file_coverage_sclk =  [[0, 0]]
+        else:
+            raise e 
 
     spice_params = {}
     spice_params['ingestion_date'] = datetime.fromtimestamp(os.path.getmtime(spice_file))
@@ -222,7 +232,6 @@ def lambda_handler(event, context):
     logger.info(event)
 
     file_path = write_data_to_efs(s3_key, s3_bucket, spice_mount_path)
-    latest_lsk, latest_sclk = furnish_lsk_sclk(spice_mount_path)
-    index_spice_file(file_path, latest_lsk, latest_sclk)
+    index_spice_file(file_path, spice_mount_path)
     
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}
