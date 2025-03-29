@@ -17,8 +17,8 @@ logger.setLevel(logging.INFO)
 
 # Define the paths
 SPACECRAFT_ID = -43
-minimum_mission_time = SPICEFilePath.EARLIEST_VALID_TIME
-maximum_mission_time = SPICEFilePath.LATEST_VALID_TIME
+minimum_mission_time = datetime(2023,1,1)
+maximum_mission_time = datetime(2999,1,1)
 DEFAULT_DATETIME_INTERVAL = [[minimum_mission_time,maximum_mission_time]]
 
 def get_latest_from_dir(spice_dir):
@@ -64,6 +64,17 @@ def index_spice_file(spice_file, spice_mount_path):
     spice_metadata = SPICEFilePath.extract_filename_components(spice_file)
     try:
         latest_lsk, latest_sclk = furnish_lsk_sclk(spice_mount_path)
+    except Exception as e:
+        if spice_metadata['type'] in ('leapseconds', 'spacecraft_clock'):
+            file_coverage_datetime = DEFAULT_DATETIME_INTERVAL
+            file_coverage_J2000 = [[0, 0]]
+            file_coverage_sclk =  [[0, 0]]
+            latest_lsk = None
+            latest_sclk = None
+        else:
+            raise e
+        
+    if not (latest_lsk is None or latest_sclk is None):
         spice_metadata = SPICEFilePath.extract_filename_components(spice_file)
         if spice_metadata['start_date']==minimum_mission_time or spice_metadata['end_date']==maximum_mission_time:
             file_coverage_datetime = DEFAULT_DATETIME_INTERVAL
@@ -78,17 +89,10 @@ def index_spice_file(spice_file, spice_mount_path):
                 coverage_function = spiceypy.ckcov
                 function_arguments['needav'] = False
                 function_arguments['level'] = 'INTERVAL'
-                function_arguments['tol'] =  0.0
+                function_arguments['tol'] =  1000000.0
                 function_arguments['timsys'] = 'TDB'
                 
-            file_coverage_J2000, file_coverage_datetime, file_coverage_sclk = get_coverage_dictionary(spice_file, coverage_function, function_arguments)  
-    except Exception as e:
-        if spice_metadata['type'] in ('leapseconds', 'spacecraft_clock'):
-            file_coverage_datetime = DEFAULT_DATETIME_INTERVAL
-            file_coverage_J2000 = [[0, 0]]
-            file_coverage_sclk =  [[0, 0]]
-        else:
-            raise e 
+            file_coverage_J2000, file_coverage_datetime, file_coverage_sclk = get_coverage_dictionary(spice_file, coverage_function, function_arguments)         
 
     spice_params = {}
     spice_params['ingestion_date'] = datetime.fromtimestamp(os.path.getmtime(spice_file))
