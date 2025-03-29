@@ -13,6 +13,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import Base
 
 BUCKET_NAME = "test-data-bucket"
 
+
 @pytest.fixture(autouse=True)
 def _set_env(monkeypatch):
     """Set global environment variables."""
@@ -27,6 +28,7 @@ def _set_env(monkeypatch):
     # This is used in batch_starter.py
     monkeypatch.setenv("IMAP_DATA_ACCESS_URL", "https://test.url")
     monkeypatch.setenv("EFS_SPICE_MOUNT_PATH", "/tmp")
+
 
 @pytest.fixture(scope="module")
 def ancillary_file():
