@@ -1,3 +1,5 @@
+"""Tests for the SPICE indexer lambda."""
+
 import os
 from datetime import datetime
 
@@ -45,10 +47,18 @@ def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
     return event
 
 
-def test_ss3_spice_files(session, s3_client, events_client):
-    """Test s3 event."""
+def test_s3_spice_files(session, s3_client, events_client):
+    """Test s3 event.
+
+    The following test mimics a leapsecond kernel being placed on the SDS,
+    followed by a spacecraft clock kernel, and then an attitude file.
+
+    The files are located in the "test_spice_files" directory.
+
+    """
     current_path = os.path.dirname(os.path.abspath(__file__))
 
+    # Insert leapsecond spice kernel
     leapsecond_event = put_local_file_in_bucket(
         s3_client,
         "spice/lsk/naif0012.tls",
@@ -56,6 +66,7 @@ def test_ss3_spice_files(session, s3_client, events_client):
     )
     spice_indexer.lambda_handler(leapsecond_event, None)
 
+    # Insert spacecraft clock spice kernel
     clock_kernel_event = put_local_file_in_bucket(
         s3_client,
         "spice/sclk/imapsclk_0012.tsc",
@@ -63,6 +74,7 @@ def test_ss3_spice_files(session, s3_client, events_client):
     )
     spice_indexer.lambda_handler(clock_kernel_event, None)
 
+    # Insert a new attitude kernel
     attitude_kernel_event = put_local_file_in_bucket(
         s3_client,
         "spice/ck/imap_2025_118_2025_120_001.ah.bc",
@@ -70,19 +82,43 @@ def test_ss3_spice_files(session, s3_client, events_client):
     )
     spice_indexer.lambda_handler(attitude_kernel_event, None)
 
-    # Verify that the file was moved
+    # Verify that the file was moved to the /tmp directory
+    # (conftest.py sets the SPICE directory as "tmp")
     assert os.path.exists("/tmp/lsk/naif0012.tls")
     assert os.path.exists("/tmp/sclk/imapsclk_0012.tsc")
     assert os.path.exists("/tmp/ck/imap_2025_118_2025_120_001.ah.bc")
 
     # Verify that the database was populated appropriately
     result = session.query(models.SPICEFiles).all()
+
+    # Verify the database has 3 files:
+    assert len(result) == 3
+
+    # Loop through the 3 database entries and ensure their accuracy
+    leapsecond_kernel_reached = False
+    clock_kernel_reached = False
+    attitude_kernel_reached = False
     for r in result:
-        if r.file_path == "/tmp/imap/ck/imap_2025_118_2025_120_001.ah.bc":
+        print(r.file_name)
+        if r.file_name == "imap_2025_118_2025_120_001.ah.bc":
+            attitude_kernel_reached = True
             assert r.kernel_type == "attitude_history"
             assert r.version == 1
             assert len(r.file_intervals_datetime) == 2  # 1 significant gap detected
-        print(r.file_intervals_sclk)
+        if r.file_name == "naif0012.tls":
+            leapsecond_kernel_reached = True
+            assert r.kernel_type == "leapseconds"
+            assert r.version == 12
+            assert len(r.file_intervals_datetime) == 1  # Default time range
+        if r.file_name == "imapsclk_0012.tsc":
+            clock_kernel_reached = True
+            assert r.kernel_type == "spacecraft_clock"
+            assert r.version == 12
+            assert len(r.file_intervals_datetime) == 1  # Default time range
+
+    assert clock_kernel_reached  # clock kernel found in database
+    assert leapsecond_kernel_reached  # leapsecond kernel found in database
+    assert attitude_kernel_reached  # attitude kernel found in database
 
 
 """
