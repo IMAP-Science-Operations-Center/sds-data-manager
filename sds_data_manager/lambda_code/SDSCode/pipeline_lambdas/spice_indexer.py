@@ -23,37 +23,64 @@ maximum_mission_time = datetime(2145, 1, 1)
 DEFAULT_DATETIME_INTERVAL = [[minimum_mission_time, maximum_mission_time]]
 
 
-def get_latest_from_dir(spice_dir):
-    kernels_sorted = sorted(os.listdir(f"{spice_dir!s}"))
-    if kernels_sorted:
-        return spice_dir / kernels_sorted[-1]
+def furnish_best_spice_file(spice_path: Path):
+    """Furnish the best kernel from spice_path
+
+    Parameters
+    ----------
+    spice_path: Path
+        The path to the direcory where SPICE is stored
+
+    Returns
+    -------
+    highest_version_spice_file: Path
+        The path to the SPICE file that was furnished
+    """
+    kernels_sorted = sorted([f for f in spice_path.iterdir() if f.is_file()])
+    highest_version_spice_file = spice_path / kernels_sorted[-1]
+    spiceypy.furnsh(str(highest_version_spice_file))
+    return highest_version_spice_file
 
 
-def furnish_lsk_sclk(spice_path):
-    latest_sclk = get_latest_from_dir(spice_path / "sclk")
-    latest_lsk = get_latest_from_dir(spice_path / "lsk")
-    try:
-        spiceypy.furnsh(str(latest_sclk))
-        spiceypy.furnsh(str(latest_lsk))
-    except:
-        raise Exception(
-            "Unable to load spacecraft clock and/or leapseconds kernel.  "
-            "Returning empty values for file coverage."
-        )
-    return latest_lsk, latest_sclk
+def get_coverage_dictionary(spice_file: Path, **kwargs):
+    """Determine the valid time spans of a SPICE file.
 
+    Returns 3 lists for GPS time, python datetime, and spacecraft clock time. The lists are of the form
 
-def get_coverage_dictionary(spice_file, coverage_function, function_arguments):
-    """Returns a list of lists.  For example:
     [[interval1_start, interval1_end], [interval2_start, interval2_end],
-     [interval3_start, interval3_end]]
+     [interval3_start, interval3_end] ... ]
+
+    Parameters
+    ----------
+    spice_file: Path
+        The path to the spice file
+    kwargs: dict
+        The key word arguments to use when determining the coverage dictionary
+
+    Returns
+    -------
+    results_J2000: list[list[float]]
+        The results in SPICE J2000 time
+    results_datetime: list[list[datetime]]
+        The results as python datetime objects
+    results_sclk: list[list[str]]
+        The results using spacecraft clock time notation
     """
     results_J2000 = []
     results_sclk = []
     results_datetime = []
 
+    if spice_file.suffix == ".bc":
+        coverage_function = spiceypy.ckcov
+    elif spice_file.suffix == ".bsp":
+        coverage_function = spiceypy.spkcov
+    else:
+        raise Exception(
+            f"Unable to handle spice file with the extension {spice_file.suffix}."
+        )
+
     try:
-        cover = coverage_function(str(spice_file), **function_arguments)
+        cover = coverage_function(str(spice_file), **kwargs)
         card = spiceypy.wncard(cover)
         for i_window in range(card):
             (left, right) = spiceypy.wnfetd(cover, i_window)
@@ -74,11 +101,18 @@ def get_coverage_dictionary(spice_file, coverage_function, function_arguments):
     return results_J2000, results_datetime, results_sclk
 
 
-def index_spice_file(spice_file, spice_mount_path):
-    spice_file = str(spice_file)
+def index_spice_file(spice_file: Path):
+    """Insert SPICE file metadata into SPICE database table
+
+    Parameters
+    ----------
+    spice_file: Path
+        The full name and path the SPICE file to index
+    """
     spice_metadata = SPICEFilePath.extract_filename_components(spice_file)
     try:
-        latest_lsk, latest_sclk = furnish_lsk_sclk(spice_mount_path)
+        latest_lsk = furnish_best_spice_file(spice_file.parent.parent / "lsk")
+        latest_sclk = furnish_best_spice_file(spice_file.parent.parent / "sclk")
     except Exception as e:
         if spice_metadata["type"] in ("leapseconds", "spacecraft_clock"):
             file_coverage_datetime = DEFAULT_DATETIME_INTERVAL
@@ -90,7 +124,6 @@ def index_spice_file(spice_file, spice_mount_path):
             raise e
 
     if latest_lsk and latest_sclk:
-        spice_metadata = SPICEFilePath.extract_filename_components(spice_file)
         if spice_metadata["start_date"] is None or spice_metadata["end_date"] is None:
             if spice_metadata["start_date"] is None:
                 spice_metadata["start_date"] = minimum_mission_time
@@ -112,18 +145,15 @@ def index_spice_file(spice_file, spice_mount_path):
                 ]
             ]
         else:
-            coverage_function = spiceypy.spkcov
             function_arguments = {
                 "idcode": SPACECRAFT_ID * 1000,
                 "cover": spiceypy.cell_double(10000),
             }
             if "attitude" in spice_metadata["type"]:
-                coverage_function = spiceypy.ckcov
                 function_arguments["needav"] = False
                 function_arguments["level"] = "INTERVAL"
                 function_arguments["tol"] = 1000000.0
                 function_arguments["timsys"] = "TDB"
-
             file_coverage_J2000, file_coverage_datetime, file_coverage_sclk = (
                 get_coverage_dictionary(
                     spice_file, coverage_function, function_arguments
@@ -131,13 +161,13 @@ def index_spice_file(spice_file, spice_mount_path):
             )
 
     spice_params = {}
-    spice_params["ingestion_date"] = datetime.fromtimestamp(
-        os.path.getmtime(spice_file)
-    )
+    spice_params["ingestion_date"] = datetime.fromtimestamp(spice_file.stat().st_mtime)
     spice_params["kernel_type"] = spice_metadata["type"]
     spice_params["version"] = spice_metadata["version"]
-    spice_params["file_path"] = spice_file
-    spice_params["file_root"] = spice_file.replace(str(spice_metadata["version"]), "")
+    spice_params["file_path"] = str(spice_file)
+    spice_params["file_root"] = str(spice_file).replace(
+        str(spice_metadata["version"]), ""
+    )
     spice_params["min_date_j2000"] = file_coverage_J2000[0][0]
     spice_params["max_date_j2000"] = file_coverage_J2000[-1][-1]
     spice_params["file_intervals_j2000"] = file_coverage_J2000
@@ -166,7 +196,7 @@ def index_spice_file(spice_file, spice_mount_path):
                 setattr(existing_entry, key, value)  # Update existing record
         else:
             session.add(models.SPICEFiles(**spice_params))
-    logger.info("Wrote data to the ScienceFiles table")
+    logger.info("Wrote data to the SPICEFiles table")
 
 
 def create_symlink(source_path: Path, destination_path: Path) -> None:
@@ -187,7 +217,7 @@ def create_symlink(source_path: Path, destination_path: Path) -> None:
     destination_path.symlink_to(source_path)
 
 
-def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path):
+def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Path:
     """Write data to EFS and create/update symlink.
 
     Parameters
@@ -196,6 +226,11 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path):
         S3 object key
     s3_bucket : str
         The S3 bucket
+
+    Returns
+    -------
+    efs_spice_filename_and_path : Path
+        The local location of the SPICE file
 
     """
     # Create an S3 client
@@ -280,6 +315,6 @@ def lambda_handler(event, context):
     logger.info(event)
 
     file_path = write_data_to_efs(s3_key, s3_bucket, spice_mount_path)
-    index_spice_file(file_path, spice_mount_path)
+    index_spice_file(file_path)
 
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}
