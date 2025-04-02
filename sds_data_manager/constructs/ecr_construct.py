@@ -61,4 +61,4 @@ class EcrConstruct(Construct):
         #     user = iam.User.from_user_name(self, username, user_name=username)
         #     ecr_authenticators.add_user(user)
 
-        self.container_repo.apply_removal_policy(RemovalPolicy.DESTROY)
+        self.container_repo.apply_removal_policy(RemovalPolicy.RETAIN)

@@ -57,7 +57,7 @@ def test_database_construct(template):
             "DBSubnetGroupName": {
                 "Ref": Match.string_like_regexp("RdsInstanceSubnetGroup*")
             },
-            "DeletionProtection": False,
+            "DeletionProtection": True,
             "Engine": "postgres",
             "EngineVersion": "15.3",
             "MaxAllocatedStorage": 200,
