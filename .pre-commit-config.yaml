@@ -27,5 +27,5 @@ repos:
       - id: poetry-lock
         args: [--no-update]
       - id: poetry-export
-        args: ["-f", "requirements.txt", "-o", "lambda_layer/python/requirements.txt", "--with", "lambda-dev"]
+        args: ["-f", "requirements.txt", "-o", "lambda_layer/python/requirements.txt", "--with", "lambda-database", "--with", "lambda-python"]
         verbose: true
