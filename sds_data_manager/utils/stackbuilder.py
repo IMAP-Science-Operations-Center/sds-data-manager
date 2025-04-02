@@ -283,6 +283,10 @@ def build_sds(
 
     ialirt_stack = Stack(scope, "IalirtStack", cross_region_references=True, env=env)
 
+    ialirt_layer_code_directory = (
+        Path(__file__).parent.parent.parent / "lambda_layer/ialirt"
+    ).resolve()
+
     ialirt_root_certificate = None
     if domain is not None:
         ialirt_root_certificate = acm.Certificate(
@@ -310,7 +314,7 @@ def build_sds(
     ialirt_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
         scope=ialirt_stack,
         id="IAlirtDependencies",
-        layer_dependencies_dir=str(layer_code_directory),
+        layer_dependencies_dir=str(ialirt_layer_code_directory),
     )
 
     ialirt_monitoring = monitoring_construct.MonitoringConstruct(
