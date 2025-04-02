@@ -161,7 +161,7 @@ def build_sds(
         scope=sdc_stack,
         construct_id="RDS",
         vpc=networking.vpc,
-        engine_version=rds.PostgresEngineVersion.VER_15_6,
+        engine_version=rds.PostgresEngineVersion.VER_15_7,
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
