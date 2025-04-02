@@ -24,7 +24,7 @@ jobs:
 
       - name: Install dependencies and app
         run: |
-          poetry install --with lambda-dev
+          poetry install --with lambda-database --with lambda-python
 
       - name: Install cdk
         run: |
