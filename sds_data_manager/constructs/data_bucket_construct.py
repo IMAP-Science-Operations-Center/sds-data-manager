@@ -43,7 +43,7 @@ class DataBucketConstruct(Construct):
             versioned=True,
             event_bridge_enabled=True,
             removal_policy=RemovalPolicy.RETAIN,
-            auto_delete_objects=True,
+            auto_delete_objects=False,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 
