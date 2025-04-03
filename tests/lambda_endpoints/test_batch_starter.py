@@ -308,8 +308,8 @@ def test_spice_file():
     # TODO: undo this and add correct tests when it's implemented.
     with pytest.raises(
         ValueError,
-        match="Batch starter handling for spice file: "
-        "imap_yyyy_doy_yyyy_doy.spin.csv is not implemented yet",
+        match="Invalid file type for imap_yyyy_doy_yyyy_doy.spin.csv. "
+        "It does not matchSpice, Science or Ancillary file formats",
     ):
         lambda_handler(events, context)
 
