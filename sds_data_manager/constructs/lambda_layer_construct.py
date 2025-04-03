@@ -39,6 +39,14 @@ class IMAPLambdaLayer(lambda_.LayerVersion):
             layer_dependencies_dir,
             bundling=cdk.BundlingOptions(
                 image=runtime.bundling_image,
+                # NOTE: We need to use the x86_64 architecture for the lambda layer
+                #      otherwise people with mac's will produce different shared object
+                #      files from those produced on our CI runners.
+                #      To debug you can look at the psycopg2 linked binaries in the
+                #      assets by adding the following to the commands below:
+                #      ls -al /asset-output/python/psycopg2
+                platform="linux/amd64",
+                environment={"DOCKER_DEFAULT_PLATFORM": "linux/amd64"},
                 command=[
                     "bash",
                     "-c",
@@ -55,5 +63,6 @@ class IMAPLambdaLayer(lambda_.LayerVersion):
             id=f"{id}-Layer",
             code=code_bundle,
             compatible_runtimes=[runtime],
+            compatible_architectures=[lambda_.Architecture.X86_64],
             **kwargs,
         )

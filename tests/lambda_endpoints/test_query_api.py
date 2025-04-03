@@ -45,7 +45,7 @@ def expected_response():
                 "repointing": None,
                 "version": "v001",
                 "extension": "pkts",
-                "ingestion_date": "2025-11-07 10:13:12",
+                "ingestion_date": "20251107 10:13:12",
             }
         ]
     )
@@ -119,10 +119,59 @@ def test_empty_end_date_query(session):
     assert returned_query["body"] == expected_response
 
 
-def test_empty_non_date_query(session):
-    """Test that a non-date query with no matches returns an empty list."""
+def test_non_date_query(session, expected_response):
+    """Test that a non-date parameters can be queried."""
     _populate_test_data(session)
-    event = {"queryStringParameters": {"data_level": "l2"}}
+    event = {"queryStringParameters": {"instrument": "hit"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == expected_response
+
+
+def test_ingestion_start_date_query(session, expected_response):
+    """Test that ingestion_start_date can be queried."""
+    _populate_test_data(session)
+    event = {"queryStringParameters": {"ingestion_start_date": "20251107"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == expected_response
+
+
+def test_ingestion_end_date_query(session, expected_response):
+    """Test that ingestion_end_date can be queried."""
+    _populate_test_data(session)
+    event = {"queryStringParameters": {"ingestion_end_date": "20251107"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == expected_response
+
+
+def test_ingestion_start_and_end_date_query(session, expected_response):
+    """Test that both ingestion_start_date and ingestion_end_date can be queried."""
+    _populate_test_data(session)
+    event = {
+        "queryStringParameters": {
+            "ingestion_start_date": "20251106",
+            "ingestion_end_date": "20251108",
+        }
+    }
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == expected_response
+
+
+def test_empty_ingestion_start_date_query(session):
+    """Test that an ingestion_start_date query with no matches returns an empty list."""
+    _populate_test_data(session)
+    event = {"queryStringParameters": {"ingestion_start_date": "20261101"}}
     expected_response = json.dumps([])
     returned_query = query_api.lambda_handler(event=event, context={})
 
@@ -130,11 +179,38 @@ def test_empty_non_date_query(session):
     assert returned_query["body"] == expected_response
 
 
-def test_non_date_query(session, expected_response):
-    """Test that a non-date parameters can be queried."""
+def test_empty_ingestion_end_date_query(session):
+    """Test that an ingestion_end_date query with no matches returns an empty list."""
     _populate_test_data(session)
-    event = {"queryStringParameters": {"instrument": "hit"}}
+    event = {"queryStringParameters": {"ingestion_end_date": "20251101"}}
+    expected_response = json.dumps([])
+    returned_query = query_api.lambda_handler(event=event, context={})
 
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == expected_response
+
+
+def test_empty_ingestion_start_and_end_date_query(session):
+    """Test that ingestion params with no matches returns an empty list."""
+    _populate_test_data(session)
+    event = {
+        "queryStringParameters": {
+            "ingestion_start_date": "20261101",
+            "ingestion_end_date": "20261110",
+        }
+    }
+    expected_response = json.dumps([])
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == expected_response
+
+
+def test_empty_non_date_query(session):
+    """Test that a non-date query with no matches returns an empty list."""
+    _populate_test_data(session)
+    event = {"queryStringParameters": {"data_level": "l2"}}
+    expected_response = json.dumps([])
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
@@ -160,7 +236,7 @@ def test_invalid_query(session):
         + "Valid query parameters are: "
         + "['file_path', 'instrument', 'data_level', 'descriptor', "
         "'start_date', 'repointing', 'version', 'extension', 'ingestion_date', "
-        + "'end_date']"
+        + "'end_date', 'ingestion_start_date', 'ingestion_end_date']"
     )
     returned_query = query_api.lambda_handler(event=event, context={})
 
@@ -180,7 +256,7 @@ def test_sorting_of_query(session):
         "version": "v001",
         "extension": "pkts",
         "ingestion_date": datetime.datetime.strptime(
-            "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+            "20251107 10:13:12+00:00", "%Y%m%d %H:%M:%S%z"
         ),
     }
 
@@ -195,7 +271,7 @@ def test_sorting_of_query(session):
                 "repointing": None,
                 "version": "v001",
                 "extension": "pkts",
-                "ingestion_date": "2025-11-07 10:13:12",
+                "ingestion_date": "20251107 10:13:12",
             },
             {
                 "file_path": "test/file/path/imap_hit_l0_raw_20251107_v001.pkts",
@@ -206,7 +282,7 @@ def test_sorting_of_query(session):
                 "repointing": None,
                 "version": "v001",
                 "extension": "pkts",
-                "ingestion_date": "2025-11-07 10:13:12",
+                "ingestion_date": "20251107 10:13:12",
             },
         ]
     )

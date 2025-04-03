@@ -113,7 +113,7 @@ class SdpDatabase(Construct):
             security_groups=[self.rds_security_group],
             publicly_accessible=True,
             max_allocated_storage=max_allocated_storage,
-            deletion_protection=False,
+            deletion_protection=True,
         )
 
         # NOTE: Specifically, to report success or failure, have your Lambda Function
@@ -138,7 +138,6 @@ class SdpDatabase(Construct):
                 "SECRET_NAME": self.secret_name,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", self.secret_name
@@ -194,5 +193,4 @@ class SdpDatabase(Construct):
                 "SECRET_NAME": self.secret_name,
             },
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )

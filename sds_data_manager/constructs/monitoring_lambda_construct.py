@@ -51,7 +51,6 @@ class MonitoringLambda(Construct):
                 "SNS_TOPIC_ARN": sns_topic.topic_arn,
             },
             allow_public_subnet=True,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         # Uses batch job status of failure

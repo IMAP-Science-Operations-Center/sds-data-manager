@@ -2,23 +2,7 @@
 
 # <---- CoDICE Dependencies ---->
 
-codice, l0, hskp, codice, l1a, hskp, HARD, DOWNSTREAM
-codice, l0, lo-counters-aggregated, codice, l1a, lo-counters-aggregated, HARD, DOWNSTREAM
-codice, l0, lo-counters-singles, codice, l1a, lo-counters-singles, HARD, DOWNSTREAM
-codice, l0, hi-counters-aggregated, codice, l1a, hi-counters-aggregated, HARD, DOWNSTREAM
-codice, l0, hi-counters-singles, codice, l1a, hi-counters-singles, HARD, DOWNSTREAM
-codice, l0, lo-sw-priority, codice, l1a, lo-sw-priority, HARD, DOWNSTREAM
-codice, l0, lo-nsw-priority, codice, l1a, lo-nsw-priority, HARD, DOWNSTREAM
-codice, l0, lo-sw-angular, codice, l1a, lo-sw-angular, HARD, DOWNSTREAM
-codice, l0, lo-nsw-angular, codice, l1a, lo-nsw-angular, HARD, DOWNSTREAM
-codice, l0, lo-sw-species, codice, l1a, lo-sw-species, HARD, DOWNSTREAM
-codice, l0, lo-nsw-species, codice, l1a, lo-nsw-species, HARD, DOWNSTREAM
-codice, l0, lo-pha, codice, l1a, lo-pha, HARD, DOWNSTREAM
-codice, l0, hi-pha, codice, l1a, hi-pha, HARD, DOWNSTREAM
-codice, l0, hi-omni, codice, l1a, hi-omni, HARD, DOWNSTREAM
-codice, l0, hi-sectored, codice, l1a, hi-sectored, HARD, DOWNSTREAM
-codice, l0, lo-ialirt, codice, l1a, lo-ialirt, HARD, DOWNSTREAM
-codice, l0, hi-ialirt, codice, l1a, hi-ialirt, HARD, DOWNSTREAM
+codice, l0, raw, codice, l1a, all, HARD, DOWNSTREAM
 
 # CoDICE l1a to l1b
 
@@ -51,13 +35,13 @@ glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
 # <---- HI Dependencies ---->
 
 hi, l0, raw, hi, l1a, all, HARD, DOWNSTREAM
+hi, l0, raw, hi, l1b, hk, HARD, DOWNSTREAM
 
-hi, l1a, 45sensor-histogram, hi, l1b, 45sensor-histogram, HARD, DOWNSTREAM
 hi, l1a, 45sensor-de, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
-hi, l1a, 45sensor-hk, hi, l1b, 45sensor-hk, HARD, DOWNSTREAM
 hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 
-# TODO: add IMAP-Hi 90 sensor data products
+hi, l1a, 90sensor-de, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
+hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 
 # <---- HIT Dependencies ---->
 
@@ -74,9 +58,9 @@ hit, l1a, direct-events, hit, l3, direct-events, HARD, DOWNSTREAM
 
 # <---- IDEX Dependencies ---->
 
-idex, l0, raw, idex, l1a, sci, HARD, DOWNSTREAM
-idex, l1a, sci, idex, l1b, sci, HARD, DOWNSTREAM
-idex, l1b, sci, idex, l2a, sci, HARD, DOWNSTREAM
+idex, l0, raw, idex, l1a, sci-1week, HARD, DOWNSTREAM
+idex, l1a, sci-1week, idex, l1b, sci-1week, HARD, DOWNSTREAM
+idex, l1b, sci-1week, idex, l2a, sci-1week, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
 lo, l0, raw, lo, l1a, all, HARD, DOWNSTREAM

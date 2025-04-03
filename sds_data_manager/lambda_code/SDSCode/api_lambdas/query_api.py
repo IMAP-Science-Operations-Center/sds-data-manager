@@ -4,7 +4,7 @@ import datetime
 import json
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from ..database import database as db
 from ..database import models
@@ -49,6 +49,8 @@ def lambda_handler(event, context):
     # the "id" column from the list. But we also need to add
     # 'end_date' to the list of valid_parameters.
     valid_parameters.append("end_date")
+    valid_parameters.append("ingestion_start_date")
+    valid_parameters.append("ingestion_end_date")
 
     # go through each query parameter to set up sqlalchemy query conditions
     for param, value in query_params.items():
@@ -70,7 +72,7 @@ def lambda_handler(event, context):
                 " valid options are: {valid_parameters}"
             )
             return response
-        # check if we're search for start_date or end date to
+        # check if we're search for start_date or end date or ingestion dates to
         # setup the correct "where" time condition
         if param == "start_date":
             query = query.where(
@@ -83,6 +85,17 @@ def lambda_handler(event, context):
             query = query.where(
                 models.ScienceFiles.start_date
                 <= datetime.datetime.strptime(value, "%Y%m%d")
+            )
+        elif param == "ingestion_start_date":
+            # filtering by ingestion date
+            query = query.where(
+                func.date(models.ScienceFiles.ingestion_date)
+                >= datetime.datetime.strptime(value, "%Y%m%d").date()
+            )
+        elif param == "ingestion_end_date":
+            query = query.where(
+                func.date(models.ScienceFiles.ingestion_date)
+                <= datetime.datetime.strptime(value, "%Y%m%d").date()
             )
         # all non-time string matching parameters
         else:
@@ -107,7 +120,7 @@ def lambda_handler(event, context):
         if d.tzinfo is not None:
             # If the datetime has a timezone, convert it to UTC and remove the timezone
             d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
-        result["ingestion_date"] = d.strftime("%Y-%m-%d %H:%M:%S")
+        result["ingestion_date"] = d.strftime("%Y%m%d %H:%M:%S")
 
     logger.info(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)

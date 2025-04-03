@@ -161,7 +161,7 @@ def build_sds(
         scope=sdc_stack,
         construct_id="RDS",
         vpc=networking.vpc,
-        engine_version=rds.PostgresEngineVersion.VER_15_6,
+        engine_version=rds.PostgresEngineVersion.VER_15_7,
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
@@ -220,6 +220,10 @@ def build_sds(
         construct_id="DependencyFinder",
         code=lambda_code,
         layers=[db_lambda_layer],
+        vpc=networking.vpc,
+        rds_security_group=rds_construct.rds_security_group,
+        env=env,
+        db_secret_name=db_secret_name,
         api=api,
     )
 
@@ -279,6 +283,18 @@ def build_sds(
 
     ialirt_stack = Stack(scope, "IalirtStack", cross_region_references=True, env=env)
 
+    ialirt_root_certificate = None
+    if domain is not None:
+        ialirt_root_certificate = acm.Certificate(
+            ialirt_stack,
+            "IAlirtDomainRegionCertificate",
+            domain_name=f"*.{domain_name}",  # *.imap-mission.com
+            subject_alternative_names=[domain_name],  # imap-mission.com
+            validation=acm.CertificateValidation.from_dns(
+                hosted_zone=domain.hosted_zone
+            ),
+        )
+
     # I-ALiRT IOIS S3 bucket
     ialirt_bucket = ialirt_bucket_construct.IAlirtBucketConstruct(
         scope=ialirt_stack, construct_id="IAlirtBucket", env=env
@@ -306,7 +322,7 @@ def build_sds(
         scope=ialirt_stack,
         construct_id="IAlirtApiGateway",
         domain_construct=domain,
-        certificate=root_certificate,
+        certificate=ialirt_root_certificate,
         ialirt_prefix="IAlirt",
     )
     ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)

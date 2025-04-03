@@ -2,6 +2,7 @@
 
 from aws_cdk import Duration
 from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
 from .api_gateway_construct import ApiGateway
@@ -16,6 +17,10 @@ class DependencyFinder(Construct):
         construct_id: str,
         code: lambda_.Code,
         layers: list,
+        vpc,
+        rds_security_group,
+        db_secret_name,
+        env,
         api: ApiGateway,
         **kwargs,
     ):
@@ -31,6 +36,14 @@ class DependencyFinder(Construct):
             Lambda code bundle
         layers : list
             List of Lambda layers cdk.cdfnOutput names
+        vpc : obj
+            The VPC
+        rds_security_group : obj
+            The RDS security group
+        db_secret_name : str
+            The DB secret name
+        env : obj
+            The CDK environment
         api : ApiGateway
             The API Gateway construct
         kwargs : dict
@@ -48,7 +61,12 @@ class DependencyFinder(Construct):
             memory_size=512,
             timeout=Duration.minutes(1),
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
+            vpc=vpc,
+            security_groups=[rds_security_group],
+            environment={
+                "REGION": env.region,
+                "SECRET_NAME": db_secret_name,
+            },
         )
 
         api.add_route(
@@ -56,3 +74,8 @@ class DependencyFinder(Construct):
             http_method="GET",
             lambda_function=self.dependency_finder_lambda,
         )
+
+        rds_secret = secrets.Secret.from_secret_name_v2(
+            self, "rds_secret", db_secret_name
+        )
+        rds_secret.grant_read(grantee=self.dependency_finder_lambda)

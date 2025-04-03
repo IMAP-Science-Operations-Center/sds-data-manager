@@ -4,9 +4,17 @@ import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime
+from os.path import basename
 from pathlib import Path
+from typing import Optional
 
 import imap_data_access
+from imap_data_access import processing_input
+from sqlalchemy import and_, func, or_, select
+
+from ..database import database as db
+from ..database import models
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -50,6 +58,17 @@ class DataSource:
             self.SC_POINTING_FRAME,
             *imap_data_access.VALID_INSTRUMENTS,
         ]
+
+
+def valid_science(data_level) -> bool:
+    """Check if data_level is a valid data level.
+
+    Returns
+    -------
+    bool
+        True if the data_level is in VALID_DATALEVELS.
+    """
+    return data_level in [*imap_data_access.VALID_DATALEVELS]
 
 
 @dataclass
@@ -331,6 +350,342 @@ def get_dependencies(node, dependency_type, relationship):
     return dependencies
 
 
+def filter_primary_science_dependencies(
+    session: db.Session, records: list, query_data_type: str
+):
+    """Filter primary science dependencies for unprocessed downstream dependencies.
+
+    Parameters
+    ----------
+    session : orm session
+        Database session.
+    records : list[models.ScienceFiles]
+        Science file records.
+    query_data_type : str
+        The data_type of the dependency used to query the api.
+
+    Returns
+    -------
+    list[str]
+        Upstream primary source filenames that have downstream dependencies that need
+        to be processed.
+    """
+    files = []
+    for record in records:
+        # check in the science table if the upstream primary source dependency
+        # already exists.
+        query = select(models.ScienceFiles.__table__).where(
+            models.ScienceFiles.instrument == record.instrument,
+            models.ScienceFiles.descriptor == record.descriptor,
+            # Use the query data type instead of the current record.
+            models.ScienceFiles.data_level == query_data_type,
+            models.ScienceFiles.start_date == record.start_date,
+            models.ScienceFiles.version == record.version,
+        )
+        # If the upstream primary source dependency does not exist, add it to the list
+        # of files to return.
+        # This indicates that the upstream primary source needs to be processed.
+        upstream_primary_source = session.execute(query).first()
+
+        if not upstream_primary_source:
+            files.append(basename(record.file_path))
+
+    return files
+
+
+def primary_science_dep(query_params: dict, dependency: dict) -> bool:
+    """Check if the dependency is a primary science dependency.
+
+    A primary science dependency exists when both the upstream and downstream
+    dependencies have the same data source and both are valid science data types. They
+    can have different descriptors, e.g., "sci" and "raw".
+
+    Parameters
+    ----------
+    query_params : dict
+        Query parameters received from API calls.
+    dependency : dict
+       Upstream or downstream dependency from the query.
+
+    Returns
+    -------
+    bool
+        True if dependency is a primary science dependency, False otherwise
+
+    Examples
+    --------
+    swe_l1b_sci is a primary science dependency of swe_l1a_sci.
+    mag_l1c_norm-mago is a primary science dependency of mag_l1b_burst-mago.
+    """
+    return (
+        query_params["data_source"] == dependency["data_source"]
+        and valid_science(dependency["data_type"])
+        and valid_science(query_params["data_type"])
+    )
+
+
+def get_dependency_processing_input(
+    query_params: dict,
+    dependencies: list,
+    start_date: datetime,
+    version: str,
+    trigger_type: str,
+    end_date: Optional[datetime] = None,
+):
+    """Construct a ProcessingInputCollection of dependency files.
+
+    # TODO: Will query spice db in the future
+    For each dependency, query for existing files in s3 and add any matching files
+    found to a ProcessingInputCollection.
+
+    Parameters
+    ----------
+    query_params : dict
+        Query parameters received from the API call describing either an upstream or
+        downstream dependency.
+    dependencies : list
+        List of dependency dictionaries either downstream or upstream from the
+        dependency in the query parameters.
+    start_date : datetime
+        Start date to find dependent files with.
+    version : str
+        Version to find dependent files with.
+    trigger_type : str
+        Data type of the file that triggered the batch starter.
+    end_date : datetime, optional
+        End date to find dependent files with.
+
+    Returns
+    -------
+    ProcessingInputCollection
+        Dependency files that can include Ancillary, SPICE, or Science inputs.
+    """
+    dependency_inputs = processing_input.ProcessingInputCollection()
+    inputs = []
+    with db.Session() as session:
+        for dep in dependencies:
+            # Check if the dependency is a primary science dependency and if the file
+            # source that triggered the batch stater is equal to the dependency source.
+            # If true, we can find science files with the exact start date and version
+            # used in the query.
+
+            # This check is necessary because the start date and version are extracted
+            # from the trigger file. If the trigger file is either an ancillary file
+            # (including science files from a different source) or SPICE, the exact
+            # start date and version cannot be used to find the science file because
+            # the dates are not guaranteed to correspond.
+            primary_sci_dep = primary_science_dep(query_params, dep)
+            if primary_sci_dep and trigger_type == dep["data_type"]:
+                primary_sci_trigger = True
+            else:
+                primary_sci_trigger = False
+
+            logger.info(
+                f"Searching for files matching dep={dep}\n"
+                f"start_date={start_date}\n"
+                f"version={version}\n"
+                f"end_date={end_date}\n"
+                f"primary_sci_trigger={primary_sci_trigger}\n"
+                f"primary_sci_dep={primary_sci_dep}"
+            )
+            records = get_files(
+                session,
+                dep,
+                start_date,
+                version,
+                end_date,
+                primary_sci_trigger,
+                primary_sci_dep,
+            )
+            if not records:
+                # TODO change return
+                logger.info(
+                    "No records found for dependency. Returning empty collection."
+                )
+                return dependency_inputs
+
+            filenames = [basename(record.file_path) for record in records]
+            logger.info(f"Found filenames: {filenames}. Adding to collection.")
+            # If this is a primary science dependency, filter files for ones that have a
+            # downstream counterpart that needs to be processed.
+            # E.g. if imap_mag_l1d-sci_0250105.cdf file triggers batch starter,
+            # This could potentially trigger multiple swe l1b files that have been
+            # waiting. E.g.,
+            #    - imap_swe_l1b_sci_20250102.cdf
+            #    - imap_swe_l1b_sci_20250103.cdf
+            #    - imap_swe_l1b_sci_20250104.cdf
+            # Swe l1a is an upstream for swe l1b and get_files() will return all swe l1a
+            # records with start dates before 0250105.
+            # This list can be narrowed by calling filter_primary_science_dependencies()
+            # It will look for each l1a file's l1b counter-part in the science files
+            # table. If the file already exists, the l1a file is ignored.
+            if primary_sci_dep:
+                filenames = filter_primary_science_dependencies(
+                    session, records, query_params["data_type"]
+                )
+                if not filenames:
+                    logger.info(
+                        "Primary dependency files already processed. Returning empty "
+                        "collection."
+                    )
+                    return dependency_inputs
+            # Create a processingInput instance and add it to the collection
+            if dep["data_type"] == DataType.ANCILLARY:
+                inputs.append(processing_input.AncillaryInput(*filenames))
+            else:
+                inputs.append(processing_input.ScienceInput(*filenames))
+    dependency_inputs.add(inputs)
+    return dependency_inputs
+
+
+def get_files(
+    session: db.Session,
+    dependency: dict,
+    start_date: datetime,
+    version: str,
+    end_date: Optional[datetime] = None,
+    primary_sci_trigger: Optional[bool] = False,
+    primary_sci_dep: Optional[bool] = False,
+):
+    """Query to database to get ScienceFile or AncillaryFile records.
+
+    Parameters
+    ----------
+    session : orm session
+        Database session.
+    dependency : dict
+        dictionary containing:
+        data_source : str
+            Source name.
+        data_type : str
+            Data type.
+        descriptor : str
+            Data descriptor.
+    start_date : datetime
+        Start date of the event data.
+    version : str
+        Version of the event data.
+    end_date: datetime, optional
+        End date of the event data.
+    primary_sci_trigger: bool, optional
+        When True, query for science files with a match to the start time and version
+        because it is assumed that the dependency is a primary science dependency and
+        the trigger source is of the same data_source. Default is False.
+    primary_sci_dep : bool, optional
+        Controls how science files are queried based on their start dates.
+        When True, it is assumed that the query file is a primary science dependency.
+        Look for science files with start_date >= query start_date.
+        When False, treat science files from different sources like ancillary files
+        Look for science files with start_date <= query start_date.
+
+    Returns
+    -------
+    records : list[Union[models.ScienceFiles, models.AncillaryFiles]]
+        The ScienceFiles or AncillaryFiles records matching the query criteria.
+    """
+    # TODO can we use query spice/ ancillary/ science api here?
+    type_specific_conditions = []
+    if dependency["data_type"] == DataType.ANCILLARY:
+        table = models.AncillaryFiles
+        # Query for ancillary files whose ranges cover the
+        # start date.
+        # E.g., if the start date is '20250102', the query could return an ancillary
+        # file with the date range ('20250101', '20250103')
+        # TODO this could return all ancillary files with start dates before 20250102
+        type_specific_conditions.append(
+            and_(
+                table.start_date <= start_date,
+                or_(table.end_date >= start_date, table.end_date.is_(None)),
+            )
+        )
+    else:
+        table = models.ScienceFiles
+        type_specific_conditions.append(table.data_level == dependency["data_type"])
+        if primary_sci_trigger:
+            # Query for science files matching the start date and version
+            # Example:
+            # Trigger source: swe_l0_raw_20250102_v001.pkts
+            # Downstream: swe_l1a_sci
+            # Upstream: Look for swe_l0_raw with start date == 20250102 and
+            # version == v001
+
+            type_specific_conditions.extend(
+                [
+                    models.ScienceFiles.start_date == start_date,
+                    # TODO revisit - Mag L1C case.
+                    table.version == version,
+                ]
+            )
+        elif end_date:
+            # Find files that are downstream from an ancillary file
+            # Query for science files with a start date later or equal to the
+            # ancillary start date and less than the ancillary end date.
+            # Example:
+            # Trigger source: swe_l1b-flight-cal_20250102-20250104
+            # Downstream: swe_l1b_sci
+            # Upstream: Look for swe_l1a_sci with start dates in range
+            # 20250102-20250104
+            type_specific_conditions.append(
+                and_(
+                    models.ScienceFiles.start_date >= start_date,
+                    models.ScienceFiles.start_date <= end_date,
+                )
+            )
+        elif primary_sci_dep:
+            # Find primary source science files that are greater or equal than
+            # the start_date (start_date comes from an ancillary file, so we
+            # cannot use the exact date.)
+            # Example:
+            # Trigger source: mag_l1b_sci_20240510_v001.cdf
+            # Downstream: swe_l1b_sci
+            # Upstream: Look for swe_l1a_sci with start dates greater than or
+            # equal to 20240510
+
+            type_specific_conditions.append(
+                models.ScienceFiles.start_date >= start_date
+            )
+        else:
+            # Science files of another source are treated like ancillary files.
+            # Look for science files that are older than the start_date
+            # Example:
+            # Trigger source: swe_l0_raw_20250102_v001.pkts
+            # Downstream: swe_l1a_sci
+            # Upstream: Look for mag_l1d_sci with start dates less than or equal
+            # to 20250102
+            # TODO returns a lot of ancillary files with start dates before 20250102
+            type_specific_conditions.append(
+                models.ScienceFiles.start_date <= start_date
+            )
+
+    filter_conditions = [
+        table.instrument == dependency["data_source"],
+        table.descriptor == dependency["descriptor"],
+        *type_specific_conditions,
+    ]
+    # TODO check if version is supplied - otherwise get latest.
+    # Create a subquery that makes a column with the max version grouped by start_date
+    subquery = (
+        session.query(table.start_date, func.max(table.version).label("latest_version"))
+        .filter(*filter_conditions)
+        .group_by(table.start_date)
+        .subquery()
+    )
+
+    # Join subquery and select only the files with the latest version per grouping
+    records = (
+        session.query(table)
+        .join(
+            subquery,
+            (table.start_date == subquery.c.start_date)
+            & (table.version == subquery.c.latest_version),
+        )
+        .filter(*filter_conditions)
+        .all()
+    )
+
+    return records
+
+
 def lambda_handler(event, context):
     """Lambda handler for dependency tracking.
 
@@ -344,14 +699,22 @@ def lambda_handler(event, context):
                 "descriptor": "raw",
                 "dependency_type": "UPSTREAM",
                 "relationship": "HARD",
+                "start_time": "20250101", (optional)
+                "end_time": "20250102", (optional)
+                "version": "v001" (optional)
+                "trigger_type": "mag" (optional)
             }
+        "start_time", "end_time", and "version" are optional.
+        If "start_time" is supplied, then "version" is required.
+       "trigger_type" is the source of the file that triggered the batch starter
 
     context : dict
         Context dictionary.
 
     Returns
     -------
-    dependencies : list of dict
+    dependencies : list or ProcessingInputCollection
+        If "start_date" is not supplied return list of dictionaries:
         statusCode and body containing list of dictionary containing
         the dependencies information like this:
             [
@@ -371,6 +734,33 @@ def lambda_handler(event, context):
                     "descriptor": "historical",
                 },
             ]
+        If "start_date" is supplied, "version" and "ancillary_trigger" are required and
+        "end_date" is optional. Return a ProcessingInputCollection of files that exist
+        on s3.
+            [
+                {
+                    "type": "ancillary",
+                    "files": [
+                        "imap_mag_l1b-cal_20250101_v001.cdf",
+                        "imap_mag_l1b-cal_20250103-20250104_v002.cdf"
+                    ]
+                },
+                {
+                    "type": "ancillary",
+                    "files": [
+                        "imap_mag_l1b-lut_20250101_v001.cdf",
+                    ]
+                },
+                {
+                    "type": "science",
+                    "files": [
+                        "imap_mag_l1a_norm-magi_20240312_v000.cdf",
+                        "imap_mag_l1a_norm-magi_20240312_v001.cdf"
+                    ]
+                }
+            ]
+
+
     """
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
@@ -391,9 +781,48 @@ def lambda_handler(event, context):
             "statusCode": 500,
             "body": "Failed to load dependencies",
         }
+    # If start_date is supplied, check for the version and end_date.
+    start_date = (
+        datetime.strptime(query_params["start_date"], "%Y%m%d")
+        if query_params.get("start_date")
+        else None
+    )
+    if start_date:
+        version = query_params.get("version")
+        if not version:
+            return {
+                "statusCode": 400,  # Client error
+                "body": "Version not found. If 'start_date' is supplied, 'version' is"
+                " required.",
+            }
+        trigger_type = query_params.get("trigger_type")
+        if not trigger_type:
+            return {
+                "statusCode": 400,  # Client error
+                "body": "trigger_type not found. If 'start_date' is supplied, "
+                "'trigger_type' is required.",
+            }
+
+        # Get and convert end_date in one line if it exists
+        end_date = (
+            datetime.strptime(query_params.get("end_date"), "%Y%m%d")
+            if query_params.get("end_date")
+            else None
+        )
+        # TODO this only works for upstream deps right now. Do we need to ever get files
+        # for downstream?
+        dependencies_output = get_dependency_processing_input(
+            query_params, dependencies, start_date, version, trigger_type, end_date
+        )
+
+        dependencies_output = dependencies_output.serialize()
+    else:
+        dependencies_output = json.dumps(dependencies)
+
+    logger.info(f"Found dependencies: {dependencies} for {query_params}.")
 
     # TODO: add reprocessing dependencies are handled here
     return {
-        "statusCode": 200,
-        "body": json.dumps(dependencies),
+        "statusCode": 200,  # Success
+        "body": dependencies_output,
     }

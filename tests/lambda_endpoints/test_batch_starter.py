@@ -1,30 +1,42 @@
 """Tests the batch starter."""
 
-import json
+import logging
 import unittest
 from datetime import datetime
 from io import BytesIO
 from unittest.mock import MagicMock, Mock, patch
+from urllib import parse
 from urllib.error import HTTPError, URLError
 
+import imap_data_access.processing_input
 import pytest
+from imap_data_access.processing_input import (
+    AncillaryInput,
+    ProcessingInputCollection,
+    ScienceInput,
+)
 from sqlalchemy.exc import IntegrityError
 
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     ProcessingJob,
-    ScienceFiles,
 )
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
+    batch_starter,
+    dependency,
+)
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
     IMAPDependencyFinderError,
     _get_dependencies,
-    get_file,
     is_job_in_processing_table,
     lambda_handler,
 )
 
-from .conftest import POSTGRES_AVAILABLE
+from .conftest import (
+    POSTGRES_AVAILABLE,
+    _populate_file_catalog,
+    create_dependency_api_event,
+)
 
 
 def urlopen_side_effect(url):
@@ -40,25 +52,24 @@ def urlopen_side_effect(url):
     unittest.mock.MagicMock
        A mock context manager returning a HTTP response with the expected dependencies.
     """
-    mock_dependencies = {"data_source": "swe", "descriptor": "sci"}
+    parsed_url = parse.urlparse(url)
+    params = parse.parse_qs(parsed_url.query)
+    event = create_dependency_api_event(
+        params.get("data_source")[0],
+        params.get("data_type")[0],
+        params.get("descriptor")[0],
+        params.get("dependency_type")[0],
+        params.get("relationship")[0],
+        params.get("start_date", [None])[0],
+        params.get("end_date", [None])[0],
+        params.get("version", [None])[0],
+        params.get("trigger_type", [None])[0],
+    )
 
-    if "l0" in url and "DOWNSTREAM" in url:
-        mock_dependencies["data_type"] = "l1a"
-    elif "l1a" in url and "DOWNSTREAM" in url:
-        mock_dependencies["data_type"] = "l1b"
-    elif "l1a" in url and "UPSTREAM" in url:
-        mock_dependencies["data_type"] = "l0"
-        mock_dependencies["descriptor"] = "raw"
-    else:
-        mock_dependencies = None
-
-    # Return an empty list for "test_lambda_handler_no_dependencies()" test.
-    dep_list = [mock_dependencies] if mock_dependencies else []
-    # Create a mock response object that supports context manager
+    dependencies = dependency.lambda_handler(event, None)["body"]
     mock_response = MagicMock()
     mock_context_manager = MagicMock()
-    mock_response.read.return_value = json.dumps(dep_list).encode("utf-8")
-
+    mock_response.read.return_value = dependencies.encode("utf-8")
     # Mock the context manager and return it
     mock_context_manager.__enter__.return_value = mock_response
 
@@ -79,88 +90,6 @@ def mock_urlopen():
         yield mock_urlopen
 
 
-def _populate_file_catalog(session):
-    """Add records to the ScienceFiles table."""
-    # Setup: Add records to the database
-    test_records = [
-        ScienceFiles(
-            file_path="/path/to/file1",
-            instrument="ultra",
-            data_level="l2",
-            descriptor="sci",
-            start_date=datetime(2024, 1, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/file2",
-            instrument="hit",
-            data_level="l0",
-            descriptor="raw",
-            start_date=datetime(2024, 1, 1),
-            version="v001",
-            extension="pkts",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/file3",
-            instrument="swe",
-            data_level="l0",
-            descriptor="raw",
-            start_date=datetime(2024, 1, 1),
-            version="v001",
-            extension="pkts",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/file4",
-            instrument="swe",
-            data_level="l1a",
-            descriptor="sci",
-            start_date=datetime(2024, 1, 1),
-            version="v001",
-            extension="pkts",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        # Adding files to test for duplicate job
-        ScienceFiles(
-            file_path="/path/to/file5",
-            instrument="lo",
-            data_level="l1a",
-            descriptor="de",
-            start_date=datetime(2010, 1, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/file6",
-            instrument="lo",
-            data_level="l1a",
-            descriptor="spin",
-            start_date=datetime(2010, 1, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-    ]
-    session.add_all(test_records)
-    session.commit()
-
-
 def _populate_processing_table(session):
     """Add test data to database."""
     # Add an inprogress record to the processing table
@@ -177,44 +106,12 @@ def _populate_processing_table(session):
     session.commit()
 
 
-def test_get_file(session):
-    """Tests the get_file function."""
-    _populate_file_catalog(session)
-
-    record = get_file(
-        session,
-        instrument="ultra",
-        data_level="l2",
-        descriptor="sci",
-        start_date="20240101",
-        version="v001",
-    )
-
-    assert record.instrument == "ultra"
-    assert record.data_level == "l2"
-    assert record.descriptor == "sci"
-    assert record.start_date == datetime(2024, 1, 1)
-    assert record.version == "v001"
-
-    # Non-existent record should return None
-    record = get_file(
-        session,
-        instrument="ultra",
-        data_level="l2",
-        descriptor="sci",
-        start_date="20000101",
-        version="v001",
-    )
-    assert record is None
-
-
 def test_lambda_handler(
     session,
     mock_urlopen: unittest.mock.MagicMock,
 ):
     """Tests ``lambda_handler`` function."""
     _populate_file_catalog(session)
-
     events = {
         "Records": [
             {
@@ -224,7 +121,9 @@ def test_lambda_handler(
             }
         ]
     }
-
+    serialized_processing_input = (
+        '[{"type": "science", "files": ["imap_swe_l0_raw_20240101_v001.pkts"]}]'
+    )
     context = {"context": "sample_context"}
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(events, context)
@@ -235,14 +134,34 @@ def test_lambda_handler(
         # so make sure it is still only called once from our previous iteration.
         lambda_handler(events, context)
         mock_batch_client.submit_job.assert_called_once()
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="swe-l1a-sci-job-1",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-swe",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "swe",
+                    "--data-level",
+                    "l1a",
+                    "--descriptor",
+                    "sci",
+                    "--start-date",
+                    "20240101",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    serialized_processing_input,
+                    "--upload-to-sdc",
+                ]
+            },
+        )
 
 
 def test_lambda_handler_multiple_events(session, mock_urlopen):
     """Tests ``lambda_handler`` function with multiple events."""
-    _populate_file_catalog(session)
-
     # Test Multiple Events:
-
+    _populate_file_catalog(session)
     multiple_events = {
         "Records": [
             {
@@ -263,8 +182,70 @@ def test_lambda_handler_multiple_events(session, mock_urlopen):
         assert mock_batch_client.submit_job.call_count == 2
 
 
+def test_lambda_handler_ancillary_event(
+    session,
+    mock_urlopen: unittest.mock.MagicMock,
+):
+    """Tests ``lambda_handler`` function when triggerd by an ancillary file."""
+    _populate_file_catalog(session)
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": '
+                '"imap_swe_l1b-in-flight-cal_20240101_v001.cdf"}}'
+                "}"
+            }
+        ]
+    }
+
+    context = {"context": "sample_context"}
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, context)
+        # There should be two different jobs submitted for one swe l1b ancillary file
+        assert mock_batch_client.submit_job.call_count == 2
+        # Assert_called_with only works on the last call
+        # Check that the last call is what we expect with the corrected
+        ancillary_in = AncillaryInput(
+            "imap_swe_l1b-in-flight-cal_20230101_v001.cdf",
+            "imap_swe_l1b-in-flight-cal_20231231_20240102_v002.cdf",
+        )
+        science_in = ScienceInput(
+            "imap_swe_l1a_sci_20240103_v001.cdf",
+        )
+        dependencies = ProcessingInputCollection(science_in, ancillary_in)
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="swe-l1b-sci-job-2",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-swe",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "swe",
+                    "--data-level",
+                    "l1b",
+                    "--descriptor",
+                    "sci",
+                    "--start-date",
+                    "20240103",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    dependencies.serialize(),
+                    "--upload-to-sdc",
+                ]
+            },
+        )
+        # Submit a second job with the same file as input which will try to kick
+        # off a duplicate job. We expect the submit_job method to not be called
+        # so make sure it is still only called two times from our previous iteration.
+        mock_batch_client.submit_job.call_count = 0
+        lambda_handler(events, context)
+        assert mock_batch_client.submit_job.call_count == 0
+
+
 def test_lambda_handler_no_dependencies(session, mock_urlopen):
-    """Tests ``lambda_handler`` when there are no depenencies for the file."""
+    """Tests ``lambda_handler`` when there are no dependencies for the file."""
     _populate_file_catalog(session)
     # Test Multiple Events:
     events = {
@@ -281,6 +262,32 @@ def test_lambda_handler_no_dependencies(session, mock_urlopen):
         lambda_handler(events, context)
         # Verify the function was not called
         assert mock_submit.call_count == 0
+
+
+def test_lambda_handler_missing_upstream_dependency(session, mock_urlopen, caplog):
+    """Tests ``lambda_handler`` when there are no dependencies for the file."""
+    _populate_file_catalog(session)
+    # Test Multiple Events:
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_swe_l1b_sci_20000101_v001.cdf"}}'
+                "}"
+            }
+        ]
+    }
+    context = {"context": "sample_context"}
+    with caplog.at_level(logging.DEBUG):
+        lambda_handler(events, context)
+        log_str = (
+            "Upstream dependency not found for: {'data_source': "
+            "'swe', 'data_type': 'l2', 'descriptor': 'sci', 'dependency_type': "
+            "'UPSTREAM', 'relationship': 'HARD', 'start_date': '20000101', "
+            "'version': 'v001', 'trigger_type': 'l1b'}"
+        )
+        # Verify the info statement was logged.
+        assert log_str in caplog.text
 
 
 def test_spice_file():
@@ -301,7 +308,8 @@ def test_spice_file():
     # TODO: undo this and add correct tests when it's implemented.
     with pytest.raises(
         ValueError,
-        match="File handling imap_yyyy_doy_yyyy_doy.spin.csv is not implemented yet",
+        match="Batch starter handling for spice file: "
+        "imap_yyyy_doy_yyyy_doy.spin.csv is not implemented yet",
     ):
         lambda_handler(events, context)
 
@@ -315,7 +323,7 @@ def test_is_job_in_status_table(session):
         instrument="lo",
         data_level="l1b",
         descriptor="de",
-        start_date="20100101",
+        start_date=datetime(2010, 1, 1),
         version="v001",
     )
 
@@ -326,7 +334,7 @@ def test_is_job_in_status_table(session):
         instrument="swapi",
         data_level="l1b",
         descriptor="sci",
-        start_date="20100101",
+        start_date=datetime(2010, 1, 1),
         version="v001",
     )
     assert not result
@@ -450,3 +458,27 @@ def test_api_request_success(mock_urlopen: unittest.mock.MagicMock):
     assert dependencies == [
         {"data_source": "swe", "data_type": "l0", "descriptor": "raw"}
     ]
+
+
+def test_api_request_success_empty(session, mock_urlopen: unittest.mock.MagicMock):
+    """Test that _get_dependencies() returns the expected dependency result.
+
+    Parameters
+    ----------
+    session : orm session
+        Mock database session.
+    mock_urlopen : unittest.mock.MagicMock
+        Mock object for ``urlopen``
+    """
+    dependency_event_msg = {
+        "data_source": "swe",
+        "data_type": "l1a",
+        "descriptor": "sci",
+        "dependency_type": "UPSTREAM",
+        "relationship": "HARD",
+        "start_date": "20000101",
+        "version": "v001",
+        "trigger_type": "swe",
+    }
+    dependencies = _get_dependencies(dependency_event_msg)
+    assert dependencies == imap_data_access.processing_input.ProcessingInputCollection()

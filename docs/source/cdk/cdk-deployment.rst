@@ -70,3 +70,24 @@ with the explicit steps as follows:
    branches of your repository and not wide-open trust to the entire organization.
 #. Attach a policy to the role that allows the role to deploy the CDK stacks, giving
    it the appropriate permissions for the resources you require.
+
+Troubleshooting Lambda Architectures
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The project can be built on a local machine, but creating the layers can
+sometimes cause issues if a developer is running on an ARM architecture (e.g. Macs).
+The Lambda layers are designed to be built on an x86 architecture (GitHub Actions CI),
+so if you are running on ARM architecture you may need to set some additional
+environment variables to force the build to run on x86.
+
+Remove all Docker images and build artifacts before running the build command::
+
+    docker builder prune -a
+    docker image prune -a
+    # Remove the cdk.out directory where build artifacts are stored.
+    rm -rf cdk.out
+
+Then, set the environment variable to force Docker to use the x86 architecture::
+
+    DOCKER_DEFAULT_PLATFORM=linux/amd64 cdk synth --context account_name="dev"
+

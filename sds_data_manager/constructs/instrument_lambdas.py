@@ -91,7 +91,6 @@ class BatchStarterLambda(Construct):
             security_groups=[rds_security_group],
             allow_public_subnet=True,
             layers=layers,
-            architecture=lambda_.Architecture.ARM_64,
         )
 
         # Permissions to send event to EventBridge
