@@ -899,13 +899,13 @@ files = [
 
 [[package]]
 name = "imap-data-access"
-version = "0.16.0"
+version = "0.17.0"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = "*"
 files = [
-    {file = "imap_data_access-0.16.0-py3-none-any.whl", hash = "sha256:81a72104c0b80a4314c2b081a748718f99bc10dc775db333c7c1b34ae56a46e1"},
-    {file = "imap_data_access-0.16.0.tar.gz", hash = "sha256:d87f3b038d84c259ba18a1a7a8f3e8c3873dd3625c270fbae9513d1e0184139e"},
+    {file = "imap_data_access-0.17.0-py3-none-any.whl", hash = "sha256:efd7cf14de6cc6b013655bdef8ab1d6b3cf8160beb64524f06b2812fa04ca49b"},
+    {file = "imap_data_access-0.17.0.tar.gz", hash = "sha256:3db6e3aa177a39b7075c6fad5a3c352e2fa727d2666773e54e7a0fb66e704025"},
 ]
 
 [package.extras]
@@ -2443,13 +2443,13 @@ test = ["mypy", "pytest", "typing-extensions"]
 
 [[package]]
 name = "typing-extensions"
-version = "4.13.0"
+version = "4.13.1"
 description = "Backported and Experimental Type Hints for Python 3.8+"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "typing_extensions-4.13.0-py3-none-any.whl", hash = "sha256:c8dd92cc0d6425a97c18fbb9d1954e5ff92c1ca881a309c45f06ebc0b79058e5"},
-    {file = "typing_extensions-4.13.0.tar.gz", hash = "sha256:0a4ac55a5820789d87e297727d229866c9650f6521b64206413c4fbada24d95b"},
+    {file = "typing_extensions-4.13.1-py3-none-any.whl", hash = "sha256:4b6cf02909eb5495cfbc3f6e8fd49217e6cc7944e145cdda8caa3734777f9e69"},
+    {file = "typing_extensions-4.13.1.tar.gz", hash = "sha256:98795af00fb9640edec5b8e31fc647597b4691f099ad75f469a2616be1a76dff"},
 ]
 
 [[package]]
@@ -2559,4 +2559,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "6236f53098eece06acc1873733302e59a1456fe495f94fef2b220f56399d49cc"
+content-hash = "654782f266bf87b90c9c3739052ed4cd7acb0d2fa40435ddd9ae97f356053c60"

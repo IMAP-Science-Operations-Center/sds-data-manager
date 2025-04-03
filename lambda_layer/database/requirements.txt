@@ -72,9 +72,9 @@ greenlet==3.1.1 ; python_version < "3.14" and (platform_machine == "aarch64" or 
     --hash=sha256:f1d4aeb8891338e60d1ab6127af1fe45def5259def8094b9c7e34690c8858803 \
     --hash=sha256:f406b22b7c9a9b4f8aa9d2ab13d6ae0ac3e85c9a809bd590ad53fed2bf70dc79 \
     --hash=sha256:f6ff3b14f2df4c41660a7dec01045a045653998784bf8cfcb5a525bdffffbc8f
-imap-data-access==0.16.0 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:81a72104c0b80a4314c2b081a748718f99bc10dc775db333c7c1b34ae56a46e1 \
-    --hash=sha256:d87f3b038d84c259ba18a1a7a8f3e8c3873dd3625c270fbae9513d1e0184139e
+imap-data-access==0.17.0 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:3db6e3aa177a39b7075c6fad5a3c352e2fa727d2666773e54e7a0fb66e704025 \
+    --hash=sha256:efd7cf14de6cc6b013655bdef8ab1d6b3cf8160beb64524f06b2812fa04ca49b
 psycopg2-binary==2.9.10 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:04392983d0bb89a8717772a193cfaac58871321e3ec69514e1c4e0d4957b5aff \
     --hash=sha256:056470c3dc57904bbf63d6f534988bafc4e970ffd50f6271fc4ee7daad9498a5 \
@@ -204,9 +204,9 @@ sqlalchemy==2.0.40 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:f1ea21bef99c703f44444ad29c2c1b6bd55d202750b6de8e06a955380f4725d7 \
     --hash=sha256:f6bacab7514de6146a1976bc56e1545bee247242fab030b89e5f70336fc0003e \
     --hash=sha256:fe147fcd85aaed53ce90645c91ed5fca0cc88a797314c70dfd9d35925bd5d106
-typing-extensions==4.13.0 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:0a4ac55a5820789d87e297727d229866c9650f6521b64206413c4fbada24d95b \
-    --hash=sha256:c8dd92cc0d6425a97c18fbb9d1954e5ff92c1ca881a309c45f06ebc0b79058e5
+typing-extensions==4.13.1 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:4b6cf02909eb5495cfbc3f6e8fd49217e6cc7944e145cdda8caa3734777f9e69 \
+    --hash=sha256:98795af00fb9640edec5b8e31fc647597b4691f099ad75f469a2616be1a76dff
 tzdata==2025.2 ; python_version >= "3.10" and python_version < "4" and sys_platform == "win32" \
     --hash=sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8 \
     --hash=sha256:b60a638fcc0daffadf82fe0f57e53d06bdec2f36c4df66280ae79bce6bd6f2b9
