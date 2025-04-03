@@ -296,7 +296,7 @@ def test_spice_file():
         "Records": [
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_yyyy_doy_yyyy_doy.spin.csv"}}'
+                '{"object": {"key": "imap_1000_100_1000_100_10.spin.csv"}}'
                 "}"
             }
         ]
@@ -309,7 +309,7 @@ def test_spice_file():
     with pytest.raises(
         ValueError,
         match="Batch starter handling for spice file: "
-        "imap_yyyy_doy_yyyy_doy.spin.csv is not implemented yet",
+        "imap_1000_100_1000_100_10.spin.csv is not implemented yet",
     ):
         lambda_handler(events, context)
 
