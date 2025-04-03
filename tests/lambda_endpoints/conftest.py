@@ -21,7 +21,7 @@ BUCKET_NAME = "test-data-bucket"
 
 
 @pytest.fixture(autouse=True)
-def _set_env(monkeypatch):
+def _set_env(monkeypatch, tmpdir):
     """Set global environment variables."""
     monkeypatch.setenv("S3_BUCKET", BUCKET_NAME)
     # Mock AWS Credentials for moto
@@ -33,7 +33,7 @@ def _set_env(monkeypatch):
     # Mock the api gateway url
     # This is used in batch_starter.py
     monkeypatch.setenv("IMAP_DATA_ACCESS_URL", "https://test.url")
-    monkeypatch.setenv("EFS_SPICE_MOUNT_PATH", "/tmp")
+    monkeypatch.setenv("EFS_SPICE_MOUNT_PATH", str(tmpdir))
 
 
 @pytest.fixture(scope="module")

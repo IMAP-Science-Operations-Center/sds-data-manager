@@ -8,6 +8,7 @@ from pathlib import Path
 import boto3
 import spiceypy
 from imap_data_access import SPICEFilePath
+from sqlalchemy.dialects.postgresql import insert
 
 from ..database import database as db
 from ..database import models
@@ -82,7 +83,7 @@ def get_coverage_dictionary(spice_file: Path, **kwargs):
     elif spice_file.suffix == ".bsp":
         coverage_function = spiceypy.spkcov
     else:
-        raise Exception(
+        raise ValueError(
             f"Unable to handle spice file with the extension {spice_file.suffix}."
         )
 
@@ -130,46 +131,46 @@ def _upsert_into_spice_table(
         The latest leapsecond kernel used for the above calculations
     """
     # Format the data to insert
-    spice_params = {}
-    spice_params["ingestion_date"] = datetime.now()
-    spice_params["kernel_type"] = spice_object.spice_metadata["type"]
-    spice_params["version"] = spice_object.spice_metadata["version"]
-    spice_params["file_name"] = str(spice_object.filename.name)
-    spice_params["file_root"] = str(spice_object.filename.name).replace(
-        str(spice_object.spice_metadata["version"]), ""
-    )
-    spice_params["min_date_j2000"] = file_coverage_j2000[0][0]
-    spice_params["max_date_j2000"] = file_coverage_j2000[-1][-1]
-    spice_params["file_intervals_j2000"] = file_coverage_j2000
-    spice_params["min_date_datetime"] = file_coverage_datetime[0][0]
-    spice_params["max_date_datetime"] = file_coverage_datetime[-1][-1]
-    spice_params["file_intervals_datetime"] = [
-        [dt.isoformat() for dt in sublist] for sublist in file_coverage_datetime
-    ]
-    spice_params["min_date_sclk"] = file_coverage_sclk[0][0]
-    spice_params["max_date_sclk"] = file_coverage_sclk[-1][-1]
-    spice_params["file_intervals_sclk"] = file_coverage_sclk
-    spice_params["lsk_kernel"] = str(latest_lsk)
-    spice_params["sclk_kernel"] = str(latest_sclk)
+    spice_params = {
+        "ingestion_date": datetime.now(),
+        "kernel_type": spice_object.spice_metadata["type"],
+        "version": spice_object.spice_metadata["version"],
+        "file_name": str(spice_object.filename.name),
+        "file_root": str(spice_object.filename.name).replace(
+            str(spice_object.spice_metadata["version"]), ""
+        ),
+        "min_date_j2000": file_coverage_j2000[0][0],
+        "max_date_j2000": file_coverage_j2000[-1][-1],
+        "file_intervals_j2000": file_coverage_j2000,
+        "min_date_datetime": file_coverage_datetime[0][0],
+        "max_date_datetime": file_coverage_datetime[-1][-1],
+        "file_intervals_datetime": [
+            [dt.isoformat() for dt in sublist] for sublist in file_coverage_datetime
+        ],
+        "min_date_sclk": file_coverage_sclk[0][0],
+        "max_date_sclk": file_coverage_sclk[-1][-1],
+        "file_intervals_sclk": file_coverage_sclk,
+        "lsk_kernel": str(latest_lsk),
+        "sclk_kernel": str(latest_sclk),
+    }
 
-    # Open db session and determine whether to update the database
-    # or insert a new record
-    with db.Session() as session, session.begin():
-        # Check if the record already exists
-        existing_entry = (
-            session.query(models.SPICEFiles)
-            .filter_by(file_name=spice_params["file_name"])
-            .first()
+    with db.Session() as session:
+        # Execute the statement as a single "insert-or-update" operation
+        stmt = (
+            insert(models.SPICEFiles)
+            .values(**spice_params)
+            .on_conflict_do_update(
+                index_elements=["file_name"],  # or name of a unique constraint
+                set_={  # Remove the "file_name" from the update dict
+                    key: spice_params[key]
+                    for key in spice_params.keys()
+                    if key != "file_name"
+                },
+            )
         )
-        if existing_entry:
-            for key, value in spice_params.items():
-                if key == "file_name":
-                    continue
-                setattr(existing_entry, key, value)  # Update existing record
-        else:
-            # Record does not exist, add it
-            session.add(models.SPICEFiles(**spice_params))
-    logger.info("Wrote data to the SPICEFiles table")
+        session.execute(stmt)
+        session.commit()
+    logger.info(f"Wrote {spice_params} to the SPICEFiles table")
 
 
 def index_spice_file(spice_file: Path):
