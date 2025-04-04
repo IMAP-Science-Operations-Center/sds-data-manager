@@ -376,9 +376,15 @@ class MetaKernel:
         return file_list
 
     def _reformat_and_filter(self, spice_items):
-        """Reformat into a dict item with file_root as the key, instead of the file_name.
-        As it is reformatting the dict, it goes through and filters out all of the "lesser" files.
-        Returns: {'file_root1': {file info 1 dictionary}, 'file_root2': {file info 2 dictionary}, etc}
+        """Reformat into a dict item with file_root as the key, instead of
+        the file_name.
+
+        As it is reformatting the dict, it goes through and filters out all of the
+        "lesser" files.
+
+        Returns
+        -------
+            {'file_root1': {file info 1 dict}, 'file_root2': {file info 2 dict}, etc}
         """
         file_dict = {}
         for _, file_info in spice_items.items():
