@@ -7,8 +7,33 @@ import os
 import boto3
 from boto3.dynamodb.conditions import Key
 
+from imap_processing.utils import packet_file_to_datasets
+from imap_processing.ialirt import packet_definitions
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def parse_packet(filename, bucket, key, download_dir="/tmp"):
+    """Get or Create EIP Allocation ID.
+
+    Returns
+    -------
+    allocation_id : str
+        Elastic IP Allocation ID.
+    """
+    local_path = os.path.join(download_dir, filename)
+
+    s3 = boto3.client("s3")
+    s3.download_file(bucket, key, local_path)
+    logger.info("Downloaded file to %s", local_path)
+
+    imap_module_directory = os.path.dirname(packet_definitions.__file__)
+    xtce = os.path.join(imap_module_directory, "ialirt.xml")
+
+    datasets_by_apid = packet_file_to_datasets(local_path, xtce)
+
+    return datasets_by_apid
 
 
 def lambda_handler(event, context):
@@ -36,6 +61,8 @@ def lambda_handler(event, context):
     dynamodb = boto3.resource("dynamodb")
     ingest_table = dynamodb.Table(ingest_table_name)
     algorithm_table = dynamodb.Table(algorithm_table_name)
+    bucket = event["detail"]["bucket"]["name"]
+    key = event["detail"]["object"]["key"]
 
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
@@ -59,7 +86,10 @@ def lambda_handler(event, context):
     items = response["Items"]
     logger.info("Scan successful. Retrieved items: %s", items)
 
-    # 3. After processing insert data into Algorithm Table.
+    # 3. Process data using the packet_file_to_datasets function.
+    datasets_by_apid = parse_packet(filename, bucket, key)
+
+    # 4. After processing insert data into Algorithm Table.
     item = {
         "apid": 478,
         "met": 123,

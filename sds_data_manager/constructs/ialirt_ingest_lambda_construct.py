@@ -21,6 +21,8 @@ class IalirtIngestLambda(Construct):
         scope: Construct,
         construct_id: str,
         ialirt_bucket: aws_s3.Bucket,
+        layers: list,
+
         **kwargs,
     ) -> None:
         """IalirtIngestLambda Stack.
@@ -33,6 +35,8 @@ class IalirtIngestLambda(Construct):
             A unique string identifier for this construct.
         ialirt_bucket : aws_s3.Bucket
             The data bucket.
+        layers : list
+            List of Lambda layers cdk.cdfnOutput names
         kwargs : dict
             Keyword arguments.
 
@@ -50,6 +54,9 @@ class IalirtIngestLambda(Construct):
 
         # Create Event Rule
         self.create_event_rule(ialirt_bucket, self.ialirt_ingest_lambda)
+
+        # Lambda Layers
+        self.layers = layers
 
     def create_ingest_dynamodb_table(self) -> aws_dynamodb.Table:
         """Create and return the DynamoDB table."""
@@ -197,6 +204,7 @@ class IalirtIngestLambda(Construct):
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
             },
+            layers=self.layers,
         )
 
         packet_data_table.grant_read_write_data(ialirt_ingest_lambda)
