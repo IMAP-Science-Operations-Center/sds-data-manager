@@ -327,7 +327,7 @@ def build_sds(
         scope=ialirt_stack,
         construct_id="IalirtIngestLambda",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
-        layers=[ialirt_python_lambda_layer],
+        layers=[ialirt_spice_lambda_layer],
     )
 
     ialirt_monitoring = monitoring_construct.MonitoringConstruct(
