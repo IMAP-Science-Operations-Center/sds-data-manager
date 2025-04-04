@@ -25,7 +25,7 @@ jobs:
 
       - name: Install dependencies and app
         run: |
-          poetry install --with layer-database --with layer-spice
+          poetry install --with layer-database --with layer-spice --with layer-processing
 
       - name: Testing
         run: |
