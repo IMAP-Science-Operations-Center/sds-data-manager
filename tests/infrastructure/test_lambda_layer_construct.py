@@ -10,7 +10,7 @@ from sds_data_manager.constructs.lambda_layer_construct import IMAPLambdaLayer
 def test_lambda_layer_creation(stack):
     """Lambda layer tests."""
     lambda_code_directory = (
-        Path(__file__).parent.parent.parent / "lambda_layer/python"
+        Path(__file__).parent.parent.parent / "lambda_layer/tools"
     ).resolve()
     IMAPLambdaLayer(
         scope=stack,
