@@ -2559,4 +2559,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "92db1400879ba267847bb03debd53c48655ad8e43a05288a97aa64bb40e7e871"
+content-hash = "673e6e6f8cc12cf9b15b8bba9defbfec005b74a6b30953ef87ada7488ad654b0"
