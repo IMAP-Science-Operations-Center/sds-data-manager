@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from ..database import database as db
 from ..database import models
+from . import spice_metakernel
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -382,5 +383,6 @@ def lambda_handler(event, context):
 
     file_path = write_data_to_efs(s3_key, s3_bucket, spice_mount_path)
     index_spice_file(file_path)
-
+    if 'mk' not in str(file_path):
+        spice_metakernel.create_new_metakernel()
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}
