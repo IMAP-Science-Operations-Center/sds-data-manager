@@ -20,7 +20,9 @@ SPACECRAFT_ID = -43
 
 
 def generate_mk(year, spice_directory):
-    """This function will determine a new metakernel file name and determine the contents of the file"""
+    """This function will determine a new metakernel file name and
+    determine the contents of the file
+    """
     # Query for most recent MK file in the current year
     logger.info("Checking for existing metakernels in %s", year)
 
@@ -62,13 +64,15 @@ def generate_mk(year, spice_directory):
         with open(str(most_recent_mk)) as f:
             most_recent_mk_contents = f.read()
 
-        # Ignore the first 100 characters of the file, that contains information about the date that the metakernel was generated
+        # Ignore the first 100 characters of the file, that contains
+        # information about the date that the metakernel was generated
         logger.info(f"Old file: {most_recent_mk_contents[110:]}")
         logger.info(f"New file: {rendered_file[110:]}")
 
         if most_recent_mk_contents[110:] == rendered_file[110:]:
             logger.info(
-                "New SPICE file is identical to old SPICE file, continuing without generating new Metakernel."
+                "New SPICE file is identical to old SPICE file, continuing "
+                "without generating new Metakernel."
             )
             return None, None
 
@@ -205,7 +209,8 @@ class MetaKernel:
     """
 
     def __init__(self, start_time, end_time):
-        # Gaps smaller than this are ignored and assumed that SPICE can interpolate between
+        # Gaps smaller than this are ignored and assumed that SPICE can
+        # interpolate between
         self.MIN_GAP_TIME_TO_INGORE = 3  # Seconds
 
         self.start_time_j2000 = start_time
@@ -224,9 +229,12 @@ class MetaKernel:
 
        \begintext
 
-       This is the most up to date IMAP Metakernel as of {datetime.now()}.
+       This is the most up to date IMAP Metakernel as of
+       {datetime.now()}.
 
-       This attempts to cover data from {self.start_time_j2000} to {self.end_time_j2000} seconds since J2000.
+       This attempts to cover data from
+       {self.start_time_j2000} to {self.end_time_j2000}
+       seconds since J2000.
 
         """
 
@@ -293,7 +301,8 @@ class MetaKernel:
         self.gaps_in_attitude_data = gaps_remaining
 
     def return_spice_files_in_order_detailed(self):
-        # Returns the files (with all associated information) in the correct order to be loaded in
+        # Returns the files (with all associated information) in the correct order to
+        # be loaded in
         metakernel_files = []
         if self.static_files:
             metakernel_files.extend(reversed(self.static_files))
@@ -334,9 +343,10 @@ class MetaKernel:
         return file_list
 
     def _reformat_and_filter(self, spice_items):
-        # Reformat into a dict item with file_root as the key, instead of the file_name.
-        # As it is reformatting the dict, it goes through and filters out all of the "lesser" files.
-        # Returns: {'file_root1': {file info 1 dictionary}, 'file_root2': {file info 2 dictionary}, etc}
+        """Reformat into a dict item with file_root as the key, instead of the file_name.
+        As it is reformatting the dict, it goes through and filters out all of the "lesser" files.
+        Returns: {'file_root1': {file info 1 dictionary}, 'file_root2': {file info 2 dictionary}, etc}
+        """
         file_dict = {}
         for _, file_info in spice_items.items():
             if file_info["file_root"] in file_dict:
@@ -348,7 +358,9 @@ class MetaKernel:
         return file_dict
 
     def _limitstring(self, dirstring, limit, sym):
-        """Limits string based on a limit and adds a symbol to show that it has a continuation next line"""
+        """Limits string based on a limit and adds a symbol to show that it has a
+        continuation next line
+        """
         results = []
 
         for i in range(0, len(dirstring), limit):
@@ -362,7 +374,9 @@ class MetaKernel:
 
     def _find_best_files(self, trange, files_to_check, files_to_load):
         """This function finds the best files that cover the starting time range.
-        This function is recursive, it finds the "best" file to load in, then calls itself again if gaps are still identified
+        This function is recursive, it finds the "best" file to load in, then
+        calls itself again if gaps are still identified
+
         Returns a list of gaps in J2000 that cannot be found at all.
         """
         trange = [float(trange[0]), float(trange[1])]
@@ -387,9 +401,7 @@ class MetaKernel:
         if best_file is None:
             return [trange]
 
-        logger.info(
-            f"Checking file {json.dumps(best_file)} as a possible inclusion to the metakernel"
-        )
+        logger.info(f"Checking file {json.dumps(best_file)} as a possible inclusion")
 
         # Look for gaps in the time range that are not covered by the file
         add_to_list = False
@@ -433,7 +445,7 @@ class MetaKernel:
             ):  # Implies there is gaps in the data
                 previous_interval = None
                 for interval in best_file["file_intervals_J2000"]:
-                    if previous_interval == None:
+                    if previous_interval is None:
                         previous_interval = interval
                     else:
                         file_gaps.append([previous_interval[1], interval[0]])
@@ -443,7 +455,8 @@ class MetaKernel:
                 if int(g[0]) <= trange[0] and int(g[1]) >= trange[1]:
                     # There is a gap in the range we are looking at! Try again!
                     logger.info(
-                        "There is a gap in the specified time range, file will not be loaded."
+                        "There is a gap in the specified time range, file will "
+                        "not be loaded."
                     )
                     gap_list = [trange]
                     dont_load_file = True
@@ -453,12 +466,14 @@ class MetaKernel:
                     gap_list.append(g)
                 elif int(g[0]) >= trange[0] and int(g[0]) <= trange[1]:
                     logger.info(
-                        "There is a gap between the start of the gap and the end of the time range"
+                        "There is a gap between the start of the gap and the end "
+                        "of the time range"
                     )
                     gap_list.append([g[0], trange[1]])
                 elif int(g[1]) >= trange[0] and int(g[1]) <= trange[1]:
                     logger.info(
-                        "There is a gap between the start of the time range to the end of the file gap"
+                        "There is a gap between the start of the time range to "
+                        "the end of the file gap"
                     )
                     gap_list.append([trange[0], g[1]])
 
@@ -482,4 +497,5 @@ class MetaKernel:
         return return_gap_list
 
     def __repr__(self):
+        """Return all loaded SPICE files as JSON."""
         return json.dumps(self.return_spice_files_in_order_detailed())

@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 
 import pytest
+import spiceypy
 
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
@@ -148,3 +149,11 @@ def test_s3_spice_files(session, s3_client, events_client):
     assert result.kernel_type == "metakernel"
     assert result.version == 2
     assert len(result.file_intervals_datetime) == 1  # Default time range
+
+    # Ensure that the metakernels are actually valid by loading them in
+    spiceypy.kclear()
+    assert spiceypy.ktotal("ALL") == 0
+    spiceypy.furnsh(temp_path + "/mk/imap_2025_v002.tm")
+    assert spiceypy.ktotal("TEXT") == 2
+    assert spiceypy.ktotal("META") == 1
+    assert spiceypy.ktotal("CK") == 1
