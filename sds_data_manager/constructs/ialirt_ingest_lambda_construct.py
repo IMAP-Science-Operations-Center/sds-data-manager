@@ -49,15 +49,15 @@ class IalirtIngestLambda(Construct):
 
         # Create Lambda Function
         self.ialirt_ingest_lambda = self.create_lambda_function(
-            ialirt_bucket, self.packet_data_table, self.algorithm_data_table
+            ialirt_bucket,
+            self.packet_data_table,
+            self.algorithm_data_table,
+            code,
+            layers,
         )
 
         # Create Event Rule
         self.create_event_rule(ialirt_bucket, self.ialirt_ingest_lambda)
-
-        # Lambda Layers
-        self.layers = layers
-        self.code = code
 
     def create_ingest_dynamodb_table(self) -> aws_dynamodb.Table:
         """Create and return the DynamoDB table."""
@@ -159,6 +159,8 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         packet_data_table: aws_dynamodb.Table,
         algorithm_data_table: aws_dynamodb.Table,
+        code: lambda_.Code,
+        layers: list,
     ) -> lambda_alpha_.PythonFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -191,7 +193,7 @@ class IalirtIngestLambda(Construct):
             self,
             id="IAlirtIngestLambda",
             function_name="ialirt-ingest",
-            code=self.code,
+            code=code,
             handler="IAlirtCode.ialirt_ingest.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
@@ -202,7 +204,7 @@ class IalirtIngestLambda(Construct):
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
             },
-            layers=self.layers,  # Add the Lambda layers here
+            layers=layers,  # Add the Lambda layers here
         )
 
         packet_data_table.grant_read_write_data(ialirt_ingest_lambda)
