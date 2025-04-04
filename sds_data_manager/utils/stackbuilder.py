@@ -140,7 +140,7 @@ def build_sds(
 
     # create Code asset and Layer for Lambda(s)
     layer_code_directory = (
-        Path(__file__).parent.parent.parent / "lambda_layer/python"
+        Path(__file__).parent.parent.parent / "lambda_layer"
     ).resolve()
     lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
 
@@ -148,7 +148,12 @@ def build_sds(
     db_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
         scope=sdc_stack,
         id="DatabaseDependencies",
-        layer_dependencies_dir=str(layer_code_directory),
+        layer_dependencies_dir=str(layer_code_directory / "database"),
+    )
+    python_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
+        scope=sdc_stack,
+        id="PythonDependencies",
+        layer_dependencies_dir=str(layer_code_directory / "python"),
     )
 
     # Get RDS properties from account_config
@@ -169,11 +174,11 @@ def build_sds(
         secret_name=db_secret_name,
         database_name="imap",
         code=lambda_code,
-        layers=[db_lambda_layer],
+        layers=[db_lambda_layer, python_lambda_layer],
     )
     rds_construct.add_synchronizer(
         code=lambda_code,
-        layers=[db_lambda_layer],
+        layers=[db_lambda_layer, python_lambda_layer],
         bucket_name=data_bucket.data_bucket.bucket_name,
         vpc=networking.vpc,
     )
@@ -187,7 +192,7 @@ def build_sds(
         vpc_subnets=rds_construct.rds_subnet_selection,
         rds_security_group=rds_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
-        layers=[db_lambda_layer],
+        layers=[db_lambda_layer, python_lambda_layer],
     )
 
     monitoring_lambda_construct.MonitoringLambda(
@@ -207,7 +212,7 @@ def build_sds(
         vpc=networking.vpc,
         rds_security_group=rds_construct.rds_security_group,
         db_secret_name=db_secret_name,
-        layers=[db_lambda_layer],
+        layers=[db_lambda_layer, python_lambda_layer],
     )
 
     # create EFS
@@ -219,7 +224,7 @@ def build_sds(
         scope=sdc_stack,
         construct_id="DependencyFinder",
         code=lambda_code,
-        layers=[db_lambda_layer],
+        layers=[db_lambda_layer, python_lambda_layer],
         vpc=networking.vpc,
         rds_security_group=rds_construct.rds_security_group,
         env=env,
@@ -263,7 +268,7 @@ def build_sds(
         rds_security_group=rds_construct.rds_security_group,
         vpc=networking.vpc,
         sqs_queue=instrument_sqs,
-        layers=[db_lambda_layer],
+        layers=[db_lambda_layer, python_lambda_layer],
         api_domain=api.api_domain_name,
     )
 
@@ -275,13 +280,19 @@ def build_sds(
         db_secret_name=db_secret_name,
         env=env,
         vpc=networking.vpc,
-        layers=[db_lambda_layer],
+        layers=[db_lambda_layer, python_lambda_layer],
         rds_security_group=rds_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
         efs_construct=efs_instance,
     )
 
     ialirt_stack = Stack(scope, "IalirtStack", cross_region_references=True, env=env)
+
+    ialirt_python_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
+        scope=ialirt_stack,
+        id="IAlirtPythonDependencies",
+        layer_dependencies_dir=str(layer_code_directory / "python"),
+    )
 
     ialirt_root_certificate = None
     if domain is not None:
@@ -307,12 +318,6 @@ def build_sds(
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
     )
 
-    ialirt_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
-        scope=ialirt_stack,
-        id="IAlirtDependencies",
-        layer_dependencies_dir=str(layer_code_directory),
-    )
-
     ialirt_monitoring = monitoring_construct.MonitoringConstruct(
         scope=ialirt_stack,
         construct_id="IAlirtMonitoringConstruct",
@@ -335,7 +340,7 @@ def build_sds(
         env=env,
         data_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
-        layers=[ialirt_lambda_layer],
+        layers=[ialirt_python_lambda_layer],
         algorithm_table=ingest.algorithm_data_table,
     )
 
