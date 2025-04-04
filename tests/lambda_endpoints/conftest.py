@@ -54,7 +54,6 @@ def spice_file():
     return "spice/ck/imap_2025_032_2025_034_003.ah.bc"
 
 
-
 @pytest.fixture(scope="module")
 def invalid_file():
     """Path for an invalid file."""
