@@ -143,6 +143,26 @@ def test_get_downstream_dependencies():
     assert dependents == expected_complete_dependent
 
 
+def test_primary_dep_gets_filtered(session, caplog):
+    """Tests that a pre-existing primary science file gets filtered."""
+    _populate_file_catalog(session)
+    event = create_dependency_api_event(
+        "swe",
+        "l1a",
+        "sci",
+        start_date="20240102",
+        version="v001",
+        trigger_type="l1b-in-flight-cal",
+    )
+
+    dependency.lambda_handler(event, None)
+
+    assert (
+        "Primary dependency files already processed. Returning empty collection."
+        in caplog.text
+    )
+
+
 def test_get_upstream_ancillary_trigger(session, caplog):
     """Tests get upstream dependencies with an ancillary trigger source."""
     _populate_file_catalog(session)

@@ -27,5 +27,11 @@ repos:
       - id: poetry-lock
         args: [--no-update]
       - id: poetry-export
-        args: ["-f", "requirements.txt", "-o", "lambda_layer/python/requirements.txt", "--with", "lambda-dev"]
+        args: ["-f", "requirements.txt", "-o", "lambda_layer/database/requirements.txt", "--with", "layer-database"]
+        verbose: true
+      - id: poetry-export
+        args: ["-f", "requirements.txt", "-o", "lambda_layer/spice/requirements.txt", "--with", "layer-spice"]
+        verbose: true
+      - id: poetry-export
+        args: [ "-f", "requirements.txt", "-o", "lambda_layer/processing/requirements.txt", "--with", "layer-processing" ]
         verbose: true

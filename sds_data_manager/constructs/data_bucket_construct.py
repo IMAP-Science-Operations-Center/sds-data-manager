@@ -42,8 +42,8 @@ class DataBucketConstruct(Construct):
             bucket_name=f"sds-data-{account}",
             versioned=True,
             event_bridge_enabled=True,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
+            removal_policy=RemovalPolicy.RETAIN,
+            auto_delete_objects=False,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 

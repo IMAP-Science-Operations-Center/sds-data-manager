@@ -50,7 +50,7 @@ def science_file():
 @pytest.fixture(scope="module")
 def spice_file():
     """Path to a valid spice file."""
-    return "spice/ck/test_v000.bc"
+    return "imap_mag_l1a_20210101_v001.cdf"
 
 
 @pytest.fixture(scope="module")
@@ -164,11 +164,11 @@ def _populate_file_catalog(session):
             ),
         ),
         ScienceFiles(
-            file_path="/path/to/imap_hit_l0_raw_20240101_v001.pkts",
-            instrument="hit",
+            file_path="/path/to/imap_swe_l0_raw_20240110_v001.pkts",
+            instrument="swe",
             data_level="l0",
             descriptor="raw",
-            start_date=datetime(2024, 1, 1),
+            start_date=datetime(2024, 1, 10),
             version="v001",
             extension="pkts",
             ingestion_date=datetime.strptime(

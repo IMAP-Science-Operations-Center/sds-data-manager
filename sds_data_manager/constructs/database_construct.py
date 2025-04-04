@@ -113,7 +113,7 @@ class SdpDatabase(Construct):
             security_groups=[self.rds_security_group],
             publicly_accessible=True,
             max_allocated_storage=max_allocated_storage,
-            deletion_protection=False,
+            deletion_protection=True,
         )
 
         # NOTE: Specifically, to report success or failure, have your Lambda Function

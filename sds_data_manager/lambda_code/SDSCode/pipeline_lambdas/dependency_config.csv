@@ -35,13 +35,13 @@ glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
 # <---- HI Dependencies ---->
 
 hi, l0, raw, hi, l1a, all, HARD, DOWNSTREAM
+hi, l0, raw, hi, l1b, hk, HARD, DOWNSTREAM
 
-hi, l1a, 45sensor-histogram, hi, l1b, 45sensor-histogram, HARD, DOWNSTREAM
 hi, l1a, 45sensor-de, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
-hi, l1a, 45sensor-hk, hi, l1b, 45sensor-hk, HARD, DOWNSTREAM
 hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 
-# TODO: add IMAP-Hi 90 sensor data products
+hi, l1a, 90sensor-de, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
+hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 
 # <---- HIT Dependencies ---->
 
