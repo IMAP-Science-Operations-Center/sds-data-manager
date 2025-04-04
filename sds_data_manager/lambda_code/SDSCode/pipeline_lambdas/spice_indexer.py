@@ -44,9 +44,12 @@ def furnish_best_spice_file(spice_path: Path):
         The path to the SPICE file that was furnished
     """
     kernels_sorted = sorted([f for f in spice_path.iterdir() if f.is_file()])
-    highest_version_spice_file = spice_path / kernels_sorted[-1]
-    spiceypy.furnsh(str(highest_version_spice_file))
-    return highest_version_spice_file
+    if kernels_sorted:
+        highest_version_spice_file = spice_path / kernels_sorted[-1]
+        spiceypy.furnsh(str(highest_version_spice_file))
+        return highest_version_spice_file
+    else:
+        raise FileNotFoundError(f"No SPICE files found in the directory {spice_path}")
 
 
 def get_coverage_dictionary(spice_file: Path, **kwargs):
@@ -188,7 +191,7 @@ def index_spice_file(spice_file: Path):
     try:
         latest_lsk = furnish_best_spice_file(spice_file.parent.parent / "lsk")
         latest_sclk = furnish_best_spice_file(spice_file.parent.parent / "sclk")
-    except Exception as e:
+    except FileNotFoundError as e:
         if spice_metadata["type"] in ("leapseconds", "spacecraft_clock"):
             # This block will likely only be reached if this is the very first
             # leapsecond or spacecraft_clock kernel placed on the SDS. In this case,
