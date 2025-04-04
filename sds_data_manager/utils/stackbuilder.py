@@ -27,6 +27,7 @@ from sds_data_manager.constructs import (
     monitoring_construct,
     monitoring_lambda_construct,
     networking_construct,
+    packet_downloader_lambda_construct,
     processing_construct,
     route53_hosted_zone,
     sds_api_manager_construct,
@@ -213,6 +214,16 @@ def build_sds(
         rds_security_group=rds_construct.rds_security_group,
         db_secret_name=db_secret_name,
         layers=[db_lambda_layer, spice_lambda_layer],
+    )
+
+    # Packet Downloader Lambda
+    packet_downloader_lambda_construct.PacketDownloaderLambda(
+        scope=sdc_stack,
+        construct_id="PacketDownloaderLambda",
+        code=lambda_code,
+        data_bucket=data_bucket.data_bucket,
+        vpc=networking.vpc,
+        layers=[db_lambda_layer],
     )
 
     # create EFS
