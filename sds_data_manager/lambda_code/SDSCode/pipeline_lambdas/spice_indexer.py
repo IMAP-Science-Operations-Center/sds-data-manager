@@ -263,7 +263,6 @@ def index_spice_file(spice_file: Path):
         latest_sclk,
     )
 
-
 def create_symlink(source_path: Path, destination_path: Path) -> None:
     """Create a symlink from source_path to destination_path.
 

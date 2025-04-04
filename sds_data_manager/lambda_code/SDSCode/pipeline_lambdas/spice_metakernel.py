@@ -17,9 +17,8 @@ import pytz
 import json
 import spiceypy
 import math
-from jinja2 import Environment, BaseLoader
 from sqlalchemy import select
-
+import textwrap
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -36,7 +35,7 @@ def generate_mk(year):
     # Query for most recent MK file in the current year
     logger.info('Checking for existing metakernels in %s', year)
 
-    # Take a look at the directory directly, instead of going through the database
+    # Take a look at the directory directly
     sorted_mks = sorted(glob.glob(f"{str(spice_mount_path)}/mk/*{year}*"))
 
     if len(sorted_mks) > 0:
@@ -47,16 +46,11 @@ def generate_mk(year):
     # Determine version number to use
     if most_recent_mk:
         logger.info('Metakernel exists for %s', year)
-        version_extract = extract_parts([mk_filename_regex], 
-                                        os.path.basename(most_recent_mk),
-                                        ['version'])
-        if version_extract is None:
-            most_recent_ver=str(1).zfill(3)
-        else:
-            most_recent_ver = int(version_extract['version'])
-            # Tick up the version number
-            most_recent_ver += 1
-            most_recent_ver = str(most_recent_ver).zfill(3)
+        metakernel_info = SPICEFilePath(most_recent_mk)
+        most_recent_ver = int(metakernel_info.spice_metadata['version'])
+        # Tick up the version number
+        most_recent_ver += 1
+        most_recent_ver = str(most_recent_ver).zfill(3)
     else:
         logger.info('No metakernal exists for %s, creating one now', year)
         most_recent_ver = str(1).zfill(3)
@@ -66,10 +60,8 @@ def generate_mk(year):
 
     # Create a SPICE metakernel
     MK = create_imap_metakernel(start_time='{}-01-01'.format(year),
-                                               end_time='{}-01-01'.format(year + 1),
-                                               time_units='datetime',
-                                               sclk_kernel=get_latest_sclk(),
-                                               lsk_kernel=get_latest_lsk())
+                                end_time='{}-01-01'.format(year + 1),
+                                time_units='datetime')
     if MK is not None:
         rendered_file = MK.return_tm_file()
         logger.info('Rendered new metakernel %s', rendered_file)
@@ -98,10 +90,10 @@ def create_new_metakernel():
         if rendered_file is not None:
             print(rendered_file)
 
-def convert_spice_metadata_model_to_dict(file, base_path=''):
+def convert_spice_metadata_model_to_dict(file):
     spice_file_dict = {}
-    spice_file_dict['file_path'] = base_path + file.file_path
-    spice_file_dict['file_root'] = base_path + file.file_root
+    spice_file_dict['file_name'] = file.file_name
+    spice_file_dict['file_root'] = file.file_root
     spice_file_dict['kernel_type'] = file.kernel_type
     spice_file_dict['version'] = file.version
     spice_file_dict['min_date_J2000'] = file.min_date_j2000
@@ -135,10 +127,10 @@ def query_spice_metadata_database(start_time=1000, end_time=31525416070, type=No
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         spice_file_dict = {}
         for row in results:
-            print(row.kernel_type, row.version, row.file_path, row.min_date_j2000, row.max_date_j2000)
+            print(row.kernel_type, row.version, row.file_name, row.min_date_j2000, row.max_date_j2000)
         for n in results:
-            print(n.file_path)
-            spice_file_dict[n.file_path] = convert_spice_metadata_model_to_dict(n)
+            print(n.file_name)
+            spice_file_dict[n.file_name] = convert_spice_metadata_model_to_dict(n)
 
         return spice_file_dict
 
@@ -150,16 +142,12 @@ def convert_to_j2000(time, units):
 
 def create_imap_metakernel(start_time=10000,
                           end_time=31525416070,
-                          time_units='j2000',
-                          sclk_kernel= None,
-                          lsk_kernel=None):
+                          time_units='j2000'):
     '''
     The following creates a MetaKernel class and inserts files into it
     '''
 
     if time_units != 'j2000':
-        spiceypy.furnsh(sclk_kernel)
-        spiceypy.furnsh(lsk_kernel)
         start_time = convert_to_j2000(start_time, time_units)
         end_time = convert_to_j2000(end_time, time_units)
         logger.info(f"Converted {start_time} and {end_time} to J2000")
@@ -170,25 +158,25 @@ def create_imap_metakernel(start_time=10000,
     # Create the Metakernel class
     MK = MetaKernel(start_time, end_time)
 
-    static_files_load_order = ["naif",
-                               "pck",
-                               "tf",
-                               "imapsclk_",
-                               "de"]
+    static_files_load_order = ["leapseconds",
+                               "planetary_constants",
+                               "frames",
+                               "spacecraft_clock",
+                               "planetary_ephemeris"]
 
     logger.info("Loading static files")
     for type in static_files_load_order:
         static_spice_files = query_spice_metadata_database(type=type)
         MK.load_static_files(static_spice_files)
 
-    for ephem_type in ['recon', 'nom', 'pred', '90days', 'long', 'launch']:
+    for ephem_type in ['ephemeris_reconstructed', 'ephemeris_nominal', 'ephemeris_predicted', 'ephemeris_90days', 'ephemeris_long', 'ephemeris_launch']:
         if len(MK.gaps_in_ephemeris_data) > 0:
             print("######################################################################")
             print(f"Checking {ephem_type}")
             ephem_files = query_spice_metadata_database(start_time=start_time, end_time=end_time, type=ephem_type)
             MK.load_ephemeris(ephem_files)
 
-    for attitude_type in ['ah.bc', 'ap.bc']:
+    for attitude_type in ['attitude_history', 'attitude_predict']:
         if len(MK.gaps_in_attitude_data) > 0:
             attitude_files = query_spice_metadata_database(start_time=start_time, end_time=end_time, type=attitude_type)
             MK.load_attitude(attitude_files)
@@ -245,17 +233,20 @@ class MetaKernel:
 
         '''
 
-        self.template = r'''
-       \begindata
+    def generate_mk_body(self, kernelfiles):
 
-         KERNELS_TO_LOAD = ( {{ "\'" + kernelfiles|join('\',\n\'')|indent(25) + "\'"}}
-                           )
+        kernel_lines = "',\n'".join(self.kernelfiles)   # 'file1',\n'file2'
+        kernel_lines = f"'{kernel_lines}'"              # "'file1',\n'file2'"
+        kernel_lines = textwrap.indent(kernel_lines, " " * 25)
+        template_body = f"""
+\\begindata
 
+  KERNELS_TO_LOAD = ( {kernel_lines}
+                    )
 
-       \begintext
-
-
-        '''
+\\begintext
+"""
+        return template_body
 
     def load_static_files(self, static_files):
         best_version = -1
@@ -320,8 +311,7 @@ class MetaKernel:
     def return_tm_file(self, base_path=''):
         # Returns the files as a Metakernel SPICE file
         filenames = self.return_spice_files_in_order_truncated(base_path)
-        rtemplate = Environment(loader=BaseLoader).from_string(self.template)
-        return self.template_header + rtemplate.render(kernelfiles=filenames)
+        return self.template_header + self.generate_mk_body(kernelfiles=filenames)
 
     def _remove_duplicates_from_sorted_file_list(self, file_list):
         indicies_to_delete = []
