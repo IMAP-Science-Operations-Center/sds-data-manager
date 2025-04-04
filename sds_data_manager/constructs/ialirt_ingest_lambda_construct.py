@@ -1,5 +1,7 @@
 """Configure the ialirt ingest lambda construct."""
 
+import pathlib
+
 import aws_cdk as cdk
 from aws_cdk import RemovalPolicy, aws_dynamodb, aws_s3
 from aws_cdk import aws_dynamodb as ddb
@@ -18,9 +20,7 @@ class IalirtIngestLambda(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        code: lambda_.Code,
         ialirt_bucket: aws_s3.Bucket,
-        layers: list,
         **kwargs,
     ) -> None:
         """IalirtIngestLambda Stack.
@@ -31,12 +31,8 @@ class IalirtIngestLambda(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        code : lambda_.Code
-            Lambda code bundle
         ialirt_bucket : aws_s3.Bucket
             The data bucket.
-        layers : list
-            List of Lambda layers cdk.cdfnOutput names
         kwargs : dict
             Keyword arguments.
 
@@ -49,11 +45,7 @@ class IalirtIngestLambda(Construct):
 
         # Create Lambda Function
         self.ialirt_ingest_lambda = self.create_lambda_function(
-            ialirt_bucket,
-            self.packet_data_table,
-            self.algorithm_data_table,
-            code,
-            layers,
+            ialirt_bucket, self.packet_data_table, self.algorithm_data_table
         )
 
         # Create Event Rule
@@ -159,8 +151,6 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         packet_data_table: aws_dynamodb.Table,
         algorithm_data_table: aws_dynamodb.Table,
-        code: lambda_.Code,
-        layers: list,
     ) -> lambda_alpha_.PythonFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -189,12 +179,15 @@ class IalirtIngestLambda(Construct):
             )
         )
 
-        ialirt_ingest_lambda = lambda_.Function(
+        ialirt_ingest_lambda = lambda_alpha_.PythonFunction(
             self,
-            id="IAlirtIngestLambda",
+            id="IalirtIngestLambda",
             function_name="ialirt-ingest",
-            code=code,
-            handler="IAlirtCode.ialirt_ingest.lambda_handler",
+            entry=str(
+                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
+            ),
+            index="IAlirtCode/ialirt_ingest.py",
+            handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
@@ -204,7 +197,6 @@ class IalirtIngestLambda(Construct):
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
             },
-            layers=layers,  # Add the Lambda layers here
         )
 
         packet_data_table.grant_read_write_data(ialirt_ingest_lambda)
