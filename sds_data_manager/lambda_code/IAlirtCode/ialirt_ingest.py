@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 
 import boto3
-import xarray as xr
 from boto3.dynamodb.conditions import Key
 from imap_processing.ialirt import packet_definitions
 from imap_processing.utils import packet_file_to_datasets
@@ -15,9 +14,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def parse_packet(
-    filename: str, bucket: str, key: str, download_dir: Path
-) -> xr.Dataset:
+def parse_packet(filename: str, bucket: str, key: str, download_dir: Path):
     """Parse packet.
 
     Parameters

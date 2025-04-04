@@ -67,7 +67,7 @@ optional = true
 [tool.poetry.group.layer-spice]
 optional = true
 
-# To create requirements.txt for layer-processing, run:
+# To create requirements.txt for imap_processing, run:
 # poetry export -f requirements.txt --without-hashes
 # --with layer-processing -o lambda_code/requirements.txt
 [tool.poetry.group.layer-processing]
