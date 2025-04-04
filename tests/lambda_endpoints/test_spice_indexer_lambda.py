@@ -47,7 +47,7 @@ def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
     return event
 
 
-def test_s3_spice_files(session, s3_client, events_client, tmpdir):
+def test_s3_spice_files(session, s3_client, events_client):
     """Test s3 event.
 
     The following test mimics a leapsecond kernel being placed on the SDS,
@@ -56,13 +56,16 @@ def test_s3_spice_files(session, s3_client, events_client, tmpdir):
     The files are located in the "test_spice_files" directory.
 
     """
-    current_path = os.path.dirname(os.path.abspath(__file__))
     temp_path = os.getenv("EFS_SPICE_MOUNT_PATH")
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    one_level_up = os.path.abspath(os.path.join(current_path, ".."))
+    test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
+
     # Insert leapsecond spice kernel
     leapsecond_event = put_local_file_in_bucket(
         s3_client,
         "spice/lsk/naif0012.tls",
-        current_path + "/test_spice_files/naif0012.tls",
+        os.path.join(test_spice_data_dir, "naif0012.tls"),
     )
     spice_indexer.lambda_handler(leapsecond_event, None)
 
@@ -70,7 +73,7 @@ def test_s3_spice_files(session, s3_client, events_client, tmpdir):
     clock_kernel_event = put_local_file_in_bucket(
         s3_client,
         "spice/sclk/imapsclk_0012.tsc",
-        current_path + "/test_spice_files/imapsclk_0012.tsc",
+        os.path.join(test_spice_data_dir, "imapsclk_0012.tsc"),
     )
     spice_indexer.lambda_handler(clock_kernel_event, None)
 
@@ -78,7 +81,7 @@ def test_s3_spice_files(session, s3_client, events_client, tmpdir):
     attitude_kernel_event = put_local_file_in_bucket(
         s3_client,
         "spice/ck/imap_2025_118_2025_120_001.ah.bc",
-        current_path + "/test_spice_files/imap_2025_118_2025_120_001.ah.bc",
+        os.path.join(test_spice_data_dir, "imap_2025_118_2025_120_001.ah.bc"),
     )
     spice_indexer.lambda_handler(attitude_kernel_event, None)
 
