@@ -299,11 +299,6 @@ def build_sds(
 
     ialirt_stack = Stack(scope, "IalirtStack", cross_region_references=True, env=env)
 
-    ialirt_processing_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
-        scope=ialirt_stack,
-        id="IAlirtProcessingDependencies",
-        layer_dependencies_dir=str(layer_code_directory / "processing"),
-    )
     ialirt_spice_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
         scope=ialirt_stack,
         id="IAlirtSpiceDependencies",
@@ -331,9 +326,7 @@ def build_sds(
     ingest = ialirt_ingest_lambda_construct.IalirtIngestLambda(
         scope=ialirt_stack,
         construct_id="IalirtIngestLambda",
-        code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
-        layers=[ialirt_processing_lambda_layer],
     )
 
     ialirt_monitoring = monitoring_construct.MonitoringConstruct(
