@@ -24,7 +24,7 @@ jobs:
 
       - name: Install dependencies and app
         run: |
-          poetry install --with layer-database --with layer-python
+          poetry install --with layer-database --with layer-tools --with layer-processing
 
       - name: Install cdk
         run: |
