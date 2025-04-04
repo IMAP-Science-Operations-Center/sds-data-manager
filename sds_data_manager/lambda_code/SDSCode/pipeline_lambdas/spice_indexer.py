@@ -262,6 +262,8 @@ def index_spice_file(spice_file: Path):
         latest_lsk,
         latest_sclk,
     )
+    return spice_metadata
+
 
 def create_symlink(source_path: Path, destination_path: Path) -> None:
     """Create a symlink from source_path to destination_path.
@@ -306,7 +308,7 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
     #   Eg. spice/spin/imap_2025_122_2025_122_02.spin.csv
     # Keep remaining folder path after `spice/` to match the folder structure
     # defined in imap-data-access library.
-    s3_folder_path = os.path.dirname(s3_key).replace("spice/", "")
+    s3_folder_path = os.path.dirname(s3_key).replace("imap/spice/", "")
     filename = os.path.basename(s3_key)
     # Download path to EFS
     efs_spice_path = spice_mount_path / s3_folder_path
@@ -345,7 +347,7 @@ def lambda_handler(event, context):
                 "name": "sds-data-449431850278"
             },
             "object": {
-                "key": "spice/spin/imap_2025_122_2025_122_02.spin.csv",
+                "key": "imap/spice/spin/imap_2025_122_2025_122_02.spin.csv",
                 "size": 8,
                 "etag": "fd33e2e8ad3cb1bdd3ea8f5633fcf5c7",
                 "version-id": "w9eElv_lFFeEbifMabOBHjtJl9Ori_At",
@@ -381,7 +383,21 @@ def lambda_handler(event, context):
     logger.info(event)
 
     file_path = write_data_to_efs(s3_key, s3_bucket, spice_mount_path)
-    index_spice_file(file_path)
-    if 'mk' not in str(file_path):
-        spice_metakernel.create_new_metakernel()
+    spice_metadata = index_spice_file(file_path)
+
+    # Create a Metakernel
+    # NOTE: Will probably move it to be its own IMAP-processing job for metakernel creation!
+    s3_client = boto3.client("s3")
+    if spice_metadata["type"] != "metakernel":
+        start_date = spice_metadata["start_date"] or minimum_mission_time
+        end_date = datetime.now()
+        for yr in range(start_date.year, end_date.year + 1):
+            mk_file, rendered_file = spice_metakernel.generate_mk(yr, spice_mount_path)
+            s3_client.put_object(
+                Bucket=s3_bucket,
+                Key="imap/spice/mk/" + mk_file,
+                Body=rendered_file,
+            )
+            print(mk_file)
+
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}

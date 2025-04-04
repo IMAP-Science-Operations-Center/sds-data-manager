@@ -3,6 +3,8 @@
 import os
 from datetime import datetime
 
+import pytest
+
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
 
@@ -31,6 +33,10 @@ def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
             Key=path_in_s3,
             Body=f,
         )
+    return _generate_spice_event_message(path_in_s3)
+
+
+def _generate_spice_event_message(path_in_s3):
     event = {
         "detail-type": "Object Created",
         "source": "aws.s3",
@@ -57,6 +63,8 @@ def test_s3_spice_files(session, s3_client, events_client):
 
     """
     temp_path = os.getenv("EFS_SPICE_MOUNT_PATH")
+    # Make a path for the metakernel
+    os.mkdir(temp_path + "/mk")
     current_path = os.path.dirname(os.path.abspath(__file__))
     one_level_up = os.path.abspath(os.path.join(current_path, ".."))
     test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
@@ -64,31 +72,46 @@ def test_s3_spice_files(session, s3_client, events_client):
     # Insert leapsecond spice kernel
     leapsecond_event = put_local_file_in_bucket(
         s3_client,
-        "spice/lsk/naif0012.tls",
+        "imap/spice/lsk/naif0012.tls",
         os.path.join(test_spice_data_dir, "naif0012.tls"),
     )
     spice_indexer.lambda_handler(leapsecond_event, None)
 
+    # A metakernel should be attempted to made, but we have no sclk yet
+    mk_event = _generate_spice_event_message("imap/spice/mk/imap_2025_v001.tm")
+    with pytest.raises(FileNotFoundError):
+        spice_indexer.lambda_handler(mk_event, None)
+
     # Insert spacecraft clock spice kernel
     clock_kernel_event = put_local_file_in_bucket(
         s3_client,
-        "spice/sclk/imapsclk_0012.tsc",
+        "imap/spice/sclk/imapsclk_0012.tsc",
         os.path.join(test_spice_data_dir, "imapsclk_0012.tsc"),
     )
     spice_indexer.lambda_handler(clock_kernel_event, None)
 
+    # Now we can handle the generated bare-bones metakernel
+    mk_event = _generate_spice_event_message("imap/spice/mk/imap_2025_v001.tm")
+    spice_indexer.lambda_handler(mk_event, None)
+
     # Insert a new attitude kernel
     attitude_kernel_event = put_local_file_in_bucket(
         s3_client,
-        "spice/ck/imap_2025_118_2025_120_001.ah.bc",
+        "imap/spice/ck/imap_2025_118_2025_120_001.ah.bc",
         os.path.join(test_spice_data_dir, "imap_2025_118_2025_120_001.ah.bc"),
     )
     spice_indexer.lambda_handler(attitude_kernel_event, None)
+
+    # We should have generated a new version 2 of the metakernel
+    mk_event = _generate_spice_event_message("imap/spice/mk/imap_2025_v002.tm")
+    spice_indexer.lambda_handler(mk_event, None)
 
     # Verify that the file was moved to the temp_path directory
     assert os.path.exists(temp_path + "/lsk/naif0012.tls")
     assert os.path.exists(temp_path + "/sclk/imapsclk_0012.tsc")
     assert os.path.exists(temp_path + "/ck/imap_2025_118_2025_120_001.ah.bc")
+    assert os.path.exists(temp_path + "/mk/imap_2025_v001.tm")
+    assert os.path.exists(temp_path + "/mk/imap_2025_v002.tm")
 
     # Verify that the database was populated appropriately
     result = (
@@ -110,4 +133,18 @@ def test_s3_spice_files(session, s3_client, events_client):
     )
     assert result.kernel_type == "spacecraft_clock"
     assert result.version == 12
+    assert len(result.file_intervals_datetime) == 1  # Default time range
+
+    result = (
+        session.query(models.SPICEFiles).filter_by(file_name="imap_2025_v001.tm").one()
+    )
+    assert result.kernel_type == "metakernel"
+    assert result.version == 1
+    assert len(result.file_intervals_datetime) == 1  # Default time range
+
+    result = (
+        session.query(models.SPICEFiles).filter_by(file_name="imap_2025_v002.tm").one()
+    )
+    assert result.kernel_type == "metakernel"
+    assert result.version == 2
     assert len(result.file_intervals_datetime) == 1  # Default time range
