@@ -19,9 +19,22 @@ logger.setLevel(logging.INFO)
 SPACECRAFT_ID = -43
 
 
-def generate_mk(year, spice_directory):
-    """This function will determine a new metakernel file name and
-    determine the contents of the file
+def generate_mk(year: int, spice_directory: Path) -> tuple[str, str]:
+    """Create an IMAP Metakernel.
+
+    Parameters
+    ----------
+    year: int
+        The year to make the file
+    spice_directory: Path
+        The path to the local SPICE directory
+
+    Returns
+    -------
+    mk_filename: str
+        The name of the new metakernel file
+    rendered_file: str
+        The contents to put in the file
     """
     # Query for most recent MK file in the current year
     logger.info("Checking for existing metakernels in %s", year)
@@ -79,39 +92,64 @@ def generate_mk(year, spice_directory):
     return mk_filename, rendered_file
 
 
-def convert_spice_metadata_model_to_dict(file):
-    spice_file_dict = {}
-    spice_file_dict["file_name"] = (
-        SPICEFilePath(file.file_name).construct_path().parent.name
-        + "/"
-        + file.file_name
-    )
-    spice_file_dict["file_root"] = file.file_root
-    spice_file_dict["kernel_type"] = file.kernel_type
-    spice_file_dict["version"] = file.version
-    spice_file_dict["min_date_J2000"] = file.min_date_j2000
-    spice_file_dict["max_date_J2000"] = file.max_date_j2000
-    spice_file_dict["file_intervals_J2000"] = file.file_intervals_j2000
-    spice_file_dict["min_date_datetime"] = file.min_date_datetime.strftime(
-        "%Y-%m-%d, %H:%M:%S"
-    )
-    spice_file_dict["max_date_datetime"] = file.max_date_datetime.strftime(
-        "%Y-%m-%d, %H:%M:%S"
-    )
-    spice_file_dict["min_date_sclk"] = file.min_date_sclk
-    spice_file_dict["max_date_sclk"] = file.max_date_sclk
-    spice_file_dict["file_intervals_sclk"] = file.file_intervals_sclk
-    spice_file_dict["sclk_kernel"] = file.sclk_kernel
-    spice_file_dict["lsk_kernel"] = file.lsk_kernel
-    spice_file_dict["ingestion_date"] = file.ingestion_date.strftime(
-        "%Y-%m-%d, %H:%M:%S"
-    )
-    spice_file_dict["timestamp"] = file.ingestion_date.timestamp()
+def convert_spice_metadata_model_to_dict(file: models.SPICEFiles) -> dict:
+    """Convert a sqlalchemy query to SPICEFiles to a dictionary.
 
+    Paramters
+    ----------
+    file: models.SPICEFiles
+        A single row from the SPICEFiles table
+
+    Returns
+    -------
+    spice_file_dict: dict
+        The SPICE file query as a dictionary
+    """
+    spice_file_dict = {
+        "file_name": (
+            SPICEFilePath(file.file_name).construct_path().parent.name
+            + "/"
+            + file.file_name
+        ),
+        "file_root": file.file_root,
+        "kernel_type": file.kernel_type,
+        "version": file.version,
+        "min_date_J2000": file.min_date_j2000,
+        "max_date_J2000": file.max_date_j2000,
+        "file_intervals_J2000": file.file_intervals_j2000,
+        "min_date_datetime": file.min_date_datetime.strftime("%Y-%m-%d, %H:%M:%S"),
+        "max_date_datetime": file.max_date_datetime.strftime("%Y-%m-%d, %H:%M:%S"),
+        "min_date_sclk": file.min_date_sclk,
+        "max_date_sclk": file.max_date_sclk,
+        "file_intervals_sclk": file.file_intervals_sclk,
+        "sclk_kernel": file.sclk_kernel,
+        "lsk_kernel": file.lsk_kernel,
+        "ingestion_date": file.ingestion_date.strftime("%Y-%m-%d, %H:%M:%S"),
+        "timestamp": file.ingestion_date.timestamp(),
+    }
     return spice_file_dict
 
 
-def query_spice_metadata_database(start_time=1000, end_time=31525416070, type=None):
+def query_spice_metadata_database(
+    start_time: int = 1000, end_time: int = 31525416070, type: str = None
+) -> dict:
+    """Query SPICEFiles table for time and type
+
+    Parameters
+    ----------
+    start_time: int
+        The starting time in J2000 to limit the query
+    end_time: int
+        The ending time in J2000 to limit the query
+    type: str | None
+        The type of file to query for. If None, queries all file types.
+
+    Returns
+    -------
+    spice_file_dict: dict
+        A dictionary of the form {'file1': {metadata1}, 'file2': {metadata2}, ... etc}
+        Where the metadata is a dictionary form of the data in the database row
+    """
     with db.Session() as session, session.begin():
         query = select(models.SPICEFiles)
 
@@ -137,18 +175,13 @@ def convert_to_j2000(time, units):
         return spiceypy.datetime2et(datetime.strptime(time, "%Y-%m-%d"))
 
 
-def create_imap_metakernel(start_time=10000, end_time=31525416070, time_units="j2000"):
+def create_imap_metakernel(start_time: datetime, end_time: datetime) -> MetaKernel:
     """The following creates a MetaKernel class and inserts files into it"""
-    if time_units != "j2000":
-        start_time = convert_to_j2000(start_time, time_units)
-        end_time = convert_to_j2000(end_time, time_units)
-        logger.info(f"Converted {start_time} and {end_time} to J2000")
-
-    start_time = math.floor(float(start_time))
-    end_time = math.ceil(float(end_time))
+    start_time_j2000 = math.floor(float(spiceypy.datetime2et(start_time)))
+    end_time_j2000 = math.floor(float(spiceypy.datetime2et(end_time)))
 
     # Create the Metakernel class
-    MK = MetaKernel(start_time, end_time)
+    MK = MetaKernel(start_time_j2000, end_time_j2000)
 
     static_files_load_order = [
         "leapseconds",
@@ -173,14 +206,14 @@ def create_imap_metakernel(start_time=10000, end_time=31525416070, time_units="j
     ]:
         if len(MK.gaps_in_ephemeris_data) > 0:
             ephem_files = query_spice_metadata_database(
-                start_time=start_time, end_time=end_time, type=ephem_type
+                start_time=start_time_j2000, end_time=end_time_j2000, type=ephem_type
             )
             MK.load_ephemeris(ephem_files)
 
     for attitude_type in ["attitude_history", "attitude_predict"]:
         if len(MK.gaps_in_attitude_data) > 0:
             attitude_files = query_spice_metadata_database(
-                start_time=start_time, end_time=end_time, type=attitude_type
+                start_time=start_time_j2000, end_time=end_time_j2000, type=attitude_type
             )
             MK.load_attitude(attitude_files)
 
