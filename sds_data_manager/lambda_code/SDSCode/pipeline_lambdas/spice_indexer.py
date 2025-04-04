@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# Define the paths
+# Define constants needed in the file
 SPACECRAFT_ID = -43
 minimum_mission_time = datetime(2023, 1, 1)
 maximum_mission_time = datetime(2145, 1, 1)
@@ -28,6 +28,13 @@ MAXIMUM_SCLK_INTERVAL = [
 MAXIMUM_J2000_INTERVAL = [
     [725803269.1839136, 4575787269.183866]
 ]  # Calculated from the above datetimes seperately
+
+# Set constants for the time interval calculations
+COVERAGE_ANGULAR_VELOCITY_ONLY = False  # Only include segments with angular velocity?
+COVERAGE_SPICE_ARRAY_LENGTH = 10000  # Use an array size of 10000 for coverage calc
+COVERAGE_LEVEL = "INTERVAL"  # the granularity at which the coverage is examined
+COVERAGE_TOLERANCE = 1000000.0  # tolerance value expressed in ticks of the spacecraft
+COVERAGE_TIME_SYSTEM = "TDB"  # Whether to use J2000 (TDB) or spacecraft clock (SCLK)
 
 
 def furnish_best_spice_file(spice_path: Path):
@@ -90,14 +97,20 @@ def get_coverage_dictionary(spice_file: Path, **kwargs):
             f"Unable to handle spice file with the extension {spice_file.suffix}."
         )
 
+    # 1) Calculate the time coverage of the file
     cover = coverage_function(str(spice_file), **kwargs)
+    # 2) Determine the number of intervals in the file
     card = spiceypy.wncard(cover)
+    # 3) Loop through the number of intervals, appending the results of steps 4,5,6
     for i_window in range(card):
+        # 4) Retrieve the time span of each interval
         (left, right) = spiceypy.wnfetd(cover, i_window)
         results_j2000.append([left, right])
+        # 5) Convert the time span to datetime
         results_datetime.append(
             [spiceypy.et2datetime(left), spiceypy.et2datetime(right)]
         )
+        # 6) Convert the time span to spacecraft clock time
         results_sclk.append(
             [
                 spiceypy.sce2s(SPACECRAFT_ID, left),
@@ -228,13 +241,13 @@ def index_spice_file(spice_file: Path):
         else:
             function_arguments = {
                 "idcode": SPACECRAFT_ID * 1000,
-                "cover": spiceypy.cell_double(10000),
+                "cover": spiceypy.cell_double(COVERAGE_SPICE_ARRAY_LENGTH),
             }
-            if "attitude" in spice_metadata["type"]:
-                function_arguments["needav"] = False
-                function_arguments["level"] = "INTERVAL"
-                function_arguments["tol"] = 1000000.0
-                function_arguments["timsys"] = "TDB"
+            if "attitude" in spice_metadata["type"]:  # Extra arguments needed for ckcov
+                function_arguments["needav"] = COVERAGE_ANGULAR_VELOCITY_ONLY
+                function_arguments["level"] = COVERAGE_LEVEL
+                function_arguments["tol"] = COVERAGE_TOLERANCE
+                function_arguments["timsys"] = COVERAGE_TIME_SYSTEM
             file_coverage_j2000, file_coverage_datetime, file_coverage_sclk = (
                 get_coverage_dictionary(spice_file, **function_arguments)
             )
