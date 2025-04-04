@@ -22,7 +22,6 @@ class IalirtIngestLambda(Construct):
         construct_id: str,
         ialirt_bucket: aws_s3.Bucket,
         layers: list,
-
         **kwargs,
     ) -> None:
         """IalirtIngestLambda Stack.
@@ -204,7 +203,7 @@ class IalirtIngestLambda(Construct):
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
             },
-            layers=self.layers,
+            layers=self.layers,  # Add the Lambda layers here
         )
 
         packet_data_table.grant_read_write_data(ialirt_ingest_lambda)
