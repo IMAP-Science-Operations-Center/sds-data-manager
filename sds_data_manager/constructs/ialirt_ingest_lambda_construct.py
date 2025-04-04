@@ -1,7 +1,5 @@
 """Configure the ialirt ingest lambda construct."""
 
-import pathlib
-
 import aws_cdk as cdk
 from aws_cdk import RemovalPolicy, aws_dynamodb, aws_s3
 from aws_cdk import aws_dynamodb as ddb
@@ -20,6 +18,7 @@ class IalirtIngestLambda(Construct):
         self,
         scope: Construct,
         construct_id: str,
+        code: lambda_.Code,
         ialirt_bucket: aws_s3.Bucket,
         layers: list,
         **kwargs,
@@ -32,6 +31,8 @@ class IalirtIngestLambda(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
+        code : lambda_.Code
+            Lambda code bundle
         ialirt_bucket : aws_s3.Bucket
             The data bucket.
         layers : list
@@ -56,6 +57,7 @@ class IalirtIngestLambda(Construct):
 
         # Lambda Layers
         self.layers = layers
+        self.code = code
 
     def create_ingest_dynamodb_table(self) -> aws_dynamodb.Table:
         """Create and return the DynamoDB table."""
@@ -185,15 +187,12 @@ class IalirtIngestLambda(Construct):
             )
         )
 
-        ialirt_ingest_lambda = lambda_alpha_.PythonFunction(
+        ialirt_ingest_lambda = lambda_.Function(
             self,
-            id="IalirtIngestLambda",
+            id="IAlirtIngestLambda",
             function_name="ialirt-ingest",
-            entry=str(
-                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
-            ),
-            index="IAlirtCode/ialirt_ingest.py",
-            handler="lambda_handler",
+            code=self.code,
+            handler="IAlirtCode.ialirt_ingest.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
