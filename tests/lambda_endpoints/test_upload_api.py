@@ -49,7 +49,7 @@ def test_spice_file_upload(s3_client, spice_file):
     # So we need to upload a file to s3 to simulate a pre-existing file
     s3_client.put_object(
         Bucket=os.getenv("S3_BUCKET"),
-        Key="imap/ancillary/mag/imap_mag_l1a_20210101_v001.cdf",
+        Key=spice_file,
         Body=b"test",
     )
     event = {
