@@ -1,12 +1,14 @@
 """Test the I-Alirt ingest lambda function."""
 
-import os
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
-from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import lambda_handler
-from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import parse_packet
+import pytest
+
+from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
+    lambda_handler,
+    parse_packet,
+)
 
 
 @pytest.fixture
@@ -34,7 +36,7 @@ def populate_table(setup_dynamodb):
     return items
 
 
-@pytest.fixture
+@pytest.fixture()
 def s3_test_packet(s3_client):
     """Add a fake binary packet file to the mock S3 bucket."""
     test_file = "iois_1_packets_YYYY_DOY_HH_MM_SS.ccsds"
@@ -87,18 +89,19 @@ def test_lambda_handler(setup_dynamodb):
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.packet_file_to_datasets")
 def test_parse_packet_s3(mock_packet_file_to_datasets, s3_test_packet, tmp_path):
-    """Test parse_packet() with a real S3 file in mock_s3, mocking only the parser."""
-
+    """Test parse_packet function."""
     expected_result = {"123": "parsed dataset"}
     mock_packet_file_to_datasets.return_value = expected_result
 
     filename = Path(s3_test_packet).name
 
-    result = parse_packet(filename, "test-data-bucket", s3_test_packet)
+    result = parse_packet(
+        filename, "test-data-bucket", s3_test_packet, download_dir=str(tmp_path)
+    )
 
     assert result == expected_result
     mock_packet_file_to_datasets.assert_called_once()
 
     # Check if file was downloaded
-    real_tmp_file = Path("/tmp") / filename
+    real_tmp_file = tmp_path / filename
     assert real_tmp_file.exists()

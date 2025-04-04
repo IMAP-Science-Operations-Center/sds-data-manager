@@ -3,24 +3,38 @@
 import json
 import logging
 import os
+from pathlib import Path
 
 import boto3
+import xarray as xr
 from boto3.dynamodb.conditions import Key
-
-from imap_processing.utils import packet_file_to_datasets
 from imap_processing.ialirt import packet_definitions
+from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def parse_packet(filename, bucket, key, download_dir="/tmp"):
-    """Get or Create EIP Allocation ID.
+def parse_packet(
+    filename: str, bucket: str, key: str, download_dir: Path
+) -> xr.Dataset:
+    """Parse packet.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file to be downloaded from S3.
+    bucket : str
+        The name of the S3 bucket.
+    key : str
+        The key of the file in the S3 bucket.
+    download_dir : Path
+        The directory where the file will be downloaded.
 
     Returns
     -------
-    allocation_id : str
-        Elastic IP Allocation ID.
+    datasets_by_apid : xr.Dataset
+        Parsed dataset.
     """
     local_path = os.path.join(download_dir, filename)
 
@@ -61,8 +75,6 @@ def lambda_handler(event, context):
     dynamodb = boto3.resource("dynamodb")
     ingest_table = dynamodb.Table(ingest_table_name)
     algorithm_table = dynamodb.Table(algorithm_table_name)
-    bucket = event["detail"]["bucket"]["name"]
-    key = event["detail"]["object"]["key"]
 
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
@@ -86,10 +98,7 @@ def lambda_handler(event, context):
     items = response["Items"]
     logger.info("Scan successful. Retrieved items: %s", items)
 
-    # 3. Process data using the packet_file_to_datasets function.
-    datasets_by_apid = parse_packet(filename, bucket, key)
-
-    # 4. After processing insert data into Algorithm Table.
+    # 3. After processing insert data into Algorithm Table.
     item = {
         "apid": 478,
         "met": 123,
