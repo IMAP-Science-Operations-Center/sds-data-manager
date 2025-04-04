@@ -12,8 +12,6 @@ from sqlalchemy.dialects.postgresql import insert
 from ..database import database as db
 from ..database import models
 import glob
-
-import pytz
 import json
 import spiceypy
 import math
@@ -124,7 +122,6 @@ def query_spice_metadata_database(start_time=1000, end_time=31525416070, type=No
 
         results = session.execute(query).scalars().all()
 
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         spice_file_dict = {}
         for row in results:
             print(row.kernel_type, row.version, row.file_name, row.min_date_j2000, row.max_date_j2000)
@@ -166,8 +163,8 @@ def create_imap_metakernel(start_time=10000,
 
     logger.info("Loading static files")
     for type in static_files_load_order:
-        static_spice_files = query_spice_metadata_database(type=type)
-        MK.load_static_files(static_spice_files)
+        static_spice_file = query_spice_metadata_database(type=type)
+        MK.load_static_files(static_spice_file)
 
     for ephem_type in ['ephemeris_reconstructed', 'ephemeris_nominal', 'ephemeris_predicted', 'ephemeris_90days', 'ephemeris_long', 'ephemeris_launch']:
         if len(MK.gaps_in_ephemeris_data) > 0:
@@ -180,7 +177,6 @@ def create_imap_metakernel(start_time=10000,
         if len(MK.gaps_in_attitude_data) > 0:
             attitude_files = query_spice_metadata_database(start_time=start_time, end_time=end_time, type=attitude_type)
             MK.load_attitude(attitude_files)
-
 
     return MK
 
@@ -227,7 +223,7 @@ class MetaKernel:
 
        \begintext
 
-       This is the most up to date EMM Metakernel as of {datetime.now()}.
+       This is the most up to date IMAP Metakernel as of {datetime.now()}.
 
        This attempts to cover data from {self.start_time_j2000} to {self.end_time_j2000} seconds since J2000.
 
@@ -235,9 +231,11 @@ class MetaKernel:
 
     def generate_mk_body(self, kernelfiles):
 
-        kernel_lines = "',\n'".join(self.kernelfiles)   # 'file1',\n'file2'
-        kernel_lines = f"'{kernel_lines}'"              # "'file1',\n'file2'"
-        kernel_lines = textwrap.indent(kernel_lines, " " * 25)
+        kernel_lines = "',\n'".join(kernelfiles)
+        kernel_lines = f"'{kernel_lines}'"
+        lines = kernel_lines.splitlines()
+        lines = [lines[0]] + [textwrap.indent(line, " " * 22) for line in lines[1:]]
+        kernel_lines = "\n".join(lines)
         template_body = f"""
 \\begindata
 
@@ -261,7 +259,6 @@ class MetaKernel:
             return
 
     def load_ephemeris(self, ephem_files):
-        print(f"I'm about to try loading the ephemeris files with the following files: {str(ephem_files)}")
         ephem_files_to_load = []
         gaps_remaining = []
 
@@ -292,9 +289,12 @@ class MetaKernel:
     def return_spice_files_in_order_detailed(self):
         # Returns the files (with all associated information) in the correct order to be loaded in
         metakernel_files = []
-        metakernel_files.extend(self.static_files)
-        metakernel_files.extend(self.ephemeris_files.reverse())
-        metakernel_files.extend(self.attitude_files.reverse())
+        if self.static_files:
+            metakernel_files.extend(reversed(self.static_files))
+        if self.ephemeris_files:
+            metakernel_files.extend(reversed(self.ephemeris_files))
+        if self.attitude_files: 
+            metakernel_files.extend(reversed(self.attitude_files))
 
         return metakernel_files
 
@@ -303,7 +303,7 @@ class MetaKernel:
         metakernel_files = self.return_spice_files_in_order_detailed()
         filenames_to_return = []
         for f in metakernel_files:
-            fn = base_path + f['file_path']
+            fn = base_path + f['file_name']
             filename = self._limitstring(fn, 79, '+')
             filenames_to_return.extend(filename)
         return filenames_to_return
@@ -318,9 +318,9 @@ class MetaKernel:
         for i in range(0, len(file_list)):
             if i in indicies_to_delete:
                 continue
-            logger.info(f"Searching for duplicates for file {file_list[i]['file_path']}")
+            logger.info(f"Searching for duplicates for file {file_list[i]['file_name']}")
             for j in range(i+1, len(file_list)):
-                if file_list[i]['file_path'] == file_list[j]['file_path']:
+                if file_list[i]['file_name'] == file_list[j]['file_name']:
                     indicies_to_delete.append(j)
         for i in sorted(set(indicies_to_delete), reverse=True):
             del file_list[i]
