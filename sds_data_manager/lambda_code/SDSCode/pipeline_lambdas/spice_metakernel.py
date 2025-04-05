@@ -34,7 +34,8 @@ class MetaKernel:
         end_time: int
             The end_time in seconds after j2000
         allowed_spice_types: list[str]
-            A list of strings that represent the allowed types of SPICE files
+            A list of strings that represent the allowed types of SPICE files,
+            in order of the priority with which to load them.
         """
         self.start_time_j2000 = start_time
         self.end_time_j2000 = end_time
@@ -62,12 +63,27 @@ class MetaKernel:
     def load_spice(self, files, type):
         """Load the best SPICE files of a specific type into the Metakernel.
 
-        Populates the self.spice_files dictionary with the best spice files.
+        Subsequent calls to this function of the same type should always contain
+        files with a LOWER priority. For example, if you call "load_spice" with
+        a type of spacecraft_ephemeris, make sure to call it with a list of
+        high-priority kernels first, such as the final reconstructed kernels.
+        After, you can call it with lower priority kernels, such as long-term
+        predicted ephemeris files.
+
+        The result will be that the internal list of spice files and spice gaps
+        will be updated with the newest information.
 
         Parameters
         ----------
         files: dict
-            dict
+            A dictionary of {'file1_name': {metadata1}, 'file2_name': {metadata2}}
+            Required metadata fields are:
+                file_name - The name of the file
+                file_root - The name of the file without version information
+                min_date_j2000 - The minimum date of data in the file
+                max_date_j2000 - The maxmimum date of data in the file
+                version - The version of the file. Higher versions have precidence.
+                timestamp - The timestamp of the file. Later timestamps have precidence.
         type: str
             Tells that metakernel the type of files you are loading
 
@@ -89,20 +105,19 @@ class MetaKernel:
         self._remove_duplicates_from_sorted_file_list(type)
         self.spice_gaps[type] = gaps_remaining
 
-    def return_spice_files_in_order_detailed(self, order_to_load):
-        # Returns the files (with all associated information) in the correct order to
-        # be loaded in
+    def return_spice_files_in_order_detailed(self):
+        '''
+        Simply returns the spice files in order
+        '''
         metakernel_files = []
-        for type in order_to_load:
+        for type in self.allowed_spice_types:
             if self.spice_files[type]:
                 metakernel_files.extend(reversed(self.spice_files[type]))
         return metakernel_files
 
-    def return_spice_files_in_order_truncated(
-        self, base_path: Path, load_order: list[str]
-    ):
+    def return_spice_files_in_order_truncated(self, base_path: Path):
         # Returns the files as a list of filenames, no longer than 80 characters
-        metakernel_files = self.return_spice_files_in_order_detailed(load_order)
+        metakernel_files = self.return_spice_files_in_order_detailed()
         filenames_to_return = []
         for f in metakernel_files:
             fn = base_path / f["file_name"]
@@ -110,9 +125,9 @@ class MetaKernel:
             filenames_to_return.extend(filename)
         return filenames_to_return
 
-    def return_tm_file(self, base_path: Path, load_order: list[str]):
+    def return_tm_file(self, base_path: Path):
         # Returns the files as a Metakernel SPICE file
-        filenames = self.return_spice_files_in_order_truncated(base_path, load_order)
+        filenames = self.return_spice_files_in_order_truncated(base_path)
         return self.template_header + self._generate_mk_body(kernelfiles=filenames)
 
     def _generate_mk_body(self, kernelfiles):
@@ -358,18 +373,7 @@ def create_imap_metakernel(year: int, spice_directory: Path) -> tuple[str, str]:
         start_time=datetime(year, 1, 1), end_time=datetime(year + 1, 1, 1)
     )
     if metakernel is not None:
-        rendered_file = metakernel.return_tm_file(
-            base_path=spice_directory,
-            load_order=[
-                "leapseconds",
-                "planetary_constants",
-                "frames",
-                "spacecraft_clock",
-                "planetary_ephemeris",
-                "spacecraft_ephemeris",
-                "spacecraft_attitude",
-            ],
-        )
+        rendered_file = metakernel.return_tm_file(base_path=spice_directory)
         logger.info("Rendered new metakernel %s", rendered_file)
     else:
         rendered_file = None

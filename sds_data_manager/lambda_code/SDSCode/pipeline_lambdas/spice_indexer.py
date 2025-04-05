@@ -401,5 +401,5 @@ def lambda_handler(event, context):
                     Key="imap/spice/mk/" + mk_file,
                     Body=rendered_file,
                 )
-
+            print(rendered_file)
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}
