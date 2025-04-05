@@ -22,34 +22,25 @@ SPACECRAFT_ID = -43
 
 
 class MetaKernel:
-    """Class for generating a metakernels from SPICE files.
+    """Class for generating a metakernels from SPICE files."""
 
-    First, initialize the MK with a time span: x = MetaKernel(date1,date2)
-    Then, load in the files.  Start with "load_final_ephemeris" or "load_final_attitude",
-    followed by "load_reconstructed_ephemeris/attitude", and then "load_predicted_ephemeris/attitude".
+    def __init__(self, start_time: int, end_time: int, allowed_spice_types: list[str]):
+        """Initialize the Metakernel.
 
-    For each step above, this class will automatically find the files that provide the maximum coverage, while getting
-    rid of any redundant files.
-
-    All input must be a list of dictionary objects.  The fields MUST include:
-        file_name - the name of the file
-        file_root - the name of the file without version information
-        min_date_J2000 - the minimum time in the file
-        max_date_J2000 - the maximum time in the file
-        file_intervals_J2000 - the intervals over which there is data.  This is the output of ckcov and spkcov
-        version - the version info of the file (just a number).  Higher version has precidence.
-        timestamp - the timestamp of the file.  Later timestamps have precidence.
-    """
-
-    def __init__(self, start_time, end_time, allowed_spice_types):
-        # Gaps smaller than this are ignored and assumed that SPICE can
-        # interpolate between
-
+        Parameters
+        ----------
+        start_time: int
+            The start_time in seconds after j2000
+        end_time: int
+            The end_time in seconds after j2000
+        allowed_spice_types: list[str]
+            A list of strings that represent the allowed types of SPICE files
+        """
         self.start_time_j2000 = start_time
         self.end_time_j2000 = end_time
         self.spice_files = {}
         self.spice_gaps = {}
-
+        self.allowed_spice_types = allowed_spice_types
         # Holds all files
         for type in allowed_spice_types:
             self.spice_files[type] = []
@@ -69,6 +60,22 @@ class MetaKernel:
         """
 
     def load_spice(self, files, type):
+        """Load the best SPICE files of a specific type into the Metakernel.
+
+        Populates the self.spice_files dictionary with the best spice files.
+
+        Parameters
+        ----------
+        files: dict
+            dict
+        type: str
+            Tells that metakernel the type of files you are loading
+
+        """
+        if type not in self.allowed_spice_types:
+            raise ValueError(
+                f"Invalid type '{type}'. Allowed: {self.allowed_spice_types}"
+            )
         spice_files_to_load = []
         gaps_remaining = []
         spice_files_reformatted = self._reformat_and_filter(files)
