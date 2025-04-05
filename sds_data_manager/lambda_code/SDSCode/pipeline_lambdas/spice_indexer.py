@@ -386,18 +386,20 @@ def lambda_handler(event, context):
     spice_metadata = index_spice_file(file_path)
 
     # Create a Metakernel
-    # NOTE: Will probably move it to be its own IMAP-processing job for metakernel creation!
+    # NOTE: Will probably move it to be its own batch job
     s3_client = boto3.client("s3")
     if spice_metadata["type"] != "metakernel":
         start_date = spice_metadata["start_date"] or minimum_mission_time
         end_date = datetime.now()
         for yr in range(start_date.year, end_date.year + 1):
-            mk_file, rendered_file = spice_metakernel.generate_mk(yr, spice_mount_path)
-            s3_client.put_object(
-                Bucket=s3_bucket,
-                Key="imap/spice/mk/" + mk_file,
-                Body=rendered_file,
+            mk_file, rendered_file = spice_metakernel.create_imap_metakernel(
+                yr, spice_mount_path
             )
-            print(mk_file)
+            if mk_file:
+                s3_client.put_object(
+                    Bucket=s3_bucket,
+                    Key="imap/spice/mk/" + mk_file,
+                    Body=rendered_file,
+                )
 
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}
