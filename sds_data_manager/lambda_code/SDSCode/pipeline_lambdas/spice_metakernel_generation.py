@@ -7,7 +7,7 @@ from pathlib import Path
 
 import spiceypy
 from imap_data_access import SPICEFilePath
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from ..database import database as db
 from ..database import models
@@ -166,7 +166,7 @@ def query_spice_metadata_database(
             latest_versions_subq = (
                 session.query(
                     models.SPICEFiles.file_root,
-                    func.max(models.SPICEFiles.version).label("max_version")
+                    func.max(models.SPICEFiles.version).label("max_version"),
                 )
                 .group_by(models.SPICEFiles.file_root)
                 .subquery()
@@ -174,16 +174,13 @@ def query_spice_metadata_database(
 
             # --- 3. Join main query to subquery so that we only keep rows
             #         with the matching max version for each file_root
-            query = (
-                query
-                .join(
-                    latest_versions_subq,
-                    (models.SPICEFiles.file_root == latest_versions_subq.c.file_root)
-                    & (models.SPICEFiles.version == latest_versions_subq.c.max_version)
-                )
+            query = query.join(
+                latest_versions_subq,
+                (models.SPICEFiles.file_root == latest_versions_subq.c.file_root)
+                & (models.SPICEFiles.version == latest_versions_subq.c.max_version),
             )
         results = session.execute(query).scalars().all()
-        
+
         spice_file_dict = {}
         for n in results:
             metadata = convert_spice_metadata_model_to_dict(n)
@@ -222,7 +219,7 @@ def metakernel_builder(start_time: datetime, end_time: datetime) -> MetaKernel:
 
     for type in static_files_load_order:
         static_spice_file = query_spice_metadata_database(type=type)
-        metakernel.load_spice(static_spice_file, type, 'timestamp')
+        metakernel.load_spice(static_spice_file, type, "timestamp")
 
     for ephem_type in [
         "ephemeris_reconstructed",

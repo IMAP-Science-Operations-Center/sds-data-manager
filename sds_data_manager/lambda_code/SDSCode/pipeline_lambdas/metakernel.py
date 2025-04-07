@@ -1,7 +1,7 @@
 """Contains a generic Metakernel Generator class."""
 
-import logging
 import json
+import logging
 import textwrap
 from datetime import datetime
 from pathlib import Path
@@ -9,11 +9,17 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 class MetaKernel:
     """Class for generating a metakernels from SPICE files."""
 
-    def __init__(self, start_time: int, end_time: int, allowed_spice_types: list[str], 
-                 min_gap_time: int = 0):
+    def __init__(
+        self,
+        start_time: int,
+        end_time: int,
+        allowed_spice_types: list[str],
+        min_gap_time: int = 0,
+    ):
         """Initialize the Metakernel.
 
         Parameters
@@ -26,8 +32,8 @@ class MetaKernel:
             A list of strings that represent the allowed types of SPICE files,
             in order of the priority with which to load them in the metakernel.
         min_gap_time: int
-            The minimum gap time to ignore in seconds, and assume SPICE can 
-            interpolate well enough over this small gap. 
+            The minimum gap time to ignore in seconds, and assume SPICE can
+            interpolate well enough over this small gap.
         """
         self.minimum_gap_time_to_ignore = min_gap_time
         self.start_time_j2000 = start_time
@@ -56,20 +62,20 @@ class MetaKernel:
     def load_spice(self, files: dict, type: str, priority_field: str):
         """Load the best SPICE files of a specific type into the Metakernel.
 
-        This function will be called multiple times for each Metakernel to 
-        add in files. The first files loaded in should ALWAYS contain a 
+        This function will be called multiple times for each Metakernel to
+        add in files. The first files loaded in should ALWAYS contain a
         higher priority than subsequent files.
 
         Subsequent calls to this function of the same type should always contain
-        files with a LOWER priority. 
-        
-        For example, if you call "load_spice" with type="spacecraft_ephemeris", 
-        first call "load_spice" with a list of high-priority kernels, such as 
-        the final reconstructed kernels. After, you can call it with lower 
+        files with a LOWER priority.
+
+        For example, if you call "load_spice" with type="spacecraft_ephemeris",
+        first call "load_spice" with a list of high-priority kernels, such as
+        the final reconstructed kernels. After, you can call it with lower
         priority kernels, such as long-term predicted ephemeris files.
 
         The result will be that the internal list of spice files and spice gaps
-        will be updated with the newest information. But the initial gaps are 
+        will be updated with the newest information. But the initial gaps are
         always filled by the files loaded in FIRST.
 
         Parameters
@@ -84,7 +90,7 @@ class MetaKernel:
                 {priority} - A priority to help resolve conflicts within a single
                              load_spice() call. This can be anything that can be
                              compared with the ">" or "<" operators.
-            Other items are allowed in the dictionary and will be returned.  
+            Other items are allowed in the dictionary and will be returned.
         type: str
             Tells that metakernel the type of files you are loading
         priority_field: str
@@ -101,44 +107,42 @@ class MetaKernel:
 
         for gap in self.spice_gaps[type]:
             gaps_remaining.extend(
-                self._find_best_files(
-                    gap, files, spice_files_to_load, priority_field
-                )
+                self._find_best_files(gap, files, spice_files_to_load, priority_field)
             )
         self.spice_files[type].extend(spice_files_to_load)
         self._remove_duplicates_from_sorted_file_list(type)
         self.spice_gaps[type] = gaps_remaining
 
     def return_spice_files_in_order_detailed(self) -> list[dict]:
-        '''Return all SPICE files and their details.
+        """Return all SPICE files and their details.
 
-        Loops through the self.spice_files dictionary and 
+        Loops through the self.spice_files dictionary and
         returns them all as a list, in the order specified.
 
         Returns
         -------
         metakernel_files : list[dict]
             A list form of all the loaded files in order
-        '''
+        """
         metakernel_files = []
         for type in self.allowed_spice_types:
             if self.spice_files[type]:
                 metakernel_files.extend(reversed(self.spice_files[type]))
         return metakernel_files
 
-    def return_tm_file(self, base_path: Path)->str:
-        '''Generate a SPICE metakernel file from the self.spice_files
+    def return_tm_file(self, base_path: Path) -> str:
+        """Generate a SPICE metakernel file from the self.spice_files
 
         Parameter
         ---------
         base_path: Path
             The path to the local SPICE directory
-        
-        Return
+
+        Return:
         ------
         metakernel: str
             A string of the entire contents of the metakernel
-        '''
+        """
         MAXIMUM_LINE_LENGTH = 79
         metakernel_files = self.return_spice_files_in_order_detailed()
         kernelfiles = []
@@ -161,17 +165,16 @@ class MetaKernel:
 \\begintext
 """
         return self.template_header + template_body
-    
 
     def _remove_duplicates_from_sorted_file_list(self, type: str):
-        '''Remove any duplicate found in self.spice_files[type].
-        
+        """Remove any duplicate found in self.spice_files[type].
+
         Parameter
         ---------
         type: str
-            The type of SPICE file to search search and remove duplicate 
+            The type of SPICE file to search search and remove duplicate
             files from
-        '''
+        """
         indicies_to_delete = []
         file_list = self.spice_files[type]
         for i in range(0, len(file_list)):
@@ -202,11 +205,13 @@ class MetaKernel:
             results.append(string_segment)
         return results
 
-    def _find_best_files(self, trange, files_to_check, files_to_load, priority_field:str):
+    def _find_best_files(
+        self, trange, files_to_check, files_to_load, priority_field: str
+    ):
         """Find the best file to cover a given "trange".
 
         This function is recursive, it finds the "best" file to load in, then
-        calls itself again if there are still gaps identified. 
+        calls itself again if there are still gaps identified.
 
         Parameter
         ---------
@@ -218,10 +223,10 @@ class MetaKernel:
             The files that have been previously confirmed as necessary to cover
             other gaps in the file
         priority_field: str
-            The dictionary field in files_to_check the represents the priority 
-            of the file to load in some way. 
+            The dictionary field in files_to_check the represents the priority
+            of the file to load in some way.
 
-        Return
+        Return:
         ------
         return_gap_list: list[list[int, int]]
             A list of gaps that still remain uncovered
@@ -237,7 +242,9 @@ class MetaKernel:
         latest_priority = None
         best_file = None
         for file_name in files_to_check:
-            if (latest_priority is None) or (files_to_check[file_name][priority_field] < latest_priority):
+            if (latest_priority is None) or (
+                files_to_check[file_name][priority_field] < latest_priority
+            ):
                 latest_priority = files_to_check[file_name][priority_field]
                 best_file = files_to_check[file_name]
 
