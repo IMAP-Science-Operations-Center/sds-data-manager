@@ -131,7 +131,7 @@ class MetaKernel:
         return metakernel_files
 
     def return_tm_file(self, base_path: Path) -> str:
-        """Generate a SPICE metakernel file from the self.spice_files
+        """Generate a SPICE metakernel file from all loaded SPICE files.
 
         Parameter
         ---------
@@ -143,12 +143,12 @@ class MetaKernel:
         metakernel: str
             A string of the entire contents of the metakernel
         """
-        MAXIMUM_LINE_LENGTH = 79
+        maximum_line_length = 79
         metakernel_files = self.return_spice_files_in_order_detailed()
         kernelfiles = []
         for f in metakernel_files:
             fn = base_path / f["file_name"]
-            filename = self._limitstring(str(fn), MAXIMUM_LINE_LENGTH, "+")
+            filename = self._limitstring(str(fn), maximum_line_length, "+")
             kernelfiles.extend(filename)
 
         kernel_lines = "',\n'".join(kernelfiles)
@@ -191,9 +191,7 @@ class MetaKernel:
         self.spice_files[type] = file_list
 
     def _limitstring(self, dirstring, limit, sym):
-        """Limits string based on a limit and adds a symbol to show that it has a
-        continuation to the next line
-        """
+        """Limit a list of strings and add a '+' symbol."""
         results = []
 
         for i in range(0, len(dirstring), limit):
