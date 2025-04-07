@@ -6,7 +6,7 @@ from aws_cdk.assertions import Template
 from sds_data_manager.constructs.monitoring_construct import MonitoringConstruct
 
 
-@pytest.fixture()
+@pytest.fixture
 def template(stack):
     """Return a template monitoring stack."""
     MonitoringConstruct(

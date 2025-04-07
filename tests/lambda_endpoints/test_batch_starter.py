@@ -76,7 +76,7 @@ def urlopen_side_effect(url):
     return mock_context_manager
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_urlopen():
     """Mock urlopen to return a list of dependency dictionaries.
 

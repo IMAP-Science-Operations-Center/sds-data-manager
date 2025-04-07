@@ -22,7 +22,7 @@ def get_engine():
     client = session.client(service_name="secretsmanager")
     secret_string = client.get_secret_value(SecretId=secret_name)["SecretString"]
     db_config = json.loads(secret_string)
-    db_uri = f'postgresql://{db_config["username"]}:{db_config["password"]}@{db_config["host"]}:{db_config["port"]}/{db_config["dbname"]}'
+    db_uri = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
 
     return create_engine(db_uri)
 

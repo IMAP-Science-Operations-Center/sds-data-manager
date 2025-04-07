@@ -97,7 +97,7 @@ def test_missing_required_params():
     dependency_response = dependency.lambda_handler(event, None)
     assert dependency_response["statusCode"] == 400
     assert dependency_response["body"] == (
-        "Version not found. If 'start_date' is" " supplied, 'version' is required."
+        "Version not found. If 'start_date' is supplied, 'version' is required."
     )
 
 

@@ -7,7 +7,7 @@ from aws_cdk.assertions import Match, Template
 from sds_data_manager.constructs.api_gateway_construct import ApiGateway
 
 
-@pytest.fixture()
+@pytest.fixture
 def template(stack, code):
     """Return a template for the API gateway stack."""
     test_func = aws_lambda.Function(

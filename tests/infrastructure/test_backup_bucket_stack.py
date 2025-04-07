@@ -6,7 +6,7 @@ from aws_cdk.assertions import Match, Template
 from sds_data_manager.constructs.backup_bucket_construct import BackupBucket
 
 
-@pytest.fixture()
+@pytest.fixture
 def template(stack):
     """Return a template for the backup bucket stack."""
     BackupBucket(

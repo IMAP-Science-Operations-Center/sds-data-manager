@@ -9,7 +9,7 @@ from sds_data_manager.constructs.database_construct import SdpDatabase
 from sds_data_manager.constructs.networking_construct import NetworkingConstruct
 
 
-@pytest.fixture()
+@pytest.fixture
 def template(stack, code):
     """Return a database template."""
     networking_construct = NetworkingConstruct(stack, "Networking")
