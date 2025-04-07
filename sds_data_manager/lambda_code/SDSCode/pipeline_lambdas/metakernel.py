@@ -139,24 +139,6 @@ class MetaKernel:
         metakernel: str
             A string of the entire contents of the metakernel
         '''
-        # Returns the files as a Metakernel SPICE file
-        filenames = self.return_spice_files_in_order_truncated(base_path)
-        return self.template_header + self._generate_mk_body(kernelfiles=filenames)
-    
-    def _generate_mk_body(self, base_path: Path):
-        '''Populate the body of a metakernel SPICE file from self.spice_files.
-        
-        Parameter
-        ---------
-        base_path: Path
-            The path to the local SPICE directory
-        
-        Return
-        ------
-        template_body: str
-            The body of the metakernel file
-            
-        '''
         MAXIMUM_LINE_LENGTH = 79
         metakernel_files = self.return_spice_files_in_order_detailed()
         kernelfiles = []
@@ -178,7 +160,8 @@ class MetaKernel:
 
 \\begintext
 """
-        return template_body
+        return self.template_header + template_body
+    
 
     def _remove_duplicates_from_sorted_file_list(self, type: str):
         '''Remove any duplicate found in self.spice_files[type].
@@ -231,7 +214,7 @@ class MetaKernel:
             A 2-element list of start/end time
         files_to_check: dict
             The files to examine to potentially cover the gap in trange
-        files_to_load: dict
+        files_to_load: list
             The files that have been previously confirmed as necessary to cover
             other gaps in the file
         priority_field: str
@@ -352,7 +335,7 @@ class MetaKernel:
 
         for g in gap_list:
             return_gap_list.extend(
-                self._find_best_files(g, new_file_dict, files_to_load)
+                self._find_best_files(g, new_file_dict, files_to_load, priority_field)
             )
 
         return return_gap_list

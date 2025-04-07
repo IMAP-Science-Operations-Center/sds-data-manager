@@ -162,38 +162,32 @@ def query_spice_metadata_database(
         if type:
             query = query.where(models.SPICEFiles.kernel_type == type)
         if latest:
-            # Ensure 'file_root' and 'version' are in the selected columns
-            query = query.add_columns(
-                models.SPICEFiles.file_root,
-                models.SPICEFiles.version
-            )
-            # Wrap the existing query as a subquery
-            existing_subq = query.subquery()
-            
-            # Create a subquery to find the max version per file_root
+            # --- 2. Make a subquery that gives us (file_root, MAX(version))
             latest_versions_subq = (
                 session.query(
-                    existing_subq.c.file_root,
-                    func.max(existing_subq.c.version).label('max_version')
+                    models.SPICEFiles.file_root,
+                    func.max(models.SPICEFiles.version).label("max_version")
                 )
-                .group_by(existing_subq.c.file_root)
+                .group_by(models.SPICEFiles.file_root)
                 .subquery()
             )
-            
-            # Join the subqueries to filter for the latest versions
+
+            # --- 3. Join main query to subquery so that we only keep rows
+            #         with the matching max version for each file_root
             query = (
-                session.query(existing_subq)
+                query
                 .join(
                     latest_versions_subq,
-                    (existing_subq.c.file_root == latest_versions_subq.c.file_root) &
-                    (existing_subq.c.version == latest_versions_subq.c.max_version)
+                    (models.SPICEFiles.file_root == latest_versions_subq.c.file_root)
+                    & (models.SPICEFiles.version == latest_versions_subq.c.max_version)
                 )
             )
         results = session.execute(query).scalars().all()
         
         spice_file_dict = {}
         for n in results:
-            spice_file_dict[n.file_name] = convert_spice_metadata_model_to_dict(n)
+            metadata = convert_spice_metadata_model_to_dict(n)
+            spice_file_dict[metadata["file_name"]] = metadata
 
         return spice_file_dict
 
