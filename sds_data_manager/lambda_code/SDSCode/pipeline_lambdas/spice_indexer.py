@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from ..database import database as db
 from ..database import models
-from . import spice_metakernel
+from . import spice_metakernel_generation
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -392,7 +392,7 @@ def lambda_handler(event, context):
         start_date = spice_metadata["start_date"] or minimum_mission_time
         end_date = datetime.now()
         for yr in range(start_date.year, end_date.year + 1):
-            mk_file, rendered_file = spice_metakernel.create_imap_metakernel(
+            mk_file, rendered_file = spice_metakernel_generation.create_imap_metakernel(
                 yr, spice_mount_path
             )
             if mk_file:
