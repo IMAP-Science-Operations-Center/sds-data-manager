@@ -59,7 +59,7 @@ class MetaKernel:
 
         """
 
-    def load_spice(self, files: dict, type: str, priority_field: str):
+    def load_spice(self, files: dict, type: str, priority_field: str, file_intervals_field: str):
         """Load the best SPICE files of a specific type into the Metakernel.
 
         This function will be called multiple times for each Metakernel to
@@ -83,19 +83,21 @@ class MetaKernel:
         files: dict
             A dictionary of {'file1_name': {metadata1}, 'file2_name': {metadata2}}
             Required metadata fields are:
-                file_name - The name of the file
-                min_date_j2000 - The minimum date of data in the file
-                max_date_j2000 - The maxmimum date of data in the file
-                file_intervals_j2000 - A list of lists
+                {file_intervals} - A list of lists/tuples of 2 elements. The values 
+                                   can be anything that can be compared with the 
+                                   ">" or "<" operators.
                 {priority} - A priority to help resolve conflicts within a single
                              load_spice() call. This can be anything that can be
-                             compared with the ">" or "<" operators.
-            Other items are allowed in the dictionary and will be returned.
+                             sorted.
+            Other items are allowed in the dictionary and will be returned by the 
+            other Metakernel function calls. 
         type: str
-            Tells that metakernel the type of files you are loading
+            Tells that metakernel the type of files you are loading.
         priority_field: str
             The field in the files dictionary to help this function determine the best
             file to cover the gap, in case of multiple matches.
+        file_intervals_field: str
+            The field that contains the file intervals to sort on. 
 
         """
         if type not in self.allowed_spice_types:
@@ -105,9 +107,16 @@ class MetaKernel:
         spice_files_to_load = []
         gaps_remaining = []
 
+        loaded_files_as_list = []
+        for file_name, details in files.items():
+            new_entry = {"file_name": file_name}
+            new_entry.update(details)
+            loaded_files_as_list.append(new_entry)
+        loaded_files_as_list.sort(key=lambda x: x[priority_field], reverse=False)
+        
         for gap in self.spice_gaps[type]:
             gaps_remaining.extend(
-                self._find_best_files(gap, files, spice_files_to_load, priority_field)
+                self._find_best_files(gap, loaded_files_as_list, spice_files_to_load, file_intervals_field)
             )
         self.spice_files[type].extend(spice_files_to_load)
         self._remove_duplicates_from_sorted_file_list(type)
@@ -131,7 +140,7 @@ class MetaKernel:
         return metakernel_files
 
     def return_tm_file(self, base_path: Path) -> str:
-        """Generate a SPICE metakernel file from the self.spice_files
+        """Generate a SPICE metakernel file from all loaded SPICE files.
 
         Parameter
         ---------
@@ -143,12 +152,12 @@ class MetaKernel:
         metakernel: str
             A string of the entire contents of the metakernel
         """
-        MAXIMUM_LINE_LENGTH = 79
+        maximum_line_length = 79
         metakernel_files = self.return_spice_files_in_order_detailed()
         kernelfiles = []
         for f in metakernel_files:
             fn = base_path / f["file_name"]
-            filename = self._limitstring(str(fn), MAXIMUM_LINE_LENGTH, "+")
+            filename = self._limitstring(str(fn), maximum_line_length, "+")
             kernelfiles.extend(filename)
 
         kernel_lines = "',\n'".join(kernelfiles)
@@ -191,9 +200,7 @@ class MetaKernel:
         self.spice_files[type] = file_list
 
     def _limitstring(self, dirstring, limit, sym):
-        """Limits string based on a limit and adds a symbol to show that it has a
-        continuation to the next line
-        """
+        """Limit a list of strings and add a '+' symbol."""
         results = []
 
         for i in range(0, len(dirstring), limit):
@@ -206,7 +213,7 @@ class MetaKernel:
         return results
 
     def _find_best_files(
-        self, trange, files_to_check, files_to_load, priority_field: str
+        self, trange, files_to_check, files_to_load, file_intervals_field
     ):
         """Find the best file to cover a given "trange".
 
@@ -217,14 +224,14 @@ class MetaKernel:
         ---------
         trange: list
             A 2-element list of start/end time
-        files_to_check: dict
-            The files to examine to potentially cover the gap in trange
+        files_to_check: list
+            The files to examine to potentially cover the gap in trange, 
+            in order of priority
         files_to_load: list
             The files that have been previously confirmed as necessary to cover
             other gaps in the file
-        priority_field: str
-            The dictionary field in files_to_check the represents the priority
-            of the file to load in some way.
+        file_intervals_field: str
+            The key of the dictionary that represents the file intervals
 
         Return:
         ------
@@ -235,118 +242,124 @@ class MetaKernel:
         if (trange[1] - trange[0]) < self.minimum_gap_time_to_ignore:
             # Don't even bother if the gap is too small
             return []
+        
         logger.info(f"Attempting to find file to cover {trange[0]!s} to {trange[1]!s}")
-        gap_list = []
-        return_gap_list = []
-        # Find the "best" file to load in by latest date
-        latest_priority = None
-        best_file = None
-        for file_name in files_to_check:
-            if (latest_priority is None) or (
-                files_to_check[file_name][priority_field] < latest_priority
-            ):
-                latest_priority = files_to_check[file_name][priority_field]
-                best_file = files_to_check[file_name]
 
-        # If there is no file found, return
-        if best_file is None:
+        if len(files_to_check)==0:
+            logger.info(f"No files left to check!")
             return [trange]
-
+        logger.info(f"{type(files_to_check)}")
+        best_file=files_to_check[-1]
         logger.info(f"Checking file {json.dumps(best_file)} as a possible inclusion")
 
-        # Look for gaps in the time range that are not covered by the file
-        add_to_list = False
-        if (
-            best_file["min_date_j2000"] <= trange[0]
-            and best_file["max_date_j2000"] >= trange[1]
-        ):
-            add_to_list = True
-        elif (
-            best_file["min_date_j2000"] >= trange[0]
-            and best_file["max_date_j2000"] <= trange[1]
-        ):
-            add_to_list = True
-            gap_list.append([trange[0], best_file["min_date_j2000"]])
-            gap_list.append([best_file["max_date_j2000"], trange[1]])
-        elif (
-            best_file["min_date_j2000"] >= trange[0]
-            and best_file["min_date_j2000"] < trange[1]
-        ):
-            add_to_list = True
-            gap_list.append([trange[0], best_file["min_date_j2000"]])
-        elif (
-            best_file["max_date_j2000"] > trange[0]
-            and best_file["max_date_j2000"] <= trange[1]
-        ):
-            add_to_list = True
-            gap_list.append([best_file["max_date_j2000"], trange[1]])
+        # Before we go very far, here is a quick preliminary filter. 
+        # Does this file even have the *potential* for matching?
+        gap_list = MetaKernel._check_for_valid_time_range(best_file[file_intervals_field][0][0], best_file[file_intervals_field][-1][-1], trange[0], trange[1])
+
+        # Secondary filter: Do the gaps in this file create additional gaps?
+        if len(gap_list) == 1 and gap_list[0][0]==trange[0] and gap_list[0][1]==trange[1]:
+            logger.info(f"The file does not cover our time range and will not be loaded.")
+            pass
         else:
-            logger.info(
-                "File did not match the specified time range, file will not be loaded."
-            )
-            gap_list.append(trange)
+            logger.info(f"The file start/end time is included in the time range we are looking for. Examining sub-gaps.")
 
-        if add_to_list:
-            # Look for gaps in the time range that are gaps with the file itself
-            dont_load_file = False
-
+            # Calculate file gaps, aka the inverse of valid ranges
             file_gaps = []
-            if (
-                len(best_file["file_intervals_j2000"]) > 1
-            ):  # Implies there is gaps in the data
-                previous_interval = None
-                for interval in best_file["file_intervals_j2000"]:
-                    if previous_interval is None:
-                        previous_interval = interval
-                    else:
-                        file_gaps.append([previous_interval[1], interval[0]])
-                        previous_interval = interval
-
-            for g in file_gaps:
-                if int(g[0]) <= trange[0] and int(g[1]) >= trange[1]:
-                    # There is a gap in the range we are looking at! Try again!
-                    logger.info(
-                        "There is a gap in the specified time range, file will "
-                        "not be loaded."
-                    )
-                    gap_list = [trange]
-                    dont_load_file = True
-                    continue
-                elif int(g[0]) >= trange[0] and int(g[1]) <= trange[1]:
-                    logger.info("There is a gap within the specified time range")
-                    gap_list.append(g)
-                elif int(g[0]) >= trange[0] and int(g[0]) <= trange[1]:
-                    logger.info(
-                        "There is a gap between the start of the gap and the end "
-                        "of the time range"
-                    )
-                    gap_list.append([g[0], trange[1]])
-                elif int(g[1]) >= trange[0] and int(g[1]) <= trange[1]:
-                    logger.info(
-                        "There is a gap between the start of the time range to "
-                        "the end of the file gap"
-                    )
-                    gap_list.append([trange[0], g[1]])
-
-            if not dont_load_file:
-                logger.info("File was valid, adding to metakernal list.")
-                files_to_load.append(best_file)
-            else:
+            previous_interval = None
+            for interval in best_file[file_intervals_field]:
+                if previous_interval is None:
+                    previous_interval = interval
+                else:
+                    file_gaps.append([previous_interval[1], interval[0]])
+                    previous_interval = interval
+            
+            # Determine the sub-gaps in the file
+            subgap_list = MetaKernel._calculate_sub_gaps(file_gaps, trange[0], trange[1])
+            if len(subgap_list) == 1 and subgap_list[0][0]==trange[0] and subgap_list[0][1]==trange[1]:
                 logger.info(
                     "File did not cover time range, not adding to metakernal list."
                 )
+            elif not subgap_list:
+                logger.info("File was valid, and no further gaps were found. Adding to metakernal list.")
+                files_to_load.append(best_file)                
+            else:
+                logger.info("File was valid, though more gaps were found. Adding to metakernal list.")
+                files_to_load.append(best_file)                
+                gap_list.extend(subgap_list)
 
-        # Already loaded or checked this file, remove from future function calls
-        new_file_dict = dict(files_to_check)
-        del new_file_dict[best_file["file_name"]]
+        # Now we've checked this file, remove from child function calls
+        new_file_list = files_to_check.copy()
+        new_file_list.pop()
+        return_gap_list = []
 
+        # If any more gaps remain, call this function again!
         for g in gap_list:
             return_gap_list.extend(
-                self._find_best_files(g, new_file_dict, files_to_load, priority_field)
+                self._find_best_files(g, new_file_list, files_to_load, file_intervals_field)
             )
 
         return return_gap_list
 
+    @staticmethod
+    def _check_for_valid_time_range(spice_start, spice_end, gap_start, gap_end):
+        '''Perform a simple check of kernel validity. 
+
+        Parameters
+        ----------
+        spice_start
+            The start time of the SPICE kernel
+        spice_end
+            The end time of the SPICE kernel
+        gap_start
+            The start time of the data gap to look at
+        gap_end
+            The end time of the data gap to look at
+        
+        Return
+        ------
+        remaining_gaps: list[list[Any, Any]]
+            The gaps definitely not covered by this file.
+        '''
+        if (spice_start <= gap_start and spice_end >= gap_end):
+            return []
+        elif (spice_start >= gap_start and spice_end <= gap_end):
+            return [[gap_start, spice_start], [spice_end, gap_end]]
+        elif (spice_start >= gap_start and spice_start < gap_end):
+            return [[gap_start, spice_start]]
+        elif (spice_end > gap_start and spice_end <= gap_end):
+            return [[spice_end, gap_end]]
+        else:
+            return [[gap_start, gap_end]]
+    
+    @staticmethod
+    def _calculate_sub_gaps(file_gaps, gap_start, gap_end):
+        sub_gaps = []
+        for g in file_gaps:
+            if int(g[0]) <= gap_start and int(g[1]) >= gap_end:
+                # There is a gap in the range we are looking at! Try again!
+                logger.info(
+                    "There is a gap in the specified time range, file will "
+                    "not be loaded."
+                )
+                sub_gaps = [[gap_start, gap_end]]
+                continue
+            elif int(g[0]) >= gap_start and int(g[1]) <= gap_end:
+                logger.info("There is a gap within the specified time range")
+                sub_gaps.append(g)
+            elif int(g[0]) >= gap_start and int(g[0]) <= gap_end:
+                logger.info(
+                    "There is a gap between the start of the gap and the end "
+                    "of the time range"
+                )
+                sub_gaps.append([g[0], gap_end])
+            elif int(g[1]) >= gap_start and int(g[1]) <= gap_end:
+                logger.info(
+                    "There is a gap between the start of the time range to "
+                    "the end of the file gap"
+                )
+                sub_gaps.append([gap_start, g[1]])
+        return sub_gaps
+    
     def __repr__(self):
         """Return all loaded SPICE files as JSON."""
         return json.dumps(self.return_spice_files_in_order_detailed())

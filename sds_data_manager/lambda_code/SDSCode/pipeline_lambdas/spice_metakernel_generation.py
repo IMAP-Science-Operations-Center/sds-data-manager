@@ -219,7 +219,7 @@ def metakernel_builder(start_time: datetime, end_time: datetime) -> MetaKernel:
 
     for type in static_files_load_order:
         static_spice_file = query_spice_metadata_database(type=type)
-        metakernel.load_spice(static_spice_file, type, "timestamp")
+        metakernel.load_spice(static_spice_file, type, "timestamp", "file_intervals_j2000")
 
     for ephem_type in [
         "ephemeris_reconstructed",
@@ -233,13 +233,13 @@ def metakernel_builder(start_time: datetime, end_time: datetime) -> MetaKernel:
             ephem_files = query_spice_metadata_database(
                 start_time=start_time_j2000, end_time=end_time_j2000, type=ephem_type
             )
-            metakernel.load_spice(ephem_files, "spacecraft_ephemeris", "timestamp")
+            metakernel.load_spice(ephem_files, "spacecraft_ephemeris", "timestamp", "file_intervals_j2000")
 
     for attitude_type in ["attitude_history", "attitude_predict"]:
         if len(metakernel.spice_gaps["spacecraft_attitude"]) > 0:
             attitude_files = query_spice_metadata_database(
                 start_time=start_time_j2000, end_time=end_time_j2000, type=attitude_type
             )
-            metakernel.load_spice(attitude_files, "spacecraft_attitude", "timestamp")
+            metakernel.load_spice(attitude_files, "spacecraft_attitude", "timestamp", "file_intervals_j2000")
 
     return metakernel
