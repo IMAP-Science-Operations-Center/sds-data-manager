@@ -252,7 +252,7 @@ class MetaKernel:
         best_file=files_to_check[-1]
         logger.info(f"Checking file {json.dumps(best_file)} as a possible inclusion")
 
-        # Before we go very far, here is a quick preliminary filter. 
+        # Preliminary filter. 
         # Does this file even have the *potential* for matching?
         gap_list = MetaKernel._calculate_gaps([[best_file[file_intervals_field][0][0], best_file[file_intervals_field][-1][1]]], trange[0], trange[1])
         if len(gap_list) == 1 and gap_list[0][0]==trange[0] and gap_list[0][1]==trange[1]:
