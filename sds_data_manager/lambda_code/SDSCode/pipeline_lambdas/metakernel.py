@@ -254,27 +254,14 @@ class MetaKernel:
 
         # Before we go very far, here is a quick preliminary filter. 
         # Does this file even have the *potential* for matching?
-        gap_list = MetaKernel._check_for_valid_time_range(best_file[file_intervals_field][0][0], best_file[file_intervals_field][-1][-1], trange[0], trange[1])
-
-        # Secondary filter: Do the gaps in this file create additional gaps?
+        gap_list = MetaKernel._calculate_gaps([[best_file[file_intervals_field][0][0], best_file[file_intervals_field][-1][1]]], trange[0], trange[1])
         if len(gap_list) == 1 and gap_list[0][0]==trange[0] and gap_list[0][1]==trange[1]:
             logger.info(f"The file does not cover our time range and will not be loaded.")
-            pass
         else:
             logger.info(f"The file start/end time is included in the time range we are looking for. Examining sub-gaps.")
-
-            # Calculate file gaps, aka the inverse of valid ranges
-            file_gaps = []
-            previous_interval = None
-            for interval in best_file[file_intervals_field]:
-                if previous_interval is None:
-                    previous_interval = interval
-                else:
-                    file_gaps.append([previous_interval[1], interval[0]])
-                    previous_interval = interval
             
-            # Determine the sub-gaps in the file
-            subgap_list = MetaKernel._calculate_sub_gaps(file_gaps, trange[0], trange[1])
+            # Secondary filter: Do the gaps within this file create additional gaps?
+            subgap_list = MetaKernel._calculate_gaps(best_file[file_intervals_field], trange[0], trange[1])
             if len(subgap_list) == 1 and subgap_list[0][0]==trange[0] and subgap_list[0][1]==trange[1]:
                 logger.info(
                     "File did not cover time range, not adding to metakernal list."
@@ -299,17 +286,16 @@ class MetaKernel:
             )
 
         return return_gap_list
-
+       
+    
     @staticmethod
-    def _check_for_valid_time_range(spice_start, spice_end, gap_start, gap_end):
-        '''Perform a simple check of kernel validity. 
+    def _calculate_gaps(file_intervals, gap_start, gap_end):
+        '''Caclulate the gaps based on file_gaps.
 
         Parameters
         ----------
-        spice_start
-            The start time of the SPICE kernel
-        spice_end
-            The end time of the SPICE kernel
+        file_intervals: list[list[Any, Any]]
+            The intervals of a given spice kernel
         gap_start
             The start time of the data gap to look at
         gap_end
@@ -320,44 +306,40 @@ class MetaKernel:
         remaining_gaps: list[list[Any, Any]]
             The gaps definitely not covered by this file.
         '''
-        if (spice_start <= gap_start and spice_end >= gap_end):
-            return []
-        elif (spice_start >= gap_start and spice_end <= gap_end):
-            return [[gap_start, spice_start], [spice_end, gap_end]]
-        elif (spice_start >= gap_start and spice_start < gap_end):
-            return [[gap_start, spice_start]]
-        elif (spice_end > gap_start and spice_end <= gap_end):
-            return [[spice_end, gap_end]]
-        else:
-            return [[gap_start, gap_end]]
-    
-    @staticmethod
-    def _calculate_sub_gaps(file_gaps, gap_start, gap_end):
         sub_gaps = []
-        for g in file_gaps:
-            if int(g[0]) <= gap_start and int(g[1]) >= gap_end:
-                # There is a gap in the range we are looking at! Try again!
-                logger.info(
-                    "There is a gap in the specified time range, file will "
-                    "not be loaded."
-                )
-                sub_gaps = [[gap_start, gap_end]]
-                continue
-            elif int(g[0]) >= gap_start and int(g[1]) <= gap_end:
-                logger.info("There is a gap within the specified time range")
-                sub_gaps.append(g)
-            elif int(g[0]) >= gap_start and int(g[0]) <= gap_end:
-                logger.info(
-                    "There is a gap between the start of the gap and the end "
-                    "of the time range"
-                )
-                sub_gaps.append([g[0], gap_end])
-            elif int(g[1]) >= gap_start and int(g[1]) <= gap_end:
-                logger.info(
-                    "There is a gap between the start of the time range to "
-                    "the end of the file gap"
-                )
-                sub_gaps.append([gap_start, g[1]])
+        for i in range(0, len(file_intervals)):
+            interval_start = file_intervals[i][0]
+            interval_end = file_intervals[i][1]
+            if i == 0:
+                gap_start = max(gap_start, file_intervals[0][0])
+            else:
+                gap_start = file_intervals[i-1][1]
+            if i == len(file_intervals)-1:
+                gap_end = min(gap_end, file_intervals[-1][1])
+            else:
+                gap_end = file_intervals[i][1]
+
+            if (interval_start <= gap_start and interval_end>= gap_end):
+                #      <------- gap range ------------>
+                #<---------interval coverage ------------------>
+                return []
+            elif (interval_start >= gap_start and interval_end <= gap_end):
+                #<----------- gap range ----------------->
+                #     <-----interval coverage ------>
+                sub_gaps.extend([[gap_start, interval_start], [interval_end, gap_end]])
+            elif (interval_start >= gap_start and interval_start < gap_end):
+                # <------- gap range ------------>
+                #             <---------interval coverage ------------------>
+                sub_gaps.extend([[gap_start, interval_start]])
+            elif (interval_end > gap_start and interval_end <= gap_end):
+                #      <------- gap range ------------>
+                #<---------interval coverage ------>
+                sub_gaps.extend([[interval_end, gap_end]])
+            else:
+                #<----- gap range ---------->
+                #                              <-----interval coverage ------>
+                sub_gaps.extend([[gap_start, gap_end]])
+            
         return sub_gaps
     
     def __repr__(self):
