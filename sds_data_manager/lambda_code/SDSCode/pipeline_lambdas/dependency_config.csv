@@ -95,6 +95,10 @@ mag, l1b, burst-mago, mag, l1c, norm-mago, HARD, DOWNSTREAM
 mag, l1b, norm-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
 mag, l1b, burst-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
 
+# <---- Spacecraft Dependencies ---->
+
+spacecraft, l0, raw, spacecraft, l1a, quaternions, HARD, DOWNSTREAM
+
 # <---- SWAPI Dependencies ---->
 
 swapi, l0, raw, swapi, l1, hk, HARD, DOWNSTREAM

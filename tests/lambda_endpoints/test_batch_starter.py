@@ -116,13 +116,13 @@ def test_lambda_handler(
         "Records": [
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_swe_l0_raw_20240101_v001.pkts"}}'
+                '{"object": {"key": "imap_swe_l0_raw_20240110_v001.pkts"}}'
                 "}"
             }
         ]
     }
     serialized_processing_input = (
-        '[{"type": "science", "files": ["imap_swe_l0_raw_20240101_v001.pkts"]}]'
+        '[{"type": "science", "files": ["imap_swe_l0_raw_20240110_v001.pkts"]}]'
     )
     context = {"context": "sample_context"}
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
@@ -147,7 +147,7 @@ def test_lambda_handler(
                     "--descriptor",
                     "sci",
                     "--start-date",
-                    "20240101",
+                    "20240110",
                     "--version",
                     "v001",
                     "--dependency",
@@ -166,7 +166,7 @@ def test_lambda_handler_multiple_events(session, mock_urlopen):
         "Records": [
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_swe_l0_raw_20240101_v001.pkts"}}'
+                '{"object": {"key": "imap_swe_l0_raw_20240110_v001.pkts"}}'
                 "}"
             },
             {
@@ -264,6 +264,31 @@ def test_lambda_handler_no_dependencies(session, mock_urlopen):
         assert mock_submit.call_count == 0
 
 
+def test_lambda_handler_no_dependencies_multiple_files(session, mock_urlopen):
+    """Tests ``lambda_handler`` when there are no dependencies for the file."""
+    _populate_file_catalog(session)
+    # Test Multiple Events:
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_ultra_l2_sci_20000101_v001.cdf"}}'
+                "}"
+            },
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_swe_l1a_sci_20240101_v001.cdf"}}'
+                "}"
+            },
+        ]
+    }
+    context = {"context": "sample_context"}
+    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+        lambda_handler(events, context)
+        # Verify the function was not called
+        assert mock_submit.call_count == 1
+
+
 def test_lambda_handler_missing_upstream_dependency(session, mock_urlopen, caplog):
     """Tests ``lambda_handler`` when there are no dependencies for the file."""
     _populate_file_catalog(session)
@@ -281,10 +306,10 @@ def test_lambda_handler_missing_upstream_dependency(session, mock_urlopen, caplo
     with caplog.at_level(logging.DEBUG):
         lambda_handler(events, context)
         log_str = (
-            "Upstream dependency not found for: {'data_source': "
-            "'swe', 'data_type': 'l2', 'descriptor': 'sci', 'dependency_type': "
-            "'UPSTREAM', 'relationship': 'HARD', 'start_date': '20000101', "
-            "'version': 'v001', 'trigger_type': 'l1b'}"
+            "Upstream dependency not found, or downstream dependency already exists "
+            "for: {'data_source': 'swe', 'data_type': 'l2', 'descriptor': 'sci', "
+            "'dependency_type': 'UPSTREAM', 'relationship': 'HARD', 'start_date': "
+            "'20000101', 'version': 'v001', 'trigger_type': 'l1b'"
         )
         # Verify the info statement was logged.
         assert log_str in caplog.text
