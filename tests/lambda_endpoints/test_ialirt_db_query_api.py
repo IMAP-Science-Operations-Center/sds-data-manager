@@ -7,7 +7,7 @@ import pytest
 from sds_data_manager.lambda_code.IAlirtCode import ialirt_db_query_api
 
 
-@pytest.fixture()
+@pytest.fixture
 def algorithm_table(setup_dynamodb):
     """Return the mocked imap-algorithm-table and populate it with sample data."""
     table = setup_dynamodb["algorithm_table"]

@@ -11,7 +11,7 @@ from sds_data_manager.constructs.indexer_lambda_construct import IndexerLambda
 from sds_data_manager.constructs.networking_construct import NetworkingConstruct
 
 
-@pytest.fixture()
+@pytest.fixture
 def template(stack, env, code):
     """Indexer lambda setup."""
     data_bucket = DataBucketConstruct(stack, "indexer-data-bucket", env=env)

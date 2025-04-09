@@ -72,9 +72,9 @@ greenlet==3.1.1 ; python_version < "3.14" and (platform_machine == "aarch64" or 
     --hash=sha256:f1d4aeb8891338e60d1ab6127af1fe45def5259def8094b9c7e34690c8858803 \
     --hash=sha256:f406b22b7c9a9b4f8aa9d2ab13d6ae0ac3e85c9a809bd590ad53fed2bf70dc79 \
     --hash=sha256:f6ff3b14f2df4c41660a7dec01045a045653998784bf8cfcb5a525bdffffbc8f
-imap-data-access==0.18.0 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:31ccbae90d2c85791946ef18876d193e6a685523c16645c93ed49eba5aa8f70c \
-    --hash=sha256:d8b82b60bf6a333263b8298bb7dbb3151fdf3e4024078d463d6aeb1f7c09f722
+imap-data-access==0.18.1 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:94edd7acccdb2d1eecb36b0d26be92769615e2dcd100867d998ec236b3268673 \
+    --hash=sha256:f9a54153b843158be7442321678c8df2185c52c8c9a4b15a6ebc6c0d722184eb
 psycopg2-binary==2.9.10 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:04392983d0bb89a8717772a193cfaac58871321e3ec69514e1c4e0d4957b5aff \
     --hash=sha256:056470c3dc57904bbf63d6f534988bafc4e970ffd50f6271fc4ee7daad9498a5 \

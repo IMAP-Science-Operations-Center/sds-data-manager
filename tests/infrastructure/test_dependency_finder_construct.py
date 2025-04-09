@@ -10,7 +10,7 @@ from sds_data_manager.constructs.dependency_finder_construct import DependencyFi
 from sds_data_manager.constructs.networking_construct import NetworkingConstruct
 
 
-@pytest.fixture()
+@pytest.fixture
 def template(stack, env):
     """Return the dependency finder stack."""
     apigw = ApiGateway(

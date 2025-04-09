@@ -4,7 +4,7 @@ import pytest
 from boto3.dynamodb.conditions import Attr, Key
 
 
-@pytest.fixture()
+@pytest.fixture
 def populate_ingest_table(setup_dynamodb):
     """Populate DynamoDB table."""
     ingest_table = setup_dynamodb["ingest_table"]
@@ -28,7 +28,7 @@ def populate_ingest_table(setup_dynamodb):
     return items
 
 
-@pytest.fixture()
+@pytest.fixture
 def populate_algorithm_table(setup_dynamodb):
     """Populate DynamoDB table."""
     algorithm_table = setup_dynamodb["algorithm_table"]

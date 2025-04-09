@@ -1,10 +1,10 @@
 ci:
   autofix_prs: false
   autoupdate_schedule: 'quarterly'
-  skip: [poetry-lock, poetry-export]
+  skip: [poetry-lock, generate-requirements-files]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-added-large-files
       - id: detect-aws-credentials
@@ -15,7 +15,7 @@ repos:
       - id: no-commit-to-branch
         args: [--branch, main, --branch, dev]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.5.0'
+    rev: 'v0.11.4'
     hooks:
     - id: ruff
       args: [--fix]
@@ -26,12 +26,12 @@ repos:
       - id: poetry-check
       - id: poetry-lock
         args: [--no-update]
-      - id: poetry-export
-        args: ["-f", "requirements.txt", "-o", "lambda_layer/database/requirements.txt", "--with", "layer-database"]
+  - repo: local
+    hooks:
+      - id: generate-requirements-files
+        name: generate-requirements-files
+        entry: lambda_layer/generate_requirements_files.sh
+        language: script
+        pass_filenames: false
         verbose: true
-      - id: poetry-export
-        args: ["-f", "requirements.txt", "-o", "lambda_layer/spice/requirements.txt", "--with", "layer-spice"]
-        verbose: true
-      - id: poetry-export
-        args: [ "-f", "requirements.txt", "-o", "lambda_layer/processing/requirements.txt", "--with", "layer-processing" ]
-        verbose: true
+

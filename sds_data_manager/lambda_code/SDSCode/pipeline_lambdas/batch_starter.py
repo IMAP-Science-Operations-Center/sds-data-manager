@@ -239,8 +239,7 @@ def try_to_submit_job(
         return
 
     logger.info(
-        f"Wrote job INPROGRESS to Processing Jobs Table with id: "
-        f"{processing_job.id}"
+        f"Wrote job INPROGRESS to Processing Jobs Table with id: {processing_job.id}"
     )
 
     # Reformat the upstream dependencies from dependency call to match

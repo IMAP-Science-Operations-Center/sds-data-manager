@@ -32,6 +32,12 @@ glows, l1a, hist, glows, l1b, hist, HARD, DOWNSTREAM
 
 glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
 
+glows, l3a, hist, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-L3bc, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
+glows, ancillary, uv-anisotropy-1CR, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
+glows, ancillary, WawHelioIonMP, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
+glows, ancillary, bad-days-list, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
+
 # <---- HI Dependencies ---->
 
 hi, l0, raw, hi, l1a, all, HARD, DOWNSTREAM

@@ -27,12 +27,12 @@ def test_nlb_response():
             nlb_dns = get_nlb_dns("IalirtStack", port, container_name)
             # Specify a timeout for the request
             response = requests.get(nlb_dns, timeout=10)  # timeout in seconds
-            assert (
-                response.status_code == 200
-            ), f"NLB did not return HTTP 200 on port {port} for {container_name}"
-            assert (
-                response.text == f"Hello from Port {port}!"
-            ), f"NLB did not return expected text on port {port} for {container_name}"
+            assert response.status_code == 200, (
+                f"NLB did not return HTTP 200 on port {port} for {container_name}"
+            )
+            assert response.text == f"Hello from Port {port}!", (
+                f"NLB did not return expected text on port {port} for {container_name}"
+            )
             s3_response = requests.get(
                 nlb_dns + "/list", timeout=10
             )  # timeout in seconds

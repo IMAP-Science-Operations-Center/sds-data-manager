@@ -76,7 +76,7 @@ def s3_client():
         yield s3_client
 
 
-@pytest.fixture()
+@pytest.fixture
 def events_client():
     """Mock EventBridge client."""
     with mock_events():
@@ -90,7 +90,7 @@ POSTGRES_AVAILABLE = False
 
 # NOTE: The default scope is function, so each test function will
 #       get a new database session and start fresh each time.
-@pytest.fixture()
+@pytest.fixture
 def session():
     """Create a test postgres database engine."""
     with patch.object(db, "Session") as mock_session:

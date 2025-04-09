@@ -54,7 +54,7 @@ def test_batch_job_event(session, events_client):
             ),
             "container": {
                 "image": (
-                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "swapi-repo:latest"
+                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest"
                 ),
                 "command": [
                     "--instrument",
