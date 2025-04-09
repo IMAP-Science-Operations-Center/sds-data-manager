@@ -19,7 +19,7 @@ logger.setLevel(logging.INFO)
 
 # Define constants needed in the file
 SPACECRAFT_ID = -43
-minimum_mission_time = datetime(2009, 1, 1)
+minimum_mission_time = datetime(2010, 1, 1)
 maximum_mission_time = datetime(2145, 1, 1)
 MAXIMUM_DATETIME_INTERVAL = [[minimum_mission_time, maximum_mission_time]]
 MAXIMUM_SCLK_INTERVAL = [
@@ -284,12 +284,10 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
     # Create an S3 client
     s3_client = boto3.client("s3")
 
-    # Remove 'spice/' prefix from the s3 key. See key example below.
-    #   Eg. spice/spin/imap_2025_122_2025_122_02.spin.csv
-    # Keep remaining folder path after `spice/` to match the folder structure
-    # defined in imap-data-access library.
-    s3_folder_path = os.path.dirname(s3_key).replace("imap/spice/", "")
-    filename = os.path.basename(s3_key)
+    # Keep the base folder name and filename from the s3 key
+    # i.e. "ck/file.bc"
+    dirname, filename = os.path.split(s3_key)
+    s3_folder_path = os.path.basename(dirname)
     # Download path to EFS
     efs_spice_path = spice_mount_path / s3_folder_path
     efs_spice_filename_and_path = efs_spice_path / filename
