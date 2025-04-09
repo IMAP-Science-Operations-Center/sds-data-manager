@@ -7,9 +7,8 @@ from datetime import datetime
 import pytest
 import spiceypy
 
-from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
-
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
 
 def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
     """Put the a local file into a test bucket, and return a mock event notification.
@@ -144,16 +143,19 @@ def test_s3_spice_files(session, s3_client, events_client):
     assert result[0]["version"] == 12
     assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
     print(result)
-    result = (
-        session.query(models.SPICEFiles).filter_by(file_name="imap_2025_v001.tm").one()
+
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"file_name": "imap_2025_v001.tm"}}, None
     )
+    result = json.loads(result["body"])
     assert result.kernel_type == "metakernel"
     assert result.version == 1
     assert len(result.file_intervals_datetime) == 1  # Default time range
 
-    result = (
-        session.query(models.SPICEFiles).filter_by(file_name="imap_2025_v002.tm").one()
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"file_name": "imap_2025_v002.tm"}}, None
     )
+    result = json.loads(result["body"])
     assert result.kernel_type == "metakernel"
     assert result.version == 2
     assert len(result.file_intervals_datetime) == 1  # Default time range
