@@ -40,7 +40,7 @@ def lambda_handler(event, context):
         query = select(models.SPICEFiles)
 
         # get a list of all valid search parameters
-        valid_parameters = ["start_time", "end_time", "type", "latest"]
+        valid_parameters = ["file_name", "start_time", "end_time", "type", "latest"]
 
         # go through each query parameter to set up sqlalchemy query conditions
         for param, value in query_params.items():
@@ -93,6 +93,8 @@ def lambda_handler(event, context):
                     return response
             elif param == "type":
                 query = query.where(models.SPICEFiles.kernel_type == value)
+            elif param == "file_name":
+                query = query.where(models.SPICEFiles.file_name == value)
             elif param == "latest" and value.lower() == "true":
                 # Make a subquery that gives us (file_root, MAX(version))
                 latest_versions_subq = (

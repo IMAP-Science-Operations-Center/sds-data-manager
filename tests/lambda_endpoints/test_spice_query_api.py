@@ -140,6 +140,17 @@ def test_query_result_body(session):
     assert json.loads(returned_query["body"])
 
 
+def test_file_name_query(session, expected_ck_response):
+    """Test that start date can be queried."""
+    _insert_ck_test_data(session)
+    event = {"queryStringParameters": {"file_name": "imap_2025_118_2025_120_009.ah.bc"}}
+
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == expected_ck_response
+
+
 def test_start_time_query(session, expected_ck_response):
     """Test that start date can be queried."""
     _insert_ck_test_data(session)
@@ -202,7 +213,7 @@ def test_invalid_query(session):
     expected_response = json.dumps(
         "size is not a valid query parameter. "
         + "Valid query parameters are: "
-        + "['start_time', 'end_time', 'type', 'latest']"
+        + "['file_name', 'start_time', 'end_time', 'type', 'latest']"
     )
     returned_query = spice_query_api.lambda_handler(event=event, context={})
 
