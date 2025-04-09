@@ -351,7 +351,7 @@ def get_dependencies(node, dependency_type, relationship):
 
 
 def filter_primary_science_dependencies(
-    session: db.Session, records: list, query_data_type: str
+    session: db.Session, records: list, query_data_type: str, query_descriptor
 ):
     """Filter primary science dependencies for unprocessed downstream dependencies.
 
@@ -363,6 +363,8 @@ def filter_primary_science_dependencies(
         Science file records.
     query_data_type : str
         The data_type of the dependency used to query the api.
+    query_descriptor
+        The descriptor of the dependency used to query the api.
 
     Returns
     -------
@@ -370,13 +372,14 @@ def filter_primary_science_dependencies(
         Upstream primary source filenames that have downstream dependencies that need
         to be processed.
     """
+    # TODO create a downstream dependency instead of combining the query and records.
     files = []
     for record in records:
         # check in the science table if the upstream primary source dependency
         # already exists.
         query = select(models.ScienceFiles.__table__).where(
             models.ScienceFiles.instrument == record.instrument,
-            models.ScienceFiles.descriptor == record.descriptor,
+            models.ScienceFiles.descriptor == query_descriptor,
             # Use the query data type instead of the current record.
             models.ScienceFiles.data_level == query_data_type,
             models.ScienceFiles.start_date == record.start_date,
@@ -521,7 +524,10 @@ def get_dependency_processing_input(
             # table. If the file already exists, the l1a file is ignored.
             if primary_sci_dep:
                 filenames = filter_primary_science_dependencies(
-                    session, records, query_params["data_type"]
+                    session,
+                    records,
+                    query_params["data_type"],
+                    query_params["descriptor"],
                 )
                 if not filenames:
                     logger.info(
