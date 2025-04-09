@@ -65,9 +65,33 @@ def lambda_handler(event, context):
                 return response
             
             if param == "start_time":
-                query = query.where(models.SPICEFiles.max_date_j2000 >= int(value))
+                try:
+                    query = query.where(models.SPICEFiles.max_date_j2000 >= int(value))
+                except ValueError:
+                    response = {
+                        "statusCode": 400,
+                        "body": json.dumps(f"Invalid value for {param}: {value}"),
+                        "headers": {
+                            "Content-Type": "application/json",
+                            "Access-Control-Allow-Origin": "*",  # Allow CORS
+                        },
+                    }
+                    logger.debug(f"Invalid value for {param}: {value}")
+                    return response
             elif param == "end_time":
-                query = query.where(models.SPICEFiles.min_date_j2000 <= int(value))
+                try:
+                    query = query.where(models.SPICEFiles.min_date_j2000 <= int(value))
+                except ValueError:
+                    response = {
+                        "statusCode": 400,
+                        "body": json.dumps(f"Invalid value for {param}: {value}"),
+                        "headers": {
+                            "Content-Type": "application/json",
+                            "Access-Control-Allow-Origin": "*",  # Allow CORS
+                        },
+                    }
+                    logger.debug(f"Invalid value for {param}: {value}")
+                    return response
             elif param == "type":
                 query = query.where(models.SPICEFiles.kernel_type == value)
             elif param == "latest" and value.lower()=='true':
