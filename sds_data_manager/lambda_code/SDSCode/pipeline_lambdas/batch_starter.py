@@ -202,7 +202,7 @@ def try_to_submit_job(
 
     start_date_str = datetime.strftime(start_date, "%Y%m%d")
 
-    logger.info("Checking for job in progress before looking for dependencies.")
+    logger.info("Checking for job in progress.")
 
     if is_job_in_processing_table(
         session=session,
@@ -239,13 +239,11 @@ def try_to_submit_job(
         return
 
     logger.info(
-        f"Wrote job INPROGRESS to Processing Jobs Table with id: "
-        f"{processing_job.id}"
+        f"Wrote job INPROGRESS to Processing Jobs Table with id: {processing_job.id}"
     )
 
     # Reformat the upstream dependencies from dependency call to match
-    # what batch job expects. Change 'data_source' to 'instrument' and
-    # 'data_type' to 'data_level'.
+    # what batch job expects.
 
     batch_command = [
         "--instrument",
@@ -328,8 +326,11 @@ def submit_all_jobs(
 
     upstream_dependencies = _get_dependencies(dependency_event_msg)
     if not upstream_dependencies.processing_input:
-        logger.info(f"Upstream dependency not found for: {dependency_event_msg}")
-        return  # Exit the loop early
+        logger.info(
+            f"Upstream dependency not found, or downstream dependency "
+            f"already exists for: {dependency_event_msg}"
+        )
+        return
 
     logger.info(f"All dependencies found for the job: {job}")
     # Find science processingInputs that have the same source as the potential job
@@ -435,7 +436,7 @@ def lambda_handler(events: dict, context):
 
         if not potential_jobs:
             logger.info(f"Found no dependencies for {dependency_event_msg}.")
-            return
+            continue
 
         with db.Session() as session:
             for job in potential_jobs:

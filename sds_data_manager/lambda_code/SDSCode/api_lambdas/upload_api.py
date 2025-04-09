@@ -99,7 +99,7 @@ def lambda_handler(event, context):
 
     """
     path_params = event.get("pathParameters", {}).get("proxy", None)
-    logger.info("Parsing path parameters=[%s] from event=" "[%s]", path_params, event)
+    logger.info("Parsing path parameters=[%s] from event=[%s]", path_params, event)
 
     if not path_params:
         return {
@@ -131,8 +131,7 @@ def lambda_handler(event, context):
                 # Did not match any file types
                 logger.info(str(e))
                 logger.error(
-                    f"Filename {filename} does not match "
-                    f"ancillary, science, or SPICE."
+                    f"Filename {filename} does not match ancillary, science, or SPICE."
                 )
                 return {
                     "statusCode": 400,

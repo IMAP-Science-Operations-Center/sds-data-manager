@@ -56,7 +56,7 @@ def lambda_handler(event, context):  # noqa
                 ),
             }
         # adding the apex domain to the given subdomain
-        subdomain += f".{os.environ["apex_domain_name"]}"
+        subdomain += f".{os.environ['apex_domain_name']}"
 
         # Getting the hosted zone ID
         hosted_zone_id = os.environ["hosted_zone_id"]
@@ -77,8 +77,7 @@ def lambda_handler(event, context):  # noqa
                 return {
                     "statusCode": 400,
                     "body": (
-                        f"Error: An A record with the name {subdomain} "
-                        f"already exists"
+                        f"Error: An A record with the name {subdomain} already exists"
                     ),
                 }
 

@@ -76,7 +76,7 @@ def s3_client():
         yield s3_client
 
 
-@pytest.fixture()
+@pytest.fixture
 def events_client():
     """Mock EventBridge client."""
     with mock_events():
@@ -90,7 +90,7 @@ POSTGRES_AVAILABLE = False
 
 # NOTE: The default scope is function, so each test function will
 #       get a new database session and start fresh each time.
-@pytest.fixture()
+@pytest.fixture
 def session():
     """Create a test postgres database engine."""
     with patch.object(db, "Session") as mock_session:
@@ -165,11 +165,11 @@ def _populate_file_catalog(session):
             ),
         ),
         ScienceFiles(
-            file_path="/path/to/imap_hit_l0_raw_20240101_v001.pkts",
-            instrument="hit",
+            file_path="/path/to/imap_swe_l0_raw_20240110_v001.pkts",
+            instrument="swe",
             data_level="l0",
             descriptor="raw",
-            start_date=datetime(2024, 1, 1),
+            start_date=datetime(2024, 1, 10),
             version="v001",
             extension="pkts",
             ingestion_date=datetime.strptime(

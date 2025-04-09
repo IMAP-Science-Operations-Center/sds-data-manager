@@ -97,7 +97,7 @@ def test_missing_required_params():
     dependency_response = dependency.lambda_handler(event, None)
     assert dependency_response["statusCode"] == 400
     assert dependency_response["body"] == (
-        "Version not found. If 'start_date' is" " supplied, 'version' is required."
+        "Version not found. If 'start_date' is supplied, 'version' is required."
     )
 
 
@@ -141,6 +141,26 @@ def test_get_downstream_dependencies():
     ]
     assert len(dependents) == 2
     assert dependents == expected_complete_dependent
+
+
+def test_primary_dep_gets_filtered(session, caplog):
+    """Tests that a pre-existing primary science file gets filtered."""
+    _populate_file_catalog(session)
+    event = create_dependency_api_event(
+        "swe",
+        "l1a",
+        "sci",
+        start_date="20240102",
+        version="v001",
+        trigger_type="l1b-in-flight-cal",
+    )
+
+    dependency.lambda_handler(event, None)
+
+    assert (
+        "Primary dependency files already processed. Returning empty collection."
+        in caplog.text
+    )
 
 
 def test_get_upstream_ancillary_trigger(session, caplog):

@@ -67,7 +67,7 @@ def lambda_handler(event, context):
     Status Reason: {status_reason}
 
     Logs (Last 10 lines):
-    {''.join(logs) if logs else 'No logs available'}
+    {"".join(logs) if logs else "No logs available"}
     """
 
     logger.info(f"Formatted Message: {formatted_message}")

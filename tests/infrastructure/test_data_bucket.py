@@ -6,7 +6,7 @@ from aws_cdk.assertions import Template
 from sds_data_manager.constructs.data_bucket_construct import DataBucketConstruct
 
 
-@pytest.fixture()
+@pytest.fixture
 def template(stack, env):
     """Return a template for the data bucket stack."""
     DataBucketConstruct(stack, "data-bucket", env=env)
@@ -28,9 +28,9 @@ def test_s3_bucket(template):
         for r in template.to_json()["Resources"].values()
         if r["Type"] == "AWS::S3::BucketPolicy"
     ]
-    assert (
-        not resources
-    ), "Expected no BucketPolicy resources since auto_delete_objects is False"
+    assert not resources, (
+        "Expected no BucketPolicy resources since auto_delete_objects is False"
+    )
 
     # Ensure that the template has the appropriate bucket policy
     template.resource_count_is("AWS::S3::BucketPolicy", 0)
