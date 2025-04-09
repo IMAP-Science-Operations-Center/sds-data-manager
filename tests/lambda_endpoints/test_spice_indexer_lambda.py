@@ -73,7 +73,7 @@ def test_s3_spice_files(session, s3_client, events_client):
     clock_kernel_event = put_local_file_in_bucket(
         s3_client,
         "spice/sclk/imap_sclk_0012.tsc",
-        os.path.join(test_spice_data_dir, "imapsclk_0012.tsc"),
+        os.path.join(test_spice_data_dir, "imap_sclk_0012.tsc"),
     )
     spice_indexer.lambda_handler(clock_kernel_event, None)
 
@@ -106,7 +106,7 @@ def test_s3_spice_files(session, s3_client, events_client):
     assert len(result.file_intervals_datetime) == 1  # Default time range
 
     result = (
-        session.query(models.SPICEFiles).filter_by(file_name="imapsclk_0012.tsc").one()
+        session.query(models.SPICEFiles).filter_by(file_name="imap_sclk_0012.tsc").one()
     )
     assert result.kernel_type == "spacecraft_clock"
     assert result.version == 12
