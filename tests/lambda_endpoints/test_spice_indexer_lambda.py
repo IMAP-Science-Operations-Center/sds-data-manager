@@ -72,7 +72,7 @@ def test_s3_spice_files(session, s3_client, events_client):
     # Insert spacecraft clock spice kernel
     clock_kernel_event = put_local_file_in_bucket(
         s3_client,
-        "spice/sclk/imapsclk_0012.tsc",
+        "spice/sclk/imap_sclk_0012.tsc",
         os.path.join(test_spice_data_dir, "imapsclk_0012.tsc"),
     )
     spice_indexer.lambda_handler(clock_kernel_event, None)
@@ -87,7 +87,7 @@ def test_s3_spice_files(session, s3_client, events_client):
 
     # Verify that the file was moved to the temp_path directory
     assert os.path.exists(temp_path + "/lsk/naif0012.tls")
-    assert os.path.exists(temp_path + "/sclk/imapsclk_0012.tsc")
+    assert os.path.exists(temp_path + "/sclk/imap_sclk_0012.tsc")
     assert os.path.exists(temp_path + "/ck/imap_2025_118_2025_120_001.ah.bc")
 
     # Verify that the database was populated appropriately
