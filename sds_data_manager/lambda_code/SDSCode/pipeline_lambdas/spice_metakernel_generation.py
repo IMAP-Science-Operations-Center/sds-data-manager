@@ -2,16 +2,14 @@
 
 import logging
 import math
+import json
 from datetime import datetime
 from pathlib import Path
 
 import spiceypy
 from imap_data_access import SPICEFilePath
-from sqlalchemy import func, select
-
-from ..database import database as db
-from ..database import models
 from .metakernel import MetaKernel
+from ..api_lambdas import spice_query_api
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -93,102 +91,6 @@ def create_imap_metakernel(year: int, spice_directory: Path) -> tuple[str, str]:
     return mk_filename, rendered_file
 
 
-def convert_spice_metadata_model_to_dict(file: models.SPICEFiles) -> dict:
-    """Convert a sqlalchemy query to SPICEFiles to a dictionary.
-
-    Paramters
-    ----------
-    file: models.SPICEFiles
-        A single row from the SPICEFiles table
-
-    Returns
-    -------
-    spice_file_dict: dict
-        The SPICE file query as a dictionary
-    """
-    spice_file_dict = {
-        "file_name": (
-            SPICEFilePath(file.file_name).construct_path().parent.name
-            + "/"
-            + file.file_name
-        ),
-        "file_root": file.file_root,
-        "kernel_type": file.kernel_type,
-        "version": file.version,
-        "min_date_j2000": file.min_date_j2000,
-        "max_date_j2000": file.max_date_j2000,
-        "file_intervals_j2000": file.file_intervals_j2000,
-        "min_date_datetime": file.min_date_datetime.strftime("%Y-%m-%d, %H:%M:%S"),
-        "max_date_datetime": file.max_date_datetime.strftime("%Y-%m-%d, %H:%M:%S"),
-        "min_date_sclk": file.min_date_sclk,
-        "max_date_sclk": file.max_date_sclk,
-        "file_intervals_sclk": file.file_intervals_sclk,
-        "sclk_kernel": file.sclk_kernel,
-        "lsk_kernel": file.lsk_kernel,
-        "ingestion_date": file.ingestion_date.strftime("%Y-%m-%d, %H:%M:%S"),
-        "timestamp": file.ingestion_date.timestamp(),
-    }
-    return spice_file_dict
-
-
-def query_spice_metadata_database(
-    start_time: int = 1000, end_time: int = 31525416070, type: str = "", latest=True
-) -> dict:
-    """Query SPICEFiles table for time and type.
-
-    Parameters
-    ----------
-    start_time: int
-        The starting time in J2000 to limit the query
-    end_time: int
-        The ending time in J2000 to limit the query
-    type: str | None
-        The type of file to query for. If None, queries all file types.
-    latest: bool
-        Whether or not to include lower versions of the same file.
-
-    Returns
-    -------
-    spice_file_dict: dict
-        A dictionary of the form {'file1': {metadata1}, 'file2': {metadata2}, ... etc}
-        Where the metadata is a dictionary form of the data in the database row
-    """
-    with db.Session() as session, session.begin():
-        query = select(models.SPICEFiles)
-
-        query = query.where(models.SPICEFiles.min_date_j2000 <= end_time)
-        query = query.where(models.SPICEFiles.max_date_j2000 >= start_time)
-
-        if type:
-            query = query.where(models.SPICEFiles.kernel_type == type)
-        if latest:
-            # --- 2. Make a subquery that gives us (file_root, MAX(version))
-            latest_versions_subq = (
-                session.query(
-                    models.SPICEFiles.file_root,
-                    func.max(models.SPICEFiles.version).label("max_version"),
-                )
-                .group_by(models.SPICEFiles.file_root)
-                .subquery()
-            )
-
-            # --- 3. Join main query to subquery so that we only keep rows
-            #         with the matching max version for each file_root
-            query = query.join(
-                latest_versions_subq,
-                (models.SPICEFiles.file_root == latest_versions_subq.c.file_root)
-                & (models.SPICEFiles.version == latest_versions_subq.c.max_version),
-            )
-        results = session.execute(query).scalars().all()
-
-        spice_file_dict = {}
-        for n in results:
-            metadata = convert_spice_metadata_model_to_dict(n)
-            spice_file_dict[metadata["file_name"]] = metadata
-
-        return spice_file_dict
-
-
 def metakernel_builder(start_time: datetime, end_time: datetime) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
     start_time_j2000 = math.floor(float(spiceypy.datetime2et(start_time)))
@@ -218,7 +120,7 @@ def metakernel_builder(start_time: datetime, end_time: datetime) -> MetaKernel:
     ]
 
     for type in static_files_load_order:
-        static_spice_file = query_spice_metadata_database(type=type)
+        static_spice_file = spice_query_api.lambda_handler({"queryStringParameters": {"type": type}}, None)
         metakernel.load_spice(static_spice_file, type, "timestamp", "file_intervals_j2000")
 
     for ephem_type in [
@@ -230,16 +132,12 @@ def metakernel_builder(start_time: datetime, end_time: datetime) -> MetaKernel:
         "ephemeris_launch",
     ]:
         if len(metakernel.spice_gaps["spacecraft_ephemeris"]) > 0:
-            ephem_files = query_spice_metadata_database(
-                start_time=start_time_j2000, end_time=end_time_j2000, type=ephem_type
-            )
-            metakernel.load_spice(ephem_files, "spacecraft_ephemeris", "timestamp", "file_intervals_j2000")
+            ephem_files = spice_query_api.lambda_handler({"queryStringParameters": {"start_time": start_time_j2000, "end_time":end_time_j2000, "type":ephem_type}})
+            metakernel.load_spice(json.loads(ephem_files['body']), "spacecraft_ephemeris", "timestamp", "file_intervals_j2000")
 
     for attitude_type in ["attitude_history", "attitude_predict"]:
         if len(metakernel.spice_gaps["spacecraft_attitude"]) > 0:
-            attitude_files = query_spice_metadata_database(
-                start_time=start_time_j2000, end_time=end_time_j2000, type=attitude_type
-            )
-            metakernel.load_spice(attitude_files, "spacecraft_attitude", "timestamp", "file_intervals_j2000")
+            attitude_files = spice_query_api.lambda_handler({"queryStringParameters": {"start_time": start_time_j2000, "end_time":end_time_j2000, "type":attitude_type}})
+            metakernel.load_spice(json.loads(attitude_files['body']), "spacecraft_attitude", "timestamp", "file_intervals_j2000")
 
     return metakernel

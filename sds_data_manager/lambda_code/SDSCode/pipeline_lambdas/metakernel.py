@@ -59,7 +59,7 @@ class MetaKernel:
 
         """
 
-    def load_spice(self, files: dict, type: str, priority_field: str, file_intervals_field: str):
+    def load_spice(self, files: list[dict], type: str, priority_field: str, file_intervals_field: str):
         """Load the best SPICE files of a specific type into the Metakernel.
 
         This function will be called multiple times for each Metakernel to
@@ -80,9 +80,10 @@ class MetaKernel:
 
         Parameters
         ----------
-        files: dict
-            A dictionary of {'file1_name': {metadata1}, 'file2_name': {metadata2}}
+        files: list[dict]
+            A list of [{metadata1}, {metadata2}}
             Required metadata fields are:
+                file_name - The name of the file
                 {file_intervals} - A list of lists/tuples of 2 elements. The values 
                                    can be anything that can be compared with the 
                                    ">" or "<" operators.
@@ -107,16 +108,11 @@ class MetaKernel:
         spice_files_to_load = []
         gaps_remaining = []
 
-        loaded_files_as_list = []
-        for file_name, details in files.items():
-            new_entry = {"file_name": file_name}
-            new_entry.update(details)
-            loaded_files_as_list.append(new_entry)
-        loaded_files_as_list.sort(key=lambda x: x[priority_field], reverse=False)
+        files.sort(key=lambda x: x[priority_field], reverse=False)
         
         for gap in self.spice_gaps[type]:
             gaps_remaining.extend(
-                self._find_best_files(gap, loaded_files_as_list, spice_files_to_load, file_intervals_field)
+                self._find_best_files(gap, files, spice_files_to_load, file_intervals_field)
             )
         self.spice_files[type].extend(spice_files_to_load)
         self._remove_duplicates_from_sorted_file_list(type)

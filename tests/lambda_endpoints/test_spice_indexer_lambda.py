@@ -148,17 +148,17 @@ def test_s3_spice_files(session, s3_client, events_client):
         {"queryStringParameters": {"file_name": "imap_2025_v001.tm"}}, None
     )
     result = json.loads(result["body"])
-    assert result.kernel_type == "metakernel"
-    assert result.version == 1
-    assert len(result.file_intervals_datetime) == 1  # Default time range
+    assert result[0]['kernel_type'] == "metakernel"
+    assert result[0]['version'] == 1
+    assert len(result[0]['file_intervals_datetime']) == 1  # Default time range
 
     result = spice_query_api.lambda_handler(
         {"queryStringParameters": {"file_name": "imap_2025_v002.tm"}}, None
     )
     result = json.loads(result["body"])
-    assert result.kernel_type == "metakernel"
-    assert result.version == 2
-    assert len(result.file_intervals_datetime) == 1  # Default time range
+    assert result[0]['kernel_type'] == "metakernel"
+    assert result[0]['version'] == 2
+    assert len(result[0]['file_intervals_datetime']) == 1  # Default time range
 
     # Ensure that the metakernels are actually valid by loading them in
     spiceypy.kclear()
