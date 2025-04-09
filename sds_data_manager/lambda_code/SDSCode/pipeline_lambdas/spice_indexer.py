@@ -19,7 +19,7 @@ logger.setLevel(logging.INFO)
 
 # Define constants needed in the file
 SPACECRAFT_ID = -43
-minimum_mission_time = datetime(2023, 1, 1)
+minimum_mission_time = datetime(2009, 1, 1)
 maximum_mission_time = datetime(2145, 1, 1)
 MAXIMUM_DATETIME_INTERVAL = [[minimum_mission_time, maximum_mission_time]]
 MAXIMUM_SCLK_INTERVAL = [
@@ -263,24 +263,6 @@ def index_spice_file(spice_file: Path):
     )
 
 
-def create_symlink(source_path: Path, destination_path: Path) -> None:
-    """Create a symlink from source_path to destination_path.
-
-    Parameters
-    ----------
-    source_path : str
-        Source path of the symlink
-    destination_path : str
-        Destination path of the symlink
-
-    """
-    # Remove the old symlink
-    destination_path.unlink(missing_ok=True)
-
-    # Create a new symlink pointing to the new file
-    destination_path.symlink_to(source_path)
-
-
 def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Path:
     """Write data to EFS and create/update symlink.
 
@@ -306,7 +288,7 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
     #   Eg. spice/spin/imap_2025_122_2025_122_02.spin.csv
     # Keep remaining folder path after `spice/` to match the folder structure
     # defined in imap-data-access library.
-    s3_folder_path = os.path.dirname(s3_key).replace("spice/", "")
+    s3_folder_path = os.path.dirname(s3_key).replace("imap/spice/", "")
     filename = os.path.basename(s3_key)
     # Download path to EFS
     efs_spice_path = spice_mount_path / s3_folder_path
@@ -345,7 +327,7 @@ def lambda_handler(event, context):
                 "name": "sds-data-449431850278"
             },
             "object": {
-                "key": "spice/spin/imap_2025_122_2025_122_02.spin.csv",
+                "key": "imap/spice/spin/imap_2025_122_2025_122_02.spin.csv",
                 "size": 8,
                 "etag": "fd33e2e8ad3cb1bdd3ea8f5633fcf5c7",
                 "version-id": "w9eElv_lFFeEbifMabOBHjtJl9Ori_At",
