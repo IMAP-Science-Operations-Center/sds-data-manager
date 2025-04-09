@@ -1,19 +1,18 @@
 """Contains the lambda handler for the 'query' data access API."""
 
-import datetime
 import json
 import logging
 
+from imap_data_access import SPICEFilePath
 from sqlalchemy import func, select
 
 from ..database import database as db
 from ..database import models
 
-from imap_data_access import SPICEFilePath
-
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 
 def lambda_handler(event, context):
     """Entry point to the SPICE query API lambda.
@@ -42,7 +41,7 @@ def lambda_handler(event, context):
 
         # get a list of all valid search parameters
         valid_parameters = ["start_time", "end_time", "type", "latest"]
-        
+
         # go through each query parameter to set up sqlalchemy query conditions
         for param, value in query_params.items():
             # confirm that the query parameter is valid
@@ -63,7 +62,7 @@ def lambda_handler(event, context):
                     " valid options are: {valid_parameters}"
                 )
                 return response
-            
+
             if param == "start_time":
                 try:
                     query = query.where(models.SPICEFiles.max_date_j2000 >= int(value))
@@ -94,7 +93,7 @@ def lambda_handler(event, context):
                     return response
             elif param == "type":
                 query = query.where(models.SPICEFiles.kernel_type == value)
-            elif param == "latest" and value.lower()=='true':
+            elif param == "latest" and value.lower() == "true":
                 # Make a subquery that gives us (file_root, MAX(version))
                 latest_versions_subq = (
                     session.query(
@@ -115,7 +114,9 @@ def lambda_handler(event, context):
 
         search_results = session.execute(query).scalars().all()
 
-    search_results = [_convert_spice_metadata_model_to_dict(result) for result in search_results]
+    search_results = [
+        _convert_spice_metadata_model_to_dict(result) for result in search_results
+    ]
     logger.info(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
