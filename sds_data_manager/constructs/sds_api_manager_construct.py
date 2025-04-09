@@ -127,6 +127,32 @@ class SdsApiManager(Construct):
             lambda_function=query_api_lambda,
         )
 
+        # SPICE query API lambda
+        spice_query_api_lambda = lambda_.Function(
+            self,
+            id="SPICEQueryAPILambda",
+            function_name="spice-query-api-handler",
+            code=code,
+            handler="SDSCode.api_lambdas.spice_query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            security_groups=[rds_security_group],
+            environment={
+                "REGION": env.region,
+                "SECRET_NAME": db_secret_name,
+            },
+            layers=layers,
+        )
+
+        api.add_route(
+            route="spice-query",
+            http_method="GET",
+            lambda_function=spice_query_api_lambda,
+        )
+
         # download API lambda
         download_api = lambda_.Function(
             self,

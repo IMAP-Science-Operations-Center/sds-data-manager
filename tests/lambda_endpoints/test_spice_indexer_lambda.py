@@ -1,9 +1,10 @@
 """Tests for the SPICE indexer lambda."""
 
+import json
 import os
 from datetime import datetime
 
-from sds_data_manager.lambda_code.SDSCode.database import models
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
 
 
@@ -91,23 +92,31 @@ def test_s3_spice_files(session, s3_client, events_client):
     assert os.path.exists(temp_path + "/ck/imap_2025_118_2025_120_001.ah.bc")
 
     # Verify that the database was populated appropriately
-    result = (
-        session.query(models.SPICEFiles)
-        .filter_by(file_name="imap_2025_118_2025_120_001.ah.bc")
-        .one()
+    # NOTE: This is also testing the spice_query_api, to help ensure compatibility
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"type": "attitude_history"}}, None
     )
-    assert result.kernel_type == "attitude_history"
-    assert result.version == 1
-    assert len(result.file_intervals_datetime) == 2  # 1 significant gap detected
-
-    result = session.query(models.SPICEFiles).filter_by(file_name="naif0012.tls").one()
-    assert result.kernel_type == "leapseconds"
-    assert result.version == 12
-    assert len(result.file_intervals_datetime) == 1  # Default time range
-
-    result = (
-        session.query(models.SPICEFiles).filter_by(file_name="imap_sclk_0012.tsc").one()
+    result = json.loads(result["body"])
+    assert len(result) == 1
+    assert result[0]["kernel_type"] == "attitude_history"
+    assert result[0]["version"] == 1
+    assert len(result[0]["file_intervals_datetime"]) == 2  # 1 significant gap detected
+    print(result)
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"type": "leapseconds"}}, None
     )
-    assert result.kernel_type == "spacecraft_clock"
-    assert result.version == 12
-    assert len(result.file_intervals_datetime) == 1  # Default time range
+    result = json.loads(result["body"])
+    assert len(result) == 1
+    assert result[0]["kernel_type"] == "leapseconds"
+    assert result[0]["version"] == 12
+    assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
+    print(result)
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"type": "spacecraft_clock"}}, None
+    )
+    result = json.loads(result["body"])
+    assert len(result) == 1
+    assert result[0]["kernel_type"] == "spacecraft_clock"
+    assert result[0]["version"] == 12
+    assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
+    print(result)
