@@ -1,5 +1,6 @@
 """Tests for the SPICE indexer lambda."""
 
+import json
 import os
 from datetime import datetime
 
@@ -86,8 +87,8 @@ def test_s3_spice_files(session, s3_client, events_client):
     # Insert spacecraft clock spice kernel
     clock_kernel_event = put_local_file_in_bucket(
         s3_client,
-        "imap/spice/sclk/imapsclk_0012.tsc",
-        os.path.join(test_spice_data_dir, "imapsclk_0012.tsc"),
+        "spice/sclk/imap_sclk_0012.tsc",
+        os.path.join(test_spice_data_dir, "imap_sclk_0012.tsc"),
     )
     spice_indexer.lambda_handler(clock_kernel_event, None)
 
@@ -109,33 +110,40 @@ def test_s3_spice_files(session, s3_client, events_client):
 
     # Verify that the file was moved to the temp_path directory
     assert os.path.exists(temp_path + "/lsk/naif0012.tls")
-    assert os.path.exists(temp_path + "/sclk/imapsclk_0012.tsc")
+    assert os.path.exists(temp_path + "/sclk/imap_sclk_0012.tsc")
     assert os.path.exists(temp_path + "/ck/imap_2025_118_2025_120_001.ah.bc")
     assert os.path.exists(temp_path + "/mk/imap_2025_v001.tm")
     assert os.path.exists(temp_path + "/mk/imap_2025_v002.tm")
 
     # Verify that the database was populated appropriately
-    result = (
-        session.query(models.SPICEFiles)
-        .filter_by(file_name="imap_2025_118_2025_120_001.ah.bc")
-        .one()
+    # NOTE: This is also testing the spice_query_api, to help ensure compatibility
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"type": "attitude_history"}}, None
     )
-    assert result.kernel_type == "attitude_history"
-    assert result.version == 1
-    assert len(result.file_intervals_datetime) == 2  # 1 significant gap detected
-
-    result = session.query(models.SPICEFiles).filter_by(file_name="naif0012.tls").one()
-    assert result.kernel_type == "leapseconds"
-    assert result.version == 12
-    assert len(result.file_intervals_datetime) == 1  # Default time range
-
-    result = (
-        session.query(models.SPICEFiles).filter_by(file_name="imapsclk_0012.tsc").one()
+    result = json.loads(result["body"])
+    assert len(result) == 1
+    assert result[0]["kernel_type"] == "attitude_history"
+    assert result[0]["version"] == 1
+    assert len(result[0]["file_intervals_datetime"]) == 2  # 1 significant gap detected
+    print(result)
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"type": "leapseconds"}}, None
     )
-    assert result.kernel_type == "spacecraft_clock"
-    assert result.version == 12
-    assert len(result.file_intervals_datetime) == 1  # Default time range
-
+    result = json.loads(result["body"])
+    assert len(result) == 1
+    assert result[0]["kernel_type"] == "leapseconds"
+    assert result[0]["version"] == 12
+    assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
+    print(result)
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"type": "spacecraft_clock"}}, None
+    )
+    result = json.loads(result["body"])
+    assert len(result) == 1
+    assert result[0]["kernel_type"] == "spacecraft_clock"
+    assert result[0]["version"] == 12
+    assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
+    print(result)
     result = (
         session.query(models.SPICEFiles).filter_by(file_name="imap_2025_v001.tm").one()
     )
