@@ -43,9 +43,9 @@ astropy==6.1.7 ; python_version >= "3.10" and python_version < "4" \
 cdflib==1.3.3 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:16b0d1ed7f46f6e8c6011d70cf0168d89f022778d7591771337f7b1446553b2c \
     --hash=sha256:e41a15d36b7a00e516bd21a2ccb60e4ce4f1ab2639b80d82ff42e33820800f2f
-imap-data-access==0.18.1 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:94edd7acccdb2d1eecb36b0d26be92769615e2dcd100867d998ec236b3268673 \
-    --hash=sha256:f9a54153b843158be7442321678c8df2185c52c8c9a4b15a6ebc6c0d722184eb
+imap-data-access==0.18.2 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:6f26970b2c162d8611dfa78eba9dc08bbdcec0a56828a1bc089b4525857636ad \
+    --hash=sha256:feda44b1523e3724d345d1f25fc942d8cc1b19f1a58eebd1330c0e99d63b617d
 imap-processing==0.12.0 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:3ed372c08384e54f3fd36846ea47cad9c0c7a3619bf68f65c88b1f49cd5f239e \
     --hash=sha256:9c5bd9f1f3309c43b681cfaa6f6430df9169dbd21c2b07e26919e54eaf2d4992
