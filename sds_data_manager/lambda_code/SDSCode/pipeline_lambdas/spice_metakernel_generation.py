@@ -1,15 +1,16 @@
 """Contains all functions needed to create an IMAP metakernel."""
 
+import json
 import logging
 import math
-import json
 from datetime import datetime
 from pathlib import Path
 
 import spiceypy
 from imap_data_access import SPICEFilePath
-from .metakernel import MetaKernel
+
 from ..api_lambdas import spice_query_api
+from .metakernel import MetaKernel
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -40,7 +41,15 @@ def create_imap_metakernel(year: int, spice_directory: Path) -> tuple[str, str]:
 
     # Take a look at the directory directly
     metakernel_directory = spice_directory / "mk"
-    sorted_mks = sorted([f for f in metakernel_directory.iterdir() if f.is_file()])
+    sorted_mks = sorted(
+        [
+            f
+            for f in metakernel_directory.iterdir()
+            if (f.is_file() and f.suffix == ".tm")
+        ]
+    )
+    if len(sorted_mks) > 1:
+        print(str(sorted_mks))
     if sorted_mks:
         most_recent_mk = metakernel_directory / sorted_mks[-1]
     else:
@@ -59,7 +68,7 @@ def create_imap_metakernel(year: int, spice_directory: Path) -> tuple[str, str]:
         most_recent_ver = str(1).zfill(3)
 
     # Determine file name
-    mk_filename = f"imap_{year}_v{most_recent_ver}.tm"
+    mk_filename = f"imap_sdc_metakernel_{year}_v{most_recent_ver}.tm"
 
     # Create a SPICE metakernel
     metakernel = metakernel_builder(
@@ -67,7 +76,7 @@ def create_imap_metakernel(year: int, spice_directory: Path) -> tuple[str, str]:
     )
     if metakernel is not None:
         rendered_file = metakernel.return_tm_file(base_path=spice_directory)
-        logger.info("Rendered new metakernel %s", rendered_file)
+        # logger.info("Rendered new metakernel %s", rendered_file)
     else:
         rendered_file = None
 
@@ -76,12 +85,12 @@ def create_imap_metakernel(year: int, spice_directory: Path) -> tuple[str, str]:
         with open(str(most_recent_mk)) as f:
             most_recent_mk_contents = f.read()
 
-        # Ignore the first 100 characters of the file, that contains
+        # Ignore the first 230 characters of the file, that contains
         # information about the date that the metakernel was generated
-        logger.info(f"Old file: {most_recent_mk_contents[110:]}")
-        logger.info(f"New file: {rendered_file[110:]}")
+        logger.info(f"Old file: {most_recent_mk_contents[230:]}")
+        logger.info(f"New file: {rendered_file[230:]}")
 
-        if most_recent_mk_contents[110:] == rendered_file[110:]:
+        if most_recent_mk_contents[230:] == rendered_file[230:]:
             logger.info(
                 "New SPICE file is identical to old SPICE file, continuing "
                 "without generating new Metakernel."
@@ -120,8 +129,15 @@ def metakernel_builder(start_time: datetime, end_time: datetime) -> MetaKernel:
     ]
 
     for type in static_files_load_order:
-        static_spice_file = spice_query_api.lambda_handler({"queryStringParameters": {"type": type}}, None)
-        metakernel.load_spice(static_spice_file, type, "timestamp", "file_intervals_j2000")
+        static_spice_file = spice_query_api.lambda_handler(
+            {"queryStringParameters": {"type": type, "latest": "True"}}, None
+        )
+        metakernel.load_spice(
+            json.loads(static_spice_file["body"]),
+            type,
+            "file_intervals_j2000",
+            priority_field="timestamp",
+        )
 
     for ephem_type in [
         "ephemeris_reconstructed",
@@ -132,12 +148,42 @@ def metakernel_builder(start_time: datetime, end_time: datetime) -> MetaKernel:
         "ephemeris_launch",
     ]:
         if len(metakernel.spice_gaps["spacecraft_ephemeris"]) > 0:
-            ephem_files = spice_query_api.lambda_handler({"queryStringParameters": {"start_time": start_time_j2000, "end_time":end_time_j2000, "type":ephem_type}})
-            metakernel.load_spice(json.loads(ephem_files['body']), "spacecraft_ephemeris", "timestamp", "file_intervals_j2000")
+            ephem_files = spice_query_api.lambda_handler(
+                {
+                    "queryStringParameters": {
+                        "start_time": start_time_j2000,
+                        "end_time": end_time_j2000,
+                        "type": ephem_type,
+                        "latest": "True",
+                    }
+                },
+                None,
+            )
+            metakernel.load_spice(
+                json.loads(ephem_files["body"]),
+                "spacecraft_ephemeris",
+                "file_intervals_j2000",
+                priority_field="timestamp",
+            )
 
     for attitude_type in ["attitude_history", "attitude_predict"]:
         if len(metakernel.spice_gaps["spacecraft_attitude"]) > 0:
-            attitude_files = spice_query_api.lambda_handler({"queryStringParameters": {"start_time": start_time_j2000, "end_time":end_time_j2000, "type":attitude_type}})
-            metakernel.load_spice(json.loads(attitude_files['body']), "spacecraft_attitude", "timestamp", "file_intervals_j2000")
+            attitude_files = spice_query_api.lambda_handler(
+                {
+                    "queryStringParameters": {
+                        "start_time": start_time_j2000,
+                        "end_time": end_time_j2000,
+                        "type": attitude_type,
+                        "latest": "True",
+                    }
+                },
+                None,
+            )
+            metakernel.load_spice(
+                json.loads(attitude_files["body"]),
+                "spacecraft_attitude",
+                "file_intervals_j2000",
+                priority_field="timestamp",
+            )
 
     return metakernel

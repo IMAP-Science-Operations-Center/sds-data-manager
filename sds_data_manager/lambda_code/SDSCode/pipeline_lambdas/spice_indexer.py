@@ -7,7 +7,7 @@ from pathlib import Path
 
 import boto3
 import spiceypy
-from imap_data_access import SPICEFilePath
+from imap_data_access import SPICEFilePath, upload
 from sqlalchemy.dialects.postgresql import insert
 
 from ..database import database as db
@@ -366,8 +366,6 @@ def lambda_handler(event, context):
     spice_metadata = index_spice_file(file_path)
 
     # Create a Metakernel
-    # NOTE: Will probably move it to be its own batch job
-    s3_client = boto3.client("s3")
     if spice_metadata["type"] != "metakernel":
         start_date = spice_metadata["start_date"] or minimum_mission_time
         end_date = datetime.now()
@@ -375,11 +373,7 @@ def lambda_handler(event, context):
             mk_file, rendered_file = spice_metakernel_generation.create_imap_metakernel(
                 yr, spice_mount_path
             )
-            if mk_file:
-                s3_client.put_object(
-                    Bucket=s3_bucket,
-                    Key="imap/spice/mk/" + mk_file,
-                    Body=rendered_file,
-                )
-            print(rendered_file)
+            with open(mk_file, "w") as f:
+                f.write(rendered_file)
+            upload(mk_file)
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}
