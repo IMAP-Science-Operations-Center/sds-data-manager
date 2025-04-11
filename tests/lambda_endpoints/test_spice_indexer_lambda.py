@@ -37,10 +37,6 @@ def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
             Key=path_in_s3,
             Body=f,
         )
-    return _generate_spice_event_message(path_in_s3)
-
-
-def _generate_spice_event_message(path_in_s3):
     event = {
         "detail-type": "Object Created",
         "source": "aws.s3",
@@ -57,7 +53,6 @@ def _generate_spice_event_message(path_in_s3):
     return event
 
 
-# ruff: noqa: PLR0915
 def test_s3_spice_files(session, s3_client, events_client, mocker):
     """Test s3 event.
 
@@ -68,8 +63,6 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
 
     """
     temp_path = os.getenv("EFS_SPICE_MOUNT_PATH")
-    # Make a path for the metakernel
-    os.mkdir(temp_path + "/mk")
     current_path = os.path.dirname(os.path.abspath(__file__))
     one_level_up = os.path.abspath(os.path.join(current_path, ".."))
     test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
