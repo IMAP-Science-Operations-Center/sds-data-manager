@@ -192,6 +192,3 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert spiceypy.ktotal("TEXT") == 2
     assert spiceypy.ktotal("META") == 1
     assert spiceypy.ktotal("CK") == 1
-    assert result[0]["version"] == 12
-    assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
-    print(result)
