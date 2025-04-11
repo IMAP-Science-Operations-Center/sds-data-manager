@@ -3,8 +3,9 @@
 import json
 import logging
 from pathlib import Path
-from .metakernel import MetaKernel
+
 from . import spice_query_api
+from .metakernel import MetaKernel
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -32,15 +33,17 @@ def lambda_handler(event, context):
 
     # add session, pick model like in indexer and add query to filter_as
     query_params = event["queryStringParameters"]
-    start_time = query_params['start_time']
-    end_time = query_params['end_time']
-    spice_directory = Path(query_params['spice_path'])
+    start_time = query_params["start_time"]
+    end_time = query_params["end_time"]
+    spice_directory = Path(query_params["spice_path"])
     metakernel = _metakernel_builder(start_time, end_time)
 
     # Format the response
     response = {
         "statusCode": 200,
-        "body": metakernel.return_tm_file(base_path=spice_directory),  # returns a list of tuples
+        "body": metakernel.return_tm_file(
+            base_path=spice_directory
+        ),  # returns a list of tuples
         "headers": {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",  # Allow CORS
@@ -49,9 +52,9 @@ def lambda_handler(event, context):
 
     return response
 
+
 def _metakernel_builder(start_time: int, end_time: int) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
-
     # Create the Metakernel class
     metakernel = MetaKernel(
         start_time,

@@ -4,12 +4,14 @@ import json
 import os
 from datetime import datetime
 
-import pytest
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
 import spiceypy
 
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api, spice_metakernel_api
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
+    spice_metakernel_api,
+    spice_query_api,
+)
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
+
 
 def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
     """Put the a local file into a test bucket, and return a mock event notification.
@@ -65,7 +67,6 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     The files are located in the "test_spice_files" directory.
 
     """
-
     temp_path = os.getenv("EFS_SPICE_MOUNT_PATH")
     # Make a path for the metakernel
     os.mkdir(temp_path + "/mk")
@@ -76,7 +77,7 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     # Insert leapsecond spice kernel
     leapsecond_event = put_local_file_in_bucket(
         s3_client,
-        "imap/spice/lsk/naif0012.tls",
+        "spice/lsk/naif0012.tls",
         os.path.join(test_spice_data_dir, "naif0012.tls"),
     )
     spice_indexer.lambda_handler(leapsecond_event, None)
@@ -92,11 +93,10 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     # Insert a new attitude kernel
     attitude_kernel_event = put_local_file_in_bucket(
         s3_client,
-        "imap/spice/ck/imap_2025_118_2025_120_001.ah.bc",
+        "spice/ck/imap_2025_118_2025_120_001.ah.bc",
         os.path.join(test_spice_data_dir, "imap_2025_118_2025_120_001.ah.bc"),
     )
     spice_indexer.lambda_handler(attitude_kernel_event, None)
-
 
     # Verify that the file was moved to the temp_path directory
     assert os.path.exists(temp_path + "/lsk/naif0012.tls")
@@ -113,7 +113,7 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert result[0]["kernel_type"] == "attitude_history"
     assert result[0]["version"] == 1
     assert len(result[0]["file_intervals_datetime"]) == 2  # 1 significant gap detected
-
+    print(result)
     result = spice_query_api.lambda_handler(
         {"queryStringParameters": {"type": "leapseconds"}}, None
     )
@@ -122,7 +122,7 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert result[0]["kernel_type"] == "leapseconds"
     assert result[0]["version"] == 12
     assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
-
+    print(result)
     result = spice_query_api.lambda_handler(
         {"queryStringParameters": {"type": "spacecraft_clock"}}, None
     )
@@ -131,18 +131,26 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert result[0]["kernel_type"] == "spacecraft_clock"
     assert result[0]["version"] == 12
     assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
+    print(result)
 
     # Checking metakernel API here as well!
     result = spice_metakernel_api.lambda_handler(
-        {"queryStringParameters": {"start_time": 0, "end_time": 1000000000, 'spice_path':temp_path}}, None
+        {
+            "queryStringParameters": {
+                "start_time": 0,
+                "end_time": 1000000000,
+                "spice_path": temp_path,
+            }
+        },
+        None,
     )
 
     # Ensure that the metakernels are actually valid by loading them in
-    with open(temp_path+"/metakernel.tm", 'w') as f:
-        f.write(result['body'])
+    with open(temp_path + "/metakernel.tm", "w") as f:
+        f.write(result["body"])
     spiceypy.kclear()
     assert spiceypy.ktotal("ALL") == 0
-    spiceypy.furnsh(temp_path+"/metakernel.tm")
-    assert spiceypy.ktotal("TEXT") == 2 # LSK and SCLK kernels
-    assert spiceypy.ktotal("META") == 1 # One Metakernel
-    assert spiceypy.ktotal("CK") == 1 # One CK file 
+    spiceypy.furnsh(temp_path + "/metakernel.tm")
+    assert spiceypy.ktotal("TEXT") == 2  # LSK and SCLK kernels
+    assert spiceypy.ktotal("META") == 1  # One Metakernel
+    assert spiceypy.ktotal("CK") == 1  # One CK file
