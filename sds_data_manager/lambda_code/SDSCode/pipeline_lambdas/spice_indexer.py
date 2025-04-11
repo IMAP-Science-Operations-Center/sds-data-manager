@@ -261,7 +261,6 @@ def index_spice_file(spice_file: Path):
         latest_lsk,
         latest_sclk,
     )
-    return spice_metadata
 
 
 def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Path:

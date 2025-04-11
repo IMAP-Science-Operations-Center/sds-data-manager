@@ -61,7 +61,6 @@ SQLAlchemy = "<=3.0.0"
 # Example to create requirements.txt for lambda layers:
 # poetry export -f requirements.txt --with layer-database -o
 # lambda_layer/database/requirements.txt --without-urls
-pytest-mock = "^3.14.0"
 [tool.poetry.group.layer-database]
 optional = true
 
