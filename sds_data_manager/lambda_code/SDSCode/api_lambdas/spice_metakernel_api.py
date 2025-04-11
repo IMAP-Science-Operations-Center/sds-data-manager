@@ -36,14 +36,18 @@ def lambda_handler(event, context):
     start_time = query_params["start_time"]
     end_time = query_params["end_time"]
     spice_directory = Path(query_params["spice_path"])
+    list_files = query_params["list_files"]
     metakernel = _metakernel_builder(start_time, end_time)
+
+    if list_files.lower() == 'true':
+        output = json.dumps(metakernel.return_spice_files_in_order_detailed())
+    else:
+        output = metakernel.return_tm_file(base_path=spice_directory)
 
     # Format the response
     response = {
         "statusCode": 200,
-        "body": metakernel.return_tm_file(
-            base_path=spice_directory
-        ),  # returns a list of tuples
+        "body": output,
         "headers": {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",  # Allow CORS

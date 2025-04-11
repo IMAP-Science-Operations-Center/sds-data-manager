@@ -122,6 +122,8 @@ class MetaKernel:
                     gap, files, spice_files_to_load, file_intervals_field
                 )
             )
+        if priority_field:
+            spice_files_to_load.sort(key=lambda x: x[priority_field], reverse=True)
         self.spice_files[type].extend(spice_files_to_load)
         self._remove_duplicates_from_sorted_file_list(type)
         self.spice_gaps[type] = gaps_remaining
@@ -189,7 +191,7 @@ class MetaKernel:
             files from
         """
         indicies_to_delete = []
-        file_list = self.spice_files[type]
+        file_list = self.spice_files[type].copy()
         for i in range(0, len(file_list)):
             if i in indicies_to_delete:
                 continue
@@ -242,7 +244,7 @@ class MetaKernel:
         return_gap_list: list[list[int, int]]
             A list of gaps that still remain uncovered
         """
-        trange = [float(trange[0]), float(trange[1])]
+        trange = [int(trange[0]), int(trange[1])]
         if (trange[1] - trange[0]) < self.minimum_gap_time_to_ignore:
             # Don't even bother if the gap is too small
             return []
@@ -268,6 +270,7 @@ class MetaKernel:
             trange[0],
             trange[1],
         )
+
         if (
             len(gap_list) == 1
             and gap_list[0][0] == trange[0]
@@ -312,17 +315,16 @@ class MetaKernel:
         new_file_list = files_to_check.copy()
         new_file_list.pop()
         return_gap_list = []
-
         # If any more gaps remain, call this function again!
+
         for g in gap_list:
             return_gap_list.extend(
                 self._find_best_files(
                     g, new_file_list, files_to_load, file_intervals_field
                 )
             )
-
         return return_gap_list
-
+    
     @staticmethod
     def _calculate_gaps(file_intervals, gap_start, gap_end):
         """Caclulate the gaps based on file_gaps.
@@ -342,38 +344,44 @@ class MetaKernel:
             The gaps definitely not covered by this file.
         """
         sub_gaps = []
+        
         for i in range(0, len(file_intervals)):
-            interval_start = file_intervals[i][0]
-            interval_end = file_intervals[i][1]
+            file_interval_start = file_intervals[i][0]
+            file_interval_end = file_intervals[i][1]
             if i == 0:
-                gap_start = max(gap_start, file_intervals[0][0])
+                gap_interval_start = gap_start
             else:
-                gap_start = file_intervals[i - 1][1]
+                gap_interval_start = file_intervals[i - 1][1]
             if i == len(file_intervals) - 1:
-                gap_end = min(gap_end, file_intervals[-1][1])
+                gap_interval_end = gap_end
             else:
-                gap_end = file_intervals[i][1]
+                gap_interval_end = file_intervals[i][1]
 
-            if interval_start <= gap_start and interval_end >= gap_end:
+            if file_interval_start <= gap_start and file_interval_end >= gap_end:
+                return []
+            elif file_interval_start <= gap_interval_start and file_interval_end >= gap_interval_end:
                 #      <------- gap range ------------>
                 # <---------interval coverage ------------------>
-                return []
-            elif interval_start >= gap_start and interval_end <= gap_end:
+                pass # No gaps to fill in here!
+            elif file_interval_start >= gap_interval_start and file_interval_end <= gap_interval_end:
                 # <----------- gap range ----------------->
                 #     <-----interval coverage ------>
-                sub_gaps.extend([[gap_start, interval_start], [interval_end, gap_end]])
-            elif interval_start >= gap_start and interval_start < gap_end:
+                if gap_interval_start != file_interval_start:
+                    sub_gaps.extend([[gap_interval_start, file_interval_start]])
+                if file_interval_end != gap_interval_end:
+                    sub_gaps.extend([[file_interval_end, gap_interval_end]])
+            elif file_interval_start >= gap_interval_start and file_interval_start < gap_interval_end:
                 # <------- gap range ------------>
                 #             <---------interval coverage ------------------>
-                sub_gaps.extend([[gap_start, interval_start]])
-            elif interval_end > gap_start and interval_end <= gap_end:
+                sub_gaps.extend([[gap_interval_start, file_interval_start]])
+            elif file_interval_end > gap_interval_start and file_interval_end <= gap_interval_end:
                 #      <------- gap range ------------>
                 # <---------interval coverage ------>
-                sub_gaps.extend([[interval_end, gap_end]])
+                sub_gaps.extend([[file_interval_end, gap_interval_end]])
             else:
                 # <----- gap range ---------->
                 #                              <-----interval coverage ------>
-                sub_gaps.extend([[gap_start, gap_end]])
+                sub_gaps.extend([[gap_interval_start, gap_interval_end]])
 
         return sub_gaps
 
