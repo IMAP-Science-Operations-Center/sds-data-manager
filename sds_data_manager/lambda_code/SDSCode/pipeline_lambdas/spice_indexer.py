@@ -7,12 +7,11 @@ from pathlib import Path
 
 import boto3
 import spiceypy
-from imap_data_access import SPICEFilePath, upload
+from imap_data_access import SPICEFilePath
 from sqlalchemy.dialects.postgresql import insert
 
 from ..database import database as db
 from ..database import models
-from . import spice_metakernel_generation
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -363,17 +362,6 @@ def lambda_handler(event, context):
     logger.info(event)
 
     file_path = write_data_to_efs(s3_key, s3_bucket, spice_mount_path)
-    spice_metadata = index_spice_file(file_path)
+    index_spice_file(file_path)
 
-    # Create a Metakernel
-    if spice_metadata["type"] != "metakernel":
-        start_date = spice_metadata["start_date"] or minimum_mission_time
-        end_date = datetime.now()
-        for yr in range(start_date.year, end_date.year + 1):
-            mk_file, rendered_file = spice_metakernel_generation.create_imap_metakernel(
-                yr, spice_mount_path
-            )
-            with open(mk_file, "w") as f:
-                f.write(rendered_file)
-            upload(mk_file)
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}

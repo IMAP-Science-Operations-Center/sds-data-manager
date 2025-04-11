@@ -8,9 +8,8 @@ import pytest
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
 import spiceypy
 
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api, spice_metakernel_api
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
-
 
 def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
     """Put the a local file into a test bucket, and return a mock event notification.
@@ -67,21 +66,6 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
 
     """
 
-    # Patch the upload function for the metakernel generation
-    def mock_upload(metakernel_file):
-        mk_file = os.path.basename(metakernel_file)
-        with open(metakernel_file) as file:
-            content = file.read()
-        s3_client.put_object(
-            Bucket=os.getenv("S3_BUCKET"), Key="imap/spice/mk/" + mk_file, Body=content
-        )
-        os.remove(metakernel_file)
-
-    mocker.patch(
-        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.upload",
-        side_effect=mock_upload,
-    )
-
     temp_path = os.getenv("EFS_SPICE_MOUNT_PATH")
     # Make a path for the metakernel
     os.mkdir(temp_path + "/mk")
@@ -97,13 +81,6 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     )
     spice_indexer.lambda_handler(leapsecond_event, None)
 
-    # A metakernel should be attempted to made, but we have no sclk yet
-    mk_event = _generate_spice_event_message(
-        "imap/spice/mk/imap_sdc_metakernel_2025_v001.tm"
-    )
-    with pytest.raises(FileNotFoundError):
-        spice_indexer.lambda_handler(mk_event, None)
-
     # Insert spacecraft clock spice kernel
     clock_kernel_event = put_local_file_in_bucket(
         s3_client,
@@ -111,12 +88,6 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
         os.path.join(test_spice_data_dir, "imap_sclk_0012.tsc"),
     )
     spice_indexer.lambda_handler(clock_kernel_event, None)
-
-    # Now we can handle the generated bare-bones metakernel
-    mk_event = _generate_spice_event_message(
-        "imap/spice/mk/imap_sdc_metakernel_2025_v001.tm"
-    )
-    spice_indexer.lambda_handler(mk_event, None)
 
     # Insert a new attitude kernel
     attitude_kernel_event = put_local_file_in_bucket(
@@ -126,18 +97,11 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     )
     spice_indexer.lambda_handler(attitude_kernel_event, None)
 
-    # We should have generated a new version 2 of the metakernel
-    mk_event = _generate_spice_event_message(
-        "imap/spice/mk/imap_sdc_metakernel_2025_v002.tm"
-    )
-    spice_indexer.lambda_handler(mk_event, None)
 
     # Verify that the file was moved to the temp_path directory
     assert os.path.exists(temp_path + "/lsk/naif0012.tls")
     assert os.path.exists(temp_path + "/sclk/imap_sclk_0012.tsc")
     assert os.path.exists(temp_path + "/ck/imap_2025_118_2025_120_001.ah.bc")
-    assert os.path.exists(temp_path + "/mk/imap_sdc_metakernel_2025_v001.tm")
-    assert os.path.exists(temp_path + "/mk/imap_sdc_metakernel_2025_v002.tm")
 
     # Verify that the database was populated appropriately
     # NOTE: This is also testing the spice_query_api, to help ensure compatibility
@@ -149,7 +113,7 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert result[0]["kernel_type"] == "attitude_history"
     assert result[0]["version"] == 1
     assert len(result[0]["file_intervals_datetime"]) == 2  # 1 significant gap detected
-    print(result)
+
     result = spice_query_api.lambda_handler(
         {"queryStringParameters": {"type": "leapseconds"}}, None
     )
@@ -158,7 +122,7 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert result[0]["kernel_type"] == "leapseconds"
     assert result[0]["version"] == 12
     assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
-    print(result)
+
     result = spice_query_api.lambda_handler(
         {"queryStringParameters": {"type": "spacecraft_clock"}}, None
     )
@@ -167,28 +131,18 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert result[0]["kernel_type"] == "spacecraft_clock"
     assert result[0]["version"] == 12
     assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
-    print(result)
-    result = spice_query_api.lambda_handler(
-        {"queryStringParameters": {"file_name": "imap_sdc_metakernel_2025_v001.tm"}},
-        None,
+
+    # Checking metakernel API here as well!
+    result = spice_metakernel_api.lambda_handler(
+        {"queryStringParameters": {"start_time": 0, "end_time": 1000000000, 'spice_path':temp_path}}, None
     )
-    result = json.loads(result["body"])
-    assert result[0]["kernel_type"] == "metakernel"
-    assert result[0]["version"] == 1
-    assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
-    result = spice_query_api.lambda_handler(
-        {"queryStringParameters": {"file_name": "imap_sdc_metakernel_2025_v002.tm"}},
-        None,
-    )
-    result = json.loads(result["body"])
-    assert result[0]["kernel_type"] == "metakernel"
-    assert result[0]["version"] == 2
-    assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
 
     # Ensure that the metakernels are actually valid by loading them in
+    with open(temp_path+"/metakernel.tm", 'w') as f:
+        f.write(result['body'])
     spiceypy.kclear()
     assert spiceypy.ktotal("ALL") == 0
-    spiceypy.furnsh(temp_path + "/mk/imap_sdc_metakernel_2025_v002.tm")
-    assert spiceypy.ktotal("TEXT") == 2
-    assert spiceypy.ktotal("META") == 1
-    assert spiceypy.ktotal("CK") == 1
+    spiceypy.furnsh(temp_path+"/metakernel.tm")
+    assert spiceypy.ktotal("TEXT") == 2 # LSK and SCLK kernels
+    assert spiceypy.ktotal("META") == 1 # One Metakernel
+    assert spiceypy.ktotal("CK") == 1 # One CK file 
