@@ -53,7 +53,7 @@ def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
     return event
 
 
-def test_s3_spice_files(session, s3_client, events_client, mocker):
+def test_s3_spice_files(session, s3_client, events_client):
     """Test s3 event.
 
     The following test mimics a leapsecond kernel being placed on the SDS,
