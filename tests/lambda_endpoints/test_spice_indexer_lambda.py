@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 
 import pytest
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
 import spiceypy
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
@@ -167,7 +168,6 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert result[0]["version"] == 12
     assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
     print(result)
-
     result = spice_query_api.lambda_handler(
         {"queryStringParameters": {"file_name": "imap_sdc_metakernel_2025_v001.tm"}},
         None,
@@ -176,7 +176,6 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert result[0]["kernel_type"] == "metakernel"
     assert result[0]["version"] == 1
     assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
-
     result = spice_query_api.lambda_handler(
         {"queryStringParameters": {"file_name": "imap_sdc_metakernel_2025_v002.tm"}},
         None,
@@ -193,3 +192,6 @@ def test_s3_spice_files(session, s3_client, events_client, mocker):
     assert spiceypy.ktotal("TEXT") == 2
     assert spiceypy.ktotal("META") == 1
     assert spiceypy.ktotal("CK") == 1
+    assert result[0]["version"] == 12
+    assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
+    print(result)

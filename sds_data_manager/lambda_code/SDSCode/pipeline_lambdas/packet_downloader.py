@@ -12,8 +12,9 @@ S3_CLIENT = boto3.client("s3")
 SECRETS_MANAGER = boto3.client("secretsmanager")
 
 # Logger setup
+# Set default logging level to INFO, to also capture INFO for the underlying downloaders
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def get_two_most_recent_contact_times(bucket):
