@@ -49,6 +49,7 @@ hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1a, 90sensor-de, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
 hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 
+hi, l2, 90sensor-spacecraft-full-4deg-map, hi, l3, 90sensor-spacecraft-survival-full-4deg-map, HARD, DOWNSTREAM
 hi, l2, 90sensor-spacecraft-full-6deg-map, hi, l3, 90sensor-spacecraft-survival-full-6deg-map, HARD, DOWNSTREAM
 
 # <---- HIT Dependencies ---->
