@@ -10,8 +10,6 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 def _irrelevent_data():
     '''The metakernel code should not be looking into any of these fields.'''
     irrelevent_data = {
-        "min_date_j2000": 0,
-        "max_date_j2000": 0,
         "min_date_datetime": datetime.now(),
         "max_date_datetime": datetime.now(),
         "file_intervals_datetime": [["0", "0"]],
@@ -32,6 +30,8 @@ def _insert_test_file(session, filename, intervals, upload_time=0):
         "kernel_type": spice_object.spice_metadata['type'],
         "version": version,
         "file_intervals_j2000": intervals,
+        "min_date_j2000": intervals[0][0],
+        "max_date_j2000": intervals[-1][1],
         "ingestion_date": datetime.now()+timedelta(upload_time),
     } | _irrelevent_data()
     session.add(models.SPICEFiles(**metadata_params))
@@ -82,17 +82,19 @@ def _insert_test_data(session):
                       upload_time=2)
 
     # This file should NOT be loaded, because the file just
-    # before this one has a higher version number
+    # before this one has a higher version number. Even
+    # though this file was uploaded at a later date, version
+    # always takes precidence. 
     _insert_test_file(session,
                       "imap_1000_065_1000_090_001.ap.bc",
                       [[65,90]],
-                      upload_time=10)
+                      upload_time=11)
     
     # This file should be loaded, because there has been no
     # data for time=0 so far
     _insert_test_file(session,
                       "imap_1000_001_1000_300_003.ap.bc",
-                      [[0,300]],
+                      [[1,300]],
                       upload_time=1)
 
 def test_metakernel(session):
@@ -101,7 +103,7 @@ def test_metakernel(session):
     result = spice_metakernel_api.lambda_handler(
         {
             "queryStringParameters": {
-                "start_time": 0,
+                "start_time": 1,
                 "end_time": 100,
                 "spice_path": '',
                 "list_files": 'True'
@@ -110,14 +112,53 @@ def test_metakernel(session):
         None,
     )
 
-    # This SPICE metakernel should have found the following files:
-    # 1) imap_1000_001_1000_100_002.ah.bc - the best file to load in because 
-    #    it is a history file with a large amount of coverage in the interval
-    # 2) imap_1000_001_1000_003_003.ap.bc -
+    '''
+    This SPICE metakernel should have found the following files:
+     
+    1) imap_1000_001_1000_100_002.ah.bc - the best file to load in, because 
+        it is a history file with a large amount of coverage in the interval
+    
+    There are now gaps between 50-55 and 65-75
 
+    2) imap_1000_060_1000_070_003.ap.bc - The next best file to load in.
+        It was uploaded recently, and covers 65-70.
+
+    There are now gaps between 50-55 and 70-75
+
+    3) imap_1000_065_1000_090_003.ap.bc - This file covers the 70-75 gap
+        that remains. 
+    
+    There are now gaps between 50-55
+
+    4) imap_1000_001_1000_300_003.ap.bc - This file covers everything 
+        in the time range, but it was uploaded very early in the mission,
+        so it gets chose to plug in the remaining gaps in the time range
+    
+    Ther are now no gaps remaining. 
+    '''
 
     result_list = json.loads(result['body'])
     for x in result_list:
         print(x['file_name'])
 
     
+
+    '''
+    If someone focuses the metakernel on a more specific time range, it should go straight
+    to the appropriate file. 
+    '''
+    print("******************")
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 53,
+                "end_time": 54,
+                "spice_path": '',
+                "list_files": 'True'
+            }
+        },
+        None,
+    )
+    result_list = json.loads(result['body'])
+    for x in result_list:
+        print(x['file_name'])

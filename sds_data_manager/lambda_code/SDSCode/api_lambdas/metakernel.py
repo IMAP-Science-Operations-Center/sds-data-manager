@@ -291,12 +291,13 @@ class MetaKernel:
             )
             if (
                 len(subgap_list) == 1
-                and subgap_list[0][0] == trange[0]
-                and subgap_list[0][1] == trange[1]
+                and subgap_list[0][0] <= trange[0]
+                and subgap_list[0][1] >= trange[1]
             ):
                 logger.info(
                     "File did not cover time range, not adding to metakernal list."
                 )
+                gap_list.extend(subgap_list)
             elif not subgap_list:
                 logger.info(
                     "File was valid, and no further gaps were found. "
@@ -344,44 +345,47 @@ class MetaKernel:
             The gaps definitely not covered by this file.
         """
         sub_gaps = []
-        
         for i in range(0, len(file_intervals)):
             file_interval_start = file_intervals[i][0]
             file_interval_end = file_intervals[i][1]
             if i == 0:
-                gap_interval_start = gap_start
+                search_interval_start = gap_start
             else:
-                gap_interval_start = file_intervals[i - 1][1]
+                search_interval_start = file_intervals[i - 1][1]
             if i == len(file_intervals) - 1:
-                gap_interval_end = gap_end
+                search_interval_end = gap_end
             else:
-                gap_interval_end = file_intervals[i][1]
-
+                search_interval_end = file_intervals[i][1]
+            
+            if search_interval_start>=search_interval_end or search_interval_end<=search_interval_start:
+                # This means we're out of the range of the file we care about
+                continue
             if file_interval_start <= gap_start and file_interval_end >= gap_end:
+                # We have eveything completely covered by one of the file intervals
                 return []
-            elif file_interval_start <= gap_interval_start and file_interval_end >= gap_interval_end:
+            elif file_interval_start <= search_interval_start and file_interval_end >= search_interval_end:
                 #      <------- gap range ------------>
                 # <---------interval coverage ------------------>
-                pass # No gaps to fill in here!
-            elif file_interval_start >= gap_interval_start and file_interval_end <= gap_interval_end:
+                continue # No gaps to fill in here!
+            elif file_interval_start >= search_interval_start and file_interval_end <= search_interval_end:
                 # <----------- gap range ----------------->
                 #     <-----interval coverage ------>
-                if gap_interval_start != file_interval_start:
-                    sub_gaps.extend([[gap_interval_start, file_interval_start]])
-                if file_interval_end != gap_interval_end:
-                    sub_gaps.extend([[file_interval_end, gap_interval_end]])
-            elif file_interval_start >= gap_interval_start and file_interval_start < gap_interval_end:
+                if search_interval_start != file_interval_start:
+                    sub_gaps.extend([[search_interval_start, file_interval_start]])
+                if file_interval_end != search_interval_end:
+                    sub_gaps.extend([[file_interval_end, search_interval_end]])
+            elif file_interval_start >= search_interval_start and file_interval_start < search_interval_end:
                 # <------- gap range ------------>
                 #             <---------interval coverage ------------------>
-                sub_gaps.extend([[gap_interval_start, file_interval_start]])
-            elif file_interval_end > gap_interval_start and file_interval_end <= gap_interval_end:
+                sub_gaps.extend([[search_interval_start, file_interval_start]])
+            elif file_interval_end > search_interval_start and file_interval_end <= search_interval_end:
                 #      <------- gap range ------------>
                 # <---------interval coverage ------>
-                sub_gaps.extend([[file_interval_end, gap_interval_end]])
+                sub_gaps.extend([[file_interval_end, search_interval_end]])
             else:
                 # <----- gap range ---------->
                 #                              <-----interval coverage ------>
-                sub_gaps.extend([[gap_interval_start, gap_interval_end]])
+                sub_gaps.extend([[search_interval_start, search_interval_end]])
 
         return sub_gaps
 
