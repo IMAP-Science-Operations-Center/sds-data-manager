@@ -1,7 +1,7 @@
 """Tests for the indexer lambda."""
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from imap_data_access import ScienceFilePath
@@ -48,6 +48,7 @@ def test_batch_job_event(session, events_client):
             ),
             "status": "FAILED",
             "statusReason": "some error message",
+            "stoppedAt": 1744397296519,
             "jobDefinition": (
                 "arn:aws:batch:us-west-2:012345678910:"
                 "job-definition/fargate-batch-job-definitionswe:1"
@@ -98,6 +99,14 @@ def test_batch_job_event(session, events_client):
     processing_job = session.execute(query).first()
     assert processing_job.id == job_id
     assert processing_job.status == models.Status.FAILED
+    # Processing time should be 2025-04-11 18:48:16.519000+00:00.
+    # Had to do replace timezone info to be None because test's db
+    # looses timezone info. This shouldn't happen in production.
+    expected_date = datetime.fromtimestamp(
+        event["detail"]["stoppedAt"] / 1000, tz=timezone.utc
+    ).replace(tzinfo=None)
+
+    assert processing_job.processing_time == expected_date
 
     # Test for succeeded case
     event["detail"]["status"] = "SUCCEEDED"

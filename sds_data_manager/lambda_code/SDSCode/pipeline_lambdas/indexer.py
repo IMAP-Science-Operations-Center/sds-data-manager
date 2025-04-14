@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 from imap_data_access import AncillaryFilePath, ScienceFilePath
@@ -246,6 +246,7 @@ def batch_event_handler(event):
     event = {
         "detail-type": "Batch Job State Change",
         "source": "aws.batch",
+        "time": "2025-04-11T18:48:16Z",
         "detail": {
             "jobArn": (
                 "arn:aws:batch:us-west-2:012345678910:"
@@ -259,6 +260,9 @@ def batch_event_handler(event):
             ),
             "status": "FAILED",
             "statusReason": "some error message",
+            "createdAt": 1744396985534,
+            "startedAt": 1744397031734,
+            "stoppedAt": 1744397296519,
             "jobDefinition": (
                 "arn:aws:batch:us-west-2:012345678910:"
                 "job-definition/fargate-batch-job-definitionswe:1"
@@ -307,6 +311,12 @@ def batch_event_handler(event):
     # We injected our table ID into the job name
     job_id = event["detail"]["jobName"].split("-")[-1]
 
+    # Convert stoppedAt to datetime with timezone
+    stopped_at_timestamp = event["detail"]["stoppedAt"]
+    processing_time = datetime.fromtimestamp(
+        stopped_at_timestamp / 1000, tz=timezone.utc
+    )
+
     with db.Session() as session:
         # Get the batch job by its ID
         job = session.get(models.ProcessingJob, job_id)
@@ -316,6 +326,7 @@ def batch_event_handler(event):
         job.job_log_stream_id = event["detail"]["container"]["logStreamName"]
         job.container_image = event["detail"]["container"]["image"]
         job.container_command = " ".join(event["detail"]["container"]["command"])
+        job.processing_time = processing_time
         session.commit()
 
     return http_response(status_code=200, body="Success")
