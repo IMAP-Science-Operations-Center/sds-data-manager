@@ -39,10 +39,10 @@ class IalirtArchiveConstruct(Construct):
         super().__init__(scope, construct_id, **kwargs)
 
         # Create Lambda Function
-        ialirt_ingest_lambda = self.create_lambda_function(
+        ialirt_archive_lambda = self.create_archive_lambda(
             ialirt_bucket, algorithm_data_table
         )
-        self.create_event_rule(ialirt_bucket, ialirt_ingest_lambda)
+        self.create_event_rule(ialirt_bucket, ialirt_archive_lambda)
 
     def create_archive_lambda(
         self,
@@ -63,17 +63,6 @@ class IalirtArchiveConstruct(Construct):
                 ),
             ],
         )
-        lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "s3:PutObject",
-                ],
-                resources=[
-                    algorithm_data_table.table_arn,
-                    f"{ialirt_bucket.bucket_arn}/*",
-                ],
-            )
-        )
 
         # Lambda function
         ialirt_archive_lambda = lambda_.DockerImageFunction(
@@ -93,6 +82,7 @@ class IalirtArchiveConstruct(Construct):
         )
 
         algorithm_data_table.grant_read_write_data(ialirt_archive_lambda)
+        ialirt_bucket.grant_put(ialirt_archive_lambda)
 
         # The resource is deleted when the stack is deleted.
         ialirt_archive_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
@@ -100,7 +90,7 @@ class IalirtArchiveConstruct(Construct):
         return ialirt_archive_lambda
 
     def create_event_rule(
-        self,
+        self, ialirt_archive_lambda: lambda_.DockerImageFunction
     ) -> None:
         """Create the event rule to trigger Lambda on S3 object creation."""
         # Scheduled rule - daily at 00:00 UTC
@@ -109,4 +99,4 @@ class IalirtArchiveConstruct(Construct):
             "IalirtDailyQueryRule",
             schedule=events.Schedule.cron(minute="0", hour="0"),
         )
-        rule.add_target(targets.LambdaFunction(self.query_lambda))
+        rule.add_target(targets.LambdaFunction(ialirt_archive_lambda))
