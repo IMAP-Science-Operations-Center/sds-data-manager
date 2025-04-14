@@ -312,8 +312,8 @@ def batch_event_handler(event):
     job_id = event["detail"]["jobName"].split("-")[-1]
 
     # Convert startAt and stoppedAt to datetime with timezone
-    start_at_timestamp = event["detail"]["startedAt"]
-    start_at = datetime.fromtimestamp(start_at_timestamp / 1000, tz=timezone.utc)
+    started_at_timestamp = event["detail"]["startedAt"]
+    started_at = datetime.fromtimestamp(started_at_timestamp / 1000, tz=timezone.utc)
     stopped_at_timestamp = event["detail"]["stoppedAt"]
     stopped_at = datetime.fromtimestamp(stopped_at_timestamp / 1000, tz=timezone.utc)
 
@@ -326,7 +326,7 @@ def batch_event_handler(event):
         job.job_log_stream_id = event["detail"]["container"]["logStreamName"]
         job.container_image = event["detail"]["container"]["image"]
         job.container_command = " ".join(event["detail"]["container"]["command"])
-        job.start_at = start_at
+        job.started_at = started_at
         job.stopped_at = stopped_at
         session.commit()
 
