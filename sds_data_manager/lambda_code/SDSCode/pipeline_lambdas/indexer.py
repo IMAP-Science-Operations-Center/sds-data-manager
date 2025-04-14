@@ -311,11 +311,11 @@ def batch_event_handler(event):
     # We injected our table ID into the job name
     job_id = event["detail"]["jobName"].split("-")[-1]
 
-    # Convert stoppedAt to datetime with timezone
+    # Convert startAt and stoppedAt to datetime with timezone
+    start_at_timestamp = event["detail"]["startedAt"]
+    start_at = datetime.fromtimestamp(start_at_timestamp / 1000, tz=timezone.utc)
     stopped_at_timestamp = event["detail"]["stoppedAt"]
-    processing_time = datetime.fromtimestamp(
-        stopped_at_timestamp / 1000, tz=timezone.utc
-    )
+    stopped_at = datetime.fromtimestamp(stopped_at_timestamp / 1000, tz=timezone.utc)
 
     with db.Session() as session:
         # Get the batch job by its ID
@@ -326,7 +326,8 @@ def batch_event_handler(event):
         job.job_log_stream_id = event["detail"]["container"]["logStreamName"]
         job.container_image = event["detail"]["container"]["image"]
         job.container_command = " ".join(event["detail"]["container"]["command"])
-        job.processing_time = processing_time
+        job.start_at = start_at
+        job.stopped_at = stopped_at
         session.commit()
 
     return http_response(status_code=200, body="Success")

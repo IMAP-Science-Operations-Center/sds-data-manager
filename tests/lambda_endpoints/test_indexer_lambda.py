@@ -48,6 +48,7 @@ def test_batch_job_event(session, events_client):
             ),
             "status": "FAILED",
             "statusReason": "some error message",
+            "startedAt": 1744397031734,
             "stoppedAt": 1744397296519,
             "jobDefinition": (
                 "arn:aws:batch:us-west-2:012345678910:"
@@ -102,11 +103,15 @@ def test_batch_job_event(session, events_client):
     # Processing time should be 2025-04-11 18:48:16.519000+00:00.
     # Had to do replace timezone info to be None because test's db
     # looses timezone info. This shouldn't happen in production.
-    expected_date = datetime.fromtimestamp(
+    expected_start_at = datetime.fromtimestamp(
+        event["detail"]["startedAt"] / 1000, tz=timezone.utc
+    ).replace(tzinfo=None)
+    expected_stopped_at = datetime.fromtimestamp(
         event["detail"]["stoppedAt"] / 1000, tz=timezone.utc
     ).replace(tzinfo=None)
 
-    assert processing_job.processing_time == expected_date
+    assert processing_job.start_at == expected_start_at
+    assert processing_job.stopped_at == expected_stopped_at
 
     # Test for succeeded case
     event["detail"]["status"] = "SUCCEEDED"
