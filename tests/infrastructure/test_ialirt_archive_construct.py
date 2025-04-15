@@ -1,5 +1,7 @@
 """Test the IalirtArchiveConstruct."""
 
+from pathlib import Path
+
 import pytest
 from aws_cdk import aws_dynamodb as ddb
 from aws_cdk import aws_s3 as s3
@@ -19,11 +21,17 @@ def template(stack):
         sort_key=ddb.Attribute(name="met", type=ddb.AttributeType.NUMBER),
     )
 
+    docker_dir = (
+        Path(__file__).resolve().parent.parent.parent  # up to project root
+        / "sds_data_manager/lambda_code/IAlirtCode"
+    )
+
     IalirtArchiveConstruct(
         stack,
         "IalirtArchiveConstruct",
         algorithm_data_table=algorithm_table,
         ialirt_bucket=ialirt_bucket,
+        docker_path=str(docker_dir),
     )
 
     return Template.from_stack(stack)

@@ -181,7 +181,8 @@ class IalirtIngestLambda(Construct):
             self,
             id="IalirtIngestLambda",
             code=lambda_.DockerImageCode.from_image_asset(
-                "sds_data_manager/lambda_code/IAlirtCode"
+                "sds_data_manager/lambda_code/IAlirtCode",
+                file="Dockerfile.ingest",
             ),
             function_name="ialirt-ingest",
             timeout=cdk.Duration.minutes(1),

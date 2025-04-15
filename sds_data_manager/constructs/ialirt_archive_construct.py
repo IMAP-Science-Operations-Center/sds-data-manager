@@ -18,6 +18,7 @@ class IalirtArchiveConstruct(Construct):
         construct_id: str,
         algorithm_data_table: ddb.Table,
         ialirt_bucket: aws_s3.Bucket,
+        docker_path: str = "sds_data_manager/lambda_code/IAlirtCode",
         **kwargs,
     ) -> None:
         """Create ialirt cdf.
@@ -32,6 +33,8 @@ class IalirtArchiveConstruct(Construct):
             Algorithm database table.
         ialirt_bucket : aws_s3.Bucket
             The data bucket.
+        docker_path : str
+            Path to the Dockerfile.
         kwargs : dict
             Keyword arguments.
 
@@ -40,14 +43,15 @@ class IalirtArchiveConstruct(Construct):
 
         # Create Lambda Function
         ialirt_archive_lambda = self.create_archive_lambda(
-            ialirt_bucket, algorithm_data_table
+            ialirt_bucket, algorithm_data_table, docker_path
         )
-        self.create_event_rule(ialirt_bucket, ialirt_archive_lambda)
+        self.create_event_rule(ialirt_archive_lambda)
 
     def create_archive_lambda(
         self,
         ialirt_bucket: aws_s3.Bucket,
         algorithm_data_table: ddb.Table,
+        docker_path: str,
     ) -> lambda_.DockerImageFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -69,7 +73,8 @@ class IalirtArchiveConstruct(Construct):
             self,
             id="IalirtArchiveLambda",
             code=lambda_.DockerImageCode.from_image_asset(
-                "sds_data_manager/lambda_code/IAlirtCode"
+                docker_path,
+                file="Dockerfile.archive",
             ),
             function_name="ialirt-archive",
             timeout=Duration.minutes(1),
