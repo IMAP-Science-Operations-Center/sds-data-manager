@@ -98,7 +98,7 @@ def _insert_test_data(session):
                       upload_time=1)
 
 def test_metakernel(session):
-    """Tests that the query result body can be loaded."""
+    """Tests that metakernel works as predicted."""
     _insert_test_data(session)
     result = spice_metakernel_api.lambda_handler(
         {
@@ -137,17 +137,17 @@ def test_metakernel(session):
     Ther are now no gaps remaining. 
     '''
 
-    result_list = json.loads(result['body'])
-    for x in result_list:
-        print(x['file_name'])
-
+    results = json.loads(result['body'])
+    assert len(results) == 4
+    assert results[0]['file_name'] == "ck/imap_1000_001_1000_300_003.ap.bc"
+    assert results[1]['file_name'] == "ck/imap_1000_065_1000_090_003.ap.bc"
+    assert results[2]['file_name'] == "ck/imap_1000_060_1000_070_003.ap.bc"
+    assert results[3]['file_name'] == "ck/imap_1000_001_1000_100_002.ah.bc"
     
-
     '''
     If someone focuses the metakernel on a more specific time range, it should go straight
     to the appropriate file. 
     '''
-    print("******************")
     result = spice_metakernel_api.lambda_handler(
         {
             "queryStringParameters": {
@@ -159,6 +159,44 @@ def test_metakernel(session):
         },
         None,
     )
-    result_list = json.loads(result['body'])
-    for x in result_list:
-        print(x['file_name'])
+
+    results = json.loads(result['body'])
+    assert len(results) == 1
+    assert results[0]['file_name'] == "ck/imap_1000_001_1000_300_003.ap.bc"
+    
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 20,
+                "end_time": 25,
+                "spice_path": '',
+                "list_files": 'True'
+            }
+        },
+        None,
+    )
+    
+    results = json.loads(result['body'])
+    assert len(results) == 1
+    assert results[0]['file_name'] == "ck/imap_1000_001_1000_100_002.ah.bc"
+
+    
+    '''
+    Query the gap that two spice files individually cover
+    '''
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 65,
+                "end_time": 75,
+                "spice_path": '',
+                "list_files": 'True'
+            }
+        },
+        None,
+    )
+    
+    results = json.loads(result['body'])
+    assert len(results) == 2
+    assert results[0]['file_name'] == "ck/imap_1000_065_1000_090_003.ap.bc"
+    assert results[1]['file_name'] == "ck/imap_1000_060_1000_070_003.ap.bc"
