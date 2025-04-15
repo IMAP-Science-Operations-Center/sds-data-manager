@@ -68,8 +68,8 @@ optional = true
 optional = true
 
 # To create requirements.txt for imap_processing Dockerfile, run:
-# poetry export -f requirements.txt --without-hashes
-# --with layer-processing -o lambda_code/IAlirtCode/requirements.txt
+# poetry export -f requirements.txt
+# --with layer-processing -o lambda_code/IAlirtCode/requirements.txt --without-urls
 [tool.poetry.group.layer-processing]
 optional = true
 
