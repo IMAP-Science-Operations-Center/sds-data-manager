@@ -154,7 +154,7 @@ def _upsert_into_spice_table(
         "kernel_type": spice_object.spice_metadata["type"],
         "version": version,
         "file_name": filename,
-        "file_root": ''.join(filename.rsplit(version, 1)),
+        "file_root": "".join(filename.rsplit(version, 1)),
         "min_date_j2000": file_coverage_j2000[0][0],
         "max_date_j2000": file_coverage_j2000[-1][-1],
         "file_intervals_j2000": file_coverage_j2000,

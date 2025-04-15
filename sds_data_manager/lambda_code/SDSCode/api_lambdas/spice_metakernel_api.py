@@ -39,7 +39,7 @@ def lambda_handler(event, context):
     list_files = query_params["list_files"]
     metakernel = _metakernel_builder(start_time, end_time)
 
-    if list_files.lower() == 'true':
+    if list_files.lower() == "true":
         output = json.dumps(metakernel.return_spice_files_in_order_detailed())
     else:
         output = metakernel.return_tm_file(base_path=spice_directory)
