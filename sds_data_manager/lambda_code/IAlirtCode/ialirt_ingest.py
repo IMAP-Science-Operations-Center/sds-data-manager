@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 
 
 def parse_packet(filename: str, bucket: str, key: str, download_dir: Path):
-    """Parse packet.
+    """Parse the packet.
 
     Parameters
     ----------
