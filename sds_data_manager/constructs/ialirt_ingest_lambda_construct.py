@@ -21,7 +21,7 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         **kwargs,
     ) -> None:
-        """IalirtIngestLambda Stack.
+        """IalirtIngestLambda Construct.
 
         Parameters
         ----------
