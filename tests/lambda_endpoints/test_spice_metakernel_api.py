@@ -21,7 +21,7 @@ def _irrelevant_data():
         "sclk_kernel": "nothing",
         "lsk_kernel": "nothing",
     }
-    return irrelevent_data
+    return irrelevant_data
 
 
 def _insert_test_file(session, filename, intervals, upload_time=0):
@@ -36,7 +36,7 @@ def _insert_test_file(session, filename, intervals, upload_time=0):
         "min_date_j2000": intervals[0][0],
         "max_date_j2000": intervals[-1][1],
         "ingestion_date": datetime.now() + timedelta(upload_time),
-    } | _irrelevent_data()
+    } | _irrelevant_data()
     session.add(models.SPICEFiles(**metadata_params))
     session.commit()
 
