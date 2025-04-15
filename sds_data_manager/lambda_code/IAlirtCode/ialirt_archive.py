@@ -3,10 +3,9 @@
 import json
 import logging
 import os
+from datetime import datetime, timedelta
 
 import boto3
-from boto3.dynamodb.conditions import Key
-from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -29,8 +28,11 @@ def lambda_handler(event, context):
         information about the invocation, function,
         and runtime environment.
 
+    Returns
+    -------
+    response : dict
+        The response from the DynamoDB query.
     """
-
     logger.info("Received event: %s", json.dumps(event))
 
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
@@ -44,16 +46,16 @@ def lambda_handler(event, context):
     end_iso = now.isoformat()
 
     # Query using insert_time GSI
-    # response = algorithm_table.query(
-    #     IndexName="insert_time",
-    #     KeyConditionExpression="apid = :apid_val AND insert_time BETWEEN :start AND :end",
-    #     ExpressionAttributeValues={
-    #         ":apid_val": 478,
-    #         ":start": start_iso,
-    #         ":end": end_iso,
-    #     },
-    # )
-    response = algorithm_table.query(KeyConditionExpression=Key("apid").eq(478))
+    response = algorithm_table.query(
+        IndexName="insert_time",
+        KeyConditionExpression="apid = :apid_val AND "
+        "insert_time BETWEEN :start AND :end",
+        ExpressionAttributeValues={
+            ":apid_val": 478,
+            ":start": start_iso,
+            ":end": end_iso,
+        },
+    )
 
     # TODO: create a cdf and put in S3
 

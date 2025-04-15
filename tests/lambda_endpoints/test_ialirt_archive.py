@@ -1,8 +1,8 @@
 """Test the I-Alirt archive lambda function."""
 
-import pytest
 from datetime import datetime, timedelta
-from boto3.dynamodb.conditions import Key
+
+import pytest
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_archive import lambda_handler
 
@@ -11,19 +11,21 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_archive import lambda_handle
 def populate_algorithm_table(setup_dynamodb):
     """Populate the algorithm table with test entries."""
     algorithm_table = setup_dynamodb["algorithm_table"]
+    now = datetime.utcnow()
+    yesterday = now - timedelta(days=1)
 
     items = [
         {
             "apid": 478,
             "met": 111,
-            "insert_time": (datetime.utcnow() - timedelta(hours=12)).isoformat(),
+            "insert_time": (yesterday + timedelta(seconds=1)).isoformat(),
             "product_name": "test_product",
             "data_product_1": "3.14",
         },
         {
             "apid": 478,
             "met": 222,
-            "insert_time": (datetime.utcnow() - timedelta(days=2)).isoformat(),
+            "insert_time": (yesterday - timedelta(seconds=1)).isoformat(),
             "product_name": "test_product",
             "data_product_2": "2.71",
         },
@@ -34,25 +36,11 @@ def populate_algorithm_table(setup_dynamodb):
     return items
 
 
-def test_archive_lambda_handler(setup_dynamodb, populate_algorithm_table, monkeypatch):
+def test_archive_lambda_handler(populate_algorithm_table):
     """Test archive_lambda_handler function."""
-    algorithm_table = setup_dynamodb["algorithm_table"]
-
-    monkeypatch.setenv("ALGORITHM_TABLE", algorithm_table.table_name)
-
-    lambda_handler({}, {})
-    response = algorithm_table.query(
-        IndexName="insert_time",
-        KeyConditionExpression="apid = :apid_val AND insert_time BETWEEN :start AND :end",
-        ExpressionAttributeValues={
-            ":apid_val": 478,
-            ":start": (datetime.utcnow() - timedelta(days=1)).isoformat(),
-            ":end": datetime.utcnow().isoformat(),
-        },
-    )
+    response = lambda_handler({}, {})
 
     items = response["Items"]
     assert len(items) == 1
     assert items[0]["met"] == 111
     assert items[0]["data_product_1"] == "3.14"
-
