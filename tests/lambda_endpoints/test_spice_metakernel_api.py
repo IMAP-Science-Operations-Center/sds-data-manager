@@ -9,9 +9,9 @@ from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_ap
 from sds_data_manager.lambda_code.SDSCode.database import models
 
 
-def _irrelevent_data():
-    """Populate irrelevent columns in DB with dummy data."""
-    irrelevent_data = {
+def _irrelevant_data():
+    """Populate irrelevant columns in DB with dummy data."""
+    irrelevant_data = {
         "min_date_datetime": datetime.now(),
         "max_date_datetime": datetime.now(),
         "file_intervals_datetime": [["0", "0"]],
@@ -129,7 +129,7 @@ def test_metakernel(session):
         in the time range, but it was uploaded very early in the mission,
         so it gets chose to plug in the remaining gaps in the time range
 
-    Ther are now no gaps remaining.
+    There are now no gaps remaining.
     """
 
     results = json.loads(result["body"])
