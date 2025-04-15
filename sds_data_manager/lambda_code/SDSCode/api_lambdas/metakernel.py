@@ -386,60 +386,31 @@ class MetaKernel:
                 search_window_end = file_intervals[i][1]
 
             # Quick check, are we out of bounds of the range we care about?
+            # <---- search window ----->
+            #                               <----- gap span ------>
             if search_window_start >= gap_end or search_window_end <= gap_start:
                 continue
 
-            # Another quick check, does this already interval cover everything 
+            # Another quick check, does this already interval cover everything
             # we're looking for?
+            #      <------- gap span ------------>
+            # <--------- file coverage -------------------->
             if file_interval_start <= gap_start and file_interval_end >= gap_end:
                 return []  # Return here, no gaps to needed to fill
 
             # Calculate and append gaps to the list
-            if (
-                file_interval_start <= search_window_start
-                and file_interval_end >= search_window_end
-            ):
-                #      <------- search window ------------>
-                # <--------- file coverage -------------------->
-                continue  # No gaps in this search window
-            elif (
-                file_interval_start >= search_window_start
-                and file_interval_end <= search_window_end
-            ):
-                # <----------- search window ----------------->
-                #     <----- file coverage -------->
-                if search_window_start != file_interval_start:
-                    sub_gaps.extend(
-                        [[search_window_start, file_interval_start]]
-                    )  # Gaps before interval
-                if file_interval_end != search_window_end:
-                    sub_gaps.extend(
-                        [[file_interval_end, search_window_end]]
-                    )  # Gaps after interval
-            elif (
-                file_interval_start >= search_window_start
-                and file_interval_start < search_window_end
-            ):
-                # <------- search window ------------>
-                #             <--------- file coverage ------------------>
+            if file_interval_start > search_window_start:
+                # <----------- search window --------....
+                #       <----- file coverage --------....
                 sub_gaps.extend(
                     [[search_window_start, file_interval_start]]
                 )  # Gaps before interval
-            elif (
-                file_interval_end > search_window_start
-                and file_interval_end <= search_window_end
-            ):
-                #      <------- search window ------------>
-                # <--------- file coverage -------->
+            if file_interval_end < search_window_end:
+                # ....--- search window --------------->
+                # ....-- file coverage -------->
                 sub_gaps.extend(
                     [[file_interval_end, search_window_end]]
                 )  # Gaps after interval
-            else:
-                # <---- search window ----->
-                #                              <----- file coverage ------>
-                sub_gaps.extend(
-                    [[search_window_start, search_window_end]]
-                )  # The whole search window remains a gap
 
         return sub_gaps
 

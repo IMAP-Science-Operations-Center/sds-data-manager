@@ -35,8 +35,8 @@ def lambda_handler(event, context):
     query_params = event["queryStringParameters"]
     start_time = query_params["start_time"]
     end_time = query_params["end_time"]
-    spice_directory = Path(query_params["spice_path"])
-    list_files = query_params["list_files"]
+    spice_directory = Path(query_params.get("spice_path", ""))
+    list_files = query_params.get("list_files", "false")
     metakernel = _metakernel_builder(start_time, end_time)
 
     if list_files.lower() == "true":

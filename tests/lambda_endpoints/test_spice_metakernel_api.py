@@ -140,7 +140,7 @@ def test_metakernel(session):
     assert results[3]["file_name"] == "ck/imap_1000_001_1000_100_002.ah.bc"
 
     """
-    If someone focuses the metakernel on a more specific time range, it should go 
+    If someone focuses the metakernel on a more specific time range, it should go
     straight to the appropriate file.
     """
     result = spice_metakernel_api.lambda_handler(
