@@ -36,7 +36,7 @@ def populate_table(setup_dynamodb):
     return items
 
 
-@pytest.fixture()
+@pytest.fixture
 def s3_test_packet(s3_client):
     """Add a fake binary packet file to the mock S3 bucket."""
     test_file = "iois_1_packets_YYYY_DOY_HH_MM_SS.ccsds"
