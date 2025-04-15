@@ -3,12 +3,48 @@
 import json
 import logging
 import os
+from pathlib import Path
 
 import boto3
 from boto3.dynamodb.conditions import Key
+from imap_processing.ialirt import packet_definitions
+from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def parse_packet(filename: str, bucket: str, key: str, download_dir: Path):
+    """Parse the packet.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file to be downloaded from S3.
+    bucket : str
+        The name of the S3 bucket.
+    key : str
+        The key of the file in the S3 bucket.
+    download_dir : Path
+        The directory where the file will be downloaded.
+
+    Returns
+    -------
+    datasets_by_apid : xr.Dataset
+        Parsed dataset.
+    """
+    local_path = os.path.join(download_dir, filename)
+
+    s3 = boto3.client("s3")
+    s3.download_file(bucket, key, local_path)
+    logger.info("Downloaded file to %s", local_path)
+
+    imap_module_directory = os.path.dirname(packet_definitions.__file__)
+    xtce = os.path.join(imap_module_directory, "ialirt.xml")
+
+    datasets_by_apid = packet_file_to_datasets(local_path, xtce)
+
+    return datasets_by_apid
 
 
 def lambda_handler(event, context):

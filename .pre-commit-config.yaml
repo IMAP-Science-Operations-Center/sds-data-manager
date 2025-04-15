@@ -30,8 +30,5 @@ repos:
       - id: poetry-export
         name: export layer spice requirements.txt
         args: ["-f", "requirements.txt", "-o", "lambda_layer/spice/requirements.txt", "--with", "layer-spice"]
-      - id: poetry-export
-        name: export layer processing requirements.txt
-        args: [ "-f", "requirements.txt", "-o", "lambda_layer/processing/requirements.txt", "--with", "layer-processing"]
       - id: poetry-lock
         args: [--no-update]

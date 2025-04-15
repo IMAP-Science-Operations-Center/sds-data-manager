@@ -1,7 +1,5 @@
 """Configure the ialirt ingest lambda construct."""
 
-import pathlib
-
 import aws_cdk as cdk
 from aws_cdk import RemovalPolicy, aws_dynamodb, aws_s3
 from aws_cdk import aws_dynamodb as ddb
@@ -23,7 +21,7 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         **kwargs,
     ) -> None:
-        """IalirtIngestLambda Stack.
+        """IalirtIngestLambda Construct.
 
         Parameters
         ----------
@@ -179,16 +177,13 @@ class IalirtIngestLambda(Construct):
             )
         )
 
-        ialirt_ingest_lambda = lambda_alpha_.PythonFunction(
+        ialirt_ingest_lambda = lambda_.DockerImageFunction(
             self,
             id="IalirtIngestLambda",
-            function_name="ialirt-ingest",
-            entry=str(
-                pathlib.Path(__file__).parent.joinpath("..", "lambda_code").resolve()
+            code=lambda_.DockerImageCode.from_image_asset(
+                "sds_data_manager/lambda_code/IAlirtCode"
             ),
-            index="IAlirtCode/ialirt_ingest.py",
-            handler="lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_12,
+            function_name="ialirt-ingest",
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
             role=lambda_role,

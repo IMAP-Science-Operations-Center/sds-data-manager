@@ -297,11 +297,12 @@ def build_sds(
         efs_construct=efs_instance,
     )
 
+    # I-ALiRT Stack
     ialirt_stack = Stack(scope, "IalirtStack", cross_region_references=True, env=env)
 
     ialirt_spice_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
         scope=ialirt_stack,
-        id="IAlirtPythonDependencies",
+        id="IAlirtSpiceDependencies",
         layer_dependencies_dir=str(layer_code_directory / "spice"),
     )
 
