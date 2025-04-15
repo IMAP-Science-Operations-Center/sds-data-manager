@@ -88,7 +88,8 @@ class ProcessingJob(Base):
     job_log_stream_id = Column(String)
     container_image = Column(String)
     container_command = Column(String)
-    processing_time = Column(Integer)
+    started_at = Column(DateTime(timezone=True))
+    stopped_at = Column(DateTime(timezone=True))
 
     __table_args__ = (
         # Partial unique index to ensure only one INPROGRESS or COMPLETED for a record
