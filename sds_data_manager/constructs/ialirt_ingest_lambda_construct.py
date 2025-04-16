@@ -19,6 +19,7 @@ class IalirtIngestLambda(Construct):
         scope: Construct,
         construct_id: str,
         ialirt_bucket: aws_s3.Bucket,
+        docker_path: str = "sds_data_manager/lambda_code",
         **kwargs,
     ) -> None:
         """IalirtIngestLambda Construct.
@@ -31,6 +32,8 @@ class IalirtIngestLambda(Construct):
             A unique string identifier for this construct.
         ialirt_bucket : aws_s3.Bucket
             The data bucket.
+        docker_path : str
+            Path to the Dockerfile.
         kwargs : dict
             Keyword arguments.
 
@@ -43,7 +46,10 @@ class IalirtIngestLambda(Construct):
 
         # Create Lambda Function
         self.ialirt_ingest_lambda = self.create_lambda_function(
-            ialirt_bucket, self.packet_data_table, self.algorithm_data_table
+            ialirt_bucket,
+            self.packet_data_table,
+            self.algorithm_data_table,
+            docker_path,
         )
 
         # Create Event Rule
@@ -149,6 +155,7 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         packet_data_table: aws_dynamodb.Table,
         algorithm_data_table: aws_dynamodb.Table,
+        docker_path: str,
     ) -> lambda_alpha_.PythonFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -181,8 +188,8 @@ class IalirtIngestLambda(Construct):
             self,
             id="IalirtIngestLambda",
             code=lambda_.DockerImageCode.from_image_asset(
-                "sds_data_manager/lambda_code/IAlirtCode",
-                file="Dockerfile.ingest",
+                docker_path,
+                file="IAlirtCode/Dockerfile.ingest",
             ),
             function_name="ialirt-ingest",
             timeout=cdk.Duration.minutes(1),

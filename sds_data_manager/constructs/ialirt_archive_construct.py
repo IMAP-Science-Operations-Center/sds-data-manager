@@ -18,7 +18,7 @@ class IalirtArchiveConstruct(Construct):
         construct_id: str,
         algorithm_data_table: ddb.Table,
         ialirt_bucket: aws_s3.Bucket,
-        docker_path: str = "sds_data_manager/lambda_code/IAlirtCode",
+        docker_path: str = "sds_data_manager/lambda_code",
         **kwargs,
     ) -> None:
         """Create ialirt cdf.
@@ -74,7 +74,7 @@ class IalirtArchiveConstruct(Construct):
             id="IalirtArchiveLambda",
             code=lambda_.DockerImageCode.from_image_asset(
                 docker_path,
-                file="Dockerfile.archive",
+                file="IAlirtCode/Dockerfile.archive",
             ),
             function_name="ialirt-archive",
             timeout=Duration.minutes(1),
