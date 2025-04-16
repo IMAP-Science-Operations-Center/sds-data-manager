@@ -22,8 +22,7 @@ def template(stack):
     )
 
     docker_dir = (
-        Path(__file__).resolve().parent.parent.parent  # up to project root
-        / "sds_data_manager/lambda_code/IAlirtCode"
+        Path(__file__).resolve().parent.parent.parent / "sds_data_manager/lambda_code"
     )
 
     IalirtArchiveConstruct(
