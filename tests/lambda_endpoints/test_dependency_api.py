@@ -180,7 +180,7 @@ def test_get_upstream_ancillary_trigger(session, caplog):
     # out because the swe l1b downstream dependency for that date and version
     # was already processed, so it is not included in the output.
     science_in = ScienceInput(
-        "imap_swe_l1a_sci_20240101_v001.cdf",
+        "imap_swe_l1a_sci_20240101_v010.cdf",
         "imap_swe_l1a_sci_20240103_v001.cdf",
     )
     ancillary_in = AncillaryInput("imap_swe_l1b-in-flight-cal_20230101_v001.cdf")
@@ -188,12 +188,13 @@ def test_get_upstream_ancillary_trigger(session, caplog):
     expected_processing_input = ProcessingInputCollection(science_in, ancillary_in)
 
     assert dependencies == expected_processing_input.serialize()
-    # Move start_date forward by one and we should now have 2 ancillary files.
+    # Move start_date forward by one day
+    # THere are now two valid ancillary files for this date, but the dependency lambda
+    # Should only return the most recent one.
     event["queryStringParameters"]["start_date"] = "20231231"
     dependency_response = dependency.lambda_handler(event, None)
     dependencies = dependency_response["body"]
     ancillary_in = AncillaryInput(
-        "imap_swe_l1b-in-flight-cal_20230101_v001.cdf",
         "imap_swe_l1b-in-flight-cal_20231231_20240102_v002.cdf",
     )
     expected_processing_input = ProcessingInputCollection(science_in, ancillary_in)
@@ -319,23 +320,27 @@ def test_get_ancillary_files(session):
     assert record.start_date == datetime(2023, 1, 1)
     assert record.version == "v001"
 
-    # Get ancillary file covering range
+    # Get ancillary file covering range.
+    # There are two ancillary files valid for this range, but the one with the most
+    # recent start_date should be returned
     dep = {
         "data_source": "swe",
         "data_type": "ancillary",
         "descriptor": "l1b-in-flight-cal",
     }
-    start_date = datetime(2024, 1, 1)
+    start_date = datetime(2024, 1, 2)
     record = get_files(
         session,
         dependency=dep,
         start_date=start_date,
         version="v001",
-    )[1]
+    )
+    assert len(record) == 1
+    record = record[0]
     assert record.instrument == "swe"
     assert record.descriptor == "l1b-in-flight-cal"
-    assert record.start_date <= start_date
-    assert record.end_date >= start_date
+    assert record.start_date == datetime(2023, 12, 31)
+    assert record.end_date == datetime(2024, 1, 2)
     assert record.version == "v001"
     # Non-existent record should an empty list
     record = get_files(
@@ -387,8 +392,8 @@ def test_get_files_exact_version(session):
     assert record.version == "v001"
 
 
-def test_get_files_latest_version(session):
-    """Test get_files returns the latest version."""
+def test_get_files_max_version_ancillary(session):
+    """Test get_files returns the max version."""
     _populate_file_catalog(session)
     dep = {"data_source": "lo", "data_type": "l1a", "descriptor": "sci"}
     records = get_files(
@@ -399,13 +404,39 @@ def test_get_files_latest_version(session):
         primary_sci_trigger=False,
     )
 
-    assert len(records) == 2
+    assert len(records) == 1
+    record = records[0]
+    assert record.instrument == "lo"
+    assert record.descriptor == "sci"
+    # Make sure this ancillary file has the most recent start_date.
+    assert record.start_date == datetime(2010, 1, 2)
+    assert record.version == "v003"
 
-    for record in records:
-        assert record.instrument == "lo"
-        assert record.descriptor == "sci"
 
-    assert records[0].start_date == datetime(2010, 1, 1)
-    assert records[1].start_date == datetime(2010, 1, 2)
-    assert records[0].version == "v002"
-    assert records[1].version == "v003"
+def test_get_files_science(session):
+    """Test get_files returns the max version."""
+    _populate_file_catalog(session)
+    dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
+    records = get_files(
+        session,
+        dependency=dep,
+        start_date=datetime(2010, 1, 2),
+        version="v001",
+        primary_sci_trigger=False,
+        primary_sci_dep=True,
+    )
+
+    assert len(records) == 3
+    for rec in records:
+        assert rec.instrument == "swe"
+        assert rec.data_level == "l1a"
+        assert rec.descriptor == "sci"
+    # Make sure the dates and versions are the latest ones
+    assert records[0].start_date == datetime(2024, 1, 1)
+    assert records[0].version == "v010"
+
+    assert records[1].start_date == datetime(2024, 1, 2)
+    assert records[1].version == "v001"
+
+    assert records[2].start_date == datetime(2024, 1, 3)
+    assert records[2].version == "v001"

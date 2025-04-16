@@ -205,9 +205,12 @@ def test_lambda_handler_ancillary_event(
         # There should be two different jobs submitted for one swe l1b ancillary file
         assert mock_batch_client.submit_job.call_count == 2
         # Assert_called_with only works on the last call
-        # Check that the last call is what we expect with the corrected
+        # Check that the last call is what we expect with the correct dependencies
+
+        # Even though there are two imap_swe_l1b-in-flight-cal ancillary files that
+        # have valid dates, there should be only be the most recent one returned
+        # as an upstream dep.
         ancillary_in = AncillaryInput(
-            "imap_swe_l1b-in-flight-cal_20230101_v001.cdf",
             "imap_swe_l1b-in-flight-cal_20231231_20240102_v002.cdf",
         )
         science_in = ScienceInput(

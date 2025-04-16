@@ -189,12 +189,24 @@ def _populate_file_catalog(session):
             ),
         ),
         ScienceFiles(
-            file_path="/path/to/imap_swe_l1a_sci_20240101_v001.cdf",
+            file_path="/path/to/imap_swe_l1a_sci_20240101_v002.cdf",
             instrument="swe",
             data_level="l1a",
             descriptor="sci",
             start_date=datetime(2024, 1, 1),
             version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240101_v010.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 1),
+            version="v010",
             extension="pkts",
             ingestion_date=datetime.strptime(
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
