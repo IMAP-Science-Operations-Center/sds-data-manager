@@ -42,7 +42,11 @@ def _insert_test_file(session, filename, intervals, upload_time=0):
 
 
 def _insert_test_data(session):
-    """Put a filepath into the test data."""
+    """Put a filepath into the test data.
+
+    The comments for each inserted file below assume
+    that a user is querying for data between t=1 to t=100
+    """
     # This file should NOT be loaded, because there is a
     # a newer version of the file
     _insert_test_file(
@@ -53,8 +57,7 @@ def _insert_test_data(session):
     _insert_test_file(
         session, "imap_1000_001_1000_100_002.ah.bc", [[1, 50], [55, 65], [75, 100]]
     )
-    # This file should be loaded, because it is the only file
-    # covering 50-55
+    # This file should NOT be loaded in, it was uploaded too early
     _insert_test_file(session, "imap_1000_001_1000_055_002.ap.bc", [[1, 55]])
 
     # This file should NOT be loaded, because there is a
@@ -66,13 +69,14 @@ def _insert_test_data(session):
     _insert_test_file(session, "imap_1000_090_1000_100_002.ap.bc", [[90, 100]])
 
     # This file should be loaded in, because it was uploaded
-    # AFTER the previous file, so it has a higher priority.
+    # more recently, so it has a higher priority.
     _insert_test_file(
         session, "imap_1000_060_1000_070_003.ap.bc", [[60, 70]], upload_time=10
     )
 
-    # This file should be loaded, because there has been no
-    # data for time 65-75 so far
+    # This file should be loaded, but only after the one directly above.
+    # This contains data between 70-75 that needs filling in, but 65-70
+    # will be done by imap_1000_060_1000_070_003.ap.bc.
     _insert_test_file(
         session, "imap_1000_065_1000_090_003.ap.bc", [[65, 90]], upload_time=2
     )
@@ -82,11 +86,11 @@ def _insert_test_data(session):
     # though this file was uploaded at a later date, version
     # always takes precidence.
     _insert_test_file(
-        session, "imap_1000_065_1000_090_001.ap.bc", [[65, 90]], upload_time=11
+        session, "imap_1000_065_1000_090_001.ap.bc", [[65, 90]], upload_time=100
     )
 
     # This file should be loaded, because there has been no
-    # data for time=0 so far
+    # data for 50-55 so far.
     _insert_test_file(
         session, "imap_1000_001_1000_300_003.ap.bc", [[1, 300]], upload_time=1
     )
