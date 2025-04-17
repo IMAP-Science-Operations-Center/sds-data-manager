@@ -669,10 +669,6 @@ def get_files(
         *type_specific_conditions,
     ]
     # TODO check if version is supplied - otherwise get max version.
-    # Create a subquery that makes a column with the max version
-    max_version_query = session.query(
-        table.start_date, func.max(table.version).label("latest_version")
-    ).filter(*filter_conditions)
     # Only group by start date if return_latest_ancillary is false.
     # If true, we only want to return one ancillary file (including science files of
     # another instrument) with the most recent start date and greatest version number,
@@ -687,8 +683,23 @@ def get_files(
         #    - swe_l1a_in-flight-cal_20240512_v004
         # We only want to return the most recent start date with the max version
         #    - swe_l1a_sci_20240512_v004
-        subquery = max_version_query.subquery()
-        joiner = table.version == subquery.c.latest_version
+        # First, find the maximum start_date
+        max_start_date = (
+            session.query(func.max(table.start_date))
+            .filter(*filter_conditions)
+            .scalar()
+        )
+        # Find the maximum version for that start_date
+        max_version = (
+            session.query(func.max(table.version))
+            .filter(table.start_date == max_start_date, *filter_conditions)
+            .scalar()
+        )
+
+        latest_query = session.query(table).filter(
+            table.start_date == max_start_date,
+            table.version == max_version,
+        )
     else:
         # Group by start_date
         # E.g.,
@@ -702,24 +713,22 @@ def get_files(
         # We only want to return the latest versions per start date
         #    - swe_l1a_sci_20240511_v002
         #    - swe_l1a_sci_20240512_v004
-        max_version_query = max_version_query.group_by(table.start_date)
-        subquery = max_version_query.subquery()
-        joiner = (table.start_date == subquery.c.start_date) & (
-            table.version == subquery.c.latest_version
+        max_version_query = (
+            session.query(
+                table.start_date, func.max(table.version).label("latest_version")
+            )
+            .filter(*filter_conditions)
+            .group_by(table.start_date)
+            .subquery()
         )
-    # Query records
-    records = (
-        session.query(table)
-        .join(
-            subquery,
-            joiner,
+        # Query records
+        latest_query = session.query(table).join(
+            max_version_query,
+            (table.start_date == max_version_query.c.start_date)
+            & (table.version == max_version_query.c.latest_version),
         )
-        .filter(*filter_conditions)
-        .all()
-    )
-    # Return the most recent ancillary file
-    if return_latest_ancillary:
-        records = sorted(records, reverse=True, key=lambda rec: rec.start_date)[0:1]
+
+    records = latest_query.filter(*filter_conditions).all()
 
     return records
 
