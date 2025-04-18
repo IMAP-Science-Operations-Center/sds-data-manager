@@ -304,6 +304,24 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
     return efs_spice_filename_and_path
 
 
+def send_event_to_trigger_dps_lambda(file_path: Path, s3_key: str):
+    """Send a custom EventBridge event to trigger dps_lambda."""
+    prefix = s3_key.split("/")[1]
+    if prefix not in ["ck", "repoint"]:
+        return
+
+    client = boto3.client("events")
+    client.put_events(
+        Entries=[
+            {
+                "Source": "imap.spice.efs",
+                "DetailType": "SPICE EFS Write Complete",
+                "Detail": f'{{"path": "{file_path}", "prefix": "{prefix}"}}',
+            }
+        ]
+    )
+
+
 def lambda_handler(event, context):
     """Lambda is triggered by eventbridge.
 
@@ -362,5 +380,7 @@ def lambda_handler(event, context):
 
     file_path = write_data_to_efs(s3_key, s3_bucket, spice_mount_path)
     index_spice_file(file_path)
+
+    send_event_to_trigger_dps_lambda(file_path, s3_key)
 
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}

@@ -297,6 +297,13 @@ def build_sds(
         efs_construct=efs_instance,
     )
 
+    indexer_lambda_construct.DpsLambda(
+        scope=sdc_stack,
+        construct_id="DpsLambda",
+        data_bucket=data_bucket.data_bucket,
+        efs_construct=efs_instance,
+    )
+
     # I-ALiRT Stack
     ialirt_stack = Stack(scope, "IalirtStack", cross_region_references=True, env=env)
 

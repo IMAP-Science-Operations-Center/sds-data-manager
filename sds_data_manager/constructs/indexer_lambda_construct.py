@@ -262,3 +262,101 @@ class SPICEIndexerLambda(Construct):
 
         # Add the Lambda function as the target for the rule
         event_rule.add_target(targets.LambdaFunction(self.spice_ingest_lambda))
+
+
+class DpsLambda(Construct):
+    """Construct for dps lambda."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        data_bucket: s3.Bucket,
+        efs_construct: EFSConstruct,
+        docker_path: str = "sds_data_manager/lambda_code",
+        **kwargs,
+    ) -> None:
+        """DpsLambda Construct.
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        data_bucket : s3.Bucket
+            The data bucket
+        efs_construct : list
+            Elastic File System Construct
+        docker_path : str
+            Path to the Dockerfile
+        kwargs : dict
+            Keyword arguments
+
+        """
+        super().__init__(scope, construct_id, **kwargs)
+
+        iam_role_name = "dps-lambda-role"
+        dps_lambda_role = iam.Role(
+            self,
+            iam_role_name,
+            role_name=iam_role_name,
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaBasicExecutionRole"
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaVPCAccessExecutionRole"
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonElasticFileSystemFullAccess"
+                ),
+            ],
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+        )
+
+        dps_lambda = lambda_.DockerImageFunction(
+            self,
+            id="DpsLambda",
+            code=lambda_.DockerImageCode.from_image_asset(
+                docker_path,
+                file="SDSCode/Dockerfile.dps",
+            ),
+            function_name="dps-maker",
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            filesystem=lambda_.FileSystem.from_efs_access_point(
+                efs_construct.spice_access_point, "/mnt/spice"
+            ),
+            role=dps_lambda_role,
+            environment={
+                "EFS_SPICE_MOUNT_PATH": "/mnt/spice",
+                "S3_BUCKET": data_bucket.bucket_name,
+            },
+        )
+
+        put_event_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["events:PutEvents", "s3:*"],
+            resources=[
+                "*",
+            ],
+        )
+
+        dps_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        dps_lambda.add_to_role_policy(put_event_policy)
+
+        # EventBridge rule to trigger this lambda after EFS write for ck/repoint
+        efs_write_event_rule = events.Rule(
+            self,
+            "TriggerDpsAfterSpiceEfsWrite",
+            event_pattern=events.EventPattern(
+                source=["imap.spice.efs"],
+                detail_type=["SPICE EFS Write Complete"],
+                detail={
+                    "prefix": ["ck", "repoint"],
+                },
+            ),
+        )
+        efs_write_event_rule.add_target(targets.LambdaFunction(dps_lambda))

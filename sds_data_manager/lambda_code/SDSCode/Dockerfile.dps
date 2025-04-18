@@ -1,0 +1,12 @@
+FROM public.ecr.aws/lambda/python:3.12
+
+# Copy and install dependencies
+COPY processing/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the Lambda function code into the image root
+COPY SDSCode/pipeline_lambdas/ .
+
+# Set the Lambda handler
+CMD ["dps_maker.lambda_handler"]
+
