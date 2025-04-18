@@ -206,6 +206,9 @@ class SPICEIndexerLambda(Construct):
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "SecretsManagerReadWrite"
                 ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonEventBridgeFullAccess"
+                ),
             ],
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
         )
