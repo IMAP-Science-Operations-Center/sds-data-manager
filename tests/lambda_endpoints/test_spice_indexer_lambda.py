@@ -3,6 +3,8 @@
 import json
 import os
 from datetime import datetime
+from pathlib import Path
+from unittest import mock
 
 import spiceypy
 
@@ -147,3 +149,36 @@ def test_s3_spice_files(session, s3_client, events_client):
     assert spiceypy.ktotal("TEXT") == 2  # LSK and SCLK kernels
     assert spiceypy.ktotal("META") == 1  # One Metakernel
     assert spiceypy.ktotal("CK") == 1  # One CK file
+
+
+@mock.patch("boto3.client")
+def test_send_event_to_trigger_dps_lambda_ck(mock_boto_client):
+    """Test that put_events is called for spice/ck/ key."""
+    mock_events_client = mock.Mock()
+    mock_boto_client.return_value = mock_events_client
+
+    file_path = Path("/mnt/spice/ck/test.bc")
+    s3_key = "spice/ck/test.bc"
+
+    spice_indexer.send_event_to_trigger_dps_lambda(file_path, s3_key)
+
+    mock_events_client.put_events.assert_called_once_with(
+        Entries=[
+            {
+                "Source": "imap.spice.efs",
+                "DetailType": "SPICE EFS Write Complete",
+                "Detail": f'{{"path": "{file_path}", "prefix": "ck"}}',
+            }
+        ]
+    )
+
+
+@mock.patch("boto3.client")
+def test_send_event_to_trigger_dps_lambda_skips_non_ck_or_repoint(mock_boto_client):
+    """Test that no event is sent for unsupported spice directory."""
+    file_path = Path("/mnt/spice/spk/test.bsp")
+    s3_key = "spice/spk/test.bsp"  # Not ck or repoint
+
+    spice_indexer.send_event_to_trigger_dps_lambda(file_path, s3_key)
+
+    mock_boto_client.assert_not_called()

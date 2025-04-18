@@ -305,7 +305,15 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
 
 
 def send_event_to_trigger_dps_lambda(file_path: Path, s3_key: str):
-    """Send a custom EventBridge event to trigger dps_lambda."""
+    """Send a custom EventBridge event to trigger dps_lambda.
+
+    Parameters
+    ----------
+    file_path : Path
+        The path to the file that was written to EFS
+    s3_key : str
+        S3 object key
+    """
     prefix = s3_key.split("/")[1]
     if prefix not in ["ck", "repoint"]:
         return
