@@ -61,7 +61,13 @@ def lambda_handler(event, context):
             except ValueError:
                 return {
                     "statusCode": 400,
-                    "body": (f"Invalid date format for {param}. Expected YYYYMMDD."),
+                    "body": json.dumps(
+                        {
+                            "error": (
+                                f"Invalid date format for {param}. Expected YYYYMMDD."
+                            ),
+                        }
+                    ),
                 }
         else:
             filters.append(column_attr == value)
