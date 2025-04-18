@@ -271,6 +271,7 @@ class DpsLambda(Construct):
         self,
         scope: Construct,
         construct_id: str,
+        vpc: ec2.Vpc,
         data_bucket: s3.Bucket,
         efs_construct: EFSConstruct,
         docker_path: str = "sds_data_manager/lambda_code",
@@ -284,6 +285,8 @@ class DpsLambda(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
+        vpc : ec2.Vpc
+            VPC into which to put the resources that require networking.
         data_bucket : s3.Bucket
             The data bucket
         efs_construct : list
@@ -326,6 +329,8 @@ class DpsLambda(Construct):
             function_name="dps-maker",
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
+            # Access to the EFS requires to be within the VPC
+            vpc=vpc,
             filesystem=lambda_.FileSystem.from_efs_access_point(
                 efs_construct.spice_access_point, "/mnt/spice"
             ),

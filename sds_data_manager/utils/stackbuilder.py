@@ -300,6 +300,7 @@ def build_sds(
     indexer_lambda_construct.DpsLambda(
         scope=sdc_stack,
         construct_id="DpsLambda",
+        vpc=networking.vpc,
         data_bucket=data_bucket.data_bucket,
         efs_construct=efs_instance,
     )
