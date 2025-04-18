@@ -253,7 +253,6 @@ class SdsApiManager(Construct):
         rds_secret.grant_read(grantee=spice_query_api_lambda)
         rds_secret.grant_read(grantee=spice_metakernel_api_lambda)
         rds_secret.grant_read(grantee=upload_api_lambda)
-        rds_secret.grant_read(grantee=spice_query_api_lambda)
         rds_secret.grant_read(grantee=batch_job_query_api_lambda)
 
         api.add_route(
