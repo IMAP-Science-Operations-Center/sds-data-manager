@@ -26,8 +26,8 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event))
 
-    s3_filepath = event["detail"]["path"]
-    filename = os.path.basename(s3_filepath)
+    filepath = event["detail"]["path"]
+    filename = os.path.basename(filepath)
     logger.info("Retrieved filename: %s", filename)
 
     # TODO: Add more logic here
