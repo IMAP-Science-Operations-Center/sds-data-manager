@@ -21,7 +21,7 @@ class IalirtArchiveConstruct(Construct):
         docker_path: str = "sds_data_manager/lambda_code",
         **kwargs,
     ) -> None:
-        """Create ialirt cdf.
+        """Create ialirt cdf archive resources.
 
         Parameters
         ----------
@@ -86,7 +86,7 @@ class IalirtArchiveConstruct(Construct):
             },
         )
 
-        algorithm_data_table.grant_read_write_data(ialirt_archive_lambda)
+        algorithm_data_table.grant_read_data(ialirt_archive_lambda)
         ialirt_bucket.grant_put(ialirt_archive_lambda)
 
         # The resource is deleted when the stack is deleted.
@@ -97,7 +97,7 @@ class IalirtArchiveConstruct(Construct):
     def create_event_rule(
         self, ialirt_archive_lambda: lambda_.DockerImageFunction
     ) -> None:
-        """Create the event rule to trigger Lambda on S3 object creation."""
+        """Create the event rule to trigger Lambda once per day."""
         # Scheduled rule - daily at 00:00 UTC
         rule = events.Rule(
             self,

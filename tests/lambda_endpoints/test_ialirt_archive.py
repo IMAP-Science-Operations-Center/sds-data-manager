@@ -1,6 +1,6 @@
 """Test the I-Alirt archive lambda function."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -11,7 +11,7 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_archive import lambda_handle
 def populate_algorithm_table(setup_dynamodb):
     """Populate the algorithm table with test entries."""
     algorithm_table = setup_dynamodb["algorithm_table"]
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     yesterday = now - timedelta(days=1)
 
     items = [

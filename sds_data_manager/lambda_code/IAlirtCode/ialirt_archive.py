@@ -3,9 +3,10 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import boto3
+from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -39,7 +40,7 @@ def lambda_handler(event, context):
     dynamodb = boto3.resource("dynamodb")
     algorithm_table = dynamodb.Table(algorithm_table_name)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     yesterday = now - timedelta(days=1)
 
     start_iso = yesterday.isoformat()
@@ -48,13 +49,9 @@ def lambda_handler(event, context):
     # Query using insert_time GSI
     response = algorithm_table.query(
         IndexName="insert_time",
-        KeyConditionExpression="apid = :apid_val AND "
-        "insert_time BETWEEN :start AND :end",
-        ExpressionAttributeValues={
-            ":apid_val": 478,
-            ":start": start_iso,
-            ":end": end_iso,
-        },
+        KeyConditionExpression=(
+            Key("apid").eq(478) & Key("insert_time").between(start_iso, end_iso)
+        ),
     )
 
     # TODO: create a cdf and put in S3
