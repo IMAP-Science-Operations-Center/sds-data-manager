@@ -116,7 +116,7 @@ def _metakernel_builder(start_time: int, end_time: int) -> MetaKernel:
             metakernel.load_spice(
                 json.loads(ephem_files["body"]),
                 "spacecraft_ephemeris",
-                "file_intervals",
+                "file_intervals_j2000",
                 priority_field="timestamp",
             )
 
