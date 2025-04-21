@@ -244,7 +244,7 @@ def index_spice_file(spice_file: Path):
                 "cover": spiceypy.cell_double(COVERAGE_SPICE_ARRAY_LENGTH),
             }
             if "attitude" in spice_metadata["type"]:  # Extra arguments needed for ckcov
-                function_arguments['idcode'] = function_arguments['idcode'] * 1000
+                function_arguments["idcode"] = function_arguments["idcode"] * 1000
                 function_arguments["needav"] = COVERAGE_ANGULAR_VELOCITY_ONLY
                 function_arguments["level"] = COVERAGE_LEVEL
                 function_arguments["tol"] = COVERAGE_TOLERANCE
