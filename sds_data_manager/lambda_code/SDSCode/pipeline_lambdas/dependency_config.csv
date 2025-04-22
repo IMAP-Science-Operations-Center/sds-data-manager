@@ -49,6 +49,11 @@ hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1a, 90sensor-de, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
 hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 
+hi, l2, h90-sf-ram-hae-4deg-6mo, hi, l3, h90-sf-sp-hae-4deg-6mo, HARD, DOWNSTREAM
+hi, l2, h90-sf-anti-hae-4deg-6mo, hi, l3, h90-sf-sp-hae-4deg-6mo, HARD, DOWNSTREAM
+
+hi, l3, h90-hf-sp-hae-4deg-6mo, hi, l3, h90-hf-sp-hae-4deg-6mo-spectral, HARD, DOWNSTREAM
+
 # <---- HIT Dependencies ---->
 
 hit, l0, raw, hit, l1a, all, HARD, DOWNSTREAM
