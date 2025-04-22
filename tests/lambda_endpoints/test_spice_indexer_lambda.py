@@ -4,7 +4,12 @@ import json
 import os
 from datetime import datetime
 
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
+import spiceypy
+
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
+    spice_metakernel_api,
+    spice_query_api,
+)
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
 
 
@@ -120,3 +125,25 @@ def test_s3_spice_files(session, s3_client, events_client):
     assert result[0]["version"] == 12
     assert len(result[0]["file_intervals_datetime"]) == 1  # Default time range
     print(result)
+
+    # Checking metakernel API here as well!
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 0,
+                "end_time": 1000000000,
+                "spice_path": temp_path,
+            }
+        },
+        None,
+    )
+
+    # Ensure that the metakernels are actually valid by loading them in
+    with open(temp_path + "/metakernel.tm", "w") as f:
+        f.write(result["body"])
+    spiceypy.kclear()
+    assert spiceypy.ktotal("ALL") == 0
+    spiceypy.furnsh(temp_path + "/metakernel.tm")
+    assert spiceypy.ktotal("TEXT") == 2  # LSK and SCLK kernels
+    assert spiceypy.ktotal("META") == 1  # One Metakernel
+    assert spiceypy.ktotal("CK") == 1  # One CK file

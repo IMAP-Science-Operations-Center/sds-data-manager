@@ -147,14 +147,14 @@ def _upsert_into_spice_table(
         The latest leapsecond kernel used for the above calculations
     """
     # Format the data to insert
+    filename = str(spice_object.filename.name)
+    version = spice_object.spice_metadata["version"]
     spice_params = {
         "ingestion_date": datetime.now(),
         "kernel_type": spice_object.spice_metadata["type"],
-        "version": spice_object.spice_metadata["version"],
-        "file_name": str(spice_object.filename.name),
-        "file_root": str(spice_object.filename.name).replace(
-            str(spice_object.spice_metadata["version"]), ""
-        ),
+        "version": version,
+        "file_name": filename,
+        "file_root": "".join(filename.rsplit(version, 1)),
         "min_date_j2000": file_coverage_j2000[0][0],
         "max_date_j2000": file_coverage_j2000[-1][-1],
         "file_intervals_j2000": file_coverage_j2000,
@@ -240,10 +240,11 @@ def index_spice_file(spice_file: Path):
             ]
         else:
             function_arguments = {
-                "idcode": SPACECRAFT_ID * 1000,
+                "idcode": SPACECRAFT_ID,
                 "cover": spiceypy.cell_double(COVERAGE_SPICE_ARRAY_LENGTH),
             }
             if "attitude" in spice_metadata["type"]:  # Extra arguments needed for ckcov
+                function_arguments["idcode"] = function_arguments["idcode"] * 1000
                 function_arguments["needav"] = COVERAGE_ANGULAR_VELOCITY_ONLY
                 function_arguments["level"] = COVERAGE_LEVEL
                 function_arguments["tol"] = COVERAGE_TOLERANCE

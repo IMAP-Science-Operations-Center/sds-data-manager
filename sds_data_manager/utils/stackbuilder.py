@@ -18,6 +18,7 @@ from sds_data_manager.constructs import (
     dependency_finder_construct,
     efs_construct,
     ialirt_api_manager_construct,
+    ialirt_archive_construct,
     ialirt_bucket_construct,
     ialirt_ingest_lambda_construct,
     ialirt_processing_construct,
@@ -328,6 +329,14 @@ def build_sds(
         scope=ialirt_stack,
         construct_id="IalirtIngestLambda",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
+    )
+
+    # I-ALiRT IOIS archive lambda (facilitates dynamodb to s3)
+    ialirt_archive_construct.IalirtArchiveConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtArchive",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
+        algorithm_data_table=ingest.algorithm_data_table,
     )
 
     ialirt_monitoring = monitoring_construct.MonitoringConstruct(

@@ -153,6 +153,32 @@ class SdsApiManager(Construct):
             lambda_function=spice_query_api_lambda,
         )
 
+        # SPICE metakernel API lambda
+        spice_metakernel_api_lambda = lambda_.Function(
+            self,
+            id="SPICEMetakernelAPILambda",
+            function_name="spice-metakernel-api-handler",
+            code=code,
+            handler="SDSCode.api_lambdas.spice_metakernel_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            security_groups=[rds_security_group],
+            environment={
+                "REGION": env.region,
+                "SECRET_NAME": db_secret_name,
+            },
+            layers=layers,
+        )
+
+        api.add_route(
+            route="metakernel",
+            http_method="GET",
+            lambda_function=spice_metakernel_api_lambda,
+        )
+
         # download API lambda
         download_api = lambda_.Function(
             self,
@@ -201,6 +227,8 @@ class SdsApiManager(Construct):
         )
         rds_secret.grant_read(grantee=universal_spin_table_handler)
         rds_secret.grant_read(grantee=query_api_lambda)
+        rds_secret.grant_read(grantee=spice_query_api_lambda)
+        rds_secret.grant_read(grantee=spice_metakernel_api_lambda)
         rds_secret.grant_read(grantee=upload_api_lambda)
 
         api.add_route(
