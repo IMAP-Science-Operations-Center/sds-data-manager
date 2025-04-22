@@ -100,3 +100,18 @@ def test_batch_job_query_api(session):
     assert response_data[1]["status"] == "SUCCEEDED"
     assert response_data[0]["instrument"] == "idex"
     assert response_data[1]["instrument"] == "lo"
+
+    # Invalid parameter
+    event = {"queryStringParameters": {"non-existing-key": "yes"}}
+
+    response = batch_job_query_api.lambda_handler(event, None)
+    assert response["statusCode"] == 400
+    assert json.loads(response["body"]) == {
+        "error": "Invalid parameter: non-existing-key"
+    }
+
+    # Empty response
+    event = {"queryStringParameters": {"instrument": "swe"}}
+    response = batch_job_query_api.lambda_handler(event, None)
+    assert response["statusCode"] == 200
+    assert json.loads(response["body"]) == []

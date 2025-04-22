@@ -22,7 +22,7 @@ def lambda_handler(event, context):
     if not event.get("queryStringParameters"):
         with db.Session() as session:
             query = select(ProcessingJob).order_by(ProcessingJob.id.desc()).limit(100)
-            result = session.execute(query).scalars().all()
+            result = session.scalars(query).all()
             logger.info(
                 f"No input parameters provided. Returning latest 100 records: {result}"
             )
@@ -75,7 +75,7 @@ def lambda_handler(event, context):
     # Construct query using filters list
     with db.Session() as session:
         query = select(processing_table).where(and_(*filters))
-        result = session.execute(query).scalars().all()
+        result = session.scalars(query).all()
         logger.info(f"Query result: {result}")
 
         result_list = [job.to_dict() for job in result] if result else []
