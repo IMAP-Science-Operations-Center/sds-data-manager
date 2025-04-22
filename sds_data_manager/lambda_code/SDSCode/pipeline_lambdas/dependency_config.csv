@@ -150,6 +150,7 @@ swe, ancillary, l1b-in-flight-cal, swe, l1b, sci, HARD, DOWNSTREAM
 swe, l1b, sci, swe, l2, sci, HARD, DOWNSTREAM
 swe, l1b, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, l2, sci, swe, l3, sci, HARD, DOWNSTREAM
+swe, ancillary, config, swe, l3, sci, HARD, DOWNSTREAM
 swapi, l3a, proton-sw, swe, l3, sci, HARD, DOWNSTREAM
 mag, l1d, norm-mago, swe, l3, sci, HARD, DOWNSTREAM
 
