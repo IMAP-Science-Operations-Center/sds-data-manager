@@ -185,6 +185,9 @@ class IalirtIngestLambda(Construct):
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonDynamoDBFullAccess"
                 ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaVPCAccessExecutionRole"
+                ),
             ],
         )
 
@@ -197,16 +200,6 @@ class IalirtIngestLambda(Construct):
                     packet_data_table.table_arn,
                     f"{ialirt_bucket.bucket_arn}/*",
                 ],
-            )
-        )
-        lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "ec2:CreateNetworkInterface",
-                    "ec2:DescribeNetworkInterfaces",
-                    "ec2:DeleteNetworkInterface",
-                ],
-                resources=["*"],
             )
         )
 
