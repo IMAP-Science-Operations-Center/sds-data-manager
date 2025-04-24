@@ -51,7 +51,7 @@ def science_file():
 @pytest.fixture(scope="module")
 def spice_file():
     """Path to a valid spice file."""
-    return "spice/ck/imap_2025_032_2025_034_003.ah.bc"
+    return "imap/spice/ck/imap_2025_032_2025_034_003.ah.bc"
 
 
 @pytest.fixture(scope="module")
