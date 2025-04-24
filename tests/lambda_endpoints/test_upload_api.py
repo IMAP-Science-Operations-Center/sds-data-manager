@@ -138,4 +138,6 @@ def test_incorrect_file_type(s3_client, invalid_file):
         "pathParameters": {"proxy": invalid_file},
     }
     response = upload_api.lambda_handler(event=event, context=None)
-    assert response["statusCode"] == 400
+    # It should now go into staging area instead of throwing an error
+    assert response["statusCode"] == 200
+    assert "/staging/" in response["body"]

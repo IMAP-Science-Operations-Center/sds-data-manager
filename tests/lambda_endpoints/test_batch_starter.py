@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, Mock, patch
 from urllib import parse
 from urllib.error import HTTPError, URLError
 
-import imap_data_access.processing_input
 import pytest
 from imap_data_access.processing_input import (
     AncillaryInput,
@@ -20,6 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     ProcessingJob,
+    ScienceFiles,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     batch_starter,
@@ -28,7 +28,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
     IMAPDependencyFinderError,
     _get_dependencies,
-    is_job_in_processing_table,
+    determine_job_version,
     lambda_handler,
 )
 
@@ -66,10 +66,11 @@ def urlopen_side_effect(url):
         params.get("trigger_type", [None])[0],
     )
 
-    dependencies = dependency.lambda_handler(event, None)["body"]
+    dependencies = dependency.lambda_handler(event, None)
     mock_response = MagicMock()
     mock_context_manager = MagicMock()
-    mock_response.read.return_value = dependencies.encode("utf-8")
+    mock_response.read.return_value = dependencies["body"].encode("utf-8")
+    mock_response.status = dependencies["statusCode"]
     # Mock the context manager and return it
     mock_context_manager.__enter__.return_value = mock_response
 
@@ -125,13 +126,8 @@ def test_lambda_handler(
         '[{"type": "science", "files": ["imap_swe_l0_raw_20240110_v001.pkts"]}]'
     )
     context = {"context": "sample_context"}
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
-        lambda_handler(events, context)
-        mock_batch_client.submit_job.assert_called_once()
 
-        # Submit a second job with the same file as input which will try to kick
-        # off a duplicate job. We expect the submit_job method to not be called
-        # so make sure it is still only called once from our previous iteration.
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(events, context)
         mock_batch_client.submit_job.assert_called_once()
         mock_batch_client.submit_job.assert_called_with(
@@ -202,8 +198,8 @@ def test_lambda_handler_ancillary_event(
     context = {"context": "sample_context"}
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(events, context)
-        # There should be two different jobs submitted for one swe l1b ancillary file
-        assert mock_batch_client.submit_job.call_count == 2
+        # There should be three different jobs submitted for one swe l1b ancillary file
+        assert mock_batch_client.submit_job.call_count == 3
         # Assert_called_with only works on the last call
         # Check that the last call is what we expect with the correct dependencies
 
@@ -218,7 +214,7 @@ def test_lambda_handler_ancillary_event(
         )
         dependencies = ProcessingInputCollection(science_in, ancillary_in)
         mock_batch_client.submit_job.assert_called_with(
-            jobName="swe-l1b-sci-job-2",
+            jobName="swe-l1b-sci-job-3",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-swe",
             containerOverrides={
@@ -239,12 +235,116 @@ def test_lambda_handler_ancillary_event(
                 ]
             },
         )
-        # Submit a second job with the same file as input which will try to kick
-        # off a duplicate job. We expect the submit_job method to not be called
-        # so make sure it is still only called two times from our previous iteration.
-        mock_batch_client.submit_job.call_count = 0
+
+
+def test_lambda_handler_mag_l1c_case(session, mock_urlopen):
+    """Tests ``lambda_handler` for unique mac l1c case."""
+    session.add(
+        ScienceFiles(
+            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v001.cdf",
+            instrument="mag",
+            data_level="l1b",
+            descriptor="norm-mago",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        )
+    )
+    session.commit()
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_mag_l1b_norm-mago_20240101_v001.cdf"}}'
+                "}"
+            }
+        ]
+    }
+    context = {"context": "sample_context"}
+    expected_processing_input = ProcessingInputCollection(
+        ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
+    )
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(events, context)
-        assert mock_batch_client.submit_job.call_count == 0
+        # Verify the function was called
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="mag-l1c-norm-mago-job-1",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-mag",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "mag",
+                    "--data-level",
+                    "l1c",
+                    "--descriptor",
+                    "norm-mago",
+                    "--start-date",
+                    "20240101",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    expected_processing_input.serialize(),
+                    "--upload-to-sdc",
+                ]
+            },
+        )
+
+        events = {
+            "Records": [
+                {
+                    "body": '{"detail": '
+                    '{"object": {"key": "imap_mag_l1b_burst-mago_20240101_v001.cdf"}}'
+                    "}"
+                }
+            ]
+        }
+        session.add(
+            ScienceFiles(
+                file_path="/path/to/imap_mag_l1b_burst-mago_20240101_v001.cdf",
+                instrument="mag",
+                data_level="l1b",
+                descriptor="burst-mago",
+                start_date=datetime(2024, 1, 1),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+        )
+        session.commit()
+
+        expected_processing_input.add(
+            ScienceInput("imap_mag_l1b_burst-mago_20240101_v001.cdf")
+        )
+        lambda_handler(events, context)
+        # Verify the function was called
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="mag-l1c-norm-mago-job-2",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-mag",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "mag",
+                    "--data-level",
+                    "l1c",
+                    "--descriptor",
+                    "norm-mago",
+                    "--start-date",
+                    "20240101",
+                    "--version",
+                    "v002",
+                    "--dependency",
+                    expected_processing_input.serialize(),
+                    "--upload-to-sdc",
+                ]
+            },
+        )
 
 
 def test_lambda_handler_no_dependencies(session, mock_urlopen):
@@ -342,30 +442,29 @@ def test_spice_file():
         lambda_handler(events, context)
 
 
-def test_is_job_in_status_table(session):
+def test_determine_max_version(session):
     """Test the ``is_job_in_status_table`` function."""
     _populate_processing_table(session)
-    # query the processing table if this job is already in progress
-    result = is_job_in_processing_table(
+    # query the processing table and get the bumped version
+    result = determine_job_version(
         session=session,
         instrument="lo",
         data_level="l1b",
         descriptor="de",
         start_date=datetime(2010, 1, 1),
-        version="v001",
     )
 
-    assert result
+    assert result == "v002"
 
-    result = is_job_in_processing_table(
+    # Assert that the version returned is "v000" when the job has not been processed.
+    result = determine_job_version(
         session=session,
         instrument="swapi",
         data_level="l1b",
         descriptor="sci",
         start_date=datetime(2010, 1, 1),
-        version="v001",
     )
-    assert not result
+    assert result == "v001"
 
 
 @pytest.mark.skipif(
@@ -391,6 +490,8 @@ def test_duplicate_job(session, first_status, second_status):
                 descriptor="de",
                 start_date=datetime(2010, 1, 1),
                 version="v001",
+                dependencies='[{"type": "ancillary", "files": '
+                '["imap_mag_l1b-cal_20250101_v001.cdf"]}]',
             )
         )
     session.commit()
@@ -509,4 +610,4 @@ def test_api_request_success_empty(session, mock_urlopen: unittest.mock.MagicMoc
         "trigger_type": "swe",
     }
     dependencies = _get_dependencies(dependency_event_msg)
-    assert dependencies == imap_data_access.processing_input.ProcessingInputCollection()
+    assert not dependencies

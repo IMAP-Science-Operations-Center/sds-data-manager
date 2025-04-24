@@ -107,6 +107,28 @@ class ProcessingJob(Base):
         ),
     )
 
+    def to_dict(self):
+        """Convert the ProcessingJob instance to a dictionary."""
+        return {
+            "status": str(self.status.name),
+            "instrument": str(self.instrument),
+            "data_level": str(self.data_level),
+            "descriptor": self.descriptor,
+            "start_date": self.start_date.isoformat() if self.start_date else None,
+            "version": self.version,
+            # These parameters could be None when the batch job is in progress
+            "job_definition": self.job_definition if self.job_definition else None,
+            "job_log_stream_id": self.job_log_stream_id
+            if self.job_log_stream_id
+            else None,
+            "container_image": self.container_image if self.container_image else None,
+            "container_command": self.container_command
+            if self.container_command
+            else None,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "stopped_at": self.stopped_at.isoformat() if self.stopped_at else None,
+        }
+
 
 class ScienceFiles(Base):
     """Science files table."""

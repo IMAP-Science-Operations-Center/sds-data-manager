@@ -147,11 +147,15 @@ class Relationship:
 
     Valid data relationships are:
         1. HARD - the data is required for the pipeline to run
-        2. SOFT - the data is optional for the pipeline to run
+        2. SOFT_TRIGGER - the data is optional for the pipeline to run. A new file will
+            trigger processing.
+        3. SOFT_NO_TRIGGER - the data is optional for the pipeline to run. A new file
+            will not trigger processing.
     """
 
     HARD: str = "HARD"
-    SOFT: str = "SOFT"
+    SOFT_TRIGGER: str = "SOFT_TRIGGER"
+    SOFT_NO_TRIGGER: str = "SOFT_NO_TRIGGER"
 
     @property
     def valid_relationship(self) -> list[str]:
@@ -162,7 +166,7 @@ class Relationship:
         list[str]
             list of valid data relationships.
         """
-        return [self.HARD, self.SOFT]
+        return [self.HARD, self.SOFT_TRIGGER, self.SOFT_NO_TRIGGER]
 
 
 @dataclass
@@ -322,9 +326,10 @@ def get_dependencies(node, dependency_type, relationship):
     dependency_type : str
         Whether it's UPSTREAM or DOWNSTREAM dependency.
     relationship : str
-        Whether it's HARD or SOFT dependency.
-        HARD means data is required for pipeline and SOFT
-        means data is optional for pipeline.
+        Whether it's HARD, SOFT_TRIGGER, or SOFT_NO_TRIGGER dependency.
+        HARD means data is required for pipeline and SOFT_TRIGGER and SOFT_NO_TRIGGER
+        means data is optional for pipeline. A SOFT_TRIGGER file will trigger processing
+        and reprocessing.
 
     Returns
     -------
@@ -413,7 +418,7 @@ def primary_science_dep(query_params: dict, dependency: dict) -> bool:
     Returns
     -------
     bool
-        True if dependency is a primary science dependency, False otherwise
+        True if dependency is a primary science dependency, False otherwise.
 
     Examples
     --------
@@ -463,19 +468,19 @@ def get_dependency_processing_input(
     ProcessingInputCollection
         Dependency files that can include Ancillary, SPICE, or Science inputs.
     """
+    relationship = query_params["relationship"]
     dependency_inputs = processing_input.ProcessingInputCollection()
-    inputs = []
     with db.Session() as session:
         for dep in dependencies:
             # Check if the dependency is a primary science dependency and if the file
             # source that triggered the batch stater is equal to the dependency source.
-            # If true, we can find science files with the exact start date and version
+            # If true, we can find science files with the exact start date
             # used in the query.
 
-            # This check is necessary because the start date and version are extracted
+            # This check is necessary because the start date is extracted
             # from the trigger file. If the trigger file is either an ancillary file
             # (including science files from a different source) or SPICE, the exact
-            # start date and version cannot be used to find the science file because
+            # start date cannot be used to find the science file because
             # the dates are not guaranteed to correspond.
             primary_sci_dep = primary_science_dep(query_params, dep)
             if primary_sci_dep and trigger_type == dep["data_type"]:
@@ -486,7 +491,6 @@ def get_dependency_processing_input(
             logger.info(
                 f"Searching for files matching dep={dep}\n"
                 f"start_date={start_date}\n"
-                f"version={version}\n"
                 f"end_date={end_date}\n"
                 f"primary_sci_trigger={primary_sci_trigger}\n"
                 f"primary_sci_dep={primary_sci_dep}"
@@ -495,52 +499,27 @@ def get_dependency_processing_input(
                 session,
                 dep,
                 start_date,
-                version,
+                None,
                 end_date,
                 primary_sci_trigger,
                 primary_sci_dep,
             )
-            if not records:
-                # TODO change return
-                logger.info(
-                    "No records found for dependency. Returning empty collection."
-                )
-                return dependency_inputs
+
+            if not records and relationship == Relationship.HARD:
+                logger.info("No records found for dependency. Returning None.")
+                return None
+            elif not records:
+                continue
 
             filenames = [basename(record.file_path) for record in records]
             logger.info(f"Found filenames: {filenames}. Adding to collection.")
-            # If this is a primary science dependency, filter files for ones that have a
-            # downstream counterpart that needs to be processed.
-            # E.g. if imap_mag_l1d-sci_0250105.cdf file triggers batch starter,
-            # This could potentially trigger multiple swe l1b files that have been
-            # waiting. E.g.,
-            #    - imap_swe_l1b_sci_20250102.cdf
-            #    - imap_swe_l1b_sci_20250103.cdf
-            #    - imap_swe_l1b_sci_20250104.cdf
-            # Swe l1a is an upstream for swe l1b and get_files() will return all swe l1a
-            # records with start dates before 0250105.
-            # This list can be narrowed by calling filter_primary_science_dependencies()
-            # It will look for each l1a file's l1b counter-part in the science files
-            # table. If the file already exists, the l1a file is ignored.
-            if primary_sci_dep:
-                filenames = filter_primary_science_dependencies(
-                    session,
-                    records,
-                    query_params["data_type"],
-                    query_params["descriptor"],
-                )
-                if not filenames:
-                    logger.info(
-                        "Primary dependency files already processed. Returning empty "
-                        "collection."
-                    )
-                    return dependency_inputs
+
             # Create a processingInput instance and add it to the collection
             if dep["data_type"] == DataType.ANCILLARY:
-                inputs.append(processing_input.AncillaryInput(*filenames))
+                dependency_inputs.add(processing_input.AncillaryInput(*filenames))
             else:
-                inputs.append(processing_input.ScienceInput(*filenames))
-    dependency_inputs.add(inputs)
+                dependency_inputs.add(processing_input.ScienceInput(*filenames))
+
     return dependency_inputs
 
 
@@ -548,7 +527,7 @@ def get_files(
     session: db.Session,
     dependency: dict,
     start_date: datetime,
-    version: str,
+    version: Optional[str] = None,
     end_date: Optional[datetime] = None,
     primary_sci_trigger: Optional[bool] = False,
     primary_sci_dep: Optional[bool] = False,
@@ -569,12 +548,13 @@ def get_files(
             Data descriptor.
     start_date : datetime
         Start date of the event data.
-    version : str
-        Version of the event data.
+    version : str, optional
+        Version of the event data. If not supplied, the most recent version will be
+        returned.
     end_date: datetime, optional
         End date of the event data.
     primary_sci_trigger: bool, optional
-        When True, query for science files with a match to the start time and version
+        When True, query for science files with a match to the start time
         because it is assumed that the dependency is a primary science dependency and
         the trigger source is of the same data_source. Default is False.
     primary_sci_dep : bool, optional
@@ -609,19 +589,13 @@ def get_files(
         table = models.ScienceFiles
         type_specific_conditions.append(table.data_level == dependency["data_type"])
         if primary_sci_trigger:
-            # Query for science files matching the start date and version
+            # Query for science files matching the start date
             # Example:
             # Trigger source: swe_l0_raw_20250102_v001.pkts
             # Downstream: swe_l1a_sci
-            # Upstream: Look for swe_l0_raw with start date == 20250102 and
-            # version == v001
-
-            type_specific_conditions.extend(
-                [
-                    models.ScienceFiles.start_date == start_date,
-                    # TODO revisit - Mag L1C case.
-                    table.version == version,
-                ]
+            # Upstream: Look for swe_l0_raw with start date == 20250102
+            type_specific_conditions.append(
+                models.ScienceFiles.start_date == start_date,
             )
         elif end_date:
             # Find files that are downstream from an ancillary file
@@ -668,7 +642,8 @@ def get_files(
         table.descriptor == dependency["descriptor"],
         *type_specific_conditions,
     ]
-    # TODO check if version is supplied - otherwise get max version.
+    if version:
+        filter_conditions.append(table.version == version)
     # Only group by start date if return_latest_ancillary is false.
     # If true, we only want to return one ancillary file (including science files of
     # another instrument) with the most recent start date and greatest version number,
@@ -859,9 +834,18 @@ def lambda_handler(event, context):
         # TODO this only works for upstream deps right now. Do we need to ever get files
         # for downstream?
         dependencies_output = get_dependency_processing_input(
-            query_params, dependencies, start_date, version, trigger_type, end_date
+            query_params=query_params,
+            dependencies=dependencies,
+            start_date=start_date,
+            version=version,
+            trigger_type=trigger_type,
+            end_date=end_date,
         )
-
+        if not dependencies_output:
+            return {
+                "statusCode": 206,  # Partial content
+                "body": "At least one dependency is missing.",
+            }
         dependencies_output = dependencies_output.serialize()
     else:
         dependencies_output = json.dumps(dependencies)

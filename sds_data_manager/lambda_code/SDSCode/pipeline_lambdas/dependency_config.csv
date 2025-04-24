@@ -100,11 +100,19 @@ mag, l1a, norm-mago, mag, l1b, norm-mago, HARD, DOWNSTREAM
 mag, l1a, norm-magi, mag, l1b, norm-magi, HARD, DOWNSTREAM
 mag, l1a, burst-mago, mag, l1b, burst-mago, HARD, DOWNSTREAM
 mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
+mag, ancillary, l1b-calibration, mag, l1b, all, HARD, DOWNSTREAM
 
-mag, l1b, norm-mago, mag, l1c, norm-mago, HARD, DOWNSTREAM
-mag, l1b, burst-mago, mag, l1c, norm-mago, HARD, DOWNSTREAM
-mag, l1b, norm-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
-mag, l1b, burst-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
+# For L1C, we want to trigger on either burst or norm or both.
+mag, l1b, norm-mago, mag, l1c, norm-mago, SOFT_TRIGGER, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1c, norm-mago, SOFT_TRIGGER, DOWNSTREAM
+mag, l1b, norm-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
+
+mag, l1c, norm-mago, mag, l1d, norm, HARD, DOWNSTREAM
+mag, l1c, norm-magi, mag, l1d, norm, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1d, burst, HARD, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1d, burst, HARD, DOWNSTREAM
+mag, ancillary, l1d-calibration, mag, l1d, all, HARD, DOWNSTREAM
 
 # <---- Spacecraft Dependencies ---->
 

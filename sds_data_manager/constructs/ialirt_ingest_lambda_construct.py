@@ -3,6 +3,8 @@
 import aws_cdk as cdk
 from aws_cdk import RemovalPolicy, aws_dynamodb, aws_s3
 from aws_cdk import aws_dynamodb as ddb
+from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_efs as efs
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
@@ -19,10 +21,13 @@ class IalirtIngestLambda(Construct):
         scope: Construct,
         construct_id: str,
         ialirt_bucket: aws_s3.Bucket,
+        vpc: ec2.Vpc,
+        efs_access_point: efs.AccessPoint,
+        efs_security_group: ec2.SecurityGroup,
         docker_path: str = "sds_data_manager/lambda_code",
         **kwargs,
     ) -> None:
-        """IalirtIngestLambda Construct.
+        """IalirtIngestLambda Stack.
 
         Parameters
         ----------
@@ -32,6 +37,12 @@ class IalirtIngestLambda(Construct):
             A unique string identifier for this construct.
         ialirt_bucket : aws_s3.Bucket
             The data bucket.
+        vpc : ec2.Vpc
+            VPC into which to put the resources that require networking.
+        efs_access_point: efs.AccessPoint
+            EFS access point to mount inside the Lambda function.
+        efs_security_group: ec2.SecurityGroup
+            Security group associated with the EFS file system.
         docker_path : str
             Path to the Dockerfile.
         kwargs : dict
@@ -39,6 +50,11 @@ class IalirtIngestLambda(Construct):
 
         """
         super().__init__(scope, construct_id, **kwargs)
+
+        # EFS resources
+        self.efs_access_point = efs_access_point
+        self.efs_security_group = efs_security_group
+        self.vpc = vpc
 
         # Create DynamoDB Table
         self.packet_data_table = self.create_ingest_dynamodb_table()
@@ -169,6 +185,9 @@ class IalirtIngestLambda(Construct):
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonDynamoDBFullAccess"
                 ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaVPCAccessExecutionRole"
+                ),
             ],
         )
 
@@ -195,10 +214,16 @@ class IalirtIngestLambda(Construct):
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
             role=lambda_role,
+            vpc=self.vpc,
+            security_groups=[self.efs_security_group],
+            filesystem=lambda_.FileSystem.from_efs_access_point(
+                self.efs_access_point, "/mnt/spice"
+            ),
             environment={
                 "INGEST_TABLE": packet_data_table.table_name,
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
+                "EFS_SPICE_MOUNT_PATH": "/mnt/spice",
             },
         )
 

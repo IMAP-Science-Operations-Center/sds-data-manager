@@ -181,7 +181,7 @@ def build_sds(
     rds_construct.add_synchronizer(
         code=lambda_code,
         layers=[db_lambda_layer, spice_lambda_layer],
-        bucket_name=data_bucket.data_bucket.bucket_name,
+        data_bucket=data_bucket.data_bucket,
         vpc=networking.vpc,
     )
 
@@ -329,6 +329,9 @@ def build_sds(
         scope=ialirt_stack,
         construct_id="IalirtIngestLambda",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
+        vpc=networking.vpc,
+        efs_access_point=efs_instance.spice_access_point,
+        efs_security_group=efs_instance.efs_security_group,
     )
 
     # I-ALiRT IOIS archive lambda (facilitates dynamodb to s3)

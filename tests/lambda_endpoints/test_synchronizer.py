@@ -69,3 +69,29 @@ def test_synchronizer_extra_db(session, s3_client):
     with session.begin():
         nfiles = session.query(models.ScienceFiles).count()
     assert nfiles == 0
+
+
+def test_ancillary(session, s3_client):
+    """An s3 file not in the database already, gets added as expected."""
+    cleanup_bucket(s3_client)
+
+    filepath = "imap/ancillary/glows/imap_glows_l3b-archive-zip_20100326_v012.cdf"
+    s3_client.put_object(Bucket="test-data-bucket", Key=filepath, Body=b"")
+
+    with session.begin():
+        nfiles = session.query(models.ScienceFiles).count()
+    assert nfiles == 0
+
+    synchronizer.lambda_handler(event={}, context={})
+
+    with session.begin():
+        files = session.query(models.AncillaryFiles).all()
+    assert len(files) == 1
+
+    item = files[0]
+    assert item.file_path == filepath
+    assert item.instrument == "glows"
+    assert item.descriptor == "l3b-archive-zip"
+    assert item.start_date == datetime.datetime(2010, 3, 26)
+    assert item.version == "v012"
+    assert item.extension == "cdf"

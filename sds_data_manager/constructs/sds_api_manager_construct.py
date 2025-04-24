@@ -222,6 +222,29 @@ class SdsApiManager(Construct):
             layers=layers,
         )
 
+        # API to query batch job information
+        batch_job_query_api_lambda = lambda_.Function(
+            self,
+            id="BatchJobQueryAPILambda",
+            function_name="batch-job-query-api-handler",
+            code=code,
+            handler="SDSCode.api_lambdas.batch_job_query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            security_groups=[rds_security_group],
+            environment={
+                "SECRET_NAME": db_secret_name,
+            },
+            layers=layers,
+        )
+        api.add_route(
+            route="batch-job",
+            http_method="GET",
+            lambda_function=batch_job_query_api_lambda,
+        )
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
         )
@@ -230,6 +253,7 @@ class SdsApiManager(Construct):
         rds_secret.grant_read(grantee=spice_query_api_lambda)
         rds_secret.grant_read(grantee=spice_metakernel_api_lambda)
         rds_secret.grant_read(grantee=upload_api_lambda)
+        rds_secret.grant_read(grantee=batch_job_query_api_lambda)
 
         api.add_route(
             route="spin_table",

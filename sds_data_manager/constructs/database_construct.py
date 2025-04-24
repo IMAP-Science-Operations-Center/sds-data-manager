@@ -3,6 +3,7 @@
 import aws_cdk as cdk
 from aws_cdk import CustomResource
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_rds as rds
 from aws_cdk import aws_secretsmanager as secrets
@@ -139,10 +140,10 @@ class SdpDatabase(Construct):
             },
             layers=layers,
         )
-        rds_secret = secrets.Secret.from_secret_name_v2(
+        self.rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", self.secret_name
         )
-        rds_secret.grant_read(grantee=schema_create_lambda)
+        self.rds_secret.grant_read(grantee=schema_create_lambda)
         db.connections.allow_from(schema_create_lambda, ec2.Port.tcp(5432))
 
         res_provider = cr.Provider(
@@ -155,7 +156,7 @@ class SdpDatabase(Construct):
         # populated with the DB credentials before we can create the schema.
         db_custom_resource.node.add_dependency(db)
 
-    def add_synchronizer(self, code, layers, bucket_name, vpc):
+    def add_synchronizer(self, code, layers, data_bucket, vpc):
         """Add synchronizer lambda.
 
         This is a separate lambda function that is used to synchronize the database
@@ -170,12 +171,12 @@ class SdpDatabase(Construct):
             Lambda code bundle to create the initial DB schema.
         layers : list
             List of Lambda layers to attach to the lambda function.
-        bucket_name : str
-            S3 bucket name.
+        data_bucket : obj
+            The data bucket
         vpc : ec2.Vpc
             Virtual private cloud that this lambda should be placed in.
         """
-        lambda_.Function(
+        synchronizer_lambda = lambda_.Function(
             self,
             id="db-synchronizer",
             function_name="db-synchronizer",
@@ -189,8 +190,17 @@ class SdpDatabase(Construct):
             vpc_subnets=self.rds_subnet_selection,
             security_groups=[self.rds_security_group],
             environment={
-                "S3_BUCKET": bucket_name,
+                "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": self.secret_name,
             },
             layers=layers,
         )
+
+        s3_list_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:ListBucket"],
+            resources=[f"{data_bucket.bucket_arn}/*", f"{data_bucket.bucket_arn}"],
+        )
+
+        synchronizer_lambda.add_to_role_policy(s3_list_policy)
+        self.rds_secret.grant_read(grantee=synchronizer_lambda)
