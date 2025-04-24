@@ -38,6 +38,52 @@ glows, ancillary, uv-anisotropy-1CR, glows, l3b, ion-rate-profile, HARD, DOWNSTR
 glows, ancillary, WawHelioIonMP, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, bad-days-list, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 
+glows, l3d, solar-hist, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, density-3d, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, energy-grid-lo, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, ionization-files, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, lya-series, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, phion-hydrogen, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3e, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, solar-uv-anisotropy, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, speed-3d, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, sw-eqtr-electrons, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, tess-xyz-8, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+
+glows, l3d, solar-hist, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, density-3d, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, energy-grid-hi, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, ionization-files, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, lya-series, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, phion-hydrogen, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3e, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, solar-uv-anisotropy, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, speed-3d, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, sw-eqtr-electrons, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+
+glows, l3d, solar-hist, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, density-3d, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, energy-grid-hi, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, ionization-files, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, lya-series, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, phion-hydrogen, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3e, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, solar-uv-anisotropy, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, speed-3d, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, sw-eqtr-electrons, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+
+glows, l3d, solar-hist, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, density-3d, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, energy-grid-ul, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, ionization-files, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, lya-series, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, phion-hydrogen, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3e, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, solar-uv-anisotropy, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, speed-3d, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, sw-eqtr-electrons, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, tess-ang-16, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+
 # <---- HI Dependencies ---->
 
 hi, l0, raw, hi, l1a, all, HARD, DOWNSTREAM
