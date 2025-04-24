@@ -125,6 +125,10 @@ mag, ancillary, offsets-burst, mag, l2, burst, HARD, DOWNSTREAM
 mag, ancillary, offsets-norm, mag, l2, norm, HARD, DOWNSTREAM
 mag, ancillary, l2-calibration, mag, l2, all, HARD, DOWNSTREAM
 
+# TODO: add other output dependencies for L2 when SPICE is complete
+mag, l1c, norm-mago, mag, l2, norm-dsrf, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l2, burst-dsrf, HARD, DOWNSTREAM
+
 
 # <---- SWAPI Dependencies ---->
 
