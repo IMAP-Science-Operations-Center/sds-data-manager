@@ -211,7 +211,7 @@ class SPICEIndexerLambda(Construct):
         )
 
         # This access point is used by other resources to read from EFS
-        spice_mount_path = "/mnt/spice"
+        spice_mount_path = "/mnt/data"
 
         self.spice_ingest_lambda = lambda_.Function(
             self,

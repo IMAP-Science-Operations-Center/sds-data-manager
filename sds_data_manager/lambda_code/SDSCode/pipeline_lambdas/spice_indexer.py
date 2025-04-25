@@ -274,7 +274,7 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
     s3_bucket : str
         The S3 bucket
     spice_mount_path: Path
-        The path to the local SPICE directory
+        The path to the local SPICE directory. Eg. /mnt/
 
     Returns
     -------
@@ -285,23 +285,22 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
     # Create an S3 client
     s3_client = boto3.client("s3")
 
-    # Keep the base folder name and filename from the s3 key
-    # i.e. "ck/file.bc"
+    # Get directory structure from the S3 key
     dirname, filename = os.path.split(s3_key)
-    s3_folder_path = os.path.basename(dirname)
-    # Download path to EFS
-    efs_spice_path = spice_mount_path / s3_folder_path
-    efs_spice_filename_and_path = efs_spice_path / filename
+    # Prepend EFS path to the s3 directory structure
+    efs_spice_path = spice_mount_path / dirname
+    # Create the folder if it does not exist
+    efs_spice_path.mkdir(parents=True, exist_ok=True)
     try:
-        # Create the folder if it does not exist
-        efs_spice_path.mkdir(parents=True, exist_ok=True)
+        # Download path to the EFS path
+        efs_spice_filename_and_path = efs_spice_path / filename
         # Download file from S3 to the EFS path
         s3_client.download_file(s3_bucket, s3_key, efs_spice_filename_and_path)
         logger.info(f"{s3_key} file downloaded successfully")
     except Exception as e:
         logger.error(f"Error downloading file: {e!s}")
 
-    logger.info("File was written to EFS path: %s", efs_spice_path)
+    logger.info(f"{filename} was written to EFS path: {efs_spice_path}")
     return efs_spice_filename_and_path
 
 
@@ -354,7 +353,7 @@ def lambda_handler(event, context):
 
     """
     # Define the paths
-    spice_mount_path = Path(os.getenv("EFS_SPICE_MOUNT_PATH"))  # Eg. /mnt/spice
+    spice_mount_path = Path(os.getenv("EFS_SPICE_MOUNT_PATH"))  # Eg. /mnt/
 
     # Retrieve the S3 bucket and key from the event
     s3_bucket = event["detail"]["bucket"]["name"]
