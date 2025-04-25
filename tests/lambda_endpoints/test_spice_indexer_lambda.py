@@ -62,7 +62,7 @@ def test_s3_spice_files(session, s3_client, events_client):
     The files are located in the "test_spice_files" directory.
 
     """
-    temp_path = os.getenv("EFS_SPICE_MOUNT_PATH")
+    temp_path = os.getenv("DATA_DIR")
     current_path = os.path.dirname(os.path.abspath(__file__))
     one_level_up = os.path.abspath(os.path.join(current_path, ".."))
     test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
@@ -93,7 +93,7 @@ def test_s3_spice_files(session, s3_client, events_client):
 
     # Verify that the file was moved to the temp_path directory. This move
     # happens in above lambda function when the file is written to the EFS
-    # path specified by EFS_SPICE_MOUNT_PATH environment variable.
+    # path specified by DATA_DIR environment variable.
     assert os.path.exists(temp_path + "/imap/spice/lsk/naif0012.tls")
     assert os.path.exists(temp_path + "/imap/spice/sclk/imap_sclk_0012.tsc")
     assert os.path.exists(temp_path + "/imap/spice/ck/imap_2025_118_2025_120_001.ah.bc")

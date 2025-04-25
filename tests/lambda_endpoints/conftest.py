@@ -33,7 +33,7 @@ def _set_env(monkeypatch, tmpdir):
     # Mock the api gateway url
     # This is used in batch_starter.py
     monkeypatch.setenv("IMAP_DATA_ACCESS_URL", "https://test.url")
-    monkeypatch.setenv("EFS_SPICE_MOUNT_PATH", str(tmpdir))
+    monkeypatch.setenv("DATA_DIR", str(tmpdir))
 
 
 @pytest.fixture(scope="module")

@@ -353,7 +353,7 @@ def lambda_handler(event, context):
 
     """
     # Define the paths
-    spice_mount_path = Path(os.getenv("EFS_SPICE_MOUNT_PATH"))  # Eg. /mnt/
+    spice_mount_path = Path(os.getenv("DATA_DIR"))  # Eg. /mnt/data
 
     # Retrieve the S3 bucket and key from the event
     s3_bucket = event["detail"]["bucket"]["name"]

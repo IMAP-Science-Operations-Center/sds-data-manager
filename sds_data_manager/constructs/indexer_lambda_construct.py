@@ -237,7 +237,7 @@ class SPICEIndexerLambda(Construct):
             memory_size=1000,
             security_groups=[rds_security_group],
             environment={
-                "EFS_SPICE_MOUNT_PATH": spice_mount_path,
+                "DATA_DIR": spice_mount_path,
                 "SECRET_NAME": db_secret_name,
             },
         )
