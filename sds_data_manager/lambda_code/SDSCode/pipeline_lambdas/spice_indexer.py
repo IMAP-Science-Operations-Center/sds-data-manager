@@ -1,5 +1,6 @@
 """Functions to write SPICE ingested files to EFS."""
 
+import json
 import logging
 import os
 from datetime import datetime
@@ -352,6 +353,7 @@ def lambda_handler(event, context):
         Response message
 
     """
+    logger.info("Received event: " + json.dumps(event, indent=2))
     # Define the paths
     spice_mount_path = Path(os.getenv("DATA_DIR"))  # Eg. /mnt/data
 
