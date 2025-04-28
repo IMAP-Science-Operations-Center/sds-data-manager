@@ -1,5 +1,6 @@
 """Test the I-Alirt ingest lambda function."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,6 +9,7 @@ import pytest
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     lambda_handler,
     parse_packet,
+    query_filenames,
 )
 
 
@@ -105,3 +107,18 @@ def test_parse_packet_s3(mock_packet_file_to_datasets, s3_test_packet, tmp_path)
     # Check if file was downloaded
     real_tmp_file = tmp_path / filename
     assert real_tmp_file.exists()
+
+
+def test_query_filenames(s3_client):
+    """Test the query_filenames function."""
+    bucket = "test-data-bucket"
+    region = "us-west-2"
+
+    fixed_now = datetime(2025, 4, 28, 16, 5, 0, tzinfo=timezone.utc)
+
+    test_key = "packets/iois_1_packets_2025_118_16_04_00"
+    s3_client.put_object(Bucket=bucket, Key=test_key, Body=b"test file")
+
+    filenames = query_filenames(bucket, region, fixed_now)
+
+    assert test_key in filenames

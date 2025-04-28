@@ -69,15 +69,29 @@ def parse_packet(filename: str, bucket: str, key: str, download_dir: Path):
     return datasets_by_apid
 
 
-def query_filenames(bucket: str, region: str):
-    """Entry point to the query API lambda."""
+def query_filenames(bucket: str, region: str, now: datetime):
+    """Query the packets in the s3 bucket.
+
+    Parameters
+    ----------
+    bucket : str
+        The name of the S3 bucket.
+    region : str
+        The region in which the s3 bucket resides.
+    now : datetime
+        The current time in UTC.
+
+    Returns
+    -------
+    filenames : list
+        List of file paths.
+    """
     s3_client = boto3.client(
         "s3",
         region_name=region,
         config=botocore.client.Config(signature_version="s3v4"),
     )
 
-    now = datetime.now(timezone.utc)
     five_minutes_ago = now - timedelta(minutes=5)
 
     # Account for any cases in which data spans a threshold since
@@ -100,6 +114,7 @@ def query_filenames(bucket: str, region: str):
         key = obj["Key"]
         timestamp_str = key.split("iois_1_packets_")[1]
         timestamp = datetime.strptime(timestamp_str, "%Y_%j_%H_%M_%S")
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
 
         if five_minutes_ago <= timestamp <= now:
             filenames.append(key)
@@ -144,7 +159,8 @@ def lambda_handler(event, context):
     ingest_binary(ingest_table)
 
     # 2. Query s3 for packet filenames from past 5 minutes.
-    query_filenames(bucket, region)
+    now = datetime.now(timezone.utc)
+    query_filenames(bucket, region, now)
     # TODO: will use filenames here.
 
     # TODO: stopped here.
