@@ -130,9 +130,9 @@ def bump_version_number(version: str):
     Returns
     -------
     str
-        Version increased by 1.
+        Version increased by 1. If the input version is None, return "v001".
     """
-    return f"v{int(version[1:]) + 1:03d}"
+    return f"v{int(version[1:]) + 1:03d}" if version else "v001"
 
 
 def determine_job_version(
@@ -141,8 +141,8 @@ def determine_job_version(
     data_level: str,
     descriptor: str,
     start_date: datetime,
-):
-    """Return the version of the job to run.
+) -> str:
+    """Return the maximum existing file version in the pipeline increased by one.
 
     Parameters
     ----------
@@ -160,29 +160,36 @@ def determine_job_version(
     Returns
     -------
      str
-        The highest version number bumped by 1 if the file has been already processed,
-        otherwise "v001".
+        The highest version number.
     """
-    # TODO should I be making a separate call to the scienceFilesTable for the
-    # latest version?
-    filter_conditions = [
-        models.ProcessingJob.instrument == instrument,
-        models.ProcessingJob.data_level == data_level,
-        models.ProcessingJob.descriptor == descriptor,
-        models.ProcessingJob.start_date == start_date,
-        models.ProcessingJob.status.in_(
-            [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
-        ),
-    ]
-    # Determine the maximum version for the file if any
-    max_version = (
-        session.query(
-            func.max(models.ProcessingJob.version).label("latest_version")
-        ).filter(*filter_conditions)
-    ).scalar()
 
-    job_version = bump_version_number(max_version) if max_version else "v001"
-    return job_version
+    def filter_conditions(table):
+        # Filter conditions for the query
+        conditions = [
+            table.instrument == instrument,
+            table.data_level == data_level,
+            table.descriptor == descriptor,
+            table.start_date == start_date,
+        ]
+        if table == models.ProcessingJob:
+            conditions.append(table.status == models.Status.INPROGRESS)
+        return conditions
+
+    # First check to see if there are any jobs in progress and get the max version
+    max_version = (
+        session.query(func.max(models.ProcessingJob.version)).filter(
+            *filter_conditions(models.ProcessingJob)
+        )
+    ).scalar()
+    # If no jobs are in progress, check the science files table for the max version.
+    if not max_version:
+        max_version = (
+            session.query(func.max(models.ScienceFiles.version)).filter(
+                *filter_conditions(models.ScienceFiles)
+            )
+        ).scalar()
+    # Bump the version number. "V001" will be returned if max_version is None.
+    return bump_version_number(max_version)
 
 
 def try_to_submit_job(

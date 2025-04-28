@@ -444,7 +444,7 @@ def test_spice_file():
 
 
 def test_determine_max_version(session):
-    """Test the ``is_job_in_status_table`` function."""
+    """Test the ``determine_job_version`` function."""
     _populate_processing_table(session)
     # query the processing table and get the bumped version
     result = determine_job_version(
@@ -454,10 +454,8 @@ def test_determine_max_version(session):
         descriptor="de",
         start_date=datetime(2010, 1, 1),
     )
-
     assert result == "v002"
-
-    # Assert that the version returned is "v000" when the job has not been processed.
+    # Assert that the version returned is "v001" when the job has not been processed.
     result = determine_job_version(
         session=session,
         instrument="swapi",
@@ -466,6 +464,22 @@ def test_determine_max_version(session):
         start_date=datetime(2010, 1, 1),
     )
     assert result == "v001"
+
+
+def test_determine_max_version_missing_processing_job(session):
+    """Test that determine_job_version returns the correct version."""
+    _populate_processing_table(session)
+    _populate_file_catalog(session)
+    # Test when processingJob table is not updated, the function checks
+    # science_files table to get version
+    result = determine_job_version(
+        session=session,
+        instrument="swe",
+        data_level="l1a",
+        descriptor="sci",
+        start_date=datetime(2024, 1, 1),
+    )
+    assert result == "v011"
 
 
 @pytest.mark.skipif(
