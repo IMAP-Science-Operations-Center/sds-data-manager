@@ -549,6 +549,7 @@ def get_files(
         # TODO this could return all ancillary files with start dates before 20250102
         type_specific_conditions.append(
             and_(
+                table.descriptor == dependency["descriptor"],
                 table.start_date <= start_date,
                 or_(table.end_date >= start_date, table.end_date.is_(None)),
             )
