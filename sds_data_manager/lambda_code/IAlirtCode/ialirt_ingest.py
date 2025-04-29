@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import boto3
 import botocore
@@ -17,8 +18,17 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def ingest_binary(ingest_table):
-    # Example format (TODO: comment out):
+def ingest_binary(ingest_table: Any, items: list[dict]):
+    """Ingest binary data into the DynamoDB.
+
+    Parameters
+    ----------
+    ingest_table : Any
+        DynamoDB table.
+
+    Notes
+    -----
+    Example format of items:
     items = [
         {
             "apid": 478,
@@ -27,7 +37,9 @@ def ingest_binary(ingest_table):
             "packet_blob": b"binary_data_string",
         }
     ]
+    """
     packet_definition = imap_module_directory / "ialirt/packet_definitions/ialirt.xml"
+    # TODO: replace input with below.
     # items = generate_binary(s3_filepath, packet_definition)
 
     with ingest_table.batch_writer() as batch:
@@ -69,7 +81,7 @@ def parse_packet(filename: str, bucket: str, key: str, download_dir: Path):
     return datasets_by_apid
 
 
-def query_filenames(bucket: str, region: str, now: datetime):
+def query_filenames(bucket: str, region: str, now: datetime) -> list:
     """Query the packets in the s3 bucket.
 
     Parameters

@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
+    ingest_binary,
     lambda_handler,
     parse_packet,
     query_filenames,
@@ -122,3 +123,33 @@ def test_query_filenames(s3_client):
     filenames = query_filenames(bucket, region, fixed_now)
 
     assert test_key in filenames
+
+
+def test_ingest_binary(setup_dynamodb):
+    """Test the ingest_binary function."""
+    ingest_table = setup_dynamodb["ingest_table"]
+
+    items = [
+        {
+            "apid": 478,
+            "met": 999,
+            "ingest_time": "2025-04-28T16:00:00Z",
+            "packet_blob": b"test_blob",
+        }
+    ]
+
+    ingest_binary(ingest_table, items)
+
+    response = ingest_table.get_item(
+        Key={
+            "apid": 478,
+            "met": 999,
+        }
+    )
+
+    item = response.get("Item")
+    assert item is not None
+    assert item["apid"] == 478
+    assert item["met"] == 999
+    assert item["ingest_time"] == "2025-04-28T16:00:00Z"
+    assert item["packet_blob"] == b"test_blob"
