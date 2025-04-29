@@ -25,6 +25,8 @@ def ingest_binary(ingest_table: Any, items: list[dict]):
     ----------
     ingest_table : Any
         DynamoDB table.
+    items : list[dict]
+        List of items to be ingested into the DynamoDB table.
 
     Notes
     -----
@@ -38,10 +40,6 @@ def ingest_binary(ingest_table: Any, items: list[dict]):
         }
     ]
     """
-    packet_definition = imap_module_directory / "ialirt/packet_definitions/ialirt.xml"
-    # TODO: replace input with below.
-    # items = generate_binary(s3_filepath, packet_definition)
-
     with ingest_table.batch_writer() as batch:
         for item in items:
             batch.put_item(Item=item)
@@ -81,7 +79,7 @@ def parse_packet(filename: str, bucket: str, key: str, download_dir: Path):
     return datasets_by_apid
 
 
-def query_filenames(bucket: str, region: str, now: datetime) -> list:
+def query_filenames(bucket: str, region: str, now: datetime):
     """Query the packets in the s3 bucket.
 
     Parameters
@@ -151,7 +149,6 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
-    # TODO: these steps will be put into different functions.
     logger.info("Received event: %s", json.dumps(event))
 
     ingest_table_name = os.environ.get("INGEST_TABLE")
@@ -159,23 +156,35 @@ def lambda_handler(event, context):
     dynamodb = boto3.resource("dynamodb")
     ingest_table = dynamodb.Table(ingest_table_name)
     algorithm_table = dynamodb.Table(algorithm_table_name)
-    bucket = os.getenv("S3_BUCKET")
-    region = os.getenv("REGION")
+
+    bucket = event["detail"]["bucket"]["name"]
+    region = event["region"]
 
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
 
+    # TODO: Each of these steps in temporary, but provides an idea
+    #  of how the lambda will be used.
     # 1. Ingest Data to Ingest Table.
-    # TODO: this might be better as a class.
-    ingest_binary(ingest_table)
+    items = [
+        {
+            "apid": 478,
+            "met": 123,
+            "ingest_time": "2021-01-01T00:00:00Z",
+            "packet_blob": b"binary_data_string",
+        }
+    ]
+    # TODO: replace input with below.
+    # packet_definition = imap_module_directory / "ialirt/packet_definitions/ialirt.xml"
+    # items = generate_binary(s3_filepath, packet_definition)
+    ingest_binary(ingest_table, items)
 
     # 2. Query s3 for packet filenames from past 5 minutes.
     now = datetime.now(timezone.utc)
     query_filenames(bucket, region, now)
     # TODO: will use filenames here.
 
-    # TODO: stopped here.
     # 3. After processing insert data into Algorithm Table.
     item = {
         "apid": 478,

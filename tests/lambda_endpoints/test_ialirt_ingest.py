@@ -59,7 +59,13 @@ def test_lambda_handler(setup_dynamodb):
     ingest_table = setup_dynamodb["ingest_table"]
     algorithm_table = setup_dynamodb["algorithm_table"]
 
-    event = {"detail": {"object": {"key": "packets/file.txt"}}}
+    event = {
+        "region": "us-west-2",
+        "detail": {
+            "object": {"key": "packets/file.txt"},
+            "bucket": {"name": "test-data-bucket"},
+        },
+    }
 
     lambda_handler(event, {})
 
