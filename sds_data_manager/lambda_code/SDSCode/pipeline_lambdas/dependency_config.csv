@@ -31,6 +31,10 @@ glows, l1a, de, glows, l1b, de, HARD, DOWNSTREAM
 glows, l1a, hist, glows, l1b, hist, HARD, DOWNSTREAM
 
 glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
+glows, ancillary, calibration-data, glows, l3a, hist, HARD, DOWNSTREAM
+glows, ancillary, time-dep-bckgrd, glows, l3a, hist, HARD, DOWNSTREAM
+glows, ancillary, map-of-extra-helio-bckgrd, glows, l3a, hist, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings, glows, l3a, hist, HARD, DOWNSTREAM
 
 glows, l3a, hist, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings-L3bc, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
@@ -49,6 +53,11 @@ hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1a, 90sensor-de, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
 hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 
+hi, l2, h90-sf-ram-hae-4deg-6mo, hi, l3, h90-sf-sp-hae-4deg-6mo, HARD, DOWNSTREAM
+hi, l2, h90-sf-anti-hae-4deg-6mo, hi, l3, h90-sf-sp-hae-4deg-6mo, HARD, DOWNSTREAM
+
+hi, l3, h90-hf-sp-hae-4deg-6mo, hi, l3, h90-hf-sp-hae-4deg-6mo-spectral, HARD, DOWNSTREAM
+
 # <---- HIT Dependencies ---->
 
 hit, l0, raw, hit, l1a, all, HARD, DOWNSTREAM
@@ -60,7 +69,23 @@ hit, l1b, summed-rates, hit, l2, summed-intensity, HARD, DOWNSTREAM
 hit, l1b, sectored-rates, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
 hit, l2, macropixel-intensity, hit, l3, macropixel, HARD, DOWNSTREAM
 mag, l1d, norm-mago, hit, l3, macropixel, HARD, DOWNSTREAM
+
 hit, l1a, direct-events, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-2A-cosine-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-3A-cosine-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-4A-cosine-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-2B-cosine-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-3B-cosine-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-4B-cosine-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, lo-gain-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, hi-gain-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-2A-charge-fit-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-3A-charge-fit-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-4A-charge-fit-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-2B-charge-fit-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-3B-charge-fit-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, range-4B-charge-fit-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
+hit, ancillary, hit-event-type-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
 
 # <---- IDEX Dependencies ---->
 
@@ -95,11 +120,19 @@ mag, l1a, norm-mago, mag, l1b, norm-mago, HARD, DOWNSTREAM
 mag, l1a, norm-magi, mag, l1b, norm-magi, HARD, DOWNSTREAM
 mag, l1a, burst-mago, mag, l1b, burst-mago, HARD, DOWNSTREAM
 mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
+mag, ancillary, l1b-calibration, mag, l1b, all, HARD, DOWNSTREAM
 
-mag, l1b, norm-mago, mag, l1c, norm-mago, HARD, DOWNSTREAM
-mag, l1b, burst-mago, mag, l1c, norm-mago, HARD, DOWNSTREAM
-mag, l1b, norm-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
-mag, l1b, burst-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
+# For L1C, we want to trigger on either burst or norm or both.
+mag, l1b, norm-mago, mag, l1c, norm-mago, SOFT_TRIGGER, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1c, norm-mago, SOFT_TRIGGER, DOWNSTREAM
+mag, l1b, norm-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
+
+mag, l1c, norm-mago, mag, l1d, norm, HARD, DOWNSTREAM
+mag, l1c, norm-magi, mag, l1d, norm, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1d, burst, HARD, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1d, burst, HARD, DOWNSTREAM
+mag, ancillary, l1d-calibration, mag, l1d, all, HARD, DOWNSTREAM
 
 # <---- Spacecraft Dependencies ---->
 
@@ -113,11 +146,34 @@ swapi, l1, hk, swapi, l1, sci, HARD, DOWNSTREAM
 swapi, l1, sci, swapi, l2, sci, HARD, DOWNSTREAM
 swapi, ancillary, esa-unit-conversion, swapi, l2, sci, HARD, DOWNSTREAM
 swapi, ancillary, lut-notes, swapi, l2, sci, HARD, DOWNSTREAM
-# <---- TEST SWAPI L3 Dependencies ---->
 
 swapi, l2, sci, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, ancillary, density-temperature-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, ancillary, energy-gf-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, ancillary, instrument-response-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+
 swapi, l2, sci, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+swapi, ancillary, density-temperature-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+swapi, ancillary, energy-gf-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+swapi, ancillary, instrument-response-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+
+swapi, l2, sci, swapi, l3a, pui-he, HARD, DOWNSTREAM
+swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+swapi, ancillary, density-temperature-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+swapi, ancillary, energy-gf-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+swapi, ancillary, instrument-response-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+
 swapi, l2, sci, swapi, l3b, combined, HARD, DOWNSTREAM
+swapi, ancillary, efficiency-lut, swapi, l3b, combined, HARD, DOWNSTREAM
+swapi, ancillary, energy-gf-lut, swapi, l3b, combined, HARD, DOWNSTREAM
 
 # <---- SWE Dependencies ---->
 
@@ -125,7 +181,9 @@ swe, l0, raw, swe, l1a, sci, HARD, DOWNSTREAM
 swe, l1a, sci, swe, l1b, sci, HARD, DOWNSTREAM
 swe, ancillary, l1b-in-flight-cal, swe, l1b, sci, HARD, DOWNSTREAM
 swe, l1b, sci, swe, l2, sci, HARD, DOWNSTREAM
+swe, l1b, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, l2, sci, swe, l3, sci, HARD, DOWNSTREAM
+swe, ancillary, config, swe, l3, sci, HARD, DOWNSTREAM
 swapi, l3a, proton-sw, swe, l3, sci, HARD, DOWNSTREAM
 mag, l1d, norm-mago, swe, l3, sci, HARD, DOWNSTREAM
 

@@ -11,6 +11,9 @@ from imap_data_access.processing_input import (
     ScienceInput,
 )
 
+from sds_data_manager.lambda_code.SDSCode.database.models import (
+    ScienceFiles,
+)
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import get_files
 from tests.lambda_endpoints.conftest import (
@@ -70,8 +73,72 @@ def test_missing_dependency(session):
     )
     dependency_response = dependency.lambda_handler(event, None)
 
-    assert dependency_response["statusCode"] == 200
-    assert dependency_response["body"] == "[]"
+    assert dependency_response["statusCode"] == 206
+    assert "No records found for dependency:" in dependency_response["body"]
+
+
+def test_soft_dependencies(session):
+    """Test that the correct soft dependencies are returned."""
+    _populate_file_catalog(session)
+    event = create_dependency_api_event(
+        "mag",
+        "l1c",
+        descriptor="norm-mago",
+        start_date="20240101",
+        version="v001",
+        trigger_type="l1b",
+        relationship="SOFT_TRIGGER",
+        dep_type="UPSTREAM",
+    )
+    dependency_response = dependency.lambda_handler(event, None)
+    dependencies = dependency_response["body"]
+    # There should be two science inputs: one for mag_l1b_burst-mago and
+    # mag_l1b_norm-mago
+    # Expect ancillary dependencies and science dependencies
+    expected_processing_input = ProcessingInputCollection(
+        ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
+        ScienceInput("imap_mag_l1b_burst-mago_20240101_v001.cdf"),
+    )
+    assert dependencies == expected_processing_input.serialize()
+
+
+def test_missing_soft_dependencies(session):
+    """Test that the correct soft dependencies are returned."""
+    session.add(
+        ScienceFiles(
+            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v001.cdf",
+            instrument="mag",
+            data_level="l1b",
+            descriptor="norm-mago",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    )
+    session.commit()
+
+    event = create_dependency_api_event(
+        "mag",
+        "l1c",
+        descriptor="norm-mago",
+        start_date="20240101",
+        version="v001",
+        trigger_type="l1b",
+        relationship="SOFT_TRIGGER",
+        dep_type="UPSTREAM",
+    )
+    dependency_response = dependency.lambda_handler(event, None)
+    dependencies = dependency_response["body"]
+    # There should be one science input: one for mag_l1b_norm-mago
+    # Even though burst-mago is missing.
+    # Expect ancillary dependencies and science dependencies
+    expected_processing_input = ProcessingInputCollection(
+        ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf")
+    )
+    assert dependencies == expected_processing_input.serialize()
 
 
 def test_missing_required_params():
@@ -116,6 +183,7 @@ def test_get_downstream_dependencies():
             "data_source": "hit",
             "data_type": "l1b",
             "descriptor": "all",
+            "relationship": "HARD",
         }
     ]
     assert len(dependents) == 1
@@ -132,35 +200,36 @@ def test_get_downstream_dependencies():
             "data_source": "swe",
             "data_type": "l1a",
             "descriptor": "sci",
+            "relationship": "HARD",
         },
         {
             "data_source": "swe",
             "data_type": "ancillary",
             "descriptor": "l1b-in-flight-cal",
+            "relationship": "HARD",
         },
     ]
     assert len(dependents) == 2
     assert dependents == expected_complete_dependent
 
 
-def test_primary_dep_gets_filtered(session, caplog):
-    """Tests that a pre-existing primary science file gets filtered."""
-    _populate_file_catalog(session)
+def test_get_all_downstream_dependencies():
+    """Add test for getting back ancillary dependencies."""
     event = create_dependency_api_event(
-        "swe",
-        "l1a",
-        "sci",
-        start_date="20240102",
-        version="v001",
-        trigger_type="l1b-in-flight-cal",
+        "mag", "l1b", descriptor="norm-mago", relationship="ALL"
     )
+    dependency_response = dependency.lambda_handler(event, None)
+    dependents = json.loads(dependency_response["body"])
 
-    dependency.lambda_handler(event, None)
-
-    assert (
-        "Primary dependency files already processed. Returning empty collection."
-        in caplog.text
-    )
+    expected_complete_dependent = [
+        {
+            "data_source": "mag",
+            "data_type": "l1c",
+            "descriptor": "norm-mago",
+            "relationship": "SOFT_TRIGGER",
+        },
+    ]
+    assert dependents == expected_complete_dependent
 
 
 def test_get_upstream_ancillary_trigger(session, caplog):
@@ -176,11 +245,10 @@ def test_get_upstream_ancillary_trigger(session, caplog):
     )
     dependency_response = dependency.lambda_handler(event, None)
     dependencies = dependency_response["body"]
-    # There are three swe l1a records before 20240104, but one of them was filtered
-    # out because the swe l1b downstream dependency for that date and version
-    # was already processed, so it is not included in the output.
+    # There are three swe l1a records before 20240104.
     science_in = ScienceInput(
         "imap_swe_l1a_sci_20240101_v010.cdf",
+        "imap_swe_l1a_sci_20240102_v001.cdf",
         "imap_swe_l1a_sci_20240103_v001.cdf",
     )
     ancillary_in = AncillaryInput("imap_swe_l1b-in-flight-cal_20230101_v001.cdf")
@@ -245,7 +313,7 @@ def test_get_primary_science_files(session):
     """Tests the get_file function for science files."""
     _populate_file_catalog(session)
 
-    dep = {"data_source": "ultra", "data_type": "l2", "descriptor": "sci"}
+    dep = {"data_source": "mag", "data_type": "l1b", "descriptor": "burst-mago"}
     record = get_files(
         session,
         dependency=dep,
@@ -254,9 +322,9 @@ def test_get_primary_science_files(session):
         primary_sci_dep=True,
     )[0]
 
-    assert record.instrument == "ultra"
-    assert record.data_level == "l2"
-    assert record.descriptor == "sci"
+    assert record.instrument == "mag"
+    assert record.data_level == "l1b"
+    assert record.descriptor == "burst-mago"
     assert record.start_date == datetime(2024, 1, 1)
     assert record.version == "v001"
 
@@ -264,7 +332,7 @@ def test_get_primary_science_files(session):
     record = get_files(
         session,
         dependency=dep,
-        start_date=datetime(2010, 1, 1),
+        start_date=datetime(2009, 1, 5),
         version="v001",
     )
     assert record == []
@@ -400,7 +468,6 @@ def test_get_files_max_version_ancillary(session):
         session,
         dependency=dep,
         start_date=datetime(2010, 1, 2),
-        version="v001",
         primary_sci_trigger=False,
     )
 
@@ -421,7 +488,6 @@ def test_get_files_science(session):
         session,
         dependency=dep,
         start_date=datetime(2010, 1, 2),
-        version="v001",
         primary_sci_trigger=False,
         primary_sci_dep=True,
     )

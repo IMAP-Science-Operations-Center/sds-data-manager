@@ -245,7 +245,7 @@ class SPICEIndexerLambda(Construct):
         # Define an EventBridge rule
         event_rule = events.Rule(
             self,
-            "EfsWriteLambdaS3EventRule",
+            "SPICEIndexerLambdaS3EventRule",
             event_pattern=events.EventPattern(
                 source=["aws.s3"],
                 detail_type=["Object Created"],
@@ -253,7 +253,7 @@ class SPICEIndexerLambda(Construct):
                     "bucket": {"name": [data_bucket.bucket_name]},
                     "object": {
                         "key": [
-                            {"prefix": "spice/"},
+                            {"prefix": "imap/spice/"},
                         ]
                     },
                 },

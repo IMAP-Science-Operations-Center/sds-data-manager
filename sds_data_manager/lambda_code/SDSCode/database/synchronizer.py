@@ -45,6 +45,7 @@ def lambda_handler(event, context):
     paginator = client.get_paginator("list_objects_v2")
     prefix = "imap/"
     s3_files_dict = {}
+    # TODO search spice/ folder
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         if "Contents" in page:
             s3_files_dict.update(
@@ -56,8 +57,11 @@ def lambda_handler(event, context):
     # Fetch database entries
     with db.Session() as session:
         with session.begin():
-            query = select(models.ScienceFiles.file_path)
-            search_results = session.execute(query).all()
+            search_results = []
+            query_science = select(models.ScienceFiles.file_path)
+            query_ancillary = select(models.AncillaryFiles.file_path)
+            search_results.extend(session.execute(query_science).all())
+            search_results.extend(session.execute(query_ancillary).all())
 
         # result is a one-element tuple, so we need to extract the filepath
         db_files = set([result[0] for result in search_results])
@@ -80,26 +84,45 @@ def lambda_handler(event, context):
 
         # Update database with missing S3 files
         records_to_add = []
-        for filename in s3_only_files:
-            file_params = imap_data_access.ScienceFilePath.extract_filename_components(
-                filename.split("/")[-1]
+        for filepath in s3_only_files:
+            filename = filepath.split("/")[-1]
+            imap_file = imap_data_access.file_validation.generate_imap_file_path(
+                filename
             )
+            file_params = imap_file.extract_filename_components(filename)
 
             # delete mission key from metadata params
             file_params.pop("mission")
             file_params["start_date"] = datetime.strptime(
                 file_params.pop("start_date"), "%Y%m%d"
             )
+            # Check for end date
+            if file_params.get("end_date", None):
+                file_params["end_date"] = datetime.strptime(
+                    file_params.pop("end_date"), "%Y%m%d"
+                )
+            file_params["file_path"] = filepath
+            file_params["ingestion_date"] = s3_files_dict[filepath]
 
-            file_params["file_path"] = filename
-            file_params["ingestion_date"] = s3_files_dict[filename]
-            records_to_add.append(models.ScienceFiles(**file_params))
+            if isinstance(imap_file, imap_data_access.ScienceFilePath):
+                record = models.ScienceFiles(**file_params)
+            elif isinstance(imap_file, imap_data_access.AncillaryFilePath):
+                record = models.AncillaryFiles(**file_params)
+
+            records_to_add.append(record)
+
         session.add_all(records_to_add)
 
         # Remove database entries for files that were deleted from s3
-        delete_statement = delete(models.ScienceFiles).where(
+        delete_science_files = delete(models.ScienceFiles).where(
             models.ScienceFiles.file_path.in_(db_only_files)
         )
 
-        session.execute(delete_statement)
+        delete_ancillary_files = delete(models.AncillaryFiles).where(
+            models.AncillaryFiles.file_path.in_(db_only_files)
+        )
+
+        session.execute(delete_science_files)
+        session.execute(delete_ancillary_files)
+
         session.commit()

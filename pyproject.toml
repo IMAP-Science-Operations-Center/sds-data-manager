@@ -31,8 +31,8 @@ classifiers = [
 python = ">=3.10,<4"
 # WARNING - Please run this command when updateing `imap-data-access` to ensure that
 # the correct version and hash are used:
-#   poetry export -f requirements.txt -o lambda_layer/python/requirements.txt --with lambda-dev
-imap-data-access = ">=0.18.2"
+#   poetry export -f requirements.txt -o lambda_layer/database/requirements.txt --with layer-database
+imap-data-access = ">=0.21.0"
 
 # Optional dependencies - install with `poetry install -E docs`
 sphinx = {version="^7.1.0", optional=true}
@@ -69,7 +69,7 @@ optional = true
 
 # To create requirements.txt for imap_processing Dockerfile, run:
 # poetry export -f requirements.txt
-# --with layer-processing -o lambda_code/IAlirtCode/requirements.txt --without-urls
+# --with layer-processing -o sds_data_manager/lambda_code/processing/requirements.txt --without-urls
 [tool.poetry.group.layer-processing]
 optional = true
 

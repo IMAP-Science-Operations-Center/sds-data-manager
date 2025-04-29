@@ -66,6 +66,8 @@ def lambda_handler(event, context):
         corresponding status code in case of failure.
 
     """
+    logger.info("Received event: " + json.dumps(event, indent=2))
+
     one_day = 86400
     url_life = os.getenv("URL_EXPIRE", one_day)
     path_params = event.get("pathParameters", {}).get("proxy", None)
@@ -112,6 +114,7 @@ def lambda_handler(event, context):
     pre_signed_url = s3_client.generate_presigned_url(
         "get_object", Params={"Bucket": bucket, "Key": filepath}, ExpiresIn=url_life
     )
+    logger.info(f"Downloading {filepath}")
     response_body = {"download_url": pre_signed_url}
     # The 302 response needs a "Location" header with the pre-signed URL
     # to indicate where the redirect needs to point on the client side.
