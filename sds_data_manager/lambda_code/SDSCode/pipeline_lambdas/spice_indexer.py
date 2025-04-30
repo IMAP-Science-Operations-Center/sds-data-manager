@@ -363,6 +363,24 @@ def lambda_handler(event, context):
     logger.info(event)
 
     file_path = write_data_to_efs(s3_key, s3_bucket, spice_mount_path)
-    index_spice_file(file_path)
+    logger.info(f"File {s3_key} moved to EFS successfully")
 
-    return {"statusCode": 200, "body": "File downloaded and moved successfully"}
+    spice_obj = SPICEFilePath(file_path)
+    # If file is of type 'spin' or 'repoint', don't index to SPICE table
+    if spice_obj.spice_metadata["type"] == "repoint":
+        return {
+            "statusCode": 200,
+            "body": f"{s3_key} file moved to EFS successfully",
+        }
+    elif spice_obj.spice_metadata["type"] == "spin":
+        # TODO: Write spin information to spin table
+        logger.info(f"Indexing {s3_key} spin table")
+    else:
+        # Index the SPICE kerenels to the SPICE table
+        logger.info(f"Indexing {s3_key} to SPICE table")
+        index_spice_file(file_path)
+
+    return {
+        "statusCode": 200,
+        "body": f"{s3_key} moved and index to table successfully",
+    }
