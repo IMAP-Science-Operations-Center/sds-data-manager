@@ -382,5 +382,5 @@ def lambda_handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": f"{s3_key} moved and index to table successfully",
+        "body": f"{s3_key} moved to EFS and indexed to table successfully",
     }
