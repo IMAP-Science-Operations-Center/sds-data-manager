@@ -265,7 +265,7 @@ def index_spice_file(spice_file: Path):
     )
 
 
-def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Path:
+def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Path:
     """Write data to EFS and create/update symlink.
 
     Parameters
@@ -274,8 +274,8 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
         S3 object key
     s3_bucket : str
         The S3 bucket
-    spice_mount_path: Path
-        The path to the local SPICE directory. Eg. /mnt/
+    data_mount_path: Path
+        The path to the local SPICE directory. Eg. /mnt/data
 
     Returns
     -------
@@ -289,7 +289,7 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
     # Get directory structure from the S3 key
     dirname, filename = os.path.split(s3_key)
     # Prepend EFS path to the s3 directory structure
-    efs_spice_path = spice_mount_path / dirname
+    efs_spice_path = data_mount_path / dirname
     # Create the folder if it does not exist
     efs_spice_path.mkdir(parents=True, exist_ok=True)
     try:
@@ -355,14 +355,14 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: " + json.dumps(event, indent=2))
     # Define the paths
-    spice_mount_path = Path(os.getenv("DATA_DIR"))  # Eg. /mnt/data
+    data_mount_path = Path(os.getenv("DATA_DIR"))  # Eg. /mnt/data
 
     # Retrieve the S3 bucket and key from the event
     s3_bucket = event["detail"]["bucket"]["name"]
     s3_key = event["detail"]["object"]["key"]
     logger.info(event)
 
-    file_path = write_data_to_efs(s3_key, s3_bucket, spice_mount_path)
+    file_path = write_data_to_efs(s3_key, s3_bucket, data_mount_path)
     logger.info(f"File {s3_key} moved to EFS successfully")
 
     spice_obj = SPICEFilePath(file_path)
