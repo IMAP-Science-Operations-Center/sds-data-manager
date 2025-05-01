@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 import boto3
+import pandas as pd
 import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy.dialects.postgresql import insert
@@ -265,6 +266,38 @@ def index_spice_file(spice_file: Path):
     )
 
 
+def index_spin_file(spin_file: Path):
+    """Insert spin file metadata into spin database table.
+
+    Parameters
+    ----------
+    spin_file: Path
+        The full name and path the spin file to index
+    """
+    with db.Session() as session:
+        spin_obj = SPICEFilePath(spin_file)
+        spin_metadata = spin_obj.spice_metadata
+        spin_df = pd.read_csv(spin_file)
+        params = {
+            "file_path": str(spin_file),
+            "start_date": spin_metadata["start_date"],
+            "end_date": spin_metadata["end_date"],
+            "version": spin_metadata["version"],
+            "first_spin_utc": datetime.strptime(
+                spin_df["spin_start_utc"].values.min(),
+                "%Y-%m-%d %H:%M:%S.%f",
+            ),
+            "last_spin_utc": datetime.strptime(
+                spin_df["spin_start_utc"].values.max(),
+                "%Y-%m-%d %H:%M:%S.%f",
+            ),
+            "ingestion_date": datetime.now(),
+        }
+        spin_table = models.SpinTable(**params)
+        session.add(spin_table)
+        session.commit()
+
+
 def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Path:
     """Write data to EFS and create/update symlink.
 
@@ -375,6 +408,7 @@ def lambda_handler(event, context):
     elif spice_obj.spice_metadata["type"] == "spin":
         # TODO: Write spin information to spin table
         logger.info(f"Indexing {s3_key} spin table")
+        index_spin_file(file_path)
     else:
         # Index the SPICE kerenels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")

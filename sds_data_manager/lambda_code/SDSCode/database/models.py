@@ -186,6 +186,22 @@ class AncillaryFiles(Base):
     ingestion_date = Column(DateTime(timezone=True))
 
 
+class SpinTable(Base):
+    """Spin table."""
+
+    __tablename__ = "spin_table"
+    # Spin number will be unique
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    # File name start and end date
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
+    version = Column(String(2), nullable=False)
+    # First and last spin time in the file
+    first_spin_utc = Column(DateTime, nullable=False)
+    last_spin_utc = Column(DateTime, nullable=False)
+    ingestion_date = Column(DateTime(timezone=True))
+
+
 class Version(Base):
     """Version table."""
 
