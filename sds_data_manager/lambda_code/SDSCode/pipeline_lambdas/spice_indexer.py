@@ -3,11 +3,10 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import boto3
-import pandas as pd
 import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy.dialects.postgresql import insert
@@ -152,7 +151,7 @@ def _upsert_into_spice_table(
     filename = str(spice_object.filename.name)
     version = spice_object.spice_metadata["version"]
     spice_params = {
-        "ingestion_date": datetime.now(),
+        "ingestion_date": datetime.now(timezone.utc),
         "kernel_type": spice_object.spice_metadata["type"],
         "version": version,
         "file_name": filename,
@@ -277,21 +276,12 @@ def index_spin_file(spin_file: Path):
     with db.Session() as session:
         spin_obj = SPICEFilePath(spin_file)
         spin_metadata = spin_obj.spice_metadata
-        spin_df = pd.read_csv(spin_file)
         params = {
             "file_path": str(spin_file),
             "start_date": spin_metadata["start_date"],
             "end_date": spin_metadata["end_date"],
             "version": spin_metadata["version"],
-            "first_spin_utc": datetime.strptime(
-                spin_df["spin_start_utc"].values.min(),
-                "%Y-%m-%d %H:%M:%S.%f",
-            ),
-            "last_spin_utc": datetime.strptime(
-                spin_df["spin_start_utc"].values.max(),
-                "%Y-%m-%d %H:%M:%S.%f",
-            ),
-            "ingestion_date": datetime.now(),
+            "ingestion_date": datetime.now(timezone.utc),
         }
         spin_table = models.SpinTable(**params)
         session.add(spin_table)
