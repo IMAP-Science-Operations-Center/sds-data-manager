@@ -105,12 +105,20 @@ def test_query_filenames(s3_client):
     """Test the query_filenames function."""
     bucket = "test-data-bucket"
     region = "us-west-2"
+    now = datetime(2025, 4, 28, 16, 5, 0, tzinfo=timezone.utc)
 
-    fixed_now = datetime(2025, 4, 28, 16, 5, 0, tzinfo=timezone.utc)
+    # Files in the desired time range
+    inside_range_keys = [
+        "packets/iois_1_packets_2025_118_16_01_00",
+        "packets/iois_1_packets_2025_118_16_03_00",
+        "packets/iois_1_packets_2025_118_16_04_00",
+    ]
 
-    test_key = "packets/iois_1_packets_2025_118_16_04_00"
-    s3_client.put_object(Bucket=bucket, Key=test_key, Body=b"test file")
+    outside_range_key = "packets/iois_1_packets_2025_118_15_59_00"
 
-    filenames = query_filenames(bucket, region, fixed_now)
+    for key in [*inside_range_keys, outside_range_key]:
+        s3_client.put_object(Bucket=bucket, Key=key, Body=b"dummy data")
 
-    assert filenames == [test_key]
+    result = query_filenames(bucket, region, now)
+
+    assert sorted(result) == sorted(inside_range_keys)
