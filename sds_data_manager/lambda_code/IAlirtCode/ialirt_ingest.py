@@ -5,46 +5,14 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 import boto3
 import botocore
 from imap_processing import imap_module_directory
 from imap_processing.utils import packet_file_to_datasets
 
-# TODO: from imap_processing.ialirt.l0.generate_binary import generate_binary
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def ingest_binary(ingest_table: Any, items: list[dict]):
-    """Ingest binary data into the DynamoDB.
-
-    Parameters
-    ----------
-    ingest_table : Any
-        DynamoDB table.
-    items : list[dict]
-        List of items to be ingested into the DynamoDB table.
-
-    Notes
-    -----
-    Example format of items:
-    items = [
-        {
-            "apid": 478,
-            "met": 123,
-            "ingest_time": "2021-01-01T00:00:00Z",
-            "packet_blob": b"binary_data_string",
-        }
-    ]
-    """
-    with ingest_table.batch_writer() as batch:
-        for item in items:
-            batch.put_item(Item=item)
-
-    logger.info("Successfully wrote item to DynamoDB: %s", item)
 
 
 def parse_packet(filename: str, bucket: str, key: str, download_dir: Path):
@@ -113,11 +81,11 @@ def query_filenames(bucket: str, region: str, now: datetime):
     second_prefix = now.strftime("packets/iois_1_packets_%Y_%j_%H_")
 
     first_response = s3_client.list_objects_v2(Bucket=bucket, Prefix=first_prefix)
-    second_response = s3_client.list_objects_v2(Bucket=bucket, Prefix=second_prefix)
+    objects = first_response.get("Contents", [])
 
-    objects = []
-    objects.extend(first_response.get("Contents", []))
-    objects.extend(second_response.get("Contents", []))
+    if second_prefix != first_prefix:
+        second_response = s3_client.list_objects_v2(Bucket=bucket, Prefix=second_prefix)
+        objects.extend(second_response.get("Contents", []))
 
     filenames = []
     for obj in objects:
@@ -151,10 +119,8 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event))
 
-    ingest_table_name = os.environ.get("INGEST_TABLE")
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
     dynamodb = boto3.resource("dynamodb")
-    ingest_table = dynamodb.Table(ingest_table_name)
     algorithm_table = dynamodb.Table(algorithm_table_name)
 
     bucket = event["detail"]["bucket"]["name"]
@@ -166,26 +132,14 @@ def lambda_handler(event, context):
 
     # TODO: Each of these steps in temporary, but provides an idea
     #  of how the lambda will be used.
-    # 1. Ingest Data to Ingest Table.
-    items = [
-        {
-            "apid": 478,
-            "met": 123,
-            "ingest_time": "2021-01-01T00:00:00Z",
-            "packet_blob": b"binary_data_string",
-        }
-    ]
-    # TODO: replace input with below.
-    # packet_definition = imap_module_directory / "ialirt/packet_definitions/ialirt.xml"
-    # items = generate_binary(s3_filepath, packet_definition)
-    ingest_binary(ingest_table, items)
 
-    # 2. Query s3 for packet filenames from past 5 minutes.
+    # 1. Query s3 for packet filenames from past 5 minutes.
     now = datetime.now(timezone.utc)
-    query_filenames(bucket, region, now)
+    filenames = query_filenames(bucket, region, now)
+    print(filenames)
     # TODO: will use filenames here.
 
-    # 3. After processing insert data into Algorithm Table.
+    # 2. After processing insert data into Algorithm Table.
     item = {
         "apid": 478,
         "met": 123,

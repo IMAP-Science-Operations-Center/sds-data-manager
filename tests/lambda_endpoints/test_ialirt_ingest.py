@@ -7,7 +7,6 @@ from unittest.mock import patch
 import pytest
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
-    ingest_binary,
     lambda_handler,
     parse_packet,
     query_filenames,
@@ -56,7 +55,6 @@ def s3_test_packet(s3_client):
 def test_lambda_handler(setup_dynamodb):
     """Test the lambda_handler function."""
     # Mock event data
-    ingest_table = setup_dynamodb["ingest_table"]
     algorithm_table = setup_dynamodb["algorithm_table"]
 
     event = {
@@ -69,18 +67,6 @@ def test_lambda_handler(setup_dynamodb):
 
     lambda_handler(event, {})
 
-    response = ingest_table.get_item(
-        Key={
-            "apid": 478,
-            "met": 123,
-        }
-    )
-    item = response.get("Item")
-
-    assert item is not None
-    assert item["met"] == 123
-    assert item["packet_blob"] == b"binary_data_string"
-
     response = algorithm_table.get_item(
         Key={
             "apid": 478,
@@ -89,7 +75,6 @@ def test_lambda_handler(setup_dynamodb):
     )
     item = response.get("Item")
 
-    assert item is not None
     assert item["met"] == 123
     assert item["insert_time"] == "2021-01-01T00:00:00Z"
     assert item["product_name"] == "hit_product_1"
@@ -128,34 +113,4 @@ def test_query_filenames(s3_client):
 
     filenames = query_filenames(bucket, region, fixed_now)
 
-    assert test_key in filenames
-
-
-def test_ingest_binary(setup_dynamodb):
-    """Test the ingest_binary function."""
-    ingest_table = setup_dynamodb["ingest_table"]
-
-    items = [
-        {
-            "apid": 478,
-            "met": 999,
-            "ingest_time": "2025-04-28T16:00:00Z",
-            "packet_blob": b"test_blob",
-        }
-    ]
-
-    ingest_binary(ingest_table, items)
-
-    response = ingest_table.get_item(
-        Key={
-            "apid": 478,
-            "met": 999,
-        }
-    )
-
-    item = response.get("Item")
-    assert item is not None
-    assert item["apid"] == 478
-    assert item["met"] == 999
-    assert item["ingest_time"] == "2025-04-28T16:00:00Z"
-    assert item["packet_blob"] == b"test_blob"
+    assert filenames == [test_key]
