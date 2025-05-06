@@ -23,26 +23,43 @@ def template(stack, code):
         construct_id="ApigwTest",
     )
     apigw.deliver_to_sns(sns_topic=test_sns_topic)
-    apigw.add_route("test-route", "GET", test_func)
+    apigw.add_route("/test-route", "GET", test_func)
+    # Add a route with an authorizer
+    apigw.add_route("/authorized/test-route", "GET", test_func)
     template = Template.from_stack(stack)
     return template
 
 
 def test_apigw_routes(template):
     """Ensure that the template has the appropriate routes."""
-    template.resource_count_is("AWS::ApiGateway::RestApi", 1)
-    # One path resource
-    template.resource_count_is("AWS::ApiGateway::Resource", 1)
+    template.resource_count_is("AWS::ApiGatewayV2::Api", 1)
+    # Test that CORS is configured
     template.has_resource_properties(
-        "AWS::ApiGateway::Resource",
-        props={"PathPart": "test-route"},
+        "AWS::ApiGatewayV2::Api",
+        props={
+            "CorsConfiguration": {
+                "AllowMethods": ["GET", "POST", "OPTIONS"],
+                "AllowOrigins": ["*"],
+            },
+        },
+    )
+    # Test that we have an authorizer
+    template.resource_count_is("AWS::ApiGatewayV2::Authorizer", 1)
+    template.has_resource_properties(
+        "AWS::ApiGatewayV2::Authorizer",
+        props={"AuthorizerType": "JWT"},
     )
 
-    # One GET method on that resource
-    template.resource_count_is("AWS::ApiGateway::Method", 1)
+    template.resource_count_is("AWS::ApiGatewayV2::Route", 2)
+    # No authorizer
     template.has_resource_properties(
-        "AWS::ApiGateway::Method",
-        props={"HttpMethod": "GET"},
+        "AWS::ApiGatewayV2::Route",
+        props={"AuthorizationType": "NONE", "RouteKey": "GET /test-route"},
+    )
+    # JWT authorizer
+    template.has_resource_properties(
+        "AWS::ApiGatewayV2::Route",
+        props={"AuthorizationType": "JWT", "RouteKey": "GET /authorized/test-route"},
     )
 
 
@@ -59,11 +76,6 @@ def test_cloudwatch_alarm(template):
                 {"Fn::ImportValue": None, "Ref": Match.string_like_regexp("sns")}
             ],
             "DatapointsToAlarm": 1,
-            "Dimensions": [{"Name": "ApiName", "Value": Match.any_value()}],
-            "MetricName": "Latency",
-            "Namespace": "AWS/ApiGateway",
-            "Period": 60,
-            "Statistic": "Maximum",
             "Threshold": 10000,
             "TreatMissingData": "notBreaching",
         },

@@ -83,7 +83,7 @@ class IalirtApiManager(Construct):
         query_api_lambda.add_to_role_policy(s3_read_policy)
 
         api.add_route(
-            route="ialirt-log-query",
+            route="/ialirt-log-query",
             http_method="GET",
             lambda_function=query_api_lambda,
         )
@@ -107,10 +107,9 @@ class IalirtApiManager(Construct):
         download_api.add_to_role_policy(s3_read_policy)
 
         api.add_route(
-            route="ialirt-download",
+            route="/ialirt-download",
             http_method="GET",
             lambda_function=download_api,
-            use_path_params=True,
         )
 
         # catalog API lambda
@@ -133,7 +132,7 @@ class IalirtApiManager(Construct):
         catalog_api.add_to_role_policy(s3_read_policy)
 
         api.add_route(
-            route="ialirt-catalog",
+            route="/ialirt-catalog",
             http_method="GET",
             lambda_function=catalog_api,
         )
@@ -158,8 +157,7 @@ class IalirtApiManager(Construct):
         algorithm_table.grant_read_write_data(ialirt_db_query_handler)
 
         api.add_route(
-            route="ialirt-db-query",
+            route="/ialirt-db-query",
             http_method="GET",
             lambda_function=ialirt_db_query_handler,
-            use_path_params=True,
         )

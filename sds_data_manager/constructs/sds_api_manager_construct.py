@@ -94,11 +94,16 @@ class SdsApiManager(Construct):
         upload_api_lambda.add_to_role_policy(s3_read_policy)
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
+        # {proxy+} is used to allow for any pathParams after /upload/
         api.add_route(
-            route="upload",
+            route="/upload/{proxy+}",
             http_method="GET",
             lambda_function=upload_api_lambda,
-            use_path_params=True,
+        )
+        api.add_route(
+            route="/authorized/upload/{proxy+}",
+            http_method="GET",
+            lambda_function=upload_api_lambda,
         )
 
         # query API lambda
@@ -122,7 +127,12 @@ class SdsApiManager(Construct):
         )
 
         api.add_route(
-            route="query",
+            route="/query",
+            http_method="GET",
+            lambda_function=query_api_lambda,
+        )
+        api.add_route(
+            route="/authorized/query",
             http_method="GET",
             lambda_function=query_api_lambda,
         )
@@ -148,7 +158,7 @@ class SdsApiManager(Construct):
         )
 
         api.add_route(
-            route="spice-query",
+            route="/spice-query",
             http_method="GET",
             lambda_function=spice_query_api_lambda,
         )
@@ -174,7 +184,7 @@ class SdsApiManager(Construct):
         )
 
         api.add_route(
-            route="metakernel",
+            route="/metakernel",
             http_method="GET",
             lambda_function=spice_metakernel_api_lambda,
         )
@@ -197,11 +207,16 @@ class SdsApiManager(Construct):
 
         download_api.add_to_role_policy(s3_read_policy)
 
+        # {proxy+} is used to allow for any pathParams after /download/
         api.add_route(
-            route="download",
+            route="/download/{proxy+}",
             http_method="GET",
             lambda_function=download_api,
-            use_path_params=True,
+        )
+        api.add_route(
+            route="/authorized/download/{proxy+}",
+            http_method="GET",
+            lambda_function=download_api,
         )
 
         universal_spin_table_handler = lambda_.Function(
@@ -241,7 +256,7 @@ class SdsApiManager(Construct):
             layers=layers,
         )
         api.add_route(
-            route="batch-job",
+            route="/batch-job",
             http_method="GET",
             lambda_function=batch_job_query_api_lambda,
         )
@@ -256,7 +271,7 @@ class SdsApiManager(Construct):
         rds_secret.grant_read(grantee=batch_job_query_api_lambda)
 
         api.add_route(
-            route="spin_table",
+            route="/spin_table",
             http_method="GET",
             lambda_function=universal_spin_table_handler,
         )
