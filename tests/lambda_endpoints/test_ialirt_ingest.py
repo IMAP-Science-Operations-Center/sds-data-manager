@@ -122,3 +122,22 @@ def test_query_filenames(s3_client):
     result = query_filenames(bucket, region, now)
 
     assert sorted(result) == sorted(inside_range_keys)
+
+
+def test_query_filenames_crossing_hour_boundary(s3_client):
+    """Test query_filenames when crossing hour boundary."""
+    bucket = "test-data-bucket"
+    region = "us-west-2"
+
+    now = datetime(2025, 4, 28, 1, 2, 0, tzinfo=timezone.utc)
+
+    first_prefix_key = "packets/iois_1_packets_2025_118_00_58_00"
+    second_prefix_key = "packets/iois_1_packets_2025_118_01_00_00"
+    outside_range_key = "packets/iois_1_packets_2025_118_00_50_00"
+
+    for key in [first_prefix_key, second_prefix_key, outside_range_key]:
+        s3_client.put_object(Bucket=bucket, Key=key, Body=b"dummy data")
+
+    result = query_filenames(bucket, region, now)
+
+    assert sorted(result) == sorted([first_prefix_key, second_prefix_key])
