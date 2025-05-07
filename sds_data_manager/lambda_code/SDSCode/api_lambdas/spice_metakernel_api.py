@@ -2,7 +2,9 @@
 
 import json
 import logging
+from enum import Enum, auto
 from pathlib import Path
+from typing import Optional
 
 from . import spice_query_api
 from .metakernel import MetaKernel
@@ -10,6 +12,100 @@ from .metakernel import MetaKernel
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+class LeapsecondKernels(Enum):
+    """Container for Leapsecond Kernel Types."""
+
+    LEAPSECONDS = auto()
+
+    @classmethod
+    def spice_category_name(cls):
+        """Category of SPICE file."""
+        return "leapseconds"
+
+
+class PlanetaryConstantsKernels(Enum):
+    """Container for Planetary Contants Kernel Types."""
+
+    PLANETARY_CONSTANTS = auto()
+
+    @classmethod
+    def spice_category_name(cls):
+        """Category of SPICE file."""
+        return "planetary_constants"
+
+
+class FramesKernels(Enum):
+    """Container for Frames Kernel Types."""
+
+    FRAMES = auto()
+
+    @classmethod
+    def spice_category_name(cls):
+        """Category of SPICE file."""
+        return "frames"
+
+
+class SpacecraftClockKernels(Enum):
+    """Container for Spacecraft Clock Kernel Types."""
+
+    SPACECRAFT_CLOCK = auto()
+
+    @classmethod
+    def spice_category_name(cls):
+        """Category of SPICE file."""
+        return "spacecraft_clock"
+
+
+class PlanetaryEphemerisKernels(Enum):
+    """Container for Planetary Ephemeris Kernel Types."""
+
+    PLANETARY_EPHEMERIS = auto()
+
+    @classmethod
+    def spice_category_name(cls):
+        """Category of SPICE file."""
+        return "planetary_ephemeris"
+
+
+class SpacecraftEphemerisKernels(Enum):
+    """Container for Spacecraft Ephemeris Kernel Types."""
+
+    EPHEMERIS_RECONSTRUCTED = auto()
+    EPHEMERIS_NOMINAL = auto()
+    EPHEMERIS_PREDICTED = auto()
+    EPHEMERIS_90DAYS = auto()
+    EPHEMERIS_LONG = auto()
+    EPHEMERIS_LAUNCH = auto()
+
+    @classmethod
+    def spice_category_name(cls):
+        """Category of SPICE file."""
+        return "spacecraft_ephemeris"
+
+
+class SpacecraftAttitudeKernels(Enum):
+    """Container for Spacecraft Attitude Kernel Types."""
+
+    ATTITUDE_HISTORY = auto()
+    ATTITUDE_PREDICT = auto()
+
+    @classmethod
+    def spice_category_name(cls):
+        """Category of SPICE file."""
+        return "spacecraft_attitude"
+
+
+IMAP_SPICE_LOAD_ORDER = [
+    LeapsecondKernels,
+    PlanetaryConstantsKernels,
+    FramesKernels,
+    SpacecraftClockKernels,
+    PlanetaryEphemerisKernels,
+    SpacecraftEphemerisKernels,
+    SpacecraftAttitudeKernels,
+]
 
 
 def lambda_handler(event, context):
@@ -31,16 +127,32 @@ def lambda_handler(event, context):
 
     logger.info("Received event: " + json.dumps(event, indent=2))
 
-    # add session, pick model like in indexer and add query to filter_as
+    # Gather the query paremeters
     query_params = event["queryStringParameters"]
     start_time = query_params["start_time"]
     end_time = query_params["end_time"]
     spice_directory = Path(query_params.get("spice_path", ""))
     list_files = query_params.get("list_files", "false")
-    metakernel = _metakernel_builder(start_time, end_time)
+    require_coverage = query_params.get("require_coverage", "false")
+    file_types = query_params.get("file_types", None)
+    if file_types:
+        file_types = {type.strip().upper() for type in file_types.split(",")}
+
+    # Build a metakernel
+    metakernel = _metakernel_builder(start_time, end_time, file_types=file_types)
+
+    if (require_coverage.lower() == "true") and metakernel.contains_gaps():
+        return {
+            "statusCode": 422,  # Unprocessable Content
+            "body": json.dumps(metakernel.spice_gaps),
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",  # Allow CORS
+            },
+        }
 
     if list_files.lower() == "true":
-        output = json.dumps(metakernel.return_spice_files_in_order_detailed())
+        output = json.dumps(metakernel.return_spice_files_in_order(detailed=False))
     else:
         output = metakernel.return_tm_file(base_path=spice_directory)
 
@@ -57,85 +169,35 @@ def lambda_handler(event, context):
     return response
 
 
-def _metakernel_builder(start_time: int, end_time: int) -> MetaKernel:
+def _metakernel_builder(
+    start_time: int, end_time: int, file_types: Optional[list] = None
+) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
     # Create the Metakernel class
     metakernel = MetaKernel(
         start_time,
         end_time,
-        allowed_spice_types=[
-            "leapseconds",
-            "planetary_constants",
-            "frames",
-            "spacecraft_clock",
-            "planetary_ephemeris",
-            "spacecraft_ephemeris",
-            "spacecraft_attitude",
-        ],
+        allowed_spice_types=[c.spice_category_name() for c in IMAP_SPICE_LOAD_ORDER],
     )
 
-    static_files_load_order = [
-        "leapseconds",
-        "planetary_constants",
-        "frames",
-        "spacecraft_clock",
-        "planetary_ephemeris",
-    ]
-
-    for type in static_files_load_order:
-        static_spice_file = spice_query_api.lambda_handler(
-            {"queryStringParameters": {"type": type, "latest": "True"}}, None
-        )
-        metakernel.load_spice(
-            json.loads(static_spice_file["body"]),
-            type,
-            "file_intervals_j2000",
-            priority_field="timestamp",
-        )
-
-    for ephem_type in [
-        "ephemeris_reconstructed",
-        "ephemeris_nominal",
-        "ephemeris_predicted",
-        "ephemeris_90days",
-        "ephemeris_long",
-        "ephemeris_launch",
-    ]:
-        if len(metakernel.spice_gaps["spacecraft_ephemeris"]) > 0:
-            ephem_files = spice_query_api.lambda_handler(
+    for spice_category in IMAP_SPICE_LOAD_ORDER:
+        for spice_subtype in spice_category:
+            if file_types and spice_subtype.name not in file_types:
+                continue  # Skip over the file if not in requested list
+            spice_files = spice_query_api.lambda_handler(
                 {
                     "queryStringParameters": {
                         "start_time": start_time,
                         "end_time": end_time,
-                        "type": ephem_type,
+                        "type": spice_subtype.name.lower(),
                         "latest": "True",
                     }
                 },
                 None,
             )
             metakernel.load_spice(
-                json.loads(ephem_files["body"]),
-                "spacecraft_ephemeris",
-                "file_intervals_j2000",
-                priority_field="timestamp",
-            )
-
-    for attitude_type in ["attitude_history", "attitude_predict"]:
-        if len(metakernel.spice_gaps["spacecraft_attitude"]) > 0:
-            attitude_files = spice_query_api.lambda_handler(
-                {
-                    "queryStringParameters": {
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "type": attitude_type,
-                        "latest": "True",
-                    }
-                },
-                None,
-            )
-            metakernel.load_spice(
-                json.loads(attitude_files["body"]),
-                "spacecraft_attitude",
+                json.loads(spice_files["body"]),
+                spice_category.spice_category_name(),
                 "file_intervals_j2000",
                 priority_field="timestamp",
             )

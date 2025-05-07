@@ -34,7 +34,7 @@ MAXIMUM_J2000_INTERVAL = [
 COVERAGE_ANGULAR_VELOCITY_ONLY = False  # Only include segments with angular velocity?
 COVERAGE_SPICE_ARRAY_LENGTH = 10000  # Use an array size of 10000 for coverage calc
 COVERAGE_LEVEL = "INTERVAL"  # the granularity at which the coverage is examined
-COVERAGE_TOLERANCE = 1000000.0  # tolerance value expressed in ticks of the spacecraft
+COVERAGE_TOLERANCE = 50000.0  # tolerance value expressed in ticks of the spacecraft
 COVERAGE_TIME_SYSTEM = "TDB"  # Whether to use J2000 (TDB) or spacecraft clock (SCLK)
 
 
