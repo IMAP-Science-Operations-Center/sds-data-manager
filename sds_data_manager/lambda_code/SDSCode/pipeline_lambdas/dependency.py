@@ -399,12 +399,9 @@ def primary_science_dep(query_params: dict, dependency: dict) -> bool:
     )
 
 
-def get_dependency_processing_input(
-    query_params: dict,
+def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
-    version: str,
-    trigger_type: str,
     end_date: Optional[datetime] = None,
 ):
     """Construct a ProcessingInputCollection of dependency files.
@@ -415,18 +412,11 @@ def get_dependency_processing_input(
 
     Parameters
     ----------
-    query_params : dict
-        Query parameters received from the API call describing either an upstream or
-        downstream dependency.
     dependencies : list
         List of dependency dictionaries either downstream or upstream from the
         dependency in the query parameters.
     start_date : datetime
         Start date to find dependent files with.
-    version : str
-        Version to find dependent files with.
-    trigger_type : str
-        Data type of the file that triggered the batch starter.
     end_date : datetime, optional
         End date to find dependent files with.
 
@@ -439,39 +429,12 @@ def get_dependency_processing_input(
     with db.Session() as session:
         for dep in dependencies:
             relationship = dep["relationship"]
-            # Check if the dependency is a primary science dependency and if the file
-            # source that triggered the batch stater is equal to the dependency source.
-            # If true, we can find science files with the exact start date
-            # used in the query.
 
-            # This check is necessary because the start date is extracted
-            # from the trigger file. If the trigger file is either an ancillary file
-            # (including science files from a different source) or SPICE, the exact
-            # start date cannot be used to find the science file because
-            # the dates are not guaranteed to correspond.
-            primary_sci_dep = primary_science_dep(query_params, dep)
-            if primary_sci_dep and trigger_type == dep["data_type"]:
-                primary_sci_trigger = True
-            else:
-                primary_sci_trigger = False
-
-            dep_string = (
-                f"{dep=}\n{start_date=}\n{end_date=}\n"
-                f"{primary_sci_trigger=}\n{primary_sci_dep=}"
-            )
+            dep_string = f"{dep=}\n{start_date=}\n{end_date=}"
 
             logger.info(f"Searching for files matching dep={dep_string}")
 
-            records = get_files(
-                session,
-                dep,
-                start_date,
-                None,
-                end_date,
-                primary_sci_trigger,
-                primary_sci_dep,
-            )
-
+            records = get_files(session, dep, start_date, end_date)
             if not records and relationship == Relationship.HARD:
                 info = f"No records found for dependency: {dep_string}"
                 logger.info(dep_string)
@@ -496,10 +459,7 @@ def get_files(
     session: db.Session,
     dependency: dict,
     start_date: datetime,
-    version: Optional[str] = None,
-    end_date: Optional[datetime] = None,
-    primary_sci_trigger: Optional[bool] = False,
-    primary_sci_dep: Optional[bool] = False,
+    end_date: datetime,
 ):
     """Query to database to get ScienceFile or AncillaryFile records.
 
@@ -517,162 +477,76 @@ def get_files(
             Data descriptor.
     start_date : datetime
         Start date of the event data.
-    version : str, optional
-        Version of the event data. If not supplied, the most recent version will be
-        returned.
-    end_date: datetime, optional
+    end_date: datetime
         End date of the event data.
-    primary_sci_trigger: bool, optional
-        When True, query for science files with a match to the start time
-        because it is assumed that the dependency is a primary science dependency and
-        the trigger source is of the same data_source. Default is False.
-    primary_sci_dep : bool, optional
-        Controls how science files are queried based on their start dates.
-        When True, it is assumed that the query file is a primary science dependency.
-        Look for science files with start_date >= query start_date.
-        When False, treat science files from different sources like ancillary files
-        Look for science files with start_date <= query start_date.
 
     Returns
     -------
     records : list[Union[models.ScienceFiles, models.AncillaryFiles]]
         The ScienceFiles or AncillaryFiles records matching the query criteria.
     """
-    return_latest_ancillary = False
+    ancillary = False
     type_specific_conditions = []
     if dependency["data_type"] == DataType.ANCILLARY:
+        ancillary = True
         table = models.AncillaryFiles
         # Query for ancillary files whose ranges cover the
-        # start date.
+        # start date and end date.
         # E.g., if the start date is '20250102', the query could return an ancillary
         # file with the date range ('20250101', '20250103')
-        # TODO this could return all ancillary files with start dates before 20250102
         type_specific_conditions.append(
             and_(
                 table.start_date <= start_date,
-                or_(table.end_date >= start_date, table.end_date.is_(None)),
+                or_(table.end_date >= end_date, table.end_date.is_(None)),
             )
         )
-        return_latest_ancillary = True
     else:
         table = models.ScienceFiles
         type_specific_conditions.append(table.data_level == dependency["data_type"])
-        if primary_sci_trigger:
-            # Query for science files matching the start date
-            # Example:
-            # Trigger source: swe_l0_raw_20250102_v001.pkts
-            # Downstream: swe_l1a_sci
-            # Upstream: Look for swe_l0_raw with start date == 20250102
-            type_specific_conditions.append(
-                models.ScienceFiles.start_date == start_date,
+        # Find files with start dates in the start_date and end_date range
+        type_specific_conditions.append(
+            and_(
+                models.ScienceFiles.start_date >= start_date,
+                models.ScienceFiles.start_date <= end_date,
             )
-        elif end_date:
-            # Find files that are downstream from an ancillary file
-            # Query for science files with a start date later or equal to the
-            # ancillary start date and less than the ancillary end date.
-            # Example:
-            # Trigger source: swe_l1b-flight-cal_20250102-20250104
-            # Downstream: swe_l1b_sci
-            # Upstream: Look for swe_l1a_sci with start dates in range
-            # 20250102-20250104
-            type_specific_conditions.append(
-                and_(
-                    models.ScienceFiles.start_date >= start_date,
-                    models.ScienceFiles.start_date <= end_date,
-                )
-            )
-        elif primary_sci_dep:
-            # Find primary source science files that are greater or equal than
-            # the start_date (start_date comes from an ancillary file, so we
-            # cannot use the exact date.)
-            # Example:
-            # Trigger source: mag_l1b_sci_20240510_v001.cdf
-            # Downstream: swe_l1b_sci
-            # Upstream: Look for swe_l1a_sci with start dates greater than or
-            # equal to 20240510
-            type_specific_conditions.append(
-                models.ScienceFiles.start_date >= start_date
-            )
-        else:
-            # Science files of another source are treated like ancillary files.
-            # Look for science files that are older than the start_date
-            # Example:
-            # Trigger source: swe_l0_raw_20250102_v001.pkts
-            # Downstream: swe_l1a_sci
-            # Upstream: Look for mag_l1d_sci with start dates less than or equal
-            # to 20250102
-            type_specific_conditions.append(
-                models.ScienceFiles.start_date <= start_date
-            )
-            return_latest_ancillary = True
-
+        )
     filter_conditions = [
         table.instrument == dependency["data_source"],
         table.descriptor == dependency["descriptor"],
         *type_specific_conditions,
     ]
-    if version:
-        filter_conditions.append(table.version == version)
-    # Only group by start date if return_latest_ancillary is false.
-    # If true, we only want to return one ancillary file (including science files of
-    # another instrument) with the most recent start date and greatest version number,
-    # otherwise we want to return the max version for each start_date.
-    if return_latest_ancillary:
-        # We are querying for swe_l1b-in-flight-calibration ancillary files with start
-        # dates less than or equal to 20250102 and want to run swe l1b.
-        # The following swe files are found:
-        #    - swe_l1b_in-flight-cal_20240511_v001
-        #    - swe_l1a_in-flight-cal_20240511_v002
-        #    - swe_l1a_in-flight-cal_20240512_v001
-        #    - swe_l1a_in-flight-cal_20240512_v004
-        # We only want to return the most recent start date with the max version
-        #    - swe_l1a_sci_20240512_v004
-        # First, find the maximum start_date
-        max_start_date = (
-            session.query(func.max(table.start_date))
-            .filter(*filter_conditions)
-            .scalar()
-        )
-        # Find the maximum version for that start_date
-        max_version = (
-            session.query(func.max(table.version))
-            .filter(table.start_date == max_start_date, *filter_conditions)
-            .scalar()
-        )
-
-        latest_query = session.query(table).filter(
-            table.start_date == max_start_date,
-            table.version == max_version,
-        )
-    else:
-        # Group by start_date
-        # E.g.,
-        # We are querying for swe l1a science files with start dates greater than or
-        # equal to 20240510 and want to run swe l1b sci jobs.
-        # The following swe files are found:
-        #    - swe_l1a_sci_20240511_v001
-        #    - swe_l1a_sci_20240511_v002
-        #    - swe_l1a_sci_20240512_v001
-        #    - swe_l1a_sci_20240512_v004
-        # We only want to return the latest versions per start date
-        #    - swe_l1a_sci_20240511_v002
-        #    - swe_l1a_sci_20240512_v004
-        max_version_query = (
-            session.query(
-                table.start_date, func.max(table.version).label("latest_version")
-            )
-            .filter(*filter_conditions)
-            .group_by(table.start_date)
-            .subquery()
-        )
-        # Query records
-        latest_query = session.query(table).join(
+    # Group by start_date
+    # E.g.,
+    # We are querying for swe l1a files with start dates in range (20240510, 20240513)
+    # The following swe files are found:
+    #    - swe_l1a_sci_20240511_v001
+    #    - swe_l1a_sci_20240511_v002
+    #    - swe_l1a_sci_20240512_v001
+    #    - swe_l1a_sci_20240512_v004
+    # We only want to return the latest versions per start date
+    #    - swe_l1a_sci_20240511_v002
+    #    - swe_l1a_sci_20240512_v004
+    max_version_query = (
+        session.query(table.start_date, func.max(table.version).label("latest_version"))
+        .filter(*filter_conditions)
+        .group_by(table.start_date)
+        .subquery()
+    )
+    # Query records
+    records = (
+        session.query(table)
+        .join(
             max_version_query,
             (table.start_date == max_version_query.c.start_date)
             & (table.version == max_version_query.c.latest_version),
         )
+        .filter(*filter_conditions)
+        .all()
+    )
 
-    records = latest_query.filter(*filter_conditions).all()
+    # If the dependency is ancillary, only return the one with the latest start_date.
+    if ancillary:
+        records = sorted(records, key=lambda x: x.start_date, reverse=True)[0:1]
 
     return records
 
@@ -692,12 +566,8 @@ def lambda_handler(event, context):
                 "relationship": "HARD",
                 "start_time": "20250101", (optional)
                 "end_time": "20250102", (optional)
-                "version": "v001" (optional)
-                "trigger_type": "mag" (optional)
             }
-        "start_time", "end_time", and "version" are optional.
-        If "start_time" is supplied, then "version" is required.
-       "trigger_type" is the source of the file that triggered the batch starter
+        "start_time", and "end_time", are optional.
 
     context : dict
         Context dictionary.
@@ -728,9 +598,8 @@ def lambda_handler(event, context):
                     "relationship": "HARD",
                 },
             ]
-        If "start_date" is supplied, "version" and "ancillary_trigger" are required and
-        "end_date" is optional. Return a ProcessingInputCollection of files that exist
-        on s3.
+        If "start_date" is supplied, "end_date" is required. Return a
+        ProcessingInputCollection of files that exist on s3.
             [
                 {
                     "type": "ancillary",
@@ -781,50 +650,34 @@ def lambda_handler(event, context):
         if query_params.get("start_date")
         else None
     )
-    if start_date:
-        version = query_params.get("version")
-        if not version:
-            return {
-                "statusCode": 400,  # Client error
-                "body": "Version not found. If 'start_date' is supplied, 'version' is"
-                " required.",
-            }
-        trigger_type = query_params.get("trigger_type")
-        if not trigger_type:
-            return {
-                "statusCode": 400,  # Client error
-                "body": "trigger_type not found. If 'start_date' is supplied, "
-                "'trigger_type' is required.",
-            }
+    if start_date is None:
+        return {
+            "statusCode": 200,  # Success
+            "body": json.dumps(dependencies),
+        }
+    end_date = query_params.get("end_date")
+    if not end_date:
+        return {
+            "statusCode": 400,  # Client error
+            "body": "end_date not found. If 'start_date' is supplied, "
+            "'end_date' is required.",
+        }
+    end_date = datetime.strptime(end_date, "%Y%m%d")
 
-        # Get and convert end_date in one line if it exists
-        end_date = (
-            datetime.strptime(query_params.get("end_date"), "%Y%m%d")
-            if query_params.get("end_date")
-            else None
-        )
-
-        dependencies_output = get_dependency_processing_input(
-            query_params=query_params,
-            dependencies=dependencies,
-            start_date=start_date,
-            version=version,
-            trigger_type=trigger_type,
-            end_date=end_date,
-        )
-        if isinstance(dependencies_output, str):
-            return {
-                "statusCode": 206,  # Partial content
-                "body": dependencies_output,
-            }
-        dependencies_output = dependencies_output.serialize()
+    upstream_dependencies_output = get_upstream_dependency_inputs(
+        dependencies=dependencies,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    if isinstance(upstream_dependencies_output, str):
+        return {
+            "statusCode": 206,  # Partial content
+            "body": upstream_dependencies_output,
+        }
     else:
-        dependencies_output = json.dumps(dependencies)
-
-    logger.info(f"Found dependencies: {dependencies} for {query_params}.")
-
-    # TODO: add reprocessing dependencies are handled here
-    return {
-        "statusCode": 200,  # Success
-        "body": dependencies_output,
-    }
+        logger.info(f"Found dependencies: {dependencies} for {query_params}.")
+        upstream_dependencies_output = upstream_dependencies_output.serialize()
+        return {
+            "statusCode": 200,  # Success
+            "body": upstream_dependencies_output,
+        }

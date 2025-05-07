@@ -52,7 +52,6 @@ class EFSConstruct(Construct):
         # will need to access EFS or mount EFS.
         self.volume_name = "SPICE-EFS"
         self.efs_path = "/data"
-        self.efs_spice_path = "/data/spice"
 
         # Define EFS security group, ports are added in EC2 stack
         self.efs_security_group = ec2.SecurityGroup(
@@ -97,6 +96,6 @@ class EFSConstruct(Construct):
         self.spice_access_point = self.efs.add_access_point(
             "SpiceAccessPoint",
             create_acl=efs.Acl(owner_gid="1000", owner_uid="1000", permissions="750"),
-            path=self.efs_spice_path,
+            path=self.efs_path,
             posix_user=efs.PosixUser(gid="1000", uid="1000"),
         )

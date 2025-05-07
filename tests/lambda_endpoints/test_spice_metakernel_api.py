@@ -198,3 +198,21 @@ def test_metakernel(session):
     assert len(results) == 2
     assert results[0]["file_name"] == "ck/imap_1000_065_1000_090_003.ap.bc"
     assert results[1]["file_name"] == "ck/imap_1000_060_1000_070_003.ap.bc"
+
+    """
+    Metakernel generation tests
+    """
+    response = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 65,
+                "end_time": 75,
+                "spice_path": "",
+                "list_files": "False",
+            }
+        },
+        None,
+    )
+    assert response["statusCode"] == 200
+    assert "KERNELS_TO_LOAD" in response["body"]
+    assert "ck/imap_1000_065_1000_090_003.ap.bc" in response["body"]

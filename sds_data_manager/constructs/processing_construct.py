@@ -98,7 +98,7 @@ class ProcessingConstruct(Construct):
                 ),
                 memory=cdk.Size.mebibytes(4096),
                 cpu=1,
-                environment={"IMAP_SPICE_DIR": "/mnt/spice"},
+                environment={"DATA_DIR": "/mnt/data"},
                 volumes=self.volumes,
                 # TODO: Do we need to explicitly specify architecture and OS family?
                 #       We are building containers in GitHub Actions and need to

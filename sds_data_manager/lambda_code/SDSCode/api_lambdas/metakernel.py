@@ -3,7 +3,7 @@
 import json
 import logging
 import textwrap
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -46,16 +46,15 @@ class MetaKernel:
             self.spice_files[type] = []
             self.spice_gaps[type] = [[start_time, end_time]]
 
-        self.template_header = rf"""
+        self.template_header = f"""
+\\begintext
 
-       \begintext
+This is the most up to date Metakernel as of
+{datetime.now(timezone.utc)}.
 
-       This is the most up to date Metakernel as of
-       {datetime.now()}.
-
-       This attempts to cover data from
-       {self.start_time_j2000} to {self.end_time_j2000}
-       seconds since J2000.
+This attempts to cover data from
+{self.start_time_j2000} to {self.end_time_j2000}
+seconds since J2000.
 
         """
 

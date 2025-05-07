@@ -217,13 +217,13 @@ class IalirtIngestLambda(Construct):
             vpc=self.vpc,
             security_groups=[self.efs_security_group],
             filesystem=lambda_.FileSystem.from_efs_access_point(
-                self.efs_access_point, "/mnt/spice"
+                self.efs_access_point, "/mnt/data"
             ),
             environment={
                 "INGEST_TABLE": packet_data_table.table_name,
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
-                "EFS_SPICE_MOUNT_PATH": "/mnt/spice",
+                "EFS_SPICE_MOUNT_PATH": "/mnt/data",
             },
         )
 

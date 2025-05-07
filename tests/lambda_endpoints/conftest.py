@@ -33,7 +33,7 @@ def _set_env(monkeypatch, tmpdir):
     # Mock the api gateway url
     # This is used in batch_starter.py
     monkeypatch.setenv("IMAP_DATA_ACCESS_URL", "https://test.url")
-    monkeypatch.setenv("EFS_SPICE_MOUNT_PATH", str(tmpdir))
+    monkeypatch.setenv("DATA_DIR", str(tmpdir))
 
 
 @pytest.fixture(scope="module")
@@ -311,11 +311,33 @@ def _populate_file_catalog(session):
             ),
         ),
         AncillaryFiles(
-            file_path="/path/to/imap_swe_l1b-in-flight-cal_20231231_20240102_v002.cdf",
+            file_path="/path/to/imap_swe_l1b-in-flight-cal_20231231_20240104_v002.cdf",
             instrument="swe",
             descriptor="l1b-in-flight-cal",
             start_date=datetime(2023, 12, 31),
-            end_date=datetime(2024, 1, 2),
+            end_date=datetime(2024, 1, 4),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_esa-lut_20221231_v001.cdf",
+            instrument="swe",
+            descriptor="esa-lut",
+            start_date=datetime(2022, 12, 31),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_eu-conversion_20221231_v001.cdf",
+            instrument="swe",
+            descriptor="eu-conversion",
+            start_date=datetime(2022, 12, 31),
             version="v001",
             extension="cdf",
             ingestion_date=datetime.strptime(

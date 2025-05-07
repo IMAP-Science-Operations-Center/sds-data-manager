@@ -1,5 +1,6 @@
 """Functions to write SPICE ingested files to EFS."""
 
+import json
 import logging
 import os
 from datetime import datetime
@@ -264,7 +265,7 @@ def index_spice_file(spice_file: Path):
     )
 
 
-def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Path:
+def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Path:
     """Write data to EFS and create/update symlink.
 
     Parameters
@@ -273,8 +274,8 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
         S3 object key
     s3_bucket : str
         The S3 bucket
-    spice_mount_path: Path
-        The path to the local SPICE directory
+    data_mount_path: Path
+        The path to the local SPICE directory. Eg. /mnt/data
 
     Returns
     -------
@@ -285,23 +286,22 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, spice_mount_path: Path) -> Pa
     # Create an S3 client
     s3_client = boto3.client("s3")
 
-    # Keep the base folder name and filename from the s3 key
-    # i.e. "ck/file.bc"
+    # Get directory structure from the S3 key
     dirname, filename = os.path.split(s3_key)
-    s3_folder_path = os.path.basename(dirname)
-    # Download path to EFS
-    efs_spice_path = spice_mount_path / s3_folder_path
-    efs_spice_filename_and_path = efs_spice_path / filename
+    # Prepend EFS path to the s3 directory structure
+    efs_spice_path = data_mount_path / dirname
+    # Create the folder if it does not exist
+    efs_spice_path.mkdir(parents=True, exist_ok=True)
     try:
-        # Create the folder if it does not exist
-        efs_spice_path.mkdir(parents=True, exist_ok=True)
+        # Download path to the EFS path
+        efs_spice_filename_and_path = efs_spice_path / filename
         # Download file from S3 to the EFS path
         s3_client.download_file(s3_bucket, s3_key, efs_spice_filename_and_path)
         logger.info(f"{s3_key} file downloaded successfully")
     except Exception as e:
         logger.error(f"Error downloading file: {e!s}")
 
-    logger.info("File was written to EFS path: %s", efs_spice_path)
+    logger.info(f"{filename} was written to EFS path: {efs_spice_path}")
     return efs_spice_filename_and_path
 
 
@@ -353,15 +353,34 @@ def lambda_handler(event, context):
         Response message
 
     """
+    logger.info("Received event: " + json.dumps(event, indent=2))
     # Define the paths
-    spice_mount_path = Path(os.getenv("EFS_SPICE_MOUNT_PATH"))  # Eg. /mnt/spice
+    data_mount_path = Path(os.getenv("DATA_DIR"))  # Eg. /mnt/data
 
     # Retrieve the S3 bucket and key from the event
     s3_bucket = event["detail"]["bucket"]["name"]
     s3_key = event["detail"]["object"]["key"]
     logger.info(event)
 
-    file_path = write_data_to_efs(s3_key, s3_bucket, spice_mount_path)
-    index_spice_file(file_path)
+    file_path = write_data_to_efs(s3_key, s3_bucket, data_mount_path)
+    logger.info(f"File {s3_key} moved to EFS successfully")
 
-    return {"statusCode": 200, "body": "File downloaded and moved successfully"}
+    spice_obj = SPICEFilePath(file_path)
+    # If file is of type 'spin' or 'repoint', don't index to SPICE table
+    if spice_obj.spice_metadata["type"] == "repoint":
+        return {
+            "statusCode": 200,
+            "body": f"{s3_key} file moved to EFS successfully",
+        }
+    elif spice_obj.spice_metadata["type"] == "spin":
+        # TODO: Write spin information to spin table
+        logger.info(f"Indexing {s3_key} spin table")
+    else:
+        # Index the SPICE kerenels to the SPICE table
+        logger.info(f"Indexing {s3_key} to SPICE table")
+        index_spice_file(file_path)
+
+    return {
+        "statusCode": 200,
+        "body": f"{s3_key} moved to EFS and indexed to table successfully",
+    }

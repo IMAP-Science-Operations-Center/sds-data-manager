@@ -53,10 +53,30 @@ hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1a, 90sensor-de, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
 hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 
-hi, l2, h90-sf-ram-hae-4deg-6mo, hi, l3, h90-sf-sp-hae-4deg-6mo, HARD, DOWNSTREAM
-hi, l2, h90-sf-anti-hae-4deg-6mo, hi, l3, h90-sf-sp-hae-4deg-6mo, HARD, DOWNSTREAM
+hi, l2, h90-ena-h-sf-nsp-ram-hae-4deg-6mo, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+hi, l2, h90-ena-h-sf-nsp-anti-hae-4deg-6mo, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
 
-hi, l3, h90-hf-sp-hae-4deg-6mo, hi, l3, h90-hf-sp-hae-4deg-6mo-spectral, HARD, DOWNSTREAM
+hi, l3, h90-ena-h-hf-sp-full-hae-4deg-6mo, hi, l3, h90-spx-h-hf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+
+hi, l2, h90-ena-h-hf-nsp-anti-hae-4deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l2, h90-ena-h-hf-nsp-ram-hae-4deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l2, h45-ena-h-hf-nsp-anti-hae-4deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l2, h45-ena-h-hf-nsp-ram-hae-4deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+
+hi, l2, h90-ena-h-hf-nsp-anti-hae-6deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l2, h90-ena-h-hf-nsp-ram-hae-6deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l2, h45-ena-h-hf-nsp-anti-hae-6deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l2, h45-ena-h-hf-nsp-ram-hae-6deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+
+hi, l3, h90-ena-h-hf-sp-anti-hae-4deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l3, h90-ena-h-hf-sp-ram-hae-4deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-anti-hae-4deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-ram-hae-4deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+
+hi, l3, h90-ena-h-hf-sp-anti-hae-6deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l3, h90-ena-h-hf-sp-ram-hae-6deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-anti-hae-6deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-ram-hae-6deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-6deg-1yr, HARD, DOWNSTREAM
 
 # <---- HIT Dependencies ---->
 
@@ -67,6 +87,20 @@ hit, l1a, counts, hit, l1b, all, HARD, DOWNSTREAM
 hit, l1b, standard-rates, hit, l2, standard-intensity, HARD, DOWNSTREAM
 hit, l1b, summed-rates, hit, l2, summed-intensity, HARD, DOWNSTREAM
 hit, l1b, sectored-rates, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+
+hit, ancillary, sectored-dt0-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, sectored-dt1-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, sectored-dt2-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, sectored-dt3-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, standard-dt0-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
+hit, ancillary, standard-dt1-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
+hit, ancillary, standard-dt2-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
+hit, ancillary, standard-dt3-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
+hit, ancillary, summed-dt0-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
+hit, ancillary, summed-dt1-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
+hit, ancillary, summed-dt2-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
+hit, ancillary, summed-dt3-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
+
 hit, l2, macropixel-intensity, hit, l3, macropixel, HARD, DOWNSTREAM
 mag, l1d, norm-mago, hit, l3, macropixel, HARD, DOWNSTREAM
 
@@ -180,6 +214,8 @@ swapi, ancillary, energy-gf-lut, swapi, l3b, combined, HARD, DOWNSTREAM
 swe, l0, raw, swe, l1a, sci, HARD, DOWNSTREAM
 swe, l1a, sci, swe, l1b, sci, HARD, DOWNSTREAM
 swe, ancillary, l1b-in-flight-cal, swe, l1b, sci, HARD, DOWNSTREAM
+swe, ancillary, esa-lut, swe, l1b, sci, HARD, DOWNSTREAM
+swe, ancillary, eu-conversion, swe, l1b, sci, HARD, DOWNSTREAM
 swe, l1b, sci, swe, l2, sci, HARD, DOWNSTREAM
 swe, l1b, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, l2, sci, swe, l3, sci, HARD, DOWNSTREAM
