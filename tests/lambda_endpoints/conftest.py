@@ -153,12 +153,12 @@ def _populate_file_catalog(session):
     # Setup: Add records to the database
     test_records = [
         ScienceFiles(
-            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v001.cdf",
+            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v002.cdf",
             instrument="mag",
             data_level="l1b",
             descriptor="norm-mago",
             start_date=datetime(2024, 1, 1),
-            version="v001",
+            version="v002",
             extension="cdf",
             ingestion_date=datetime.strptime(
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
@@ -311,11 +311,33 @@ def _populate_file_catalog(session):
             ),
         ),
         AncillaryFiles(
-            file_path="/path/to/imap_swe_l1b-in-flight-cal_20231231_20240102_v002.cdf",
+            file_path="/path/to/imap_swe_l1b-in-flight-cal_20231231_20240104_v002.cdf",
             instrument="swe",
             descriptor="l1b-in-flight-cal",
             start_date=datetime(2023, 12, 31),
-            end_date=datetime(2024, 1, 2),
+            end_date=datetime(2024, 1, 4),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_esa-lut_20221231_v001.cdf",
+            instrument="swe",
+            descriptor="esa-lut",
+            start_date=datetime(2022, 12, 31),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_eu-conversion_20221231_v001.cdf",
+            instrument="swe",
+            descriptor="eu-conversion",
+            start_date=datetime(2022, 12, 31),
             version="v001",
             extension="cdf",
             ingestion_date=datetime.strptime(

@@ -69,7 +69,10 @@ def test_lambda_handler_invalid_dependency_type(mock_get_dependencies):
 def test_missing_dependency(session):
     """Test that 206 error is returned."""
     event = create_dependency_api_event(
-        "swe", "l1b", start_date="20240104", version="v001", trigger_type="ancillary"
+        "swe",
+        "l1b",
+        start_date="20240104",
+        end_date="20241204",
     )
     dependency_response = dependency.lambda_handler(event, None)
 
@@ -85,8 +88,7 @@ def test_soft_dependencies(session):
         "l1c",
         descriptor="norm-mago",
         start_date="20240101",
-        version="v001",
-        trigger_type="l1b",
+        end_date="20241201",
         relationship="SOFT_TRIGGER",
         dep_type="UPSTREAM",
     )
@@ -96,7 +98,7 @@ def test_soft_dependencies(session):
     # mag_l1b_norm-mago
     # Expect ancillary dependencies and science dependencies
     expected_processing_input = ProcessingInputCollection(
-        ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
+        ScienceInput("imap_mag_l1b_norm-mago_20240101_v002.cdf"),
         ScienceInput("imap_mag_l1b_burst-mago_20240101_v001.cdf"),
     )
     assert dependencies == expected_processing_input.serialize()
@@ -125,8 +127,7 @@ def test_missing_soft_dependencies(session):
         "l1c",
         descriptor="norm-mago",
         start_date="20240101",
-        version="v001",
-        trigger_type="l1b",
+        end_date="20241201",
         relationship="SOFT_TRIGGER",
         dep_type="UPSTREAM",
     )
@@ -151,20 +152,12 @@ def test_missing_required_params():
             "data_type": "l1b",
             "descriptor": "sci",
             "start_date": "20240104",
-            "version": "v001",
         }
     }
     dependency_response = dependency.lambda_handler(event, None)
     assert dependency_response["statusCode"] == 400
     assert dependency_response["body"] == (
-        "trigger_type not found. If 'start_date' is"
-        " supplied, 'trigger_type' is required."
-    )
-    event["queryStringParameters"].pop("version")
-    dependency_response = dependency.lambda_handler(event, None)
-    assert dependency_response["statusCode"] == 400
-    assert dependency_response["body"] == (
-        "Version not found. If 'start_date' is supplied, 'version' is required."
+        "end_date not found. If 'start_date' is supplied, 'end_date' is required."
     )
 
 
@@ -208,8 +201,20 @@ def test_get_downstream_dependencies():
             "descriptor": "l1b-in-flight-cal",
             "relationship": "HARD",
         },
+        {
+            "data_source": "swe",
+            "data_type": "ancillary",
+            "descriptor": "esa-lut",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "swe",
+            "data_type": "ancillary",
+            "descriptor": "eu-conversion",
+            "relationship": "HARD",
+        },
     ]
-    assert len(dependents) == 2
+    assert len(dependents) == 4
     assert dependents == expected_complete_dependent
 
 
@@ -240,8 +245,7 @@ def test_get_upstream_ancillary_trigger(session, caplog):
         "l1b",
         dep_type="UPSTREAM",
         start_date="20231230",
-        version="v001",
-        trigger_type="ancillary",
+        end_date="20240104",
     )
     dependency_response = dependency.lambda_handler(event, None)
     dependencies = dependency_response["body"]
@@ -251,44 +255,29 @@ def test_get_upstream_ancillary_trigger(session, caplog):
         "imap_swe_l1a_sci_20240102_v001.cdf",
         "imap_swe_l1a_sci_20240103_v001.cdf",
     )
-    ancillary_in = AncillaryInput("imap_swe_l1b-in-flight-cal_20230101_v001.cdf")
+    ancillary_in = [
+        AncillaryInput("imap_swe_l1b-in-flight-cal_20230101_v001.cdf"),
+        AncillaryInput("imap_swe_esa-lut_20221231_v001.cdf"),
+        AncillaryInput("imap_swe_eu-conversion_20221231_v001.cdf"),
+    ]
     # Expect ancillary dependencies and science dependencies
-    expected_processing_input = ProcessingInputCollection(science_in, ancillary_in)
+    expected_processing_input = ProcessingInputCollection(science_in, *ancillary_in)
 
     assert dependencies == expected_processing_input.serialize()
     # Move start_date forward by one day
-    # THere are now two valid ancillary files for this date, but the dependency lambda
+    # THere are now two valid ancillary in-flight-cal files for this date, but
+    # the dependency lambda
     # Should only return the most recent one.
     event["queryStringParameters"]["start_date"] = "20231231"
     dependency_response = dependency.lambda_handler(event, None)
     dependencies = dependency_response["body"]
-    ancillary_in = AncillaryInput(
-        "imap_swe_l1b-in-flight-cal_20231231_20240102_v002.cdf",
-    )
+    ancillary_in = [
+        AncillaryInput("imap_swe_l1b-in-flight-cal_20231231_20240104_v002.cdf"),
+        AncillaryInput("imap_swe_esa-lut_20221231_v001.cdf"),
+        AncillaryInput("imap_swe_eu-conversion_20221231_v001.cdf"),
+    ]
+
     expected_processing_input = ProcessingInputCollection(science_in, ancillary_in)
-    assert dependencies == expected_processing_input.serialize()
-
-
-def test_get_upstream_science_trigger(session):
-    """Tests get upstream dependencies with a science file as the trigger source."""
-    _populate_file_catalog(session)
-    event = create_dependency_api_event(
-        "swe",
-        "l1b",
-        dep_type="UPSTREAM",
-        start_date="20240103",
-        version="v001",
-        trigger_type="l1a",
-    )
-    dependency_response = dependency.lambda_handler(event, None)
-    dependencies = dependency_response["body"]
-    # There are three swe l1a records, but since the trigger is the same source as
-    # the upstream source, then the exact date is used to find the swe l1a file.
-    science_in = ScienceInput("imap_swe_l1a_sci_20240103_v001.cdf")
-    ancillary_in = AncillaryInput("imap_swe_l1b-in-flight-cal_20230101_v001.cdf")
-    # Expect ancillary dependencies and science dependencies
-    expected_processing_input = ProcessingInputCollection(science_in, ancillary_in)
-
     assert dependencies == expected_processing_input.serialize()
 
 
@@ -318,8 +307,7 @@ def test_get_primary_science_files(session):
         session,
         dependency=dep,
         start_date=datetime(2024, 1, 1),
-        version="v001",
-        primary_sci_dep=True,
+        end_date=datetime(2024, 1, 1),
     )[0]
 
     assert record.instrument == "mag"
@@ -333,7 +321,7 @@ def test_get_primary_science_files(session):
         session,
         dependency=dep,
         start_date=datetime(2009, 1, 5),
-        version="v001",
+        end_date=datetime(2009, 1, 5),
     )
     assert record == []
 
@@ -341,31 +329,16 @@ def test_get_primary_science_files(session):
 def test_get_science_files_date_range(session):
     """Tests the get_file function for science files dependent on start_date."""
     _populate_file_catalog(session)
-    # Test with end date
+    # Test with larger date_range
     # It should return two swe records
     dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
     records_1 = get_files(
         session,
         dependency=dep,
         start_date=datetime(2024, 1, 2),
-        version="v001",
         end_date=datetime(2024, 1, 3),
-        primary_sci_trigger=False,
-        primary_sci_dep=True,
     )
     assert len(records_1) == 2
-
-    # Test with no end date
-    # It should return three swe records
-    records_2 = get_files(
-        session,
-        dependency=dep,
-        start_date=datetime(2024, 1, 1),
-        version="v001",
-        primary_sci_trigger=False,
-        primary_sci_dep=True,
-    )
-    assert len(records_2) == 3
 
 
 def test_get_ancillary_files(session):
@@ -381,7 +354,7 @@ def test_get_ancillary_files(session):
         session,
         dependency=dep,
         start_date=datetime(2023, 1, 1),
-        version="v001",
+        end_date=datetime(2023, 1, 1),
     )[0]
     assert record.instrument == "swe"
     assert record.descriptor == "l1b-in-flight-cal"
@@ -391,105 +364,30 @@ def test_get_ancillary_files(session):
     # Get ancillary file covering range.
     # There are two ancillary files valid for this range, but the one with the most
     # recent start_date should be returned
-    dep = {
-        "data_source": "swe",
-        "data_type": "ancillary",
-        "descriptor": "l1b-in-flight-cal",
-    }
-    start_date = datetime(2024, 1, 2)
     record = get_files(
         session,
         dependency=dep,
-        start_date=start_date,
-        version="v001",
+        start_date=datetime(2024, 1, 2),
+        end_date=datetime(2024, 1, 3),
     )
     assert len(record) == 1
     record = record[0]
     assert record.instrument == "swe"
     assert record.descriptor == "l1b-in-flight-cal"
     assert record.start_date == datetime(2023, 12, 31)
-    assert record.end_date == datetime(2024, 1, 2)
+    assert record.end_date == datetime(2024, 1, 4)
     assert record.version == "v001"
-    # Non-existent record should an empty list
-    record = get_files(
-        session,
-        dependency=dep,
-        start_date=datetime(2000, 1, 1),
-        version="v001",
-    )
-    assert record == []
 
 
-def test_get_exact_date_science_files(session):
-    """Tests the get_file function."""
+def test_get_files_max_version(session):
+    """Test get_files returns the max version."""
     _populate_file_catalog(session)
-
     dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
-    record = get_files(
+    records = get_files(
         session,
         dependency=dep,
         start_date=datetime(2024, 1, 1),
-        version="v001",
-        primary_sci_trigger=True,
-    )
-    assert len(record) == 1
-    record = record[0]
-    assert record.instrument == "swe"
-    assert record.descriptor == "sci"
-    assert record.start_date == datetime(2024, 1, 1)
-    assert record.version == "v001"
-
-
-def test_get_files_exact_version(session):
-    """Test get_files returns the exact version."""
-    _populate_file_catalog(session)
-    dep = {"data_source": "lo", "data_type": "l1a", "descriptor": "sci"}
-    record = get_files(
-        session,
-        dependency=dep,
-        start_date=datetime(2010, 1, 1),
-        version="v001",
-        primary_sci_trigger=True,
-    )
-
-    assert len(record) == 1
-    record = record[0]
-    assert record.instrument == "lo"
-    assert record.descriptor == "sci"
-    assert record.start_date == datetime(2010, 1, 1)
-    assert record.version == "v001"
-
-
-def test_get_files_max_version_ancillary(session):
-    """Test get_files returns the max version."""
-    _populate_file_catalog(session)
-    dep = {"data_source": "lo", "data_type": "l1a", "descriptor": "sci"}
-    records = get_files(
-        session,
-        dependency=dep,
-        start_date=datetime(2010, 1, 2),
-        primary_sci_trigger=False,
-    )
-
-    assert len(records) == 1
-    record = records[0]
-    assert record.instrument == "lo"
-    assert record.descriptor == "sci"
-    # Make sure this ancillary file has the most recent start_date.
-    assert record.start_date == datetime(2010, 1, 2)
-    assert record.version == "v003"
-
-
-def test_get_files_science(session):
-    """Test get_files returns the max version."""
-    _populate_file_catalog(session)
-    dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
-    records = get_files(
-        session,
-        dependency=dep,
-        start_date=datetime(2010, 1, 2),
-        primary_sci_trigger=False,
-        primary_sci_dep=True,
+        end_date=datetime(2024, 1, 3),
     )
 
     assert len(records) == 3
