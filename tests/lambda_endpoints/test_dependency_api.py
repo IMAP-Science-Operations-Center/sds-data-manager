@@ -98,7 +98,7 @@ def test_soft_dependencies(session):
     # mag_l1b_norm-mago
     # Expect ancillary dependencies and science dependencies
     expected_processing_input = ProcessingInputCollection(
-        ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
+        ScienceInput("imap_mag_l1b_norm-mago_20240101_v002.cdf"),
         ScienceInput("imap_mag_l1b_burst-mago_20240101_v001.cdf"),
     )
     assert dependencies == expected_processing_input.serialize()

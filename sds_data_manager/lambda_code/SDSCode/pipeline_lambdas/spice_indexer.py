@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import boto3
@@ -34,7 +34,9 @@ MAXIMUM_J2000_INTERVAL = [
 COVERAGE_ANGULAR_VELOCITY_ONLY = False  # Only include segments with angular velocity?
 COVERAGE_SPICE_ARRAY_LENGTH = 10000  # Use an array size of 10000 for coverage calc
 COVERAGE_LEVEL = "INTERVAL"  # the granularity at which the coverage is examined
-COVERAGE_TOLERANCE = 50000.0  # tolerance value expressed in ticks of the spacecraft
+COVERAGE_TOLERANCE = 50000.0  # Tolerance value expressed in ticks of the spacecraft.
+# This value determines the precision of gap calculations in SPICE file coverage analysis.
+# A smaller value increases precision but may result in higher computational cost.
 COVERAGE_TIME_SYSTEM = "TDB"  # Whether to use J2000 (TDB) or spacecraft clock (SCLK)
 
 
@@ -151,7 +153,7 @@ def _upsert_into_spice_table(
     filename = str(spice_object.filename.name)
     version = spice_object.spice_metadata["version"]
     spice_params = {
-        "ingestion_date": datetime.now(),
+        "ingestion_date": datetime.now(timezone.utc),
         "kernel_type": spice_object.spice_metadata["type"],
         "version": version,
         "file_name": filename,
@@ -265,6 +267,29 @@ def index_spice_file(spice_file: Path):
     )
 
 
+def index_spin_file(spin_file: Path):
+    """Insert spin file metadata into spin database table.
+
+    Parameters
+    ----------
+    spin_file: Path
+        The full name and path the spin file to index
+    """
+    with db.Session() as session:
+        spin_obj = SPICEFilePath(spin_file)
+        spin_metadata = spin_obj.spice_metadata
+        params = {
+            "file_path": str(spin_file),
+            "start_date": spin_metadata["start_date"],
+            "end_date": spin_metadata["end_date"],
+            "version": spin_metadata["version"],
+            "ingestion_date": datetime.now(timezone.utc),
+        }
+        spin_table = models.SpinTable(**params)
+        session.add(spin_table)
+        session.commit()
+
+
 def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Path:
     """Write data to EFS and create/update symlink.
 
@@ -375,6 +400,7 @@ def lambda_handler(event, context):
     elif spice_obj.spice_metadata["type"] == "spin":
         # TODO: Write spin information to spin table
         logger.info(f"Indexing {s3_key} spin table")
+        index_spin_file(file_path)
     else:
         # Index the SPICE kerenels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
