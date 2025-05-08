@@ -152,7 +152,8 @@ def lambda_handler(event, context):
         }
 
     if list_files.lower() == "true":
-        output = json.dumps(metakernel.return_spice_files_in_order(detailed=False))
+        metakernel_files = metakernel.return_spice_files_in_order(detailed=False)
+        output = json.dumps([Path(f).name for f in metakernel_files])
     else:
         output = metakernel.return_tm_file(base_path=spice_directory)
 
