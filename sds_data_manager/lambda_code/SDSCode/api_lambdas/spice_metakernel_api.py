@@ -22,7 +22,7 @@ class LeapsecondKernels(Enum):
     @staticmethod
     def spice_category_name():
         """Category of SPICE file."""
-        return "leapseconds"
+        return "leapseconds_category"
 
 
 class PlanetaryConstantsKernels(Enum):
@@ -33,7 +33,7 @@ class PlanetaryConstantsKernels(Enum):
     @staticmethod
     def spice_category_name():
         """Category of SPICE file."""
-        return "planetary_constants"
+        return "planetary_constants_category"
 
 
 class FramesKernels(Enum):
@@ -44,7 +44,7 @@ class FramesKernels(Enum):
     @staticmethod
     def spice_category_name():
         """Category of SPICE file."""
-        return "frames"
+        return "frames_category"
 
 
 class SpacecraftClockKernels(Enum):
@@ -55,7 +55,7 @@ class SpacecraftClockKernels(Enum):
     @staticmethod
     def spice_category_name():
         """Category of SPICE file."""
-        return "spacecraft_clock"
+        return "spacecraft_clock_category"
 
 
 class PlanetaryEphemerisKernels(Enum):
@@ -66,7 +66,7 @@ class PlanetaryEphemerisKernels(Enum):
     @staticmethod
     def spice_category_name():
         """Category of SPICE file."""
-        return "planetary_ephemeris"
+        return "planetary_ephemeris_category"
 
 
 class SpacecraftEphemerisKernels(Enum):
@@ -82,7 +82,7 @@ class SpacecraftEphemerisKernels(Enum):
     @staticmethod
     def spice_category_name():
         """Category of SPICE file."""
-        return "spacecraft_ephemeris"
+        return "spacecraft_ephemeris_category"
 
 
 class SpacecraftAttitudeKernels(Enum):
@@ -94,7 +94,18 @@ class SpacecraftAttitudeKernels(Enum):
     @staticmethod
     def spice_category_name():
         """Category of SPICE file."""
-        return "spacecraft_attitude"
+        return "spacecraft_attitude_category"
+
+
+class PointingAttitudeKernels(Enum):
+    """Container for Pointing Attitude Kernel Types."""
+
+    POINTING_ATTITUDE = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "pointing_attitude_category"
 
 
 IMAP_SPICE_LOAD_ORDER = [
@@ -105,6 +116,7 @@ IMAP_SPICE_LOAD_ORDER = [
     PlanetaryEphemerisKernels,
     SpacecraftEphemerisKernels,
     SpacecraftAttitudeKernels,
+    PointingAttitudeKernels,
 ]
 
 
