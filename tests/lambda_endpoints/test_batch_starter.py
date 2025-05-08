@@ -208,7 +208,7 @@ def test_lambda_handler_ancillary_event(
         # as an upstream dep.
         ancillary_in = [
             AncillaryInput(
-                "imap_swe_l1b-in-flight-cal_20231231_20240104_v002.cdf",
+                "imap_swe_l1b-in-flight-cal_20230102_v001.cdf",
             ),
             AncillaryInput("imap_swe_esa-lut_20221231_v001.cdf"),
             AncillaryInput("imap_swe_eu-conversion_20221231_v001.cdf"),

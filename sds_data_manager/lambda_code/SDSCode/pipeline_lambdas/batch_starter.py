@@ -371,7 +371,7 @@ def s3_processing_event(session, events):
                     job_start_date,
                     job_version,
                     upstream_dependencies.get_valid_inputs_for_start_date(
-                        job_start_date
+                        job_start_date, return_latest_ancillary=True
                     ),
                 )
 
