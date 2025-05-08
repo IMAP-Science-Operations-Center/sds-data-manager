@@ -127,7 +127,7 @@ def lambda_handler(event, context):
 
     logger.info("Received event: " + json.dumps(event, indent=2))
 
-    # Gather the query paremeters
+    # Gather the query parameters
     query_params = event["queryStringParameters"]
     start_time = query_params["start_time"]
     end_time = query_params["end_time"]
