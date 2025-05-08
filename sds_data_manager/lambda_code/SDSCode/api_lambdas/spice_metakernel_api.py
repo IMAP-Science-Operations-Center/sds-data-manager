@@ -19,8 +19,8 @@ class LeapsecondKernels(Enum):
 
     LEAPSECONDS = auto()
 
-    @classmethod
-    def spice_category_name(cls):
+    @staticmethod
+    def spice_category_name():
         """Category of SPICE file."""
         return "leapseconds"
 
@@ -30,8 +30,8 @@ class PlanetaryConstantsKernels(Enum):
 
     PLANETARY_CONSTANTS = auto()
 
-    @classmethod
-    def spice_category_name(cls):
+    @staticmethod
+    def spice_category_name():
         """Category of SPICE file."""
         return "planetary_constants"
 
@@ -41,8 +41,8 @@ class FramesKernels(Enum):
 
     FRAMES = auto()
 
-    @classmethod
-    def spice_category_name(cls):
+    @staticmethod
+    def spice_category_name():
         """Category of SPICE file."""
         return "frames"
 
@@ -52,8 +52,8 @@ class SpacecraftClockKernels(Enum):
 
     SPACECRAFT_CLOCK = auto()
 
-    @classmethod
-    def spice_category_name(cls):
+    @staticmethod
+    def spice_category_name():
         """Category of SPICE file."""
         return "spacecraft_clock"
 
@@ -63,8 +63,8 @@ class PlanetaryEphemerisKernels(Enum):
 
     PLANETARY_EPHEMERIS = auto()
 
-    @classmethod
-    def spice_category_name(cls):
+    @staticmethod
+    def spice_category_name():
         """Category of SPICE file."""
         return "planetary_ephemeris"
 
@@ -79,8 +79,8 @@ class SpacecraftEphemerisKernels(Enum):
     EPHEMERIS_LONG = auto()
     EPHEMERIS_LAUNCH = auto()
 
-    @classmethod
-    def spice_category_name(cls):
+    @staticmethod
+    def spice_category_name():
         """Category of SPICE file."""
         return "spacecraft_ephemeris"
 
@@ -91,8 +91,8 @@ class SpacecraftAttitudeKernels(Enum):
     ATTITUDE_HISTORY = auto()
     ATTITUDE_PREDICT = auto()
 
-    @classmethod
-    def spice_category_name(cls):
+    @staticmethod
+    def spice_category_name():
         """Category of SPICE file."""
         return "spacecraft_attitude"
 
@@ -127,7 +127,7 @@ def lambda_handler(event, context):
 
     logger.info("Received event: " + json.dumps(event, indent=2))
 
-    # Gather the query paremeters
+    # Gather the query parameters
     query_params = event["queryStringParameters"]
     start_time = query_params["start_time"]
     end_time = query_params["end_time"]

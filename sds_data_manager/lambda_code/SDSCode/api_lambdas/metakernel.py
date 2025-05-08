@@ -136,8 +136,8 @@ seconds since J2000.
         Parameter
         ---------
         detailed : bool
-            Whether or not to include the all data, or just
-            the file names.
+            If true, returns all information about the file. 
+            If false, returns only the file names themselves.
 
         Returns
         -------
