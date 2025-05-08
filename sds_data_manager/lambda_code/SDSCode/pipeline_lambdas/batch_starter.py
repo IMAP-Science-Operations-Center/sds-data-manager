@@ -152,11 +152,18 @@ def determine_job_version(
         conditions = [
             table.instrument == instrument,
             table.data_level == data_level,
-            table.descriptor == descriptor,
             table.start_date == start_date,
         ]
         if table == models.ProcessingJob:
-            conditions.append(table.status == models.Status.INPROGRESS)
+            conditions.append(
+                table.status.in_(
+                    [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
+                )
+            )
+        if descriptor != "all":
+            # If the descriptor is all we want to check for all descriptors
+            conditions.append(table.descriptor == descriptor)
+
         return conditions
 
     # First check to see if there are any jobs in progress and get the max version

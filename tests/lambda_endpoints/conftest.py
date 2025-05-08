@@ -153,12 +153,12 @@ def _populate_file_catalog(session):
     # Setup: Add records to the database
     test_records = [
         ScienceFiles(
-            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v001.cdf",
+            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v002.cdf",
             instrument="mag",
             data_level="l1b",
             descriptor="norm-mago",
             start_date=datetime(2024, 1, 1),
-            version="v001",
+            version="v002",
             extension="cdf",
             ingestion_date=datetime.strptime(
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
