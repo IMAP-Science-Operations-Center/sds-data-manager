@@ -13,6 +13,7 @@ import imap_data_access
 from imap_data_access import processing_input
 from sqlalchemy import and_, func, or_
 
+from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
 from ..database import models
 
@@ -29,15 +30,6 @@ class DataSource:
     from imap_data_access and other data sources related to SPICE.
     """
 
-    SC_ATTITUDE: str = "sc_attitude"
-    SC_EPHEMERIS: str = "sc_ephemeris"
-    PLANET_EPHEMERIS: str = "planet_ephemeris"
-    TIME_KERNEL: str = "time_kernel"
-    THRUSTER_FIRE_KERNEL: str = "thruster_fire_kernel"
-    SC_SPIN: str = "sc_spin"
-    SC_REPOINT: str = "sc_repoint"
-    SC_POINTING_FRAME: str = "sc_pointing_frame"
-
     @property
     def valid_source(self) -> list[str]:
         """Add data sources.
@@ -47,15 +39,11 @@ class DataSource:
         list[str]
             list of valid data sources.
         """
+        # TODO: import this from imap_data_access once it's defined.
         return [
-            self.SC_ATTITUDE,
-            self.SC_EPHEMERIS,
-            self.PLANET_EPHEMERIS,
-            self.TIME_KERNEL,
-            self.THRUSTER_FIRE_KERNEL,
-            self.SC_SPIN,
-            self.SC_REPOINT,
-            self.SC_POINTING_FRAME,
+            "spin",
+            "repoint",
+            *spice_metakernel_api.KernelCollection().file_types,
             *imap_data_access.VALID_INSTRUMENTS,
         ]
 

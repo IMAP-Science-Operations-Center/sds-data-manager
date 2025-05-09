@@ -644,6 +644,72 @@ def test_api_request_success(mock_urlopen: unittest.mock.MagicMock):
         },
     ]
 
+    # Check for SPICE upstream dependencies
+    idex_l1b = {
+        "data_source": "idex",
+        "data_type": "l1b",
+        "descriptor": "sci-1week",
+        "relationship": "HARD",
+        "dependency_type": "UPSTREAM",
+    }
+
+    dependencies = _get_dependencies(idex_l1b)
+    assert dependencies == [
+        {
+            "data_source": "idex",
+            "data_type": "l1a",
+            "descriptor": "sci-1week",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "spin",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "repoint",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "ephemeris_reconstructed",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "attitude_history",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+    ]
+
+    pointing_attitude = {
+        "data_source": "spacecraft",
+        "data_type": "l1a",
+        "descriptor": "pointing_attitude",
+        "relationship": "HARD",
+        "dependency_type": "UPSTREAM",
+    }
+    dependencies = _get_dependencies(pointing_attitude)
+    assert dependencies == [
+        {
+            "data_source": "attitude_history",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "repoint",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+    ]
+
 
 def test_api_request_success_empty(session, mock_urlopen: unittest.mock.MagicMock):
     """Test that _get_dependencies() returns the expected dependency result.

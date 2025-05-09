@@ -2,6 +2,7 @@
 
 import json
 import logging
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
@@ -108,16 +109,38 @@ class PointingAttitudeKernels(Enum):
         return "pointing_attitude_category"
 
 
-IMAP_SPICE_LOAD_ORDER = [
-    LeapsecondKernels,
-    PlanetaryConstantsKernels,
-    FramesKernels,
-    SpacecraftClockKernels,
-    PlanetaryEphemerisKernels,
-    SpacecraftEphemerisKernels,
-    SpacecraftAttitudeKernels,
-    PointingAttitudeKernels,
-]
+@dataclass
+class KernelCollection:
+    """Collection of SPICE kernel types for IMAP."""
+
+    imap_spice_load_order: list = field(
+        default_factory=lambda: [
+            LeapsecondKernels,
+            PlanetaryConstantsKernels,
+            FramesKernels,
+            SpacecraftClockKernels,
+            PlanetaryEphemerisKernels,
+            SpacecraftEphemerisKernels,
+            SpacecraftAttitudeKernels,
+            PointingAttitudeKernels,
+        ]
+    )
+
+    @property
+    def file_types(self):
+        """Return all kernel members in lowercase."""
+        members = []
+        for kernel_class in self.imap_spice_load_order:
+            members.extend([member.name.lower() for member in kernel_class])
+        return members
+
+    @property
+    def category_types(self):
+        """Collect all kernel category type strings."""
+        return [
+            kernel_class.spice_category_name()
+            for kernel_class in self.imap_spice_load_order
+        ]
 
 
 def lambda_handler(event, context):
@@ -190,10 +213,10 @@ def _metakernel_builder(
     metakernel = MetaKernel(
         start_time,
         end_time,
-        allowed_spice_types=[c.spice_category_name() for c in IMAP_SPICE_LOAD_ORDER],
+        allowed_spice_types=KernelCollection().category_types,
     )
 
-    for spice_category in IMAP_SPICE_LOAD_ORDER:
+    for spice_category in KernelCollection().imap_spice_load_order:
         for spice_subtype in spice_category:
             if file_types and spice_subtype.name not in file_types:
                 continue  # Skip over the file if not in requested list
