@@ -202,6 +202,18 @@ def _populate_file_catalog(session):
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
         ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240106_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 6),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
         # Adding a downstream swe l1b file that depends on the science file above
         ScienceFiles(
             file_path="/path/to/imap_swe_l1b_sci_20240102_v001.cdf",
