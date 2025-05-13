@@ -1,6 +1,5 @@
 """Test data dependency functions."""
 
-import json
 import os
 from datetime import datetime
 from unittest.mock import patch
@@ -436,7 +435,7 @@ def test_get_latest_repoint_file(s3_client):
     # Test with date of the file
     end_date = datetime(2025, 4, 30)
     latest_file = dependency.get_latest_repoint_file(end_date)
-    assert latest_file == "imap/spice/repoint/imap_2025_120_01.repoint.csv"
+    assert latest_file == "imap_2025_120_01.repoint.csv"
 
     # Add more files to the bucket
     s3_client.put_object(
@@ -453,7 +452,7 @@ def test_get_latest_repoint_file(s3_client):
     # Test with date before the first file
     end_date = datetime(2025, 3, 1)
     latest_file = dependency.get_latest_repoint_file(end_date)
-    assert latest_file == "imap/spice/repoint/imap_2025_121_02.repoint.csv"
+    assert latest_file == "imap_2025_121_02.repoint.csv"
 
     # Test with a date after the latest file
     end_date = datetime(2025, 6, 30)
