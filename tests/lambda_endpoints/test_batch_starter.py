@@ -742,3 +742,20 @@ def test_spice_event(session, s3_client):
                 ]
             },
         )
+
+    # Attitude kernel event should trigger both IDEX L1B and spacecraft L1A jobs
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_2025_118_2025_120_02.ah.bc"}}'
+                "}"
+            }
+        ]
+    }
+
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, None)
+        mock_batch_client.submit_job.assert_called()
+        # Check that the function was called twice
+        assert mock_batch_client.submit_job.call_count == 2

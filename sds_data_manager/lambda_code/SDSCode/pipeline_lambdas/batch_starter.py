@@ -212,7 +212,8 @@ def s3_processing_event(session, events):
         if isinstance(file_obj, SPICEFilePath):
             # Add source, data_type, and descriptor to the downstream event message
             spice_input = SPICEInput(filename)
-            data_source = spice_input.source
+            # TODO: fix this in future release of imap_data_access
+            data_source = file_obj.spice_metadata["type"]
             descriptor = spice_input.descriptor
             data_type = spice_input.data_type
             # Set the start and end dates for the upstream event message.
@@ -262,6 +263,10 @@ def s3_processing_event(session, events):
             dependency_type="DOWNSTREAM",
             relationship="SOFT_TRIGGER",
         )
+        logger.info(
+            f"Potential jobs: {potential_jobs} and potential soft jobs: "
+            f"{potential_soft_jobs}"
+        )
 
         for job in potential_jobs + potential_soft_jobs:
             # Submit downstream jobs for each upstream primary science dependency file.
@@ -278,9 +283,35 @@ def s3_processing_event(session, events):
             )
 
             if not upstream_dependencies:
-                return
+                continue
 
             logger.info(f"All required dependencies found for the job: {job}")
+            # data_source -> spacecraft and pointing kernel is a unqiue case
+            # where we need to kick off with what's in upstream dependencies
+            # without filtering.
+            if (
+                job["data_source"] == "spacecraft"
+                and job["descriptor"] == "pointing_attitude"
+            ):
+                # Convert to datetime object
+                job_start_date = datetime.strptime(start_date, "%Y%m%d")
+                job_version = determine_job_version(
+                    session=session,
+                    instrument=job["data_source"],
+                    descriptor=job["descriptor"],
+                    start_date=job_start_date,
+                    data_level=job["data_type"],
+                )
+                # submit the job
+                try_to_submit_job(
+                    session,
+                    job,
+                    job_start_date,
+                    job_version,
+                    upstream_dependencies,
+                )
+                continue
+
             # Find the first science processingInput that has the same source as the
             # potential job. Use this to determine the start date.
             primary_science = upstream_dependencies.get_science_inputs(
