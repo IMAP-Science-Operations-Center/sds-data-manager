@@ -493,7 +493,7 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
         return None
 
     # Sort by end_date and version
-    latest = max(repoint_files, key=lambda x: (x[0], x[1]))
+    latest = sorted(repoint_files, key=lambda x: (x[0], x[1]))[-1]
     latest_file_date = latest[0]
 
     # Check that input end is within latest repoint file end date
