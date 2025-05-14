@@ -595,6 +595,7 @@ def get_upstream_dependency_inputs(
                         "end_time": end_time,
                         "list_files": "True",
                         "file_types": combined_kernel_sources,
+                        # TODO: revisit this after SIT-4
                         # "require_coverage": "True",
                     }
                 },
