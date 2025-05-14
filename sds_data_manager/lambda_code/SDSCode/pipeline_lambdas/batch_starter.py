@@ -242,7 +242,7 @@ def s3_processing_event(session, events):
             # Set the start and end dates for the upstream event message
             start_date = file_obj.start_date
             # Ancillary files can have an end date.
-            end_date = file_obj.end_date if hasattr(file_obj, "end_date") else None
+            end_date = getattr(file_obj, "end_date", None)
 
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.

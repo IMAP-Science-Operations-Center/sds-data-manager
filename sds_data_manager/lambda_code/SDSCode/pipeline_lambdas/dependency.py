@@ -409,11 +409,7 @@ def combine_kernel_sources(dependency: dict) -> str:
     """
     file_types = []
     for dep in dependency:
-        if (
-            dep["data_source"] != processing_input.SPICESource.REPOINT.value
-            and dep["data_source"] != processing_input.SPICESource.SPIN.value
-            and dep["data_source"] in spice_metakernel_api.KernelCollection().file_types
-        ):
+        if dep["data_source"] in spice_metakernel_api.KernelCollection().file_types:
             file_types.append(dep["data_source"])
     return ",".join(file_types)
 
@@ -544,7 +540,7 @@ def get_upstream_dependency_inputs(
         # Check for SPICE dependencies
         # -----------------------------
         # If spin is a dependency, query spin table for given date range
-        has_spin_dep = [dep for dep in dependencies if dep["data_source"] == "spin"]
+        has_spin_dep = any(dep["data_source"] == "spin" for dep in dependencies)
         if has_spin_dep:
             logger.info("Looking for spin files")
             spin_files = get_spin_files(session, start_date, end_date)
@@ -555,9 +551,7 @@ def get_upstream_dependency_inputs(
             dependency_inputs.add(processing_input.SPICEInput(*spin_files))
 
         # If repoint is a dependency, query s3 for latest repoint file
-        has_repoint_dep = [
-            dep for dep in dependencies if dep["data_source"] == "repoint"
-        ]
+        has_repoint_dep = any(dep["data_source"] == "repoint" for dep in dependencies)
         if has_repoint_dep:
             latest_repoint_file = get_latest_repoint_file(end_date)
             if latest_repoint_file is None:
@@ -570,13 +564,12 @@ def get_upstream_dependency_inputs(
 
         # Otherwise, combine rest of kernels types and query metakernel lambda
         # for given date range
-        has_kernel_dep = [
-            dep
-            for dep in dependencies
-            if dep["data_source"] != "spin"
+        has_kernel_dep = any(
+            dep["data_source"] != "spin"
             and dep["data_source"] != "repoint"
             and dep["data_type"] == "spice"
-        ]
+            for dep in dependencies
+        )
         if has_kernel_dep:
             combined_kernel_sources = combine_kernel_sources(dependencies)
 
