@@ -180,10 +180,6 @@ def lambda_handler(event, context):
         return {
             "statusCode": 422,  # Unprocessable Content
             "body": json.dumps(metakernel.spice_gaps),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",  # Allow CORS
-            },
         }
 
     if list_files.lower() == "true":
@@ -196,10 +192,6 @@ def lambda_handler(event, context):
     response = {
         "statusCode": 200,
         "body": output,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",  # Allow CORS
-        },
     }
 
     return response
