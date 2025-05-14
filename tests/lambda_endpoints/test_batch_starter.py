@@ -545,12 +545,6 @@ def test_dependency_success():
             "relationship": "HARD",
         },
         {
-            "data_source": "repoint",
-            "data_type": "spice",
-            "descriptor": "historical",
-            "relationship": "HARD",
-        },
-        {
             "data_source": "ephemeris_reconstructed",
             "data_type": "spice",
             "descriptor": "historical",
@@ -558,28 +552,6 @@ def test_dependency_success():
         },
         {
             "data_source": "attitude_history",
-            "data_type": "spice",
-            "descriptor": "historical",
-            "relationship": "HARD",
-        },
-    ]
-
-    dependencies = dependency.get_jobs(
-        data_source="spacecraft",
-        data_type="l1a",
-        descriptor="pointing_attitude",
-        relationship="HARD",
-        dependency_type="UPSTREAM",
-    )
-    assert dependencies == [
-        {
-            "data_source": "attitude_history",
-            "data_type": "spice",
-            "descriptor": "historical",
-            "relationship": "HARD",
-        },
-        {
-            "data_source": "repoint",
             "data_type": "spice",
             "descriptor": "historical",
             "relationship": "HARD",
@@ -699,10 +671,6 @@ def test_spice_event(session, s3_client):
             "files": ["imap_2025_118_2025_120_01.spin.csv"],
         },
         {
-            "type": "repoint",
-            "files": ["imap_2025_120_01.repoint.csv"],
-        },
-        {
             "type": "spice",
             "files": [
                 "imap_recon_20250428_20250430_v02.bsp",
@@ -742,20 +710,3 @@ def test_spice_event(session, s3_client):
                 ]
             },
         )
-
-    # Attitude kernel event should trigger both IDEX L1B and spacecraft L1A jobs
-    events = {
-        "Records": [
-            {
-                "body": '{"detail": '
-                '{"object": {"key": "imap_2025_118_2025_120_02.ah.bc"}}'
-                "}"
-            }
-        ]
-    }
-
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
-        lambda_handler(events, None)
-        mock_batch_client.submit_job.assert_called()
-        # Check that the function was called twice
-        assert mock_batch_client.submit_job.call_count == 2

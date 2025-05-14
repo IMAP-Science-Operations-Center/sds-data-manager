@@ -217,11 +217,8 @@ def s3_processing_event(session, events):
             descriptor = spice_input.descriptor
             data_type = spice_input.data_type
             # Set the start and end dates for the upstream event message.
-            # TODO: fix date range if file was repoint file.
-            if file_obj.spice_metadata["type"] == "repoint":
-                # Repoint file doesn't have a start date.
-                # TODO: So set start date to be what?
-                start_date = file_obj.spice_metadata["start_date"]
+            # TODO: fix date range if/when repoint file ingestion event is
+            # passed to batch starter to kickoff HARD or SOFT_TRIGGER downstream jobs.
             # Convert datetime object to string of format YYYYMMDD
             start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
             end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
@@ -286,31 +283,6 @@ def s3_processing_event(session, events):
                 continue
 
             logger.info(f"All required dependencies found for the job: {job}")
-            # data_source -> spacecraft and pointing kernel is a unqiue case
-            # where we need to kick off with what's in upstream dependencies
-            # without filtering.
-            if (
-                job["data_source"] == "spacecraft"
-                and job["descriptor"] == "pointing_attitude"
-            ):
-                # Convert to datetime object
-                job_start_date = datetime.strptime(start_date, "%Y%m%d")
-                job_version = determine_job_version(
-                    session=session,
-                    instrument=job["data_source"],
-                    descriptor=job["descriptor"],
-                    start_date=job_start_date,
-                    data_level=job["data_type"],
-                )
-                # submit the job
-                try_to_submit_job(
-                    session,
-                    job,
-                    job_start_date,
-                    job_version,
-                    upstream_dependencies,
-                )
-                continue
 
             # Find the first science processingInput that has the same source as the
             # potential job. Use this to determine the start date.
