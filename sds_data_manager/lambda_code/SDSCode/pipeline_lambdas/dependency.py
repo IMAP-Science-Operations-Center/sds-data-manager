@@ -405,7 +405,7 @@ def combine_kernel_sources(dependency: dict) -> str:
     -------
     str
         Combined kernel sources separated by commans. Eg.
-        "attitude_history, attitude_predict,..."
+        "attitude_history,attitude_predict,..."
     """
     file_types = []
     for dep in dependency:
@@ -509,7 +509,7 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
         return None
 
     # Otherwise, return the latest repoint file without the path prefix
-    return latest[2].split("/")[-1]
+    return basename(latest[2])
 
 
 def get_upstream_dependency_inputs(
