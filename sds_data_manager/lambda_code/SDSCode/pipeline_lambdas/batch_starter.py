@@ -1,15 +1,8 @@
 """Functions for supporting the batch starter component of the architecture."""
 
-# ruff: noqa: S310
-# potentially unsafe usage of urlopen TODO: are we concerned here?
-import contextlib
 import json
 import logging
-import os
-import urllib
 from datetime import datetime
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
 
 import boto3
 import imap_data_access
@@ -23,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from ..database import database as db
 from ..database import models
+from . import dependency
 
 # import dependency
 
@@ -32,91 +26,6 @@ logger.setLevel(logging.INFO)
 
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
-
-
-class IMAPDependencyFinderError(Exception):
-    """Base class for exceptions in this module."""
-
-    pass
-
-
-@contextlib.contextmanager
-def _get_url_response(url: str):
-    """Get the response from a URL.
-
-    This is a helper function to make it easier to handle
-    the different types of errors that can occur when
-    opening a URL and write out the response body.
-
-    Parameters
-    ----------
-    url: str
-        The url string to query the api with.
-
-    Yields
-    ------
-    http.client.HTTPResponse
-        The response object received from the API.
-    """
-    try:
-        # Open the URL and yield the response
-        with urllib.request.urlopen(url) as response:
-            yield response
-    except HTTPError as e:
-        message = (
-            f"HTTP Error: {e.code} - {e.reason}\n"
-            f"Server Message: {e.read().decode('utf-8')}"
-        )
-        raise IMAPDependencyFinderError(message) from e
-
-    except URLError as e:
-        message = f"URL Error: {e.reason}"
-        raise IMAPDependencyFinderError(message) from e
-
-
-def _get_dependencies(dependency_events: dict):
-    """Return dependencies for the input dependency requirements.
-
-    Parameters
-    ----------
-    dependency_events : dict
-        Dependency information to be used as query parameters in the API request url.
-
-    Returns
-    -------
-    Union[list, ProcessingInputCollection, None]
-        - A list of dependency dictionaries if "start_date" is not in the
-            request url .
-        - ProcessingInputCollection if 'start_date' is in the request url.
-        - None If the API returns a 206 status code indicating missing dependencies.
-
-    """
-    base = f"{os.getenv('IMAP_DATA_ACCESS_URL')}/dependency?"
-    url = f"{base}{urlencode(dependency_events)}"
-
-    logger.info("Finding dependencies for %s with url %s", dependency_events, url)
-    with _get_url_response(url) as response:
-        # Retrieve the response as a list of dictionaries containing the dependency
-        # information
-        dependency_response = response.read().decode("utf-8")
-        # Check for a 206 status code
-        if response.status == 206:
-            logger.info(f"Dependency API response: {dependency_response}")
-            return None
-
-        logger.debug(f"Received dependencies: {dependency_response}")
-    # The API returns different output formats depending on the query parameters:
-    # Without "start_date": Returns a list of dependency dictionaries.
-    #      This functionality is used when searching for downstream dependencies
-    # With "start_date" (requires "version" and "trigger_type"; "end_date" optional):
-    # Returns a serialized ProcessingInputCollection of files from S3
-    if "start_date" in url:
-        dependencies = ProcessingInputCollection()
-        dependencies.deserialize(dependency_response)
-    else:
-        dependencies = json.loads(dependency_response)
-
-    return dependencies
 
 
 def determine_job_version(
@@ -156,7 +65,11 @@ def determine_job_version(
             table.start_date == start_date,
         ]
         if table == models.ProcessingJob:
-            conditions.append(table.status == models.Status.INPROGRESS)
+            conditions.append(
+                table.status.in_(
+                    [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
+                )
+            )
         return conditions
 
     # First check to see if there are any jobs in progress and get the max version
@@ -165,6 +78,11 @@ def determine_job_version(
             *filter_conditions(models.ProcessingJob)
         )
     ).scalar()
+    # If the descriptor is "all", we should only check the processing job table. The
+    # ScienceFiles table does not have descriptors of "all" since the products
+    # produced will have their own specific descriptors.
+    if descriptor == "all":
+        return f"v{int(max_version[1:]) + 1:03d}" if max_version else "v001"
     # If no jobs are in progress, check the science files table for the max version.
     if not max_version:
         max_version = (
@@ -310,35 +228,38 @@ def s3_processing_event(session, events):
             file_obj.data_level if hasattr(file_obj, "data_level") else "ancillary"
         )
 
-        dependency_event_msg = {
-            "data_source": file_obj.instrument,
-            "descriptor": file_obj.descriptor,
-            "data_type": data_type,
-            "dependency_type": "DOWNSTREAM",
-            "relationship": "HARD",
-        }
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
-        potential_jobs = _get_dependencies(dependency_event_msg)
-
+        potential_jobs = dependency.get_jobs(
+            data_source=file_obj.instrument,
+            descriptor=file_obj.descriptor,
+            data_type=data_type,
+            dependency_type="DOWNSTREAM",
+            relationship="HARD",
+        )
         # SOFT_TRIGGER dependencies will try to set off processing
-        dependency_event_msg["relationship"] = "SOFT_TRIGGER"
-        potential_soft_jobs = _get_dependencies(dependency_event_msg)
+        potential_soft_jobs = dependency.get_jobs(
+            data_source=file_obj.instrument,
+            descriptor=file_obj.descriptor,
+            data_type=data_type,
+            dependency_type="DOWNSTREAM",
+            relationship="SOFT_TRIGGER",
+        )
 
         for job in potential_jobs + potential_soft_jobs:
             # Submit downstream jobs for each upstream primary science dependency file.
-            event_msg = {
-                "data_source": job["data_source"],
-                "data_type": job["data_type"],
-                "descriptor": job["descriptor"],
-                "dependency_type": "UPSTREAM",
-                "relationship": "ALL",
-                "start_date": start_date,
-                "end_date": end_date,
-            }
 
             # Find the files that this job depends on
-            upstream_dependencies = _get_dependencies(event_msg)
+            upstream_dependencies = dependency.get_jobs(
+                data_source=job["data_source"],
+                data_type=job["data_type"],
+                descriptor=job["descriptor"],
+                dependency_type="UPSTREAM",
+                relationship="ALL",
+                start_date=start_date,
+                end_date=end_date,
+            )
+
             if not upstream_dependencies:
                 return
 
@@ -357,15 +278,23 @@ def s3_processing_event(session, events):
                     start_date=job_start_date,
                     data_level=job["data_type"],
                 )
-                # Filter dependencies to get only files needed for this job
+                # Query for upstream files only needed for this job with using the
+                # start date of the primary science file.
+                upstream_deps_for_start_date = dependency.get_jobs(
+                    data_source=job["data_source"],
+                    data_type=job["data_type"],
+                    descriptor=job["descriptor"],
+                    dependency_type="UPSTREAM",
+                    relationship="ALL",
+                    start_date=filepath.start_date,
+                    end_date=filepath.start_date,
+                )
                 try_to_submit_job(
                     session,
                     job,
                     job_start_date,
                     job_version,
-                    upstream_dependencies.get_valid_inputs_for_start_date(
-                        job_start_date
-                    ),
+                    upstream_deps_for_start_date,
                 )
 
 

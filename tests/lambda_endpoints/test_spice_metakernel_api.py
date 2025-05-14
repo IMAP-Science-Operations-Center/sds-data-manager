@@ -138,10 +138,10 @@ def test_metakernel(session):
 
     results = json.loads(result["body"])
     assert len(results) == 4
-    assert results[0]["file_name"] == "ck/imap_1000_001_1000_300_003.ap.bc"
-    assert results[1]["file_name"] == "ck/imap_1000_065_1000_090_003.ap.bc"
-    assert results[2]["file_name"] == "ck/imap_1000_060_1000_070_003.ap.bc"
-    assert results[3]["file_name"] == "ck/imap_1000_001_1000_100_002.ah.bc"
+    assert results[0] == "imap_1000_001_1000_300_003.ap.bc"
+    assert results[1] == "imap_1000_065_1000_090_003.ap.bc"
+    assert results[2] == "imap_1000_060_1000_070_003.ap.bc"
+    assert results[3] == "imap_1000_001_1000_100_002.ah.bc"
 
     """
     If someone focuses the metakernel on a more specific time range, it should go
@@ -161,7 +161,7 @@ def test_metakernel(session):
 
     results = json.loads(result["body"])
     assert len(results) == 1
-    assert results[0]["file_name"] == "ck/imap_1000_001_1000_300_003.ap.bc"
+    assert results[0] == "imap_1000_001_1000_300_003.ap.bc"
 
     result = spice_metakernel_api.lambda_handler(
         {
@@ -177,7 +177,7 @@ def test_metakernel(session):
 
     results = json.loads(result["body"])
     assert len(results) == 1
-    assert results[0]["file_name"] == "ck/imap_1000_001_1000_100_002.ah.bc"
+    assert results[0] == "imap_1000_001_1000_100_002.ah.bc"
 
     """
     Query the gap that two spice files individually cover
@@ -196,8 +196,8 @@ def test_metakernel(session):
 
     results = json.loads(result["body"])
     assert len(results) == 2
-    assert results[0]["file_name"] == "ck/imap_1000_065_1000_090_003.ap.bc"
-    assert results[1]["file_name"] == "ck/imap_1000_060_1000_070_003.ap.bc"
+    assert results[0] == "imap_1000_065_1000_090_003.ap.bc"
+    assert results[1] == "imap_1000_060_1000_070_003.ap.bc"
 
     """
     Metakernel generation tests
@@ -215,4 +215,44 @@ def test_metakernel(session):
     )
     assert response["statusCode"] == 200
     assert "KERNELS_TO_LOAD" in response["body"]
-    assert "ck/imap_1000_065_1000_090_003.ap.bc" in response["body"]
+    assert "imap_1000_065_1000_090_003.ap.bc" in response["body"]
+
+
+def test_metakernel_gaps(session):
+    """Ensure it fails if gaps are detected."""
+    _insert_test_data(session)
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 1,
+                "end_time": 100,
+                "spice_path": "",
+                "list_files": "True",
+                "require_coverage": "True",
+            }
+        },
+        None,
+    )
+    assert result["statusCode"] == 422
+
+
+def test_metakernel_filtered_file_types(session):
+    """Ensure it returns only 1 type of file."""
+    _insert_test_file(session, "naif0012.tls", [[1, 300]], upload_time=1)
+    _insert_test_file(session, "imap_sclk_0012.tsc", [[1, 300]], upload_time=1)
+    _insert_test_data(session)
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 1,
+                "end_time": 100,
+                "spice_path": "",
+                "list_files": "True",
+                "file_types": "leapseconds,spacecraft_clock",
+            }
+        },
+        None,
+    )
+    assert len(json.loads(result["body"])) == 2
+    assert json.loads(result["body"])[0] == "naif0012.tls"

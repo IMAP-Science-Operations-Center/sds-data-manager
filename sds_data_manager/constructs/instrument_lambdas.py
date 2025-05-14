@@ -28,7 +28,6 @@ class BatchStarterLambda(Construct):
         vpc: ec2.Vpc,
         sqs_queue: sqs.Queue,
         layers: list,
-        api_domain: str,
         **kwargs,
     ):
         """BatchStarterLambda Constructor.
@@ -55,8 +54,6 @@ class BatchStarterLambda(Construct):
             A FIFO queue to trigger the lambda with.
         layers : list
             List of Lambda layers cdk.cdfnOutput names.
-        api_domain : str
-            Domain for creating an api request url.
         kwargs : dict
             Keyword arguments
 
@@ -70,10 +67,8 @@ class BatchStarterLambda(Construct):
             "SECRET_NAME": rds_construct.rds_creds.secret_name,
             "ACCOUNT": f"{env.account}",
             "REGION": f"{env.region}",
-            "IMAP_DATA_ACCESS_URL": f"https://{api_domain}",
         }
-        # Lambda should use private subnet with routes to NAT gateway to make
-        # calls to IMAP_DATA_ACCESS_URL and get back responses.
+        # Lambda should use private subnet
         subnet = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
 
         self.instrument_lambda = lambda_.Function(

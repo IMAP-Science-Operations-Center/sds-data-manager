@@ -1,12 +1,8 @@
 """Tests the batch starter."""
 
 import logging
-import unittest
 from datetime import datetime
-from io import BytesIO
-from unittest.mock import MagicMock, Mock, patch
-from urllib import parse
-from urllib.error import HTTPError, URLError
+from unittest.mock import Mock, patch
 
 import pytest
 from imap_data_access.processing_input import (
@@ -26,8 +22,6 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     dependency,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
-    IMAPDependencyFinderError,
-    _get_dependencies,
     determine_job_version,
     lambda_handler,
 )
@@ -35,60 +29,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import 
 from .conftest import (
     POSTGRES_AVAILABLE,
     _populate_file_catalog,
-    create_dependency_api_event,
 )
-
-
-def urlopen_side_effect(url):
-    """Create a list of dependencies based on the api request url.
-
-    Parameters
-    ----------
-    url : str
-       The request url
-
-    Returns
-    -------
-    unittest.mock.MagicMock
-       A mock context manager returning a HTTP response with the expected dependencies.
-    """
-    parsed_url = parse.urlparse(url)
-    params = parse.parse_qs(parsed_url.query)
-    event = create_dependency_api_event(
-        params.get("data_source")[0],
-        params.get("data_type")[0],
-        params.get("descriptor")[0],
-        params.get("dependency_type")[0],
-        params.get("relationship")[0],
-        params.get("start_date", [None])[0],
-        params.get("end_date", [None])[0],
-        params.get("version", [None])[0],
-        params.get("trigger_type", [None])[0],
-    )
-
-    dependencies = dependency.lambda_handler(event, None)
-    mock_response = MagicMock()
-    mock_context_manager = MagicMock()
-    mock_response.read.return_value = dependencies["body"].encode("utf-8")
-    mock_response.status = dependencies["statusCode"]
-    # Mock the context manager and return it
-    mock_context_manager.__enter__.return_value = mock_response
-
-    return mock_context_manager
-
-
-@pytest.fixture
-def mock_urlopen():
-    """Mock urlopen to return a list of dependency dictionaries.
-
-    Yields
-    ------
-    mock_urlopen : unittest.mock.MagicMock
-        Mock object for ``urlopen``
-    """
-    with patch("urllib.request.urlopen") as mock_urlopen:
-        mock_urlopen.side_effect = urlopen_side_effect
-        yield mock_urlopen
 
 
 def _populate_processing_table(session):
@@ -107,10 +48,7 @@ def _populate_processing_table(session):
     session.commit()
 
 
-def test_lambda_handler(
-    session,
-    mock_urlopen: unittest.mock.MagicMock,
-):
+def test_lambda_handler(session):
     """Tests ``lambda_handler`` function."""
     _populate_file_catalog(session)
     events = {
@@ -154,7 +92,7 @@ def test_lambda_handler(
         )
 
 
-def test_lambda_handler_multiple_events(session, mock_urlopen):
+def test_lambda_handler_multiple_events(session):
     """Tests ``lambda_handler`` function with multiple events."""
     # Test Multiple Events:
     _populate_file_catalog(session)
@@ -178,10 +116,7 @@ def test_lambda_handler_multiple_events(session, mock_urlopen):
         assert mock_batch_client.submit_job.call_count == 2
 
 
-def test_lambda_handler_ancillary_event(
-    session,
-    mock_urlopen: unittest.mock.MagicMock,
-):
+def test_lambda_handler_ancillary_event(session):
     """Tests ``lambda_handler`` function when triggerd by an ancillary file."""
     _populate_file_catalog(session)
     events = {
@@ -208,7 +143,7 @@ def test_lambda_handler_ancillary_event(
         # as an upstream dep.
         ancillary_in = [
             AncillaryInput(
-                "imap_swe_l1b-in-flight-cal_20231231_20240104_v002.cdf",
+                "imap_swe_l1b-in-flight-cal_20230102_v001.cdf",
             ),
             AncillaryInput("imap_swe_esa-lut_20221231_v001.cdf"),
             AncillaryInput("imap_swe_eu-conversion_20221231_v001.cdf"),
@@ -242,7 +177,7 @@ def test_lambda_handler_ancillary_event(
         )
 
 
-def test_lambda_handler_mag_l1c_case(session, mock_urlopen):
+def test_lambda_handler_mag_l1c_case(session):
     """Tests ``lambda_handler` for unique mac l1c case."""
     # Mock the situation where mag l1b files trigger batch starter back to back.
     # We should expect the second job mag l1c to be submitted with a version bump and
@@ -369,7 +304,7 @@ def test_lambda_handler_mag_l1c_case(session, mock_urlopen):
         )
 
 
-def test_lambda_handler_no_dependencies(session, mock_urlopen):
+def test_lambda_handler_no_dependencies(session):
     """Tests ``lambda_handler`` when there are no dependencies for the file."""
     _populate_file_catalog(session)
     # Test Multiple Events:
@@ -389,7 +324,7 @@ def test_lambda_handler_no_dependencies(session, mock_urlopen):
         assert mock_submit.call_count == 0
 
 
-def test_lambda_handler_no_dependencies_multiple_files(session, mock_urlopen):
+def test_lambda_handler_no_dependencies_multiple_files(session):
     """Tests ``lambda_handler`` when there are no dependencies for the file."""
     _populate_file_catalog(session)
     # Test Multiple Events:
@@ -414,7 +349,7 @@ def test_lambda_handler_no_dependencies_multiple_files(session, mock_urlopen):
         assert mock_submit.call_count == 1
 
 
-def test_lambda_handler_missing_upstream_dependency(session, mock_urlopen, caplog):
+def test_lambda_handler_missing_upstream_dependency(session, caplog):
     """Tests ``lambda_handler`` when there are no dependencies for the file."""
     _populate_file_catalog(session)
     # Test Multiple Events:
@@ -431,7 +366,7 @@ def test_lambda_handler_missing_upstream_dependency(session, mock_urlopen, caplo
     with caplog.at_level(logging.DEBUG):
         lambda_handler(events, context)
         log_str = (
-            "Dependency API response: No records found for dependency: "
+            "No records found for dependency: "
             "dep={'data_source': 'swe', 'data_type': 'l1b', 'descriptor': 'sci',"
             " 'relationship': 'HARD'}\nstart_date=datetime.datetime(2000,"
             " 1, 1, 0, 0)\nend_date=datetime.datetime(2000, 1, 1, 0, 0)"
@@ -483,6 +418,21 @@ def test_determine_max_version(session):
         data_level="l1b",
         descriptor="sci",
         start_date=datetime(2010, 1, 1),
+    )
+    assert result == "v001"
+
+
+def test_determine_job_version_descriptor_is_all(session):
+    """Test the ``determine_job_version`` function."""
+    _populate_file_catalog(session)
+    # With the descriptor set to "all", the function should return the max version
+    # found in the processing job table and not the science files table.
+    result = determine_job_version(
+        session=session,
+        instrument="mag",
+        data_level="l1b",
+        descriptor="all",
+        start_date=datetime(2024, 1, 1),
     )
     assert result == "v001"
 
@@ -576,50 +526,15 @@ def test_duplicate_job(session, first_status, second_status):
     assert session.query(ProcessingJob).count() == 5
 
 
-def test_api_request_error(mock_urlopen: unittest.mock.MagicMock):
-    """Test that invalid URLs raise an appropriate HTTPError or URLError.
-
-    Parameters
-    ----------
-    mock_urlopen : unittest.mock.MagicMock
-        Mock object for ``urlopen``
-    """
-    dependency_event_msg = {
-        "data_source": "swe",
-        "data_type": "l1a",
-        "descriptor": "sci",
-        "dependency_type": "UPSTREAM",
-        "relationship": "HARD",
-    }
-    # Set up the mock to raise an HTTPError
-    mock_urlopen.side_effect = HTTPError(
-        url="http://example.com", code=404, msg="Not Found", hdrs={}, fp=BytesIO()
+def test_dependency_success():
+    """Test the handler returns the expected dependency result."""
+    dependencies = dependency.get_jobs(
+        data_source="swe",
+        data_type="l1a",
+        descriptor="sci",
+        dependency_type="UPSTREAM",
+        relationship="HARD",
     )
-    with pytest.raises(IMAPDependencyFinderError, match="HTTP Error"):
-        _get_dependencies(dependency_event_msg)
-
-    # Set up the mock to raise a URLError
-    mock_urlopen.side_effect = URLError(reason="Not Found")
-    with pytest.raises(IMAPDependencyFinderError, match="URL Error"):
-        _get_dependencies(dependency_event_msg)
-
-
-def test_api_request_success(mock_urlopen: unittest.mock.MagicMock):
-    """Test that _get_dependencies() returns the expected dependency result.
-
-    Parameters
-    ----------
-    mock_urlopen : unittest.mock.MagicMock
-        Mock object for ``urlopen``
-    """
-    dependency_event_msg = {
-        "data_source": "swe",
-        "data_type": "l1a",
-        "descriptor": "sci",
-        "dependency_type": "UPSTREAM",
-        "relationship": "HARD",
-    }
-    dependencies = _get_dependencies(dependency_event_msg)
     assert dependencies == [
         {
             "data_source": "swe",
@@ -629,25 +544,85 @@ def test_api_request_success(mock_urlopen: unittest.mock.MagicMock):
         },
     ]
 
+    # Check for SPICE upstream dependencies
+    dependencies = dependency.get_jobs(
+        data_source="idex",
+        data_type="l1b",
+        descriptor="sci-1week",
+        relationship="HARD",
+        dependency_type="UPSTREAM",
+    )
+    assert dependencies == [
+        {
+            "data_source": "idex",
+            "data_type": "l1a",
+            "descriptor": "sci-1week",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "spin",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "repoint",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "ephemeris_reconstructed",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "attitude_history",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+    ]
 
-def test_api_request_success_empty(session, mock_urlopen: unittest.mock.MagicMock):
-    """Test that _get_dependencies() returns the expected dependency result.
+    dependencies = dependency.get_jobs(
+        data_source="spacecraft",
+        data_type="l1a",
+        descriptor="pointing_attitude",
+        relationship="HARD",
+        dependency_type="UPSTREAM",
+    )
+    assert dependencies == [
+        {
+            "data_source": "attitude_history",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "repoint",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+    ]
+
+
+def test_dependency_success_empty(session):
+    """Test that the handler returns the expected dependency result.
 
     Parameters
     ----------
     session : orm session
         Mock database session.
-    mock_urlopen : unittest.mock.MagicMock
-        Mock object for ``urlopen``
     """
-    dependency_event_msg = {
-        "data_source": "swe",
-        "data_type": "l1a",
-        "descriptor": "sci",
-        "dependency_type": "UPSTREAM",
-        "relationship": "HARD",
-        "start_date": "20000101",
-        "end_date": "20000101",
-    }
-    dependencies = _get_dependencies(dependency_event_msg)
+    dependencies = dependency.get_jobs(
+        data_source="swe",
+        data_type="l1a",
+        descriptor="sci",
+        dependency_type="UPSTREAM",
+        relationship="HARD",
+        start_date="20000101",
+        end_date="20000101",
+    )
     assert not dependencies

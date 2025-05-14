@@ -24,6 +24,23 @@ codice, l1a, hi-sectored, codice, l1b, hi-sectored, HARD, DOWNSTREAM
 codice, l1a, lo-ialirt, codice, l1b, lo-ialirt, HARD, DOWNSTREAM
 codice, l1a, hi-ialirt, codice, l1b, hi-ialirt, HARD, DOWNSTREAM
 
+codice, l2, lo-sw-species, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
+codice, ancillary, mass-per-charge, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
+
+codice, l1a, lo-sw-priority, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
+codice, l2, lo-direct-events, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
+codice, ancillary, mass-coefficient-lookup, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
+
+codice, l3a, lo-partial-densities, codice, l3a, lo-sw-ratios, HARD, DOWNSTREAM
+codice, l3a, lo-partial-densities, codice, l3a, lo-sw-abundances, HARD, DOWNSTREAM
+
+codice, l2, hi-direct-events, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
+codice, ancillary, tof-lookup, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
+
+mag, l1d, norm-mago, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
+codice, l2, hi-sectored, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
+
 # <---- GLOWS Dependencies ---->
 glows, l0, raw, glows, l1a, all, HARD, DOWNSTREAM
 
@@ -125,6 +142,10 @@ hit, ancillary, hit-event-type-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
 
 idex, l0, raw, idex, l1a, sci-1week, HARD, DOWNSTREAM
 idex, l1a, sci-1week, idex, l1b, sci-1week, HARD, DOWNSTREAM
+spin, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
+repoint, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
+attitude_history, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 idex, l1b, sci-1week, idex, l2a, sci-1week, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
@@ -171,6 +192,8 @@ mag, ancillary, l1d-calibration, mag, l1d, all, HARD, DOWNSTREAM
 # <---- Spacecraft Dependencies ---->
 
 spacecraft, l0, raw, spacecraft, l1a, quaternions, HARD, DOWNSTREAM
+attitude_history, spice, historical, spacecraft, l1a, pointing_attitude, HARD, DOWNSTREAM
+repoint, spice, historical, spacecraft, l1a, pointing_attitude, HARD, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 
@@ -278,3 +301,53 @@ ultra, l1b, 90sensor-cullingmask, ultra, l1c, 90sensor-histogram, HARD, DOWNSTRE
 
 ultra, ancillary, 90sensor-gf, ultra, l1c, 90sensor-pset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 90sensor-pset, HARD, DOWNSTREAM
+
+# L2 ENA Map Names break down as:
+# <short instrument (and sensor) descriptor>-<principal data quantity>-<species>-<reference frame>-...cont...
+# <survival corrected?>-<spin phase>-<coordinate system>-<resolution>-<duration>
+# E.g. u90-ena-h-hf-nsp-full-hae-2deg-3mo is an Ultra 90sensor ENA intensity map of H neutrals, in the heliospheric
+# inertial frame, with no survival correction, full spin phase coverage, in the HAE coordinate system,
+# at 2 degree resolution, with data taken over a 3 month period.
+
+# Ultra L2 Map Dependencies:
+# at least 36 different maps will be made - with the following parameters...
+# 3 different time periods              (3mo,       6mo,    1yr)
+# 3 different map spacings/resolutions  (2deg,      4deg,   6deg)
+# 2 different sensors                   (45sensor,  90sensor)
+# 2 different reference frames          (hf,        sf)
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM

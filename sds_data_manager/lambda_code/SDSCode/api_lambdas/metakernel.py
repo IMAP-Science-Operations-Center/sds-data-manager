@@ -127,11 +127,17 @@ seconds since J2000.
         self._remove_duplicates_from_sorted_file_list(type)
         self.spice_gaps[type] = gaps_remaining
 
-    def return_spice_files_in_order_detailed(self) -> list[dict]:
+    def return_spice_files_in_order(self, detailed: bool = True) -> list[dict]:
         """Return all SPICE files and their details.
 
         Loops through the self.spice_files dictionary and
         returns them all as a list, in the order specified.
+
+        Parameter
+        ---------
+        detailed : bool
+            If true, returns all information about the file.
+            If false, returns only the file names themselves.
 
         Returns
         -------
@@ -142,7 +148,10 @@ seconds since J2000.
         for type in self.allowed_spice_types:
             if self.spice_files[type]:
                 metakernel_files.extend(reversed(self.spice_files[type]))
-        return metakernel_files
+        if detailed:
+            return metakernel_files
+        else:
+            return [f["file_name"] for f in metakernel_files]
 
     def return_tm_file(self, base_path: Path) -> str:
         """Generate a SPICE metakernel file from all loaded SPICE files.
@@ -158,10 +167,10 @@ seconds since J2000.
             A string of the entire contents of the metakernel
         """
         maximum_line_length = 79
-        metakernel_files = self.return_spice_files_in_order_detailed()
+        metakernel_files = self.return_spice_files_in_order(detailed=False)
         kernelfiles = []
         for f in metakernel_files:
-            fn = base_path / f["file_name"]
+            fn = base_path / f
             filename = self._limitstring(str(fn), maximum_line_length, "+")
             kernelfiles.extend(filename)
 
@@ -179,6 +188,13 @@ seconds since J2000.
 \\begintext
 """
         return self.template_header + template_body
+
+    def contains_gaps(self):
+        """Determine if there are gaps that remain to be filled."""
+        for type in self.spice_gaps:
+            if len(self.spice_gaps[type]) > 0:
+                return True
+        return False
 
     def _remove_duplicates_from_sorted_file_list(self, type: str):
         """Remove any duplicate found in self.spice_files[type].

@@ -1,6 +1,5 @@
 """Dependency tracking module."""
 
-import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -11,8 +10,10 @@ from typing import Optional
 
 import imap_data_access
 from imap_data_access import processing_input
+from imap_data_access.processing_input import ProcessingInputCollection
 from sqlalchemy import and_, func, or_
 
+from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
 from ..database import models
 
@@ -29,15 +30,6 @@ class DataSource:
     from imap_data_access and other data sources related to SPICE.
     """
 
-    SC_ATTITUDE: str = "sc_attitude"
-    SC_EPHEMERIS: str = "sc_ephemeris"
-    PLANET_EPHEMERIS: str = "planet_ephemeris"
-    TIME_KERNEL: str = "time_kernel"
-    THRUSTER_FIRE_KERNEL: str = "thruster_fire_kernel"
-    SC_SPIN: str = "sc_spin"
-    SC_REPOINT: str = "sc_repoint"
-    SC_POINTING_FRAME: str = "sc_pointing_frame"
-
     @property
     def valid_source(self) -> list[str]:
         """Add data sources.
@@ -47,15 +39,11 @@ class DataSource:
         list[str]
             list of valid data sources.
         """
+        # TODO: import this from imap_data_access once it's defined.
         return [
-            self.SC_ATTITUDE,
-            self.SC_EPHEMERIS,
-            self.PLANET_EPHEMERIS,
-            self.TIME_KERNEL,
-            self.THRUSTER_FIRE_KERNEL,
-            self.SC_SPIN,
-            self.SC_REPOINT,
-            self.SC_POINTING_FRAME,
+            "spin",
+            "repoint",
+            *spice_metakernel_api.KernelCollection().file_types,
             *imap_data_access.VALID_INSTRUMENTS,
         ]
 
@@ -378,7 +366,7 @@ def primary_science_dep(query_params: dict, dependency: dict) -> bool:
     Parameters
     ----------
     query_params : dict
-        Query parameters received from API calls.
+        Query parameters
     dependency : dict
        Upstream or downstream dependency from the query.
 
@@ -436,9 +424,8 @@ def get_upstream_dependency_inputs(
 
             records = get_files(session, dep, start_date, end_date)
             if not records and relationship == Relationship.HARD:
-                info = f"No records found for dependency: {dep_string}"
-                logger.info(dep_string)
-                return info
+                logger.info(f"No records found for dependency: {dep_string}")
+                return None
 
             elif not records:
                 continue
@@ -485,19 +472,18 @@ def get_files(
     records : list[Union[models.ScienceFiles, models.AncillaryFiles]]
         The ScienceFiles or AncillaryFiles records matching the query criteria.
     """
-    ancillary = False
     type_specific_conditions = []
     if dependency["data_type"] == DataType.ANCILLARY:
-        ancillary = True
         table = models.AncillaryFiles
-        # Query for ancillary files whose ranges cover the
-        # start date and end date.
-        # E.g., if the start date is '20250102', the query could return an ancillary
-        # file with the date range ('20250101', '20250103')
+        # Query for ancillary files where the start_date is less than or equal to
+        # the input end_date, and the end_date is either greater than or equal to the
+        # input start_date or is None. For example, if the input start_date is
+        # '20240524' and the end_date is '20240527', the query could return an ancillary
+        # file with the date range ('20240525', '20240528').
         type_specific_conditions.append(
             and_(
-                table.start_date <= start_date,
-                or_(table.end_date >= end_date, table.end_date.is_(None)),
+                table.start_date <= end_date,
+                or_(table.end_date >= start_date, table.end_date.is_(None)),
             )
         )
     else:
@@ -545,38 +531,47 @@ def get_files(
     )
 
     # If the dependency is ancillary, only return the one with the latest start_date.
-    if ancillary:
+    if dependency["data_type"] == DataType.ANCILLARY:
         records = sorted(records, key=lambda x: x.start_date, reverse=True)[0:1]
 
     return records
 
 
-def lambda_handler(event, context):
-    """Lambda handler for dependency tracking.
+def get_jobs(
+    data_source: str,
+    data_type: str,
+    descriptor: str,
+    dependency_type: str,
+    relationship: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> list | ProcessingInputCollection | None:
+    """Get dependencies for the given inputs.
 
     Parameters
     ----------
-    event : dict
-        If dependency is requested, event input will be:
-            {
-                "data_source": "hit",
-                "data_type": "l0",
-                "descriptor": "raw",
-                "dependency_type": "UPSTREAM",
-                "relationship": "HARD",
-                "start_time": "20250101", (optional)
-                "end_time": "20250102", (optional)
-            }
-        "start_time", and "end_time", are optional.
-
-    context : dict
-        Context dictionary.
+    data_source : str
+        Source name of the data product.
+    data_type : str
+        Data type of the data product.
+    descriptor : str
+        Descriptor of the data product.
+    dependency_type : str
+        Whether it's UPSTREAM or DOWNSTREAM dependency.
+    relationship : str
+        Whether it's HARD, SOFT_TRIGGER, or SOFT_NO_TRIGGER dependency.
+        If "ALL" is provided, dependencies for all valid relationships
+        (HARD, SOFT_TRIGGER, SOFT_NO_TRIGGER) will be returned.
+    start_date : str, optional
+        Start date to find dependent files with, in YYYYMMDD format.
+    end_date : str, optional
+        End date to find dependent files with, in YYYYMMDD format. Required if
+        start_date is provided.
 
     Returns
     -------
-    dependencies : list or ProcessingInputCollection
-        If "start_date" is not supplied return list of dictionaries:
-        statusCode and body containing list of dictionary containing
+    dependencies : list or ProcessingInputCollection or None
+        If "start_date" is not supplied return list of dictionaries containing
         the dependencies information like this:
             [
                 {
@@ -625,43 +620,30 @@ def lambda_handler(event, context):
 
 
     """
-    logger.info(f"Event: {event}")
-    logger.info(f"Context: {context}")
+    logger.info(
+        f"{data_source=}, {data_type=}, {descriptor=}, {dependency_type=},"
+        f" {relationship=}"
+    )
 
-    query_params = event["queryStringParameters"]
     dependencies = get_dependencies(
-        (
-            query_params["data_source"],
-            query_params["data_type"],
-            query_params["descriptor"],
-        ),
-        query_params["dependency_type"],
-        query_params["relationship"],
+        (data_source, data_type, descriptor),
+        dependency_type,
+        relationship,
     )
 
     if dependencies is None:
-        return {
-            "statusCode": 500,
-            "body": "Failed to load dependencies",
-        }
+        logger.warning("Failed to load dependencies")
+        return None
+
     # If start_date is supplied, check for the version and end_date.
-    start_date = (
-        datetime.strptime(query_params["start_date"], "%Y%m%d")
-        if query_params.get("start_date")
-        else None
-    )
+    start_date = datetime.strptime(start_date, "%Y%m%d") if start_date else None
     if start_date is None:
-        return {
-            "statusCode": 200,  # Success
-            "body": json.dumps(dependencies),
-        }
-    end_date = query_params.get("end_date")
+        return dependencies
+
     if not end_date:
-        return {
-            "statusCode": 400,  # Client error
-            "body": "end_date not found. If 'start_date' is supplied, "
-            "'end_date' is required.",
-        }
+        raise ValueError(
+            "end_date not found. If 'start_date' is supplied, 'end_date' is required."
+        )
     end_date = datetime.strptime(end_date, "%Y%m%d")
 
     upstream_dependencies_output = get_upstream_dependency_inputs(
@@ -669,15 +651,6 @@ def lambda_handler(event, context):
         start_date=start_date,
         end_date=end_date,
     )
-    if isinstance(upstream_dependencies_output, str):
-        return {
-            "statusCode": 206,  # Partial content
-            "body": upstream_dependencies_output,
-        }
-    else:
-        logger.info(f"Found dependencies: {dependencies} for {query_params}.")
-        upstream_dependencies_output = upstream_dependencies_output.serialize()
-        return {
-            "statusCode": 200,  # Success
-            "body": upstream_dependencies_output,
-        }
+
+    logger.info(f"Found dependencies: {dependencies}.")
+    return upstream_dependencies_output

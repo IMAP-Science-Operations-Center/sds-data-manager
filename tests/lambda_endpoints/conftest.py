@@ -1,7 +1,6 @@
 """Setup testing environment to test lambda handler code."""
 
 from datetime import datetime
-from typing import Optional
 from unittest.mock import patch
 
 import boto3
@@ -114,51 +113,17 @@ def session():
             Base.metadata.drop_all(engine)
 
 
-def create_dependency_api_event(
-    source: str,
-    data_type: str,
-    descriptor="sci",
-    dep_type: str = "DOWNSTREAM",
-    relationship: str = "HARD",
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    version: Optional[str] = None,
-    trigger_type: Optional[str] = None,
-):
-    """Create event dictionaries for tests."""
-    event = {
-        "queryStringParameters": {
-            "dependency_type": dep_type,
-            "relationship": relationship,
-            "data_source": source,
-            "data_type": data_type,
-            "descriptor": descriptor,
-        }
-    }
-    optional_params = {
-        "start_date": start_date,
-        "end_date": end_date,
-        "version": version,
-        "trigger_type": trigger_type,
-    }
-    for param, value in optional_params.items():
-        if value:
-            event["queryStringParameters"][param] = value
-
-    return event
-
-
 def _populate_file_catalog(session):
     """Add records to the ScienceFiles table."""
     # Setup: Add records to the database
     test_records = [
         ScienceFiles(
-            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v001.cdf",
+            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v002.cdf",
             instrument="mag",
             data_level="l1b",
             descriptor="norm-mago",
             start_date=datetime(2024, 1, 1),
-            version="v001",
+            version="v002",
             extension="cdf",
             ingestion_date=datetime.strptime(
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
@@ -311,11 +276,22 @@ def _populate_file_catalog(session):
             ),
         ),
         AncillaryFiles(
-            file_path="/path/to/imap_swe_l1b-in-flight-cal_20231231_20240104_v002.cdf",
+            file_path="/path/to/imap_swe_l1b-in-flight-cal_20230102_v001.cdf",
             instrument="swe",
             descriptor="l1b-in-flight-cal",
-            start_date=datetime(2023, 12, 31),
-            end_date=datetime(2024, 1, 4),
+            start_date=datetime(2023, 1, 2),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_l1b-in-flight-cal_20240104_20240106_v002.cdf",
+            instrument="swe",
+            descriptor="l1b-in-flight-cal",
+            start_date=datetime(2024, 1, 5),
+            end_date=datetime(2025, 1, 4),
             version="v001",
             extension="cdf",
             ingestion_date=datetime.strptime(
