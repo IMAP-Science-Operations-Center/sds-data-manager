@@ -14,5 +14,5 @@
 		}
 	},
 	"forwardPorts": [6080],
-    "postCreateCommand": "poetry install && source $(poetry env info --path)/bin/activate"
+    "postCreateCommand": "poetry install && poetry install --with layer-spice && poetry install --with layer-processing && source $(poetry env info --path)/bin/activate"
 }
