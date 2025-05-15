@@ -1,13 +1,16 @@
 """Dependency tracking module."""
 
+import json
 import logging
+import os
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from os.path import basename
 from pathlib import Path
 from typing import Optional
 
+import boto3
 import imap_data_access
 from imap_data_access import processing_input
 from imap_data_access.processing_input import ProcessingInputCollection
@@ -387,10 +390,128 @@ def primary_science_dep(query_params: dict, dependency: dict) -> bool:
     )
 
 
+def combine_kernel_sources(dependency: dict) -> str:
+    """Combine kernel sources.
+
+    Combine the kernel sources to form a single string separated by commas.
+    This is used in metakernel API calls to get kernels in order list.
+
+    Parameters
+    ----------
+    dependency : dict
+        Dependency dictionary containing the data source and data type.
+
+    Returns
+    -------
+    str
+        Combined kernel sources separated by commans. Eg.
+        "attitude_history,attitude_predict,..."
+    """
+    file_types = []
+    for dep in dependency:
+        if dep["data_source"] in spice_metakernel_api.KernelCollection().file_types:
+            file_types.append(dep["data_source"])
+    return ",".join(file_types)
+
+
+def get_spin_files(
+    session,
+    start_date: datetime,
+    end_date: datetime,
+) -> list:
+    """Get spin input.
+
+    Query the spin table for the given date range.
+
+    Parameters
+    ----------
+    session : orm session
+        Database session.
+    spice_denpendencies : list
+        Dependency list containing dictionary of SPICE dependencies.
+    start_date : datetime
+        Start date to find dependent files with.
+    end_date : datetime
+        End date to find dependent files with.
+
+    Returns
+    -------
+    list
+        List of spin files.
+    """
+    # Query the spin table for the given date range
+    records = (
+        session.query(models.SpinTable)
+        .filter(
+            models.SpinTable.start_date <= end_date,
+            models.SpinTable.end_date >= start_date,
+        )
+        .all()
+    )
+
+    spin_files = [basename(record.file_path) for record in records]
+    return spin_files
+
+
+def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
+    """Get latest repoint file.
+
+    Query S3 bucket for the latest repoint file.
+
+    Parameters
+    ----------
+    end_date : datetime
+        End date to find dependent files with.
+
+    Returns
+    -------
+    str
+        Latest repoint file name.
+    """
+    bucket_name = os.getenv("S3_BUCKET")
+    prefix = "imap/spice/repoint/"
+
+    s3 = boto3.client("s3")
+    paginator = s3.get_paginator("list_objects_v2")
+    pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
+
+    repoint_files = []
+
+    for page in pages:
+        for obj in page.get("Contents", []):
+            filename = obj["Key"]
+            file_obj = processing_input.SPICEFilePath(filename)
+            repoint_files.append(
+                (
+                    file_obj.spice_metadata["end_date"],
+                    file_obj.spice_metadata["version"],
+                    filename,
+                )
+            )
+
+    if not repoint_files:
+        return None
+
+    # Sort by end_date and version
+    latest = sorted(repoint_files, key=lambda x: (x[0], x[1]))[-1]
+    latest_file_date = latest[0]
+
+    # Check that input end is within latest repoint file end date
+    if latest_file_date < end_date:
+        logger.info(
+            f"Latest repoint file end date {latest_file_date} "
+            f"is before input end date {end_date}"
+        )
+        return None
+
+    # Otherwise, return the latest repoint file without the path prefix
+    return basename(latest[2])
+
+
 def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
-    end_date: Optional[datetime] = None,
+    end_date: datetime,
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
@@ -405,7 +526,7 @@ def get_upstream_dependency_inputs(
         dependency in the query parameters.
     start_date : datetime
         Start date to find dependent files with.
-    end_date : datetime, optional
+    end_date : datetime
         End date to find dependent files with.
 
     Returns
@@ -415,7 +536,89 @@ def get_upstream_dependency_inputs(
     """
     dependency_inputs = processing_input.ProcessingInputCollection()
     with db.Session() as session:
-        for dep in dependencies:
+        # -----------------------------
+        # Check for SPICE dependencies
+        # -----------------------------
+        # If spin is a dependency, query spin table for given date range
+        has_spin_dep = any(dep["data_source"] == "spin" for dep in dependencies)
+        if has_spin_dep:
+            logger.info("Looking for spin files")
+            spin_files = get_spin_files(session, start_date, end_date)
+            if not spin_files:
+                logger.info(f"No spin files found for {start_date} to {end_date}")
+                return None
+            logger.info(f"Found spin files: {spin_files}. Adding to collection.")
+            dependency_inputs.add(processing_input.SPICEInput(*spin_files))
+
+        # If repoint is a dependency, query s3 for latest repoint file
+        has_repoint_dep = any(dep["data_source"] == "repoint" for dep in dependencies)
+        if has_repoint_dep:
+            latest_repoint_file = get_latest_repoint_file(end_date)
+            if latest_repoint_file is None:
+                logger.info(f"No repoint file found for {start_date} to {end_date}")
+                return None
+            logger.info(
+                f"Found repoint file: {latest_repoint_file}. Adding to collection."
+            )
+            dependency_inputs.add(processing_input.SPICEInput(latest_repoint_file))
+
+        # Otherwise, combine rest of kernels types and query metakernel lambda
+        # for given date range
+        has_kernel_dep = any(
+            dep["data_source"] != "spin"
+            and dep["data_source"] != "repoint"
+            and dep["data_type"] == "spice"
+            for dep in dependencies
+        )
+        if has_kernel_dep:
+            combined_kernel_sources = combine_kernel_sources(dependencies)
+
+            # convert start_date and end_date in seconds after j2000.
+            # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
+            def yyyymmdd_to_seconds_since_j2000(date_str: str) -> float:
+                # Parse input date string
+                dt = datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
+
+                # Define J2000 epoch: 2000-01-01T12:00:00 UTC
+                j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+                # Compute seconds difference
+                delta = dt - j2000
+                return delta.total_seconds()
+
+            start_time = yyyymmdd_to_seconds_since_j2000(start_date.strftime("%Y%m%d"))
+            end_time = yyyymmdd_to_seconds_since_j2000(end_date.strftime("%Y%m%d"))
+            metakernel_response = spice_metakernel_api.lambda_handler(
+                {
+                    "queryStringParameters": {
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "list_files": "True",
+                        "file_types": combined_kernel_sources,
+                        # TODO: revisit this after SIT-4
+                        # "require_coverage": "True",
+                    }
+                },
+                None,
+            )
+            if metakernel_response["statusCode"] != 200:
+                logger.info(
+                    f"Error querying metakernel lambda: {metakernel_response['body']}"
+                )
+                return None
+            metakernel_files = json.loads(metakernel_response["body"])
+            logger.info(
+                f"Found metakernel files: {metakernel_files}. Adding to collection."
+            )
+            dependency_inputs.add(processing_input.SPICEInput(*metakernel_files))
+
+        # ---------------------------------
+        # Check for non-spice dependencies
+        # ---------------------------------
+        non_spice_dependencies = [
+            dep for dep in dependencies if dep["data_type"] != "spice"
+        ]
+        for dep in non_spice_dependencies:
             relationship = dep["relationship"]
 
             dep_string = f"{dep=}\n{start_date=}\n{end_date=}"

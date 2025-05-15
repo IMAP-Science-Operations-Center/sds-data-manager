@@ -143,7 +143,6 @@ hit, ancillary, hit-event-type-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
 idex, l0, raw, idex, l1a, sci-1week, HARD, DOWNSTREAM
 idex, l1a, sci-1week, idex, l1b, sci-1week, HARD, DOWNSTREAM
 spin, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
-repoint, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 attitude_history, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 idex, l1b, sci-1week, idex, l2a, sci-1week, HARD, DOWNSTREAM
@@ -192,8 +191,6 @@ mag, ancillary, l1d-calibration, mag, l1d, all, HARD, DOWNSTREAM
 # <---- Spacecraft Dependencies ---->
 
 spacecraft, l0, raw, spacecraft, l1a, quaternions, HARD, DOWNSTREAM
-attitude_history, spice, historical, spacecraft, l1a, pointing_attitude, HARD, DOWNSTREAM
-repoint, spice, historical, spacecraft, l1a, pointing_attitude, HARD, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 

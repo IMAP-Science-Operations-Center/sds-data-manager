@@ -7,10 +7,15 @@ from datetime import datetime
 import boto3
 import imap_data_access
 from imap_data_access import (
+    AncillaryFilePath,
     ScienceFilePath,
     SPICEFilePath,
 )
-from imap_data_access.processing_input import ProcessingInputCollection
+from imap_data_access.processing_input import (
+    ProcessingInputCollection,
+    ProcessingInputType,
+    SPICEInput,
+)
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
@@ -204,46 +209,60 @@ def s3_processing_event(session, events):
         logger.info(f"Retrieved filename: {filename}")
 
         file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
-
         if isinstance(file_obj, SPICEFilePath):
-            raise ValueError(
-                f"Batch starter handling for spice file: {filename} is not "
-                f"implemented yet"
-            )
-
-        # TODO: How to handle repointing
-        start_date = file_obj.start_date
-        end_date = file_obj.end_date if hasattr(file_obj, "end_date") else None
-
-        if not end_date:
-            if isinstance(file_obj, ScienceFilePath):
-                # Set end_date to start_date for science files
-                end_date = file_obj.start_date
-            else:
-                # Set end_date to today's date for ancillary or SPICE files
-                end_date = datetime.today().strftime("%Y%m%d")
-
-        # TODO: handle spice once implemented
-        data_type = (
-            file_obj.data_level if hasattr(file_obj, "data_level") else "ancillary"
-        )
+            # Add source, data_type, and descriptor to the downstream event message
+            spice_input = SPICEInput(filename)
+            # TODO: fix this in future release of imap_data_access
+            data_source = file_obj.spice_metadata["type"]
+            descriptor = spice_input.descriptor
+            data_type = spice_input.data_type
+            # Set the start and end dates for the upstream event message.
+            # TODO: fix date range if/when repoint file ingestion event is
+            # passed to batch starter to kickoff HARD or SOFT_TRIGGER downstream jobs.
+            # Convert datetime object to string of format YYYYMMDD
+            start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
+            end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
+        elif isinstance(file_obj, ScienceFilePath):
+            # Add source, data_type, and descriptor to the downstream event message
+            data_source = file_obj.instrument
+            descriptor = file_obj.descriptor
+            data_type = file_obj.data_level
+            # Set the start and end dates for the upstream event message
+            # TODO: if ENA or glows instrument, then get repoint number from filename
+            # and set start date and end date differently.
+            start_date = end_date = file_obj.start_date
+        elif isinstance(file_obj, AncillaryFilePath):
+            # Add source, data_type, and descriptor to the downstream event message
+            data_source = file_obj.instrument
+            descriptor = file_obj.descriptor
+            # data_type ==> "ancillary"
+            data_type = ProcessingInputType.ANCILLARY_FILE.value
+            # Set the start and end dates for the upstream event message
+            start_date = file_obj.start_date
+            # Ancillary files can have an end date.
+            end_date = getattr(file_obj, "end_date", None)
 
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
         potential_jobs = dependency.get_jobs(
-            data_source=file_obj.instrument,
-            descriptor=file_obj.descriptor,
+            data_source=data_source,
+            descriptor=descriptor,
             data_type=data_type,
             dependency_type="DOWNSTREAM",
             relationship="HARD",
         )
+
         # SOFT_TRIGGER dependencies will try to set off processing
         potential_soft_jobs = dependency.get_jobs(
-            data_source=file_obj.instrument,
-            descriptor=file_obj.descriptor,
+            data_source=data_source,
+            descriptor=descriptor,
             data_type=data_type,
             dependency_type="DOWNSTREAM",
             relationship="SOFT_TRIGGER",
+        )
+        logger.info(
+            f"Potential jobs: {potential_jobs} and potential soft jobs: "
+            f"{potential_soft_jobs}"
         )
 
         for job in potential_jobs + potential_soft_jobs:
@@ -261,9 +280,10 @@ def s3_processing_event(session, events):
             )
 
             if not upstream_dependencies:
-                return
+                continue
 
             logger.info(f"All required dependencies found for the job: {job}")
+
             # Find the first science processingInput that has the same source as the
             # potential job. Use this to determine the start date.
             primary_science = upstream_dependencies.get_science_inputs(
