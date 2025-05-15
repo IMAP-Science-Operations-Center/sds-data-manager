@@ -153,7 +153,7 @@ def _convert_input_times_to_j2000(start_date_str, end_date_str):
         end_date_datetime = datetime.datetime.strptime(end_date_str, "%Y%m%d")
         start_date = spiceypy.datetime2et(start_date_datetime)
         end_date = spiceypy.datetime2et(end_date_datetime)
-    except TypeError:
+    except (TypeError, ValueError):
         start_date = int(start_date_str)
         end_date = int(end_date_str)
     return start_date, end_date
