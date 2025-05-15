@@ -1,5 +1,6 @@
 """Tests the batch starter."""
 
+import json
 import logging
 from datetime import datetime
 from unittest.mock import Mock, patch
@@ -16,6 +17,8 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     ProcessingJob,
     ScienceFiles,
+    SPICEFiles,
+    SpinTable,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     batch_starter,
@@ -375,30 +378,6 @@ def test_lambda_handler_missing_upstream_dependency(session, caplog):
         assert log_str in caplog.text
 
 
-def test_spice_file(session):
-    """Tests ``lambda_handler`` function with spice file."""
-    events = {
-        "Records": [
-            {
-                "body": '{"detail": '
-                '{"object": {"key": "imap_1000_100_1000_100_10.spin.csv"}}'
-                "}"
-            }
-        ]
-    }
-
-    context = {"context": "sample_context"}
-
-    # Test that value error is raised for SPICE file right now.
-    # TODO: undo this and add correct tests when it's implemented.
-    with pytest.raises(
-        ValueError,
-        match="Batch starter handling for spice file: "
-        "imap_1000_100_1000_100_10.spin.csv is not implemented yet",
-    ):
-        lambda_handler(events, context)
-
-
 def test_determine_max_version(session):
     """Test the ``determine_job_version`` function."""
     _populate_processing_table(session)
@@ -566,12 +545,6 @@ def test_dependency_success():
             "relationship": "HARD",
         },
         {
-            "data_source": "repoint",
-            "data_type": "spice",
-            "descriptor": "historical",
-            "relationship": "HARD",
-        },
-        {
             "data_source": "ephemeris_reconstructed",
             "data_type": "spice",
             "descriptor": "historical",
@@ -579,28 +552,6 @@ def test_dependency_success():
         },
         {
             "data_source": "attitude_history",
-            "data_type": "spice",
-            "descriptor": "historical",
-            "relationship": "HARD",
-        },
-    ]
-
-    dependencies = dependency.get_jobs(
-        data_source="spacecraft",
-        data_type="l1a",
-        descriptor="pointing_attitude",
-        relationship="HARD",
-        dependency_type="UPSTREAM",
-    )
-    assert dependencies == [
-        {
-            "data_source": "attitude_history",
-            "data_type": "spice",
-            "descriptor": "historical",
-            "relationship": "HARD",
-        },
-        {
-            "data_source": "repoint",
             "data_type": "spice",
             "descriptor": "historical",
             "relationship": "HARD",
@@ -626,3 +577,136 @@ def test_dependency_success_empty(session):
         end_date="20000101",
     )
     assert not dependencies
+
+
+def test_spice_event(session, s3_client):
+    """Test spice dependencies."""
+    # Write repoint file to s3 that batch starter can query
+    # for dependencies
+    filepath = "imap/spice/repoint/imap_2025_120_01.repoint.csv"
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=filepath,
+        Body=b"test",
+    )
+    # Write data to the database that batch starter can query
+    # for dependencies
+    session.add_all(
+        [
+            # Data to test the SPICE dependency using IDEX L1B and pointing_attitude
+            ScienceFiles(
+                file_path="/path/to/imap_idex_l1a_sci-1week_20250429_v001.cdf",
+                instrument="idex",
+                data_level="l1a",
+                descriptor="sci-1week",
+                start_date=datetime(2025, 4, 29),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+            SPICEFiles(
+                # 2025028 to 2025030
+                file_name="imap_2025_118_2025_120_02.ah.bc",
+                ingestion_date=datetime.now(),
+                file_root="imap_2025_118_2025_120_.ah.bc",
+                kernel_type="attitude_history",
+                min_date_j2000=799070400.1854936,
+                max_date_j2000=799243200.185493,
+                file_intervals_j2000=[[799070400, 799243200]],
+                min_date_datetime=datetime(2025, 4, 28),
+                max_date_datetime=datetime(2025, 4, 30),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=2,
+            ),
+            SPICEFiles(
+                file_name="imap_recon_20250428_20250430_v02.bsp",
+                ingestion_date=datetime.now(),
+                file_root="imap_recon_20250428_20250430_v.bsp",
+                kernel_type="ephemeris_reconstructed",
+                min_date_j2000=799070400.1854936,
+                max_date_j2000=799243200.185493,
+                file_intervals_j2000=[[799070400, 799243200]],
+                min_date_datetime=datetime(2025, 4, 28),
+                max_date_datetime=datetime(2025, 4, 30),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=2,
+            ),
+            SpinTable(
+                # 2025028 to 2025030
+                file_path="/mnt/data/imap/spice/spin/imap_2025_118_2025_120_01.spin.csv",
+                start_date=datetime(2025, 4, 28),
+                end_date=datetime(2025, 4, 30),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+        ]
+    )
+    session.commit()
+    # Event of spin file should trigger IDEX L1B sci-1week job
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": '
+                '{"key": "imap/spice/spin/imap_2025_118_2025_120_01.spin.csv"}}'
+                "}"
+            }
+        ]
+    }
+    expected_dependency_input = [
+        {
+            "type": "spin",
+            "files": ["imap_2025_118_2025_120_01.spin.csv"],
+        },
+        {
+            "type": "spice",
+            "files": [
+                "imap_recon_20250428_20250430_v02.bsp",
+                "imap_2025_118_2025_120_02.ah.bc",
+            ],
+        },
+        {
+            "type": "science",
+            "files": [
+                "imap_idex_l1a_sci-1week_20250429_v001.cdf",
+            ],
+        },
+    ]
+
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, None)
+        mock_batch_client.submit_job.assert_called_once()
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="idex-l1b-sci-1week-job-1",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-idex",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "idex",
+                    "--data-level",
+                    "l1b",
+                    "--descriptor",
+                    "sci-1week",
+                    "--start-date",
+                    "20250429",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    json.dumps(expected_dependency_input),
+                    "--upload-to-sdc",
+                ]
+            },
+        )

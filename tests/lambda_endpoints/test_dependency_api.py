@@ -1,5 +1,6 @@
 """Test data dependency functions."""
 
+import os
 from datetime import datetime
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from imap_data_access.processing_input import (
 
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     ScienceFiles,
+    SpinTable,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import get_files
@@ -318,6 +320,24 @@ def test_get_primary_science_files(session):
     )
     assert record == []
 
+    # Query for file that falls in middle date of range
+    dep = {
+        "data_source": "swe",
+        "data_type": "l1a",
+        "descriptor": "sci",
+    }
+    record = get_files(
+        session,
+        dependency=dep,
+        start_date=datetime(2024, 1, 4),
+        end_date=datetime(2024, 1, 7),
+    )
+    assert len(record) == 1
+    assert record[0].instrument == "swe"
+    assert record[0].data_level == "l1a"
+    assert record[0].descriptor == "sci"
+    assert record[0].start_date == datetime(2024, 1, 6)
+
 
 def test_get_science_files_date_range(session):
     """Tests the get_file function for science files dependent on start_date."""
@@ -392,3 +412,182 @@ def test_get_files_max_version(session):
 
     assert records[2].start_date == datetime(2024, 1, 3)
     assert records[2].version == "v001"
+
+
+# #####################################
+# TESTS SPICE logics
+# #####################################
+
+
+def test_get_latest_repoint_file(s3_client):
+    """Test get_latest_repoint_file function."""
+    # Write repoint files to the S3 bucket
+    bucket_name = "test-data-bucket"
+    s3_client.create_bucket(Bucket=bucket_name)
+    os.environ["S3_BUCKET"] = bucket_name
+
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key="imap/spice/repoint/imap_2025_120_01.repoint.csv",  # 20250430
+        Body=b"test",
+    )
+
+    # Test with date of the file
+    end_date = datetime(2025, 4, 30)
+    latest_file = dependency.get_latest_repoint_file(end_date)
+    assert latest_file == "imap_2025_120_01.repoint.csv"
+
+    # Add more files to the bucket
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key="imap/spice/repoint/imap_2025_121_01.repoint.csv",  # 20250501
+        Body=b"test",
+    )
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key="imap/spice/repoint/imap_2025_121_02.repoint.csv",  # 20250501
+        Body=b"test",
+    )
+
+    # Test with date before the first file
+    end_date = datetime(2025, 3, 1)
+    latest_file = dependency.get_latest_repoint_file(end_date)
+    assert latest_file == "imap_2025_121_02.repoint.csv"
+
+    # Test with a date after the latest file
+    end_date = datetime(2025, 6, 30)
+    latest_file = dependency.get_latest_repoint_file(end_date)
+    assert latest_file is None
+
+
+def test_get_spin_files(session):
+    """Test get_spin_files function."""
+    # Add spin files to the database
+    session.add_all(
+        [
+            SpinTable(
+                file_path="/imap/spice/spin/imap_2025_119_2025_120_01.spin.csv",
+                start_date=datetime(2025, 4, 29),
+                end_date=datetime(2025, 4, 30),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+            SpinTable(
+                file_path="/imap/spice/spin/imap_2025_120_2025_121_01.spin.csv",
+                start_date=datetime(2025, 4, 30),
+                end_date=datetime(2025, 5, 1),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+        ]
+    )
+    session.commit()
+
+    # Test with overlapping date range
+    start_date = datetime(2025, 4, 29)
+    end_date = datetime(2025, 4, 30)
+    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    assert spin_files == [
+        "imap_2025_119_2025_120_01.spin.csv",
+        "imap_2025_120_2025_121_01.spin.csv",
+    ]
+
+    # Test with a date range that does not overlap
+    start_date = datetime(2025, 5, 2)
+    end_date = datetime(2025, 5, 3)
+    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    assert spin_files == []
+
+    # Test with one day date range
+    start_date = datetime(2025, 4, 29)
+    end_date = datetime(2025, 4, 29)
+    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    assert spin_files == [
+        "imap_2025_119_2025_120_01.spin.csv",
+    ]
+
+
+def test_combine_kernel_sources():
+    """Test combine_kernel_sources function."""
+    # Test with valid SPICE dependencies excluding REPOINT and SPIN
+    dependencies = [
+        {
+            "data_source": "attitude_history",
+            "data_type": "spice",
+            "descriptor": "historical",
+        },
+        {
+            "data_source": "ephemeris_reconstructed",
+            "data_type": "spice",
+            "descriptor": "historical",
+        },
+    ]
+    result = dependency.combine_kernel_sources(dependencies)
+    assert result == "attitude_history,ephemeris_reconstructed"
+
+    # Test with REPOINT and SPIN dependencies
+    dependencies = [
+        {"data_source": "repoint", "data_type": "spice", "descriptor": "historical"},
+        {"data_source": "spin", "data_type": "spice", "descriptor": "historical"},
+        {
+            "data_source": "attitude_history",
+            "data_type": "spice",
+            "descriptor": "historical",
+        },
+    ]
+    result = dependency.combine_kernel_sources(dependencies)
+    assert result == "attitude_history"
+
+    # Test with an empty dependency list
+    dependencies = []
+    result = dependency.combine_kernel_sources(dependencies)
+    assert result == ""
+
+    # Test with only REPOINT and SPIN dependencies
+    dependencies = [
+        {"data_source": "repoint", "data_type": "spice", "descriptor": "historical"},
+        {"data_source": "spin", "data_type": "spice", "descriptor": "historical"},
+    ]
+    result = dependency.combine_kernel_sources(dependencies)
+    assert result == ""
+
+    # Test with only REPOINT dependency
+    dependencies = [
+        {"data_source": "repoint", "data_type": "spice", "descriptor": "historical"},
+        {
+            "data_source": "attitude_history",
+            "data_type": "spice",
+            "descriptor": "historical",
+        },
+    ]
+    result = dependency.combine_kernel_sources(dependencies)
+    assert result == "attitude_history"
+
+    # Test with only SPIN dependency
+    dependencies = [
+        {"data_source": "spin", "data_type": "spice", "descriptor": "historical"},
+        {
+            "data_source": "attitude_history",
+            "data_type": "spice",
+            "descriptor": "historical",
+        },
+    ]
+    result = dependency.combine_kernel_sources(dependencies)
+    assert result == "attitude_history"
+
+    # Pass invalid SPICE file types
+    dependencies = [
+        {
+            "data_source": "invalid_file_type",
+            "data_type": "spice",
+            "descriptor": "historical",
+        },
+    ]
+    result = dependency.combine_kernel_sources(dependencies)
+    assert result == ""
+    # Pass instrument name as data_source
+    dependencies = [
+        {"data_source": "idex", "data_type": "spice", "descriptor": "historical"},
+    ]
+    result = dependency.combine_kernel_sources(dependencies)
+    assert result == ""
