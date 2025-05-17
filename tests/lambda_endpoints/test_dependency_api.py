@@ -16,7 +16,10 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
     SpinTable,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import get_files
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+    DependencyConfig,
+    get_files,
+)
 from tests.lambda_endpoints.conftest import (
     _populate_file_catalog,
 )
@@ -202,7 +205,7 @@ def test_get_downstream_dependencies():
     assert dependency_response == expected_complete_dependent
 
 
-def test_get_all_downstream_dependencies():
+def test_get_all_downstream_dependencies_for_relationship():
     """Add test for getting back ancillary dependencies."""
     dependency_response = dependency.get_jobs(
         data_source="mag",
@@ -211,7 +214,6 @@ def test_get_all_downstream_dependencies():
         relationship="ALL",
         dependency_type="DOWNSTREAM",
     )
-
     expected_complete_dependent = [
         {
             "data_source": "mag",
@@ -221,6 +223,16 @@ def test_get_all_downstream_dependencies():
         },
     ]
     assert dependency_response == expected_complete_dependent
+
+
+def test_get_kickoff_jobs():
+    """Add test for getting back each instrument pipeline's initial job."""
+    dependents = DependencyConfig().kickoff_pipeline_jobs()
+    # There are 14 jobs that are HARD downstream dependencies from l0
+    assert len(dependents) == 14
+    for dep in dependents:
+        # Some instruments have l1b jobs that are downstream from l0 (lo and hit).
+        assert dep["data_type"] in ["l1a", "l1b", "l1"]
 
 
 def test_get_upstream_ancillary_trigger(session, caplog):

@@ -1,9 +1,7 @@
 """Tests for the indexer lambda."""
 
-import os
 from datetime import datetime, timezone
 
-import pytest
 from imap_data_access import ScienceFilePath
 from sqlalchemy import select
 
@@ -164,19 +162,6 @@ def test_s3_sci_event(session, s3_client, events_client):
     assert result[0].data_level == "l0"
     assert result[0].instrument == "hit"
     assert result[0].extension == "pkts"
-
-    # Test for bad filename input
-    event["detail"]["object"]["key"] = (
-        "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.cdf"
-    )
-
-    expected_msg = (
-        "Invalid extension. Extension should be pkts for data level l0"
-        " and cdf for data level higher than l0 \n"
-    )
-
-    with pytest.raises(ScienceFilePath.InvalidScienceFileError, match=expected_msg):
-        ScienceFilePath(os.path.basename(event["detail"]["object"]["key"]))
 
 
 def test_s3_anc_event(session, s3_client, events_client):
