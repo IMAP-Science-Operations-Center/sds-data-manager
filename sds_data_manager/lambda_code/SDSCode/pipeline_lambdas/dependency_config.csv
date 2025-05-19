@@ -215,8 +215,8 @@ hit, ancillary, hit-event-type-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
 # <---- IDEX Dependencies ---->
 
 idex, l0, raw, idex, l1a, all, HARD, DOWNSTREAM
-leapseconds, spice, historical, idex, l1a, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, idex, l1a, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, idex, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, idex, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 idex, l1a, sci-1week, idex, l1b, sci-1week, HARD, DOWNSTREAM
 spin, spin, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
@@ -225,7 +225,7 @@ attitude_history, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 
 idex, l1b, sci-1week, idex, l2a, sci-1week, HARD, DOWNSTREAM
 idex, l2a, sci-1week, idex, l2b, sci-1week, HARD, DOWNSTREAM
-idex, l1b, evt, idex, l2b, sci-1week, HARD, DOWNSTREAM
+idex, l1b, evt, idex, l2b, sci-1week, SOFT_NO_TRIGGER, DOWNSTREAM
 idex, l2b, sci-1week, idex, l2c, sci-1week, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
@@ -300,7 +300,7 @@ swapi, ancillary, lut-notes, swapi, l2, sci, HARD, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
-swapi, ancillary, density-temperature-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, ancillary, proton-density-temperature-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 swapi, ancillary, energy-gf-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
@@ -308,7 +308,7 @@ swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, alpha-sw, HARD, DOW
 
 swapi, l2, sci, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
-swapi, ancillary, density-temperature-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+swapi, ancillary, proton-density-temperature-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, energy-gf-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
@@ -316,7 +316,7 @@ swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, proton-sw, HARD, DO
 
 swapi, l2, sci, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
-swapi, ancillary, density-temperature-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+swapi, ancillary, proton-density-temperature-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, energy-gf-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
