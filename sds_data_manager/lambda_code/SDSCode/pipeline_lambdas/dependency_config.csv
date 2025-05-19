@@ -73,6 +73,9 @@ glows, ancillary, photoion-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, electron-density-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, l3b-archive, glows, l3d, solar-hist, HARD, DOWNSTREAM
 
+# <---- GLOWS to ENA Dependencies ---->
+
+# Low
 glows, l3d, solar-hist, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, p-dens, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, ancillary, energy-grid-lo, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
@@ -84,6 +87,7 @@ glows, l3d, speed, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 
+# Hi-45
 glows, l3d, solar-hist, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, l3d, p-dens, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, ancillary, energy-grid-hi, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
@@ -94,6 +98,7 @@ glows, l3d, speed, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 
+# Hi-90
 glows, l3d, solar-hist, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, l3d, p-dens, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, ancillary, energy-grid-hi, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
@@ -104,6 +109,7 @@ glows, l3d, speed, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 
+# Ultra
 glows, l3d, solar-hist, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
 glows, l3d, p-dens, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
 glows, ancillary, energy-grid-ultra, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
