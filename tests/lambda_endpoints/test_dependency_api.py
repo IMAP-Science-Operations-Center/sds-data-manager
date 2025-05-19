@@ -491,6 +491,34 @@ def test_get_spin_files(session):
                 version="01",
                 ingestion_date=datetime.now(),
             ),
+            SpinTable(
+                file_path="/imap/spice/spin/imap_2026_267_2026_268_01.spin.csv",
+                start_date=datetime(2026, 9, 23),
+                end_date=datetime(2026, 9, 24),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+            SpinTable(
+                file_path="/imap/spice/spin/imap_2026_267_2026_268_02.spin.csv",
+                start_date=datetime(2026, 9, 23),
+                end_date=datetime(2026, 9, 24),
+                version="02",
+                ingestion_date=datetime.now(),
+            ),
+            SpinTable(
+                file_path="/imap/spice/spin/imap_2026_268_2026_268_01.spin.csv",
+                start_date=datetime(2026, 9, 24),
+                end_date=datetime(2026, 9, 24),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+            SpinTable(
+                file_path="/imap/spice/spin/imap_2026_268_2026_269_01.spin.csv",
+                start_date=datetime(2026, 9, 24),
+                end_date=datetime(2026, 9, 25),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
         ]
     )
     session.commit()
@@ -517,6 +545,11 @@ def test_get_spin_files(session):
     assert spin_files == [
         "imap_2025_119_2025_120_01.spin.csv",
     ]
+
+    start_date = datetime(2026, 9, 25)
+    end_date = datetime(2026, 9, 25)
+    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    assert spin_files == ["imap_2026_268_2026_269_01.spin.csv"]
 
 
 def test_combine_kernel_sources():

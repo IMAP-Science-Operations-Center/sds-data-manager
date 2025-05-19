@@ -14,7 +14,8 @@ import boto3
 import imap_data_access
 from imap_data_access import processing_input
 from imap_data_access.processing_input import ProcessingInputCollection
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, desc, func, or_
+from sqlalchemy.orm import aliased
 
 from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
@@ -454,14 +455,12 @@ def get_spin_files(
 ) -> list:
     """Get spin input.
 
-    Query the spin table for the given date range.
+    Query the spin table for the given date range and get latest version.
 
     Parameters
     ----------
     session : orm session
         Database session.
-    spice_denpendencies : list
-        Dependency list containing dictionary of SPICE dependencies.
     start_date : datetime
         Start date to find dependent files with.
     end_date : datetime
@@ -472,15 +471,40 @@ def get_spin_files(
     list
         List of spin files.
     """
-    # Query the spin table for the given date range
-    records = (
-        session.query(models.SpinTable)
+    spin = aliased(models.SpinTable)
+
+    # Define the row_number() window function
+    row_number = (
+        func.row_number()
+        .over(
+            partition_by=(spin.start_date, spin.end_date), order_by=desc(spin.version)
+        )
+        .label("row_num")
+    )
+
+    # Build the subquery with row numbers
+    subquery = (
+        session.query(
+            spin.file_path, spin.start_date, spin.end_date, spin.version, row_number
+        )
         .filter(
             and_(
-                models.SpinTable.start_date <= end_date,
-                models.SpinTable.end_date >= start_date,
+                spin.start_date <= end_date,
+                spin.end_date >= start_date,
             )
         )
+        .subquery()
+    )
+
+    # Outer query to select only latest version per start/end date
+    records = (
+        session.query(
+            subquery.c.file_path,
+            subquery.c.start_date,
+            subquery.c.end_date,
+            subquery.c.version,
+        )
+        .filter(subquery.c.row_num == 1)
         .all()
     )
 
@@ -550,7 +574,6 @@ def get_upstream_dependency_inputs(
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
-    # TODO: Will query spice db in the future
     For each dependency, query for existing files in s3 and add any matching files
     found to a ProcessingInputCollection.
 
