@@ -513,6 +513,13 @@ def test_get_spin_files(session):
                 ingestion_date=datetime.now(),
             ),
             SpinTable(
+                file_path="/imap/spice/spin/imap_2026_268_2026_268_02.spin.csv",
+                start_date=datetime(2026, 9, 24),
+                end_date=datetime(2026, 9, 24),
+                version="02",
+                ingestion_date=datetime.now(),
+            ),
+            SpinTable(
                 file_path="/imap/spice/spin/imap_2026_268_2026_269_01.spin.csv",
                 start_date=datetime(2026, 9, 24),
                 end_date=datetime(2026, 9, 25),
@@ -550,6 +557,16 @@ def test_get_spin_files(session):
     end_date = datetime(2026, 9, 25)
     spin_files = dependency.get_spin_files(session, start_date, end_date)
     assert spin_files == ["imap_2026_268_2026_269_01.spin.csv"]
+
+    # Test with overlapping date range and latest version
+    start_date = datetime(2026, 9, 24)
+    end_date = datetime(2026, 9, 24)
+    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    assert spin_files == [
+        "imap_2026_267_2026_268_02.spin.csv",
+        "imap_2026_268_2026_268_02.spin.csv",
+        "imap_2026_268_2026_269_01.spin.csv",
+    ]
 
 
 def test_combine_kernel_sources():
