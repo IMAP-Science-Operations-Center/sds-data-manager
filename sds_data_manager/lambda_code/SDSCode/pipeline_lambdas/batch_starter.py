@@ -201,6 +201,7 @@ def submit_all_jobs(session, job_node, start_date, end_date):
     end_date : str
         End date to query the data.
     """
+    logger.info(f"Finding dependencies for the job node: {job_node}")
     # Submit downstream jobs for each upstream primary science dependency file.
     # Find the files that this job depends on
     upstream_dependencies = dependency.get_jobs(
@@ -213,6 +214,9 @@ def submit_all_jobs(session, job_node, start_date, end_date):
         end_date=end_date,
     )
     if not upstream_dependencies:
+        logger.info(
+            f"Skiping job submission for {job_node} because no upstream dependencies."
+        )
         return
 
     logger.info(f"All required dependencies found for the dependency: {job_node}")
@@ -267,11 +271,10 @@ def s3_processing_event(session, events):
     # each event. In this loop, "event" represents one file landing.
     for event in events["Records"]:
         # Event details:
-        logger.info(f"Individual event: {event}")
+        logger.info("Individual event: " + json.dumps(event, indent=2))
         body = json.loads(event["body"])
 
         filename = body["detail"]["object"]["key"]
-        logger.info(f"Retrieved filename: {filename}")
 
         file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
         input_obj = imap_data_access.processing_input.generate_imap_input(filename)
@@ -434,7 +437,6 @@ def lambda_handler(events: dict, context):
         Lambda context object
     """
     logger.info(f"Events: {events}")
-    logger.info(f"Context: {context}")
 
     with db.Session() as session:
         api_event = events.get("queryStringParameters")

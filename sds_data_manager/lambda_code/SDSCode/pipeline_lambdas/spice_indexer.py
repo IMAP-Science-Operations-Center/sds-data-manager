@@ -320,10 +320,12 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Pat
         # Download path to the EFS path
         efs_spice_filename_and_path = efs_spice_path / filename
         # Download file from S3 to the EFS path
+        logger.info(f"Downloading {s3_key} to {efs_spice_filename_and_path}")
         s3_client.download_file(s3_bucket, s3_key, efs_spice_filename_and_path)
-        logger.info(f"{s3_key} file downloaded successfully")
+        logger.info("Download Successfull")
     except Exception as e:
         logger.error(f"Error downloading file: {e!s}")
+        raise ValueError(f"Error downloading file: {e!s}") from e
 
     logger.info(f"{filename} was written to EFS path: {efs_spice_path}")
     return efs_spice_filename_and_path
@@ -434,14 +436,13 @@ def lambda_handler(event, context):
         Response message
 
     """
-    logger.info("Received event: " + json.dumps(event, indent=2))
+    logger.info("SPICE Indexer event: " + json.dumps(event, indent=2))
     # Define the paths
     data_mount_path = Path(os.getenv("DATA_DIR"))  # Eg. /mnt/data
 
     # Retrieve the S3 bucket and key from the event
     s3_bucket = event["detail"]["bucket"]["name"]
     s3_key = event["detail"]["object"]["key"]
-    logger.info(event)
 
     file_path = write_data_to_efs(s3_key, s3_bucket, data_mount_path)
     logger.info(f"File {s3_key} moved to EFS successfully")
