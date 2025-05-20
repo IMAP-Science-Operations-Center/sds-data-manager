@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 
 import spiceypy
+from imap_data_access import SPICEFilePath
 from sqlalchemy import select
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
@@ -191,3 +192,17 @@ def test_s3_spin_files(session, s3_client, events_client):
         temp_path + "/imap/spice/spin/imap_2026_267_2026_267_02.spin.csv"
     )
     assert spin_table_rows[1].version == "02"
+
+
+def test_send_spice_event(events_client):
+    """Test the ``send_spice_event`` function."""
+    s3_key = "imap/spice/lsk/naif0012.tls"
+    spice_obj = SPICEFilePath(s3_key)
+    result = spice_indexer.send_spice_event(spice_obj, s3_key)
+    assert result is None
+
+    # Now pass attitude kernel
+    s3_key = "imap/spice/ck/imap_2025_118_2025_120_001.ah.bc"
+    spice_obj = SPICEFilePath(s3_key)
+    result = spice_indexer.send_spice_event(spice_obj, s3_key)
+    assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
