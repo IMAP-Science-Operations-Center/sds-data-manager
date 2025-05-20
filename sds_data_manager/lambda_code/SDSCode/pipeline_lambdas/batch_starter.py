@@ -292,7 +292,10 @@ def s3_processing_event(session, events):
             start_date = file_obj.start_date
             # Ancillary files can have an end date.
             end_date = getattr(file_obj, "end_date", None)
-
+            # If there is no end date for the ancillary file, then it is implicitly
+            # valid through today.
+            if not end_date:
+                end_date = datetime.today().strftime("%Y%m%d")
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
         potential_jobs = dependency.get_jobs(
