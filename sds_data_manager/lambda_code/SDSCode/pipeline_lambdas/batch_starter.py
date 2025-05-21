@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import boto3
 import imap_data_access
+import pandas as pd
 from imap_data_access import (
     AncillaryFilePath,
     ScienceFilePath,
@@ -21,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from ..database import database as db
 from ..database import models
 from . import dependency
-from .dependency import DependencyConfig, get_jobs
+from .dependency import DependencyConfig, get_latest_repoint_file
 
 # import dependency
 
@@ -491,6 +492,27 @@ def s3_processing_event(session, events):
             # Set the start and end dates for the upstream event message
             # TODO: if ENA or glows instrument, then get repoint number from filename
             # and set start date and end date differently.
+            if file_obj.repointing is not None and file_obj.instrument in [
+                "glows",
+                "hi",
+                "lo",
+                "ultra",
+            ]:
+                # Read in latest repoint file.
+                latest_repoint_file = get_latest_repoint_file(
+                    end_date=file_obj.start_date,
+                )
+                download_path = imap_data_access.download(
+                    latest_repoint_file,
+                )
+                # Read start and end date of repoint number.
+                repoint_df = pd.read_csv(
+                    download_path,
+                )
+                print(repoint_df)
+                # Set start date to be floor of repoint_start_utc
+                # Set end date to be ceiling of repoint_end_utc
+                pass
             start_date = end_date = file_obj.start_date
         elif isinstance(file_obj, AncillaryFilePath):
             # Set the start and end dates for the upstream event message
