@@ -12,14 +12,14 @@ def populate_algorithm_table(setup_dynamodb):
         {
             "apid": 478,
             "met": 123,
-            "insert_time": "2021-01-01T00:00:00Z",
+            "utc": "2021-01-01T00:00:00",
             "product_name": "hit_product_1",
             "data_product_1": str(1234.56),
         },
         {
             "apid": 478,
             "met": 124,
-            "insert_time": "2021-02-01T00:00:00Z",
+            "utc": "2021-02-01T00:00:00",
             "product_name": "hit_product_1",
             "data_product_2": str(101.3),
         },
@@ -56,9 +56,8 @@ def test_algorithm_query_by_date(setup_dynamodb, populate_algorithm_table):
     expected_items = populate_algorithm_table
 
     response = algorithm_table.query(
-        IndexName="insert_time",
-        KeyConditionExpression=Key("apid").eq(478)
-        & Key("insert_time").begins_with("2021-01"),
+        IndexName="utc",
+        KeyConditionExpression=Key("apid").eq(478) & Key("utc").begins_with("2021-01"),
     )
     items = response["Items"]
     assert len(items) == 1
