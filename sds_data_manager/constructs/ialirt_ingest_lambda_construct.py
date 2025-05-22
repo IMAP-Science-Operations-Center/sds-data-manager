@@ -71,47 +71,6 @@ class IalirtIngestLambda(Construct):
         # Create Event Rule
         self.create_event_rule(ialirt_bucket, self.ialirt_ingest_lambda)
 
-    def create_ingest_dynamodb_table(self) -> aws_dynamodb.Table:
-        """Create and return the DynamoDB table."""
-        table = ddb.Table(
-            self,
-            "IalirtPacketDataTable",
-            table_name="ialirt-packetdata-table",
-            # Change to RemovalPolicy.RETAIN to keep the table after stack deletion.
-            # TODO: change to RETAIN in production.
-            removal_policy=RemovalPolicy.DESTROY,
-            # Restore data to any point in time within the last 35 days.
-            # TODO: change to True in production.
-            point_in_time_recovery=False,
-            # Partition key (PK) = APID.
-            partition_key=ddb.Attribute(
-                name="apid",
-                type=ddb.AttributeType.NUMBER,
-            ),
-            # Sort key (SK) = Mission Elapsed Time (MET).
-            sort_key=ddb.Attribute(
-                name="met",
-                type=ddb.AttributeType.NUMBER,
-            ),
-            # Define the read and write capacity units.
-            # TODO: change to provisioned capacity mode in production.
-            billing_mode=ddb.BillingMode.PAY_PER_REQUEST,  # On-Demand capacity mode.
-        )
-
-        # Add a GSI for ingest time.
-        table.add_global_secondary_index(
-            index_name="ingest_time",
-            # Partition key (PK) = APID.
-            partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
-            # Sort key (SK) = Ingest Time (ISO).
-            sort_key=ddb.Attribute(
-                name="ingest_time",
-                type=ddb.AttributeType.STRING,
-            ),
-            projection_type=ddb.ProjectionType.ALL,
-        )
-        return table
-
     def create_algorithm_dynamodb_table(self) -> aws_dynamodb.Table:
         """Create and return the algorithm data product table."""
         self.algorithm_data_table = ddb.Table(

@@ -8,7 +8,11 @@ from pathlib import Path
 
 import boto3
 import botocore
+import xarray as xr
+from boto3.dynamodb.conditions import Key
 from imap_processing import imap_module_directory
+from imap_processing.ialirt.l0.process_hit import process_hit
+from imap_processing.ialirt.l0.process_swe import process_swe
 from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
@@ -100,6 +104,92 @@ def query_filenames(bucket: str, region: str, now: datetime):
     return filenames
 
 
+def parse_packets(filenames):
+    """Get packets into datasets and combine.
+
+    This function is an event handler for s3 ingest bucket.
+    It is also used to ingest data to the DynamoDB table.
+
+    Parameters
+    ----------
+    filenames : list
+        List of file paths.
+
+    Returns
+    -------
+    combined : xr.Dataset
+        Combined dataset.
+    """
+    xtce_ialirt_path = (
+        imap_module_directory / "ialirt" / "packet_definitions" / "ialirt.xml"
+    )
+    apid = 478
+    datasets = []
+
+    for packet_path in filenames:
+        xarray_data = packet_file_to_datasets(
+            packet_path, xtce_ialirt_path, use_derived_value=False
+        )[apid]
+        datasets.append(xarray_data)
+
+    combined = xr.concat(datasets, dim="epoch")
+
+    return combined
+
+
+def process_algorithms(combined, algorithm_table):
+    processors = [
+        ("hit", process_hit),
+        ("swe", process_swe),
+    ]
+
+    for prefix, process_func in processors:
+        insert_data(process_func(combined), algorithm_table, prefix)
+
+
+def insert_data(data: list[dict], algorithm_table, product_prefix: str):
+    apid = data[0]["apid"]
+    mets = [item["met"] for item in data]
+    min_met = min(mets)
+    max_met = max(mets)
+
+    # Query existing items.
+    response = algorithm_table.query(
+        KeyConditionExpression=Key("apid").eq(apid)
+        & Key("met").between(min_met, max_met)
+    )
+
+    existing_items = {item["met"]: item for item in response.get("Items", [])}
+
+    # Insert or update as needed
+    for raw in data:
+        met = raw["met"]
+        key = {"apid": apid, "met": met}
+        existing = existing_items.get(met)
+
+        if existing:
+            if any(k.startswith(product_prefix) for k in existing.keys()):
+                logger.info(
+                    f"{product_prefix.upper()} data already exists for met={met}. Skipping."
+                )
+                continue
+
+            update_expr = "SET " + ", ".join(
+                f"{k} = :{k}" for k in raw if k not in {"apid", "met"}
+            )
+            expr_vals = {f":{k}": v for k, v in raw.items() if k not in {"apid", "met"}}
+
+            algorithm_table.update_item(
+                Key=key,
+                UpdateExpression=update_expr,
+                ExpressionAttributeValues=expr_vals,
+            )
+            logger.info(f"Updated met={met} with {product_prefix.upper()} data.")
+        else:
+            algorithm_table.put_item(Item=raw)
+            logger.info(f"Inserted new {product_prefix.upper()} item for met={met}.")
+
+
 def lambda_handler(event, context):
     """Create metadata and add it to the database.
 
@@ -130,22 +220,13 @@ def lambda_handler(event, context):
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
 
-    # TODO: Each of these steps in temporary, but provides an idea
-    #  of how the lambda will be used.
-
-    # 1. Query s3 for packet filenames from past 5 minutes.
+    # Query s3 for packet filenames from past 5 minutes.
     now = datetime.now(timezone.utc)
     filenames = query_filenames(bucket, region, now)
-    print(filenames)
-    # TODO: will use filenames here.
 
-    # 2. After processing insert data into Algorithm Table.
-    item = {
-        "apid": 478,
-        "met": 123,
-        "insert_time": "2021-01-01T00:00:00Z",
-        "product_name": "hit_product_1",
-        "data_product_1": str(1234.56),
-    }
-    algorithm_table.put_item(Item=item)
-    logger.info("Successfully wrote item to DynamoDB: %s", item)
+    # Get packets into datasets and combine.
+    combined = parse_packets(filenames)
+    # Process algorithms and insert new data.
+    process_algorithms(combined, algorithm_table)
+
+    logger.info("Successfully wrote all new items to DynamoDB")

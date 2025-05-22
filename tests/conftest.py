@@ -18,32 +18,6 @@ def setup_dynamodb():
         # Initialize DynamoDB resource
         dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
 
-        ingest_table = dynamodb.create_table(
-            TableName=os.environ["INGEST_TABLE"],
-            KeySchema=[
-                # Partition key
-                {"AttributeName": "apid", "KeyType": "HASH"},
-                # Sort key
-                {"AttributeName": "met", "KeyType": "RANGE"},
-            ],
-            AttributeDefinitions=[
-                {"AttributeName": "apid", "AttributeType": "N"},
-                {"AttributeName": "met", "AttributeType": "N"},
-                {"AttributeName": "ingest_time", "AttributeType": "S"},
-            ],
-            GlobalSecondaryIndexes=[
-                {
-                    "IndexName": "ingest_time",
-                    "KeySchema": [
-                        {"AttributeName": "apid", "KeyType": "HASH"},
-                        {"AttributeName": "ingest_time", "KeyType": "RANGE"},
-                    ],
-                    "Projection": {"ProjectionType": "ALL"},
-                },
-            ],
-            BillingMode="PAY_PER_REQUEST",
-        )
-
         algorithm_table = dynamodb.create_table(
             TableName=os.environ["ALGORITHM_TABLE"],
             KeySchema=[

@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
+    insert_if_not_exists,
     lambda_handler,
     parse_packet,
     query_filenames,
@@ -141,3 +142,20 @@ def test_query_filenames_crossing_hour_boundary(s3_client):
     result = query_filenames(bucket, region, now)
 
     assert sorted(result) == sorted([first_prefix_key, second_prefix_key])
+
+
+def test_insert_if_not_exists(setup_dynamodb):
+    """Test insert_if_not_exists function."""
+    # Mock event data
+    algorithm_table = setup_dynamodb["algorithm_table"]
+
+    item = {
+        "met": 123456,
+        "utc": "2025-05-21T14:00:00Z",
+        "ttj2000ns": 759175836184000000,
+        "hit_e_a_side_low_en": 1.0,
+        "hit_e_a_side_med_en": 2.0,
+        "hit_e_a_side_high_en": 3.0,
+    }
+
+    data = insert_if_not_exists(item, algorithm_table)
