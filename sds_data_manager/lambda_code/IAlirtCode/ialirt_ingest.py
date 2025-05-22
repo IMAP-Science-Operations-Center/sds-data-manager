@@ -251,9 +251,13 @@ def lambda_handler(event, context):
     now = datetime.now(timezone.utc)
     filenames = query_filenames(bucket, region, now)
 
-    # Get packets into datasets and combine.
-    combined = parse_packets(filenames)
-    # Process algorithms and insert new data.
-    process_algorithms(combined, algorithm_table)
+    if filenames:
+        logger.info("Found %d files to process", len(filenames))
+        # Get packets into datasets and combine.
+        combined = parse_packets(filenames)
+        # Process algorithms and insert new data.
+        process_algorithms(combined, algorithm_table)
 
-    logger.info("Successfully wrote all new items to DynamoDB")
+        logger.info("Successfully wrote all new items to DynamoDB")
+    else:
+        logger.info("No files found to process in the last 5 minutes.")

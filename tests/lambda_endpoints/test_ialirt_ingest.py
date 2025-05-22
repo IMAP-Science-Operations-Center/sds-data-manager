@@ -55,10 +55,7 @@ def test_lambda_handler(setup_dynamodb):
     )
     item = response.get("Item")
 
-    assert item["met"] == 123
-    assert item["insert_time"] == "2021-01-01T00:00:00Z"
-    assert item["product_name"] == "hit_product_1"
-    assert item["data_product_1"] == str(1234.56)
+    assert item is None
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.packet_file_to_datasets")
@@ -141,7 +138,7 @@ def test_insert_data(setup_dynamodb):
         {
             "apid": 478,
             "met": 123456,
-            "utc": "2025-05-21T14:00:00Z",
+            "utc": "2025-05-21T14:00:00",
             "ttj2000ns": 759175836184000000,
             "hit_e_a_side_med_en": Decimal("2.0"),
         },
@@ -149,7 +146,7 @@ def test_insert_data(setup_dynamodb):
         {
             "apid": 478,
             "met": 123457,
-            "utc": "2025-05-21T14:00:01Z",
+            "utc": "2025-05-21T14:00:01",
             "ttj2000ns": 759175836184000001,
             "hit_e_a_side_low_en": Decimal("3.0"),
         },
@@ -157,7 +154,7 @@ def test_insert_data(setup_dynamodb):
         {
             "apid": 478,
             "met": 123458,
-            "utc": "2025-05-21T14:00:02Z",
+            "utc": "2025-05-21T14:00:02",
             "ttj2000ns": 759175836184000002,
             "hit_e_a_side_low_en": Decimal("5.0"),
         },

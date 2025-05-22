@@ -48,8 +48,8 @@ def lambda_handler(event, context):
     allowed_params = {
         "met_start",
         "met_end",
-        "insert_time_start",
-        "insert_time_end",
+        "utc_start",
+        "utc_end",
         "product_name",
     }
 
@@ -63,19 +63,19 @@ def lambda_handler(event, context):
         }
 
     if any(param.startswith("met") for param in params) and any(
-        param.startswith("insert_time") for param in params
+        param.startswith("utc") for param in params
     ):
         return {
             "statusCode": 400,
             "body": json.dumps(
-                {"message": "Cannot query both MET and insert_time in the same request"}
+                {"message": "Cannot query both MET and UTC in the same request"}
             ),
         }
 
     if ("met_start" in params and "met_end" in params) or (
-        "insert_time_start" in params and "insert_time_end" in params
+        "utc_start" in params and "utc_end" in params
     ):
-        time_key = "met" if "met_start" in params else "insert_time"
+        time_key = "met" if "met_start" in params else "utc"
 
         start_value = (
             int(params[f"{time_key}_start"])
@@ -90,11 +90,11 @@ def lambda_handler(event, context):
 
         key_expr &= Key(time_key).between(start_value, end_value)
 
-        if time_key == "insert_time":
-            query_kwargs["IndexName"] = "insert_time"
+        if time_key == "utc":
+            query_kwargs["IndexName"] = "utc"
 
-    elif "met_start" in params or "insert_time_start" in params:
-        time_key = "met" if "met_start" in params else "insert_time"
+    elif "met_start" in params or "utc_start" in params:
+        time_key = "met" if "met_start" in params else "utc"
 
         start_value = (
             int(params[f"{time_key}_start"])
@@ -103,10 +103,10 @@ def lambda_handler(event, context):
         )
         key_expr &= Key(time_key).gte(start_value)
 
-        if time_key == "insert_time":
-            query_kwargs["IndexName"] = "insert_time"
+        if time_key == "utc":
+            query_kwargs["IndexName"] = "utc"
 
-    elif "met_end" in params or "insert_time_end" in params:
+    elif "met_end" in params or "utc_end" in params:
         return {
             "statusCode": 400,
             "body": json.dumps(
