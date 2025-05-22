@@ -7,12 +7,14 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
+import xarray as xr
 from boto3.dynamodb.conditions import Key
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     insert_data,
     lambda_handler,
     parse_packet,
+    parse_packets,
     process_algorithms,
     query_filenames,
 )
@@ -76,6 +78,32 @@ def test_parse_packet_s3(mock_packet_file_to_datasets, s3_test_packet, tmp_path)
     # Check if file was downloaded
     real_tmp_file = tmp_path / filename
     assert real_tmp_file.exists()
+
+
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.packet_file_to_datasets")
+def test_parse_packet_duplicate(mock_packet_file_to_datasets, s3_test_packet, tmp_path):
+    """Test parse_packet function that duplicate packets are removed."""
+    # Simulate two datasets with the same epoch.
+    ds1 = xr.Dataset({"data": (["epoch"], [1.0])}, coords={"epoch": (["epoch"], [100])})
+    ds2 = xr.Dataset({"data": (["epoch"], [2.0])}, coords={"epoch": (["epoch"], [100])})
+
+    # Each time the function packet_file_to_datasets() is called
+    # return the next item from this list.
+    mock_packet_file_to_datasets.side_effect = [
+        {478: ds1},
+        {478: ds2},
+    ]
+
+    filenames = [s3_test_packet, s3_test_packet]
+
+    combined = parse_packets(filenames)
+
+    # One entry remains.
+    assert isinstance(combined, xr.Dataset)
+    assert len(combined["epoch"]) == 1
+
+    # Mock was called twice.
+    assert mock_packet_file_to_datasets.call_count == 2
 
 
 def test_query_filenames(s3_client):

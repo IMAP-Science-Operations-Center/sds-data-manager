@@ -8,6 +8,7 @@ from pathlib import Path
 
 import boto3
 import botocore
+import numpy as np
 import xarray as xr
 from boto3.dynamodb.conditions import Key
 from imap_processing import imap_module_directory
@@ -133,6 +134,9 @@ def parse_packets(filenames):
         datasets.append(xarray_data)
 
     combined = xr.concat(datasets, dim="epoch")
+    # Drop duplicate epochs. This could happen if there are duplicate packets.
+    _, unique_idx = np.unique(combined["epoch"], return_index=True)
+    combined = combined.isel(epoch=sorted(unique_idx))
 
     return combined
 
