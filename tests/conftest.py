@@ -29,15 +29,15 @@ def setup_dynamodb():
             AttributeDefinitions=[
                 {"AttributeName": "apid", "AttributeType": "N"},
                 {"AttributeName": "met", "AttributeType": "N"},
-                {"AttributeName": "insert_time", "AttributeType": "S"},
+                {"AttributeName": "utc", "AttributeType": "S"},
                 {"AttributeName": "product_name", "AttributeType": "S"},
             ],
             GlobalSecondaryIndexes=[
                 {
-                    "IndexName": "insert_time",  # Unique index name
+                    "IndexName": "utc",  # Unique index name
                     "KeySchema": [
                         {"AttributeName": "apid", "KeyType": "HASH"},
-                        {"AttributeName": "insert_time", "KeyType": "RANGE"},
+                        {"AttributeName": "utc", "KeyType": "RANGE"},
                     ],
                     "Projection": {"ProjectionType": "ALL"},
                 },
