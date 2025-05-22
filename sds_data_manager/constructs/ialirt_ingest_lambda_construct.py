@@ -57,7 +57,6 @@ class IalirtIngestLambda(Construct):
         self.vpc = vpc
 
         # Create DynamoDB Table
-        self.packet_data_table = self.create_ingest_dynamodb_table()
         self.algorithm_data_table = self.create_algorithm_dynamodb_table()
 
         # Create Lambda Function
