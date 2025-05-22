@@ -10,6 +10,7 @@ from aws_cdk import aws_sqs as sqs
 from aws_cdk.aws_lambda_event_sources import SqsEventSource
 from constructs import Construct
 
+from sds_data_manager.constructs.api_gateway_construct import ApiGateway
 from sds_data_manager.constructs.database_construct import SdpDatabase
 
 
@@ -21,6 +22,7 @@ class BatchStarterLambda(Construct):
         scope: Construct,
         construct_id: str,
         env: Environment,
+        api: ApiGateway,
         data_bucket: s3.Bucket,
         code: lambda_.Code,
         rds_construct: SdpDatabase,
@@ -40,6 +42,8 @@ class BatchStarterLambda(Construct):
             A unique string identifier for this construct.
         env : Environment
             Account and region.
+        api : obj
+            The APIGateway stack
         data_bucket: s3.Bucket
             S3 bucket.
         code : lambda_.Code
@@ -111,3 +115,15 @@ class BatchStarterLambda(Construct):
         # different instruments will be processed in parallel, with multiple instances
         # of the batch_starter lambda.
         self.instrument_lambda.add_event_source(SqsEventSource(sqs_queue))
+
+        # Add api route for triggering batch starter with a bulk reprocessing request
+        api.add_route(
+            route="/reprocess",
+            http_method="POST",
+            lambda_function=self.instrument_lambda,
+        )
+        api.add_route(
+            route="/authorized/reprocess",
+            http_method="POST",
+            lambda_function=self.instrument_lambda,
+        )

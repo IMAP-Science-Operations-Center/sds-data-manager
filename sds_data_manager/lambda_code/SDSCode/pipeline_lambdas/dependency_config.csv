@@ -71,6 +71,7 @@ glows, ancillary, proton-density-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, uv-anisotropy-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, photoion-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, electron-density-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, lya-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, l3b-archive, glows, l3d, solar-hist, HARD, DOWNSTREAM
 
 # <---- GLOWS to ENA Dependencies ---->

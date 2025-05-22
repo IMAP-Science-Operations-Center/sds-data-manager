@@ -49,10 +49,6 @@ def lambda_handler(event, context):
                         f"{param} is not a valid query parameter. "
                         + f"Valid query parameters are: {valid_parameters}"
                     ),
-                    "headers": {
-                        "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*",  # Allow CORS
-                    },
                 }
                 logger.debug(
                     f"Received an invalid query parameter [{param}],"
@@ -67,10 +63,6 @@ def lambda_handler(event, context):
                     response = {
                         "statusCode": 400,
                         "body": json.dumps(f"Invalid value for {param}: {value}"),
-                        "headers": {
-                            "Content-Type": "application/json",
-                            "Access-Control-Allow-Origin": "*",  # Allow CORS
-                        },
                     }
                     logger.debug(f"Invalid value for {param}: {value}")
                     return response
@@ -81,10 +73,6 @@ def lambda_handler(event, context):
                     response = {
                         "statusCode": 400,
                         "body": json.dumps(f"Invalid value for {param}: {value}"),
-                        "headers": {
-                            "Content-Type": "application/json",
-                            "Access-Control-Allow-Origin": "*",  # Allow CORS
-                        },
                     }
                     logger.debug(f"Invalid value for {param}: {value}")
                     return response
@@ -124,10 +112,6 @@ def lambda_handler(event, context):
     response = {
         "statusCode": 200,
         "body": json.dumps(search_results),  # returns a list of tuples
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",  # Allow CORS
-        },
     }
 
     return response

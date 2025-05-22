@@ -58,10 +58,6 @@ def _generate_signed_upload_response(s3_key_path, tags=None):
         return {
             "statusCode": 409,
             "body": json.dumps(f"{s3_key_path} already exists."),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
         }
     # We know there isn't an object at this location, so
     # generate a pre-signed URL for the client to upload to

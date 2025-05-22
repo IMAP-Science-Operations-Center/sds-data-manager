@@ -40,10 +40,6 @@ def lambda_handler(event, context):
         return {
             "statusCode": 400,
             "body": json.dumps({"message": "No query parameters provided"}),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
         }
 
     key_expr = Key("apid").eq(478)
@@ -64,10 +60,6 @@ def lambda_handler(event, context):
             "body": json.dumps(
                 {"message": f"Unexpected parameters: {', '.join(unexpected_params)}"}
             ),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
         }
 
     if any(param.startswith("met") for param in params) and any(
@@ -78,10 +70,6 @@ def lambda_handler(event, context):
             "body": json.dumps(
                 {"message": "Cannot query both MET and insert_time in the same request"}
             ),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
         }
 
     if ("met_start" in params and "met_end" in params) or (
@@ -124,10 +112,6 @@ def lambda_handler(event, context):
             "body": json.dumps(
                 {"message": "Cannot query by end time without start time"}
             ),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
         }
 
     query_kwargs["KeyConditionExpression"] = key_expr
@@ -148,8 +132,4 @@ def lambda_handler(event, context):
     return {
         "statusCode": 200,
         "body": json.dumps(response.get("Items", []), default=str),
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
     }

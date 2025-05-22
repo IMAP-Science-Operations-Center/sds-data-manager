@@ -261,6 +261,7 @@ def build_sds(
         scope=sdc_stack,
         construct_id="BatchStarterLambda",
         env=env,
+        api=api,
         data_bucket=data_bucket.data_bucket,
         code=lambda_code,
         rds_construct=rds_construct,

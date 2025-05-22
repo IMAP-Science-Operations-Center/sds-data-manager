@@ -388,7 +388,7 @@ def test_bulk_reprocessing_data_level(session, caplog):
     # descriptor are required.
     events = {
         "queryStringParameters": {
-            "reprocessing": True,
+            "reprocessing": "True",
             "start_date": "20230101",
             "end_date": "20260101",
             "data_level": "l1b",
