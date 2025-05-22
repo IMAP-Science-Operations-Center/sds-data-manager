@@ -62,7 +62,6 @@ class IalirtIngestLambda(Construct):
         # Create Lambda Function
         self.ialirt_ingest_lambda = self.create_lambda_function(
             ialirt_bucket,
-            self.packet_data_table,
             self.algorithm_data_table,
             docker_path,
         )
@@ -127,7 +126,6 @@ class IalirtIngestLambda(Construct):
     def create_lambda_function(
         self,
         ialirt_bucket: aws_s3.Bucket,
-        packet_data_table: aws_dynamodb.Table,
         algorithm_data_table: aws_dynamodb.Table,
         docker_path: str,
     ) -> lambda_alpha_.PythonFunction:
@@ -155,7 +153,6 @@ class IalirtIngestLambda(Construct):
                     "s3:GetObject",
                 ],
                 resources=[
-                    packet_data_table.table_arn,
                     f"{ialirt_bucket.bucket_arn}/*",
                 ],
             )
@@ -178,14 +175,12 @@ class IalirtIngestLambda(Construct):
                 self.efs_access_point, "/mnt/data"
             ),
             environment={
-                "INGEST_TABLE": packet_data_table.table_name,
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
                 "EFS_SPICE_MOUNT_PATH": "/mnt/data",
             },
         )
 
-        packet_data_table.grant_read_write_data(ialirt_ingest_lambda)
         algorithm_data_table.grant_read_write_data(ialirt_ingest_lambda)
 
         # The resource is deleted when the stack is deleted.
