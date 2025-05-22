@@ -106,10 +106,10 @@ class IndexerLambda(Construct):
 
         # Write science data info to db with
         # status SUCCEEDED
-        event_rule_prefixes = [
+        science_event_prefixes = [
             {"prefix": f"imap/{instrument}/"} for instrument in VALID_INSTRUMENTS
         ]
-        event_rule_prefixes.append({"prefix": "imap/ancillary/"})
+        science_event_prefixes.append({"prefix": "imap/ancillary/"})
         imap_data_arrival_rule = events.Rule(
             self,
             "ImapDataArrival",
@@ -120,7 +120,7 @@ class IndexerLambda(Construct):
                 detail={
                     "bucket": {"name": [data_bucket.bucket_name]},
                     "object": {
-                        "key": event_rule_prefixes,
+                        "key": science_event_prefixes,
                     },
                 },
             ),

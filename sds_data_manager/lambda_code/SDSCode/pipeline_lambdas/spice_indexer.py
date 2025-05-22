@@ -324,7 +324,6 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Pat
         s3_client.download_file(s3_bucket, s3_key, efs_spice_filename_and_path)
         logger.info("Download Successfull")
     except Exception as e:
-        logger.error(f"Error downloading file: {e!s}")
         raise ValueError(f"Error downloading file: {e!s}") from e
 
     logger.info(f"{filename} was written to EFS path: {efs_spice_path}")

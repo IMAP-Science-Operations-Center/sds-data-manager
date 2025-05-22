@@ -683,8 +683,8 @@ def get_upstream_dependency_inputs(
             dep_string = f"{dep=}\n{start_date=}\n{end_date=}"
 
             logger.info(
-                "Looking up current upstream dependencies with these "
-                f"info:={dep_string}"
+                "Searching for upstream dependencies with dependency string: "
+                f"{dep_string}"
             )
 
             records = get_files(session, dep, start_date, end_date)
@@ -921,9 +921,9 @@ def get_jobs(
     )
     if upstream_dependencies_output is None:
         logger.info(
-            f"No dependencies found for {dependencies}, {start_date=}, {end_date=}"
+            f"No dependencies found for {start_date=} - {end_date=}: {dependencies}"
         )
         return None
 
-    logger.info(f"Found dependencies: {dependencies}.")
+    logger.info(f"Dependencies found for {start_date=} - {end_date=}: {dependencies}")
     return upstream_dependencies_output
