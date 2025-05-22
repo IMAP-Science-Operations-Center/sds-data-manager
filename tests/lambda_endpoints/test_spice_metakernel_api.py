@@ -256,3 +256,23 @@ def test_metakernel_filtered_file_types(session):
     )
     assert len(json.loads(result["body"])) == 2
     assert json.loads(result["body"])[0] == "naif0012.tls"
+
+
+def test_metakernel_string_input(session):
+    """Test that string input is allowed, and is converted to a datetime object."""
+    _insert_test_file(session, "naif0012.tls", [[1, 300]], upload_time=1)
+    _insert_test_file(session, "imap_sclk_0012.tsc", [[1, 300]], upload_time=1)
+    _insert_test_data(session)
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": "19000101",
+                "end_time": "20260101",
+                "spice_path": "",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+    assert len(json.loads(result["body"])) == 8

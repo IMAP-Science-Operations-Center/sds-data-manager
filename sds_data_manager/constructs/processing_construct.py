@@ -98,7 +98,10 @@ class ProcessingConstruct(Construct):
                 ),
                 memory=cdk.Size.mebibytes(4096),
                 cpu=1,
-                environment={"DATA_DIR": "/mnt/data"},
+                environment={
+                    "IMAP_DATA_DIR": "/mnt/data",
+                    "IMAP_DATA_ACCESS_URL": f"https://api.{self.node.get_context('account_name')}.imap-mission.com",
+                },
                 volumes=self.volumes,
                 # TODO: Do we need to explicitly specify architecture and OS family?
                 #       We are building containers in GitHub Actions and need to

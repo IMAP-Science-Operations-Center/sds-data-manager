@@ -261,6 +261,7 @@ def build_sds(
         scope=sdc_stack,
         construct_id="BatchStarterLambda",
         env=env,
+        api=api,
         data_bucket=data_bucket.data_bucket,
         code=lambda_code,
         rds_construct=rds_construct,
@@ -268,7 +269,6 @@ def build_sds(
         vpc=networking.vpc,
         sqs_queue=instrument_sqs,
         layers=[db_lambda_layer, spice_lambda_layer],
-        api_domain=api.api_domain_name,
     )
 
     # Create lambda that mounts EFS and writes SPICE files to the EFS and the database

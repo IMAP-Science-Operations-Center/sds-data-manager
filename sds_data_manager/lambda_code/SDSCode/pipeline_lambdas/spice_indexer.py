@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from ..database import database as db
 from ..database import models
+from .lambda_custom_events import IMAPLambdaPutEvent
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -328,6 +329,63 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Pat
     return efs_spice_filename_and_path
 
 
+def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
+    """Send SPICE event to EventBridge.
+
+    Example of what PutEvent looks like:
+    {
+        "Source": "imap.lambda",
+        "DetailType": "Processed File",
+        "Detail": {
+            "object": {
+                "key": "imap/spice/spin/imap_2025_122_2025_122_02.spin.csv",
+                "instrument": "spacecraft",
+                }
+        }
+    }
+
+    Parameters
+    ----------
+    spice_obj : SPICEFilePath
+        SPICE of the file to determine the event type
+    s3_key : str
+        S3 object key to send to EventBridge
+    """
+    # If these kernels, send event to EventBridge
+    spice_events = [
+        "attitude_history",
+        "attitude_predict",
+        "ephemeris_reconstructed",
+        "ephemeris_nominal",
+        "ephemeris_predict",
+        "spin",
+        "thruster",
+    ]
+    if spice_obj.spice_metadata["type"] not in spice_events:
+        return None
+
+    logger.info(f"Sending SPICE event for {s3_key} to EventBridge")
+    eventbridge_client = boto3.client("events")
+
+    # Create event["detail"] and event inputs
+    detail = {
+        "object": {
+            "key": s3_key,
+            "instrument": "spacecraft",
+        }
+    }
+    event = IMAPLambdaPutEvent(
+        detail_type="Processed File",
+        detail=detail,
+    )
+    event_data = event.to_event()
+
+    # Send event to EventBridge
+    response = eventbridge_client.put_events(Entries=[event_data])
+    logger.info(f"Event sent to EventBridge: {response}")
+    return response
+
+
 def lambda_handler(event, context):
     """Lambda is triggered by eventbridge.
 
@@ -403,6 +461,8 @@ def lambda_handler(event, context):
         # Index the SPICE kerenels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
         index_spice_file(file_path)
+
+    send_spice_event(spice_obj, s3_key)
 
     return {
         "statusCode": 200,

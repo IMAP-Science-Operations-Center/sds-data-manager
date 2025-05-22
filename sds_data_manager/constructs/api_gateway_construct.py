@@ -95,14 +95,12 @@ class ApiGateway(Construct):
 
         # Add a custom domain to the API if we have one
         if domain_construct is not None:
-            self.api_domain_name = (
-                f"{self.lowercase_prefix}.{domain_construct.domain_name}"
-            )
+            api_domain_name = f"{self.lowercase_prefix}.{domain_construct.domain_name}"
 
             custom_domain = apigwv2.DomainName(
                 self,
                 f"{self.lowercase_prefix}HttpAPI-DomainName",
-                domain_name=self.api_domain_name,
+                domain_name=api_domain_name,
                 certificate=certificate,
             )
             # Create a domain mapping for the API that can be used later for the
@@ -114,7 +112,7 @@ class ApiGateway(Construct):
                 self,
                 f"{self.prefix}HttpAPI-AliasRecord",
                 zone=domain_construct.hosted_zone,
-                record_name=self.api_domain_name,
+                record_name=api_domain_name,
                 target=route53.RecordTarget.from_alias(
                     targets.ApiGatewayv2DomainProperties(
                         regional_domain_name=custom_domain.regional_domain_name,
