@@ -13,7 +13,6 @@ from boto3.dynamodb.conditions import Key
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     insert_data,
     lambda_handler,
-    parse_packet,
     parse_packets,
     process_algorithms,
     query_filenames,
@@ -63,20 +62,18 @@ def test_lambda_handler(setup_dynamodb):
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.packet_file_to_datasets")
 def test_parse_packet_s3(mock_packet_file_to_datasets, s3_test_packet, tmp_path):
     """Test parse_packet function."""
-    expected_result = {"123": "parsed dataset"}
-    mock_packet_file_to_datasets.return_value = expected_result
+    ds = xr.Dataset({"data": (["epoch"], [1.0])}, coords={"epoch": (["epoch"], [100])})
+    mock_packet_file_to_datasets.return_value = {478: ds}
 
-    filename = Path(s3_test_packet).name
+    filename = [Path(s3_test_packet).name]
 
-    result = parse_packet(
-        filename, "test-data-bucket", s3_test_packet, download_dir=str(tmp_path)
-    )
+    result = parse_packets(filename, "test-data-bucket", tmp_path)
 
-    assert result == expected_result
+    assert result == ds
     mock_packet_file_to_datasets.assert_called_once()
 
     # Check if file was downloaded
-    real_tmp_file = tmp_path / filename
+    real_tmp_file = tmp_path / filename[0]
     assert real_tmp_file.exists()
 
 
@@ -96,7 +93,7 @@ def test_parse_packet_duplicate(mock_packet_file_to_datasets, s3_test_packet, tm
 
     filenames = [s3_test_packet, s3_test_packet]
 
-    combined = parse_packets(filenames)
+    combined = parse_packets(filenames, "test-data-bucket", tmp_path)
 
     # One entry remains.
     assert isinstance(combined, xr.Dataset)

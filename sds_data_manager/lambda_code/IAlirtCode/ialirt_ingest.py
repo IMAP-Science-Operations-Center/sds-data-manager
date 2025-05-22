@@ -20,38 +20,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def parse_packet(filename: str, bucket: str, key: str, download_dir: Path):
-    """Parse the packet.
-
-    Parameters
-    ----------
-    filename : str
-        The name of the file to be downloaded from S3.
-    bucket : str
-        The name of the S3 bucket.
-    key : str
-        The key of the file in the S3 bucket.
-    download_dir : Path
-        The directory where the file will be downloaded.
-
-    Returns
-    -------
-    datasets_by_apid : xr.Dataset
-        Parsed dataset.
-    """
-    local_path = os.path.join(download_dir, filename)
-
-    s3 = boto3.client("s3")
-    s3.download_file(bucket, key, local_path)
-    logger.info("Downloaded file to %s", local_path)
-
-    xtce = os.path.join(imap_module_directory, "ialirt.xml")
-
-    datasets_by_apid = packet_file_to_datasets(local_path, xtce)
-
-    return datasets_by_apid
-
-
 def query_filenames(bucket: str, region: str, now: datetime):
     """Query the packets in the s3 bucket.
 
@@ -105,7 +73,7 @@ def query_filenames(bucket: str, region: str, now: datetime):
     return filenames
 
 
-def parse_packets(filenames):
+def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     """Get packets into datasets and combine.
 
     This function is an event handler for s3 ingest bucket.
@@ -115,21 +83,29 @@ def parse_packets(filenames):
     ----------
     filenames : list
         List of file paths.
+    bucket : str
+        The name of the S3 bucket.
+    download_dir : Path
+        The directory where the file will be downloaded.
+    apid : int
+        The apid of the packet to be processed.
 
     Returns
     -------
     combined : xr.Dataset
         Combined dataset.
     """
+    s3 = boto3.client("s3")
     xtce_ialirt_path = (
         imap_module_directory / "ialirt" / "packet_definitions" / "ialirt.xml"
     )
-    apid = 478
     datasets = []
 
-    for packet_path in filenames:
+    for filename in filenames:
+        local_path = download_dir / Path(filename).name
+        s3.download_file(bucket, filename, str(local_path))
         xarray_data = packet_file_to_datasets(
-            packet_path, xtce_ialirt_path, use_derived_value=False
+            local_path, xtce_ialirt_path, use_derived_value=False
         )[apid]
         datasets.append(xarray_data)
 
