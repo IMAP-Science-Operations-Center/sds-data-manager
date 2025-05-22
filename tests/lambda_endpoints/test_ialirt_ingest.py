@@ -1,42 +1,21 @@
 """Test the I-Alirt ingest lambda function."""
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
+from unittest import mock
 from unittest.mock import patch
 
 import pytest
+from boto3.dynamodb.conditions import Key
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
-    insert_if_not_exists,
+    insert_data,
     lambda_handler,
     parse_packet,
+    process_algorithms,
     query_filenames,
 )
-
-
-@pytest.fixture
-def populate_table(setup_dynamodb):
-    """Populate DynamoDB table."""
-    ingest_table = setup_dynamodb["ingest_table"]
-
-    items = [
-        {
-            "apid": 478,
-            "met": 123,
-            "ingest_time": "2021-01-01T00:00:00Z",
-            "packet_blob": b"binary_data_string",
-        },
-        {
-            "apid": 478,
-            "met": 124,
-            "ingest_time": "2021-02-01T00:00:00Z",
-            "packet_blob": b"binary_data_string",
-        },
-    ]
-    for item in items:
-        ingest_table.put_item(Item=item)
-
-    return items
 
 
 @pytest.fixture
@@ -144,18 +123,94 @@ def test_query_filenames_crossing_hour_boundary(s3_client):
     assert sorted(result) == sorted([first_prefix_key, second_prefix_key])
 
 
-def test_insert_if_not_exists(setup_dynamodb):
-    """Test insert_if_not_exists function."""
-    # Mock event data
+def test_insert_data(setup_dynamodb):
+    """Test insert_data function."""
     algorithm_table = setup_dynamodb["algorithm_table"]
 
-    item = {
-        "met": 123456,
-        "utc": "2025-05-21T14:00:00Z",
-        "ttj2000ns": 759175836184000000,
-        "hit_e_a_side_low_en": 1.0,
-        "hit_e_a_side_med_en": 2.0,
-        "hit_e_a_side_high_en": 3.0,
-    }
+    # Existing item with 'hit' keys
+    algorithm_table.put_item(
+        Item={"apid": 478, "met": 123456, "hit_e_a_side_low_en": Decimal("0.0")}
+    )
 
-    data = insert_if_not_exists(item, algorithm_table)
+    # Existing item with no 'hit' keys
+    algorithm_table.put_item(Item={"apid": 478, "met": 123457, "other_data": 42})
+
+    # Create data for all three cases
+    test_data = [
+        # Will skip.
+        {
+            "apid": 478,
+            "met": 123456,
+            "utc": "2025-05-21T14:00:00Z",
+            "ttj2000ns": 759175836184000000,
+            "hit_e_a_side_med_en": Decimal("2.0"),
+        },
+        # Will update.
+        {
+            "apid": 478,
+            "met": 123457,
+            "utc": "2025-05-21T14:00:01Z",
+            "ttj2000ns": 759175836184000001,
+            "hit_e_a_side_low_en": Decimal("3.0"),
+        },
+        # Will insert.
+        {
+            "apid": 478,
+            "met": 123458,
+            "utc": "2025-05-21T14:00:02Z",
+            "ttj2000ns": 759175836184000002,
+            "hit_e_a_side_low_en": Decimal("5.0"),
+        },
+    ]
+
+    insert_data(test_data, algorithm_table, "hit")
+
+    item1 = algorithm_table.get_item(Key={"apid": 478, "met": 123456})["Item"]
+    item2 = algorithm_table.get_item(Key={"apid": 478, "met": 123457})["Item"]
+    item3 = algorithm_table.get_item(Key={"apid": 478, "met": 123458})["Item"]
+
+    # Not updated
+    assert item1["hit_e_a_side_low_en"] == Decimal("0.0")
+
+    # Existing item with no 'hit' data should be updated
+    assert item2["hit_e_a_side_low_en"] == Decimal("3.0")
+    assert item2["other_data"] == 42  # Original data still there
+
+    # New item should be inserted
+    assert item3["hit_e_a_side_low_en"] == Decimal("5.0")
+
+
+@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_hit")
+@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swe")
+def test_process_algorithms(mock_swe, mock_hit, setup_dynamodb):
+    """Tests process_algorithms function."""
+    algorithm_table = setup_dynamodb["algorithm_table"]
+
+    mock_hit.return_value = [
+        {
+            "apid": 478,
+            "met": 111,
+            "hit_e_a_side_low_en": Decimal("1.0"),
+        }
+    ]
+    mock_swe.return_value = [
+        {
+            "apid": 478,
+            "met": 222,
+            "swe_normalized_counts_quarter_1_esa_0": Decimal("0.123"),
+        }
+    ]
+
+    process_algorithms(combined=None, algorithm_table=algorithm_table)
+
+    response = algorithm_table.query(KeyConditionExpression=Key("apid").eq(478))[
+        "Items"
+    ]
+
+    assert any(
+        item["met"] == 111 and "hit_e_a_side_low_en" in item for item in response
+    )
+    assert any(
+        item["met"] == 222 and "swe_normalized_counts_quarter_1_esa_0" in item
+        for item in response
+    )

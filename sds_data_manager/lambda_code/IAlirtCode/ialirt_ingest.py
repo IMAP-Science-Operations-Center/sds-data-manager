@@ -137,7 +137,16 @@ def parse_packets(filenames):
     return combined
 
 
-def process_algorithms(combined, algorithm_table):
+def process_algorithms(combined: xr.Dataset, algorithm_table):
+    """Process the algorithms and insert data, as needed.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data.
+    algorithm_table : dynamodb.Table
+        The DynamoDB table to insert or update the data.
+    """
     processors = [
         ("hit", process_hit),
         ("swe", process_swe),
@@ -148,6 +157,17 @@ def process_algorithms(combined, algorithm_table):
 
 
 def insert_data(data: list[dict], algorithm_table, product_prefix: str):
+    """Insert or update database row, depending on content of item.
+
+    Parameters
+    ----------
+    data : list[dict]
+        Data product produced from processing respectively instrument.
+    algorithm_table : dynamodb.Table
+        The DynamoDB table to insert or update the data.
+    product_prefix : str
+        The prefix for the product name.
+    """
     apid = data[0]["apid"]
     mets = [item["met"] for item in data]
     min_met = min(mets)
@@ -168,21 +188,28 @@ def insert_data(data: list[dict], algorithm_table, product_prefix: str):
         existing = existing_items.get(met)
 
         if existing:
-            if any(k.startswith(product_prefix) for k in existing.keys()):
+            if any(key.startswith(product_prefix) for key in existing.keys()):
                 logger.info(
-                    f"{product_prefix.upper()} data already exists for met={met}. Skipping."
+                    f"{product_prefix.upper()} data already exists for met={met}."
                 )
                 continue
 
             update_expr = "SET " + ", ".join(
-                f"{k} = :{k}" for k in raw if k not in {"apid", "met"}
+                f"{field} = :{field}"
+                for field in raw
+                if field not in {"apid", "met", "utc", "ttj2000ns"}
             )
-            expr_vals = {f":{k}": v for k, v in raw.items() if k not in {"apid", "met"}}
+
+            expression_values = {
+                f":{field}": value
+                for field, value in raw.items()
+                if field not in {"apid", "met", "utc", "ttj2000ns"}
+            }
 
             algorithm_table.update_item(
                 Key=key,
                 UpdateExpression=update_expr,
-                ExpressionAttributeValues=expr_vals,
+                ExpressionAttributeValues=expression_values,
             )
             logger.info(f"Updated met={met} with {product_prefix.upper()} data.")
         else:

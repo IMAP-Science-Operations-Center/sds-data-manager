@@ -54,6 +54,5 @@ def setup_dynamodb():
         )
 
         yield {
-            "ingest_table": ingest_table,
             "algorithm_table": algorithm_table,
         }
