@@ -489,31 +489,51 @@ def s3_processing_event(session, events):
             start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
             end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
         elif isinstance(file_obj, ScienceFilePath):
-            # Set the start and end dates for the upstream event message
-            # TODO: if ENA or glows instrument, then get repoint number from filename
-            # and set start date and end date differently.
+            # Set the start and end dates for the upstream event message.
             if file_obj.repointing is not None and file_obj.instrument in [
                 "glows",
                 "hi",
                 "lo",
                 "ultra",
             ]:
-                # Read in latest repoint file.
+                # Find latest repoint file.
                 latest_repoint_file = get_latest_repoint_file(
-                    end_date=file_obj.start_date,
+                    end_date=datetime.strptime(file_obj.start_date, "%Y%m%d"),
                 )
-                download_path = imap_data_access.download(
+                logger.info(
+                    "Latest repoint file used to calculate date range"
+                    f"for ENA and GLOWS instruments - {latest_repoint_file}"
+                )
+                repoint_path = imap_data_access.download(
                     latest_repoint_file,
                 )
                 # Read start and end date of repoint number.
                 repoint_df = pd.read_csv(
-                    download_path,
+                    repoint_path,
                 )
-                print(repoint_df)
-                # Set start date to be floor of repoint_start_utc
-                # Set end date to be ceiling of repoint_end_utc
-                pass
-            start_date = end_date = file_obj.start_date
+
+                # Set start date to be repoint_end_utc of i_pointing
+                # Set end date to be repoint_end_utc of i_pointing + 1.
+                # TODO: will there be a case when i_pointing + 1 is not in the
+                # repoint file? and what to do in that case?
+                start_date = repoint_df.loc[
+                    repoint_df["repoint_id"] == file_obj.repointing, "repoint_start_utc"
+                ].iloc[0]
+                start_date = datetime.strptime(
+                    start_date, "%Y-%m-%d %H:%M:%S.%f"
+                ).strftime("%Y%m%d")
+
+                end_date = repoint_df.loc[
+                    repoint_df["repoint_id"] == file_obj.repointing + 1,
+                    "repoint_end_utc",
+                ].iloc[0]
+                end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S.%f").strftime(
+                    "%Y%m%d"
+                )
+
+            else:
+                start_date = end_date = file_obj.start_date
+
         elif isinstance(file_obj, AncillaryFilePath):
             # Set the start and end dates for the upstream event message
             start_date = file_obj.start_date
