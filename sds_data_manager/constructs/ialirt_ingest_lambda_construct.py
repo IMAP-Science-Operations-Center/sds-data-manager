@@ -9,7 +9,6 @@ from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
 from constructs import Construct
 
 
@@ -128,7 +127,7 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         algorithm_data_table: aws_dynamodb.Table,
         docker_path: str,
-    ) -> lambda_alpha_.PythonFunction:
+    ) -> lambda_.DockerImageFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
             self,
@@ -147,15 +146,13 @@ class IalirtIngestLambda(Construct):
             ],
         )
 
-        lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "s3:GetObject",
-                ],
-                resources=[
-                    f"{ialirt_bucket.bucket_arn}/*",
-                ],
-            )
+        s3_read_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:ListBucket", "s3:GetObject"],
+            resources=[
+                ialirt_bucket.bucket_arn,
+                f"{ialirt_bucket.bucket_arn}/*",
+            ],
         )
 
         ialirt_ingest_lambda = lambda_.DockerImageFunction(
@@ -166,11 +163,12 @@ class IalirtIngestLambda(Construct):
                 file="IAlirtCode/Dockerfile.ingest",
             ),
             function_name="ialirt-ingest",
-            timeout=cdk.Duration.minutes(1),
+            timeout=cdk.Duration.minutes(4),
             memory_size=1000,
             role=lambda_role,
             vpc=self.vpc,
-            security_groups=[self.efs_security_group],
+            # TODO: figure out how to add this in and have access to s3.
+            # security_groups=[self.efs_security_group],
             filesystem=lambda_.FileSystem.from_efs_access_point(
                 self.efs_access_point, "/mnt/data"
             ),
@@ -180,7 +178,7 @@ class IalirtIngestLambda(Construct):
                 "EFS_SPICE_MOUNT_PATH": "/mnt/data",
             },
         )
-
+        ialirt_ingest_lambda.add_to_role_policy(s3_read_policy)
         algorithm_data_table.grant_read_write_data(ialirt_ingest_lambda)
 
         # The resource is deleted when the stack is deleted.
@@ -191,7 +189,7 @@ class IalirtIngestLambda(Construct):
     def create_event_rule(
         self,
         ialirt_bucket: aws_s3.Bucket,
-        ialirt_ingest_lambda: lambda_alpha_.PythonFunction,
+        ialirt_ingest_lambda: lambda_.DockerImageFunction,
     ) -> None:
         """Create the event rule to trigger Lambda on S3 object creation."""
         ialirt_data_arrival_rule = events.Rule(
