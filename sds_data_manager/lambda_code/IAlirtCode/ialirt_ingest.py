@@ -53,6 +53,10 @@ def query_filenames(bucket: str, region: str, now: datetime):
     first_prefix = five_minutes_ago.strftime("packets/iois_1_packets_%Y_%j_%H_")
     second_prefix = now.strftime("packets/iois_1_packets_%Y_%j_%H_")
 
+    # Hard-coded for test only.
+    first_prefix = "packets / iois_1_packets_2025_181_15_"
+    second_prefix = "packets / iois_1_packets_2025_181_15_"
+
     first_response = s3_client.list_objects_v2(Bucket=bucket, Prefix=first_prefix)
     objects = first_response.get("Contents", [])
 
