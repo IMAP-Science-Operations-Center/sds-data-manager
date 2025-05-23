@@ -76,6 +76,14 @@ glows, ancillary, l3b-archive, glows, l3d, solar-hist, HARD, DOWNSTREAM
 
 # <---- GLOWS to ENA Dependencies ---->
 
+# Spice kernels for all
+science_frames, spice, historical, glows, l3b, all, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
+
 # Low
 glows, l3d, solar-hist, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, p-dens, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
@@ -318,6 +326,11 @@ swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, proton-sw, HARD, DO
 swapi, ancillary, energy-gf-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
@@ -326,6 +339,10 @@ swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, pui-he, HARD, DOWNS
 swapi, ancillary, energy-gf-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3b, combined, HARD, DOWNSTREAM
 swapi, ancillary, efficiency-lut, swapi, l3b, combined, HARD, DOWNSTREAM
@@ -350,12 +367,18 @@ swe, l2, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, ancillary, config, swe, l3, sci, HARD, DOWNSTREAM
 swapi, l3a, proton-sw, swe, l3, sci, HARD, DOWNSTREAM
 mag, l1d, norm-mago, swe, l3, sci, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- ULTRA Dependencies ---->
 
 ultra, l0, raw, ultra, l1a, all, HARD, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, ultra, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l3, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l3, all, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l3, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Ultra-45 products
 ultra, l1a, 45sensor-de, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
