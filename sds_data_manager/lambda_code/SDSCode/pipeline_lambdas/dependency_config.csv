@@ -62,6 +62,8 @@ glows, ancillary, pipeline-settings-l3bcde, glows, l3b, ion-rate-profile, HARD, 
 glows, ancillary, uv-anisotropy-1CR, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, WawHelioIonMP, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, bad-days-list, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
+science_frames, spice, historical, glows, l3b, ion-rate-profile, HARD_NO_TRIGGER, DOWNSTREAM
+
 
 glows, l3c, sw-profile, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings-l3bcde, glows, l3d, solar-hist, HARD, DOWNSTREAM
@@ -75,14 +77,6 @@ glows, ancillary, l3b-archive, glows, l3d, solar-hist, HARD, DOWNSTREAM
 
 # <---- GLOWS to ENA Dependencies ---->
 
-# Spice kernels for all
-science_frames, spice, historical, glows, l3b, all, HARD_NO_TRIGGER, DOWNSTREAM
-science_frames, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
-ephemeris_reconstructed, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
-leapseconds, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, glows, l3e, all, HARD_NO_TRIGGER, DOWNSTREAM
-
 # Low
 glows, l3d, solar-hist, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, p-dens, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
@@ -95,6 +89,11 @@ glows, l3d, speed, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+science_frames, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Hi-45
 glows, l3d, solar-hist, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
@@ -107,6 +106,11 @@ glows, l3d, speed, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+science_frames, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Hi-90
 glows, l3d, solar-hist, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
@@ -119,6 +123,11 @@ glows, l3d, speed, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+science_frames, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Ultra
 glows, l3d, solar-hist, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
@@ -132,6 +141,11 @@ glows, l3d, speed, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+science_frames, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- HI Dependencies ---->
 
@@ -336,6 +350,7 @@ attitude_history, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOW
 leapseconds, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
@@ -381,9 +396,6 @@ spacecraft_clock, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, l0, raw, ultra, l1a, all, HARD, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, ultra, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
-ephemeris_reconstructed, spice, historical, ultra, l3, all, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, ultra, l3, all, HARD_NO_TRIGGER, DOWNSTREAM
-leapseconds, spice, historical, ultra, l3, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Ultra-45 products
 ultra, l1a, 45sensor-de, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
@@ -491,3 +503,6 @@ ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD, 
 # Ultra L3 survival probability map Dependencies:
 glows, l3e, ulc-sp, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD, DOWNSTREAM
 ultra, l2, u90-ena-h-sf-full-hae-nside8-3mo, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD_NO_TRIGGER, DOWNSTREAM
