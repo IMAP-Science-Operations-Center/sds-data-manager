@@ -348,7 +348,7 @@ swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, proton-sw, HARD, DO
 ephemeris_reconstructed, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
-imap_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+#imap_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 # science_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 
