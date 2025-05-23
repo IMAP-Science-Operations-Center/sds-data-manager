@@ -167,6 +167,7 @@ def insert_data(data: list[dict], algorithm_table, product_prefix: str):
         met = raw["met"]
         key = {"apid": apid, "met": met}
         existing = existing_items.get(met)
+        raw["insert_time"] = datetime.now(timezone.utc).isoformat()
 
         if existing:
             if any(key.startswith(product_prefix) for key in existing.keys()):
