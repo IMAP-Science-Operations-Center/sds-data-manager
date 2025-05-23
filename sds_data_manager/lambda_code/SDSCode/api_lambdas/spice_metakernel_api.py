@@ -173,10 +173,7 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
-    logger.info(f"Event: {event}")
-    logger.info(f"Context: {context}")
-
-    logger.info("Received event: " + json.dumps(event, indent=2))
+    logger.info("Metakernel event: " + json.dumps(event, indent=2))
 
     # Gather the query parameters
     query_params = event["queryStringParameters"]
@@ -201,6 +198,11 @@ def lambda_handler(event, context):
 
     if list_files.lower() == "true":
         metakernel_files = metakernel.return_spice_files_in_order(detailed=False)
+        if not metakernel_files:
+            return {
+                "statusCode": 404,  # Not Found
+                "body": "No files found.",
+            }
         output = json.dumps([Path(f).name for f in metakernel_files])
     else:
         output = metakernel.return_tm_file(base_path=spice_directory)

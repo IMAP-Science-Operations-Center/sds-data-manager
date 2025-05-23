@@ -182,133 +182,6 @@ def test_lambda_handler_ancillary_event(session):
         )
 
 
-def test_lambda_handler_mag_l1c_case(session):
-    """Tests ``lambda_handler` for unique mac l1c case."""
-    # Mock the situation where mag l1b files trigger batch starter back to back.
-    # We should expect the second job mag l1c to be submitted with a version bump and
-    # both mag l1b files.
-    session.add(
-        ScienceFiles(
-            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v001.cdf",
-            instrument="mag",
-            data_level="l1b",
-            descriptor="norm-mago",
-            start_date=datetime(2024, 1, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        )
-    )
-    session.commit()
-    events = {
-        "Records": [
-            {
-                "body": '{"detail": '
-                '{"object": {"key": "imap_mag_l1b_norm-mago_20240101_v001.cdf"}}'
-                "}"
-            }
-        ]
-    }
-    context = {"context": "sample_context"}
-    expected_processing_input = ProcessingInputCollection(
-        ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
-    )
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
-        lambda_handler(events, context)
-        # Verify the function was called
-        mock_batch_client.submit_job.assert_called_with(
-            jobName="mag-l1c-norm-mago-job-1",
-            jobQueue="ProcessingJobQueue",
-            jobDefinition="ProcessingJob-mag",
-            containerOverrides={
-                "command": [
-                    "--instrument",
-                    "mag",
-                    "--data-level",
-                    "l1c",
-                    "--descriptor",
-                    "norm-mago",
-                    "--start-date",
-                    "20240101",
-                    "--version",
-                    "v001",
-                    "--dependency",
-                    expected_processing_input.serialize(),
-                    "--upload-to-sdc",
-                ]
-            },
-        )
-
-        events = {
-            "Records": [
-                {
-                    "body": '{"detail": '
-                    '{"object": {"key": "imap_mag_l1b_burst-mago_20240101_v001.cdf"}}'
-                    "}"
-                }
-            ]
-        }
-        session.add_all(
-            [
-                ScienceFiles(
-                    file_path="/path/to/imap_mag_l1b_burst-mago_20240101_v001.cdf",
-                    instrument="mag",
-                    data_level="l1b",
-                    descriptor="burst-mago",
-                    start_date=datetime(2024, 1, 1),
-                    version="v001",
-                    extension="cdf",
-                    ingestion_date=datetime.strptime(
-                        "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-                    ),
-                ),
-                ScienceFiles(
-                    file_path="/path/to/imap_mag_l1b_burst-magi_20240101_v003.cdf",
-                    instrument="mag",
-                    data_level="l1b",
-                    descriptor="burst-magi",
-                    start_date=datetime(2024, 1, 1),
-                    version="v003",
-                    extension="cdf",
-                    ingestion_date=datetime.strptime(
-                        "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-                    ),
-                ),
-            ]
-        )
-        session.commit()
-
-        expected_processing_input.add(
-            [ScienceInput("imap_mag_l1b_burst-mago_20240101_v001.cdf")]
-        )
-        lambda_handler(events, context)
-        # Verify the function was called
-        mock_batch_client.submit_job.assert_called_with(
-            jobName="mag-l1c-norm-mago-job-2",
-            jobQueue="ProcessingJobQueue",
-            jobDefinition="ProcessingJob-mag",
-            containerOverrides={
-                "command": [
-                    "--instrument",
-                    "mag",
-                    "--data-level",
-                    "l1c",
-                    "--descriptor",
-                    "norm-mago",
-                    "--start-date",
-                    "20240101",
-                    "--version",
-                    "v002",
-                    "--dependency",
-                    expected_processing_input.serialize(),
-                    "--upload-to-sdc",
-                ]
-            },
-        )
-
-
 def test_lambda_handler_no_dependencies(session):
     """Tests ``lambda_handler`` when there are no dependencies for the file."""
     _populate_file_catalog(session)
@@ -446,6 +319,373 @@ def test_bulk_reprocessing_all_swe(session, caplog):
         lambda_handler(events, context)
     # There should be one job submitted for swe
     assert mock_submit.call_count == 1
+
+
+###### SPECIAL CASE TESTS #######
+def test_idex_l2b(session):
+    """Tests ``lambda_handler` for unique idex l2b case."""
+    # Add 9 idex l1b evt files. Some of these will be used as dependencies for the job.
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path=f"/path/to/imap_idex_l1b_evt_2024020{day}_v001.cdf",
+                instrument="idex",
+                data_level="l1b",
+                descriptor="evt",
+                start_date=datetime(2024, 2, day),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+            for day in range(1, 10)
+        ]
+    )
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path=f"/path/to/imap_idex_{level}_sci-1week_2024020{day}_v001.cdf",
+                instrument="idex",
+                data_level=level,
+                descriptor="sci-1week",
+                start_date=datetime(2024, 2, day),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+            for day, level in zip([2, 9], ["l2b", "l2a"])
+        ]
+    )
+    session.commit()
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_idex_l2a_sci-1week_20240209_v001.cdf"}}'
+                "}"
+            }
+        ]
+    }
+    context = {"context": "sample_context"}
+    expected_processing_input = ProcessingInputCollection(
+        ScienceInput("imap_idex_l2a_sci-1week_20240209_v001.cdf"),
+    )
+    # There will be 6 l1b evt files that are used as dependencies for the job and
+    # None of them should be before the existing l2b file start_date.
+    l1b_files = [f"imap_idex_l1b_evt_2024020{day}_v001.cdf" for day in range(3, 10)]
+    expected_processing_input.add(ScienceInput(*l1b_files))
+
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, context)
+        # Verify the function was called
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="idex-l2b-sci-1week-job-1",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-idex",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "idex",
+                    "--data-level",
+                    "l2b",
+                    "--descriptor",
+                    "sci-1week",
+                    "--start-date",
+                    "20240209",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    expected_processing_input.serialize(),
+                    "--upload-to-sdc",
+                ]
+            },
+        )
+
+
+def test_ultra_l3_map(session, caplog):
+    """Tests ``lambda_handler` for unique ultra l3 map case."""
+    # Add 6 months of glows l3e files and 1 ultra l2 map file. These are the
+    # dependencies for the ultra l3 map job. The cadence for this example is 3 months of
+    # data.
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path=f"/path/to/imap_glows_l3e_ulc-sp_2024{month:02}01_v001.cdf",
+                instrument="glows",
+                data_level="l3e",
+                descriptor="ulc-sp",
+                start_date=datetime(2024, month, 1),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+            for month in range(2, 9)
+        ]
+    )
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path="/path/to/imap_ultra_l2_u90-ena-h-sf-full-hae-nside8-3mo_20240201_v001.cdf",
+                instrument="ultra",
+                data_level="l2",
+                descriptor="u90-ena-h-sf-full-hae-nside8-3mo",
+                start_date=datetime(2024, 2, 1),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+        ]
+    )
+    session.commit()
+    events = {
+        # This event is for the ultra l3 map job. The glows l3e files may come in
+        # groupings. We want to test that only one job is submitted.
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_glows_l3e_ulc-sp_20240201_v001.cdf"}}'
+                "}"
+            },
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_glows_l3e_ulc-sp_20240301_v001.cdf"}}'
+                "}"
+            },
+        ]
+    }
+    context = {"context": "sample_context"}
+    expected_processing_input = ProcessingInputCollection()
+    # There will be 3 glows l3e files (representing 3 months) that are used as
+    # dependencies for the job.
+    # NOTE: in reality, there will be more than 3 glows l3e files.
+    glows_files = [
+        f"imap_glows_l3e_ulc-sp_20240{month}01_v001.cdf" for month in range(2, 6)
+    ]
+    expected_processing_input.add(ScienceInput(*glows_files))
+    expected_processing_input.add(
+        ScienceInput("imap_ultra_l2_u90-ena-h-sf-full-hae-nside8-3mo_20240201_v001.cdf")
+    )
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, context)
+        # Verify the function was called
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="ultra-l3-u90-spx-hsf-sp-full-hae-nside8-3mo-job-1",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-ultra-l3",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "ultra",
+                    "--data-level",
+                    "l3",
+                    "--descriptor",
+                    "u90-spx-hsf-sp-full-hae-nside8-3mo",
+                    "--start-date",
+                    "20240201",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    expected_processing_input.serialize(),
+                    "--upload-to-sdc",
+                ]
+            },
+        )
+        # Assert that only one job is submitted.
+        assert mock_batch_client.submit_job.call_count == 1
+        assert "Already tried to submit job from a GLOWS l3e file." in caplog.text
+
+
+def test_bulk_reprocessing_special_case(session):
+    """Tests ``lambda_handler`` for a special case in bulk reprocessing."""
+    # Add test data to the database for the special case
+    # Add idex l1b evt files. Some of these will be used as dependencies for the job.
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path=f"/path/to/imap_idex_l1b_evt_2024020{day}_v001.cdf",
+                instrument="idex",
+                data_level="l1b",
+                descriptor="evt",
+                start_date=datetime(2024, 2, day),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+            for day in range(1, 3)
+        ]
+    )
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path=f"/path/to/imap_idex_{level}_sci-1week_2024020{day}_v001.cdf",
+                instrument="idex",
+                data_level=level,
+                descriptor="sci-1week",
+                start_date=datetime(2024, 2, day),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+            for day, level in zip([1, 2, 1, 2], ["l2b", "l2b", "l2a", "l2a"])
+        ]
+    )
+    session.commit()
+
+    # Bulk reprocessing event for the special case
+    events = {
+        "queryStringParameters": {
+            "reprocessing": "True",
+            "start_date": "20240201",
+            "end_date": "20240210",
+            "instrument": "idex",
+            "data_level": "l2b",
+            "descriptor": "sci-1week",
+        }
+    }
+    context = {"context": "None"}
+
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, context)
+        # Verify that 2 l2b jobs were reprocessed
+        assert mock_batch_client.submit_job.call_count == 2
+
+
+def test_lambda_handler_mag_l1c_case(session):
+    """Tests ``lambda_handler` for unique mac l1c case."""
+    # Mock the situation where mag l1b files trigger batch starter back to back.
+    # We should expect the second job mag l1c to be submitted with a version bump and
+    # both mag l1b files.
+    session.add(
+        ScienceFiles(
+            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v001.cdf",
+            instrument="mag",
+            data_level="l1b",
+            descriptor="norm-mago",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        )
+    )
+    session.commit()
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_mag_l1b_norm-mago_20240101_v001.cdf"}}'
+                "}"
+            }
+        ]
+    }
+    context = {"context": "sample_context"}
+    expected_processing_input = ProcessingInputCollection(
+        ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
+    )
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, context)
+        # Verify the function was called
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="mag-l1c-norm-mago-job-1",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-mag",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "mag",
+                    "--data-level",
+                    "l1c",
+                    "--descriptor",
+                    "norm-mago",
+                    "--start-date",
+                    "20240101",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    expected_processing_input.serialize(),
+                    "--upload-to-sdc",
+                ]
+            },
+        )
+
+        events = {
+            "Records": [
+                {
+                    "body": '{"detail": '
+                    '{"object": {"key": "imap_mag_l1b_burst-mago_20240101_v001.cdf"}}'
+                    "}"
+                }
+            ]
+        }
+        session.add_all(
+            [
+                ScienceFiles(
+                    file_path="/path/to/imap_mag_l1b_burst-mago_20240101_v001.cdf",
+                    instrument="mag",
+                    data_level="l1b",
+                    descriptor="burst-mago",
+                    start_date=datetime(2024, 1, 1),
+                    version="v001",
+                    extension="cdf",
+                    ingestion_date=datetime.strptime(
+                        "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                    ),
+                ),
+                ScienceFiles(
+                    file_path="/path/to/imap_mag_l1b_burst-magi_20240101_v003.cdf",
+                    instrument="mag",
+                    data_level="l1b",
+                    descriptor="burst-magi",
+                    start_date=datetime(2024, 1, 1),
+                    version="v003",
+                    extension="cdf",
+                    ingestion_date=datetime.strptime(
+                        "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                    ),
+                ),
+            ]
+        )
+        session.commit()
+
+        expected_processing_input.add(
+            [ScienceInput("imap_mag_l1b_burst-mago_20240101_v001.cdf")]
+        )
+        lambda_handler(events, context)
+        # Verify the function was called
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="mag-l1c-norm-mago-job-2",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-mag",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "mag",
+                    "--data-level",
+                    "l1c",
+                    "--descriptor",
+                    "norm-mago",
+                    "--start-date",
+                    "20240101",
+                    "--version",
+                    "v002",
+                    "--dependency",
+                    expected_processing_input.serialize(),
+                    "--upload-to-sdc",
+                ]
+            },
+        )
 
 
 ###### HELPER FUNCTION TESTS #######

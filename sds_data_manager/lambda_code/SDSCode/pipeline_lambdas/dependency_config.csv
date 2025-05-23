@@ -43,7 +43,7 @@ codice, ancillary, tof-lookup, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
 mag, l1d, norm-mago, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 codice, l2, hi-sectored, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 
-# <---- GLOWS Dependencies ---->
+# <---- `GLOWS` Dependencies ---->
 glows, l0, raw, glows, l1a, all, HARD, DOWNSTREAM
 leapseconds, spice, historical, glows, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, glows, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
@@ -58,14 +58,13 @@ glows, ancillary, map-of-extra-helio-bckgrd, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings, glows, l3a, hist, HARD, DOWNSTREAM
 
 glows, l3a, hist, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
-glows, ancillary, pipeline-settings-l3bcd, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, uv-anisotropy-1CR, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, WawHelioIonMP, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, bad-days-list, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 
-glows, l3b, ion-rate-profile, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, l3c, sw-profile, glows, l3d, solar-hist, HARD, DOWNSTREAM
-glows, ancillary, pipeline-settings-l3bcd, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, plasma-speed-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, proton-density-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
 glows, ancillary, uv-anisotropy-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
@@ -95,6 +94,7 @@ glows, l3d, phion, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, speed, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
 
 # Hi-45
 glows, l3d, solar-hist, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
@@ -106,6 +106,7 @@ glows, l3d, phion, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, l3d, speed, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
 
 # Hi-90
 glows, l3d, solar-hist, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
@@ -117,6 +118,7 @@ glows, l3d, phion, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, l3d, speed, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
 
 # Ultra
 glows, l3d, solar-hist, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
@@ -129,6 +131,7 @@ glows, l3d, phion, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
 glows, l3d, speed, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
 glows, l3d, uv-anis, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
 glows, l3d, e-dens, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
 
 # <---- HI Dependencies ---->
 
@@ -234,7 +237,9 @@ attitude_history, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 
 idex, l1b, sci-1week, idex, l2a, sci-1week, HARD, DOWNSTREAM
 idex, l2a, sci-1week, idex, l2b, sci-1week, HARD, DOWNSTREAM
-idex, l1b, evt, idex, l2b, sci-1week, SOFT_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, idex, l2b, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, idex, l2b, all, HARD_NO_TRIGGER, DOWNSTREAM
+idex, l1b, evt, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 idex, l2b, sci-1week, idex, l2c, sci-1week, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
@@ -481,3 +486,8 @@ ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, 
 ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
 ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
 ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+
+
+# Ultra L3 survival probability map Dependencies:
+glows, l3e, ulc-sp, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD, DOWNSTREAM
+ultra, l2, u90-ena-h-sf-full-hae-nside8-3mo, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD, DOWNSTREAM

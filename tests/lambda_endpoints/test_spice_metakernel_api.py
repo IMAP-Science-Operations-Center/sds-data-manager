@@ -257,6 +257,21 @@ def test_metakernel_filtered_file_types(session):
     assert len(json.loads(result["body"])) == 2
     assert json.loads(result["body"])[0] == "naif0012.tls"
 
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 1,
+                "end_time": 100,
+                "spice_path": "",
+                "list_files": "True",
+                "file_types": "ephemeris_reconstructed",
+            }
+        },
+        None,
+    )
+    assert result["statusCode"] == 404
+    assert result["body"] == "No files found."
+
 
 def test_metakernel_string_input(session):
     """Test that string input is allowed, and is converted to a datetime object."""

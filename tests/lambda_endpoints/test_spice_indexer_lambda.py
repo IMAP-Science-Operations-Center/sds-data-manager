@@ -4,6 +4,7 @@ import json
 import os
 from datetime import datetime
 
+import pytest
 import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy import select
@@ -206,3 +207,21 @@ def test_send_spice_event(events_client):
     spice_obj = SPICEFilePath(s3_key)
     result = spice_indexer.send_spice_event(spice_obj, s3_key)
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+    # Test that download fails if file doesn't exist
+    s3_key = "imap/spice/ck/imap_2027_118_2027_120_001.ah.bc"
+    event = {
+        "detail-type": "Object Created",
+        "source": "aws.s3",
+        "time": datetime.now().isoformat(),
+        "detail": {
+            "version": "0",
+            "bucket": {"name": "test-data-bucket"},
+            "object": {
+                "key": (s3_key),
+                "reason": "PutObject",
+            },
+        },
+    }
+    with pytest.raises(ValueError, match="Error downloading file"):
+        spice_indexer.lambda_handler(event, None)

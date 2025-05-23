@@ -336,6 +336,7 @@ class DependencyConfig:
                                 "data_source": node[0],
                                 "data_type": node[1],
                                 "descriptor": node[2],
+                                "relationship": relationship,
                             }
                             for node in child_node
                         ]
@@ -600,7 +601,6 @@ def get_upstream_dependency_inputs(
         # If spin is a dependency, query spin table for given date range
         has_spin_dep = any(dep["data_source"] == "spin" for dep in dependencies)
         if has_spin_dep:
-            logger.info("Looking for spin files")
             spin_files = get_spin_files(session, start_date, end_date)
             if not spin_files:
                 logger.info(f"No spin files found for {start_date} to {end_date}")
@@ -661,7 +661,7 @@ def get_upstream_dependency_inputs(
             )
             if metakernel_response["statusCode"] != 200:
                 logger.info(
-                    f"Error querying metakernel lambda: {metakernel_response['body']}"
+                    f"Metakernel lambda raised error: {metakernel_response['body']}"
                 )
                 return None
             metakernel_files = json.loads(metakernel_response["body"])
@@ -683,10 +683,16 @@ def get_upstream_dependency_inputs(
 
             dep_string = f"{dep=}\n{start_date=}\n{end_date=}"
 
-            logger.info(f"Searching for files matching dep={dep_string}")
+            logger.info(
+                "Searching for upstream dependencies with dependency string: "
+                f"{dep_string}"
+            )
 
             records = get_files(session, dep, start_date, end_date)
-            if not records and relationship == Relationship.HARD:
+            if not records and relationship in [
+                Relationship.HARD,
+                Relationship.HARD_NO_TRIGGER,
+            ]:
                 logger.info(f"No records found for dependency: {dep_string}")
                 return None
 
@@ -694,12 +700,15 @@ def get_upstream_dependency_inputs(
                 continue
 
             filenames = [basename(record.file_path) for record in records]
-            logger.info(f"Found filenames: {filenames}. Adding to collection.")
 
             # Create a processingInput instance and add it to the collection
             if dep["data_type"] == DataType.ANCILLARY:
+                logger.info(
+                    f"Found ancillary files: {filenames}. Adding to collection."
+                )
                 dependency_inputs.add(processing_input.AncillaryInput(*filenames))
             else:
+                logger.info(f"Found science files: {filenames}. Adding to collection.")
                 dependency_inputs.add(processing_input.ScienceInput(*filenames))
 
     return dependency_inputs
@@ -884,8 +893,8 @@ def get_jobs(
 
     """
     logger.info(
-        f"{data_source=}, {data_type=}, {descriptor=}, {dependency_type=},"
-        f" {relationship=}"
+        f"Dependency Event: {data_source=}, {data_type=}, {descriptor=},"
+        f" {dependency_type=}, {relationship=}"
     )
 
     dependencies = get_dependencies(
@@ -914,6 +923,11 @@ def get_jobs(
         start_date=start_date,
         end_date=end_date,
     )
+    if upstream_dependencies_output is None:
+        logger.info(
+            f"No dependencies found for {start_date=} - {end_date=}: {dependencies}"
+        )
+        return None
 
-    logger.info(f"Found dependencies: {dependencies}.")
+    logger.info(f"Dependencies found for {start_date=} - {end_date=}: {dependencies}")
     return upstream_dependencies_output

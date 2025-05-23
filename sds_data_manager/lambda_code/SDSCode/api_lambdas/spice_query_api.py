@@ -28,10 +28,7 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
-    logger.info(f"Event: {event}")
-    logger.info(f"Context: {context}")
-
-    logger.info("Received event: " + json.dumps(event, indent=2))
+    logger.info("SPICE Query Event: " + json.dumps(event, indent=2))
 
     # add session, pick model like in indexer and add query to filter_as
     query_params = event["queryStringParameters"]
