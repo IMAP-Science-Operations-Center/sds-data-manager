@@ -32,6 +32,8 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
     CadenceDays,
+    calculate_repoint_date_range,
+    determine_date_range,
     determine_job_version,
     lambda_handler,
     upload_dependency_file,
@@ -1758,6 +1760,20 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
         lambda_handler(events, None)
         # should call twice, one for Hi all l1a job and one for l1b hk job.
         assert mock_batch_client.submit_job.call_count == 2
+
+    filename = "imap_hi_l0_raw_20260926-repoint00002_v001.pkts"
+    file_obj = imap_data_access.ScienceFilePath(filename)
+
+    date_range = determine_date_range(file_obj)
+    assert date_range == ("20260926", "20260927")
+
+    repoint_date_range = calculate_repoint_date_range(file_obj)
+    assert repoint_date_range == ("20260926", "20260927")
+
+    filename = "imap_swe_l0_raw_20260926_v001.pkts"
+    file_obj = imap_data_access.ScienceFilePath(filename)
+    non_repoint_date_range = determine_date_range(file_obj)
+    assert non_repoint_date_range == ("20260926", "20260926")
 
 
 def test_lambda_skip_processing_due_to_crid_check(session, caplog):
