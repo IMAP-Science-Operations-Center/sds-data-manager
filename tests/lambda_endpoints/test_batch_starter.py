@@ -5,11 +5,14 @@ import logging
 from datetime import datetime
 from unittest.mock import Mock, patch
 
+import imap_data_access
+import pandas as pd
 import pytest
 from imap_data_access.processing_input import (
     AncillaryInput,
     ProcessingInputCollection,
     ScienceInput,
+    SPICEInput,
 )
 from sqlalchemy.exc import IntegrityError
 
@@ -25,6 +28,8 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     dependency,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
+    calculate_repoint_date_range,
+    determine_date_range,
     determine_job_version,
     lambda_handler,
 )
@@ -303,13 +308,15 @@ def test_bulk_reprocessing_all(session, caplog):
 
 def test_bulk_reprocessing_all_swe(session, caplog):
     """Tests ``lambda_handler`` when there is bulk reprocessing for all instruments."""
-    _populate_file_catalog(session)
     # leave instrument, data_level and descriptor blank
+    _populate_file_catalog(session)
     events = {
         "queryStringParameters": {
             "reprocessing": "True",
             "start_date": "20230101",
             "end_date": "20260101",
+            "data_level": "l1a",
+            "descriptor": "sci",
             "instrument": "swe",
         }
     }
@@ -324,15 +331,16 @@ def test_bulk_reprocessing_all_swe(session, caplog):
 ###### SPECIAL CASE TESTS #######
 def test_idex_l2b(session):
     """Tests ``lambda_handler` for unique idex l2b case."""
+    _populate_file_catalog(session)
     # Add 9 idex l1b evt files. Some of these will be used as dependencies for the job.
     session.add_all(
         [
             ScienceFiles(
-                file_path=f"/path/to/imap_idex_l1b_evt_2024020{day}_v001.cdf",
+                file_path=f"/path/to/imap_idex_l1b_evt_2023020{day}_v001.cdf",
                 instrument="idex",
                 data_level="l1b",
                 descriptor="evt",
-                start_date=datetime(2024, 2, day),
+                start_date=datetime(2023, 2, day),
                 version="v001",
                 extension="cdf",
                 ingestion_date=datetime.strptime(
@@ -345,11 +353,11 @@ def test_idex_l2b(session):
     session.add_all(
         [
             ScienceFiles(
-                file_path=f"/path/to/imap_idex_{level}_sci-1week_2024020{day}_v001.cdf",
+                file_path=f"/path/to/imap_idex_{level}_sci-1week_2023020{day}_v001.cdf",
                 instrument="idex",
                 data_level=level,
                 descriptor="sci-1week",
-                start_date=datetime(2024, 2, day),
+                start_date=datetime(2023, 2, day),
                 version="v001",
                 extension="cdf",
                 ingestion_date=datetime.strptime(
@@ -364,18 +372,19 @@ def test_idex_l2b(session):
         "Records": [
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_idex_l2a_sci-1week_20240209_v001.cdf"}}'
+                '{"object": {"key": "imap_idex_l2a_sci-1week_20230209_v001.cdf"}}'
                 "}"
             }
         ]
     }
     context = {"context": "sample_context"}
     expected_processing_input = ProcessingInputCollection(
-        ScienceInput("imap_idex_l2a_sci-1week_20240209_v001.cdf"),
+        SPICEInput("naif0012.tls", "imap_sclk_0000.tsc"),
+        ScienceInput("imap_idex_l2a_sci-1week_20230209_v001.cdf"),
     )
     # There will be 6 l1b evt files that are used as dependencies for the job and
     # None of them should be before the existing l2b file start_date.
-    l1b_files = [f"imap_idex_l1b_evt_2024020{day}_v001.cdf" for day in range(3, 10)]
+    l1b_files = [f"imap_idex_l1b_evt_2023020{day}_v001.cdf" for day in range(3, 10)]
     expected_processing_input.add(ScienceInput(*l1b_files))
 
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
@@ -394,7 +403,7 @@ def test_idex_l2b(session):
                     "--descriptor",
                     "sci-1week",
                     "--start-date",
-                    "20240209",
+                    "20230209",
                     "--version",
                     "v001",
                     "--dependency",
@@ -506,6 +515,7 @@ def test_bulk_reprocessing_special_case(session):
     """Tests ``lambda_handler`` for a special case in bulk reprocessing."""
     # Add test data to the database for the special case
     # Add idex l1b evt files. Some of these will be used as dependencies for the job.
+    _populate_file_catalog(session)
     session.add_all(
         [
             ScienceFiles(
@@ -1021,3 +1031,129 @@ def test_spice_event(session, s3_client):
                 ]
             },
         )
+
+
+@patch.object(imap_data_access, "download")
+def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
+    """Test that the repoint date range is correct."""
+    filepath = "imap/hi/l0/2026/09/imap_hi_l0_raw_20260926-repoint00002_v001.pkts"
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=filepath,
+        Body=b"test",
+    )
+    repoint_df = pd.DataFrame(
+        {
+            "repoint_start_sec_sclk": [528026403, 528112803, 528199203],
+            "repoint_start_subsec_sclk": [0, 0, 0],
+            "repoint_end_sec_sclk": [528028443, 528114843, 528201243],
+            "repoint_end_subsec_sclk": [0, 0, 0],
+            "repoint_start_utc": [
+                "2026-09-25 10:00:00.000",
+                "2026-09-26 10:00:00.000",
+                "2026-09-27 10:00:00.000",
+            ],
+            "repoint_end_utc": [
+                "2026-09-25 10:00:00.000",
+                "2026-09-26 10:00:00.000",
+                "2026-09-27 10:00:00.000",
+            ],
+            "repoint_id": [1, 2, 3],
+        }
+    )
+    # Write this repoint data to s3 file
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key="imap/spice/repoint/imap_2026_269_02.repoint.csv",
+        Body=repoint_df.to_csv(index=False).encode("utf-8"),
+    )
+    # Mock download to return return the test file path
+    repoint_file = tmp_path / "imap_2026_269_02.repoint.csv"
+    repoint_df.to_csv(repoint_file, index=False)
+    mock_download.return_value = repoint_file
+
+    # Write data to the database that batch starter can query
+    # for dependencies
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path=filepath,
+                instrument="hi",
+                data_level="l0",
+                descriptor="raw",
+                start_date=datetime(2026, 9, 26),
+                version="v001",
+                extension="pkts",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+            # Add leapseconds and sclk files to the database
+            SPICEFiles(
+                file_name="naif0012.tls",
+                ingestion_date=datetime.now(),
+                file_root="naif.tls",
+                kernel_type="leapseconds",
+                min_date_j2000=315576066.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[315576066, 4575787269]],
+                min_date_datetime=datetime(2010, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=2,
+            ),
+            SPICEFiles(
+                file_name="imap_sclk_0001.tsc",
+                ingestion_date=datetime.now(),
+                file_root="imap_sclk_0001.tsc",
+                kernel_type="spacecraft_clock",
+                min_date_j2000=315576066.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[315576066, 4575787269]],
+                min_date_datetime=datetime(2010, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=2,
+            ),
+        ]
+    )
+    session.commit()
+
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap/hi/l0/2026/09/'
+                'imap_hi_l0_raw_20260926-repoint00002_v001.pkts"}}'
+                "}"
+            }
+        ]
+    }
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, None)
+        # should call twice, one for Hi all l1a job and one for l1b hk job.
+        assert mock_batch_client.submit_job.call_count == 2
+
+    filename = "imap_hi_l0_raw_20260926-repoint00002_v001.pkts"
+    file_obj = imap_data_access.ScienceFilePath(filename)
+
+    date_range = determine_date_range(file_obj)
+    assert date_range == ("20260926", "20260927")
+
+    repoint_date_range = calculate_repoint_date_range(file_obj)
+    assert repoint_date_range == ("20260926", "20260927")
+
+    filename = "imap_swe_l0_raw_20260926_v001.pkts"
+    file_obj = imap_data_access.ScienceFilePath(filename)
+    non_repoint_date_range = determine_date_range(file_obj)
+    assert non_repoint_date_range == ("20260926", "20260926")

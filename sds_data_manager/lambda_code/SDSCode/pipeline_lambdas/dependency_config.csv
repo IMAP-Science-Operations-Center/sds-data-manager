@@ -224,13 +224,15 @@ spacecraft_clock, spice, historical, idex, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 idex, l1a, sci-1week, idex, l1b, sci-1week, HARD, DOWNSTREAM
 spin, spin, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
+leapseconds, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 attitude_history, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 
 idex, l1b, sci-1week, idex, l2a, sci-1week, HARD, DOWNSTREAM
 idex, l2a, sci-1week, idex, l2b, sci-1week, HARD, DOWNSTREAM
-leapseconds, spice, historical, idex, l2b, all, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, idex, l2b, all, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 idex, l1b, evt, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 idex, l2b, sci-1week, idex, l2c, sci-1week, HARD, DOWNSTREAM
 
@@ -300,7 +302,7 @@ leapseconds, spice, historical, swapi, l1, hk, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l1, hk, HARD_NO_TRIGGER, DOWNSTREAM
 
 swapi, l0, raw, swapi, l1, sci, HARD, DOWNSTREAM
-swapi, l1, hk, swapi, l1, sci, HARD, DOWNSTREAM
+swapi, l1b, hk, swapi, l1, sci, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l1, sci, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l1, sci, HARD_NO_TRIGGER, DOWNSTREAM
 
