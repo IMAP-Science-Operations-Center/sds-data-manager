@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 import boto3
 import imap_data_access
-import pandas as pd
 from imap_data_access import (
     AncillaryFilePath,
     ScienceFilePath,
@@ -22,7 +21,9 @@ from sqlalchemy.exc import IntegrityError
 from ..database import database as db
 from ..database import models
 from . import dependency
-from .dependency import DependencyConfig, get_jobs, get_latest_repoint_file
+from .dependency import DependencyConfig, get_jobs
+
+# import dependency
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -442,96 +443,6 @@ def submit_all_jobs(session, job_node, start_date, end_date, filter_dependencies
         )
 
 
-def calculate_repoint_date_range(file_obj):
-    """Calculate date range using data from latest repointing file.
-
-    Parameters
-    ----------
-    file_obj : ScienceFilePath
-        The file object for which to calculate the date range.
-
-    Returns
-    -------
-    tuple
-        A tuple containing the start date and end date in the format YYYYMMDD.
-    """
-    latest_repoint_file = get_latest_repoint_file(
-        end_date=datetime.datetime.strptime(file_obj.start_date, "%Y%m%d"),
-    )
-    logger.info(
-        "Latest repoint file used to calculate date range"
-        f"for ENA and GLOWS instruments - {latest_repoint_file}"
-    )
-    repoint_path = imap_data_access.download(latest_repoint_file)
-    repoint_df = pd.read_csv(repoint_path)
-
-    # Set start date to be repoint_end_utc of i_pointing
-    # Set end date to be repoint_end_utc of i_pointing + 1.
-    # TODO: will there be a case when i_pointing + 1 is not in the
-    # repoint file? and what to do in that case?
-    start_date = repoint_df.loc[
-        repoint_df["repoint_id"] == file_obj.repointing, "repoint_start_utc"
-    ].iloc[0]
-    start_date = datetime.datetime.strptime(
-        start_date, "%Y-%m-%d %H:%M:%S.%f"
-    ).strftime("%Y%m%d")
-    end_date = repoint_df.loc[
-        repoint_df["repoint_id"] == file_obj.repointing + 1, "repoint_end_utc"
-    ].iloc[0]
-    end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S.%f").strftime(
-        "%Y%m%d"
-    )
-    return start_date, end_date
-
-
-def determine_date_range(file_obj):
-    """Determine the start and end dates based on the file type.
-
-    This date range is used to query upstream dependencies for the file.
-
-    Parameters
-    ----------
-    file_obj : SPICEFilePath, ScienceFilePath, or AncillaryFilePath
-        The file object for which to determine the date range.
-
-    Returns
-    -------
-    tuple
-        A tuple containing the start date and end date in the format YYYYMMDD.
-    """
-    if isinstance(file_obj, SPICEFilePath):
-        # TODO: fix date range if/when repoint file ingestion event is
-        # passed to batch starter to kickoff HARD or SOFT_TRIGGER downstream jobs.
-        # Convert datetime object to string of format YYYYMMDD
-        start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
-        end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
-    elif isinstance(file_obj, ScienceFilePath):
-        if file_obj.repointing is not None and file_obj.instrument in [
-            "glows",
-            "hi",
-            "lo",
-            "ultra",
-        ]:
-            logger.info(
-                "Using repointing file to calculate date range for"
-                f" {file_obj.instrument}."
-            )
-            start_date, end_date = calculate_repoint_date_range(file_obj)
-        else:
-            start_date = end_date = file_obj.start_date
-    elif isinstance(file_obj, AncillaryFilePath):
-        start_date = file_obj.start_date
-        # Ancillary files can have an end date.
-        # If there is no end date for the ancillary file, then it is implicitly
-        # valid through today.
-        end_date = getattr(file_obj, "end_date", None) or datetime.today().strftime(
-            "%Y%m%d"
-        )
-    else:
-        raise ValueError("Unsupported file type")
-    return start_date, end_date
-
-
 def s3_processing_event(session, events):
     """Process SQS events that were triggered by S3 file arrivals.
 
@@ -550,6 +461,7 @@ def s3_processing_event(session, events):
     # one downstream l3 survival probability map job in this case.
     triggered_from_glows_l3e = False
     for event in events["Records"]:
+        # Event details:
         logger.info("Individual event: " + json.dumps(event, indent=2))
         body = json.loads(event["body"])
 
@@ -568,8 +480,29 @@ def s3_processing_event(session, events):
             else:
                 triggered_from_glows_l3e = True
 
-        start_date, end_date = determine_date_range(file_obj)
-
+        if isinstance(file_obj, SPICEFilePath):
+            # Set the start and end dates for the upstream event message.
+            # TODO: fix date range if/when repoint file ingestion event is
+            # passed to batch starter to kickoff HARD or SOFT_TRIGGER downstream jobs.
+            # Convert datetime object to string of format YYYYMMDD
+            start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
+            end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
+        elif isinstance(file_obj, ScienceFilePath):
+            # Set the start and end dates for the upstream event message
+            # TODO: if ENA or glows instrument, then get repoint number from filename
+            # and set start date and end date differently.
+            start_date = end_date = file_obj.start_date
+        elif isinstance(file_obj, AncillaryFilePath):
+            # Set the start and end dates for the upstream event message
+            start_date = file_obj.start_date
+            # Ancillary files can have an end date.
+            end_date = getattr(file_obj, "end_date", None)
+            # If there is no end date for the ancillary file, then it is implicitly
+            # valid through today.
+            if not end_date:
+                end_date = datetime.today().strftime("%Y%m%d")
+        # Potential jobs are the instruments that depend on the current file,
+        # which are the downstream dependencies.
         potential_jobs = dependency.get_jobs(
             data_source=input_obj.source,
             descriptor=input_obj.descriptor,
