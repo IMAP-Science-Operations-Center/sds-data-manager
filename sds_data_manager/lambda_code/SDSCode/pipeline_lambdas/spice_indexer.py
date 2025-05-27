@@ -240,12 +240,31 @@ def index_spice_file(spice_file: Path):
                     spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][1]),
                 ]
             ]
+        elif spice_metadata["type"] == "pointing_attitude":
+            # Calculate the coverage for pointing attitude files
+            file_coverage_datetime = [
+                [spice_metadata["start_date"], spice_metadata["end_date"]]
+            ]
+            file_coverage_j2000 = [
+                [
+                    spiceypy.datetime2et(spice_metadata["start_date"]),
+                    spiceypy.datetime2et(spice_metadata["end_date"]),
+                ]
+            ]
+            file_coverage_sclk = [
+                [
+                    spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][0]),
+                    spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][1]),
+                ]
+            ]
         else:
             function_arguments = {
                 "idcode": SPACECRAFT_ID,
                 "cover": spiceypy.cell_double(COVERAGE_SPICE_ARRAY_LENGTH),
             }
-            if "attitude" in spice_metadata["type"]:  # Extra arguments needed for ckcov
+
+            if spice_metadata["type"] in ["attitude_history", "attitude_predict"]:
+                # Extra arguments needed for ckcov
                 function_arguments["idcode"] = function_arguments["idcode"] * 1000
                 function_arguments["needav"] = COVERAGE_ANGULAR_VELOCITY_ONLY
                 function_arguments["level"] = COVERAGE_LEVEL
