@@ -240,7 +240,7 @@ def test_lambda_handler_missing_upstream_dependency(session, caplog):
         "Records": [
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_swe_l1b_sci_20000101_v001.cdf"}}'
+                '{"object": {"key": "imap_swe_l1b_sci_20000102_v001.cdf"}}'
                 "}"
             }
         ]
@@ -252,7 +252,7 @@ def test_lambda_handler_missing_upstream_dependency(session, caplog):
             "No records found for dependency: "
             "dep={'data_source': 'swe', 'data_type': 'l1b', 'descriptor': 'sci',"
             " 'relationship': 'HARD'}\nstart_date=datetime.datetime(2000,"
-            " 1, 1, 0, 0)\nend_date=datetime.datetime(2000, 1, 1, 0, 0)"
+            " 1, 2, 0, 0)\nend_date=datetime.datetime(2000, 1, 2, 0, 0)"
         )
         # Verify the info statement was logged.
         assert log_str in caplog.text
@@ -449,7 +449,55 @@ def test_ultra_l3_map(session, caplog):
                 ingestion_date=datetime.strptime(
                     "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
                 ),
-            )
+            ),
+            SPICEFiles(
+                file_name="naif0012.tls",
+                ingestion_date=datetime.strptime(
+                    "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_root="naif.tls",
+                kernel_type="leapseconds",
+                min_date_j2000=0,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[0, 4575787269.183866]],
+                min_date_datetime=datetime.strptime(
+                    "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                max_date_datetime=datetime.strptime(
+                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+                min_date_sclk="1/0000000000:00000",
+                max_date_sclk="1/4285909749:39444",
+                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+                version=12,
+            ),
+            SPICEFiles(
+                file_name="imap_sclk_0000.tsc",
+                ingestion_date=datetime.strptime(
+                    "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_root="imap_sclk_0000.tsc",
+                kernel_type="spacecraft_clock",
+                min_date_j2000=315576066.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[315576066.1839245, 4575787269.183866]],
+                min_date_datetime=datetime.strptime(
+                    "2010-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                max_date_datetime=datetime.strptime(
+                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_intervals_datetime="[[2010-01-01T00:00:00, 2145-01-01T00:00:00]]",
+                min_date_sclk="1/0000000000:00000",
+                max_date_sclk="1/4285909749:39444",
+                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+                version=0,
+            ),
         ]
     )
     session.commit()
@@ -471,6 +519,10 @@ def test_ultra_l3_map(session, caplog):
     }
     context = {"context": "sample_context"}
     expected_processing_input = ProcessingInputCollection()
+
+    spice_files = ["naif0012.tls", "imap_sclk_0000.tsc"]
+    expected_processing_input.add(SPICEInput(*spice_files))
+
     # There will be 3 glows l3e files (representing 3 months) that are used as
     # dependencies for the job.
     # NOTE: in reality, there will be more than 3 glows l3e files.
