@@ -148,11 +148,6 @@ def test_file_name_query(session, expected_ck_response):
     returned_query = spice_query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
-    print()
-    print("returned", returned_query["body"])
-    print()
-    print("expected", expected_ck_response)
-    print()
     assert returned_query["body"] == expected_ck_response
 
 
