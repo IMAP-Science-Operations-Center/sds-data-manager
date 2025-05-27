@@ -424,7 +424,8 @@ ephemeris_90days, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ephemeris_long, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ephemeris_launch, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 attitude_history, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-frames, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
@@ -469,7 +470,8 @@ ephemeris_90days, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ephemeris_long, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ephemeris_launch, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 attitude_history, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-frames, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
