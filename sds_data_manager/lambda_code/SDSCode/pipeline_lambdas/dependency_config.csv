@@ -302,7 +302,7 @@ leapseconds, spice, historical, swapi, l1, hk, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l1, hk, HARD_NO_TRIGGER, DOWNSTREAM
 
 swapi, l0, raw, swapi, l1, sci, HARD, DOWNSTREAM
-swapi, l1, hk, swapi, l1, sci, HARD, DOWNSTREAM
+swapi, l1b, hk, swapi, l1, sci, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l1, sci, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l1, sci, HARD_NO_TRIGGER, DOWNSTREAM
 
