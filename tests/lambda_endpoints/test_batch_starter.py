@@ -236,7 +236,7 @@ def test_lambda_handler_missing_upstream_dependency(session, caplog):
         "Records": [
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_swe_l1b_sci_20000101_v001.cdf"}}'
+                '{"object": {"key": "imap_swe_l1b_sci_20000102_v001.cdf"}}'
                 "}"
             }
         ]
@@ -248,7 +248,7 @@ def test_lambda_handler_missing_upstream_dependency(session, caplog):
             "No records found for dependency: "
             "dep={'data_source': 'swe', 'data_type': 'l1b', 'descriptor': 'sci',"
             " 'relationship': 'HARD'}\nstart_date=datetime.datetime(2000,"
-            " 1, 1, 0, 0)\nend_date=datetime.datetime(2000, 1, 1, 0, 0)"
+            " 1, 2, 0, 0)\nend_date=datetime.datetime(2000, 1, 2, 0, 0)"
         )
         # Verify the info statement was logged.
         assert log_str in caplog.text
