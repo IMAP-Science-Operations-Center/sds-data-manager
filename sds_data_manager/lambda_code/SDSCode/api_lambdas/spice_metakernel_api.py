@@ -43,7 +43,8 @@ class PlanetaryConstantsKernels(Enum):
 class FramesKernels(Enum):
     """Container for Frames Kernel Types."""
 
-    FRAMES = auto()
+    SCIENCE_FRAMES = auto()
+    IMAP_FRAMES = auto()
 
     @staticmethod
     def spice_category_name():
