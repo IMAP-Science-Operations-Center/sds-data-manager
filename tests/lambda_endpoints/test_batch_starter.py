@@ -9,7 +9,8 @@ import pytest
 from imap_data_access.processing_input import (
     AncillaryInput,
     ProcessingInputCollection,
-    ScienceInput, SPICEInput,
+    ScienceInput,
+    SPICEInput,
 )
 from sqlalchemy.exc import IntegrityError
 
@@ -303,13 +304,15 @@ def test_bulk_reprocessing_all(session, caplog):
 
 def test_bulk_reprocessing_all_swe(session, caplog):
     """Tests ``lambda_handler`` when there is bulk reprocessing for all instruments."""
-    _populate_file_catalog(session)
     # leave instrument, data_level and descriptor blank
+    _populate_file_catalog(session)
     events = {
         "queryStringParameters": {
             "reprocessing": "True",
             "start_date": "20230101",
             "end_date": "20260101",
+            "data_level": "l1a",
+            "descriptor": "sci",
             "instrument": "swe",
         }
     }
@@ -324,15 +327,16 @@ def test_bulk_reprocessing_all_swe(session, caplog):
 ###### SPECIAL CASE TESTS #######
 def test_idex_l2b(session):
     """Tests ``lambda_handler` for unique idex l2b case."""
+    _populate_file_catalog(session)
     # Add 9 idex l1b evt files. Some of these will be used as dependencies for the job.
     session.add_all(
         [
             ScienceFiles(
-                file_path=f"/path/to/imap_idex_l1b_evt_2024020{day}_v001.cdf",
+                file_path=f"/path/to/imap_idex_l1b_evt_2023020{day}_v001.cdf",
                 instrument="idex",
                 data_level="l1b",
                 descriptor="evt",
-                start_date=datetime(2024, 2, day),
+                start_date=datetime(2023, 2, day),
                 version="v001",
                 extension="cdf",
                 ingestion_date=datetime.strptime(
@@ -345,11 +349,11 @@ def test_idex_l2b(session):
     session.add_all(
         [
             ScienceFiles(
-                file_path=f"/path/to/imap_idex_{level}_sci-1week_2024020{day}_v001.cdf",
+                file_path=f"/path/to/imap_idex_{level}_sci-1week_2023020{day}_v001.cdf",
                 instrument="idex",
                 data_level=level,
                 descriptor="sci-1week",
-                start_date=datetime(2024, 2, day),
+                start_date=datetime(2023, 2, day),
                 version="v001",
                 extension="cdf",
                 ingestion_date=datetime.strptime(
@@ -364,18 +368,19 @@ def test_idex_l2b(session):
         "Records": [
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_idex_l2a_sci-1week_20240209_v001.cdf"}}'
+                '{"object": {"key": "imap_idex_l2a_sci-1week_20230209_v001.cdf"}}'
                 "}"
             }
         ]
     }
     context = {"context": "sample_context"}
     expected_processing_input = ProcessingInputCollection(
-        ScienceInput("imap_idex_l2a_sci-1week_20240209_v001.cdf"),
+        SPICEInput("naif0012.tls", "imap_sclk_0000.tsc"),
+        ScienceInput("imap_idex_l2a_sci-1week_20230209_v001.cdf"),
     )
     # There will be 6 l1b evt files that are used as dependencies for the job and
     # None of them should be before the existing l2b file start_date.
-    l1b_files = [f"imap_idex_l1b_evt_2024020{day}_v001.cdf" for day in range(3, 10)]
+    l1b_files = [f"imap_idex_l1b_evt_2023020{day}_v001.cdf" for day in range(3, 10)]
     expected_processing_input.add(ScienceInput(*l1b_files))
 
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
@@ -394,7 +399,7 @@ def test_idex_l2b(session):
                     "--descriptor",
                     "sci-1week",
                     "--start-date",
-                    "20240209",
+                    "20230209",
                     "--version",
                     "v001",
                     "--dependency",
@@ -558,6 +563,7 @@ def test_bulk_reprocessing_special_case(session):
     """Tests ``lambda_handler`` for a special case in bulk reprocessing."""
     # Add test data to the database for the special case
     # Add idex l1b evt files. Some of these will be used as dependencies for the job.
+    _populate_file_catalog(session)
     session.add_all(
         [
             ScienceFiles(
