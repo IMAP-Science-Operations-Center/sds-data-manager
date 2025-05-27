@@ -353,16 +353,16 @@ def _populate_file_catalog(session):
             ),
             file_root="naif.tls",
             kernel_type="leapseconds",
-            min_date_j2000=315576066.1839245,
+            min_date_j2000=-43201,
             max_date_j2000=4575787269.183866,
-            file_intervals_j2000=[[315576066.1839245, 4575787269.183866]],
+            file_intervals_j2000=[[-43201, 4575787269.183866]],
             min_date_datetime=datetime.strptime(
-                "2010-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                "2000-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
             max_date_datetime=datetime.strptime(
                 "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
-            file_intervals_datetime="[[2010-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
             min_date_sclk="1/0000000000:00000",
             max_date_sclk="1/4285909749:39444",
             file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
