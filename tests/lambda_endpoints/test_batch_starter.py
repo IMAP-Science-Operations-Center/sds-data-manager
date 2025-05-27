@@ -453,11 +453,11 @@ def test_ultra_l3_map(session, caplog):
                 ),
                 file_root="naif.tls",
                 kernel_type="leapseconds",
-                min_date_j2000=-43201,
+                min_date_j2000=0,
                 max_date_j2000=4575787269.183866,
-                file_intervals_j2000=[[-43201, 4575787269.183866]],
+                file_intervals_j2000=[[0, 4575787269.183866]],
                 min_date_datetime=datetime.strptime(
-                    "2000-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                    "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
                 ),
                 max_date_datetime=datetime.strptime(
                     "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
