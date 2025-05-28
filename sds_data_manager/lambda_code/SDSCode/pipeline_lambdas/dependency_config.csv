@@ -358,7 +358,8 @@ leapseconds, spice, historical, swapi, l1, hk, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l1, hk, HARD_NO_TRIGGER, DOWNSTREAM
 
 swapi, l0, raw, swapi, l1, sci, HARD, DOWNSTREAM
-swapi, l1b, hk, swapi, l1, sci, HARD, DOWNSTREAM
+# Need to use l1a HK data to be able to set bit-wise flags in L1 Science file.
+swapi, l1a, hk, swapi, l1, sci, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l1, sci, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l1, sci, HARD_NO_TRIGGER, DOWNSTREAM
 
