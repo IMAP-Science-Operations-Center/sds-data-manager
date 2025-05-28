@@ -415,21 +415,17 @@ ultra, ancillary, 45sensor-tdc-norm-lookup, ultra, l1b, 45sensor-extendedspin, H
 ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-dps-exposure, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 
-spacecraft_clock, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-leapseconds, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-ephemeris_nominal, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ephemeris_90days, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-ephemeris_long, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-ephemeris_launch, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 attitude_history, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-imap_frames, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-science_frames, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-repoint, repoint, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
@@ -461,21 +457,17 @@ ultra, ancillary, 90sensor-tdc-norm-lookup, ultra, l1b, 90sensor-extendedspin, H
 ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-dps-exposure, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 
-spacecraft_clock, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-leapseconds, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-ephemeris_nominal, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ephemeris_90days, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-ephemeris_long, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-ephemeris_launch, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 attitude_history, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-imap_frames, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-science_frames, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-repoint, repoint, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 
 ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
