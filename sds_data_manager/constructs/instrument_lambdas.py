@@ -65,12 +65,12 @@ class BatchStarterLambda(Construct):
         super().__init__(scope, construct_id, **kwargs)
 
         # Define Lambda Environment Variables
-        # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
             "S3_BUCKET": f"{data_bucket.bucket_name}",
             "SECRET_NAME": rds_construct.rds_creds.secret_name,
             "ACCOUNT": f"{env.account}",
             "REGION": f"{env.region}",
+            "SQS_URL": f"{sqs_queue.queue_url}",
         }
         # Lambda should use private subnet
         subnet = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)

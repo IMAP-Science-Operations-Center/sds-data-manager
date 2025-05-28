@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from datetime import datetime
 from unittest.mock import Mock, patch
 
@@ -60,7 +61,8 @@ def test_lambda_handler(session):
             {
                 "body": '{"detail": '
                 '{"object": {"key": "imap_swe_l0_raw_20240110_v001.pkts"}}'
-                "}"
+                "}",
+                "receiptHandle": "testingtesting123",
             }
         ]
     }
@@ -71,7 +73,11 @@ def test_lambda_handler(session):
 
     context = {"context": "sample_context"}
 
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        patch.dict(os.environ, {"SQS_URL": "testing-queue-url.fifo"}),
+        patch.object(batch_starter, "SQS_CLIENT", Mock()) as mock_sqs_client,
+    ):
         lambda_handler(events, context)
         mock_batch_client.submit_job.assert_called_once()
         mock_batch_client.submit_job.assert_called_with(
@@ -96,6 +102,7 @@ def test_lambda_handler(session):
                 ]
             },
         )
+        mock_sqs_client.delete_message.assert_called_once()
 
 
 def test_lambda_handler_multiple_events(session):
