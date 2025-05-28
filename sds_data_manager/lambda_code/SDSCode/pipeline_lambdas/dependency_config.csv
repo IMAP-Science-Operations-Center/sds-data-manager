@@ -32,6 +32,7 @@ codice, ancillary, mass-per-charge, codice, l3a, lo-partial-densities, HARD, DOW
 codice, l1a, lo-sw-priority, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
 codice, l1a, lo-nsw-priority, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
 codice, l2, lo-direct-events, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a,  lo-direct-events, HARD, DOWNSTREAM
 codice, ancillary, mass-coefficient-lookup, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
 
 codice, l3a, lo-partial-densities, codice, l3a, lo-sw-ratios, HARD, DOWNSTREAM
@@ -42,6 +43,39 @@ codice, ancillary, tof-lookup, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
 
 mag, l1d, norm-mago, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 codice, l2, hi-sectored, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
+
+codice, l3a, lo-direct-events, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-geometric-factors, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-hplus-efficiency, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+
+codice, l3a, lo-direct-events, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a,  lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-geometric-factors, codice, l3a,  lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a,  lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-heplus2-efficiency, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+
+
+codice, l3a, lo-direct-events, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-geometric-factors, codice, l3a,  lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a,  lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-oplus6-efficiency, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+
+codice, l3a, lo-direct-events, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-geometric-factors, codice, l3a,  lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a,  lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-heplus-efficiency, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
 
 # <---- `GLOWS` Dependencies ---->
 glows, l0, raw, glows, l1a, all, HARD, DOWNSTREAM
