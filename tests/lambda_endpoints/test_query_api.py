@@ -46,6 +46,7 @@ def expected_response():
                 "version": "v001",
                 "extension": "pkts",
                 "ingestion_date": "20251107 10:13:12",
+                "cr": None,
             }
         ]
     )
@@ -236,7 +237,7 @@ def test_invalid_query(session):
         + "Valid query parameters are: "
         + "['file_path', 'instrument', 'data_level', 'descriptor', "
         "'start_date', 'repointing', 'version', 'extension', 'ingestion_date', "
-        + "'end_date', 'ingestion_start_date', 'ingestion_end_date']"
+        + "'cr', 'end_date', 'ingestion_start_date', 'ingestion_end_date']"
     )
     returned_query = query_api.lambda_handler(event=event, context={})
 
@@ -272,6 +273,7 @@ def test_sorting_of_query(session):
                 "version": "v001",
                 "extension": "pkts",
                 "ingestion_date": "20251107 10:13:12",
+                "cr": None,
             },
             {
                 "file_path": "test/file/path/imap_hit_l0_raw_20251107_v001.pkts",
@@ -283,6 +285,7 @@ def test_sorting_of_query(session):
                 "version": "v001",
                 "extension": "pkts",
                 "ingestion_date": "20251107 10:13:12",
+                "cr": None,
             },
         ]
     )
