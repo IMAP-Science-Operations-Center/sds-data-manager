@@ -56,7 +56,7 @@ class SqsConstruct(Construct):
             content_based_deduplication=True,
             # The dead letter queue will take messages that failed retry 20 times.
             dead_letter_queue=aws_sqs.DeadLetterQueue(
-                max_receive_count=20, queue=self.dead_letter_queue
+                max_receive_count=3, queue=self.dead_letter_queue
             ),
         )
 
