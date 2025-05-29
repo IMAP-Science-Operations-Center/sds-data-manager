@@ -8,7 +8,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 from imap_data_access.processing_input import (
-    AncillaryInput,
     ProcessingInputCollection,
     ScienceInput,
     SPICEInput,
@@ -154,18 +153,21 @@ def test_lambda_handler_ancillary_event(session):
         # Even though there are two imap_swe_l1b-in-flight-cal ancillary files that
         # have valid dates, there should be only be the most recent one returned
         # as an upstream dep.
-        ancillary_in = [
-            AncillaryInput(
-                "imap_swe_l1b-in-flight-cal_20230102_v001.cdf",
-            ),
-            AncillaryInput("imap_swe_esa-lut_20221231_v001.cdf"),
-            AncillaryInput("imap_swe_eu-conversion_20221231_v001.cdf"),
+        inputs = [
+            {"type": "spice", "files": ["naif0012.tls", "imap_sclk_0000.tsc"]},
+            {"type": "science", "files": ["imap_swe_l1a_sci_20240102_v001.cdf"]},
+            {
+                "type": "ancillary",
+                "files": ["imap_swe_l1b-in-flight-cal_20230102_v001.cdf"],
+            },
+            {"type": "ancillary", "files": ["imap_swe_esa-lut_20221231_v001.cdf"]},
+            {
+                "type": "ancillary",
+                "files": ["imap_swe_eu-conversion_20221231_v001.cdf"],
+            },
         ]
-
-        science_in = ScienceInput(
-            "imap_swe_l1a_sci_20240102_v001.cdf",
-        )
-        dependencies = ProcessingInputCollection(science_in, *ancillary_in)
+        dependencies = ProcessingInputCollection()
+        dependencies.deserialize(json.dumps(inputs))
         mock_batch_client.submit_job.assert_called_with(
             jobName="swe-l1b-sci-job-2",
             jobQueue="ProcessingJobQueue",
