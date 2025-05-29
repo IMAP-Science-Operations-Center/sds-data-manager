@@ -31,8 +31,7 @@ For example::
 
 *Do not put a domain field for your personal context*
 
-8. In ``cdk.json``, replace the usernames in the list so that it only contains the username from your personal AWS account (the user created in step 2).
-9. In your local terminal, go to the top of the ``sds-data-manager`` repository and run the following:
+8. In your local terminal, go to the top of the ``sds-data-manager`` repository and run the following:
     a. ``cdk bootstrap --profile my_profile --context account_name=my_context``
     b. ``cdk synth --profile my_profile --context account_name=my_context``
     c. ``cdk deploy --profile my_profile --context account_name=my_context``
@@ -47,4 +46,4 @@ For example::
             29143fef993fc62aeb3447a224679eafa9e60eaba00aa3bfaa60f0de9f9815bb: digest: sha256:e3c8f122ade7a0c1f598b3c7bbc08488c694aa9b7279e1367227ed0d0fba6c33 size: 2628
 
         there's no prompt and it hangs there forever. However, if I hit ``Enter``, a ``y/n`` prompt appears asking if I want to deploy. So if it gets stuck at that point, hit ``Enter``, then you can select ``y``.
-10. Before committing any changes, make sure to revert your ``cdk.json`` file to its original state.
+9. Before committing any changes, make sure to revert your ``cdk.json`` file to its original state.
