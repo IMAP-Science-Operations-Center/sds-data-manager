@@ -618,14 +618,7 @@ ultra, l1a, 45sensor-rates, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 
-ultra, ancillary, 45sensor-leftslit-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-rightslit-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, egynorm-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-imgparams-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-back-pos-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-tdc-norm-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-dps-exposure, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 
 spacecraft_clock, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -650,8 +643,10 @@ ultra, l1b, 45sensor-cullingmask, ultra, l1c, 45sensor-histogram, HARD, DOWNSTRE
 
 ultra, ancillary, 90sensor-gf, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, 90sensor-dps-exposure, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-gf, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, 90sensor-dps-exposure, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 
 # Ultra-90 products
 ultra, l1a, 90sensor-de, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
@@ -660,14 +655,7 @@ ultra, l1a, 90sensor-rates, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 
-ultra, ancillary, 90sensor-leftslit-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-rightslit-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, egynorm-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-imgparams-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-back-pos-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-tdc-norm-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-dps-exposure, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 
 spacecraft_clock, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -692,8 +680,10 @@ ultra, l1b, 90sensor-cullingmask, ultra, l1c, 90sensor-histogram, HARD, DOWNSTRE
 
 ultra, ancillary, 90sensor-gf, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, 90sensor-dps-exposure, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-gf, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, 90sensor-dps-exposure, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 
 # L2 ENA Map Names break down as:
 # <short instrument (and sensor) descriptor>-<principal data quantity>-<species>-<reference frame>-...cont...
