@@ -466,6 +466,15 @@ spacecraft_clock, spice, historical, lo, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1a, de, lo, l1b, de, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, de, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, historical, lo, l1b, de, HARD, DOWNSTREAM
+attitude_history, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 lo, l1a, TODO, lo, l1b, badtimes, HARD, DOWNSTREAM
 lo, l1a, histogram, lo, l1b, monitorrates, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, monitorrates, HARD, DOWNSTREAM
@@ -477,8 +486,20 @@ lo, l1a, star, lo, l1b, prostar, HARD, DOWNSTREAM
 lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 
 # TODO: add more dependencies for pset
-# lo, l1b, TODO, lo, l1c, goodtimes, HARD, DOWNSTREAM
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
+lo, ancillary, goodtimes, lo, l1c, pset, HARD, DOWNSTREAM
+
+lo, l1c, pset, lo, l2, imap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l2, dimap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l2, imap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, lo, l2, imap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, historical, lo, l2, imap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD, DOWNSTREAM
+attitude_history, spice, historical, lo, l2, imap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, lo, l2, imap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, lo, l2, imap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, lo, l2 imap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, lo, l2, imap_lo_l2_l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+
 
 lo, l2, l090-ena-h-sf-nsp-ram-hae-4deg-6mo, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
 
