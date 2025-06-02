@@ -665,6 +665,8 @@ planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER
 pointing_attitude, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 
+spin, spin, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-cullingmask, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
@@ -715,6 +717,8 @@ science_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOW
 planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+
+spin, spin, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 
 ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
