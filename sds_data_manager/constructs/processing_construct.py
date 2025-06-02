@@ -100,7 +100,7 @@ class ProcessingConstruct(Construct):
                 cpu=1,
                 environment={
                     "IMAP_DATA_DIR": "/mnt/data",
-                    "IMAP_DATA_ACCESS_URL": f"https://api.{self.node.get_context('account_name')}.imap-mission.com",
+                    "IMAP_DATA_ACCESS_URL": f"https://{self.node.get_context('account_name')['domain_name']}",
                 },
                 volumes=self.volumes,
                 # TODO: Do we need to explicitly specify architecture and OS family?

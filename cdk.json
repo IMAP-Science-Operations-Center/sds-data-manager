@@ -23,12 +23,17 @@
     },
     "dev": {
       "account": "449431850278",
-      "domain_name": "dev.imap-mission.com",
+      "domain_name": "api.dev.imap-mission.com",
       "region": "us-west-2"
     },
     "prod": {
       "account": "593025701104",
-      "domain_name": "imap-mission.com",
+      "domain_name": "api.prod.imap-mission.com",
+      "region": "us-west-2"
+    },
+    "sit4": {
+      "account": "038462760545",
+      "domain_name": "ak8fyo0zrb.execute-api.us-west-2.amazonaws.com",
       "region": "us-west-2"
     },
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
