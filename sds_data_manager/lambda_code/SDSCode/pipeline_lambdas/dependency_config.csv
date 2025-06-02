@@ -655,8 +655,8 @@ ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 45sensor-de, HARD
 spacecraft_clock, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-ephemeris_90days, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 imap_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -683,8 +683,8 @@ ultra, ancillary, 90sensor-dps-exposure, ultra, l1c, 45sensor-heliopset, HARD, D
 spacecraft_clock, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ephemeris_predicted, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ephemeris_90days, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 imap_frames, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
@@ -706,8 +706,8 @@ ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 90sensor-de, HARD
 spacecraft_clock, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-ephemeris_90days, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 imap_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -734,8 +734,8 @@ ultra, ancillary, 90sensor-dps-exposure, ultra, l1c, 90sensor-heliopset, HARD, D
 spacecraft_clock, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ephemeris_predicted, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ephemeris_90days, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 imap_frames, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
