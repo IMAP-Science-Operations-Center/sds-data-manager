@@ -5,7 +5,7 @@ import logging
 import os
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from os.path import basename
 from pathlib import Path
 from typing import Optional
@@ -343,6 +343,54 @@ class DependencyConfig:
                     )
         return kick_off_jobs
 
+    def get_all_nodes(self, dep_type: Optional[str] = None) -> list:
+        """Get a unique list of nodes from the dependency graph.
+
+        Returns
+        -------
+        list
+            List of unique nodes.
+        dep_type : str, optional
+            Dependency type to filter the nodes by. If None, all nodes are returned.
+        """
+        job_nodes = []
+        # If dep_type is provided, filter the dependencies by the given type.
+        dep_types = (
+            self.dependency_type.valid_dependency_type
+            if dep_type is None
+            else [dep_type]
+        )
+        # Add each node to the list.
+        for relationship in self.relationship.valid_relationship:
+            for dependency_type in dep_types:
+                [
+                    job_nodes.extend(dep)
+                    for dep in self.dependencies[relationship][dependency_type].values()
+                ]
+        return list(set(job_nodes))
+
+    def get_cadence_jobs(self, cadence: str) -> list:
+        """Get cadence jobs.
+
+        Parameters
+        ----------
+        cadence : str
+            Cadence string. Either "3mo", "6mo", or "1yr".
+
+        Returns
+        -------
+        list
+            List of cadence jobs.
+        """
+        # Cadence jobs are only at data level l2 and contain either "3mo", "6mo", or
+        # "1yr" strings as the last part of the descriptor.
+
+        return [
+            node
+            for node in self.get_all_nodes("DOWNSTREAM")
+            if node[1] == "l2" and cadence == node[2].split("-")[-1]
+        ]
+
 
 def get_dependencies(node, dependency_type, relationship):
     """Lookup the dependencies for the given ``node``.
@@ -568,6 +616,7 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     return basename(latest[2])
 
 
+# ruff: noqa: PLR0915
 def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
@@ -633,10 +682,13 @@ def get_upstream_dependency_inputs(
 
             # convert start_date and end_date in seconds after j2000.
             # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
-            def yyyymmdd_to_seconds_since_j2000(date_str: str) -> float:
+            def yyyymmdd_to_seconds_since_j2000(
+                date_str: str, add_24_hrs=False
+            ) -> float:
                 # Parse input date string
                 dt = datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
-
+                if add_24_hrs:
+                    dt += timedelta(hours=24)
                 # Define J2000 epoch: 2000-01-01T12:00:00 UTC
                 j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -645,7 +697,11 @@ def get_upstream_dependency_inputs(
                 return delta.total_seconds()
 
             start_time = yyyymmdd_to_seconds_since_j2000(start_date.strftime("%Y%m%d"))
-            end_time = yyyymmdd_to_seconds_since_j2000(end_date.strftime("%Y%m%d"))
+            # TODO revisit setting end_time after SIT-4. This should be handled upstream
+            add_24_hrs = True if end_date == start_date else False
+            end_time = yyyymmdd_to_seconds_since_j2000(
+                end_date.strftime("%Y%m%d"), add_24_hrs
+            )
             metakernel_response = spice_metakernel_api.lambda_handler(
                 {
                     "queryStringParameters": {

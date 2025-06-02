@@ -1,5 +1,6 @@
 """Setup testing environment to test lambda handler code."""
 
+import os
 from datetime import datetime
 from unittest.mock import patch
 
@@ -9,6 +10,7 @@ from moto import mock_events, mock_s3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
@@ -36,6 +38,30 @@ def _set_env(monkeypatch, tmpdir):
     monkeypatch.setenv("DATA_DIR", str(tmpdir))
 
 
+@pytest.fixture(autouse=True)
+def setup_s3(s3_client):
+    """Populate the mocked s3 client with a bucket and a file.
+
+    Each test below will use this fixture by default.
+    """
+    bucket_name = os.getenv("S3_BUCKET")
+    s3_client.create_bucket(
+        Bucket=bucket_name,
+    )
+    result = s3_client.list_buckets()
+    assert len(result["Buckets"]) == 1
+    assert result["Buckets"][0]["Name"] == bucket_name
+
+    # patch the mocked client into the upload_api module
+    # These have to be patched in because they were imported
+    # prior to test discovery and would have the default values (None)
+    with (
+        patch.object(upload_api, "S3_CLIENT", s3_client),
+        patch.object(upload_api, "BUCKET_NAME", bucket_name),
+    ):
+        yield s3_client
+
+
 @pytest.fixture(scope="module")
 def ancillary_file():
     """Path to a valid ancillary file."""
@@ -46,6 +72,15 @@ def ancillary_file():
 def science_file():
     """Path to a valid science file."""
     return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v000.cdf"
+
+
+@pytest.fixture(scope="module")
+def cadence_file():
+    """Path to a valid cadence file."""
+    return (
+        "imap/cadence/ultra/l2/2025/03/imap_ultra_l2_u45-ena-h-hf-nsp-test-hae-6deg"
+        "-3mo_20250301_v001.json"
+    )
 
 
 @pytest.fixture(scope="module")

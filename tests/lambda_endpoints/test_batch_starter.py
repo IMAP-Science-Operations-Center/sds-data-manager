@@ -1,11 +1,15 @@
 """Tests the batch starter."""
 
+import datetime as dt
 import json
 import logging
 import os
+import pathlib
 from datetime import datetime
+from os.path import basename
 from unittest.mock import Mock, patch
 
+import imap_data_access
 import pytest
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
@@ -26,8 +30,10 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     dependency,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
+    CadenceDays,
     determine_job_version,
     lambda_handler,
+    upload_cadence_file,
 )
 
 from .conftest import (
@@ -755,7 +761,142 @@ def test_lambda_handler_mag_l1c_case(session):
         )
 
 
+### TEST CADENCE EVENT
+def test_def_cadence_map_event(setup_s3, session, tmp_path):
+    """Test that a cadence event kicks off the right processing job."""
+    _populate_file_catalog(session)
+    # Add 10 months of ultra l1c "45sensor" pset files to the database
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path=f"/path/to/imap_ultra_l1c_45sensor-{pset_type}pset_2025{month:02}01_v001.cdf",
+                instrument="ultra",
+                data_level="l1c",
+                descriptor=f"45sensor-{pset_type}pset",
+                start_date=datetime(2025, month, 1),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+            for pset_type, month in zip(
+                ["spacecraft"] * 5 + ["helio"] * 5, range(1, 10)
+            )
+        ]
+    )
+    # Add 10 months of ultra l1c "90sensor" pset files to the database
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path=f"/path/to/imap_ultra_l1c_90sensor-{pset_type}pset_2025{month:02}01_v001.cdf",
+                instrument="ultra",
+                data_level="l1c",
+                descriptor=f"90sensor-{pset_type}pset",
+                start_date=datetime(2025, month, 1),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+            for pset_type, month in zip(
+                ["spacecraft"] * 5 + ["helio"] * 5, range(1, 10)
+            )
+        ]
+    )
+
+    session.commit()
+    cadence_event = {
+        "cadence": "3mo",
+    }
+    context = {"context": "sample_context"}
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT") as mock_batch_client,
+        patch(
+            "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter"
+            ".cadence_to_datetime_range"
+        ) as dt_mock,
+        patch("imap_data_access.config", {"DATA_DIR": tmp_path}),
+    ):
+        dt_mock.return_value = ("20250301", "20250601")
+        lambda_handler(cadence_event, context)
+        # Verify the function was called 12 times. There are currently 12 l2 map jobs
+        # with the cadence of 3 months.
+        assert mock_batch_client.submit_job.call_count == 12
+        # Assert that the function was called with the cadence json file path
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="ultra-l2-u90-ena-h-sf-nsp-full-hae-6deg-3mo-job-12",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-ultra",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "ultra",
+                    "--data-level",
+                    "l2",
+                    "--descriptor",
+                    "u90-ena-h-sf-nsp-full-hae-6deg-3mo",
+                    "--start-date",
+                    "20250301",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    "imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-6deg-3mo_20250301_v001.json",
+                    "--upload-to-sdc",
+                ]
+            },
+        )
+
+
+def test_invalid_cadence(session):
+    """Test that an invalid cadence raises a ValueError."""
+    cadence_event = {
+        "cadence": "4mo",
+    }
+    context = {"context": "sample_context"}
+    with pytest.raises(ValueError, match="Invalid cadence"):
+        lambda_handler(cadence_event, context)
+
+
 ###### HELPER FUNCTION TESTS #######
+def test_cadence_to_datetime_range():
+    """Test the ``cadence_to_datetime_range`` function."""
+    with patch(
+        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.datetime"
+    ) as mock_datetime:
+        mock_datetime.datetime.today.return_value = datetime(2024, 4, 1)
+        mock_datetime.timedelta.side_effect = dt.timedelta
+        start_date, end_date = batch_starter.cadence_to_datetime_range(
+            cadence="3mo", as_str=True
+        )
+        assert start_date == "20231231"
+        assert end_date == "20240401"
+
+        start_date, end_date = batch_starter.cadence_to_datetime_range(cadence="6mo")
+        assert (end_date - start_date) == dt.timedelta(
+            days=CadenceDays.ONE_YEAR.value / 2
+        )
+
+        start_date, end_date = batch_starter.cadence_to_datetime_range(cadence="1yr")
+        assert (end_date - start_date) == dt.timedelta(days=CadenceDays.ONE_YEAR.value)
+
+
+def test_upload_cadence_file(s3_client, tmp_path, cadence_file, caplog):
+    """Test uploading a cadence json file to S3."""
+    caplog.set_level("INFO")
+    dependencies = ProcessingInputCollection(
+        ScienceInput("imap_ultra_l1c_45sensor-pset_20250201_v001.cdf")
+    )
+    cadence_file = imap_data_access.file_validation.CadenceFilePath(
+        basename(cadence_file)
+    )
+    with patch("imap_data_access.config", {"DATA_DIR": tmp_path}):
+        cadence_dependency_path = pathlib.Path(cadence_file.construct_path())
+        upload_cadence_file(cadence_dependency_path, dependencies)
+    assert "Cadence file uploaded successfully" in caplog.text
+
+
 def test_determine_max_version(session):
     """Test the ``determine_job_version`` function."""
     _populate_processing_table(session)
@@ -922,18 +1063,6 @@ def test_dependency_success():
             "descriptor": "historical",
             "relationship": "HARD",
         },
-        {
-            "data_source": "ephemeris_reconstructed",
-            "data_type": "spice",
-            "descriptor": "historical",
-            "relationship": "HARD",
-        },
-        {
-            "data_source": "attitude_history",
-            "data_type": "spice",
-            "descriptor": "historical",
-            "relationship": "HARD",
-        },
     ]
 
 
@@ -1062,7 +1191,6 @@ def test_spice_event(session, s3_client):
             ],
         },
     ]
-
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(events, None)
         mock_batch_client.submit_job.assert_called_once()

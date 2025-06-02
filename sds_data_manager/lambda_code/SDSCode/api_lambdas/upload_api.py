@@ -110,34 +110,30 @@ def lambda_handler(event, context):
     # Try to create a SPICE file first, if it fails, then science, then ancillary
     file_obj = None
     try:
-        file_obj = imap_data_access.SPICEFilePath(filename)
-    except imap_data_access.ImapFilePath.InvalidImapFileError:
-        # Not a SPICE file, continue on to science files
-        logger.info(f"Filename {filename} is not a valid SPICE file.")
+        file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
+    except ValueError:
+        # Not a SPICE, ANCILLARY, or SCIENCE file, continue on to cadence files
+        logger.info(
+            f"Filename {filename} is not a valid SPICE, ANCILLARY, or SCIENCE file."
+        )
         try:
-            # file_obj will be None if it's not a SPICE file
-            file_obj = file_obj or imap_data_access.ScienceFilePath(filename)
-        except imap_data_access.ImapFilePath.InvalidImapFileError:
-            # Not a SCIENCE file, continue on to ancillary files
-            logger.info(f"Filename {filename} is not a valid SCIENCE file.")
-            try:
-                # file_obj will be None if it's not a SPICE file
-                file_obj = imap_data_access.AncillaryFilePath(filename)
-            except imap_data_access.ImapFilePath.InvalidImapFileError as e:
-                # Did not match any file types
-                logger.info(str(e))
-                logger.error(
-                    f"Filename {filename} does not match ancillary, science, or SPICE."
-                )
-                return {
-                    "statusCode": 400,
-                    "body": json.dumps(
-                        "error: file name does "
-                        "not match ancillary, "
-                        "science, or SPICE file "
-                        "naming convention."
-                    ),
-                }
+            file_obj = imap_data_access.file_validation.CadenceFilePath(filename)
+        except imap_data_access.ImapFilePath.InvalidImapFileError as e:
+            # Did not match any file types
+            logger.info(str(e))
+            logger.error(
+                f"Filename {filename} does not match ancillary, science, "
+                f"cadence, or SPICE."
+            )
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    "error: file name does "
+                    "not match ancillary, "
+                    "science, cadence, or SPICE file "
+                    "naming convention."
+                ),
+            }
 
     s3_key_path = file_obj.construct_path()
     # Strip off the data directory to get the upload path + name

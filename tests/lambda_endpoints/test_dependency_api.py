@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from unittest.mock import patch
 
+import imap_data_access
 import pytest
 from imap_data_access.processing_input import (
     AncillaryInput,
@@ -205,7 +206,7 @@ def test_get_downstream_dependencies():
     assert dependency_response == expected_complete_dependent
 
 
-def test_get_all_downstream_dependencies_for_relationship():
+def test_get_downstream_dependencies_for_all_relationships():
     """Add test for getting back ancillary dependencies."""
     dependency_response = dependency.get_jobs(
         data_source="mag",
@@ -653,3 +654,26 @@ def test_combine_kernel_sources():
     ]
     result = dependency.combine_kernel_sources(dependencies)
     assert result == ""
+
+
+def test_get_all_nodes():
+    """Test get_all_nodes function."""
+    #  DependencyConfig object
+    dependency_config = DependencyConfig()
+    # Call the get_all_nodes method
+    all_nodes = dependency_config.get_all_nodes()
+    assert len(all_nodes) > 200
+    for instrument in imap_data_access.VALID_INSTRUMENTS:
+        if instrument != "ialirt":
+            assert (instrument, "l0", "raw") in all_nodes
+
+
+def test_get_cadence_jobs():
+    """Test get_cadence_jobs function."""
+    #  DependencyConfig object
+    dependency_config = DependencyConfig()
+    # Call the get_all_nodes method
+    all_nodes = dependency_config.get_cadence_jobs("1yr")
+    for node in all_nodes:
+        assert node[1] == "l2"
+        assert node[2].split("-")[-1] in ["1yr"]

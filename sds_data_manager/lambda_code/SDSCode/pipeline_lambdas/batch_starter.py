@@ -4,27 +4,29 @@ import datetime
 import json
 import logging
 import os
-from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
 
 import boto3
 import imap_data_access
+import requests
 from imap_data_access import (
     AncillaryFilePath,
     ScienceFilePath,
     SPICEFilePath,
 )
+from imap_data_access.file_validation import CadenceFilePath
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
 )
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
+from ..api_lambdas import upload_api
 from ..database import database as db
 from ..database import models
 from . import dependency
 from .dependency import DependencyConfig, get_jobs
-
-# import dependency
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -40,61 +42,83 @@ SPECIAL_CASE_JOBS = [
         "data_source": "hi",
         "data_type": "l3",
         "descriptor": "h90-ena-h-sf-sp-full-hae-4deg-6mo",
-        "relationship": "HARD",
     },
     {
         "data_source": "lo",
         "data_type": "l3",
         "descriptor": "ilo-ena-h-sf-sp-full-hae-4deg-6mo",
-        "relationship": "HARD",
     },
     {
         "data_source": "ultra",
         "data_type": "l3",
         "descriptor": "u90-spx-hsf-sp-full-hae-nside8-3mo",
-        "relationship": "HARD",
     },
-    {
-        "data_source": "idex",
-        "data_type": "l2b",
-        "descriptor": "sci-1week",
-        "relationship": "HARD",
-    },
+    {"data_source": "idex", "data_type": "l2b", "descriptor": "sci-1week"},
 ]
 
 
-@dataclass
-class Cadence:
-    """Valid cadences for processing jobs triggered by cron jobs.
+def cadence_to_datetime_range(
+    cadence: str, as_str: bool = False
+) -> tuple[datetime, datetime] | tuple[str, str]:
+    """Convert the cadence to a datetime range.
 
-    Valid cadences can be in either months or years
+    Parameters
+    ----------
+    cadence : str
+        The cadence string (e.g. "3mo", "6mo", "1yr").
+    as_str : bool
+        If True, return the start and end dates as strings. Default is False.
+
+    Returns
+    -------
+    tuple(datetime, datetime)
+        The start date and end date of the cadence. The end_date is set to today
     """
+    end_date = datetime.datetime.today()
+    start_date = end_date - datetime.timedelta(
+        days=CadenceDays.str_lookup(cadence).value
+    )
+    if as_str:
+        start_date = start_date.strftime("%Y%m%d")
+        end_date = end_date.strftime("%Y%m%d")
 
-    months3: str = "3mo"
-    months6: str = "6mo"
-    years1: str = "1yr"
+    return start_date, end_date
 
-    @property
-    def valid_cadence(self) -> list[str]:
-        """Get all Cadences.
+
+class CadenceDays(float, Enum):
+    """Enum for a cadence value and the corresponding days."""
+
+    ONE_YEAR = 365.25
+    THREE_MONTHS = ONE_YEAR / 4
+    SIX_MONTHS = ONE_YEAR / 2
+
+    @staticmethod
+    def valid_cadence_str():
+        """Get a list of valid cadence strings."""
+        return ["3mo", "6mo", "1yr"]
+
+    @classmethod
+    def str_lookup(cls, cadence_str: str):
+        """Get a CadenceDays value from a string.
+
+        Parameters
+        ----------
+        cadence_str : str
+            The cadence string (e.g. "3mo", "6mo", "1yr").
 
         Returns
         -------
-        list[str]
-            list of valid cadences.
+        CadenceDays
+            The corresponding CadenceDays enum value.
         """
-        return [self.years1, self.months3, self.months6]
-
-    @property
-    def days(self) -> dict:
-        """Cadence to days.
-
-        Returns
-        -------
-        dict
-            Cadence values in days.
-        """
-        return {self.years1: 365, self.months3: 90, self.months6: 180}
+        if cadence_str not in cls.valid_cadence_str():
+            raise ValueError(
+                f"Invalid cadence: {cadence_str}. Valid cadences are:"
+                f" {cls.valid_cadence_str}"
+            )
+        return {"3mo": cls.THREE_MONTHS, "6mo": cls.SIX_MONTHS, "1yr": cls.ONE_YEAR}[
+            cadence_str
+        ]
 
 
 def determine_job_version(
@@ -267,12 +291,12 @@ def get_special_case_date_range(session, job_node, start_date, end_date):
         new_start_date = new_start_date.strftime("%Y%m%d")
         # Determine the number of days the map was created for based on the cadence.
         cadence_key = job_node["descriptor"].split("-")[-1]
-        if cadence_key not in Cadence().valid_cadence:
+        if cadence_key not in CadenceDays.valid_cadence_str():
             raise ValueError(
                 f"Invalid cadence '{cadence_key}' from descriptor"
                 f"'{job_node['descriptor']}'."
             )
-        map_days = Cadence().days[cadence_key]
+        map_days = CadenceDays.str_lookup(cadence_key).value
         # Use the date range of the l2 map as the query range for the l3 job.
         new_end_date = (start_date + datetime.timedelta(days=map_days)).strftime(
             "%Y%m%d"
@@ -285,7 +309,7 @@ def try_to_submit_job(
     job_info: dict,
     start_date: datetime,
     version: str,
-    upstream_dependencies: ProcessingInputCollection,
+    upstream_dependencies: ProcessingInputCollection | str,
 ):
     """Try to submit a batch job with the given job information.
 
@@ -299,8 +323,10 @@ def try_to_submit_job(
         Start date of the data.
     version : str
         Version of the job.
-    upstream_dependencies : ProcessingInputCollection
-        Input collection of upstream dependencies.
+    upstream_dependencies : ProcessingInputCollection or str
+        Either a filename string of a JSON file containing the serialized upstream
+        dependencies. Otherwise, a ProcessingInputCollection of the upstream
+        dependencies.
     """
     instrument = job_info["data_source"]
     data_level = job_info["data_type"]
@@ -333,6 +359,13 @@ def try_to_submit_job(
     # Reformat the upstream dependencies from dependency call to match
     # what batch job expects.
     # TODO: do we need a reprocessing column to indicate if this is a reprocessing job?
+
+    # If upstream dependencies are a ProcessingInputCollection, serialize them into a
+    # string. Otherwise, it should be a string representing the filename of a JSON file
+    # containing the serialized upstream dependencies.
+    if isinstance(upstream_dependencies, ProcessingInputCollection):
+        upstream_dependencies = upstream_dependencies.serialize()
+
     batch_command = [
         "--instrument",
         instrument,
@@ -345,7 +378,7 @@ def try_to_submit_job(
         "--version",
         version,
         "--dependency",
-        f"{upstream_dependencies.serialize()}",
+        upstream_dependencies,
         "--upload-to-sdc",
     ]
 
@@ -387,6 +420,7 @@ def submit_all_jobs(session, job_node, start_date, end_date, filter_dependencies
         upstream primary science start_date. There are a few special cases where we do
         not want to filter any dependencies out, for example, IDEX l2b needs all of the
         l1b housekeeping datasets in the collection. Default is set to True.
+
 
     """
     logger.info(f"Finding dependencies for the job node: {job_node}")
@@ -474,7 +508,6 @@ def s3_processing_event(session, events):
         # Event details:
         logger.info("Individual event: " + json.dumps(event, indent=2))
         body = json.loads(event["body"])
-
         filename = body["detail"]["object"]["key"]
 
         file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
@@ -510,7 +543,7 @@ def s3_processing_event(session, events):
             # If there is no end date for the ancillary file, then it is implicitly
             # valid through today.
             if not end_date:
-                end_date = datetime.today().strftime("%Y%m%d")
+                end_date = datetime.datetime.today().strftime("%Y%m%d")
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
         potential_jobs = dependency.get_jobs(
@@ -538,6 +571,7 @@ def s3_processing_event(session, events):
             continue
 
         for job in potential_jobs + potential_soft_jobs:
+            job.pop("relationship")
             if job in SPECIAL_CASE_JOBS:
                 start_date, end_date = get_special_case_date_range(
                     session, job, start_date, end_date
@@ -674,6 +708,121 @@ def bulk_reprocessing_event(session, events):
             submit_all_jobs(session, job, start_date, end_date)
 
 
+def upload_cadence_file(cadence_file_path: Path, upstream_dependencies):
+    """Upload a JSON file containing a cadence job's dependencies to S3.
+
+    Parameters
+    ----------
+    cadence_file_path : Path
+        The cadence JSON file to upload.
+    upstream_dependencies : ProcessingInputCollection
+        The upstream dependencies to serialize and upload.
+    """
+    # Check if the file already exists
+    if os.path.isfile(cadence_file_path):
+        raise KeyError(f"{cadence_file_path} already exists, cannot create JSON file.")
+    # call the upload API handler directly
+    signed_url = upload_api.lambda_handler(
+        {"pathParameters": {"proxy": cadence_file_path.as_posix()}}, None
+    )
+    try:
+        response = requests.put(
+            signed_url["body"].strip('"'),
+            data=upstream_dependencies.serialize(),
+            headers={"Content-Type": "application/json"},
+            timeout=60.0,
+        )
+        logger.info(
+            f"Cadence file uploaded successfully to s3 with status code: "
+            f"{response.status_code}"
+        )
+        return response
+    except requests.exceptions.MissingSchema as e:
+        logger.error(f"Schema error in signed url: {signed_url['body']}. Error: {e}")
+        # Log the error but do not raise, so processing continues for other jobs
+        return None
+    except Exception as e:
+        logger.error(
+            f"Unexpected error during cadence file upload: {e}. "
+            f"Cadence file upload failed Job will not be kicked off."
+        )
+        return None
+
+
+def cadence_processing_event(session, events):
+    """Process events triggerd by EventBridge rules.
+
+    Parameters
+    ----------
+    session : orm session
+        Database session.
+    events : dict
+        Event input from an Event Bridge rule.
+    """
+    dep_config = DependencyConfig()
+    cadence = events.get("cadence")
+    if not cadence:
+        raise ValueError("Cadence event must include 'cadence' key.")
+    # Get jobs for specified cadence. Sort them for testing purposes.
+    potential_jobs = sorted(dep_config.get_cadence_jobs(cadence), key=lambda x: x[2])
+    logger.info(f"Found {len(potential_jobs)} potential L2 map jobs: {potential_jobs}")
+    # Get the start and end dates for this job
+    start_date, end_date = cadence_to_datetime_range(cadence, as_str=True)
+    for job_node in potential_jobs:
+        upstream_dependencies = dependency.get_jobs(
+            data_source=job_node[0],
+            data_type=job_node[1],
+            descriptor=job_node[2],
+            dependency_type="UPSTREAM",
+            relationship="ALL",
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if not upstream_dependencies:
+            continue
+
+        logger.info(f"All required dependencies found for the dependency: {job_node}")
+        job_version = determine_job_version(
+            session=session,
+            instrument=job_node[0],
+            data_level=job_node[1],
+            descriptor=job_node[2],
+            start_date=start_date,
+        )
+        # Serialize the upstream dependencies to a JSON file. This is necessary for map
+        # jobs with many dependencies to avoid passing a long list of dependencies
+        # directly to the batch job. Imap processing code will read the JSON file and
+        # deserialize the dependencies.
+        cadence_dependency_path = CadenceFilePath.generate_from_inputs(
+            instrument=job_node[0],
+            data_level=job_node[1],
+            descriptor=job_node[2],
+            start_time=start_date,
+            version=job_version,
+            extension="json",
+        )
+        cadence_dependency_path = Path(cadence_dependency_path.construct_path())
+        response = upload_cadence_file(cadence_dependency_path, upstream_dependencies)
+        # If response is None, then the upload failed and we should continue to the
+        # next job.
+        if not response:
+            continue
+        # Submit the map job with all of the upstream dependencies in the date range
+        # (as JSON file).
+        node = {
+            "data_source": job_node[0],
+            "descriptor": job_node[2],
+            "data_type": job_node[1],
+        }
+        try_to_submit_job(
+            session,
+            node,
+            datetime.datetime.strptime(start_date, "%Y%m%d"),
+            job_version,
+            os.path.basename(cadence_dependency_path),
+        )
+
+
 def lambda_handler(events: dict, context):
     """Lambda handler.
 
@@ -707,13 +856,9 @@ def lambda_handler(events: dict, context):
                 }
             }
     5. Event of a cron job cadence trigger.
-        TODO: This will be implemented in the future.
         Example event:
             {
-                "cadence": 3months or 7days,
-                "instrument": <>,
-                "data_level": <>,
-                "descriptor": <>
+                "cadence": 3mo, 1yr, or 6mo
             }
 
     Parameters
@@ -730,6 +875,9 @@ def lambda_handler(events: dict, context):
         if api_event and api_event.get("reprocessing"):
             # handle reprocessing event
             bulk_reprocessing_event(session, api_event)
+        elif events.get("cadence"):
+            # Handle a cadence event
+            cadence_processing_event(session, events)
         else:
             # handle s3 event from the SQS queue
             s3_processing_event(session, events)
