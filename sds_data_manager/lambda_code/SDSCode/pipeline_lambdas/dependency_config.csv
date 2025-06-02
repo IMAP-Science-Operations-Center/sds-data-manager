@@ -489,7 +489,7 @@ lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, goodtimes, lo, l1c, pset, HARD, DOWNSTREAM
 
-lo, l1c, pset, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD, DOWNSTREAM
+lo, l1c, pset, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
@@ -501,7 +501,7 @@ pointing_attitude, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo
 science_frames, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 
 
-lo, l2, l090-ena-h-sf-nsp-ram-hae-4deg-6mo, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+lo, l2, l090-ena-h-sf-nsp-ram-hae-4deg-6mo, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
 
 lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, lo, l3, l090-spx-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
 
