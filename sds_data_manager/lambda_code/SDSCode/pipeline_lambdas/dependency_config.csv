@@ -490,6 +490,8 @@ lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 # TODO: add more dependencies for pset
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, goodtimes, lo, l1c, pset, HARD, DOWNSTREAM
+leapseconds, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1c, pset, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
