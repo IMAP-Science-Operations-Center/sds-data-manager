@@ -451,13 +451,14 @@ spacecraft_clock, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWN
 ephemeris_reconstructed, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 
 idex, l1b, sci-1week, idex, l2a, sci-1week, HARD, DOWNSTREAM
 idex, l2a, sci-1week, idex, l2b, sci-1week, HARD, DOWNSTREAM
 leapseconds, spice, historical, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 idex, l1b, evt, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
-idex, l2b, sci-1week, idex, l2c, sci-1week, HARD, DOWNSTREAM
+idex, l2b, sci-1week, idex, l2c, all, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
 lo, l0, raw, lo, l1a, all, HARD, DOWNSTREAM
@@ -672,6 +673,17 @@ ultra, ancillary, 90sensor-gf, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-dps-exposure, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 
+spacecraft_clock, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+
 # Ultra-90 products
 ultra, l1a, 90sensor-de, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-params, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
@@ -711,6 +723,17 @@ ultra, ancillary, 90sensor-dps-exposure, ultra, l1c, 90sensor-spacecraftpset, HA
 ultra, ancillary, 90sensor-gf, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, 90sensor-dps-exposure, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 
 # L2 ENA Map Names break down as:
 # <short instrument (and sensor) descriptor>-<principal data quantity>-<species>-<reference frame>-...cont...

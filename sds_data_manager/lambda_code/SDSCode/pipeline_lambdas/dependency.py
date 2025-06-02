@@ -5,7 +5,7 @@ import logging
 import os
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from os.path import basename
 from pathlib import Path
 from typing import Optional
@@ -616,6 +616,7 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     return basename(latest[2])
 
 
+# ruff: noqa: PLR0915
 def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
@@ -681,10 +682,13 @@ def get_upstream_dependency_inputs(
 
             # convert start_date and end_date in seconds after j2000.
             # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
-            def yyyymmdd_to_seconds_since_j2000(date_str: str) -> float:
+            def yyyymmdd_to_seconds_since_j2000(
+                date_str: str, add_24_hrs=False
+            ) -> float:
                 # Parse input date string
                 dt = datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
-
+                if add_24_hrs:
+                    dt += timedelta(hours=24)
                 # Define J2000 epoch: 2000-01-01T12:00:00 UTC
                 j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -693,7 +697,11 @@ def get_upstream_dependency_inputs(
                 return delta.total_seconds()
 
             start_time = yyyymmdd_to_seconds_since_j2000(start_date.strftime("%Y%m%d"))
-            end_time = yyyymmdd_to_seconds_since_j2000(end_date.strftime("%Y%m%d"))
+            # TODO revisit setting end_time after SIT-4. This should be handled upstream
+            add_24_hrs = True if end_date == start_date else False
+            end_time = yyyymmdd_to_seconds_since_j2000(
+                end_date.strftime("%Y%m%d"), add_24_hrs
+            )
             metakernel_response = spice_metakernel_api.lambda_handler(
                 {
                     "queryStringParameters": {
