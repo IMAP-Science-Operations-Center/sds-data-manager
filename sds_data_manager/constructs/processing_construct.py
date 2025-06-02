@@ -85,6 +85,9 @@ class ProcessingConstruct(Construct):
             removal_policy=cdk.RemovalPolicy.DESTROY,
         )
         # Create the job definition
+        account_name = self.node.get_context("account_name")
+        account_config = self.node.get_context(account_name)
+        domain_name = account_config["domain_name"]
         batch.EcsJobDefinition(
             self,
             f"ProcessingJob-{job_name}",
@@ -100,7 +103,7 @@ class ProcessingConstruct(Construct):
                 cpu=1,
                 environment={
                     "IMAP_DATA_DIR": "/mnt/data",
-                    "IMAP_DATA_ACCESS_URL": f"https://{self.node.get_context('account_name')['domain_name']}",
+                    "IMAP_DATA_ACCESS_URL": f"https://{domain_name}",
                 },
                 volumes=self.volumes,
                 # TODO: Do we need to explicitly specify architecture and OS family?
