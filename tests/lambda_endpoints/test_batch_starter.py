@@ -1063,6 +1063,18 @@ def test_dependency_success():
             "descriptor": "historical",
             "relationship": "HARD",
         },
+        {
+            "data_source": "ephemeris_reconstructed",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
+        {
+            "data_source": "attitude_history",
+            "data_type": "spice",
+            "descriptor": "historical",
+            "relationship": "HARD",
+        },
     ]
 
 
