@@ -67,8 +67,8 @@ def _generate_signed_upload_response(s3_key_path, tags=None):
         "body": json.dumps({
             "error": "FileAlreadyExists",
             "message": (
-                f"The file '{s3_key_path}' already exists in the storage system. "
-                "Please check the filename or delete the existing file before uploading again."
+                f"The file '{s3_key_path}' already exists. "
+                "Rename it or remove the existing file before uploading again."
             )
         }),
     }
