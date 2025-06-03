@@ -395,8 +395,8 @@ leapseconds, spice, historical, hit, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, hit, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 hit, l0, raw, hit, l1b, hk, HARD, DOWNSTREAM
-leapseconds, spice, historical, hit, l1a, hk, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, hit, l1a, hk, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
 
 hit, l1a, counts, hit, l1b, all, HARD, DOWNSTREAM
 
