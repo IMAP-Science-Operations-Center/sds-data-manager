@@ -12,8 +12,6 @@ import os
 import boto3
 import botocore
 import imap_data_access
-            
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -62,16 +60,18 @@ def _generate_signed_upload_response(s3_key_path, tags=None):
     """
     if _file_exists(s3_key_path):
         # We already have a file at this location, return a 409
-        return  {
-        "statusCode": 409,
-        "body": json.dumps({
-            "error": "FileAlreadyExists",
-            "message": (
-                f"The file '{s3_key_path}' already exists. "
-                "Rename it or remove the existing file before uploading again."
-            )
-        }),
-    }
+        return {
+            "statusCode": 409,
+            "body": json.dumps(
+                {
+                    "error": "FileAlreadyExists",
+                    "message": (
+                        f"The file '{s3_key_path}' already exists. "
+                        "Rename it or remove the existing file before uploading again."
+                    ),
+                }
+            ),
+        }
     # We know there isn't an object at this location, so
     # generate a pre-signed URL for the client to upload to
     url = S3_CLIENT.generate_presigned_url(
@@ -156,7 +156,3 @@ def lambda_handler(event, context):
     )
 
     return _generate_signed_upload_response(s3_key_path_str)
-
-
-
-
