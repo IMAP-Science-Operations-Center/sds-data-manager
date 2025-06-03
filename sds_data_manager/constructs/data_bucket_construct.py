@@ -109,3 +109,28 @@ class DataBucketConstruct(Construct):
         backup_role.add_to_policy(s3_backup_bucket_items_policy)
         backup_role.add_to_policy(s3_backup_bucket_policy)
         backup_role.add_to_policy(s3_write_policy)
+
+        # Add replication configuration to the data bucket
+        # accesses the raw cloudformation L1 constructs which is necessary
+        # because the l2 constructs do not support replication configuration
+        bucket_cf: s3.CfnBucket = self.data_bucket.node.default_child
+        bucket_cf.replication_configuration = s3.CfnBucket.ReplicationConfigurationProperty(  # noqa: E501
+            role=backup_role.role_arn,
+            rules=[
+                s3.CfnBucket.ReplicationRuleProperty(
+                    id="ReplicateToBackup",
+                    status="Enabled",
+                    priority=1,
+                    delete_marker_replication=s3.CfnBucket.DeleteMarkerReplicationProperty(
+                        status="Disabled"
+                    ),
+                    destination=s3.CfnBucket.ReplicationDestinationProperty(
+                        bucket=f"arn:aws:s3:::{backup_bucket_name}",
+                        # TODO: Enable deep archive storage class for backups that
+                        #       are accessed infrequently.
+                        # storage_class="DEEP_ARCHIVE",
+                    ),
+                    filter=s3.CfnBucket.ReplicationRuleFilterProperty(prefix=""),
+                )
+            ],
+        )
