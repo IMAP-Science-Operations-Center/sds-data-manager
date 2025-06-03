@@ -106,8 +106,9 @@ class IalirtApiManager(Construct):
 
         download_api.add_to_role_policy(s3_read_policy)
 
+        # {proxy+} is used to allow for any pathParams after /ialirt-download/
         api.add_route(
-            route="/ialirt-download",
+            route="/ialirt-download/{proxy+}",
             http_method="GET",
             lambda_function=download_api,
         )
