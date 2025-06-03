@@ -169,7 +169,6 @@ psycopg2-binary==2.9.10 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:245159e7ab20a71d989da00f280ca57da7641fa2cdcf71749c193cea540a74f7 \
     --hash=sha256:26540d4a9a4e2b096f1ff9cce51253d0504dca5a85872c7f7be23be5a53eb18d \
     --hash=sha256:270934a475a0e4b6925b5f804e3809dd5f90f8613621d062848dd82f9cd62007 \
-    --hash=sha256:27422aa5f11fbcd9b18da48373eb67081243662f9b46e6fd07c3eb46e4535142 \
     --hash=sha256:2ad26b467a405c798aaa1458ba09d7e2b6e5f96b1ce0ac15d82fd9f95dc38a92 \
     --hash=sha256:2b3d2491d4d78b6b14f76881905c7a8a8abcf974aad4a8a0b065273a0ed7a2cb \
     --hash=sha256:2ce3e21dc3437b1d960521eca599d57408a695a0d3c26797ea0f72e834c7ffe5 \
@@ -289,9 +288,9 @@ sqlalchemy==2.0.41 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:dd5ec3aa6ae6e4d5b5de9357d2133c07be1aff6405b136dad753a16afb6717dd \
     --hash=sha256:edba70118c4be3c2b1f90754d308d0b79c6fe2c0fdc52d8ddf603916f83f4db9 \
     --hash=sha256:ff8e80c4c4932c10493ff97028decfdb622de69cae87e0f127a7ebe32b4069c6
-typing-extensions==4.13.2 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c \
-    --hash=sha256:e6c81219bd689f51865d9e372991c540bda33a0379d5573cddb9a3a23f7caaef
+typing-extensions==4.14.0 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:8676b788e32f02ab42d9e7c61324048ae4c6d844a399eebace3d4979d75ceef4 \
+    --hash=sha256:a1514509136dd0b477638fc68d6a91497af5076466ad0fa6c338e44e359944af
 tzdata==2025.2 ; python_version >= "3.10" and python_version < "4" and sys_platform == "win32" \
     --hash=sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8 \
     --hash=sha256:b60a638fcc0daffadf82fe0f57e53d06bdec2f36c4df66280ae79bce6bd6f2b9
