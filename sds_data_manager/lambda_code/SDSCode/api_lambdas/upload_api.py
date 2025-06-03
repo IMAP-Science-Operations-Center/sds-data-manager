@@ -23,7 +23,10 @@ REGION = os.getenv("REGION")
 # to avoid any 307 redirects. (Generally only an issue on newly created buckets
 # where the DNS records haven't propagated yet)
 S3_CLIENT = boto3.client(
-    "s3", region_name=REGION, config=botocore.client.Config(signature_version="s3v4")
+    "s3",
+    region_name=REGION,
+    config=botocore.client.Config(signature_version="s3v4"),
+    endpoint_url=f"https://s3.{REGION}.amazonaws.com",
 )
 
 

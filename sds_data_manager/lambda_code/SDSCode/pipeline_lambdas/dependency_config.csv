@@ -490,6 +490,8 @@ lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 # TODO: add more dependencies for pset
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, goodtimes, lo, l1c, pset, HARD, DOWNSTREAM
+leapseconds, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1c, pset, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
@@ -986,9 +988,14 @@ imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, H
 imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
 
-# Ultra L3 survival probability map Dependencies:
-glows, l3e, ulc-sp, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD, DOWNSTREAM
-ultra, l2, u90-ena-h-sf-full-hae-nside8-3mo, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD, DOWNSTREAM
-ephemeris_reconstructed, spice, historical, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD_NO_TRIGGER, DOWNSTREAM
-leapseconds, spice, historical, ultra, l3, u90-spx-hsf-sp-full-hae-nside8-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+# Ultra L3 survival probability corrected ENA map dependencies:
+glows, l3e, survival-probability-ul, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+science_frames, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+
+# Ultra L3 spectral index map dependencies:
+ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, ultra, l3, u90-spx-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+ultra, ancillary, ulc-spx-energy-ranges, ultra, l3, u90-spx-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM

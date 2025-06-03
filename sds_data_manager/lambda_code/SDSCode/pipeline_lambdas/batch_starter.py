@@ -51,7 +51,7 @@ SPECIAL_CASE_JOBS = [
     {
         "data_source": "ultra",
         "data_type": "l3",
-        "descriptor": "u90-spx-hsf-sp-full-hae-nside8-3mo",
+        "descriptor": "u90-ena-h-sf-sp-full-hae-4deg-3mo",
     },
     {"data_source": "idex", "data_type": "l2b", "descriptor": "sci-1week"},
 ]
@@ -437,7 +437,8 @@ def submit_all_jobs(session, job_node, start_date, end_date, filter_dependencies
     )
     if not upstream_dependencies:
         logger.info(
-            f"Skiping job submission for {job_node} because no upstream dependencies."
+            f"Skipping job submission for {job_node} because of a missing upstream "
+            f"dependency."
         )
         return
 
@@ -445,9 +446,16 @@ def submit_all_jobs(session, job_node, start_date, end_date, filter_dependencies
     logger.info(f"All required dependencies found for the dependency: {job_node}")
     # Find the first science processingInput that has the same source as the
     # potential job. Use this to determine the start date.
-    primary_science = upstream_dependencies.get_science_inputs(job_node["data_source"])[
-        0
-    ]
+    primary_science_inputs = upstream_dependencies.get_science_inputs(
+        job_node["data_source"]
+    )
+    if not primary_science_inputs:
+        logger.info(
+            f"Skipping job submission for {job_node} because there are no upstream "
+            f"primary science files found."
+        )
+        return
+    primary_science = primary_science_inputs[0]
     num_jobs = len(primary_science.imap_file_paths)
     logger.info(f"Found {num_jobs} jobs to process.")
     for filepath in primary_science.imap_file_paths:
@@ -473,6 +481,12 @@ def submit_all_jobs(session, job_node, start_date, end_date, filter_dependencies
                 start_date=filepath.start_date,
                 end_date=filepath.start_date,
             )
+            if not upstream_deps_for_job:
+                logger.info(
+                    f"Skipping job submission for {job_node} with start_date: "
+                    f"{start_date} because of a missing upstream dependency."
+                )
+                continue
         else:
             upstream_deps_for_job = upstream_dependencies
         try_to_submit_job(
@@ -662,6 +676,11 @@ def bulk_reprocessing_event(session, events):
     descriptor = events.get("descriptor")
     start_date = events.get("start_date")
     end_date = events.get("end_date")
+    logger.info(
+        f"A reprocessing event was triggered with the parameters: {instrument=}, "
+        f"{data_level=}, {descriptor=}, {start_date=}, {end_date=}"
+    )
+
     if not end_date or not start_date:
         raise ValueError(
             "Start date and end date are required for a reprocessing Event."
@@ -700,7 +719,6 @@ def bulk_reprocessing_event(session, events):
                 and (job["descriptor"] == descriptor or not descriptor)
             )
         ]
-
     for job in potential_jobs:
         if job in SPECIAL_CASE_JOBS:
             handle_special_case_reprocessing_jobs(session, job, start_date, end_date)
@@ -759,15 +777,27 @@ def cadence_processing_event(session, events):
     events : dict
         Event input from an Event Bridge rule.
     """
-    dep_config = DependencyConfig()
     cadence = events.get("cadence")
+    # TODO: remove start_date and end_date handling after SIT-4.
+    start_date = events.get("start_date")
+    end_date = events.get("end_date")
+    logger.info(f"A cadence event was triggered with the parameters: {cadence=}")
     if not cadence:
         raise ValueError("Cadence event must include 'cadence' key.")
+    dep_config = DependencyConfig()
     # Get jobs for specified cadence. Sort them for testing purposes.
     potential_jobs = sorted(dep_config.get_cadence_jobs(cadence), key=lambda x: x[2])
     logger.info(f"Found {len(potential_jobs)} potential L2 map jobs: {potential_jobs}")
     # Get the start and end dates for this job
-    start_date, end_date = cadence_to_datetime_range(cadence, as_str=True)
+    if not start_date and not end_date:
+        start_date, end_date = cadence_to_datetime_range(cadence, as_str=True)
+    elif not start_date or not end_date:
+        raise ValueError(
+            "Cadence event must include both 'start_date' and 'end_date' if either is"
+            " provided."
+        )
+    logger.info(f"Using {start_date=} and {end_date=} for cadence jobs.")
+
     for job_node in potential_jobs:
         upstream_dependencies = dependency.get_jobs(
             data_source=job_node[0],

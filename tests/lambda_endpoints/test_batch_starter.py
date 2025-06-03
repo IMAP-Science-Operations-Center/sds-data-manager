@@ -20,6 +20,7 @@ from sqlalchemy.exc import IntegrityError
 
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
+    AncillaryFiles,
     ProcessingJob,
     ScienceFiles,
     SPICEFiles,
@@ -269,6 +270,76 @@ def test_lambda_handler_missing_upstream_dependency(session, caplog):
         assert log_str in caplog.text
 
 
+def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
+    """Tests ``lambda_handler`` function for a specific case."""
+    # This test covers a rare scenario: when a new ancillary file is uploaded, the
+    # dependency handler might find jobs to run where the uploaded file is valid for the
+    # job's start_date, but another required ancillary file is not. The test ensures
+    # that in these cases, the job is skipped.
+
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path="/path/to/imap_mag_l1c_norm-mago_20250418_v004.cdf",
+                instrument="mag",
+                data_level="l1c",
+                descriptor="norm-mago",
+                start_date=datetime(2025, 4, 18),
+                version="v004",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+            AncillaryFiles(
+                file_path="/path/to/imap_mag_l2-calibration_20250117_v001.cdf",
+                instrument="mag",
+                descriptor="l2-calibration",
+                start_date=datetime(2025, 1, 17),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+            AncillaryFiles(
+                file_path="/path/to/imap_mag_l2-norm-offsets_20250421_v001.cdf",
+                instrument="mag",
+                descriptor="l2-norm-offsets",
+                start_date=datetime(2025, 4, 21),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+        ]
+    )
+    session.commit()
+    multiple_events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_mag_l2-calibration_20250117_v001.cdf"}}'
+                "}"
+            },
+        ]
+    }
+    caplog.set_level("INFO")
+    context = {"context": "sample_context"}
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(multiple_events, context)
+        assert mock_batch_client.submit_job.call_count == 0
+
+    # Check that the expected message was logged.
+    expected_log = (
+        "Skipping job submission for {'data_source': 'mag', 'data_type': "
+        "'l2', 'descriptor': 'norm-srf'} with start_date: 20250117 because"
+        " of a missing upstream dependency."
+    )
+    assert expected_log in caplog.text
+
+
 ###### BULK REPROCESSING TESTS #######
 def test_bulk_reprocessing_data_level(session, caplog):
     """Tests ``lambda_handler`` when there is bulk reprocessing for a data level."""
@@ -433,10 +504,10 @@ def test_ultra_l3_map(session, caplog):
     session.add_all(
         [
             ScienceFiles(
-                file_path=f"/path/to/imap_glows_l3e_ulc-sp_2024{month:02}01_v001.cdf",
+                file_path=f"/path/to/imap_glows_l3e_survival-probability-ul_2024{month:02}01_v001.cdf",
                 instrument="glows",
                 data_level="l3e",
-                descriptor="ulc-sp",
+                descriptor="survival-probability-ul",
                 start_date=datetime(2024, month, 1),
                 version="v001",
                 extension="cdf",
@@ -450,10 +521,10 @@ def test_ultra_l3_map(session, caplog):
     session.add_all(
         [
             ScienceFiles(
-                file_path="/path/to/imap_ultra_l2_u90-ena-h-sf-full-hae-nside8-3mo_20240201_v001.cdf",
+                file_path="/path/to/imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-4deg-3mo_20240201_v001.cdf",
                 instrument="ultra",
                 data_level="l2",
-                descriptor="u90-ena-h-sf-full-hae-nside8-3mo",
+                descriptor="u90-ena-h-sf-nsp-full-hae-4deg-3mo",
                 start_date=datetime(2024, 2, 1),
                 version="v001",
                 extension="cdf",
@@ -517,13 +588,13 @@ def test_ultra_l3_map(session, caplog):
         # groupings. We want to test that only one job is submitted.
         "Records": [
             {
-                "body": '{"detail": '
-                '{"object": {"key": "imap_glows_l3e_ulc-sp_20240201_v001.cdf"}}'
+                "body": '{"detail": {"object": {"key": '
+                '"imap_glows_l3e_survival-probability-ul_20240201_v001.cdf"}}'
                 "}"
             },
             {
-                "body": '{"detail": '
-                '{"object": {"key": "imap_glows_l3e_ulc-sp_20240301_v001.cdf"}}'
+                "body": '{"detail": {"object": {"key": '
+                '"imap_glows_l3e_survival-probability-ul_20240301_v001.cdf"}}'
                 "}"
             },
         ]
@@ -538,17 +609,20 @@ def test_ultra_l3_map(session, caplog):
     # dependencies for the job.
     # NOTE: in reality, there will be more than 3 glows l3e files.
     glows_files = [
-        f"imap_glows_l3e_ulc-sp_20240{month}01_v001.cdf" for month in range(2, 6)
+        f"imap_glows_l3e_survival-probability-ul_20240{month}01_v001.cdf"
+        for month in range(2, 6)
     ]
     expected_processing_input.add(ScienceInput(*glows_files))
     expected_processing_input.add(
-        ScienceInput("imap_ultra_l2_u90-ena-h-sf-full-hae-nside8-3mo_20240201_v001.cdf")
+        ScienceInput(
+            "imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-4deg-3mo_20240201_v001.cdf"
+        )
     )
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(events, context)
         # Verify the function was called
         mock_batch_client.submit_job.assert_called_with(
-            jobName="ultra-l3-u90-spx-hsf-sp-full-hae-nside8-3mo-job-1",
+            jobName="ultra-l3-u90-ena-h-sf-sp-full-hae-4deg-3mo-job-1",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-ultra-l3",
             containerOverrides={
@@ -558,7 +632,7 @@ def test_ultra_l3_map(session, caplog):
                     "--data-level",
                     "l3",
                     "--descriptor",
-                    "u90-spx-hsf-sp-full-hae-nside8-3mo",
+                    "u90-ena-h-sf-sp-full-hae-4deg-3mo",
                     "--start-date",
                     "20240201",
                     "--version",
