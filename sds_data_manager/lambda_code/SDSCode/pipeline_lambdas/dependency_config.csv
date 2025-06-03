@@ -471,7 +471,7 @@ lo, l1a, spin, lo, l1b, de, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
-ephemeris_predicted, spice, historical, lo, l1b, de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -495,7 +495,7 @@ lo, l1c, pset, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWN
 spacecraft_clock, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
-ephemeris_predicted, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
