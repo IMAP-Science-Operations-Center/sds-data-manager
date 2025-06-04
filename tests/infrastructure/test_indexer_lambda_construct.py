@@ -51,6 +51,6 @@ def template(stack, env, code):
 
 def test_indexer_role(template):
     """Ensure the template has appropriate IAM roles."""
-    template.resource_count_is("AWS::IAM::Role", 5)
+    template.resource_count_is("AWS::IAM::Role", 4)
     # 4 for RDS stack + 1 for indexer lambda
     template.resource_count_is("AWS::Lambda::Function", 4)

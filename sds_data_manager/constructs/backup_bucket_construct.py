@@ -14,15 +14,7 @@ class BackupBucket(Construct):
     should be the AWS account for the source bucket.
 
     For replication to work, you also need to deploy SdsDataManager and create
-    the source bucket and replication role. Then, you need to manually update
-    the role_arn variable with the replication role created.
-
-    Finally, you need to set up the replication rule in the **source** account.
-    To do this, go to the source bucket and click the "Management" tab.
-    Under the "Replication Rules" section, create a replication rule. Specify
-    your bucket, select the IAM Role "BackupRole" created in SdsDataManager, and
-    save the rule. This rule can be set up after both source and destination
-    stacks are deployed.
+    the source bucket and replication role.
     """
 
     def __init__(
@@ -48,13 +40,10 @@ class BackupBucket(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
-        # FOR NOW: Deploy other stack, update this name with the created role.
-        role_arn = (
-            "arn:aws:iam::449431850278:"
-            "role/SdsDataManager-mh-dev-BackupRoleF43CFD90-FXUPB8TEP0P0"
-        )
+        # NOTE: This requires the source account to have this specific BackupRole
+        #       which we create in the data_bucket_construct
+        role_arn = f"arn:aws:iam::{source_account}:role/BackupRole"
 
-        # This is the S3 bucket used by upload_api_lambda
         backup_bucket = s3.Bucket(
             self,
             "BackupDataBucket",

@@ -114,7 +114,7 @@ def test_s3_data_bucket_policy_resource_properties(template):
                         ],
                         "Effect": "Allow",
                         "Principal": {
-                            "AWS": Match.string_like_regexp(".*SdsDataManager.*")
+                            "AWS": Match.string_like_regexp(".*BackupRole.*")
                         },
                         "Resource": {
                             "Fn::Join": [
@@ -141,7 +141,7 @@ def test_s3_data_bucket_policy_resource_properties(template):
                         ],
                         "Effect": "Allow",
                         "Principal": {
-                            "AWS": Match.string_like_regexp(".*SdsDataManager.*")
+                            "AWS": Match.string_like_regexp(".*BackupRole.*")
                         },
                         "Resource": {
                             "Fn::GetAtt": [

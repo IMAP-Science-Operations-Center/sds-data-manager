@@ -33,13 +33,13 @@ class DataBucketConstruct(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
         # Get the current account number so we can use it in the bucket names
-        account = env.account
+        self.account = env.account
 
         # This is the S3 bucket used by upload_api_lambda
         self.data_bucket = s3.Bucket(
             self,
             "DataBucket",
-            bucket_name=f"sds-data-{account}",
+            bucket_name=f"sds-data-{self.account}",
             versioned=True,
             event_bridge_enabled=True,
             removal_policy=RemovalPolicy.RETAIN,
@@ -47,6 +47,15 @@ class DataBucketConstruct(Construct):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 
+    def setup_backup_replication(self) -> None:
+        """Add the backup replication to the data bucket.
+
+        This sets up the replication configuration for the data bucket to
+        replicate data to a backup bucket in another account. The backup bucket
+        is assumed to already exist and is named based on the source account
+        number and "backup". The replication role is created in the source account
+        and is assumed by the S3 service to perform the replication.
+        """
         s3_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:PutObject"],
@@ -74,7 +83,7 @@ class DataBucketConstruct(Construct):
         # Rather than depending on the deploy in another account through CDK,
         # we can assume the backup bucket already exists and go from here.
         # Consisting of the source account number (this account) and "backup"
-        backup_bucket_name = f"sds-data-{account}-backup"
+        backup_bucket_name = f"sds-data-{self.account}-backup"
 
         s3_backup_bucket_items_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,

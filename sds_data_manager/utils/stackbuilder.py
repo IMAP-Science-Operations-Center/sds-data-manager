@@ -124,6 +124,11 @@ def build_sds(
     data_bucket = data_bucket_construct.DataBucketConstruct(
         scope=sdc_stack, construct_id="DataBucket", env=env
     )
+    # Only setup replication for the production account
+    # XXX: Temporarily also for SIT-4 to test replication
+    #       This should be removed once SIT-4 is no longer used
+    if account_config["account_name"] in ("prod", "sit-4"):
+        data_bucket.setup_backup_replication()
 
     monitoring = monitoring_construct.MonitoringConstruct(
         scope=sdc_stack,

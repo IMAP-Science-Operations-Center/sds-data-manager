@@ -1,31 +1,21 @@
 S3 Replication
 ==============
 
-Once you have finished :doc:`backup-deploy`, you can set up replication in the source bucket.
-
-Create a replication rule
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-#. Open your source S3 bucket in the AWS console
-#. Under the "Management" tab, find the "Replication Rules" section
-#. Click "Create replication rule" to create a new rule
-#. Enter an ID. If this is a developer bucket, include your initials. Preferably, it should be clear this is a backup rule.
-#. Under "Source Bucket", select "Apply to all objects in this bucket"
-#. Under "Destination" select "Specify a bucket in another account" and enter the account number and bucket name
-#. Under "IAM role", select the "SdsDataManager-{account_name}-BackupRole"
-#. Then, save the rule, and select "Do not replicate existing objects" in the popup
-
-Now, items placed in the source bucket will be automatically replicated to the backup bucket!
+Once you have finished :doc:`backup-deploy`, the new items are automatically replicated
+from the source bucket to the backup bucket.
 
 Copying items back into source account bucket
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To restore files from the backup bucket into the main account bucket, we are going to [assume the role](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-role.html#cli-role-prereqs) created by SdsDataManager stack in the source account. Here, "source account" refers to the account with SdsDataManager deployed into it (i.e. dev or prod).
+To restore files from the backup bucket into the main account bucket, we are going to
+[assume the role](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-role.html#cli-role-prereqs)
+created by SdsDataManager stack in the source account. Here, "source account" refers to
+the account with SdsDataManager deployed into it (i.e. dev or prod).
 
 #. Update ``~/.aws/config`` to include a new profile for this role. Here, ``source_profile`` should be the source account profile
 ```
 [profile backup-role]
-role_arn = arn:aws:iam::<source account number>:role/<role name>
+role_arn = arn:aws:iam::<source account number>:role/BackupRole
 source_profile = imap
 ```
 #. Update the role in the dev account to include a new principal:

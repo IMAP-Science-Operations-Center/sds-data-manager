@@ -9,7 +9,8 @@ from sds_data_manager.constructs.data_bucket_construct import DataBucketConstruc
 @pytest.fixture
 def template(stack, env):
     """Return a template for the data bucket stack."""
-    DataBucketConstruct(stack, "data-bucket", env=env)
+    data_stack = DataBucketConstruct(stack, "data-bucket", env=env)
+    data_stack.setup_backup_replication()
     template = Template.from_stack(stack)
 
     return template
