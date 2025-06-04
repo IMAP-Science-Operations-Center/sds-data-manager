@@ -230,7 +230,12 @@ def lambda_handler(event, context):
     logger.info("Retrieved filename: %s", filename)
 
     # Query s3 for packet filenames from past 5 minutes.
-    now = datetime.now(timezone.utc)
+    if "now" in event:
+        now = datetime.fromisoformat(event["now"].replace("Z", "")).replace(
+            tzinfo=timezone.utc
+        )
+    else:
+        now = datetime.now(timezone.utc)
     filenames = query_filenames(bucket, region, now)
 
     if filenames:
