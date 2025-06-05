@@ -6,8 +6,6 @@ codice, l0, raw, codice, l1a, all, HARD, DOWNSTREAM
 leapseconds, spice, historical, codice, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, codice, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
-# CoDICE l1a to l1b
-
 codice, l1a, hskp, codice, l1b, hskp, HARD, DOWNSTREAM
 codice, l1a, lo-counters-aggregated, codice, l1b, lo-counters-aggregated, HARD, DOWNSTREAM
 codice, l1a, lo-counters-singles, codice, l1b, lo-counters-singles, HARD, DOWNSTREAM
@@ -19,12 +17,14 @@ codice, l1a, lo-sw-angular, codice, l1b, lo-sw-angular, HARD, DOWNSTREAM
 codice, l1a, lo-nsw-angular, codice, l1b, lo-nsw-angular, HARD, DOWNSTREAM
 codice, l1a, lo-sw-species, codice, l1b, lo-sw-species, HARD, DOWNSTREAM
 codice, l1a, lo-nsw-species, codice, l1b, lo-nsw-species, HARD, DOWNSTREAM
-codice, l1a, lo-pha, codice, l1b, lo-pha, HARD, DOWNSTREAM
-codice, l1a, hi-pha, codice, l1b, hi-pha, HARD, DOWNSTREAM
 codice, l1a, hi-omni, codice, l1b, hi-omni, HARD, DOWNSTREAM
+codice, l1a, hi-priority, codice, l1b, hi-priority, HARD, DOWNSTREAM
 codice, l1a, hi-sectored, codice, l1b, hi-sectored, HARD, DOWNSTREAM
 codice, l1a, lo-ialirt, codice, l1b, lo-ialirt, HARD, DOWNSTREAM
 codice, l1a, hi-ialirt, codice, l1b, hi-ialirt, HARD, DOWNSTREAM
+
+codice, l1a, lo-pha, codice, l2, lo-direct-events, HARD, DOWNSTREAM
+codice, l1a, hi-pha, codice, l2, hi-direct-events, HARD, DOWNSTREAM
 
 codice, l2, lo-sw-species, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
 codice, ancillary, mass-per-charge, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
@@ -84,6 +84,8 @@ spacecraft_clock, spice, historical, glows, l1a, all, HARD_NO_TRIGGER, DOWNSTREA
 
 glows, l1a, de, glows, l1b, de, HARD, DOWNSTREAM
 glows, l1a, hist, glows, l1b, hist, HARD, DOWNSTREAM
+
+glows, l1b, hist, glows, l2, hist, HARD, DOWNSTREAM
 
 glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, calibration-data, glows, l3a, hist, HARD, DOWNSTREAM
@@ -543,6 +545,10 @@ mag, ancillary, l2-calibration, mag, l2, norm-srf, HARD, DOWNSTREAM
 mag, ancillary, l2-calibration, mag, l2, burst-srf, HARD, DOWNSTREAM
 mag, ancillary, l2-norm-offsets, mag, l2, norm-srf, HARD, DOWNSTREAM
 mag, ancillary, l2-burst-offsets, mag, l2, burst-srf, HARD, DOWNSTREAM
+leapseconds, spice, historical, mag, l2, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l2, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- Spacecraft Dependencies ---->
 # Quaternions

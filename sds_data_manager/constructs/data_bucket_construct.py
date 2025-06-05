@@ -76,6 +76,7 @@ class DataBucketConstruct(Construct):
                 "s3:GetObjectVersionForReplication",
                 "s3:GetObjectVersionAcl",
                 "s3:GetObjectVersionTagging",
+                "s3:GetObjectTagging",
             ],
             resources=[f"{self.data_bucket.bucket_arn}/*"],
         )

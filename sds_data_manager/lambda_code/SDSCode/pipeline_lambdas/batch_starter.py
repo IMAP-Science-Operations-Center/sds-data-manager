@@ -34,6 +34,17 @@ logger.setLevel(logging.INFO)
 
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
+# Define the retry strategy for batch jobs
+BATCH_JOB_RETRY_STRATEGY = {
+    "attempts": 2,
+    "evaluateOnExit": [
+        {
+            "onStatusReason": "Your Spot Task was interrupted.",
+            "action": "RETRY",
+        },
+        {"onReason": "*", "action": "EXIT"},
+    ],
+}
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 
@@ -398,6 +409,7 @@ def try_to_submit_job(
         containerOverrides={
             "command": batch_command,
         },
+        retryStrategy=BATCH_JOB_RETRY_STRATEGY,
     )
     logger.info(f"Submitted job {job_name} with this command: {batch_command}")
 

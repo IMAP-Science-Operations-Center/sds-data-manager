@@ -107,6 +107,7 @@ def test_lambda_handler(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
         mock_sqs_client.delete_message.assert_called_once()
 
@@ -196,6 +197,7 @@ def test_lambda_handler_ancillary_event(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
 
@@ -279,6 +281,54 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
 
     session.add_all(
         [
+            SPICEFiles(
+                file_name="naif0012.tls",
+                ingestion_date=datetime.strptime(
+                    "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_root="naif.tls",
+                kernel_type="leapseconds",
+                min_date_j2000=0,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[0, 4575787269.183866]],
+                min_date_datetime=datetime.strptime(
+                    "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                max_date_datetime=datetime.strptime(
+                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+                min_date_sclk="1/0000000000:00000",
+                max_date_sclk="1/4285909749:39444",
+                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+                version=12,
+            ),
+            SPICEFiles(
+                file_name="imap_sclk_0000.tsc",
+                ingestion_date=datetime.strptime(
+                    "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_root="imap_sclk_0000.tsc",
+                kernel_type="spacecraft_clock",
+                min_date_j2000=315576066.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[315576066.1839245, 4575787269.183866]],
+                min_date_datetime=datetime.strptime(
+                    "2010-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                max_date_datetime=datetime.strptime(
+                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_intervals_datetime="[[2010-01-01T00:00:00, 2145-01-01T00:00:00]]",
+                min_date_sclk="1/0000000000:00000",
+                max_date_sclk="1/4285909749:39444",
+                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+                version=0,
+            ),
             ScienceFiles(
                 file_path="/path/to/imap_mag_l1c_norm-mago_20250418_v004.cdf",
                 instrument="mag",
@@ -330,7 +380,7 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(multiple_events, context)
         assert mock_batch_client.submit_job.call_count == 0
-
+    print(caplog.text)
     # Check that the expected message was logged.
     expected_log = (
         "Skipping job submission for {'data_source': 'mag', 'data_type': "
@@ -493,6 +543,7 @@ def test_idex_l2b(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
 
@@ -642,6 +693,7 @@ def test_ultra_l3_map(session, caplog):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
         # Assert that only one job is submitted.
         assert mock_batch_client.submit_job.call_count == 1
@@ -765,6 +817,7 @@ def test_lambda_handler_mag_l1c_case(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
         events = {
@@ -832,6 +885,7 @@ def test_lambda_handler_mag_l1c_case(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
 
@@ -920,6 +974,7 @@ def test_def_cadence_map_event(setup_s3, session, tmp_path):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
 
@@ -1301,4 +1356,5 @@ def test_spice_event(session, s3_client):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )

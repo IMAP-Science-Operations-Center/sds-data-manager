@@ -291,3 +291,35 @@ def test_metakernel_string_input(session):
         None,
     )
     assert len(json.loads(result["body"])) == 8
+
+
+def test_metakernel_frames(session):
+    """Test that the frame kernels are returned."""
+    _insert_test_file(session, "imap_science_0001.tf", [[1, 300]], upload_time=1)
+    _insert_test_file(session, "imap_001.tf", [[1, 300]], upload_time=1)
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 53,
+                "end_time": 60,
+                "file_types": "imap_frames,science_frames",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+    assert len(json.loads(result["body"])) == 2
+    # Fip file type order and make sure both tf files are returned
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 53,
+                "end_time": 60,
+                "file_types": "science_frames,imap_frames",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+    assert len(json.loads(result["body"])) == 2
