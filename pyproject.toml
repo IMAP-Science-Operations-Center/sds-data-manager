@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "sds-data-manager"
-version = "5.0.0"
+version = "6.0.0"
 description = "IMAP Science Operations Center AWS data manager"
 authors = ["IMAP SDS Developers <imap.sdc@lists.lasp.colorado.edu>"]
 readme = "README.md"
@@ -32,7 +32,7 @@ python = ">=3.10,<4"
 # WARNING - Please run this command when updateing `imap-data-access` to ensure that
 # the correct version and hash are used:
 #   poetry export -f requirements.txt -o lambda_layer/database/requirements.txt --with layer-database
-imap-data-access = ">=0.24.0"
+imap-data-access = ">=0.31.0"
 
 # Optional dependencies - install with `poetry install -E docs`
 sphinx = {version="^7.1.0", optional=true}

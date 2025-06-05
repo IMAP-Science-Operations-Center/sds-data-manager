@@ -145,6 +145,7 @@ class ScienceFiles(Base):
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(EXTENSIONS, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
+    cr = Column(Integer, nullable=True)
 
 
 class SPICEFiles(Base):

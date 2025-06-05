@@ -23,7 +23,10 @@ REGION = os.getenv("REGION")
 # to avoid any 307 redirects. (Generally only an issue on newly created buckets
 # where the DNS records haven't propagated yet)
 S3_CLIENT = boto3.client(
-    "s3", region_name=REGION, config=botocore.client.Config(signature_version="s3v4")
+    "s3",
+    region_name=REGION,
+    config=botocore.client.Config(signature_version="s3v4"),
+    endpoint_url=f"https://s3.{REGION}.amazonaws.com",
 )
 
 
@@ -58,10 +61,6 @@ def _generate_signed_upload_response(s3_key_path, tags=None):
         return {
             "statusCode": 409,
             "body": json.dumps(f"{s3_key_path} already exists."),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
         }
     # We know there isn't an object at this location, so
     # generate a pre-signed URL for the client to upload to
@@ -112,40 +111,38 @@ def lambda_handler(event, context):
 
     filename = os.path.basename(path_params)
     # Try to create a SPICE file first, if it fails, then science, then ancillary
-    invalid_file_error = None
     file_obj = None
     try:
-        file_obj = imap_data_access.SPICEFilePath(filename)
-    except imap_data_access.SPICEFilePath.InvalidSPICEFileError:
-        # Not a SPICE file, continue on to science files
-        logger.info(f"Filename {filename} is not a valid SPICE file.")
-        try:
-            # file_obj will be None if it's not a SPICE file
-            file_obj = file_obj or imap_data_access.ScienceFilePath(filename)
-        except imap_data_access.ScienceFilePath.InvalidScienceFileError:
-            # Not a SCIENCE file, continue on to ancillary files
-            logger.info(f"Filename {filename} is not a valid SCIENCE file.")
-            try:
-                # file_obj will be None if it's not a SPICE file
-                file_obj = imap_data_access.AncillaryFilePath(filename)
-            except imap_data_access.AncillaryFilePath.InvalidAncillaryFileError as e:
-                # Did not match any file types
-                logger.info(str(e))
-                logger.warning(
-                    f"Filename {filename} does not match ancillary, science, or SPICE."
-                )
-                logger.warning(
-                    f"Moving {filename} to staging directory for manual review."
-                )
-                invalid_file_error = True
-                s3_key_path_str = f"staging/{filename}"
-
-    if not invalid_file_error:
-        s3_key_path = file_obj.construct_path()
-        # Strip off the data directory to get the upload path + name
-        # Must be posix style for the URL
-        s3_key_path_str = str(
-            s3_key_path.relative_to(imap_data_access.config["DATA_DIR"]).as_posix()
+        file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
+    except ValueError:
+        # Not a SPICE, ANCILLARY, or SCIENCE file, continue on to cadence files
+        logger.info(
+            f"Filename {filename} is not a valid SPICE, ANCILLARY, or SCIENCE file."
         )
+        try:
+            file_obj = imap_data_access.file_validation.CadenceFilePath(filename)
+        except imap_data_access.ImapFilePath.InvalidImapFileError as e:
+            # Did not match any file types
+            logger.info(str(e))
+            logger.error(
+                f"Filename {filename} does not match ancillary, science, "
+                f"cadence, or SPICE."
+            )
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    "error: file name does "
+                    "not match ancillary, "
+                    "science, cadence, or SPICE file "
+                    "naming convention."
+                ),
+            }
+
+    s3_key_path = file_obj.construct_path()
+    # Strip off the data directory to get the upload path + name
+    # Must be posix style for the URL
+    s3_key_path_str = str(
+        s3_key_path.relative_to(imap_data_access.config["DATA_DIR"]).as_posix()
+    )
 
     return _generate_signed_upload_response(s3_key_path_str)

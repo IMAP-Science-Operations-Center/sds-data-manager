@@ -256,3 +256,70 @@ def test_metakernel_filtered_file_types(session):
     )
     assert len(json.loads(result["body"])) == 2
     assert json.loads(result["body"])[0] == "naif0012.tls"
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 1,
+                "end_time": 100,
+                "spice_path": "",
+                "list_files": "True",
+                "file_types": "ephemeris_reconstructed",
+            }
+        },
+        None,
+    )
+    assert result["statusCode"] == 404
+    assert result["body"] == "No files found."
+
+
+def test_metakernel_string_input(session):
+    """Test that string input is allowed, and is converted to a datetime object."""
+    _insert_test_file(session, "naif0012.tls", [[1, 300]], upload_time=1)
+    _insert_test_file(session, "imap_sclk_0012.tsc", [[1, 300]], upload_time=1)
+    _insert_test_data(session)
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": "19000101",
+                "end_time": "20260101",
+                "spice_path": "",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+    assert len(json.loads(result["body"])) == 8
+
+
+def test_metakernel_frames(session):
+    """Test that the frame kernels are returned."""
+    _insert_test_file(session, "imap_science_0001.tf", [[1, 300]], upload_time=1)
+    _insert_test_file(session, "imap_001.tf", [[1, 300]], upload_time=1)
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 53,
+                "end_time": 60,
+                "file_types": "imap_frames,science_frames",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+    assert len(json.loads(result["body"])) == 2
+    # Fip file type order and make sure both tf files are returned
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 53,
+                "end_time": 60,
+                "file_types": "science_frames,imap_frames",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+    assert len(json.loads(result["body"])) == 2

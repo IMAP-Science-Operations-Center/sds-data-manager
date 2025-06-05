@@ -10,6 +10,7 @@ from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
+from imap_data_access import VALID_INSTRUMENTS
 
 from .efs_construct import EFSConstruct
 
@@ -105,6 +106,10 @@ class IndexerLambda(Construct):
 
         # Write science data info to db with
         # status SUCCEEDED
+        science_event_prefixes = [
+            {"prefix": f"imap/{instrument}/"} for instrument in VALID_INSTRUMENTS
+        ]
+        science_event_prefixes.append({"prefix": "imap/ancillary/"})
         imap_data_arrival_rule = events.Rule(
             self,
             "ImapDataArrival",
@@ -114,7 +119,9 @@ class IndexerLambda(Construct):
                 detail_type=["Object Created"],
                 detail={
                     "bucket": {"name": [data_bucket.bucket_name]},
-                    "object": {"key": [{"prefix": "imap/"}]},
+                    "object": {
+                        "key": science_event_prefixes,
+                    },
                 },
             ),
         )
@@ -241,6 +248,23 @@ class SPICEIndexerLambda(Construct):
                 "SECRET_NAME": db_secret_name,
             },
         )
+
+        # Adding events and s3 permission because indexer
+        # lambda sents events and read from s3 respectively.
+        put_event_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["events:PutEvents", "s3:*"],
+            resources=[
+                "*",
+            ],
+        )
+        self.spice_ingest_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        self.spice_ingest_lambda.add_to_role_policy(put_event_policy)
+
+        rds_secret = secrets.Secret.from_secret_name_v2(
+            self, "rds_secret", db_secret_name
+        )
+        rds_secret.grant_read(grantee=self.spice_ingest_lambda)
 
         # Define an EventBridge rule
         event_rule = events.Rule(

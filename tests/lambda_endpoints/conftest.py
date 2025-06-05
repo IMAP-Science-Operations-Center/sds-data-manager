@@ -1,5 +1,6 @@
 """Setup testing environment to test lambda handler code."""
 
+import os
 from datetime import datetime
 from unittest.mock import patch
 
@@ -9,11 +10,13 @@ from moto import mock_events, mock_s3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
     Base,
     ScienceFiles,
+    SPICEFiles,
 )
 
 BUCKET_NAME = "test-data-bucket"
@@ -35,6 +38,30 @@ def _set_env(monkeypatch, tmpdir):
     monkeypatch.setenv("DATA_DIR", str(tmpdir))
 
 
+@pytest.fixture(autouse=True)
+def setup_s3(s3_client):
+    """Populate the mocked s3 client with a bucket and a file.
+
+    Each test below will use this fixture by default.
+    """
+    bucket_name = os.getenv("S3_BUCKET")
+    s3_client.create_bucket(
+        Bucket=bucket_name,
+    )
+    result = s3_client.list_buckets()
+    assert len(result["Buckets"]) == 1
+    assert result["Buckets"][0]["Name"] == bucket_name
+
+    # patch the mocked client into the upload_api module
+    # These have to be patched in because they were imported
+    # prior to test discovery and would have the default values (None)
+    with (
+        patch.object(upload_api, "S3_CLIENT", s3_client),
+        patch.object(upload_api, "BUCKET_NAME", bucket_name),
+    ):
+        yield s3_client
+
+
 @pytest.fixture(scope="module")
 def ancillary_file():
     """Path to a valid ancillary file."""
@@ -45,6 +72,15 @@ def ancillary_file():
 def science_file():
     """Path to a valid science file."""
     return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v000.cdf"
+
+
+@pytest.fixture(scope="module")
+def cadence_file():
+    """Path to a valid cadence file."""
+    return (
+        "imap/cadence/ultra/l2/2025/03/imap_ultra_l2_u45-ena-h-hf-nsp-test-hae-6deg"
+        "-3mo_20250301_v001.json"
+    )
 
 
 @pytest.fixture(scope="module")
@@ -142,6 +178,18 @@ def _populate_file_catalog(session):
             ),
         ),
         ScienceFiles(
+            file_path="/path/to/imap_lo_l0_raw_20240101_v001.pkts",
+            instrument="lo",
+            data_level="l0",
+            descriptor="raw",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
             file_path="/path/to/imap_mag_l1b_burst-mago_20240101_v001.cdf",
             instrument="mag",
             data_level="l1b",
@@ -202,6 +250,18 @@ def _populate_file_catalog(session):
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
         ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240106_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 6),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
         # Adding a downstream swe l1b file that depends on the science file above
         ScienceFiles(
             file_path="/path/to/imap_swe_l1b_sci_20240102_v001.cdf",
@@ -217,7 +277,7 @@ def _populate_file_catalog(session):
         ),
         # Adding files to test for duplicate job
         ScienceFiles(
-            file_path="/path/to/imap_lo_l1a_de_20240101_v001.cdf",
+            file_path="/path/to/imap_lo_l1a_de_20100101_v001.cdf",
             instrument="lo",
             data_level="l1a",
             descriptor="de",
@@ -233,7 +293,7 @@ def _populate_file_catalog(session):
             instrument="lo",
             data_level="l1a",
             descriptor="sci",
-            start_date=datetime(2010, 1, 1),
+            start_date=datetime(2024, 1, 1),
             version="v001",
             extension="cdf",
             ingestion_date=datetime.strptime(
@@ -319,6 +379,55 @@ def _populate_file_catalog(session):
             ingestion_date=datetime.strptime(
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
+        ),
+        # Write leapseconds and sclk kernel files
+        SPICEFiles(
+            file_name="naif0012.tls",
+            ingestion_date=datetime.strptime(
+                "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="naif.tls",
+            kernel_type="leapseconds",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T12:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=12,
+        ),
+        SPICEFiles(
+            file_name="imap_sclk_0000.tsc",
+            ingestion_date=datetime.strptime(
+                "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_sclk_0000.tsc",
+            kernel_type="spacecraft_clock",
+            min_date_j2000=315576066.1839245,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[315576066.1839245, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2010-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2010-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=0,
         ),
     ]
     session.add_all(test_records)

@@ -16,7 +16,6 @@
   },
   "context": {
     "account_name": "dev",
-    "usernames": ["sandoval"],
     "backup": {
       "account": "012345678901",
       "source_account": "dev"

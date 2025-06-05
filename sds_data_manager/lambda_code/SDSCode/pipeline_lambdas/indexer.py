@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timezone
 
 import boto3
-from imap_data_access import AncillaryFilePath, ScienceFilePath
+from imap_data_access import AncillaryFilePath, ImapFilePath, ScienceFilePath
 
 from ..database import database as db
 from ..database import models
@@ -184,7 +184,7 @@ def s3_event_handler(event):
         with db.Session() as session, session.begin():
             session.add(models.ScienceFiles(**sci_params))
         logger.info("Wrote data to the ScienceFiles table")
-    except ScienceFilePath.InvalidScienceFileError:
+    except ImapFilePath.InvalidImapFileError:
         logger.info(
             f"Filename {filename} is not a valid SCIENCE file. Checking for"
             " ancillary file."
@@ -220,7 +220,7 @@ def s3_event_handler(event):
                 session.add(models.AncillaryFiles(**anc_params))
             logger.info("Wrote data to the AncillaryFiles table")
 
-        except AncillaryFilePath.InvalidAncillaryFileError:
+        except ImapFilePath.InvalidImapFileError:
             logger.error(f"Filename {filename} is not a valid ANCILLARY file.")
             msg = "Error: file name does not match ancillary or science file paths."
             return http_response(status_code=400, body=msg)

@@ -91,6 +91,7 @@ def lambda_handler(event, context):
         "s3",
         region_name=region,
         config=botocore.client.Config(signature_version="s3v4"),
+        endpoint_url=f"https://s3.{region}.amazonaws.com",
     )
 
     # check if object exists

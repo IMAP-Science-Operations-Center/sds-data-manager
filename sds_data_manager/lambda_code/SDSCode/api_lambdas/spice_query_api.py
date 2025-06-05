@@ -28,10 +28,7 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
-    logger.info(f"Event: {event}")
-    logger.info(f"Context: {context}")
-
-    logger.info("Received event: " + json.dumps(event, indent=2))
+    logger.info("SPICE Query Event: " + json.dumps(event, indent=2))
 
     # add session, pick model like in indexer and add query to filter_as
     query_params = event["queryStringParameters"]
@@ -52,10 +49,6 @@ def lambda_handler(event, context):
                         f"{param} is not a valid query parameter. "
                         + f"Valid query parameters are: {valid_parameters}"
                     ),
-                    "headers": {
-                        "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*",  # Allow CORS
-                    },
                 }
                 logger.debug(
                     f"Received an invalid query parameter [{param}],"
@@ -70,10 +63,6 @@ def lambda_handler(event, context):
                     response = {
                         "statusCode": 400,
                         "body": json.dumps(f"Invalid value for {param}: {value}"),
-                        "headers": {
-                            "Content-Type": "application/json",
-                            "Access-Control-Allow-Origin": "*",  # Allow CORS
-                        },
                     }
                     logger.debug(f"Invalid value for {param}: {value}")
                     return response
@@ -84,10 +73,6 @@ def lambda_handler(event, context):
                     response = {
                         "statusCode": 400,
                         "body": json.dumps(f"Invalid value for {param}: {value}"),
-                        "headers": {
-                            "Content-Type": "application/json",
-                            "Access-Control-Allow-Origin": "*",  # Allow CORS
-                        },
                     }
                     logger.debug(f"Invalid value for {param}: {value}")
                     return response
@@ -127,10 +112,6 @@ def lambda_handler(event, context):
     response = {
         "statusCode": 200,
         "body": json.dumps(search_results),  # returns a list of tuples
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",  # Allow CORS
-        },
     }
 
     return response

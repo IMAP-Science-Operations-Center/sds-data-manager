@@ -4,7 +4,6 @@ from pathlib import Path
 
 import imap_data_access
 from aws_cdk import App, Environment, Stack
-from aws_cdk import aws_batch as batch
 from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
@@ -232,18 +231,8 @@ def build_sds(
     )
 
     # This valid instrument list is from imap-data-access package
-    processing_volumes = [
-        batch.EfsVolume(
-            name=f"{efs_instance.volume_name}-ECS-mount",
-            access_point_id=efs_instance.spice_access_point.access_point_id,
-            file_system=efs_instance.efs,
-            container_path="/mnt/data",
-            enable_transit_encryption=True,
-            transit_encryption_port=2049,
-        )
-    ]
     processing = processing_construct.ProcessingConstruct(
-        sdc_stack, "ProcessingConstruct", vpc=networking.vpc, volumes=processing_volumes
+        sdc_stack, "ProcessingConstruct", vpc=networking.vpc
     )
     for instrument in imap_data_access.VALID_INSTRUMENTS:
         for step in ["", "-l3"]:
@@ -261,6 +250,7 @@ def build_sds(
         scope=sdc_stack,
         construct_id="BatchStarterLambda",
         env=env,
+        api=api,
         data_bucket=data_bucket.data_bucket,
         code=lambda_code,
         rds_construct=rds_construct,

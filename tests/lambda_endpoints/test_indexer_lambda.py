@@ -1,9 +1,7 @@
 """Tests for the indexer lambda."""
 
-import os
 from datetime import datetime, timezone
 
-import pytest
 from imap_data_access import ScienceFilePath
 from sqlalchemy import select
 
@@ -165,18 +163,45 @@ def test_s3_sci_event(session, s3_client, events_client):
     assert result[0].instrument == "hit"
     assert result[0].extension == "pkts"
 
-    # Test for bad filename input
-    event["detail"]["object"]["key"] = (
-        "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.cdf"
-    )
 
-    expected_msg = (
-        "Invalid extension. Extension should be pkts for data level l0"
-        " and cdf for data level higher than l0 \n"
+def test_s3_cr_event(session, s3_client, events_client):
+    """Test s3 event."""
+    filepath = (
+        "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.cdf"
     )
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=filepath,
+        Body=b"test",
+    )
+    event = {
+        "detail-type": "Object Created",
+        "source": "aws.s3",
+        "time": "2024-01-16T17:35:08Z",
+        "detail": {
+            "version": "0",
+            "bucket": {"name": "test-data-bucket"},
+            "object": {
+                "key": (filepath),
+                "reason": "PutObject",
+            },
+        },
+    }
+    # Test for good event
+    returned_value = indexer.lambda_handler(event=event, context={})
+    assert returned_value["statusCode"] == 200
 
-    with pytest.raises(ScienceFilePath.InvalidScienceFileError, match=expected_msg):
-        ScienceFilePath(os.path.basename(event["detail"]["object"]["key"]))
+    # Check that data was written to database by lambda
+    result = session.query(models.ScienceFiles).all()
+    assert len(result) == 1
+    assert (
+        result[0].file_path
+        == "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.cdf"
+    )
+    assert result[0].data_level == "l3a"
+    assert result[0].instrument == "glows"
+    assert result[0].extension == "cdf"
+    assert result[0].cr == 2025
 
 
 def test_s3_anc_event(session, s3_client, events_client):

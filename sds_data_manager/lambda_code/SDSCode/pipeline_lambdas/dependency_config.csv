@@ -3,8 +3,8 @@
 # <---- CoDICE Dependencies ---->
 
 codice, l0, raw, codice, l1a, all, HARD, DOWNSTREAM
-
-# CoDICE l1a to l1b
+leapseconds, spice, historical, codice, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, codice, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 codice, l1a, hskp, codice, l1b, hskp, HARD, DOWNSTREAM
 codice, l1a, lo-counters-aggregated, codice, l1b, lo-counters-aggregated, HARD, DOWNSTREAM
@@ -17,12 +17,14 @@ codice, l1a, lo-sw-angular, codice, l1b, lo-sw-angular, HARD, DOWNSTREAM
 codice, l1a, lo-nsw-angular, codice, l1b, lo-nsw-angular, HARD, DOWNSTREAM
 codice, l1a, lo-sw-species, codice, l1b, lo-sw-species, HARD, DOWNSTREAM
 codice, l1a, lo-nsw-species, codice, l1b, lo-nsw-species, HARD, DOWNSTREAM
-codice, l1a, lo-pha, codice, l1b, lo-pha, HARD, DOWNSTREAM
-codice, l1a, hi-pha, codice, l1b, hi-pha, HARD, DOWNSTREAM
 codice, l1a, hi-omni, codice, l1b, hi-omni, HARD, DOWNSTREAM
+codice, l1a, hi-priority, codice, l1b, hi-priority, HARD, DOWNSTREAM
 codice, l1a, hi-sectored, codice, l1b, hi-sectored, HARD, DOWNSTREAM
 codice, l1a, lo-ialirt, codice, l1b, lo-ialirt, HARD, DOWNSTREAM
 codice, l1a, hi-ialirt, codice, l1b, hi-ialirt, HARD, DOWNSTREAM
+
+codice, l1a, lo-pha, codice, l2, lo-direct-events, HARD, DOWNSTREAM
+codice, l1a, hi-pha, codice, l2, hi-direct-events, HARD, DOWNSTREAM
 
 codice, l2, lo-sw-species, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
 codice, ancillary, mass-per-charge, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
@@ -30,6 +32,7 @@ codice, ancillary, mass-per-charge, codice, l3a, lo-partial-densities, HARD, DOW
 codice, l1a, lo-sw-priority, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
 codice, l1a, lo-nsw-priority, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
 codice, l2, lo-direct-events, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
 codice, ancillary, mass-coefficient-lookup, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
 
 codice, l3a, lo-partial-densities, codice, l3a, lo-sw-ratios, HARD, DOWNSTREAM
@@ -41,11 +44,48 @@ codice, ancillary, tof-lookup, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
 mag, l1d, norm-mago, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 codice, l2, hi-sectored, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 
-# <---- GLOWS Dependencies ---->
+codice, l3a, lo-direct-events, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-hplus-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-hplus-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-geometric-factors, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-hplus-efficiency, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
+
+codice, l3a, lo-direct-events, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-heplus2-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-heplus2-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-geometric-factors, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-heplus2-efficiency, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+
+
+codice, l3a, lo-direct-events, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-oplus6-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-oplus6-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-geometric-factors, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-oplus6-efficiency, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
+
+codice, l3a, lo-direct-events, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-heplus-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-heplus-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-geometric-factors, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-heplus-efficiency, codice, l3a, lo-heplus-3d-distribution, HARD, DOWNSTREAM
+
+# <---- `GLOWS` Dependencies ---->
 glows, l0, raw, glows, l1a, all, HARD, DOWNSTREAM
+leapseconds, spice, historical, glows, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 glows, l1a, de, glows, l1b, de, HARD, DOWNSTREAM
 glows, l1a, hist, glows, l1b, hist, HARD, DOWNSTREAM
+
+glows, l1b, hist, glows, l2, hist, HARD, DOWNSTREAM
 
 glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, calibration-data, glows, l3a, hist, HARD, DOWNSTREAM
@@ -54,26 +94,281 @@ glows, ancillary, map-of-extra-helio-bckgrd, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings, glows, l3a, hist, HARD, DOWNSTREAM
 
 glows, l3a, hist, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
-glows, ancillary, pipeline-settings-L3bc, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, uv-anisotropy-1CR, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, WawHelioIonMP, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
 glows, ancillary, bad-days-list, glows, l3b, ion-rate-profile, HARD, DOWNSTREAM
+repoint, repoint, historical, glows, l3b, ion-rate-profile, HARD_NO_TRIGGER, DOWNSTREAM
+# science_frames, spice, historical, glows, l3b, ion-rate-profile, HARD_NO_TRIGGER, DOWNSTREAM
+
+
+glows, l3c, sw-profile, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, plasma-speed-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, proton-density-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, uv-anisotropy-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, photoion-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, electron-density-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, lya-2010a, glows, l3d, solar-hist, HARD, DOWNSTREAM
+glows, ancillary, l3b-archive, glows, l3d, solar-hist, HARD, DOWNSTREAM
+
+# <---- GLOWS to ENA Dependencies ---->
+
+# Low
+glows, l3d, solar-hist, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, l3d, p-dens, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, energy-grid-lo, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, ionization-files, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, tess-xyz-8, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, l3d, lya, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, l3d, phion, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, l3d, speed, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, l3d, uv-anis, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, l3d, e-dens, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-lo, HARD, DOWNSTREAM
+# science_frames, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+repoint, repoint, historical, glows, l3e, survival-probability-lo, HARD_NO_TRIGGER, DOWNSTREAM
+
+# Hi-45
+glows, l3d, solar-hist, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, l3d, p-dens, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, energy-grid-hi, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, ionization-files, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, l3d, lya, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, l3d, phion, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, l3d, speed, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, l3d, uv-anis, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, l3d, e-dens, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-hi-45, HARD, DOWNSTREAM
+# science_frames, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+repoint, repoint, historical, glows, l3e, survival-probability-hi-45, HARD_NO_TRIGGER, DOWNSTREAM
+
+# Hi-90
+glows, l3d, solar-hist, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, l3d, p-dens, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, energy-grid-hi, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, ionization-files, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, l3d, lya, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, l3d, phion, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, l3d, speed, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, l3d, uv-anis, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, l3d, e-dens, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-hi-90, HARD, DOWNSTREAM
+# science_frames, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+repoint, repoint, historical, glows, l3e, survival-probability-hi-90, HARD_NO_TRIGGER, DOWNSTREAM
+
+# Ultra
+glows, l3d, solar-hist, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, l3d, p-dens, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, energy-grid-ultra, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, ionization-files, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, tess-ang-16, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, l3d, lya, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, l3d, phion, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, l3d, speed, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, l3d, uv-anis, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, l3d, e-dens, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+glows, ancillary, pipeline-settings-l3bcde, glows, l3e, survival-probability-ul, HARD, DOWNSTREAM
+# science_frames, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
+repoint, repoint, historical, glows, l3e, survival-probability-ul, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- HI Dependencies ---->
-
+# L1A
 hi, l0, raw, hi, l1a, all, HARD, DOWNSTREAM
-hi, l0, raw, hi, l1b, hk, HARD, DOWNSTREAM
+leapseconds, spice, historical, hi, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hi, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
+# L1B HK
+hi, l0, raw, hi, l1b, hk, HARD, DOWNSTREAM
+leapseconds, spice, historical, hi, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hi, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
+
+# L1B 45sensor-de
 hi, l1a, 45sensor-de, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
+leapseconds, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, best, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, best, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, best, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+spin, spin, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+
+# L1B 90sensor-de
+hi, l1a, 90sensor-de, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
+leapseconds, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, best, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, best, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, best, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+spin, spin, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+
+# L1C 45sensor-pset
+leapseconds, spice, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, best, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, best, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, best, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+spin, spin, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+hi, ancillary, 45sensor-cal-prod, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 
-hi, l1a, 90sensor-de, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
+# L1C 90sensor-pset
+leapseconds, spice, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, best, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, best, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, best, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+spin, spin, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
+hi, ancillary, 90sensor-cal-prod, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
+
+# Hi L2 Map Dependencies:
+# Roughly 50 different Hi maps will be made - with the following parameters...
+# 2 different reference frames          (hf,        sf)
+# 3 different time periods              (3mo,       6mo,    1yr)
+# 3 different ena directions            (full, ram, anti)
+# 3 different map spacings/resolutions  (4deg,   6deg)
+# 2 different sensors                   (45sensor,  90sensor)
+# Hi-90 L2
+# leapseconds
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+# L1C PSET
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-full-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-full-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-full-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-full-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-ram-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-ram-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-anti-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-anti-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-ram-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-ram-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-anti-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-anti-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-full-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-full-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-full-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-full-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-ram-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-ram-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-anti-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-anti-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-ram-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-ram-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-sf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 90sensor-pset, hi, l2, h90-ena-h-hf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+
+# Hi-45 L2
+# leapseconds
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+# L1C PSET
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-full-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-full-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-full-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-full-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-ram-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-ram-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-anti-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-anti-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-ram-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-ram-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-anti-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-anti-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-full-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-full-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-full-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-full-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-ram-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-ram-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-anti-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-anti-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-ram-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-ram-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 
 hi, l2, h90-ena-h-sf-nsp-ram-hae-4deg-6mo, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
 hi, l2, h90-ena-h-sf-nsp-anti-hae-4deg-6mo, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
 
 hi, l3, h90-ena-h-hf-sp-full-hae-4deg-6mo, hi, l3, h90-spx-h-hf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+
 
 hi, l2, h90-ena-h-hf-nsp-anti-hae-4deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
 hi, l2, h90-ena-h-hf-nsp-ram-hae-4deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
@@ -98,9 +393,15 @@ hi, l3, h45-ena-h-hf-sp-ram-hae-6deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-6deg-
 # <---- HIT Dependencies ---->
 
 hit, l0, raw, hit, l1a, all, HARD, DOWNSTREAM
+leapseconds, spice, historical, hit, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hit, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+
 hit, l0, raw, hit, l1b, hk, HARD, DOWNSTREAM
+leapseconds, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
 
 hit, l1a, counts, hit, l1b, all, HARD, DOWNSTREAM
+
 hit, l1b, standard-rates, hit, l2, standard-intensity, HARD, DOWNSTREAM
 hit, l1b, summed-rates, hit, l2, summed-intensity, HARD, DOWNSTREAM
 hit, l1b, sectored-rates, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
@@ -109,10 +410,12 @@ hit, ancillary, sectored-dt0-factors, hit, l2, macropixel-intensity, HARD, DOWNS
 hit, ancillary, sectored-dt1-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
 hit, ancillary, sectored-dt2-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
 hit, ancillary, sectored-dt3-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+
 hit, ancillary, standard-dt0-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
 hit, ancillary, standard-dt1-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
 hit, ancillary, standard-dt2-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
 hit, ancillary, standard-dt3-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
+
 hit, ancillary, summed-dt0-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
 hit, ancillary, summed-dt1-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
 hit, ancillary, summed-dt2-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
@@ -140,19 +443,42 @@ hit, ancillary, hit-event-type-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
 
 # <---- IDEX Dependencies ---->
 
-idex, l0, raw, idex, l1a, sci-1week, HARD, DOWNSTREAM
+idex, l0, raw, idex, l1a, all, HARD, DOWNSTREAM
+leapseconds, spice, historical, idex, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, idex, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+
 idex, l1a, sci-1week, idex, l1b, sci-1week, HARD, DOWNSTREAM
-spin, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
-repoint, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
+spin, spin, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
+leapseconds, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 attitude_history, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
+planetary_ephemeris, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+
 idex, l1b, sci-1week, idex, l2a, sci-1week, HARD, DOWNSTREAM
+idex, l2a, sci-1week, idex, l2b, sci-1week, HARD, DOWNSTREAM
+leapseconds, spice, historical, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+idex, l1b, evt, idex, l2b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
+idex, l2b, sci-1week, idex, l2c, all, HARD, DOWNSTREAM
 
 # <---- LO Dependencies ---->
 lo, l0, raw, lo, l1a, all, HARD, DOWNSTREAM
+leapseconds, spice, historical, lo, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1a, de, lo, l1b, de, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, de, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 lo, l1a, TODO, lo, l1b, badtimes, HARD, DOWNSTREAM
 lo, l1a, histogram, lo, l1b, monitorrates, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, monitorrates, HARD, DOWNSTREAM
@@ -164,18 +490,41 @@ lo, l1a, star, lo, l1b, prostar, HARD, DOWNSTREAM
 lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 
 # TODO: add more dependencies for pset
-# lo, l1b, TODO, lo, l1c, goodtimes, HARD, DOWNSTREAM
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
+lo, ancillary, goodtimes, lo, l1c, pset, HARD, DOWNSTREAM
+leapseconds, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+
+lo, l1c, pset, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+
+
+lo, l2, l090-ena-h-sf-nsp-ram-hae-4deg-6mo, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
+
+lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, lo, l3, l090-spx-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
 
 # <---- MAG Dependencies ---->
 
 mag, l0, raw, mag, l1a, all, HARD, DOWNSTREAM
+leapseconds, spice, historical, mag, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 mag, l1a, norm-mago, mag, l1b, norm-mago, HARD, DOWNSTREAM
+mag, ancillary, l1b-calibration, mag, l1b, norm-mago, HARD, DOWNSTREAM
 mag, l1a, norm-magi, mag, l1b, norm-magi, HARD, DOWNSTREAM
+mag, ancillary, l1b-calibration, mag, l1b, norm-magi, HARD, DOWNSTREAM
 mag, l1a, burst-mago, mag, l1b, burst-mago, HARD, DOWNSTREAM
+mag, ancillary, l1b-calibration, mag, l1b, burst-mago, HARD, DOWNSTREAM
 mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
-mag, ancillary, l1b-calibration, mag, l1b, all, HARD, DOWNSTREAM
+mag, ancillary, l1b-calibration, mag, l1b, burst-magi, HARD, DOWNSTREAM
 
 # For L1C, we want to trigger on either burst or norm or both.
 mag, l1b, norm-mago, mag, l1c, norm-mago, SOFT_TRIGGER, DOWNSTREAM
@@ -185,28 +534,55 @@ mag, l1b, burst-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
 
 mag, l1c, norm-mago, mag, l1d, norm, HARD, DOWNSTREAM
 mag, l1c, norm-magi, mag, l1d, norm, HARD, DOWNSTREAM
+mag, ancillary, l1d-calibration, mag, l1d, burst, HARD, DOWNSTREAM
 mag, l1b, burst-mago, mag, l1d, burst, HARD, DOWNSTREAM
 mag, l1b, burst-magi, mag, l1d, burst, HARD, DOWNSTREAM
-mag, ancillary, l1d-calibration, mag, l1d, all, HARD, DOWNSTREAM
+mag, ancillary, l1d-calibration, mag, l1d, norm, HARD, DOWNSTREAM
+
+mag, l1c, norm-mago, mag, l2, norm-srf, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l2, burst-srf, HARD, DOWNSTREAM
+mag, ancillary, l2-calibration, mag, l2, norm-srf, HARD, DOWNSTREAM
+mag, ancillary, l2-calibration, mag, l2, burst-srf, HARD, DOWNSTREAM
+mag, ancillary, l2-norm-offsets, mag, l2, norm-srf, HARD, DOWNSTREAM
+mag, ancillary, l2-burst-offsets, mag, l2, burst-srf, HARD, DOWNSTREAM
+leapseconds, spice, historical, mag, l2, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l2, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- Spacecraft Dependencies ---->
-
+# Quaternions
 spacecraft, l0, raw, spacecraft, l1a, quaternions, HARD, DOWNSTREAM
-attitude_history, spice, historical, spacecraft, l1a, pointing_attitude, HARD, DOWNSTREAM
-repoint, spice, historical, spacecraft, l1a, pointing_attitude, HARD, DOWNSTREAM
+leapseconds, spice, historical, spacecraft, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, spacecraft, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+
+# Pointing kernel
+repoint, repoint, historical, spacecraft, spice, all, HARD, DOWNSTREAM
+leapseconds, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 
 swapi, l0, raw, swapi, l1, hk, HARD, DOWNSTREAM
+leapseconds, spice, historical, swapi, l1, hk, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swapi, l1, hk, HARD_NO_TRIGGER, DOWNSTREAM
+
 swapi, l0, raw, swapi, l1, sci, HARD, DOWNSTREAM
-swapi, l1, hk, swapi, l1, sci, HARD, DOWNSTREAM
+# Need to use l1a HK data to be able to set bit-wise flags in L1 Science file.
+swapi, l1a, hk, swapi, l1, sci, HARD, DOWNSTREAM
+leapseconds, spice, historical, swapi, l1, sci, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swapi, l1, sci, HARD_NO_TRIGGER, DOWNSTREAM
+
 swapi, l1, sci, swapi, l2, sci, HARD, DOWNSTREAM
 swapi, ancillary, esa-unit-conversion, swapi, l2, sci, HARD, DOWNSTREAM
 swapi, ancillary, lut-notes, swapi, l2, sci, HARD, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
-swapi, ancillary, density-temperature-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
+swapi, ancillary, proton-density-temperature-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 swapi, ancillary, energy-gf-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
@@ -214,19 +590,29 @@ swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, alpha-sw, HARD, DOW
 
 swapi, l2, sci, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
-swapi, ancillary, density-temperature-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+swapi, ancillary, proton-density-temperature-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, energy-gf-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+#imap_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+# science_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
-swapi, ancillary, density-temperature-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+swapi, ancillary, proton-density-temperature-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, energy-gf-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3b, combined, HARD, DOWNSTREAM
 swapi, ancillary, efficiency-lut, swapi, l3b, combined, HARD, DOWNSTREAM
@@ -235,72 +621,139 @@ swapi, ancillary, energy-gf-lut, swapi, l3b, combined, HARD, DOWNSTREAM
 # <---- SWE Dependencies ---->
 
 swe, l0, raw, swe, l1a, sci, HARD, DOWNSTREAM
+leapseconds, spice, historical, swe, l1a, sci, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swe, l1a, sci, HARD_NO_TRIGGER, DOWNSTREAM
+
 swe, l1a, sci, swe, l1b, sci, HARD, DOWNSTREAM
 swe, ancillary, l1b-in-flight-cal, swe, l1b, sci, HARD, DOWNSTREAM
 swe, ancillary, esa-lut, swe, l1b, sci, HARD, DOWNSTREAM
 swe, ancillary, eu-conversion, swe, l1b, sci, HARD, DOWNSTREAM
+leapseconds, spice, historical, swe, l1b, sci, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swe, l1b, sci, HARD_NO_TRIGGER, DOWNSTREAM
+
 swe, l1b, sci, swe, l2, sci, HARD, DOWNSTREAM
+spin, spin, historical, swe, l2, sci, HARD, DOWNSTREAM
+
 swe, l1b, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, l2, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, ancillary, config, swe, l3, sci, HARD, DOWNSTREAM
 swapi, l3a, proton-sw, swe, l3, sci, HARD, DOWNSTREAM
 mag, l1d, norm-mago, swe, l3, sci, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- ULTRA Dependencies ---->
 
 ultra, l0, raw, ultra, l1a, all, HARD, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Ultra-45 products
 ultra, l1a, 45sensor-de, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-params, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, l1a, 45sensor-hk,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-cullingmask, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-cullingmask,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
 
-ultra, ancillary, 45sensor-leftslit-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-rightslit-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, egynorm-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-imgparams-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-back-pos-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-tdc-norm-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-dps-exposure, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 
-ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-pset, HARD, DOWNSTREAM
-ultra, l1b, 45sensor-extendedspin, ultra, l1c, 45sensor-pset, HARD, DOWNSTREAM
-ultra, l1b, 45sensor-cullingmask, ultra, l1c, 45sensor-pset, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+
+spin, spin, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+
+ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-extendedspin, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-cullingmask, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-extendedspin, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-cullingmask, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-histogram, ultra, l1c, 45sensor-histogram, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-cullingmask, ultra, l1c, 45sensor-histogram, HARD, DOWNSTREAM
 
-ultra, ancillary, 90sensor-gf, ultra, l1c, 45sensor-pset, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 45sensor-pset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-gf, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-efficiencies, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-dps-exposure, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-gf, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-efficiencies, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-dps-exposure, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 
 # Ultra-90 products
 ultra, l1a, 90sensor-de, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-params, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, l1a, 90sensor-hk,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-cullingmask, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-cullingmask,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
 
-ultra, ancillary, 90sensor-leftslit-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-rightslit-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, egynorm-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-imgparams-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-back-pos-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-tdc-norm-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 45sensor-logistic-interpolation, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-dps-exposure, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 
-ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-pset, HARD, DOWNSTREAM
-ultra, l1b, 90sensor-extendedspin, ultra, l1c, 90sensor-pset, HARD, DOWNSTREAM
-ultra, l1b, 90sensor-cullingmask, ultra, l1c, 90sensor-pset, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+
+spin, spin, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+
+ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-extendedspin, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-cullingmask, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-extendedspin, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-cullingmask, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-histogram, ultra, l1c, 90sensor-histogram, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-cullingmask, ultra, l1c, 90sensor-histogram, HARD, DOWNSTREAM
 
-ultra, ancillary, 90sensor-gf, ultra, l1c, 90sensor-pset, HARD, DOWNSTREAM
-ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 90sensor-pset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-gf, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-efficiencies, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-dps-exposure, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-gf, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-efficiencies, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-dps-exposure, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 
 # L2 ENA Map Names break down as:
 # <short instrument (and sensor) descriptor>-<principal data quantity>-<species>-<reference frame>-...cont...
@@ -315,39 +768,240 @@ ultra, ancillary, 90sensor-efficiencies, ultra, l1c, 90sensor-pset, HARD, DOWNST
 # 3 different map spacings/resolutions  (2deg,      4deg,   6deg)
 # 2 different sensors                   (45sensor,  90sensor)
 # 2 different reference frames          (hf,        sf)
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 90sensor-pset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
-ultra, l1c, 45sensor-pset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
+ultra, l1c, 90sensor-heliopset, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-spacecraftpset, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-heliopset, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-spacecraftpset, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-heliopset, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-spacecraftpset, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-heliopset, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-spacecraftpset, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-heliopset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-spacecraftpset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-heliopset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-spacecraftpset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-heliopset, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-spacecraftpset, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-heliopset, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-spacecraftpset, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-heliopset, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-spacecraftpset, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-heliopset, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-spacecraftpset, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-heliopset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-spacecraftpset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-heliopset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-spacecraftpset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-heliopset, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-spacecraftpset, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-heliopset, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-spacecraftpset, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-heliopset, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-spacecraftpset, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-heliopset, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-spacecraftpset, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-heliopset, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 90sensor-spacecraftpset, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-heliopset, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, l1c, 45sensor-spacecraftpset, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+
+
+# Ultra L2 depends on the following Spice products:
+# spacecraft clock kernel, leap seconds kernel, imap frame kernel, pointing attitude kernel, science frame kernel
+# Specify science_frames kernel for all Ultra L2 ENA Maps
+science_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+# Specify spacecraft_clock kernel for all Ultra L2 ENA Maps
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+# Specify leapseconds kernel for all Ultra L2 ENA Maps
+leapseconds, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+# Specify pointing_attitude kernel for all Ultra L2 ENA Maps
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+# Specify imap frames kernel for all Ultra L2 ENA Maps
+imap_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+
+# Ultra L3 survival probability corrected ENA map dependencies:
+glows, l3e, survival-probability-ul, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+science_frames, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+
+# Ultra L3 spectral index map dependencies:
+ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, ultra, l3, u90-spx-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
+ultra, ancillary, ulc-spx-energy-ranges, ultra, l3, u90-spx-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM

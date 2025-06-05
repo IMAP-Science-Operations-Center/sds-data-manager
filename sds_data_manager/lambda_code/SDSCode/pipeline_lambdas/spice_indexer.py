@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from ..database import database as db
 from ..database import models
+from .lambda_custom_events import IMAPLambdaPutEvent
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -239,12 +240,31 @@ def index_spice_file(spice_file: Path):
                     spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][1]),
                 ]
             ]
+        elif spice_metadata["type"] == "pointing_attitude":
+            # Calculate the coverage for pointing attitude files
+            file_coverage_datetime = [
+                [spice_metadata["start_date"], spice_metadata["end_date"]]
+            ]
+            file_coverage_j2000 = [
+                [
+                    spiceypy.datetime2et(spice_metadata["start_date"]),
+                    spiceypy.datetime2et(spice_metadata["end_date"]),
+                ]
+            ]
+            file_coverage_sclk = [
+                [
+                    spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][0]),
+                    spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][1]),
+                ]
+            ]
         else:
             function_arguments = {
                 "idcode": SPACECRAFT_ID,
                 "cover": spiceypy.cell_double(COVERAGE_SPICE_ARRAY_LENGTH),
             }
-            if "attitude" in spice_metadata["type"]:  # Extra arguments needed for ckcov
+
+            if spice_metadata["type"] in ["attitude_history", "attitude_predict"]:
+                # Extra arguments needed for ckcov
                 function_arguments["idcode"] = function_arguments["idcode"] * 1000
                 function_arguments["needav"] = COVERAGE_ANGULAR_VELOCITY_ONLY
                 function_arguments["level"] = COVERAGE_LEVEL
@@ -319,13 +339,71 @@ def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Pat
         # Download path to the EFS path
         efs_spice_filename_and_path = efs_spice_path / filename
         # Download file from S3 to the EFS path
+        logger.info(f"Downloading {s3_key} to {efs_spice_filename_and_path}")
         s3_client.download_file(s3_bucket, s3_key, efs_spice_filename_and_path)
-        logger.info(f"{s3_key} file downloaded successfully")
+        logger.info("Download Successfull")
     except Exception as e:
-        logger.error(f"Error downloading file: {e!s}")
+        raise ValueError(f"Error downloading file: {e!s}") from e
 
     logger.info(f"{filename} was written to EFS path: {efs_spice_path}")
     return efs_spice_filename_and_path
+
+
+def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
+    """Send SPICE event to EventBridge.
+
+    Example of what PutEvent looks like:
+    {
+        "Source": "imap.lambda",
+        "DetailType": "Processed File",
+        "Detail": {
+            "object": {
+                "key": "imap/spice/spin/imap_2025_122_2025_122_02.spin.csv",
+                "instrument": "spacecraft",
+                }
+        }
+    }
+
+    Parameters
+    ----------
+    spice_obj : SPICEFilePath
+        SPICE of the file to determine the event type
+    s3_key : str
+        S3 object key to send to EventBridge
+    """
+    # If these kernels, send event to EventBridge
+    spice_events = [
+        "attitude_history",
+        "attitude_predict",
+        "ephemeris_reconstructed",
+        "ephemeris_nominal",
+        "ephemeris_predict",
+        "spin",
+        "thruster",
+    ]
+    if spice_obj.spice_metadata["type"] not in spice_events:
+        return None
+
+    logger.info(f"Sending SPICE event for {s3_key} to EventBridge")
+    eventbridge_client = boto3.client("events")
+
+    # Create event["detail"] and event inputs
+    detail = {
+        "object": {
+            "key": s3_key,
+            "instrument": "spacecraft",
+        }
+    }
+    event = IMAPLambdaPutEvent(
+        detail_type="Processed File",
+        detail=detail,
+    )
+    event_data = event.to_event()
+
+    # Send event to EventBridge
+    response = eventbridge_client.put_events(Entries=[event_data])
+    logger.info(f"Event sent to EventBridge: {response}")
+    return response
 
 
 def lambda_handler(event, context):
@@ -376,14 +454,13 @@ def lambda_handler(event, context):
         Response message
 
     """
-    logger.info("Received event: " + json.dumps(event, indent=2))
+    logger.info("SPICE Indexer event: " + json.dumps(event, indent=2))
     # Define the paths
     data_mount_path = Path(os.getenv("DATA_DIR"))  # Eg. /mnt/data
 
     # Retrieve the S3 bucket and key from the event
     s3_bucket = event["detail"]["bucket"]["name"]
     s3_key = event["detail"]["object"]["key"]
-    logger.info(event)
 
     file_path = write_data_to_efs(s3_key, s3_bucket, data_mount_path)
     logger.info(f"File {s3_key} moved to EFS successfully")
@@ -403,6 +480,8 @@ def lambda_handler(event, context):
         # Index the SPICE kerenels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
         index_spice_file(file_path)
+
+    send_spice_event(spice_obj, s3_key)
 
     return {
         "statusCode": 200,

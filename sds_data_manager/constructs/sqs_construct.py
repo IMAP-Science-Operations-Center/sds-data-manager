@@ -54,9 +54,9 @@ class SqsConstruct(Construct):
             # This is required. It removes messages with identical content. Since
             # the event includes a filename each event should be totally unique.
             content_based_deduplication=True,
-            # The dead letter queue will take messages that failed retry 20 times.
+            # The dead letter queue will take messages that failed retry.
             dead_letter_queue=aws_sqs.DeadLetterQueue(
-                max_receive_count=20, queue=self.dead_letter_queue
+                max_receive_count=1, queue=self.dead_letter_queue
             ),
         )
 

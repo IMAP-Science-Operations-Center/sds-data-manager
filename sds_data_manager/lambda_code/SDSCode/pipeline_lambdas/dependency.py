@@ -1,17 +1,21 @@
 """Dependency tracking module."""
 
+import json
 import logging
+import os
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from os.path import basename
 from pathlib import Path
 from typing import Optional
 
+import boto3
 import imap_data_access
 from imap_data_access import processing_input
 from imap_data_access.processing_input import ProcessingInputCollection
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, desc, func, or_
+from sqlalchemy.orm import aliased
 
 from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
@@ -39,7 +43,8 @@ class DataSource:
         list[str]
             list of valid data sources.
         """
-        # TODO: import this from imap_data_access once it's defined.
+        # TODO: import this from imap_data_access once it's defined
+        # or transition this class to imap_data_access
         return [
             "spin",
             "repoint",
@@ -67,7 +72,10 @@ class DataType:
     and other data types related to SPICE and ancillary data.
     """
 
+    # TODO: transition these class to imap_data_access once it's defined.
     SPICE: str = "spice"
+    SPIN: str = "spin"
+    REPOINT: str = "repoint"
     ANCILLARY: str = "ancillary"
 
     @property
@@ -82,6 +90,8 @@ class DataType:
         return [
             self.SPICE,
             self.ANCILLARY,
+            self.SPIN,
+            self.REPOINT,
             *imap_data_access.VALID_DATALEVELS,
         ]
 
@@ -105,6 +115,7 @@ class DataDescriptor:
                   if historical kernels are not available.
     """
 
+    # TODO: transition these class to imap_data_access once it's defined
     PREDICT: str = "predict"
     HISTORICAL: str = "historical"
     RECONSTRUCT: str = "reconstruct"
@@ -141,7 +152,9 @@ class Relationship:
             will not trigger processing.
     """
 
+    # TODO: transition these class to imap_data_access once it's defined
     HARD: str = "HARD"
+    HARD_NO_TRIGGER: str = "HARD_NO_TRIGGER"
     SOFT_TRIGGER: str = "SOFT_TRIGGER"
     SOFT_NO_TRIGGER: str = "SOFT_NO_TRIGGER"
 
@@ -154,7 +167,12 @@ class Relationship:
         list[str]
             list of valid data relationships.
         """
-        return [self.HARD, self.SOFT_TRIGGER, self.SOFT_NO_TRIGGER]
+        return [
+            self.HARD,
+            self.HARD_NO_TRIGGER,
+            self.SOFT_TRIGGER,
+            self.SOFT_NO_TRIGGER,
+        ]
 
 
 @dataclass
@@ -166,6 +184,7 @@ class DependencyType:
         2. DOWNSTREAM - future file that needs current file to start its process
     """
 
+    # TODO: transition these class to imap_data_access once it's defined
     UPSTREAM: str = "UPSTREAM"
     DOWNSTREAM: str = "DOWNSTREAM"
 
@@ -250,16 +269,11 @@ class DependencyConfig:
                 parent_node = tuple(contents[:3])
                 child_node = tuple(contents[3:6])
 
-                # validate node
-                if not self._validate_node(parent_node) or not self._validate_node(
-                    child_node
-                ):
-                    logger.debug(
-                        f"Parent node: {parent_node}, Child node: {child_node}"
-                    )
-                    raise ValueError(
-                        "Data product must have: (source, type, descriptor)"
-                    )
+                try:
+                    self._validate_node(parent_node)
+                    self._validate_node(child_node)
+                except ValueError as e:
+                    raise ValueError(f"Node validation failed with '{e}'") from e
 
                 hard_soft = contents[6]
                 # Downstream direction
@@ -280,24 +294,102 @@ class DependencyConfig:
         ----------
         node : tuple
             Node to validate.
+        """
+        if len(node) != 3:
+            raise ValueError("Missing data source, data type, or descriptor")
+        if node[0] not in self.data_source.valid_source:
+            raise ValueError(
+                f"Invalid data source: {node[0]}. "
+                f"Valid data sources: {self.data_source.valid_source}"
+            )
+        if node[1] not in self.data_type.valid_type:
+            raise ValueError(
+                f"Invalid data type: {node[1]}. "
+                f"Valid data types: {self.data_type.valid_type}"
+            )
+        # TODO: Add descriptor validation once we define all data product's
+        # data descriptor.
+
+    def kickoff_pipeline_jobs(self) -> list:
+        """Return all the jobs that kick off each instrument pipeline.
+
+        These are nodes that are downstream from a node with the data_level equal to
+        "l0" and the descriptor equal to "raw".
 
         Returns
         -------
-        bool
-            True if node is valid, False otherwise.
+        list
+            List of dictionaries containing the data source, data type, and descriptor
+            of the jobs that kick off each instrument pipeline.
         """
-        if len(node) != 3:
-            logger.debug("Missing data source, data type, or descriptor")
-            return False
-        if node[0] not in self.data_source.valid_source:
-            logger.debug(f"Invalid data source: {node[0]}")
-            return False
-        if node[1] not in self.data_type.valid_type:
-            logger.debug(f"Invalid data type: {node[1]}")
-            return False
-        # TODO: Add descriptor validation once we define all data product's
-        # data descriptor.
-        return True
+        kick_off_jobs = []
+        for relationship in [self.relationship.HARD, self.relationship.SOFT_TRIGGER]:
+            # Get all the downstream dependencies for the l0 raw data
+            dependencies = self.dependencies[relationship]["DOWNSTREAM"]
+            for parent_node, child_node in dependencies.items():
+                # If the parent dependency is l0 raw, add the child dependencies to the
+                # kick_off_jobs list.
+                if parent_node[1] == "l0" and parent_node[2] == "raw":
+                    kick_off_jobs.extend(
+                        [
+                            {
+                                "data_source": node[0],
+                                "data_type": node[1],
+                                "descriptor": node[2],
+                                "relationship": relationship,
+                            }
+                            for node in child_node
+                        ]
+                    )
+        return kick_off_jobs
+
+    def get_all_nodes(self, dep_type: Optional[str] = None) -> list:
+        """Get a unique list of nodes from the dependency graph.
+
+        Returns
+        -------
+        list
+            List of unique nodes.
+        dep_type : str, optional
+            Dependency type to filter the nodes by. If None, all nodes are returned.
+        """
+        job_nodes = []
+        # If dep_type is provided, filter the dependencies by the given type.
+        dep_types = (
+            self.dependency_type.valid_dependency_type
+            if dep_type is None
+            else [dep_type]
+        )
+        # Add each node to the list.
+        for relationship in self.relationship.valid_relationship:
+            for dependency_type in dep_types:
+                [
+                    job_nodes.extend(dep)
+                    for dep in self.dependencies[relationship][dependency_type].values()
+                ]
+        return list(set(job_nodes))
+
+    def get_cadence_jobs(self, cadence: str) -> list:
+        """Get cadence jobs.
+
+        Parameters
+        ----------
+        cadence : str
+            Cadence string. Either "3mo", "6mo", or "1yr".
+
+        Returns
+        -------
+        list
+            List of cadence jobs.
+        """
+        # Cadence jobs are only at data level l2 and contain either "3mo", "6mo", or
+        # "1yr" strings as the last part of the descriptor.
+
+        return [
+            node
+            for node in self.get_all_nodes("DOWNSTREAM")
+            if node[1] == "l2" and cadence == node[2].split("-")[-1]
+        ]
 
 
 def get_dependencies(node, dependency_type, relationship):
@@ -326,11 +418,7 @@ def get_dependencies(node, dependency_type, relationship):
         List of dictionary containing the dependency information.
     """
     # Load the dependencies
-    try:
-        dependency_config = DependencyConfig()
-    except Exception as e:
-        logger.error(f"Error loading dependencies: {e!s}")
-        return None
+    dependency_config = DependencyConfig()
 
     relationships = (
         Relationship().valid_relationship if relationship == "ALL" else [relationship]
@@ -339,7 +427,6 @@ def get_dependencies(node, dependency_type, relationship):
     dependencies = []
     for rel in relationships:
         deps = dependency_config.dependencies[rel][dependency_type].get(node, [])
-
         # Add keys for a dict-like representation
         dependencies.extend(
             [
@@ -352,7 +439,6 @@ def get_dependencies(node, dependency_type, relationship):
                 for dep in deps
             ]
         )
-
     return dependencies
 
 
@@ -387,14 +473,157 @@ def primary_science_dep(query_params: dict, dependency: dict) -> bool:
     )
 
 
+def combine_kernel_sources(dependency: dict) -> str:
+    """Combine kernel sources.
+
+    Combine the kernel sources to form a single string separated by commas.
+    This is used in metakernel API calls to get kernels in order list.
+
+    Parameters
+    ----------
+    dependency : dict
+        Dependency dictionary containing the data source and data type.
+
+    Returns
+    -------
+    str
+        Combined kernel sources separated by commans. Eg.
+        "attitude_history,attitude_predict,..."
+    """
+    file_types = []
+    for dep in dependency:
+        if dep["data_source"] in spice_metakernel_api.KernelCollection().file_types:
+            file_types.append(dep["data_source"])
+    return ",".join(file_types)
+
+
+def get_spin_files(
+    session,
+    start_date: datetime,
+    end_date: datetime,
+) -> list:
+    """Get spin input.
+
+    Query the spin table for the given date range and get latest version.
+
+    Parameters
+    ----------
+    session : orm session
+        Database session.
+    start_date : datetime
+        Start date to find dependent files with.
+    end_date : datetime
+        End date to find dependent files with.
+
+    Returns
+    -------
+    list
+        List of spin files.
+    """
+    spin = aliased(models.SpinTable)
+
+    # Define the row_number() window function
+    row_number = (
+        func.row_number()
+        .over(
+            partition_by=(spin.start_date, spin.end_date), order_by=desc(spin.version)
+        )
+        .label("row_num")
+    )
+
+    # Build the subquery with row numbers
+    subquery = (
+        session.query(
+            spin.file_path, spin.start_date, spin.end_date, spin.version, row_number
+        )
+        .filter(
+            and_(
+                spin.start_date <= end_date,
+                spin.end_date >= start_date,
+            )
+        )
+        .subquery()
+    )
+
+    # Outer query to select only latest version per start/end date
+    records = (
+        session.query(
+            subquery.c.file_path,
+            subquery.c.start_date,
+            subquery.c.end_date,
+            subquery.c.version,
+        )
+        .filter(subquery.c.row_num == 1)
+        .all()
+    )
+
+    spin_files = [basename(record.file_path) for record in records]
+    return spin_files
+
+
+def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
+    """Get latest repoint file.
+
+    Query S3 bucket for the latest repoint file.
+
+    Parameters
+    ----------
+    end_date : datetime
+        End date to find dependent files with.
+
+    Returns
+    -------
+    str
+        Latest repoint file name.
+    """
+    bucket_name = os.getenv("S3_BUCKET")
+    prefix = "imap/spice/repoint/"
+
+    s3 = boto3.client("s3")
+    paginator = s3.get_paginator("list_objects_v2")
+    pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
+
+    repoint_files = []
+
+    for page in pages:
+        for obj in page.get("Contents", []):
+            filename = obj["Key"]
+            file_obj = processing_input.SPICEFilePath(filename)
+            repoint_files.append(
+                (
+                    file_obj.spice_metadata["end_date"],
+                    file_obj.spice_metadata["version"],
+                    filename,
+                )
+            )
+
+    if not repoint_files:
+        return None
+
+    # Sort by end_date and version
+    latest = sorted(repoint_files, key=lambda x: (x[0], x[1]))[-1]
+    latest_file_date = latest[0]
+
+    # Check that input end is within latest repoint file end date
+    if latest_file_date < end_date:
+        logger.info(
+            f"Latest repoint file end date {latest_file_date} "
+            f"is before input end date {end_date}"
+        )
+        return None
+
+    # Otherwise, return the latest repoint file without the path prefix
+    return basename(latest[2])
+
+
+# ruff: noqa: PLR0915
 def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
-    end_date: Optional[datetime] = None,
+    end_date: datetime,
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
-    # TODO: Will query spice db in the future
     For each dependency, query for existing files in s3 and add any matching files
     found to a ProcessingInputCollection.
 
@@ -405,7 +634,7 @@ def get_upstream_dependency_inputs(
         dependency in the query parameters.
     start_date : datetime
         Start date to find dependent files with.
-    end_date : datetime, optional
+    end_date : datetime
         End date to find dependent files with.
 
     Returns
@@ -415,15 +644,111 @@ def get_upstream_dependency_inputs(
     """
     dependency_inputs = processing_input.ProcessingInputCollection()
     with db.Session() as session:
-        for dep in dependencies:
+        # -----------------------------
+        # Check for SPICE dependencies
+        # -----------------------------
+        # If spin is a dependency, query spin table for given date range
+        has_spin_dep = any(dep["data_source"] == "spin" for dep in dependencies)
+        if has_spin_dep:
+            spin_files = get_spin_files(session, start_date, end_date)
+            if not spin_files:
+                logger.info(f"No spin files found for {start_date} to {end_date}")
+                return None
+            logger.info(f"Found spin files: {spin_files}. Adding to collection.")
+            dependency_inputs.add(processing_input.SpinInput(*spin_files))
+
+        # If repoint is a dependency, query s3 for latest repoint file
+        has_repoint_dep = any(dep["data_source"] == "repoint" for dep in dependencies)
+        if has_repoint_dep:
+            latest_repoint_file = get_latest_repoint_file(end_date)
+            if latest_repoint_file is None:
+                logger.info(f"No repoint file found for {start_date} to {end_date}")
+                return None
+            logger.info(
+                f"Found repoint file: {latest_repoint_file}. Adding to collection."
+            )
+            dependency_inputs.add(processing_input.RepointInput(latest_repoint_file))
+
+        # Otherwise, combine rest of kernels types and query metakernel lambda
+        # for given date range
+        has_kernel_dep = any(
+            dep["data_source"] != "spin"
+            and dep["data_source"] != "repoint"
+            and dep["data_type"] == "spice"
+            for dep in dependencies
+        )
+        if has_kernel_dep:
+            combined_kernel_sources = combine_kernel_sources(dependencies)
+
+            # convert start_date and end_date in seconds after j2000.
+            # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
+            def yyyymmdd_to_seconds_since_j2000(
+                date_str: str, add_24_hrs=False
+            ) -> float:
+                # Parse input date string
+                dt = datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
+                if add_24_hrs:
+                    dt += timedelta(hours=24)
+                # Define J2000 epoch: 2000-01-01T12:00:00 UTC
+                j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+                # Compute seconds difference
+                delta = dt - j2000
+                return delta.total_seconds()
+
+            start_time = yyyymmdd_to_seconds_since_j2000(start_date.strftime("%Y%m%d"))
+            # TODO revisit setting end_time after SIT-4. This should be handled upstream
+            add_24_hrs = True if end_date == start_date else False
+            end_time = yyyymmdd_to_seconds_since_j2000(
+                end_date.strftime("%Y%m%d"), add_24_hrs
+            )
+            metakernel_response = spice_metakernel_api.lambda_handler(
+                {
+                    "queryStringParameters": {
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "list_files": "True",
+                        "file_types": combined_kernel_sources,
+                        # TODO: revisit this after SIT-4
+                        # "require_coverage": "True",
+                    }
+                },
+                None,
+            )
+            if metakernel_response["statusCode"] != 200:
+                logger.info(
+                    f"Metakernel lambda raised error: {metakernel_response['body']}"
+                )
+                return None
+            metakernel_files = json.loads(metakernel_response["body"])
+            logger.info(
+                f"Found metakernel files: {metakernel_files}. Adding to collection."
+            )
+            dependency_inputs.add(processing_input.SPICEInput(*metakernel_files))
+
+        # ---------------------------------
+        # Check for non-spice dependencies
+        # ---------------------------------
+        non_spice_dependencies = [
+            dep
+            for dep in dependencies
+            if dep["data_type"] not in ["spice", "spin", "repoint"]
+        ]
+        for dep in non_spice_dependencies:
             relationship = dep["relationship"]
 
             dep_string = f"{dep=}\n{start_date=}\n{end_date=}"
 
-            logger.info(f"Searching for files matching dep={dep_string}")
+            logger.info(
+                "Searching for upstream dependencies with dependency string: "
+                f"{dep_string}"
+            )
 
             records = get_files(session, dep, start_date, end_date)
-            if not records and relationship == Relationship.HARD:
+            if not records and relationship in [
+                Relationship.HARD,
+                Relationship.HARD_NO_TRIGGER,
+            ]:
                 logger.info(f"No records found for dependency: {dep_string}")
                 return None
 
@@ -431,12 +756,15 @@ def get_upstream_dependency_inputs(
                 continue
 
             filenames = [basename(record.file_path) for record in records]
-            logger.info(f"Found filenames: {filenames}. Adding to collection.")
 
             # Create a processingInput instance and add it to the collection
             if dep["data_type"] == DataType.ANCILLARY:
+                logger.info(
+                    f"Found ancillary files: {filenames}. Adding to collection."
+                )
                 dependency_inputs.add(processing_input.AncillaryInput(*filenames))
             else:
+                logger.info(f"Found science files: {filenames}. Adding to collection.")
                 dependency_inputs.add(processing_input.ScienceInput(*filenames))
 
     return dependency_inputs
@@ -538,11 +866,11 @@ def get_files(
 
 
 def get_jobs(
+    dependency_type: str,
+    relationship: str,
     data_source: str,
     data_type: str,
     descriptor: str,
-    dependency_type: str,
-    relationship: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
 ) -> list | ProcessingInputCollection | None:
@@ -550,18 +878,18 @@ def get_jobs(
 
     Parameters
     ----------
-    data_source : str
-        Source name of the data product.
-    data_type : str
-        Data type of the data product.
-    descriptor : str
-        Descriptor of the data product.
     dependency_type : str
         Whether it's UPSTREAM or DOWNSTREAM dependency.
     relationship : str
         Whether it's HARD, SOFT_TRIGGER, or SOFT_NO_TRIGGER dependency.
         If "ALL" is provided, dependencies for all valid relationships
         (HARD, SOFT_TRIGGER, SOFT_NO_TRIGGER) will be returned.
+    data_source : str
+        Source name of the data product.
+    data_type : str
+        Data type of the data product.
+    descriptor : str
+        Descriptor of the data product.
     start_date : str, optional
         Start date to find dependent files with, in YYYYMMDD format.
     end_date : str, optional
@@ -621,8 +949,8 @@ def get_jobs(
 
     """
     logger.info(
-        f"{data_source=}, {data_type=}, {descriptor=}, {dependency_type=},"
-        f" {relationship=}"
+        f"Dependency Event: {data_source=}, {data_type=}, {descriptor=},"
+        f" {dependency_type=}, {relationship=}"
     )
 
     dependencies = get_dependencies(
@@ -630,10 +958,10 @@ def get_jobs(
         dependency_type,
         relationship,
     )
-
+    logger.info(f"Dependency nodes found: {dependencies}")
     if dependencies is None:
         logger.warning("Failed to load dependencies")
-        return None
+        raise ValueError("Failed to load dependencies")
 
     # If start_date is supplied, check for the version and end_date.
     start_date = datetime.strptime(start_date, "%Y%m%d") if start_date else None
@@ -651,6 +979,11 @@ def get_jobs(
         start_date=start_date,
         end_date=end_date,
     )
+    if upstream_dependencies_output is None:
+        logger.info(
+            f"No dependencies found for {start_date=} - {end_date=}: {dependencies}"
+        )
+        return None
 
-    logger.info(f"Found dependencies: {dependencies}.")
+    logger.info(f"Dependencies found for {start_date=} - {end_date=}: {dependencies}")
     return upstream_dependencies_output

@@ -1,11 +1,14 @@
 """Contains the lambda handler for the 'query' data access API."""
 
+import datetime
 import json
 import logging
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
+
+import spiceypy
 
 from . import spice_query_api
 from .metakernel import MetaKernel
@@ -37,15 +40,26 @@ class PlanetaryConstantsKernels(Enum):
         return "planetary_constants_category"
 
 
-class FramesKernels(Enum):
-    """Container for Frames Kernel Types."""
+class ScienceFramesKernels(Enum):
+    """Container for Science Frames Kernel Type."""
 
-    FRAMES = auto()
+    SCIENCE_FRAMES = auto()
 
     @staticmethod
     def spice_category_name():
         """Category of SPICE file."""
-        return "frames_category"
+        return "science_frames_category"
+
+
+class IMAPFramesKernels(Enum):
+    """Container for IMAP Frames Kernel Type."""
+
+    IMAP_FRAMES = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "imap_frames_category"
 
 
 class SpacecraftClockKernels(Enum):
@@ -117,7 +131,8 @@ class KernelCollection:
         default_factory=lambda: [
             LeapsecondKernels,
             PlanetaryConstantsKernels,
-            FramesKernels,
+            IMAPFramesKernels,
+            ScienceFramesKernels,
             SpacecraftClockKernels,
             PlanetaryEphemerisKernels,
             SpacecraftEphemerisKernels,
@@ -143,6 +158,19 @@ class KernelCollection:
         ]
 
 
+def _convert_input_times_to_j2000(start_date_str, end_date_str):
+    """Convert input to seconds since J2000."""
+    try:
+        start_date_datetime = datetime.datetime.strptime(start_date_str, "%Y%m%d")
+        end_date_datetime = datetime.datetime.strptime(end_date_str, "%Y%m%d")
+        start_date = spiceypy.datetime2et(start_date_datetime)
+        end_date = spiceypy.datetime2et(end_date_datetime)
+    except (TypeError, ValueError):
+        start_date = int(start_date_str)
+        end_date = int(end_date_str)
+    return start_date, end_date
+
+
 def lambda_handler(event, context):
     """Entry point to the SPICE query API lambda.
 
@@ -157,15 +185,13 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
-    logger.info(f"Event: {event}")
-    logger.info(f"Context: {context}")
-
-    logger.info("Received event: " + json.dumps(event, indent=2))
+    logger.info("Metakernel event: " + json.dumps(event, indent=2))
 
     # Gather the query parameters
     query_params = event["queryStringParameters"]
-    start_time = query_params["start_time"]
-    end_time = query_params["end_time"]
+    start_time_str = query_params["start_time"]
+    end_time_str = query_params["end_time"]
+    start_time, end_time = _convert_input_times_to_j2000(start_time_str, end_time_str)
     spice_directory = Path(query_params.get("spice_path", ""))
     list_files = query_params.get("list_files", "false")
     require_coverage = query_params.get("require_coverage", "false")
@@ -180,14 +206,15 @@ def lambda_handler(event, context):
         return {
             "statusCode": 422,  # Unprocessable Content
             "body": json.dumps(metakernel.spice_gaps),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",  # Allow CORS
-            },
         }
 
     if list_files.lower() == "true":
         metakernel_files = metakernel.return_spice_files_in_order(detailed=False)
+        if not metakernel_files:
+            return {
+                "statusCode": 404,  # Not Found
+                "body": "No files found.",
+            }
         output = json.dumps([Path(f).name for f in metakernel_files])
     else:
         output = metakernel.return_tm_file(base_path=spice_directory)
@@ -196,10 +223,6 @@ def lambda_handler(event, context):
     response = {
         "statusCode": 200,
         "body": output,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",  # Allow CORS
-        },
     }
 
     return response
