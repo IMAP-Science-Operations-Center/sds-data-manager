@@ -9,8 +9,8 @@ Copying items back into source account bucket
 
 To restore files from the backup bucket into the main account bucket, we are going to
 [assume the role](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-role.html#cli-role-prereqs)
-created by SdsDataManager stack in the source account. Here, "source account" refers to
-the account with SdsDataManager deployed into it (i.e. dev or prod).
+created by SDCStack stack in the source account. Here, "source account" refers to
+the account with SDCStack deployed into it (i.e. dev or prod).
 
 #. Update ``~/.aws/config`` to include a new profile for this role. Here, ``source_profile`` should be the source account profile
 ```
