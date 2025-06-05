@@ -13,7 +13,7 @@ class BackupBucket(Construct):
     account. The source_account is a required parameter. This source account
     should be the AWS account for the source bucket.
 
-    For replication to work, you also need to deploy SdsDataManager and create
+    For replication to work, you also need to deploy SDCStack and create
     the source bucket and replication role.
     """
 
