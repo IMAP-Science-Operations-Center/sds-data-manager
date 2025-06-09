@@ -947,12 +947,14 @@ def test_def_cadence_map_event(setup_s3, session, tmp_path):
         ) as dt_mock,
         patch("imap_data_access.config", {"DATA_DIR": tmp_path}),
     ):
-        dt_mock.return_value = ("20250301", "20250601")
+        dt_mock.return_value = ("20250228", "20250601")
         lambda_handler(cadence_event, context)
         # Verify the function was called 12 times. There are currently 12 l2 map jobs
         # with the cadence of 3 months.
         assert mock_batch_client.submit_job.call_count == 12
-        # Assert that the function was called with the cadence json file path
+        # Assert that the function was called with the cadence json file path. The
+        # Start date should be the date of the earliest upstream science file in the
+        # cadence range.
         mock_batch_client.submit_job.assert_called_with(
             jobName="ultra-l2-u90-ena-h-sf-nsp-full-hae-6deg-3mo-job-12",
             jobQueue="ProcessingJobQueue",

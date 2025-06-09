@@ -802,10 +802,15 @@ def cadence_processing_event(session, events):
     logger.info(f"Using {start_date=} and {end_date=} for cadence jobs.")
 
     for job_node in potential_jobs:
+        node = {
+            "data_source": job_node[0],
+            "descriptor": job_node[2],
+            "data_type": job_node[1],
+        }
         upstream_dependencies = dependency.get_jobs(
-            data_source=job_node[0],
-            data_type=job_node[1],
-            descriptor=job_node[2],
+            data_source=node["data_source"],
+            data_type=node["data_type"],
+            descriptor=node["descriptor"],
             dependency_type="UPSTREAM",
             relationship="ALL",
             start_date=start_date,
@@ -815,12 +820,26 @@ def cadence_processing_event(session, events):
             continue
 
         logger.info(f"All required dependencies found for the dependency: {job_node}")
+        # The start date for the cadence job should be the earliest date of the
+        # upstream science dependency. For example, if the job is an ultra l2 map, then
+        # the start date should be the date of the first upstream pset.
+        # For cadence jobs, it is assumed there is at least one primary ScienceInput,
+        # typically only one.
+        primary_science_inputs = upstream_dependencies.get_science_inputs(
+            node["data_source"]
+        )
+        start_dates = [
+            science_input.get_time_range()[0]
+            for science_input in primary_science_inputs
+        ]
+        cadence_start_date = sorted(start_dates)[0]
+
         job_version = determine_job_version(
             session=session,
             instrument=job_node[0],
             data_level=job_node[1],
             descriptor=job_node[2],
-            start_date=start_date,
+            start_date=cadence_start_date,
         )
         # Serialize the upstream dependencies to a JSON file. This is necessary for map
         # jobs with many dependencies to avoid passing a long list of dependencies
@@ -830,7 +849,7 @@ def cadence_processing_event(session, events):
             instrument=job_node[0],
             data_level=job_node[1],
             descriptor=job_node[2],
-            start_time=start_date,
+            start_time=cadence_start_date.strftime("%Y%m%d"),
             version=job_version,
             extension="json",
         )
@@ -842,15 +861,10 @@ def cadence_processing_event(session, events):
             continue
         # Submit the map job with all of the upstream dependencies in the date range
         # (as JSON file).
-        node = {
-            "data_source": job_node[0],
-            "descriptor": job_node[2],
-            "data_type": job_node[1],
-        }
         try_to_submit_job(
             session,
             node,
-            datetime.datetime.strptime(start_date, "%Y%m%d"),
+            cadence_start_date,
             job_version,
             os.path.basename(cadence_dependency_path),
         )
