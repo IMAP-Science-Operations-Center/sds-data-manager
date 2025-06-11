@@ -107,6 +107,7 @@ def test_lambda_handler(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
         mock_sqs_client.delete_message.assert_called_once()
 
@@ -196,6 +197,7 @@ def test_lambda_handler_ancillary_event(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
 
@@ -279,6 +281,54 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
 
     session.add_all(
         [
+            SPICEFiles(
+                file_name="naif0012.tls",
+                ingestion_date=datetime.strptime(
+                    "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_root="naif.tls",
+                kernel_type="leapseconds",
+                min_date_j2000=0,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[0, 4575787269.183866]],
+                min_date_datetime=datetime.strptime(
+                    "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                max_date_datetime=datetime.strptime(
+                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+                min_date_sclk="1/0000000000:00000",
+                max_date_sclk="1/4285909749:39444",
+                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+                version=12,
+            ),
+            SPICEFiles(
+                file_name="imap_sclk_0000.tsc",
+                ingestion_date=datetime.strptime(
+                    "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_root="imap_sclk_0000.tsc",
+                kernel_type="spacecraft_clock",
+                min_date_j2000=315576066.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[315576066.1839245, 4575787269.183866]],
+                min_date_datetime=datetime.strptime(
+                    "2010-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                max_date_datetime=datetime.strptime(
+                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_intervals_datetime="[[2010-01-01T00:00:00, 2145-01-01T00:00:00]]",
+                min_date_sclk="1/0000000000:00000",
+                max_date_sclk="1/4285909749:39444",
+                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+                version=0,
+            ),
             ScienceFiles(
                 file_path="/path/to/imap_mag_l1c_norm-mago_20250418_v004.cdf",
                 instrument="mag",
@@ -315,6 +365,7 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
             ),
         ]
     )
+    session.commit()
     multiple_events = {
         "Records": [
             {
@@ -329,7 +380,7 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(multiple_events, context)
         assert mock_batch_client.submit_job.call_count == 0
-
+    print(caplog.text)
     # Check that the expected message was logged.
     expected_log = (
         "Skipping job submission for {'data_source': 'mag', 'data_type': "
@@ -492,6 +543,7 @@ def test_idex_l2b(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
 
@@ -503,10 +555,10 @@ def test_ultra_l3_map(session, caplog):
     session.add_all(
         [
             ScienceFiles(
-                file_path=f"/path/to/imap_glows_l3e_ulc-sp_2024{month:02}01_v001.cdf",
+                file_path=f"/path/to/imap_glows_l3e_survival-probability-ul_2024{month:02}01_v001.cdf",
                 instrument="glows",
                 data_level="l3e",
-                descriptor="ulc-sp",
+                descriptor="survival-probability-ul",
                 start_date=datetime(2024, month, 1),
                 version="v001",
                 extension="cdf",
@@ -520,10 +572,10 @@ def test_ultra_l3_map(session, caplog):
     session.add_all(
         [
             ScienceFiles(
-                file_path="/path/to/imap_ultra_l2_u90-ena-h-sf-full-hae-nside8-3mo_20240201_v001.cdf",
+                file_path="/path/to/imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-4deg-3mo_20240201_v001.cdf",
                 instrument="ultra",
                 data_level="l2",
-                descriptor="u90-ena-h-sf-full-hae-nside8-3mo",
+                descriptor="u90-ena-h-sf-nsp-full-hae-4deg-3mo",
                 start_date=datetime(2024, 2, 1),
                 version="v001",
                 extension="cdf",
@@ -587,13 +639,13 @@ def test_ultra_l3_map(session, caplog):
         # groupings. We want to test that only one job is submitted.
         "Records": [
             {
-                "body": '{"detail": '
-                '{"object": {"key": "imap_glows_l3e_ulc-sp_20240201_v001.cdf"}}'
+                "body": '{"detail": {"object": {"key": '
+                '"imap_glows_l3e_survival-probability-ul_20240201_v001.cdf"}}'
                 "}"
             },
             {
-                "body": '{"detail": '
-                '{"object": {"key": "imap_glows_l3e_ulc-sp_20240301_v001.cdf"}}'
+                "body": '{"detail": {"object": {"key": '
+                '"imap_glows_l3e_survival-probability-ul_20240301_v001.cdf"}}'
                 "}"
             },
         ]
@@ -608,17 +660,20 @@ def test_ultra_l3_map(session, caplog):
     # dependencies for the job.
     # NOTE: in reality, there will be more than 3 glows l3e files.
     glows_files = [
-        f"imap_glows_l3e_ulc-sp_20240{month}01_v001.cdf" for month in range(2, 6)
+        f"imap_glows_l3e_survival-probability-ul_20240{month}01_v001.cdf"
+        for month in range(2, 6)
     ]
     expected_processing_input.add(ScienceInput(*glows_files))
     expected_processing_input.add(
-        ScienceInput("imap_ultra_l2_u90-ena-h-sf-full-hae-nside8-3mo_20240201_v001.cdf")
+        ScienceInput(
+            "imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-4deg-3mo_20240201_v001.cdf"
+        )
     )
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(events, context)
         # Verify the function was called
         mock_batch_client.submit_job.assert_called_with(
-            jobName="ultra-l3-u90-spx-hsf-sp-full-hae-nside8-3mo-job-1",
+            jobName="ultra-l3-u90-ena-h-sf-sp-full-hae-4deg-3mo-job-1",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-ultra-l3",
             containerOverrides={
@@ -628,7 +683,7 @@ def test_ultra_l3_map(session, caplog):
                     "--data-level",
                     "l3",
                     "--descriptor",
-                    "u90-spx-hsf-sp-full-hae-nside8-3mo",
+                    "u90-ena-h-sf-sp-full-hae-4deg-3mo",
                     "--start-date",
                     "20240201",
                     "--version",
@@ -638,6 +693,7 @@ def test_ultra_l3_map(session, caplog):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
         # Assert that only one job is submitted.
         assert mock_batch_client.submit_job.call_count == 1
@@ -761,6 +817,7 @@ def test_lambda_handler_mag_l1c_case(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
         events = {
@@ -828,6 +885,7 @@ def test_lambda_handler_mag_l1c_case(session):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
 
@@ -916,6 +974,7 @@ def test_def_cadence_map_event(setup_s3, session, tmp_path):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
 
@@ -1297,4 +1356,5 @@ def test_spice_event(session, s3_client):
                     "--upload-to-sdc",
                 ]
             },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )

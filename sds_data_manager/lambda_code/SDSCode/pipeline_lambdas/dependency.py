@@ -958,7 +958,7 @@ def get_jobs(
         dependency_type,
         relationship,
     )
-
+    logger.info(f"Dependency nodes found: {dependencies}")
     if dependencies is None:
         logger.warning("Failed to load dependencies")
         raise ValueError("Failed to load dependencies")

@@ -40,16 +40,26 @@ class PlanetaryConstantsKernels(Enum):
         return "planetary_constants_category"
 
 
-class FramesKernels(Enum):
-    """Container for Frames Kernel Types."""
+class ScienceFramesKernels(Enum):
+    """Container for Science Frames Kernel Type."""
 
     SCIENCE_FRAMES = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "science_frames_category"
+
+
+class IMAPFramesKernels(Enum):
+    """Container for IMAP Frames Kernel Type."""
+
     IMAP_FRAMES = auto()
 
     @staticmethod
     def spice_category_name():
         """Category of SPICE file."""
-        return "frames_category"
+        return "imap_frames_category"
 
 
 class SpacecraftClockKernels(Enum):
@@ -121,7 +131,8 @@ class KernelCollection:
         default_factory=lambda: [
             LeapsecondKernels,
             PlanetaryConstantsKernels,
-            FramesKernels,
+            IMAPFramesKernels,
+            ScienceFramesKernels,
             SpacecraftClockKernels,
             PlanetaryEphemerisKernels,
             SpacecraftEphemerisKernels,
