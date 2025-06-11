@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 BUCKET_NAME = os.getenv("S3_BUCKET")
-
-
 REGION = os.getenv("REGION")
 # The default presigned url signature does not include the region information
 # within the signature and we should be hitting the actual s3 region endpoint
