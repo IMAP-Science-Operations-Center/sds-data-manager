@@ -105,9 +105,7 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     for filename in filenames:
         local_path = download_dir / Path(filename).name
         s3.download_file(bucket, filename, str(local_path))
-        xarray_data = packet_file_to_datasets(
-            local_path, xtce_ialirt_path, use_derived_value=False
-        )[apid]
+        xarray_data = packet_file_to_datasets(local_path, xtce_ialirt_path)[apid]
         datasets.append(xarray_data)
 
     combined = xr.concat(datasets, dim="epoch")
@@ -133,11 +131,11 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
         ("swe", process_swe),
     ]
 
-    for prefix, process_func in processors:
-        insert_data(process_func(combined), algorithm_table, prefix)
+    for instrument, process_func in processors:
+        insert_data(process_func(combined), algorithm_table, instrument)
 
 
-def insert_data(data: list[dict], algorithm_table, product_prefix: str):
+def insert_data(data: list[dict], algorithm_table, instrument: str):
     """Insert or update database row, depending on content of item.
 
     Parameters
@@ -146,7 +144,7 @@ def insert_data(data: list[dict], algorithm_table, product_prefix: str):
         Data product produced from processing respectively instrument.
     algorithm_table : dynamodb.Table
         The DynamoDB table to insert or update the data.
-    product_prefix : str
+    instrument : str
         The prefix for the product name.
     """
     apid = data[0]["apid"]
@@ -170,10 +168,8 @@ def insert_data(data: list[dict], algorithm_table, product_prefix: str):
         raw["insert_time"] = datetime.now(timezone.utc).isoformat()
 
         if existing:
-            if any(key.startswith(product_prefix) for key in existing.keys()):
-                logger.info(
-                    f"{product_prefix.upper()} data already exists for met={met}."
-                )
+            if any(key.startswith(instrument) for key in existing.keys()):
+                logger.info(f"{instrument.upper()} data already exists for met={met}.")
                 continue
 
             update_expr = "SET " + ", ".join(
@@ -193,10 +189,10 @@ def insert_data(data: list[dict], algorithm_table, product_prefix: str):
                 UpdateExpression=update_expr,
                 ExpressionAttributeValues=expression_values,
             )
-            logger.info(f"Updated met={met} with {product_prefix.upper()} data.")
+            logger.info(f"Updated met={met} with {instrument.upper()} data.")
         else:
             algorithm_table.put_item(Item=raw)
-            logger.info(f"Inserted new {product_prefix.upper()} item for met={met}.")
+            logger.info(f"Inserted new {instrument.upper()} item for met={met}.")
 
 
 def lambda_handler(event, context):
