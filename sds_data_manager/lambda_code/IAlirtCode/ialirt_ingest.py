@@ -3,8 +3,18 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
+import requests
+import shutil
+import spiceypy
+import imap_data_access
+
+from imap_data_access.processing_input import (
+    ProcessingInputCollection,
+    SPICEInput,
+    SPICESource,
+)
 
 import boto3
 import botocore
@@ -15,9 +25,91 @@ from imap_processing import imap_module_directory
 from imap_processing.ialirt.l0.process_hit import process_hit
 from imap_processing.ialirt.l0.process_swe import process_swe
 from imap_processing.utils import packet_file_to_datasets
+from imap_processing.spice.time import str_to_et
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+KERNELS = {
+    "ephemeris_predicted",
+    "ephemeris_90days",
+    "planetary_ephemeris",
+    "spacecraft_clock",
+    "leapseconds",
+    "imap_frames",
+    "science_frames",
+}
+EFS_BASE_PATH = Path("/mnt/data")
+
+
+def get_latest_spice_kernels() -> ProcessingInputCollection:
+    """
+    Query the SPICE metakernel API to retrieve the latest SPICE kernel filenames
+    for the past week.
+
+    Returns
+    -------
+    ProcessingInputCollection
+        A collection containing a SPICEInput object with the list of kernel filenames
+        returned from the metakernel API.
+    """
+    dependency_inputs = ProcessingInputCollection()
+
+    now = datetime.now(timezone.utc)
+    end_time = str_to_et(now.replace(tzinfo=None).isoformat())
+    one_week_ago = now - timedelta(weeks=1)
+    start_time = str_to_et(one_week_ago.replace(tzinfo=None).isoformat())
+
+    file_types = ",".join(KERNELS)
+    # TODO: replace this url with the endpoint from imap-data-access.
+    url = "https://ylxiee1ond.execute-api.us-west-2.amazonaws.com/metakernel"
+
+    params = {
+        "start_time": str(int(start_time)),
+        "end_time": str(int(end_time)),
+        "list_files": "True",
+        "file_types": file_types,
+    }
+
+    logger.info(f"Sending request to {url} with params: {params}")
+    response = requests.get(url, params=params)
+    metakernel_files = response.json()
+
+    logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")
+    dependency_inputs.add(SPICEInput(*metakernel_files))
+
+    return dependency_inputs
+
+
+def download_spice_file(dependencies) -> ProcessingInputCollection:
+    """
+    Download SPICE kernel files from the IMAP data archive and store them in EFS.
+
+    Parameters
+    ----------
+    ProcessingInputCollection
+        A collection containing a SPICEInput object with the list of kernel filenames
+        returned from the metakernel API.
+
+    Returns
+    -------
+    list[Path]
+        A list of Path objects representing the SPICE files stored in EFS.
+    """
+    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    dependencies.download_all_files()
+
+    spice_files = dependencies.get_file_paths(data_type=SPICESource.SPICE.value)
+
+    for file_path in spice_files:
+        efs_path = EFS_BASE_PATH / file_path.name
+        shutil.copy(file_path, efs_path)
+        logger.info(f"Copied {file_path} to EFS at {efs_path}")
+        logger.info(f"Furnishing kernels: {file_path.name}")
+
+    spiceypy.furnsh([str((EFS_BASE_PATH / f.name).resolve()) for f in spice_files])
+
+    return spice_files
 
 
 def query_filenames(bucket: str, region: str, now: datetime):
@@ -224,6 +316,9 @@ def lambda_handler(event, context):
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
+    dependency_inputs = get_latest_spice_kernels()
+    logger.info("dependency_inputs: %s", dependency_inputs)
+    download_spice_file(dependency_inputs)
 
     # Query s3 for packet filenames from past 5 minutes.
     if "now" in event:
