@@ -22,7 +22,6 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         vpc: ec2.Vpc,
         efs_access_point: efs.AccessPoint,
-        efs_security_group: ec2.SecurityGroup,
         docker_path: str = "sds_data_manager/lambda_code",
         **kwargs,
     ) -> None:
@@ -40,8 +39,6 @@ class IalirtIngestLambda(Construct):
             VPC into which to put the resources that require networking.
         efs_access_point: efs.AccessPoint
             EFS access point to mount inside the Lambda function.
-        efs_security_group: ec2.SecurityGroup
-            Security group associated with the EFS file system.
         docker_path : str
             Path to the Dockerfile.
         kwargs : dict
@@ -52,7 +49,6 @@ class IalirtIngestLambda(Construct):
 
         # EFS resources
         self.efs_access_point = efs_access_point
-        self.efs_security_group = efs_security_group
         self.vpc = vpc
 
         # Create DynamoDB Table
@@ -167,8 +163,7 @@ class IalirtIngestLambda(Construct):
             memory_size=1000,
             role=lambda_role,
             vpc=self.vpc,
-            # TODO: figure out how to add this in and have access to s3.
-            # security_groups=[self.efs_security_group],
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
             filesystem=lambda_.FileSystem.from_efs_access_point(
                 self.efs_access_point, "/mnt/data"
             ),
