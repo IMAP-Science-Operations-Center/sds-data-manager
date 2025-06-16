@@ -100,13 +100,6 @@ def download_spice_file(dependencies) -> ProcessingInputCollection:
     dependencies.download_all_files()
 
     spice_files = dependencies.get_file_paths(data_type=SPICESource.SPICE.value)
-
-    for file_path in spice_files:
-        efs_path = EFS_BASE_PATH / file_path.name
-        shutil.copy(file_path, efs_path)
-        logger.info(f"Copied {file_path} to EFS at {efs_path}")
-        logger.info(f"Furnishing kernels: {file_path.name}")
-
     spiceypy.furnsh([str((EFS_BASE_PATH / f.name).resolve()) for f in spice_files])
 
     return spice_files
