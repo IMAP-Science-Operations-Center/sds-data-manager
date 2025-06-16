@@ -262,7 +262,7 @@ def test_process_algorithms(mock_swe, mock_hit, setup_dynamodb):
 
 @patch("imap_processing.spice.time.str_to_et", return_value=123456789.0)
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
-def test_get_latest_spice_kernels(mock_get):
+def test_get_latest_spice_kernels(mock_get, mock_str_to_et):
     """Test get_latest_spice_kernels function."""
     mock_files = [
         "imap_sclk_0000.tsc",
