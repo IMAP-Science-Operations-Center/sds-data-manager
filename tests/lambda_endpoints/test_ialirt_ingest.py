@@ -39,10 +39,25 @@ def s3_test_packet(s3_client):
     return test_file
 
 
-def test_lambda_handler(setup_dynamodb):
+@patch("spiceypy.str2et", return_value=123456789.0)
+@patch("spiceypy.furnsh")
+@patch("imap_data_access.processing_input.ProcessingInputCollection.download_all_files")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
+def test_lambda_handler(
+    mock_get, mock_download, mock_furnsh, mock_str2et, setup_dynamodb
+):
     """Test the lambda_handler function."""
-    # Mock event data
     algorithm_table = setup_dynamodb["algorithm_table"]
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = [
+        "imap_sclk_0000.tsc",
+        "naif0012.tls",
+        "imap_001.tf",
+    ]
+    mock_get.return_value = mock_response
+    mock_download.return_value = None
+    mock_furnsh.return_value = None
 
     event = {
         "region": "us-west-2",
@@ -54,12 +69,7 @@ def test_lambda_handler(setup_dynamodb):
 
     lambda_handler(event, {})
 
-    response = algorithm_table.get_item(
-        Key={
-            "apid": 478,
-            "met": 123,
-        }
-    )
+    response = algorithm_table.get_item(Key={"apid": 478, "met": 123})
     item = response.get("Item")
 
     assert item["met"] == 123
