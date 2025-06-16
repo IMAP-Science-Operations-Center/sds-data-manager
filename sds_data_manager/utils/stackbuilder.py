@@ -278,23 +278,23 @@ def build_sds(
     # I-ALiRT Stack
     ialirt_stack = Stack(scope, "IalirtStack", cross_region_references=True, env=env)
 
-    # ialirt_spice_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
-    #     scope=ialirt_stack,
-    #     id="IAlirtSpiceDependencies",
-    #     layer_dependencies_dir=str(layer_code_directory / "spice"),
-    # )
+    ialirt_spice_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
+        scope=ialirt_stack,
+        id="IAlirtSpiceDependencies",
+        layer_dependencies_dir=str(layer_code_directory / "spice"),
+    )
 
-    # ialirt_root_certificate = None
-    # if domain is not None:
-    #     ialirt_root_certificate = acm.Certificate(
-    #         ialirt_stack,
-    #         "IAlirtDomainRegionCertificate",
-    #         domain_name=f"*.{domain_name}",  # *.imap-mission.com
-    #         subject_alternative_names=[domain_name],  # imap-mission.com
-    #         validation=acm.CertificateValidation.from_dns(
-    #             hosted_zone=domain.hosted_zone
-    #         ),
-    #     )
+    ialirt_root_certificate = None
+    if domain is not None:
+        ialirt_root_certificate = acm.Certificate(
+            ialirt_stack,
+            "IAlirtDomainRegionCertificate",
+            domain_name=f"*.{domain_name}",  # *.imap-mission.com
+            subject_alternative_names=[domain_name],  # imap-mission.com
+            validation=acm.CertificateValidation.from_dns(
+                hosted_zone=domain.hosted_zone
+            ),
+        )
 
     # I-ALiRT IOIS S3 bucket
     ialirt_bucket = ialirt_bucket_construct.IAlirtBucketConstruct(
@@ -315,50 +315,50 @@ def build_sds(
         efs_access_point=ialirt_efs_instance.spice_access_point,
     )
 
-    # # I-ALiRT IOIS archive lambda (facilitates dynamodb to s3)
-    # ialirt_archive_construct.IalirtArchiveConstruct(
-    #     scope=ialirt_stack,
-    #     construct_id="IalirtArchive",
-    #     ialirt_bucket=ialirt_bucket.ialirt_bucket,
-    #     algorithm_data_table=ingest.algorithm_data_table,
-    # )
-    #
-    # ialirt_monitoring = monitoring_construct.MonitoringConstruct(
-    #     scope=ialirt_stack,
-    #     construct_id="IAlirtMonitoringConstruct",
-    # )
-    #
-    # ialirt_api = api_gateway_construct.ApiGateway(
-    #     scope=ialirt_stack,
-    #     construct_id="IAlirtApiGateway",
-    #     domain_construct=domain,
-    #     certificate=ialirt_root_certificate,
-    #     ialirt_prefix="IAlirt",
-    # )
-    # ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)
-    #
-    # ialirt_api_manager_construct.IalirtApiManager(
-    #     scope=ialirt_stack,
-    #     construct_id="IAlirtApiManager",
-    #     code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
-    #     api=ialirt_api,
-    #     env=env,
-    #     data_bucket=ialirt_bucket.ialirt_bucket,
-    #     vpc=networking.vpc,
-    #     layers=[ialirt_spice_lambda_layer],
-    #     algorithm_table=ingest.algorithm_data_table,
-    # )
-    #
-    # ialirt_secret_name = "nexus-credentials"  # noqa
-    #
-    # ialirt_processing_construct.IalirtProcessing(
-    #     scope=ialirt_stack,
-    #     construct_id="IalirtProcessing",
-    #     env=env,
-    #     vpc=networking.vpc,
-    #     ialirt_bucket=ialirt_bucket.ialirt_bucket,
-    #     secret_name=ialirt_secret_name,
-    # )
+    # I-ALiRT IOIS archive lambda (facilitates dynamodb to s3)
+    ialirt_archive_construct.IalirtArchiveConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtArchive",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
+        algorithm_data_table=ingest.algorithm_data_table,
+    )
+
+    ialirt_monitoring = monitoring_construct.MonitoringConstruct(
+        scope=ialirt_stack,
+        construct_id="IAlirtMonitoringConstruct",
+    )
+
+    ialirt_api = api_gateway_construct.ApiGateway(
+        scope=ialirt_stack,
+        construct_id="IAlirtApiGateway",
+        domain_construct=domain,
+        certificate=ialirt_root_certificate,
+        ialirt_prefix="IAlirt",
+    )
+    ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)
+
+    ialirt_api_manager_construct.IalirtApiManager(
+        scope=ialirt_stack,
+        construct_id="IAlirtApiManager",
+        code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
+        api=ialirt_api,
+        env=env,
+        data_bucket=ialirt_bucket.ialirt_bucket,
+        vpc=networking.vpc,
+        layers=[ialirt_spice_lambda_layer],
+        algorithm_table=ingest.algorithm_data_table,
+    )
+
+    ialirt_secret_name = "nexus-credentials"  # noqa
+
+    ialirt_processing_construct.IalirtProcessing(
+        scope=ialirt_stack,
+        construct_id="IalirtProcessing",
+        env=env,
+        vpc=networking.vpc,
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
+        secret_name=ialirt_secret_name,
+    )
 
 
 def build_backup(scope: App, env: Environment, source_account: str):
