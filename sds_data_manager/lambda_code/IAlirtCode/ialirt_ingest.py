@@ -3,13 +3,12 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import requests
-import shutil
-import spiceypy
-import imap_data_access
 
+import imap_data_access
+import requests
+import spiceypy
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
     SPICEInput,
@@ -24,8 +23,8 @@ from boto3.dynamodb.conditions import Key
 from imap_processing import imap_module_directory
 from imap_processing.ialirt.l0.process_hit import process_hit
 from imap_processing.ialirt.l0.process_swe import process_swe
-from imap_processing.utils import packet_file_to_datasets
 from imap_processing.spice.time import str_to_et
+from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -43,13 +42,11 @@ EFS_BASE_PATH = Path("/mnt/data")
 
 
 def get_latest_spice_kernels() -> ProcessingInputCollection:
-    """
-    Query the SPICE metakernel API to retrieve the latest SPICE kernel filenames
-    for the past week.
+    """Query the SPICE metakernel API for latest SPICE kernel filenames.
 
     Returns
     -------
-    ProcessingInputCollection
+    dependency_inputs: ProcessingInputCollection
         A collection containing a SPICEInput object with the list of kernel filenames
         returned from the metakernel API.
     """
@@ -72,7 +69,7 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     }
 
     logger.info(f"Sending request to {url} with params: {params}")
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=10)
     metakernel_files = response.json()
 
     logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")
@@ -82,18 +79,17 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
 
 
 def download_spice_file(dependencies) -> ProcessingInputCollection:
-    """
-    Download SPICE kernel files from the IMAP data archive and store them in EFS.
+    """Download SPICE kernel files from the IMAP data archive and store them in EFS.
 
     Parameters
     ----------
-    ProcessingInputCollection
+    dependencies: ProcessingInputCollection
         A collection containing a SPICEInput object with the list of kernel filenames
         returned from the metakernel API.
 
     Returns
     -------
-    list[Path]
+    spice_files: list[Path]
         A list of Path objects representing the SPICE files stored in EFS.
     """
     imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH

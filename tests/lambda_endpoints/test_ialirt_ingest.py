@@ -4,13 +4,19 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from imap_data_access.processing_input import (
+    ProcessingInputCollection,
+    SPICEInput,
+)
 import xarray as xr
 from boto3.dynamodb.conditions import Key
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
+    download_spice_file,
+    get_latest_spice_kernels,
     insert_data,
     lambda_handler,
     parse_packets,
@@ -56,7 +62,10 @@ def test_lambda_handler(setup_dynamodb):
     )
     item = response.get("Item")
 
-    assert item is None
+    assert item["met"] == 123
+    assert item["insert_time"] == "2021-01-01T00:00:00Z"
+    assert item["product_name"] == "hit_product_1"
+    assert item["data_product_1"] == str(1234.56)
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.packet_file_to_datasets")
@@ -236,3 +245,52 @@ def test_process_algorithms(mock_swe, mock_hit, setup_dynamodb):
         item["met"] == 222 and "swe_normalized_counts_quarter_1_esa_0" in item
         for item in response
     )
+
+
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
+def test_get_latest_spice_kernels(mock_get):
+    """Test get_latest_spice_kernels function."""
+    mock_files = [
+        "imap_sclk_0000.tsc",
+        "naif0012.tls",
+        "imap_001.tf",
+        "de440.bsp",
+        "imap_pred_20260922_20261020_v01.bsp",
+        "imap_2026_269_2026_269_01.ah.bc",
+        "imap_science_0001.tf",
+        "imap_dps_2026_269_2026_269_01.ah.bc",
+    ]
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = mock_files
+    mock_get.return_value = mock_response
+
+    result = get_latest_spice_kernels()
+    assert result.processing_input[0].filename_list == mock_files
+
+
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.spiceypy.furnsh")
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.ProcessingInputCollection.download_all_files"
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.EFS_BASE_PATH",
+    Path("/mock/efs"),
+)
+def test_download_spice_file(mock_download, mock_furnsh):
+    """Test download_spice_file function."""
+    mock_files = [
+        "imap_sclk_0000.tsc",
+        "naif0012.tls",
+        "imap_pred_20260922_20261020_v01.bsp",
+    ]
+    collection = ProcessingInputCollection()
+    collection.add(SPICEInput(*mock_files))
+
+    result = download_spice_file(collection)
+
+    assert [file.name for file in result] == [
+        "imap_sclk_0000.tsc",
+        "naif0012.tls",
+        "imap_pred_20260922_20261020_v01.bsp",
+    ]
