@@ -78,7 +78,7 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     return dependency_inputs
 
 
-def download_spice_file(dependencies) -> ProcessingInputCollection:
+def download_spice_file(dependencies) -> list[Path]:
     """Download SPICE kernel files from the IMAP data archive and store them in EFS.
 
     Parameters
@@ -96,7 +96,7 @@ def download_spice_file(dependencies) -> ProcessingInputCollection:
     dependencies.download_all_files()
 
     spice_files = dependencies.get_file_paths(data_type=SPICESource.SPICE.value)
-    spiceypy.furnsh([str((EFS_BASE_PATH / f.name).resolve()) for f in spice_files])
+    spiceypy.furnsh([str(file.resolve()) for file in spice_files])
 
     return spice_files
 
