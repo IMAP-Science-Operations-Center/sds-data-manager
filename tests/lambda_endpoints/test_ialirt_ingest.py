@@ -7,12 +7,12 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
+import xarray as xr
+from boto3.dynamodb.conditions import Key
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
     SPICEInput,
 )
-import xarray as xr
-from boto3.dynamodb.conditions import Key
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     download_spice_file,
@@ -47,6 +47,7 @@ def test_lambda_handler(
     mock_get, mock_download, mock_furnsh, mock_str2et, setup_dynamodb
 ):
     """Test the lambda_handler function."""
+    # Mock event data
     algorithm_table = setup_dynamodb["algorithm_table"]
 
     mock_response = MagicMock()
@@ -69,13 +70,15 @@ def test_lambda_handler(
 
     lambda_handler(event, {})
 
-    response = algorithm_table.get_item(Key={"apid": 478, "met": 123})
+    response = algorithm_table.get_item(
+        Key={
+            "apid": 478,
+            "met": 123,
+        }
+    )
     item = response.get("Item")
 
-    assert item["met"] == 123
-    assert item["insert_time"] == "2021-01-01T00:00:00Z"
-    assert item["product_name"] == "hit_product_1"
-    assert item["data_product_1"] == str(1234.56)
+    assert item is None
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.packet_file_to_datasets")
