@@ -6,24 +6,22 @@ import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import boto3
+import botocore
 import imap_data_access
+import numpy as np
 import requests
 import spiceypy
+import xarray as xr
+from boto3.dynamodb.conditions import Key
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
     SPICEInput,
     SPICESource,
 )
-
-import boto3
-import botocore
-import numpy as np
-import xarray as xr
-from boto3.dynamodb.conditions import Key
 from imap_processing import imap_module_directory
 from imap_processing.ialirt.l0.process_hit import process_hit
 from imap_processing.ialirt.l0.process_swe import process_swe
-from imap_processing.spice.time import str_to_et
 from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
@@ -41,6 +39,20 @@ KERNELS = {
 EFS_BASE_PATH = Path("/mnt/data")
 
 
+def get_ephemeris_time():
+    """Get the current ephemeris time in seconds since J2000.
+
+    Returns
+    -------
+    et: float
+        The current ephemeris time in seconds since J2000.
+    """
+    now = datetime.now(timezone.utc)
+    j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    et = (now - j2000).total_seconds()
+    return et
+
+
 def get_latest_spice_kernels() -> ProcessingInputCollection:
     """Query the SPICE metakernel API for latest SPICE kernel filenames.
 
@@ -53,9 +65,11 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     dependency_inputs = ProcessingInputCollection()
 
     now = datetime.now(timezone.utc)
-    end_time = str_to_et(now.replace(tzinfo=None).isoformat())
     one_week_ago = now - timedelta(weeks=1)
-    start_time = str_to_et(one_week_ago.replace(tzinfo=None).isoformat())
+    # Define J2000 epoch: 2000-01-01T12:00:00 UTC
+    j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end_time = (now - j2000).total_seconds()
+    start_time = (one_week_ago - j2000).total_seconds()
 
     file_types = ",".join(KERNELS)
     # TODO: replace this url with the endpoint from imap-data-access.
