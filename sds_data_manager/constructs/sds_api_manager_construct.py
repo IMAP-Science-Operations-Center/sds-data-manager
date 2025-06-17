@@ -260,6 +260,35 @@ class SdsApiManager(Construct):
             http_method="GET",
             lambda_function=batch_job_query_api_lambda,
         )
+
+        # API to query batch job logs
+        batch_logs_api_lambda = lambda_.Function(
+            self,
+            id="BatchLogsAPILambda",
+            function_name="batch-logs-api-handler",
+            code=code,
+            handler="SDSCode.api_lambdas.batch_logs_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            allow_public_subnet=True,
+            layers=layers,
+        )
+        api.add_route(
+            route="/batch-logs",
+            http_method="GET",
+            lambda_function=batch_logs_api_lambda,
+        )
+
+        batch_logs_read_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["logs:GetLogEvents"],
+            resources=[
+                "arn:aws:logs:*:*:log-group:/aws/batch/*",
+            ],
+        )
+        batch_logs_api_lambda.add_to_role_policy(batch_logs_read_policy)
+
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
         )
