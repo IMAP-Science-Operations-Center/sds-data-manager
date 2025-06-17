@@ -5,7 +5,7 @@ import logging
 
 import boto3
 
-LOGS_CLIENT = boto3.client("logs")
+LOGS_CLIENT = boto3.client("logs", region_name="us-west-2")
 
 # Logger setup
 logger = logging.getLogger(__name__)
