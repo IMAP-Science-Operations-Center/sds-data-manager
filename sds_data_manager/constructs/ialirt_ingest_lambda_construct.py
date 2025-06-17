@@ -163,7 +163,9 @@ class IalirtIngestLambda(Construct):
             memory_size=1000,
             role=lambda_role,
             vpc=self.vpc,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            ),
             filesystem=lambda_.FileSystem.from_efs_access_point(
                 self.efs_access_point, "/mnt/data"
             ),
