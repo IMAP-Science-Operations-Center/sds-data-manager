@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from ..database import database as db
 from ..database import models
+from ..pipeline_lambdas.indexer import get_file_ingestion_date
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,7 @@ def _upsert_into_spice_table(
     file_coverage_sclk: list[list[str]],
     latest_sclk: Path,
     latest_lsk: Path,
+    ingestion_date: datetime,
 ):
     """Insert/Update the spice metadata table with collected data.
 
@@ -147,12 +149,14 @@ def _upsert_into_spice_table(
         The latest clock kernel used for the above calculations
     latest_lsk: Path
         The latest leapsecond kernel used for the above calculations
+    ingestion_date: datetime
+        The date when the SPICE file was ingested in S3.
     """
     # Format the data to insert
     filename = str(spice_object.filename.name)
     version = spice_object.spice_metadata["version"]
     spice_params = {
-        "ingestion_date": datetime.now(timezone.utc),
+        "ingestion_date": ingestion_date,
         "kernel_type": spice_object.spice_metadata["type"],
         "version": version,
         "file_name": filename,
@@ -191,13 +195,15 @@ def _upsert_into_spice_table(
     logger.info(f"Wrote {spice_params} to the SPICEFiles table")
 
 
-def index_spice_file(spice_file: Path):
+def index_spice_file(spice_file: Path, ingestion_date: datetime):
     """Insert SPICE file metadata into SPICE database table.
 
     Parameters
     ----------
     spice_file: Path
         The full name and path the SPICE file to index
+    ingestion_date: datetime
+        The date when the SPICE file was ingested in S3.
     """
     latest_lsk = None
     latest_sclk = None
@@ -282,6 +288,7 @@ def index_spice_file(spice_file: Path):
         file_coverage_sclk,
         latest_lsk,
         latest_sclk,
+        ingestion_date=ingestion_date,
     )
 
 
@@ -479,7 +486,8 @@ def lambda_handler(event, context):
     else:
         # Index the SPICE kerenels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
-        index_spice_file(file_path)
+        ingestion_date = get_file_ingestion_date(s3_key)
+        index_spice_file(file_path, ingestion_date=ingestion_date)
 
     send_spice_event(spice_obj, s3_key)
 
