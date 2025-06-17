@@ -54,7 +54,7 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     one_week_ago = now - timedelta(weeks=1)
     # Define J2000 epoch: 2000-01-01T12:00:00 UTC
     # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
-    j2000 = datetime(2000, 1, 1, 11, 58, 55.816, tzinfo=timezone.utc)
+    j2000 = datetime(2000, 1, 1, 11, 58, 56, tzinfo=timezone.utc)
     et_end_time = (now - j2000).total_seconds()
     et_start_time = (one_week_ago - j2000).total_seconds()
 

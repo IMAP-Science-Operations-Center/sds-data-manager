@@ -39,13 +39,10 @@ def s3_test_packet(s3_client):
     return test_file
 
 
-@patch("spiceypy.str2et", return_value=123456789.0)
 @patch("spiceypy.furnsh")
 @patch("imap_data_access.processing_input.ProcessingInputCollection.download_all_files")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
-def test_lambda_handler(
-    mock_get, mock_download, mock_furnsh, mock_str2et, setup_dynamodb
-):
+def test_lambda_handler(mock_get, mock_download, mock_furnsh, setup_dynamodb):
     """Test the lambda_handler function."""
     # Mock event data
     algorithm_table = setup_dynamodb["algorithm_table"]
@@ -260,10 +257,8 @@ def test_process_algorithms(mock_swe, mock_hit, setup_dynamodb):
     )
 
 
-@patch("spiceypy.str2et", return_value=123456789.0)
-@patch("spiceypy.furnsh")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
-def test_get_latest_spice_kernels(mock_get, mock_furnsh, mock_str2et):
+def test_get_latest_spice_kernels(mock_get):
     """Test get_latest_spice_kernels function."""
     mock_files = [
         "imap_sclk_0000.tsc",
