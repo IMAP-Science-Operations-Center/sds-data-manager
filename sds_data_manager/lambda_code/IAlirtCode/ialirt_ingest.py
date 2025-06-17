@@ -39,20 +39,6 @@ KERNELS = {
 EFS_BASE_PATH = Path("/mnt/data")
 
 
-def get_ephemeris_time():
-    """Get the current ephemeris time in seconds since J2000.
-
-    Returns
-    -------
-    et: float
-        The current ephemeris time in seconds since J2000.
-    """
-    now = datetime.now(timezone.utc)
-    j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-    et = (now - j2000).total_seconds()
-    return et
-
-
 def get_latest_spice_kernels() -> ProcessingInputCollection:
     """Query the SPICE metakernel API for latest SPICE kernel filenames.
 
@@ -67,17 +53,18 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     now = datetime.now(timezone.utc)
     one_week_ago = now - timedelta(weeks=1)
     # Define J2000 epoch: 2000-01-01T12:00:00 UTC
-    j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-    end_time = (now - j2000).total_seconds()
-    start_time = (one_week_ago - j2000).total_seconds()
+    # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
+    j2000 = datetime(2000, 1, 1, 11, 58, 55.816, tzinfo=timezone.utc)
+    et_end_time = (now - j2000).total_seconds()
+    et_start_time = (one_week_ago - j2000).total_seconds()
 
     file_types = ",".join(KERNELS)
     # TODO: replace this url with the endpoint from imap-data-access.
     url = "https://ylxiee1ond.execute-api.us-west-2.amazonaws.com/metakernel"
 
     params = {
-        "start_time": str(int(start_time)),
-        "end_time": str(int(end_time)),
+        "start_time": str(int(et_start_time)),
+        "end_time": str(int(et_end_time)),
         "list_files": "True",
         "file_types": file_types,
     }
@@ -105,6 +92,10 @@ def download_spice_file(dependencies) -> list[Path]:
     -------
     spice_files: list[Path]
         A list of Path objects representing the SPICE files stored in EFS.
+
+    Notes
+    -----
+    List is priority ordered so furnishing in order results in correct SPICE priority.
     """
     imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
     dependencies.download_all_files()
