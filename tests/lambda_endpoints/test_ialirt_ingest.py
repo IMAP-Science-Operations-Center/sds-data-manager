@@ -16,6 +16,7 @@ from imap_data_access.processing_input import (
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     download_spice_file,
+    get_ancillary,
     get_latest_spice_kernels,
     insert_data,
     lambda_handler,
@@ -221,9 +222,13 @@ def test_insert_data(setup_dynamodb):
     assert item3["hit_e_a_side_low_en"] == Decimal("5.0")
 
 
+@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.get_ancillary")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_hit")
+@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_packet")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swe")
-def test_process_algorithms(mock_swe, mock_hit, setup_dynamodb):
+def test_process_algorithms(
+    mock_swe, mock_packet, mock_hit, mock_get_ancillary, setup_dynamodb
+):
     """Tests process_algorithms function."""
     algorithm_table = setup_dynamodb["algorithm_table"]
 
@@ -241,6 +246,14 @@ def test_process_algorithms(mock_swe, mock_hit, setup_dynamodb):
             "swe_normalized_counts_quarter_1_esa_0": Decimal("0.123"),
         }
     ]
+    mock_packet.return_value = [
+        {
+            "apid": 478,
+            "met": 333,
+            "mag_phi_4s_b_gsm": Decimal("0.456"),
+        }
+    ]
+    mock_get_ancillary.return_value = Path("/mock/path.csv")
 
     process_algorithms(combined=None, algorithm_table=algorithm_table)
 
@@ -255,6 +268,7 @@ def test_process_algorithms(mock_swe, mock_hit, setup_dynamodb):
         item["met"] == 222 and "swe_normalized_counts_quarter_1_esa_0" in item
         for item in response
     )
+    assert any(item["met"] == 333 and "mag_phi_4s_b_gsm" in item for item in response)
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
@@ -304,3 +318,27 @@ def test_download_spice_file(mock_download, mock_furnsh):
         "naif0012.tls",
         "imap_pred_20260922_20261020_v01.bsp",
     ]
+
+
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_data_access.download"
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_data_access.AncillaryFilePath"
+)
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_data_access.query")
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.EFS_BASE_PATH",
+    Path("/mock/efs"),
+)
+def test_get_ancillary(mock_query, mock_ancillaryfilepath, mock_download):
+    """Test get_ancillary function."""
+    mock_query.return_value = [{"file_path": "swe/l1b-in-flight-cal/calibration.cdf"}]
+    mock_path = Path("/mock/efs/swe/l1b-in-flight-cal/calibration.cdf")
+    mock_construct_path = MagicMock(return_value=mock_path)
+    mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
+
+    with patch.object(Path, "exists", return_value=False):
+        path = get_ancillary("swe", "l1b-in-flight-cal")
+
+    assert path == mock_path

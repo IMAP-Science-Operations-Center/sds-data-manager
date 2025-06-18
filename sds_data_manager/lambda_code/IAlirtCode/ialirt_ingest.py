@@ -20,6 +20,8 @@ from imap_data_access.processing_input import (
     SPICESource,
 )
 from imap_processing import imap_module_directory
+from imap_processing.cdf.utils import load_cdf
+from imap_processing.ialirt.l0.parse_mag import process_packet
 from imap_processing.ialirt.l0.process_hit import process_hit
 from imap_processing.ialirt.l0.process_swe import process_swe
 from imap_processing.utils import packet_file_to_datasets
@@ -37,6 +39,35 @@ KERNELS = {
     "science_frames",
 }
 EFS_BASE_PATH = Path("/mnt/data")
+
+
+def get_ancillary(instrument, descriptor):
+    """Query and download ancillary data if not already present.
+
+    Parameters
+    ----------
+    instrument : str
+        The name of the instrument.
+    descriptor : str
+        The name of the descriptor.
+
+    Returns
+    -------
+    download_path : Path
+        Download path of calibration file.
+    """
+    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    calibration_file = imap_data_access.query(
+        table="ancillary", instrument=instrument, descriptor=descriptor
+    )[0]
+
+    download_path = EFS_BASE_PATH / calibration_file["file_path"]
+
+    if not download_path.exists():
+        imap_data_access.download(calibration_file["file_path"])
+        logger.info(f"Adding to {download_path} to calibration files.")
+
+    return download_path
 
 
 def get_latest_spice_kernels() -> ProcessingInputCollection:
@@ -215,10 +246,23 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
     processors = [
         ("hit", process_hit),
         ("swe", process_swe),
+        ("mag", process_packet),
     ]
 
     for instrument, process_func in processors:
-        insert_data(process_func(combined), algorithm_table, instrument)
+        if instrument == "swe":
+            download_path = get_ancillary(instrument, "l1b-in-flight-cal")
+            result = process_func(combined, [download_path])
+        elif instrument == "mag":
+            download_path = get_ancillary(instrument, "l1b-calibration")
+            calibration_data = load_cdf(download_path)
+            result, _ = process_func(combined, calibration_data)
+        else:
+            result = process_func(combined)
+
+        logger.info("%s result: %s", instrument, result)
+        if result:
+            insert_data(result, algorithm_table, instrument)
 
 
 def insert_data(data: list[dict], algorithm_table, instrument: str):
@@ -255,7 +299,6 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
 
         if existing:
             if any(key.startswith(instrument) for key in existing.keys()):
-                logger.info(f"{instrument.upper()} data already exists for met={met}.")
                 continue
 
             update_expr = "SET " + ", ".join(
@@ -275,10 +318,9 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
                 UpdateExpression=update_expr,
                 ExpressionAttributeValues=expression_values,
             )
-            logger.info(f"Updated met={met} with {instrument.upper()} data.")
         else:
             algorithm_table.put_item(Item=raw)
-            logger.info(f"Inserted new {instrument.upper()} item for met={met}.")
+        logger.info(f"Inserted {instrument.upper()}.")
 
 
 def lambda_handler(event, context):
