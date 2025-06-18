@@ -246,6 +246,7 @@ class SPICEIndexerLambda(Construct):
             environment={
                 "DATA_DIR": spice_mount_path,
                 "SECRET_NAME": db_secret_name,
+                "S3_BUCKET": data_bucket.bucket_name,
             },
         )
 

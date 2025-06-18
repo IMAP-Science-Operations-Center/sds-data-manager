@@ -18,6 +18,7 @@ from sds_data_manager.constructs import (
     ialirt_api_manager_construct,
     ialirt_archive_construct,
     ialirt_bucket_construct,
+    ialirt_efs_construct,
     ialirt_ingest_lambda_construct,
     ialirt_processing_construct,
     indexer_lambda_construct,
@@ -300,14 +301,18 @@ def build_sds(
         scope=ialirt_stack, construct_id="IAlirtBucket", env=env
     )
 
+    # create EFS
+    ialirt_efs_instance = ialirt_efs_construct.IAlirtEFSConstruct(
+        scope=ialirt_stack, construct_id="IAlirtEFSConstruct", vpc=networking.vpc
+    )
+
     # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
     ingest = ialirt_ingest_lambda_construct.IalirtIngestLambda(
         scope=ialirt_stack,
         construct_id="IalirtIngestLambda",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
-        efs_access_point=efs_instance.spice_access_point,
-        efs_security_group=efs_instance.efs_security_group,
+        efs_access_point=ialirt_efs_instance.spice_access_point,
     )
 
     # I-ALiRT IOIS archive lambda (facilitates dynamodb to s3)

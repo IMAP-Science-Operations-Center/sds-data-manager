@@ -1,5 +1,6 @@
 """Contains the lambda handler for the 'query' data access API."""
 
+import datetime
 import json
 import logging
 
@@ -151,6 +152,8 @@ def _convert_spice_metadata_model_to_dict(file: models.SPICEFiles) -> dict:
         "sclk_kernel": file.sclk_kernel,
         "lsk_kernel": file.lsk_kernel,
         "ingestion_date": file.ingestion_date.strftime("%Y-%m-%d, %H:%M:%S"),
-        "timestamp": file.ingestion_date.timestamp(),
+        "timestamp": file.ingestion_date.replace(
+            tzinfo=datetime.timezone.utc
+        ).timestamp(),
     }
     return spice_file_dict
