@@ -61,11 +61,8 @@ def get_ancillary(instrument, descriptor):
         table="ancillary", instrument=instrument, descriptor=descriptor
     )[0]
 
-    download_path = EFS_BASE_PATH / calibration_file["file_path"]
-
-    if not download_path.exists():
-        imap_data_access.download(calibration_file["file_path"])
-        logger.info(f"Adding to {download_path} to calibration files.")
+    download_path = imap_data_access.download(calibration_file["file_path"])
+    logger.info(f"Adding to {download_path} to calibration files.")
 
     return download_path
 
