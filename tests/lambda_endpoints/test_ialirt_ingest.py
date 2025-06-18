@@ -222,15 +222,17 @@ def test_insert_data(setup_dynamodb):
     assert item3["hit_e_a_side_low_en"] == Decimal("5.0")
 
 
+@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.load_cdf")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.get_ancillary")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_hit")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_packet")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swe")
 def test_process_algorithms(
-    mock_swe, mock_packet, mock_hit, mock_get_ancillary, setup_dynamodb
+    mock_swe, mock_packet, mock_hit, mock_get_ancillary, mock_load_cdf, setup_dynamodb
 ):
     """Tests process_algorithms function."""
     algorithm_table = setup_dynamodb["algorithm_table"]
+    mock_load_cdf.return_value = {"mock": "calibration data"}
 
     mock_hit.return_value = [
         {
@@ -246,13 +248,17 @@ def test_process_algorithms(
             "swe_normalized_counts_quarter_1_esa_0": Decimal("0.123"),
         }
     ]
-    mock_packet.return_value = [
-        {
-            "apid": 478,
-            "met": 333,
-            "mag_phi_4s_b_gsm": Decimal("0.456"),
-        }
-    ]
+    mock_packet.return_value = (
+        [
+            {
+                "apid": 478,
+                "met": 333,
+                "mag_phi_4s_b_gsm": Decimal("0.456"),
+            }
+        ],
+        None,
+    )
+
     mock_get_ancillary.return_value = Path("/mock/path.csv")
 
     process_algorithms(combined=None, algorithm_table=algorithm_table)
