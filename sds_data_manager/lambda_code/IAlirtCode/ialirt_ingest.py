@@ -293,7 +293,7 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         met = raw["met"]
         key = {"apid": apid, "met": met}
         existing = existing_items.get(met)
-        raw["insert_time"] = datetime.now(timezone.utc).isoformat()
+        raw["last_modified"] = datetime.now(timezone.utc).isoformat()
 
         if existing:
             if any(key.startswith(instrument) for key in existing.keys()):
@@ -302,13 +302,13 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
             update_expr = "SET " + ", ".join(
                 f"{field} = :{field}"
                 for field in raw
-                if field not in {"apid", "met", "utc", "ttj2000ns"}
+                if field not in {"apid", "met", "met_in_utc", "ttj2000ns"}
             )
 
             expression_values = {
                 f":{field}": value
                 for field, value in raw.items()
-                if field not in {"apid", "met", "utc", "ttj2000ns"}
+                if field not in {"apid", "met", "met_in_utc", "ttj2000ns"}
             }
 
             algorithm_table.update_item(
