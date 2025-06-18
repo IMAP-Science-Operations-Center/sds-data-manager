@@ -57,6 +57,7 @@ def get_ancillary(instrument, descriptor):
         Download path of calibration file.
     """
     imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    # TODO: this only takes the first file. Sort out what calibration files are needed.
     calibration_file = imap_data_access.query(
         table="ancillary", instrument=instrument, descriptor=descriptor
     )[0]
