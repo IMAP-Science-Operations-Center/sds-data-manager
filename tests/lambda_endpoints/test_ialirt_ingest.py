@@ -333,8 +333,9 @@ def test_download_spice_file(mock_download, mock_furnsh):
 )
 def test_get_ancillary(mock_query, mock_ancillaryfilepath, mock_download):
     """Test get_ancillary function."""
-    mock_query.return_value = [{"file_path": "swe/l1b-in-flight-cal/calibration.cdf"}]
     mock_path = Path("/mock/efs/swe/l1b-in-flight-cal/calibration.cdf")
+    mock_download.return_value = mock_path
+    mock_query.return_value = [{"file_path": "swe/l1b-in-flight-cal/calibration.cdf"}]
     mock_construct_path = MagicMock(return_value=mock_path)
     mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
 
