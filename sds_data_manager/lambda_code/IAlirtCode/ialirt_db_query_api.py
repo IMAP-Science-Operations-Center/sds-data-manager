@@ -5,13 +5,13 @@ import logging
 import os
 
 import boto3
-from boto3.dynamodb.conditions import Attr, Key
+from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context):  # noqa: PLR0912
     """Create metadata and add it to the database.
 
     This function is an event handler for s3 ingest bucket.
@@ -48,9 +48,10 @@ def lambda_handler(event, context):
     allowed_params = {
         "met_start",
         "met_end",
-        "utc_start",
-        "utc_end",
-        "product_name",
+        "met_in_utc_start",
+        "met_in_utc_end",
+        "last_modified_start",
+        "last_modified_end",
     }
 
     unexpected_params = set(params.keys()) - allowed_params
@@ -62,20 +63,35 @@ def lambda_handler(event, context):
             ),
         }
 
-    if any(param.startswith("met") for param in params) and any(
-        param.startswith("utc") for param in params
-    ):
+    time_prefixes = {"met", "met_in_utc", "last_modified"}
+    used_time_prefixes = {
+        param.split("_start")[0].split("_end")[0]
+        for param in params
+        if any(param.startswith(prefix) for prefix in time_prefixes)
+    }
+
+    if len(used_time_prefixes) > 1:
         return {
             "statusCode": 400,
             "body": json.dumps(
-                {"message": "Cannot query both MET and UTC in the same request"}
+                {
+                    "message": "Cannot query multiple time keys "
+                    "(met, met_in_utc, last_modified)"
+                }
             ),
         }
 
-    if ("met_start" in params and "met_end" in params) or (
-        "utc_start" in params and "utc_end" in params
+    if (
+        ("met_start" in params and "met_end" in params)
+        or ("met_in_utc_start" in params and "met_in_utc_end" in params)
+        or ("last_modified_start" in params and "last_modified_end" in params)
     ):
-        time_key = "met" if "met_start" in params else "utc"
+        if "met_start" in params:
+            time_key = "met"
+        elif "met_in_utc_start" in params:
+            time_key = "met_in_utc"
+        else:
+            time_key = "last_modified"
 
         start_value = (
             int(params[f"{time_key}_start"])
@@ -90,11 +106,20 @@ def lambda_handler(event, context):
 
         key_expr &= Key(time_key).between(start_value, end_value)
 
-        if time_key == "utc":
-            query_kwargs["IndexName"] = "utc"
+        if time_key in {"met_in_utc", "last_modified"}:
+            query_kwargs["IndexName"] = time_key
 
-    elif "met_start" in params or "utc_start" in params:
-        time_key = "met" if "met_start" in params else "utc"
+    elif (
+        "met_start" in params
+        or "met_in_utc_start" in params
+        or "last_modified_start" in params
+    ):
+        if "met_start" in params:
+            time_key = "met"
+        elif "met_in_utc_start" in params:
+            time_key = "met_in_utc"
+        else:
+            time_key = "last_modified"
 
         start_value = (
             int(params[f"{time_key}_start"])
@@ -103,10 +128,14 @@ def lambda_handler(event, context):
         )
         key_expr &= Key(time_key).gte(start_value)
 
-        if time_key == "utc":
-            query_kwargs["IndexName"] = "utc"
+        if time_key in {"met_in_utc", "last_modified"}:
+            query_kwargs["IndexName"] = time_key
 
-    elif "met_end" in params or "utc_end" in params:
+    elif (
+        "met_end" in params
+        or "met_in_utc_end" in params
+        or "last_modified_end" in params
+    ):
         return {
             "statusCode": 400,
             "body": json.dumps(
@@ -115,18 +144,6 @@ def lambda_handler(event, context):
         }
 
     query_kwargs["KeyConditionExpression"] = key_expr
-
-    if "product_name" in params:
-        product_name_value = params["product_name"]
-
-        if product_name_value.endswith("*"):
-            query_kwargs["FilterExpression"] = Attr("product_name").begins_with(
-                product_name_value[:-1]
-            )
-        else:
-            query_kwargs["FilterExpression"] = Attr("product_name").eq(
-                product_name_value
-            )
 
     response = table.query(**query_kwargs)
     return {

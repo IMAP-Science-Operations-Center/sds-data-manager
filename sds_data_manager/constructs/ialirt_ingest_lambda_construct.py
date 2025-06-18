@@ -93,12 +93,12 @@ class IalirtIngestLambda(Construct):
 
         # Add a GSI for ingest time.
         self.algorithm_data_table.add_global_secondary_index(
-            index_name="utc",
+            index_name="met_in_utc",
             # Partition key (PK) = APID.
             partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
             # Sort key (SK) = Insert Time (ISO).
             sort_key=ddb.Attribute(
-                name="utc",
+                name="met_in_utc",
                 type=ddb.AttributeType.STRING,
             ),
             projection_type=ddb.ProjectionType.ALL,
@@ -106,12 +106,12 @@ class IalirtIngestLambda(Construct):
 
         # Add a GSI for instrument product name.
         self.algorithm_data_table.add_global_secondary_index(
-            index_name="product_name",
+            index_name="last_modified",
             # Partition key (PK) = APID.
             partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
             # Sort key (SK) = Instrument product name.
             sort_key=ddb.Attribute(
-                name="product_name",
+                name="last_modified",
                 type=ddb.AttributeType.STRING,
             ),
             projection_type=ddb.ProjectionType.ALL,

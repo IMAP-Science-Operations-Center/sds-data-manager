@@ -16,29 +16,29 @@ def algorithm_table(setup_dynamodb):
         {
             "apid": 478,
             "met": 101,
-            "product_name": "hit_product_1",
-            "utc": "2021-01-01T00:00:00",
+            "last_modified": "2021-01-01T00:00:00",
+            "met_in_utc": "2021-01-01T00:00:00",
             "data": "item1",
         },
         {
             "apid": 478,
             "met": 120,
-            "product_name": "hit_product_2",
-            "utc": "2021-01-02T00:00:00",
+            "last_modified": "2021-01-02T00:00:00",
+            "met_in_utc": "2021-01-02T00:00:00",
             "data": "item2",
         },
         {
             "apid": 478,
             "met": 130,
-            "product_name": "codicelo_product_1",
-            "utc": "2021-01-03T00:00:00",
+            "last_modified": "2021-01-03T00:00:00",
+            "met_in_utc": "2021-01-03T00:00:00",
             "data": "item3",
         },
         {
             "apid": 478,
             "met": 110,
-            "product_name": "mag_product_1",
-            "utc": "2021-01-04T00:00:00",
+            "last_modified": "2021-01-04T00:00:00",
+            "met_in_utc": "2021-01-04T00:00:00",
             "data": "item4",
         },
     ]
@@ -100,18 +100,18 @@ def test_query_with_met_end(algorithm_table):
 
 def test_query_with_utc_range(algorithm_table):
     """Test query_with_utc_range."""
-    # GET <invoke url>/query?utc_start=<utc_start>&
-    # utc_end=<utc_end>
+    # GET <invoke url>/query?met_in_utc_start=<met_in_utc_start>&
+    # met_in_utc_end=<met_in_utc_end>
     event = {
         "queryStringParameters": {
-            "utc_start": "2021-01-01T00:00:00",
-            "utc_end": "2021-01-03T00:00:00",
+            "met_in_utc_start": "2021-01-01T00:00:00",
+            "met_in_utc_end": "2021-01-03T00:00:00",
         }
     }
     response = ialirt_db_query_api.lambda_handler(event, context=None)
     items = json.loads(response["body"])
 
-    utc = sorted(item["utc"] for item in items)
+    utc = sorted(item["met_in_utc"] for item in items)
 
     expected_utc = [
         "2021-01-01T00:00:00",
@@ -127,13 +127,13 @@ def test_query_with_utc_start(algorithm_table):
     # GET <invoke url>/query?utc_start=<utc_start>
     event = {
         "queryStringParameters": {
-            "utc_start": "2021-01-02T00:00:00",
+            "met_in_utc_start": "2021-01-02T00:00:00",
         }
     }
     response = ialirt_db_query_api.lambda_handler(event, context=None)
     items = json.loads(response["body"])
 
-    utcs = sorted(item["utc"] for item in items)
+    utcs = sorted(item["met_in_utc"] for item in items)
 
     expected_data = [
         "2021-01-02T00:00:00",
@@ -146,10 +146,10 @@ def test_query_with_utc_start(algorithm_table):
 
 def test_query_with_utc_end(algorithm_table):
     """Test query with insert time end."""
-    # GET <invoke url>/query?utc_end=<utc_end>
+    # GET <invoke url>/query?met_in_utc_end=<met_in_utc_end>
     event = {
         "queryStringParameters": {
-            "utc_end": "2021-01-02T00:00:00",
+            "met_in_utc_end": "2021-01-02T00:00:00",
         }
     }
     response = ialirt_db_query_api.lambda_handler(event, context=None)
@@ -172,34 +172,6 @@ def test_query_no_results(algorithm_table):
     assert json.loads(response["body"]) == []
 
 
-def test_query_with_product_name_prefix(algorithm_table):
-    """Test query with product name prefix."""
-    # GET <invoke url>/query?product_name=hit*
-    event = {
-        "queryStringParameters": {
-            "product_name": "hit*",
-        }
-    }
-    response = ialirt_db_query_api.lambda_handler(event, context=None)
-    items = json.loads(response["body"])
-    returned_data = sorted(item["data"] for item in items)
-    assert returned_data == ["item1", "item2"]
-
-
-def test_query_with_product_name(algorithm_table):
-    """Test query with product name."""
-    # GET <invoke url>/query?product_name=hit*
-    event = {
-        "queryStringParameters": {
-            "product_name": "hit_product_1",
-        }
-    }
-    response = ialirt_db_query_api.lambda_handler(event, context=None)
-    items = json.loads(response["body"])
-    returned_data = sorted(item["data"] for item in items)
-    assert returned_data == ["item1"]
-
-
 def test_query_with_multiple_filters(algorithm_table):
     """Test query with multiple filters."""
     # GET <invoke url>/query?met_start=100&met_end=130&product_name=codicelo_product_1
@@ -207,30 +179,30 @@ def test_query_with_multiple_filters(algorithm_table):
         "queryStringParameters": {
             "met_start": "100",
             "met_end": "130",
-            "product_name": "codicelo_product_1",
         }
     }
     response = ialirt_db_query_api.lambda_handler(event, context=None)
 
     items = json.loads(response["body"])
-    assert items[0]["data"] == "item3"
+    assert len(items) == 4
 
 
 def test_query_with_different_time_queries(algorithm_table):
     """Test query API with multiple filters."""
     # GET <invoke url>/query?met_start=100&met_end=130&product_name=hit*&
-    # utc_start=2021-01-02T00:00:00.
+    # met_in_utc_start=2021-01-02T00:00:00.
     event = {
         "queryStringParameters": {
             "met_start": "100",
             "met_end": "130",
-            "product_name": "hit*",
-            "utc_start": "2021-01-02T00:00:00",
+            "met_in_utc_start": "2021-01-02T00:00:00",
         }
     }
     response = ialirt_db_query_api.lambda_handler(event, context=None)
     assert response["statusCode"] == 400
-    expected_message = {"message": "Cannot query both MET and UTC in the same request"}
+    expected_message = {
+        "message": "Cannot query multiple time keys (met, met_in_utc, last_modified)"
+    }
     assert json.loads(response["body"]) == expected_message
 
 
@@ -262,15 +234,17 @@ def test_query_with_no_parameters(algorithm_table):
 
 def test_query_with_mixed_parameters(algorithm_table):
     """Test query with mixed parameters."""
-    # GET <invoke url>/query?met_start=100&utc_end=2021-01-02T00:00:00.
+    # GET <invoke url>/query?met_start=100&met_in_utc_end=2021-01-02T00:00:00.
     event = {
         "queryStringParameters": {
             "met_start": "100",
-            "utc_end": "2021-01-02T00:00:00",
+            "met_in_utc_end": "2021-01-02T00:00:00",
         }
     }
     response = ialirt_db_query_api.lambda_handler(event, context=None)
 
     assert response["statusCode"] == 400
-    expected_message = {"message": "Cannot query both MET and UTC in the same request"}
+    expected_message = {
+        "message": "Cannot query multiple time keys (met, met_in_utc, last_modified)"
+    }
     assert json.loads(response["body"]) == expected_message

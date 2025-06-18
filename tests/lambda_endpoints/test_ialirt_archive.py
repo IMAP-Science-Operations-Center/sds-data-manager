@@ -18,15 +18,15 @@ def populate_algorithm_table(setup_dynamodb):
         {
             "apid": 478,
             "met": 111,
-            "utc": (yesterday + timedelta(seconds=1)).isoformat(),
-            "product_name": "test_product",
+            "met_in_utc": (yesterday + timedelta(seconds=1)).isoformat(),
+            "last_modified": (yesterday + timedelta(seconds=1)).isoformat(),
             "data_product_1": "3.14",
         },
         {
             "apid": 478,
             "met": 222,
-            "utc": (yesterday - timedelta(seconds=1)).isoformat(),
-            "product_name": "test_product",
+            "met_in_utc": (yesterday - timedelta(seconds=1)).isoformat(),
+            "last_modified": (yesterday - timedelta(seconds=1)).isoformat(),
             "data_product_2": "2.71",
         },
     ]
