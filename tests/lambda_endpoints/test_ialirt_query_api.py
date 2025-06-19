@@ -2,7 +2,7 @@
 
 import json
 
-from sds_data_manager.lambda_code.IAlirtCode import ialirt_query_api
+from sds_data_manager.lambda_code.IAlirtCode import ialirt_log_query_api
 
 
 def test_query_within_date_range(s3_client):
@@ -28,7 +28,7 @@ def test_query_within_date_range(s3_client):
 
     event = {"queryStringParameters": {"year": "2024", "doy": "141", "instance": "1"}}
 
-    response = ialirt_query_api.lambda_handler(event=event, context=None)
+    response = ialirt_log_query_api.lambda_handler(event=event, context=None)
     response_data = json.loads(response["body"])
 
     assert response["statusCode"] == 200
@@ -42,7 +42,7 @@ def test_invalid_date_format():
     """Test that an error is returned for invalid date formats."""
     event = {"queryStringParameters": {"year": "invalid_date", "doy": "invalid_date"}}
 
-    response = ialirt_query_api.lambda_handler(event=event, context=None)
+    response = ialirt_log_query_api.lambda_handler(event=event, context=None)
 
     assert response["statusCode"] == 400
     assert "Invalid year or day format. Use YYYY and DOY." in response["body"]
