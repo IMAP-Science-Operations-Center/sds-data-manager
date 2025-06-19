@@ -1,4 +1,4 @@
-"""Define lambda to support the download API."""
+"""Tests for the I-ALiRT Packets API."""
 
 import json
 import logging
@@ -65,13 +65,15 @@ def lambda_handler(event, context):
 
     parts = [year, doy]
     if hh:
+        # Pad values if necessary.
         parts.append(hh.zfill(2))
     if mm:
+        # Pad values if necessary.
         parts.append(mm.zfill(2))
     if ss:
+        # Pad values if necessary.
         parts.append(ss.zfill(2))
 
-    # New prefix format based on filename convention
     prefix = "packets/iois_1_packets_" + "_".join(parts)
 
     bucket = os.getenv("S3_BUCKET")
