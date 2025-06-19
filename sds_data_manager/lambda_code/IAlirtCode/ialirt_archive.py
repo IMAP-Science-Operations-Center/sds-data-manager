@@ -48,9 +48,9 @@ def lambda_handler(event, context):
 
     # Query using utc GSI
     response = algorithm_table.query(
-        IndexName="met_in_utc",
+        IndexName="last_modified",
         KeyConditionExpression=(
-            Key("apid").eq(478) & Key("met_in_utc").between(start_iso, end_iso)
+            Key("apid").eq(478) & Key("last_modified").between(start_iso, end_iso)
         ),
     )
 
