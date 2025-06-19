@@ -61,7 +61,7 @@ class IalirtApiManager(Construct):
             ],
         )
 
-        # query API lambda
+        # log query API lambda
         log_query_api_lambda = lambda_.Function(
             self,
             id="IAlirtCodeLogQueryAPILambda",
@@ -88,7 +88,7 @@ class IalirtApiManager(Construct):
             lambda_function=log_query_api_lambda,
         )
 
-        # query API lambda
+        # packets query API lambda
         packets_query_api_lambda = lambda_.Function(
             self,
             id="IAlirtCodePacketsQueryAPILambda",
