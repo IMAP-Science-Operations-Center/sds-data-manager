@@ -110,7 +110,7 @@ class IalirtApiManager(Construct):
         packets_query_api_lambda.add_to_role_policy(s3_read_policy)
 
         api.add_route(
-            route="/ialirt-packets-query",
+            route="/ialirt-packet-query",
             http_method="GET",
             lambda_function=packets_query_api_lambda,
         )
