@@ -804,8 +804,8 @@ def cadence_processing_event(session, events):
     for job_node in potential_jobs:
         node = {
             "data_source": job_node[0],
-            "descriptor": job_node[2],
             "data_type": job_node[1],
+            "descriptor": job_node[2],
         }
         upstream_dependencies = dependency.get_jobs(
             data_source=node["data_source"],
@@ -832,7 +832,7 @@ def cadence_processing_event(session, events):
             science_input.get_time_range()[0]
             for science_input in primary_science_inputs
         ]
-        cadence_start_date = sorted(start_dates)[0]
+        cadence_start_date = min(start_dates)
 
         job_version = determine_job_version(
             session=session,
