@@ -22,7 +22,9 @@ from imap_data_access.processing_input import (
 from imap_processing import imap_module_directory
 from imap_processing.cdf.utils import load_cdf
 from imap_processing.ialirt.l0.parse_mag import process_packet
+from imap_processing.ialirt.l0.process_codice import process_codice
 from imap_processing.ialirt.l0.process_hit import process_hit
+from imap_processing.ialirt.l0.process_swapi import process_swapi_ialirt
 from imap_processing.ialirt.l0.process_swe import process_swe
 from imap_processing.utils import packet_file_to_datasets
 
@@ -245,6 +247,8 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
         ("hit", process_hit),
         ("swe", process_swe),
         ("mag", process_packet),
+        ("codice", process_codice),
+        ("swapi", process_swapi_ialirt),
     ]
 
     for instrument, process_func in processors:
@@ -367,6 +371,7 @@ def lambda_handler(event, context):
         logger.info("Found %d files to process", len(filenames))
         # Get packets into datasets and combine.
         combined = parse_packets(filenames, bucket, Path("/tmp"))  # noqa: S108
+        logger.info("Found %d", combined["swe_seq"])
         # Process algorithms and insert new data.
         process_algorithms(combined, algorithm_table)
 
