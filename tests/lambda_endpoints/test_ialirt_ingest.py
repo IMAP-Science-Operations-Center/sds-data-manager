@@ -227,8 +227,19 @@ def test_insert_data(setup_dynamodb):
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_hit")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_packet")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swe")
+@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_codice")
+@mock.patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swapi_ialirt"
+)
 def test_process_algorithms(
-    mock_swe, mock_packet, mock_hit, mock_get_ancillary, mock_load_cdf, setup_dynamodb
+    mock_swapi,
+    mock_codice,
+    mock_swe,
+    mock_packet,
+    mock_hit,
+    mock_get_ancillary,
+    mock_load_cdf,
+    setup_dynamodb,
 ):
     """Tests process_algorithms function."""
     algorithm_table = setup_dynamodb["algorithm_table"]
@@ -258,6 +269,31 @@ def test_process_algorithms(
         ],
         None,
     )
+
+    mock_codice.return_value = (
+        [
+            {
+                "apid": 478,
+                "met": 333,
+                "codice": Decimal("0.456"),
+            }
+        ],
+        [
+            {
+                "apid": 478,
+                "met": 333,
+                "codice": Decimal("0.456"),
+            }
+        ],
+    )
+
+    mock_swapi.return_value = [
+        {
+            "apid": 478,
+            "met": 335,
+            "swapi": Decimal("0.123"),
+        }
+    ]
 
     mock_get_ancillary.return_value = Path("/mock/path.csv")
 
