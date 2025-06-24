@@ -247,7 +247,8 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
         ("hit", process_hit),
         ("swe", process_swe),
         ("mag", process_packet),
-        ("codice", process_codice),
+        ("codicelo", process_codice),
+        ("codicehi", process_codice),
         ("swapi", process_swapi_ialirt),
     ]
 
@@ -259,11 +260,21 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
             download_path = get_ancillary(instrument, "l1b-calibration")
             calibration_data = load_cdf(download_path)
             result, _ = process_func(combined, calibration_data)
+        elif instrument == "codicelo":
+            result, _ = process_func(combined)
+        elif instrument == "codicehi":
+            _, result = process_func(combined)
         else:
             result = process_func(combined)
 
         logger.info("%s result: %s", instrument, result)
-        if result:
+        # TODO: remove this once we fix codice and swapi
+        #  in imap_processing to use int(met).
+        for item in result:
+            if isinstance(item.get("met"), np.generic):
+                item["met"] = int(item["met"])
+
+        if any(result) and all(result):
             insert_data(result, algorithm_table, instrument)
 
 
@@ -371,7 +382,6 @@ def lambda_handler(event, context):
         logger.info("Found %d files to process", len(filenames))
         # Get packets into datasets and combine.
         combined = parse_packets(filenames, bucket, Path("/tmp"))  # noqa: S108
-        logger.info("Found %d", combined["swe_seq"])
         # Process algorithms and insert new data.
         process_algorithms(combined, algorithm_table)
 
