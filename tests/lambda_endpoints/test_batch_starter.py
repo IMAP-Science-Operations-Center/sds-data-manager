@@ -387,6 +387,7 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
         [
             SPICEFiles(
                 file_name="naif0012.tls",
+                file_path="path/to/naif0012.tls",
                 ingestion_date=datetime.strptime(
                     "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
                 ),
@@ -411,6 +412,7 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
             ),
             SPICEFiles(
                 file_name="imap_sclk_0000.tsc",
+                file_path="path/to/imap_sclk_0000.tsc",
                 ingestion_date=datetime.strptime(
                     "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
                 ),
@@ -615,6 +617,7 @@ def test_ultra_l3_map(session, caplog):
             ),
             SPICEFiles(
                 file_name="naif0012.tls",
+                file_path="path/to/naif0012.tls",
                 ingestion_date=datetime.strptime(
                     "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
                 ),
@@ -639,6 +642,7 @@ def test_ultra_l3_map(session, caplog):
             ),
             SPICEFiles(
                 file_name="imap_sclk_0000.tsc",
+                file_path="path/to/imap_sclk_0000.tsc",
                 ingestion_date=datetime.strptime(
                     "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
                 ),
@@ -1449,6 +1453,7 @@ def test_spice_event(session, s3_client):
             SPICEFiles(
                 # 2025028 to 2025030
                 file_name="imap_2025_118_2025_120_02.ah.bc",
+                file_path="/path/to/imap_2025_118_2025_120_02.ah.bc",
                 ingestion_date=datetime.now(),
                 file_root="imap_2025_118_2025_120_.ah.bc",
                 kernel_type="attitude_history",
@@ -1467,6 +1472,7 @@ def test_spice_event(session, s3_client):
             ),
             SPICEFiles(
                 file_name="imap_recon_20250428_20250430_v02.bsp",
+                file_path="/path/to/imap_recon_20250428_20250430_v02.bsp",
                 ingestion_date=datetime.now(),
                 file_root="imap_recon_20250428_20250430_v.bsp",
                 kernel_type="ephemeris_reconstructed",

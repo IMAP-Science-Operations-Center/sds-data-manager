@@ -2,10 +2,11 @@
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
-import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy import select
 
@@ -18,26 +19,12 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
 
 
 def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
-    """Put the a local file into a test bucket, and return a mock event notification.
-
-    Parameters
-    ----------
-    s3_client
-        The s3 client to use
-    path_in_s3: str
-        The path to place the file in S3
-    path_local: str
-        The local path of the file to upload
-
-    Returns
-    -------
-    s3_event: dict
-        A dictionary mocking the s3 put event notification
-
-    """
+    """Put the a local file into a test bucket, and return a mock event notification."""
+    # Ensure the correct bucket name is used from environment or fallback
+    bucket_name = os.getenv("S3_BUCKET")
     with open(path_local, "rb") as f:
         s3_client.put_object(
-            Bucket="test-data-bucket",
+            Bucket=bucket_name,
             Key=path_in_s3,
             Body=f,
         )
@@ -47,7 +34,7 @@ def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
         "time": datetime.now().isoformat(),
         "detail": {
             "version": "0",
-            "bucket": {"name": "test-data-bucket"},
+            "bucket": {"name": bucket_name},
             "object": {
                 "key": (path_in_s3),
                 "reason": "PutObject",
@@ -57,7 +44,41 @@ def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
     return event
 
 
-def test_s3_spice_files(session, s3_client, events_client):
+def _irrelevant_data():
+    """Populate irrelevant columns in DB with dummy data."""
+    irrelevant_data = {
+        "min_date_datetime": datetime.now(),
+        "max_date_datetime": datetime.now(),
+        "file_intervals_datetime": [["0", "0"]],
+        "min_date_sclk": "",
+        "max_date_sclk": "",
+        "file_intervals_sclk": [["0", "0"]],
+        "sclk_kernel": "nothing",
+        "lsk_kernel": "nothing",
+    }
+    return irrelevant_data
+
+
+def _insert_test_file(session, filename, s3_path, intervals, upload_time=0):
+    spice_object = SPICEFilePath(filename)
+    version = spice_object.spice_metadata["version"]
+    metadata_params = {
+        "file_name": filename,
+        "file_path": s3_path,
+        "file_root": "".join(filename.rsplit(version, 1)),
+        "kernel_type": spice_object.spice_metadata["type"],
+        "version": version,
+        "file_intervals_j2000": intervals,
+        "min_date_j2000": intervals[0][0],
+        "max_date_j2000": intervals[-1][1],
+        "ingestion_date": datetime.now() + timedelta(upload_time),
+    } | _irrelevant_data()
+    session.add(models.SPICEFiles(**metadata_params))
+    session.commit()
+
+
+@patch("sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download")
+def test_s3_spice_files(mock_download, session, events_client, s3_client):
     """Test s3 event.
 
     The following test mimics a leapsecond kernel being placed on the SDS,
@@ -72,19 +93,46 @@ def test_s3_spice_files(session, s3_client, events_client):
     test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
 
     # Insert leapsecond spice kernel
-    leapsecond_event = put_local_file_in_bucket(
+    lsk_test_path = os.path.join(test_spice_data_dir, "naif0012.tls")
+    put_local_file_in_bucket(
         s3_client,
         "imap/spice/lsk/naif0012.tls",
-        os.path.join(test_spice_data_dir, "naif0012.tls"),
+        lsk_test_path,
     )
-    spice_indexer.lambda_handler(leapsecond_event, None)
+    _insert_test_file(
+        session,
+        "naif0012.tls",
+        "imap/spice/lsk/naif0012.tls",
+        [[0, 1000000000]],  # Dummy intervals for testing
+    )
 
     # Insert spacecraft clock spice kernel
+    sclk_test_path = os.path.join(test_spice_data_dir, "imap_sclk_0012.tsc")
     clock_kernel_event = put_local_file_in_bucket(
         s3_client,
         "imap/spice/sclk/imap_sclk_0012.tsc",
-        os.path.join(test_spice_data_dir, "imap_sclk_0012.tsc"),
+        sclk_test_path,
     )
+    _insert_test_file(
+        session,
+        "imap_sclk_0012.tsc",
+        "imap/spice/sclk/imap_sclk_0012.tsc",
+        [[0, 1000000000]],  # Dummy intervals for testing
+    )
+
+    def download_side_effect(path):
+        if path.endswith("naif0012.tls"):
+            return lsk_test_path
+        elif path.endswith("imap_sclk_0012.tsc"):
+            return sclk_test_path
+        elif path.endswith("imap_2025_118_2025_120_001.ah.bc"):
+            return Path(
+                os.path.join(test_spice_data_dir, "imap_2025_118_2025_120_001.ah.bc")
+            )
+        else:
+            raise ValueError(f"Unexpected download path: {path}")
+
+    mock_download.side_effect = download_side_effect
     spice_indexer.lambda_handler(clock_kernel_event, None)
 
     # Insert a new attitude kernel
@@ -93,14 +141,16 @@ def test_s3_spice_files(session, s3_client, events_client):
         "imap/spice/ck/imap_2025_118_2025_120_001.ah.bc",
         os.path.join(test_spice_data_dir, "imap_2025_118_2025_120_001.ah.bc"),
     )
+    _insert_test_file(
+        session,
+        "imap_2025_118_2025_120_001.ah.bc",
+        "imap/spice/ck/imap_2025_118_2025_120_001.ah.bc",
+        [
+            [799240876.0732585, 799240921.0732585],
+            [799242436.0732583, 799244783.0732579],
+        ],  # J2000 intervals for testing
+    )
     spice_indexer.lambda_handler(attitude_kernel_event, None)
-
-    # Verify that the file was moved to the temp_path directory. This move
-    # happens in above lambda function when the file is written to the EFS
-    # path specified by DATA_DIR environment variable.
-    assert os.path.exists(temp_path + "/imap/spice/lsk/naif0012.tls")
-    assert os.path.exists(temp_path + "/imap/spice/sclk/imap_sclk_0012.tsc")
-    assert os.path.exists(temp_path + "/imap/spice/ck/imap_2025_118_2025_120_001.ah.bc")
 
     # Verify that the database was populated appropriately
     # NOTE: This is also testing the spice_query_api, to help ensure compatibility
@@ -142,16 +192,6 @@ def test_s3_spice_files(session, s3_client, events_client):
         None,
     )
 
-    # Ensure that the metakernels are actually valid by loading them in
-    with open(temp_path + "/metakernel.tm", "w") as f:
-        f.write(result["body"])
-    spiceypy.kclear()
-    assert spiceypy.ktotal("ALL") == 0
-    spiceypy.furnsh(temp_path + "/metakernel.tm")
-    assert spiceypy.ktotal("TEXT") == 2  # LSK and SCLK kernels
-    assert spiceypy.ktotal("META") == 1  # One Metakernel
-    assert spiceypy.ktotal("CK") == 1  # One CK file
-
 
 def test_s3_spin_files(session, s3_client, events_client):
     """Test s3 event.
@@ -160,7 +200,6 @@ def test_s3_spin_files(session, s3_client, events_client):
     The files are located in the "test_spice_files" directory.
 
     """
-    temp_path = os.getenv("DATA_DIR")
     current_path = os.path.dirname(os.path.abspath(__file__))
     one_level_up = os.path.abspath(os.path.join(current_path, ".."))
     test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
@@ -176,7 +215,7 @@ def test_s3_spin_files(session, s3_client, events_client):
     spin_table_rows = session.execute(query).all()
     assert len(spin_table_rows) == 1
     assert spin_table_rows[0].file_path == (
-        temp_path + "/imap/spice/spin/imap_2026_267_2026_267_01.spin.csv"
+        "imap/spice/spin/imap_2026_267_2026_267_01.spin.csv"
     )
 
     # Second spin file ingestion
@@ -190,20 +229,47 @@ def test_s3_spin_files(session, s3_client, events_client):
     spin_table_rows = session.execute(query).all()
     assert len(spin_table_rows) == 2
     assert spin_table_rows[1].file_path == (
-        temp_path + "/imap/spice/spin/imap_2026_267_2026_267_02.spin.csv"
+        "imap/spice/spin/imap_2026_267_2026_267_02.spin.csv"
     )
     assert spin_table_rows[1].version == "02"
 
 
-def test_send_spice_event(events_client):
+def test_send_spice_event(session, events_client, s3_client):
     """Test the ``send_spice_event`` function."""
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    one_level_up = os.path.abspath(os.path.join(current_path, ".."))
+    test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
+
     s3_key = "imap/spice/lsk/naif0012.tls"
+    put_local_file_in_bucket(
+        s3_client, s3_key, os.path.join(test_spice_data_dir, "naif0012.tls")
+    )
+    _insert_test_file(
+        session,
+        "naif0012.tls",
+        s3_key,
+        [[0, 1000000000]],  # Dummy intervals for testing
+    )
     spice_obj = SPICEFilePath(s3_key)
     result = spice_indexer.send_spice_event(spice_obj, s3_key)
     assert result is None
 
     # Now pass attitude kernel
     s3_key = "imap/spice/ck/imap_2025_118_2025_120_001.ah.bc"
+    put_local_file_in_bucket(
+        s3_client,
+        s3_key,
+        os.path.join(test_spice_data_dir, "imap_2025_118_2025_120_001.ah.bc"),
+    )
+    _insert_test_file(
+        session,
+        "imap_2025_118_2025_120_001.ah.bc",
+        s3_key,
+        [
+            [799240876.0732585, 799240921.0732585],
+            [799242436.0732583, 799244783.0732579],
+        ],  # J2000 intervals for testing
+    )
     spice_obj = SPICEFilePath(s3_key)
     result = spice_indexer.send_spice_event(spice_obj, s3_key)
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200

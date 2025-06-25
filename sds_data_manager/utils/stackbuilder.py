@@ -14,7 +14,6 @@ from sds_data_manager.constructs import (
     backup_bucket_construct,
     data_bucket_construct,
     database_construct,
-    efs_construct,
     ialirt_api_manager_construct,
     ialirt_archive_construct,
     ialirt_bucket_construct,
@@ -226,11 +225,6 @@ def build_sds(
         layers=[db_lambda_layer],
     )
 
-    # create EFS
-    efs_instance = efs_construct.EFSConstruct(
-        scope=sdc_stack, construct_id="EFSConstruct", vpc=networking.vpc
-    )
-
     # This valid instrument list is from imap-data-access package
     processing = processing_construct.ProcessingConstruct(
         sdc_stack, "ProcessingConstruct", vpc=networking.vpc
@@ -275,7 +269,6 @@ def build_sds(
         layers=[db_lambda_layer, spice_lambda_layer],
         rds_security_group=rds_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
-        efs_construct=efs_instance,
     )
 
     # I-ALiRT Stack

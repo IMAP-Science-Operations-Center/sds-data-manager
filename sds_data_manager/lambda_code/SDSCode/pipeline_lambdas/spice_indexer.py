@@ -8,9 +8,10 @@ from pathlib import Path
 
 import boto3
 import spiceypy
-from imap_data_access import SPICEFilePath
+from imap_data_access import SPICEFilePath, download
 from sqlalchemy.dialects.postgresql import insert
 
+from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
 from ..database import models
 from ..pipeline_lambdas.indexer import get_file_ingestion_date
@@ -40,26 +41,44 @@ COVERAGE_TOLERANCE = 50000.0  # Tolerance value expressed in ticks of the spacec
 COVERAGE_TIME_SYSTEM = "TDB"  # Whether to use J2000 (TDB) or spacecraft clock (SCLK)
 
 
-def furnish_best_spice_file(spice_path: Path):
-    """Furnish the best kernel from spice_path.
+def furnish_best_spice_file(kernel_type: str):
+    """Furnish the best kernel for given type.
 
     Parameters
     ----------
-    spice_path: Path
-        The path to the direcory where SPICE is stored
+    kernel_type: str
+        Kernel type to furnish, e.g. 'leapseconds' or 'spacecraft_clock'.
 
     Returns
     -------
     highest_version_spice_file: Path
         The path to the SPICE file that was furnished
     """
-    kernels_sorted = sorted([f for f in spice_path.iterdir() if f.is_file()])
-    if kernels_sorted:
-        highest_version_spice_file = spice_path / kernels_sorted[-1]
-        spiceypy.furnsh(str(highest_version_spice_file))
-        return highest_version_spice_file
-    else:
-        raise FileNotFoundError(f"No SPICE files found in the directory {spice_path}")
+    # Query for latest kernel
+    metakernel_response = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 0,
+                "end_time": MAXIMUM_J2000_INTERVAL[0][1],
+                "list_files": "True",
+                "file_types": kernel_type,
+            }
+        },
+        None,
+    )
+    if metakernel_response["statusCode"] != 200:
+        raise FileNotFoundError(
+            f"Unable to find the latest {kernel_type} kernel. "
+            "Please ensure that the kernel is available in the database."
+        )
+    kernel_filename = json.loads(metakernel_response["body"])[0]
+    logger.info(f"Furnishing the latest {kernel_type} kernel: {kernel_filename}")
+    # Download the latest kernel file
+    highest_version_spice_file = download(kernel_filename)
+    logger.info(f"Downloaded SPICE file: {highest_version_spice_file}")
+    # Furnish the SPICE file
+    spiceypy.furnsh(str(highest_version_spice_file))
+    return highest_version_spice_file
 
 
 def get_coverage_dictionary(spice_file: Path, **kwargs):
@@ -125,18 +144,20 @@ def get_coverage_dictionary(spice_file: Path, **kwargs):
 
 
 def _upsert_into_spice_table(
+    s3_key: str,
     spice_object: SPICEFilePath,
     file_coverage_j2000: list[list[float]],
     file_coverage_datetime: list[list[datetime]],
     file_coverage_sclk: list[list[str]],
     latest_sclk: Path,
     latest_lsk: Path,
-    ingestion_date: datetime,
 ):
     """Insert/Update the spice metadata table with collected data.
 
     Parameters
     ----------
+    s3_key: str
+        The S3 path of the SPICE file to upsert
     spice_object: SPICEFilePath
         The SPICE file to upsert
     file_coverage_j2000: list[list[float]]
@@ -149,18 +170,16 @@ def _upsert_into_spice_table(
         The latest clock kernel used for the above calculations
     latest_lsk: Path
         The latest leapsecond kernel used for the above calculations
-    ingestion_date: datetime
-        The date when the SPICE file was ingested in S3.
     """
     # Format the data to insert
     filename = str(spice_object.filename.name)
     version = spice_object.spice_metadata["version"]
     spice_params = {
-        "ingestion_date": ingestion_date,
-        "kernel_type": spice_object.spice_metadata["type"],
-        "version": version,
         "file_name": filename,
+        "file_path": s3_key,
+        "ingestion_date": get_file_ingestion_date(s3_key),
         "file_root": "".join(filename.rsplit(version, 1)),
+        "kernel_type": spice_object.spice_metadata["type"],
         "min_date_j2000": file_coverage_j2000[0][0],
         "max_date_j2000": file_coverage_j2000[-1][-1],
         "file_intervals_j2000": file_coverage_j2000,
@@ -172,8 +191,9 @@ def _upsert_into_spice_table(
         "min_date_sclk": file_coverage_sclk[0][0],
         "max_date_sclk": file_coverage_sclk[-1][-1],
         "file_intervals_sclk": file_coverage_sclk,
-        "lsk_kernel": str(latest_lsk),
         "sclk_kernel": str(latest_sclk),
+        "lsk_kernel": str(latest_lsk),
+        "version": version,
     }
 
     with db.Session() as session:
@@ -195,23 +215,30 @@ def _upsert_into_spice_table(
     logger.info(f"Wrote {spice_params} to the SPICEFiles table")
 
 
-def index_spice_file(spice_file: Path, ingestion_date: datetime):
+def index_spice_file(s3_key: str):
     """Insert SPICE file metadata into SPICE database table.
 
     Parameters
     ----------
-    spice_file: Path
-        The full name and path the SPICE file to index
-    ingestion_date: datetime
-        The date when the SPICE file was ingested in S3.
+    s3_key: str
+        Path of kernel file in S3 bucket.
     """
     latest_lsk = None
     latest_sclk = None
-    spice_object = SPICEFilePath(spice_file)
-    spice_metadata = SPICEFilePath(spice_file).spice_metadata
+    filename = os.path.basename(s3_key)
+    spice_object = SPICEFilePath(filename)
+    spice_metadata = spice_object.spice_metadata
+    # Download the ingested SPICE file from S3
     try:
-        latest_lsk = furnish_best_spice_file(spice_file.parent.parent / "lsk")
-        latest_sclk = furnish_best_spice_file(spice_file.parent.parent / "sclk")
+        spice_file = download(s3_key)
+    except Exception as e:
+        logger.error(f"Failed to download SPICE file {s3_key}: {e}")
+        raise ValueError(f"Error downloading file {s3_key}") from e
+
+    # Load time coverage data from the SPICE file
+    try:
+        latest_lsk = furnish_best_spice_file("leapseconds")
+        latest_sclk = furnish_best_spice_file("spacecraft_clock")
     except FileNotFoundError as e:
         if spice_metadata["type"] in ("leapseconds", "spacecraft_clock"):
             # This block will likely only be reached if this is the very first
@@ -282,29 +309,29 @@ def index_spice_file(spice_file: Path, ingestion_date: datetime):
 
     # Insert/Update the gathered data into the database
     _upsert_into_spice_table(
+        s3_key,
         spice_object,
         file_coverage_j2000,
         file_coverage_datetime,
         file_coverage_sclk,
         latest_lsk,
         latest_sclk,
-        ingestion_date=ingestion_date,
     )
 
 
-def index_spin_file(spin_file: Path):
+def index_spin_file(s3_key: Path):
     """Insert spin file metadata into spin database table.
 
     Parameters
     ----------
-    spin_file: Path
-        The full name and path the spin file to index
+    s3_key: str
+        S3 path of the spin file.
     """
     with db.Session() as session:
-        spin_obj = SPICEFilePath(spin_file)
+        spin_obj = SPICEFilePath(os.path.basename(s3_key))
         spin_metadata = spin_obj.spice_metadata
         params = {
-            "file_path": str(spin_file),
+            "file_path": s3_key,
             "start_date": spin_metadata["start_date"],
             "end_date": spin_metadata["end_date"],
             "version": spin_metadata["version"],
@@ -313,47 +340,6 @@ def index_spin_file(spin_file: Path):
         spin_table = models.SpinTable(**params)
         session.add(spin_table)
         session.commit()
-
-
-def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Path:
-    """Write data to EFS and create/update symlink.
-
-    Parameters
-    ----------
-    s3_key : str
-        S3 object key
-    s3_bucket : str
-        The S3 bucket
-    data_mount_path: Path
-        The path to the local SPICE directory. Eg. /mnt/data
-
-    Returns
-    -------
-    efs_spice_filename_and_path : Path
-        The local location of the SPICE file
-
-    """
-    # Create an S3 client
-    s3_client = boto3.client("s3")
-
-    # Get directory structure from the S3 key
-    dirname, filename = os.path.split(s3_key)
-    # Prepend EFS path to the s3 directory structure
-    efs_spice_path = data_mount_path / dirname
-    # Create the folder if it does not exist
-    efs_spice_path.mkdir(parents=True, exist_ok=True)
-    try:
-        # Download path to the EFS path
-        efs_spice_filename_and_path = efs_spice_path / filename
-        # Download file from S3 to the EFS path
-        logger.info(f"Downloading {s3_key} to {efs_spice_filename_and_path}")
-        s3_client.download_file(s3_bucket, s3_key, efs_spice_filename_and_path)
-        logger.info("Download Successfull")
-    except Exception as e:
-        raise ValueError(f"Error downloading file: {e!s}") from e
-
-    logger.info(f"{filename} was written to EFS path: {efs_spice_path}")
-    return efs_spice_filename_and_path
 
 
 def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
@@ -462,17 +448,11 @@ def lambda_handler(event, context):
 
     """
     logger.info("SPICE Indexer event: " + json.dumps(event, indent=2))
-    # Define the paths
-    data_mount_path = Path(os.getenv("DATA_DIR"))  # Eg. /mnt/data
 
     # Retrieve the S3 bucket and key from the event
-    s3_bucket = event["detail"]["bucket"]["name"]
     s3_key = event["detail"]["object"]["key"]
 
-    file_path = write_data_to_efs(s3_key, s3_bucket, data_mount_path)
-    logger.info(f"File {s3_key} moved to EFS successfully")
-
-    spice_obj = SPICEFilePath(file_path)
+    spice_obj = SPICEFilePath(os.path.basename(s3_key))
     # If file is of type 'spin' or 'repoint', don't index to SPICE table
     if spice_obj.spice_metadata["type"] == "repoint":
         return {
@@ -480,14 +460,12 @@ def lambda_handler(event, context):
             "body": f"{s3_key} file moved to EFS successfully",
         }
     elif spice_obj.spice_metadata["type"] == "spin":
-        # TODO: Write spin information to spin table
         logger.info(f"Indexing {s3_key} spin table")
-        index_spin_file(file_path)
+        index_spin_file(s3_key)
     else:
         # Index the SPICE kerenels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
-        ingestion_date = get_file_ingestion_date(s3_key)
-        index_spice_file(file_path, ingestion_date=ingestion_date)
+        index_spice_file(s3_key)
 
     send_spice_event(spice_obj, s3_key)
 

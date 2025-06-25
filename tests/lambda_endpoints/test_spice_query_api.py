@@ -13,6 +13,7 @@ def _insert_ck_test_data(session):
     """Put a filepath into the test data."""
     metadata_params = {
         "file_name": "imap_2025_118_2025_120_009.ah.bc",
+        "file_path": "imap/spice/ck/imap_2025_118_2025_120_009.ah.bc",
         "file_root": "imap_2025_118_2025_120_.ah.bc",
         "kernel_type": "attitude_history",
         "version": 9,
@@ -49,6 +50,7 @@ def _insert_many_versions_test_data(session):
     for version in range(0, 10):
         metadata_params = {
             "file_name": f"imap_2025_118_2025_120_00{version}.ah.bc",
+            "file_path": f"imap/spice/ck/imap_2025_118_2025_120_00{version}.ah.bc",
             "file_root": "imap_2025_118_2025_120_.ah.bc",
             "kernel_type": "attitude_history",
             "version": version,

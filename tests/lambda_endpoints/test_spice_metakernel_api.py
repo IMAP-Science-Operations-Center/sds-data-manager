@@ -29,6 +29,7 @@ def _insert_test_file(session, filename, intervals, upload_time=0):
     version = spice_object.spice_metadata["version"]
     metadata_params = {
         "file_name": filename,
+        "file_path": f"spice/{filename}",
         "file_root": "".join(filename.rsplit(version, 1)),
         "kernel_type": spice_object.spice_metadata["type"],
         "version": version,
