@@ -256,7 +256,12 @@ class SdsApiManager(Construct):
             layers=layers,
         )
         api.add_route(
-            route="/batch-job",
+            route="/processing-jobs",
+            http_method="GET",
+            lambda_function=batch_job_query_api_lambda,
+        )
+        api.add_route(
+            route="/authorized/processing-jobs",
             http_method="GET",
             lambda_function=batch_job_query_api_lambda,
         )
@@ -275,7 +280,16 @@ class SdsApiManager(Construct):
             layers=layers,
         )
         api.add_route(
-            route="/batch-logs",
+            # {id+} is used to allow for any pathParams after /batch-logs/
+            # This is needed because the log stream ID can contain slashes
+            route="/processing-logs/{id+}",
+            http_method="GET",
+            lambda_function=batch_logs_api_lambda,
+        )
+        api.add_route(
+            # {id+} is used to allow for any pathParams after /batch-logs/
+            # This is needed because the log stream ID can contain slashes
+            route="/authorized/processing-logs/{id+}",
             http_method="GET",
             lambda_function=batch_logs_api_lambda,
         )

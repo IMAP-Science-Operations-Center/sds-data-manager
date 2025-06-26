@@ -2,6 +2,7 @@
 
 import json
 import logging
+from urllib.parse import unquote
 
 import boto3
 
@@ -30,25 +31,11 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: " + json.dumps(event, indent=2))
 
-    if not event.get("queryStringParameters"):
-        return {
-            "statusCode": 400,
-            "body": (
-                "Required Batch job log stream ID. Please provide 'job_log_stream_id'. "
-                "Eg. job_log_stream_id=ProcessingJob-codice-l3/default/bcc41f2cc3f146eb"
-                "818a12eec1d7177c"
-            ),
-        }
-
-    job_log_stream_id = event["queryStringParameters"].get("job_log_stream_id")
-
-    if not job_log_stream_id:
-        logger.info("No job_log_stream_id provided in query parameters.")
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "job_log_stream_id is required."}),
-        }
-    logger.info(f"Fetching logs for job_log_stream_id: {job_log_stream_id}")
+    # NOTE: We are using pathParams with the {id+} field in the API Gateway
+    # We are guaranteed to have the id in the pathParameters and if it is not
+    # a valid id, we will return an error message below.
+    # e.g. ProcessingJob-codice-l3/default/bcc41f2cc3f146eb818a12eec1d7177c
+    job_log_stream_id = unquote(event["pathParameters"]["id"])
 
     # Get logs from CloudWatch
     try:
@@ -66,7 +53,9 @@ def lambda_handler(event, context):
         logger.error(f"Error fetching logs: {e}")
         return {
             "statusCode": 500,
-            "body": json.dumps({"error": f"Could not fetch logs: {e!s}"}),
+            "body": json.dumps(
+                {"error": f"Could not fetch logs for id [{job_log_stream_id}]: {e!s}"}
+            ),
         }
 
     return {
