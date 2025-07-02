@@ -62,8 +62,9 @@ def test_query_result_body(session):
 
     assert json.loads(returned_query["body"])
 
+
 def test_query_result_header(session):
-    """Tests that the query result header is json"""
+    """Tests that the query result header is json."""
     _populate_test_data(session)
     event = {"queryStringParameters": {}}
 
