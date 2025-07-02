@@ -62,6 +62,16 @@ def test_query_result_body(session):
 
     assert json.loads(returned_query["body"])
 
+def test_query_result_header(session):
+    """Tests that the query result header is json"""
+    _populate_test_data(session)
+    event = {"queryStringParameters": {}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["headers"] is not None
+    assert returned_query["headers"]["Content-Type"] == "application/json"
+
 
 def test_start_date_query(session, expected_response):
     """Test that start date can be queried."""
