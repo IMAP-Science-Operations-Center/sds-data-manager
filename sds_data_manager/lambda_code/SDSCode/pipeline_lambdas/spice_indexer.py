@@ -175,8 +175,8 @@ def _upsert_into_spice_table(
     filename = str(spice_object.filename.name)
     version = spice_object.spice_metadata["version"]
     spice_params = {
-        "file_name": filename,
         "file_path": s3_key,
+        "file_name": filename,
         "ingestion_date": get_file_ingestion_date(s3_key),
         "file_root": "".join(filename.rsplit(version, 1)),
         "kernel_type": spice_object.spice_metadata["type"],
