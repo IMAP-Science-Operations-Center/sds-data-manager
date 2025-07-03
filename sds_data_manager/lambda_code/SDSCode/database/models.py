@@ -153,8 +153,8 @@ class SPICEFiles(Base):
 
     __tablename__ = "spice_files"
 
-    file_name = Column(String, nullable=False, primary_key=True, unique=True)
-    file_path = Column(String, nullable=False, unique=True)
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    file_name = Column(String, nullable=False, unique=True)
     ingestion_date = Column(DateTime(timezone=True))
     file_root = Column(String)
     kernel_type = Column(String)
