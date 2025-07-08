@@ -498,6 +498,33 @@ def submit_all_jobs(session, job_node, start_date, end_date, filter_dependencies
         )
 
 
+def generate_queue_url(event):
+    """Generate the SQS queue URL from the input event.
+
+    Each SQS event includes an "eventSourceARN" field which contains all the
+    information needed to construct the queue URL.
+
+    Parameters
+    ----------
+    event : dict
+        Input event from events["Records"] which contains information for one event.
+
+    Returns
+    -------
+    str
+        The SQS queue URL constructed from the event's "eventSourceARN". This is either
+        the normal file arrived queue or the delay queue.
+    """
+    source_arn = event[
+        "eventSourceARN"
+    ]  # e.g., arn:aws:sqs:us-east-1:123456789012:my-queue-name.fifo
+    queue_name = source_arn.split(":")[-1]
+    region = source_arn.split(":")[3]
+    account_id = source_arn.split(":")[4]
+    queue_url = f"https://sqs.{region}.amazonaws.com/{account_id}/{queue_name}"
+    return queue_url
+
+
 def s3_processing_event(session, events):
     """Process SQS events that were triggered by S3 file arrivals.
 
@@ -516,13 +543,10 @@ def s3_processing_event(session, events):
     # GLOWS l3 processing might produce ~30 files at once. We only want one to trigger
     # one downstream l3 survival probability map job in this case.
     triggered_from_glows_l3e = False
-    sqs_queue_url = os.getenv("SQS_URL")
-    if not sqs_queue_url:
-        logger.warning(
-            "SQS_URL environment variable is not set. Messages will not"
-            " be deleted from the SQS."
-        )
+
     for event in events["Records"]:
+        sqs_queue_url = generate_queue_url(event)
+
         # Event details:
         logger.info("Individual event: " + json.dumps(event, indent=2))
         body = json.loads(event["body"])
@@ -787,6 +811,9 @@ def cadence_processing_event(session, events):
         Event input from an Event Bridge rule.
     """
     cadence = events.get("cadence")
+    # TODO: remove start_date and end_date handling after SIT-4.
+    start_date = events.get("start_date")
+    end_date = events.get("end_date")
     logger.info(f"A cadence event was triggered with the parameters: {cadence=}")
     if not cadence:
         raise ValueError("Cadence event must include 'cadence' key.")
@@ -795,7 +822,13 @@ def cadence_processing_event(session, events):
     potential_jobs = sorted(dep_config.get_cadence_jobs(cadence), key=lambda x: x[2])
     logger.info(f"Found {len(potential_jobs)} potential cadence jobs: {potential_jobs}")
     # Get the start and end dates for this job
-    start_date, end_date = cadence_to_datetime_range(cadence, as_str=True)
+    if not start_date and not end_date:
+        start_date, end_date = cadence_to_datetime_range(cadence, as_str=True)
+    elif not start_date or not end_date:
+        raise ValueError(
+            "Cadence event must include both 'start_date' and 'end_date' if either is"
+            " provided."
+        )
     logger.info(f"Using {start_date=} and {end_date=} for cadence jobs.")
 
     for job_node in potential_jobs:

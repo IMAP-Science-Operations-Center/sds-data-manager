@@ -3,11 +3,10 @@
 import datetime as dt
 import json
 import logging
-import os
 import pathlib
 from datetime import datetime
 from os.path import basename
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import imap_data_access
 import pytest
@@ -69,6 +68,8 @@ def test_lambda_handler(session, s3_client):
                 '{"object": {"key": "imap_swe_l0_raw_20240110_v001.pkts"}}'
                 "}",
                 "receiptHandle": "testingtesting123",
+                "eventSourceARN": "arn:aws:sqs:us-west-2:123456789012:"
+                "testing-queue-url.fifo",
             }
         ]
     }
@@ -77,11 +78,17 @@ def test_lambda_handler(session, s3_client):
         ScienceInput("imap_swe_l0_raw_20240110_v001.pkts"),
     )
     context = {"context": "sample_context"}
+    mock_sqs_client = Mock()
+    mock_sqs_client.delete_message.return_value = {
+        "ResponseMetadata": {"HTTPStatusCode": 200}
+    }
 
     with (
         patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
-        patch.dict(os.environ, {"SQS_URL": "testing-queue-url.fifo"}),
-        patch.object(batch_starter, "SQS_CLIENT", Mock()) as mock_sqs_client,
+        patch(
+            "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.SQS_CLIENT",
+            mock_sqs_client,
+        ),
     ):
         lambda_handler(events, context)
         mock_batch_client.submit_job.assert_called_once()
@@ -108,9 +115,18 @@ def test_lambda_handler(session, s3_client):
             },
             retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
-    mock_sqs_client.delete_message.assert_called_once()
-    # Verify the function was called with the correct upstream dependencies
-    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+    mock_sqs_client.delete_message.assert_called_once_with(
+        QueueUrl="https://sqs.us-west-2.amazonaws.com/123456789012/testing-queue-url.fifo",
+        ReceiptHandle="testingtesting123",
+    )  # Verify the function was called with the correct upstream dependencies
+
+    with (
+        patch(
+            "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.SQS_CLIENT",
+            mock_sqs_client,
+        ),
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+    ):
         lambda_handler(events, context)
         mock_submit.assert_called_with(
             session,
@@ -118,6 +134,58 @@ def test_lambda_handler(session, s3_client):
             dt.datetime(2024, 1, 10, 0, 0),
             "v002",
             processing_input.serialize(),
+        )
+
+
+def test_different_queues(session, s3_client):
+    """Tests events from multiple queues."""
+    _populate_file_catalog(session)
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_swe_l0_raw_20240110_v001.pkts"}}'
+                "}",
+                "receiptHandle": "testingtesting123",
+                "eventSourceARN": "arn:aws:sqs:us-west-2:123456789012:"
+                "testing-queue-url.fifo",
+            },
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_swe_l0_raw_20240110_v001.pkts"}}'
+                "}",
+                "receiptHandle": "testingtesting222",
+                "eventSourceARN": "arn:aws:sqs:us-west-2:123456789012:"
+                "delay-queue-url.fifo",
+            },
+        ]
+    }
+    context = {"context": "sample_context"}
+    mock_sqs_client = Mock()
+    mock_sqs_client.delete_message.return_value = {
+        "ResponseMetadata": {"HTTPStatusCode": 200}
+    }
+
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()),
+        patch(
+            "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.SQS_CLIENT",
+            mock_sqs_client,
+        ),
+    ):
+        lambda_handler(events, context)
+        # Both events need to be removed from the correct queue
+        mock_sqs_client.delete_message.assert_has_calls(
+            [
+                call(
+                    QueueUrl="https://sqs.us-west-2.amazonaws.com/123456789012/testing-queue-url.fifo",
+                    ReceiptHandle="testingtesting123",
+                ),
+                call(
+                    QueueUrl="https://sqs.us-west-2.amazonaws.com/123456789012/delay-queue-url.fifo",
+                    ReceiptHandle="testingtesting222",
+                ),
+            ]
         )
 
 
@@ -140,7 +208,10 @@ def test_lambda_handler_multiple_events(session, s3_client):
         ]
     }
     context = {"context": "sample_context"}
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(multiple_events, context)
         assert mock_batch_client.submit_job.call_count == 2
 
@@ -160,7 +231,10 @@ def test_lambda_handler_ancillary_event(session):
     }
 
     context = {"context": "sample_context"}
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
         # There should be 2 different jobs submitted for one swe l1b ancillary file
         assert mock_batch_client.submit_job.call_count == 2
@@ -208,7 +282,10 @@ def test_lambda_handler_ancillary_event(session):
         )
     # Assert that the try_to_submit_job function was called with the correct
     # upstream dependencies
-    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+    with (
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
         mock_submit.assert_called_with(
             session,
@@ -233,7 +310,10 @@ def test_lambda_handler_no_dependencies(session):
         ]
     }
     context = {"context": "sample_context"}
-    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+    with (
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
         # Verify the function was not called
         assert mock_submit.call_count == 0
@@ -258,7 +338,10 @@ def test_lambda_handler_no_dependencies_multiple_files(session):
         ]
     }
     context = {"context": "sample_context"}
-    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+    with (
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
         # Verify the function was not called
         assert mock_submit.call_count == 1
@@ -278,7 +361,10 @@ def test_lambda_handler_missing_upstream_dependency(session, caplog):
         ]
     }
     context = {"context": "sample_context"}
-    with caplog.at_level(logging.DEBUG):
+    with (
+        caplog.at_level(logging.DEBUG),
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
         log_str = (
             "No records found for dependency: "
@@ -395,7 +481,10 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
     }
     caplog.set_level("INFO")
     context = {"context": "sample_context"}
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(multiple_events, context)
         assert mock_batch_client.submit_job.call_count == 0
     print(caplog.text)
@@ -428,7 +517,10 @@ def test_bulk_reprocessing_data_level(session, caplog):
         lambda_handler(events, context)
     # Add instrument and try again
     events["queryStringParameters"]["instrument"] = "swe"
-    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+    with (
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
     # There should be 4 different jobs submitted for swe l1b sci because there are 4
     # upstream swe l1a sci files with start dates in the reprocessing range.
@@ -449,7 +541,10 @@ def test_bulk_reprocessing_all(session, caplog):
     }
     context = {"context": "sample_context"}
     # Add instrument and try again
-    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+    with (
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
     # There should be two jobs submitted, one for swe, one for lo based off the existing
     # l0 files
@@ -472,7 +567,10 @@ def test_bulk_reprocessing_all_swe(session, caplog):
     }
     context = {"context": "sample_context"}
     # Add instrument and try again
-    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+    with (
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
     # There should be one job submitted for swe
     assert mock_submit.call_count == 1
@@ -601,7 +699,10 @@ def test_ultra_l3_map(session, caplog):
             "imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-4deg-3mo_20240201_v001.cdf"
         )
     )
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
         # Verify the function was called
         mock_batch_client.submit_job.assert_called_with(
@@ -633,7 +734,10 @@ def test_ultra_l3_map(session, caplog):
 
         # Assert that the try_to_submit_job function was called with the correct
         # upstream dependencies
-        with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+        with (
+            patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+            patch.object(batch_starter, "generate_queue_url", return_value=False),
+        ):
             lambda_handler(events, context)
             mock_submit.assert_called_with(
                 session,
@@ -703,7 +807,10 @@ def test_bulk_reprocessing_special_case(session):
     }
     context = {"context": "None"}
 
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
         # Verify that the hi l3 jobs were reprocessed
         assert mock_batch_client.submit_job.call_count == 2
@@ -742,7 +849,10 @@ def test_lambda_handler_mag_l1c_case(session):
     expected_processing_input = ProcessingInputCollection(
         ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
     )
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
         # Verify the function was called
         mock_batch_client.submit_job.assert_called_with(
@@ -838,7 +948,10 @@ def test_lambda_handler_mag_l1c_case(session):
         )
     # Assert that the try_to_submit_job function was called with the correct
     # upstream dependencies
-    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+    with (
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, context)
         mock_submit.assert_called_with(
             session,
@@ -1411,7 +1524,10 @@ def test_spice_event(session, s3_client):
             ],
         },
     ]
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, None)
         mock_batch_client.submit_job.assert_called_once()
         mock_batch_client.submit_job.assert_called_with(
@@ -1438,7 +1554,10 @@ def test_spice_event(session, s3_client):
             retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
 
-    with patch.object(batch_starter, "try_to_submit_job") as mock_submit:
+    with (
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
         lambda_handler(events, None)
         mock_submit.assert_called_with(
             session,

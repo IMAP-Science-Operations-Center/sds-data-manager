@@ -241,11 +241,14 @@ def build_sds(
             processing.add_job(f"{instrument.lower()}{step}")
 
     # Create SQS pipeline for each instrument and add it to instrument_sqs
-    instrument_sqs = sqs_construct.SqsConstruct(
+    file_arrive_sqs_construct = sqs_construct.SqsConstruct(
         scope=sdc_stack,
         construct_id="SqsConstruct",
         instrument_names=imap_data_access.VALID_INSTRUMENTS,
-    ).instrument_queue
+    )
+    instrument_sqs = file_arrive_sqs_construct.instrument_queue
+
+    instrument_delay_sqs = file_arrive_sqs_construct.delay_queue
 
     instrument_lambdas.BatchStarterLambda(
         scope=sdc_stack,
@@ -257,7 +260,7 @@ def build_sds(
         rds_construct=rds_construct,
         rds_security_group=rds_construct.rds_security_group,
         vpc=networking.vpc,
-        sqs_queue=instrument_sqs,
+        sqs_queues=[instrument_sqs, instrument_delay_sqs],
         layers=[db_lambda_layer, spice_lambda_layer],
     )
 

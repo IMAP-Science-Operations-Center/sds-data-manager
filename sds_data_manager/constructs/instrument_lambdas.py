@@ -34,7 +34,7 @@ class BatchStarterLambda(Construct):
         rds_construct: SdpDatabase,
         rds_security_group: ec2.SecurityGroup,
         vpc: ec2.Vpc,
-        sqs_queue: sqs.Queue,
+        sqs_queues: list[sqs.Queue],
         layers: list,
         **kwargs,
     ):
@@ -60,7 +60,7 @@ class BatchStarterLambda(Construct):
             RDS security group.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
-        sqs_queue: sqs.Queue
+        sqs_queues: list[sqs.Queue]
             A FIFO queue to trigger the lambda with.
         layers : list
             List of Lambda layers cdk.cdfnOutput names.
@@ -76,7 +76,6 @@ class BatchStarterLambda(Construct):
             "SECRET_NAME": rds_construct.rds_creds.secret_name,
             "ACCOUNT": f"{env.account}",
             "REGION": f"{env.region}",
-            "SQS_URL": f"{sqs_queue.queue_url}",
         }
         # Lambda should use private subnet
         subnet = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
@@ -114,11 +113,15 @@ class BatchStarterLambda(Construct):
         )
         rds_secret.grant_read(grantee=self.instrument_lambda)
 
-        # This sets up the lambda to be triggered by the SQS queue. Since this is a FIFO
-        # queue, each instrument will have messages processed in order. However,
+        # This sets up the lambda to be triggered by the SQS queues. Since they are FIFO
+        # queues, each instrument will have messages processed in order. However,
         # different instruments will be processed in parallel, with multiple instances
         # of the batch_starter lambda.
-        self.instrument_lambda.add_event_source(SqsEventSource(sqs_queue))
+        # The nominal case is for there to be a file arrived queue and a delayed
+        # file arrived queue. On the batch starter side, all events will look the
+        # same from the two queues.
+        for q in sqs_queues:
+            self.instrument_lambda.add_event_source(SqsEventSource(q))
 
         # Add api route for triggering batch starter with a bulk reprocessing request
         api.add_route(

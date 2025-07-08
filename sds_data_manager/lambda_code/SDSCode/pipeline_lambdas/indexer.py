@@ -110,12 +110,20 @@ def send_event_from_indexer(file_obj):
     event_client = boto3.client("events")
 
     # Create event["detail"] information
-    # TODO: This is what batch starter expect
-    # as input. Revisit this.
 
+    # Batch starter uses "key" to retrieve the filename. SQS/Eventbridge use the
+    # other object items to sort or filter messages.
     detail = {
-        "object": {"key": str(file_obj.filename), "instrument": file_obj.instrument}
+        "object": {
+            "key": str(file_obj.filename),
+            "instrument": file_obj.instrument,
+            "data_level": "ancillary",
+        }
     }
+
+    # used to filter science file events in SQS
+    if isinstance(file_obj, ScienceFilePath):
+        detail["object"]["data_level"] = file_obj.data_level
 
     # create PutEvent dictionary
     event = IMAPLambdaPutEvent(detail_type="Processed File", detail=detail)
