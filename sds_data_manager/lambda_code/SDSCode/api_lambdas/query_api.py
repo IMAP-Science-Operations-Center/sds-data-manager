@@ -143,6 +143,7 @@ def lambda_handler(event, context):
     # Format the response
     response = {
         "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
         "body": json.dumps(search_results),  # returns a list of tuples
     }
 

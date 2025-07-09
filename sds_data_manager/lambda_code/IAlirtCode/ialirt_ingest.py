@@ -59,10 +59,19 @@ def get_ancillary(instrument, descriptor):
         Download path of calibration file.
     """
     imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
-    # TODO: this only takes the first file. Sort out what calibration files are needed.
-    calibration_file = imap_data_access.query(
-        table="ancillary", instrument=instrument, descriptor=descriptor
-    )[0]
+    calibration_files = imap_data_access.query(
+        table="ancillary",
+        instrument=instrument,
+        descriptor=descriptor,
+        version="latest",
+    )
+
+    if not calibration_files:
+        raise FileNotFoundError(
+            f"No calibration file found for {instrument=}, {descriptor=}"
+        )
+
+    calibration_file = calibration_files[0]
 
     download_path = imap_data_access.download(calibration_file["file_path"])
     logger.info(f"Adding to {download_path} to calibration files.")
@@ -268,11 +277,6 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
             result = process_func(combined)
 
         logger.info("%s result: %s", instrument, result)
-        # TODO: remove this once we fix codice and swapi
-        #  in imap_processing to use int(met).
-        for item in result:
-            if isinstance(item.get("met"), np.generic):
-                item["met"] = int(item["met"])
 
         if any(result) and all(result):
             insert_data(result, algorithm_table, instrument)
