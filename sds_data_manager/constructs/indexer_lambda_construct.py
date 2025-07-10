@@ -229,7 +229,7 @@ class SPICEIndexerLambda(Construct):
             memory_size=1000,
             security_groups=[rds_security_group],
             environment={
-                "DATA_DIR": "/tmp/",  # noqa: S108
+                "IMAP_DATA_DIR": "/tmp",  # noqa: S108
                 "SECRET_NAME": db_secret_name,
                 "S3_BUCKET": data_bucket.bucket_name,
             },
