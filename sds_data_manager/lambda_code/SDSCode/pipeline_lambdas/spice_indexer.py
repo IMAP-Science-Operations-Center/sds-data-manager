@@ -230,7 +230,7 @@ def index_spice_file(s3_key: str):
     spice_metadata = spice_object.spice_metadata
     # Download the ingested SPICE file from S3
     try:
-        spice_file = download(s3_key)
+        spice_file = download(filename)
     except Exception as e:
         logger.error(f"Failed to download SPICE file {s3_key}: {e}")
         raise ValueError(f"Error downloading file {s3_key}") from e
