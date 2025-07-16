@@ -684,7 +684,6 @@ def calculate_repoint_date_range(session, file_obj):
     # repoint file?
     #   No. Because WebPODA takes care of this. It makes sure that the L0 data
     #   has i_pointing + 1 in the repoint file.
-
     start_date = repoint_df.loc[
         repoint_df["repoint_id"] == file_obj.repointing, "repoint_start_utc"
     ].iloc[0]

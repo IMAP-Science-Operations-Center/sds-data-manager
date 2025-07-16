@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import boto3
 import pytest
-from moto import mock_events, mock_s3, mock_sqs
+from moto import mock_events, mock_s3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -109,16 +109,6 @@ def s3_client():
         )
 
         yield s3_client
-
-
-@pytest.fixture(autouse=True)
-def sqs_event_client():
-    """Mock SQS client."""
-    with mock_sqs():
-        sqs_client = boto3.client("sqs", region_name="us-west-2")
-        sqs_client.create_queue(QueueName="test-queue")
-        # Patch the SQS client into the upload_api module
-        yield sqs_client
 
 
 @pytest.fixture
