@@ -1683,10 +1683,10 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
                 ingestion_date=datetime.now(),
                 file_root="naif.tls",
                 kernel_type="leapseconds",
-                min_date_j2000=315576066.1839245,
+                min_date_j2000=86400.1839245,
                 max_date_j2000=4575787269.183866,
-                file_intervals_j2000=[[315576066, 4575787269]],
-                min_date_datetime=datetime(2010, 1, 1),
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
                 max_date_datetime=datetime(2145, 1, 1),
                 file_intervals_datetime=[["0", "0"]],
                 min_date_sclk="",
@@ -1702,10 +1702,10 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
                 ingestion_date=datetime.now(),
                 file_root="imap_sclk_0001.tsc",
                 kernel_type="spacecraft_clock",
-                min_date_j2000=315576066.1839245,
+                min_date_j2000=86400.1839245,
                 max_date_j2000=4575787269.183866,
-                file_intervals_j2000=[[315576066, 4575787269]],
-                min_date_datetime=datetime(2010, 1, 1),
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
                 max_date_datetime=datetime(2145, 1, 1),
                 file_intervals_datetime=[["0", "0"]],
                 min_date_sclk="",
@@ -1750,6 +1750,7 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
                 "eventSourceARN": (
                     "arn:aws:sqs:us-east-1:123456789012:my-queue-name.fifo"
                 ),
+                "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
                 "body": '{"detail": '
                 '{"object": {"key": "imap/hi/l0/2000/02/'
                 'imap_hi_l0_raw_20000224-repoint00047_v001.pkts"}}'
