@@ -202,6 +202,17 @@ class SpinTable(Base):
     ingestion_date = Column(DateTime(timezone=True))
 
 
+class RepointTable(Base):
+    """Repoint table."""
+
+    __tablename__ = "repoint_table"
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    # end date from file name
+    end_date = Column(DateTime, nullable=False)
+    version = Column(String(2), nullable=False)
+    ingestion_date = Column(DateTime(timezone=True))
+
+
 class Version(Base):
     """Version table."""
 

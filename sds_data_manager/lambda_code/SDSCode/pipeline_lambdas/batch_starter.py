@@ -9,22 +9,23 @@ from pathlib import Path
 
 import boto3
 import imap_data_access
-import requests
 import pandas as pd
+import requests
 from imap_data_access import (
     AncillaryFilePath,
     ScienceFilePath,
     SPICEFilePath,
 )
 from imap_data_access.file_validation import CadenceFilePath
-from sqlalchemy import func
+from sqlalchemy import desc, func
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 
 from ..api_lambdas import download_api, upload_api
 from ..database import database as db
 from ..database import models
 from . import dependency
-from .dependency import DependencyConfig, get_jobs, get_latest_repoint_file
+from .dependency import DependencyConfig, get_jobs
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -622,11 +623,68 @@ def generate_queue_url(event):
     account_id = source_arn.split(":")[4]
     queue_url = f"https://sqs.{region}.amazonaws.com/{account_id}/{queue_name}"
     return queue_url
-def calculate_repoint_date_range(file_obj):
-    """Calculate date range using data from latest repointing file.
+
+
+def get_latest_repoint_file_from_db(session, end_date: datetime):
+    """Retrieve the latest version of repoint files for a given end date.
+
+    This function selects the most recent version of repoint files that
+    match the provided end date. To do that, in this function, it
+    groups by end_date, as a result every repoint file with the same
+    end_date will have new column 'row_num' incrementing values. Eg.
+        path/imap_2026_269_05.repoint.csv,2026-09-25,05,2025-07-16,1
+        path/imap_2026_269_04.repoint.csv,2026-09-25,04,2025-07-16,2
+        path/imap_2026_269_03.repoint.csv,2026-09-25,03,2025-07-16,3
+        path/imap_2026_269_02.repoint.csv,2026-09-25,02,2025-07-16,4
+        path/imap_2026_269_01.repoint.csv,2026-09-25,01,2025-07-16,5
+
+    This row_num is used to select latest repoint for the end_date by
+    filtering on row_num == 1.
 
     Parameters
     ----------
+    session : sqlalchemy.orm.Session
+        Active SQLAlchemy session for querying the database.
+    end_date : datetime.datetime
+        End date to filter repoint files.
+
+    Returns
+    -------
+    List[str]
+        List of file names for the latest repoint files.
+    """
+    repoint = aliased(models.RepointTable)
+
+    row_number = (
+        func.row_number()
+        .over(partition_by=repoint.end_date, order_by=desc(repoint.version))
+        .label("row_num")
+    )
+
+    subquery = (
+        session.query(
+            repoint.file_path,
+            repoint.end_date,
+            repoint.version,
+            repoint.ingestion_date,
+            row_number,
+        )
+        .filter(repoint.end_date == end_date)
+        .subquery()
+    )
+
+    query = session.query(subquery).filter(subquery.c.row_num == 1)
+
+    return query.all()
+
+
+def calculate_repoint_date_range(session, file_obj):
+    """Calculate date range using data from the repointing table in the database.
+
+    Parameters
+    ----------
+    session : sqlalchemy.orm.Session
+        Database session.
     file_obj : ScienceFilePath
         The file object for which to calculate the date range.
 
@@ -635,17 +693,25 @@ def calculate_repoint_date_range(file_obj):
     tuple
         A tuple containing the start date and end date in the format YYYYMMDD.
     """
-    latest_repoint_file = get_latest_repoint_file(
-        end_date=datetime.datetime.strptime(file_obj.start_date, "%Y%m%d"),
+    repoint_end_date = datetime.datetime.strptime(file_obj.start_date, "%Y%m%d")
+    latest_repoint_file = get_latest_repoint_file_from_db(
+        session,
+        end_date=repoint_end_date,
     )
+
+    if not latest_repoint_file:
+        raise ValueError(
+            f"No repoint file found for end date: {repoint_end_date.strftime('%Y%m%d')}"
+        )
+
     logger.info(
         "Latest repoint file used to calculate date range"
         f"for ENA and GLOWS instruments - {latest_repoint_file}"
     )
+
     repoint_path = imap_data_access.download(latest_repoint_file)
     repoint_df = pd.read_csv(repoint_path)
-
-    # Set start date to be repoint_end_utc of i_pointing
+    # Set start date to be repoint_end_utc of i_pointing from the input file.
     # Set end date to be repoint_end_utc of i_pointing + 1.
     # TODO: will there be a case when i_pointing + 1 is not in the
     # repoint file? and what to do in that case?
@@ -664,13 +730,15 @@ def calculate_repoint_date_range(file_obj):
     return start_date, end_date
 
 
-def determine_date_range(file_obj):
+def determine_date_range(session, file_obj):
     """Determine the start and end dates based on the file type.
 
     This date range is used to query upstream dependencies for the file.
 
     Parameters
     ----------
+    session : sqlalchemy.orm.Session
+        Database session.
     file_obj : SPICEFilePath, ScienceFilePath, or AncillaryFilePath
         The file object for which to determine the date range.
 
@@ -696,7 +764,7 @@ def determine_date_range(file_obj):
                 "Using repointing file to calculate date range for"
                 f" {file_obj.instrument}."
             )
-            start_date, end_date = calculate_repoint_date_range(file_obj)
+            start_date, end_date = calculate_repoint_date_range(session, file_obj)
         else:
             start_date = end_date = file_obj.start_date
     elif isinstance(file_obj, AncillaryFilePath):
@@ -717,12 +785,11 @@ def s3_processing_event(session, events):
 
     Parameters
     ----------
-    session : orm session
+    session : sqlalchemy.orm.Session
         Database session.
     events : dict
         SQS event input.
     """
-    # ruff: noqa: PLR0912
     # Since the SQS events can be batched together, we need to loop through
     # each event. In this loop, "event" represents one file landing.
 
@@ -732,7 +799,6 @@ def s3_processing_event(session, events):
     triggered_from_glows_l3e = False
 
     for event in events["Records"]:
-
         # Event details:
         logger.info("Individual event: " + json.dumps(event, indent=2))
         body = json.loads(event["body"])
@@ -751,7 +817,7 @@ def s3_processing_event(session, events):
             else:
                 triggered_from_glows_l3e = True
 
-        start_date, end_date = determine_date_range(file_obj)
+        start_date, end_date = determine_date_range(session, file_obj)
 
         potential_jobs = dependency.get_jobs(
             data_source=input_obj.source,
@@ -804,18 +870,6 @@ def s3_processing_event(session, events):
                 end_date,
                 calculate_crids,
                 filter_dependencies,
-            )
-
-        if sqs_queue_url:
-            # When the record from the sqs event has been processed, it can safely be
-            # deleted from the queue.
-            SQS_CLIENT.delete_message(
-                QueueUrl=sqs_queue_url,
-                ReceiptHandle=event["receiptHandle"],
-            )
-            logger.info(
-                f"SQS record with receipt handle: {event['receiptHandle']} "
-                f"processed and deleted from the SQS."
             )
 
 

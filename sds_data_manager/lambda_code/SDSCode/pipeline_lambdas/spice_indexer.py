@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import boto3
@@ -337,10 +337,32 @@ def index_spin_file(s3_key: Path):
             "start_date": spin_metadata["start_date"],
             "end_date": spin_metadata["end_date"],
             "version": spin_metadata["version"],
-            "ingestion_date": datetime.now(timezone.utc),
+            "ingestion_date": get_file_ingestion_date(s3_key),
         }
         spin_table = models.SpinTable(**params)
         session.add(spin_table)
+        session.commit()
+
+
+def index_repoint_file(s3_key: str):
+    """Insert repoint file metadata into repoint_files database table.
+
+    Parameters
+    ----------
+    s3_key: str
+        S3 path of the repoint file.
+    """
+    logger.info(f"Indexing {s3_key} to repoint table")
+    with db.Session() as session:
+        repoint_obj = SPICEFilePath(os.path.basename(s3_key))
+        params = {
+            "file_path": s3_key,
+            "end_date": repoint_obj.spice_metadata["end_date"],
+            "version": repoint_obj.spice_metadata["version"],
+            "ingestion_date": get_file_ingestion_date(s3_key),
+        }
+        repoint_row = models.RepointTable(**params)
+        session.merge(repoint_row)
         session.commit()
 
 
@@ -455,17 +477,15 @@ def lambda_handler(event, context):
     s3_key = event["detail"]["object"]["key"]
 
     spice_obj = SPICEFilePath(os.path.basename(s3_key))
-    # If file is of type 'spin' or 'repoint', don't index to SPICE table
+
+    # Index file to its respective table
     if spice_obj.spice_metadata["type"] == "repoint":
-        return {
-            "statusCode": 200,
-            "body": f"{s3_key} file moved to EFS successfully",
-        }
+        index_repoint_file(s3_key)
     elif spice_obj.spice_metadata["type"] == "spin":
         logger.info(f"Indexing {s3_key} spin table")
         index_spin_file(s3_key)
     else:
-        # Index the SPICE kerenels to the SPICE table
+        # Index the SPICE kernels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
         index_spice_file(s3_key)
 
