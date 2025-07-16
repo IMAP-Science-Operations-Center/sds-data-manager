@@ -716,16 +716,18 @@ def calculate_repoint_date_range(session, file_obj):
     # Set end date to be repoint_end_utc of i_pointing + 1.
     # TODO: will there be a case when i_pointing + 1 is not in the
     # repoint file? and what to do in that case?
+    logger.info(f"repoint_id: {file_obj.repointing}")
+    logger.info(f"{repoint_df.head(5)}")
     start_date = repoint_df.loc[
         repoint_df["repoint_id"] == file_obj.repointing, "repoint_start_utc"
     ].iloc[0]
     start_date = datetime.datetime.strptime(
-        start_date, "%Y-%m-%d %H:%M:%S.%f"
+        start_date, "%Y-%m-%dT%H:%M:%S.%f"
     ).strftime("%Y%m%d")
     end_date = repoint_df.loc[
         repoint_df["repoint_id"] == file_obj.repointing + 1, "repoint_end_utc"
     ].iloc[0]
-    end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S.%f").strftime(
+    end_date = datetime.datetime.strptime(end_date, "%Y-%m-%dT%H:%M:%S.%f").strftime(
         "%Y%m%d"
     )
     return start_date, end_date
