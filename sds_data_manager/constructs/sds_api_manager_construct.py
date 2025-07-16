@@ -94,17 +94,18 @@ class SdsApiManager(Construct):
         upload_api_lambda.add_to_role_policy(s3_read_policy)
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
+        # basic route: /upload/{proxy+}
+        # oauth2 JWT authorizer: /authorized/upload/{proxy+}
+        # API key authorizer: /api-key/upload/{proxy+}
+        auth_route_prefixes = ["", "/authorized", "/api-key"]
+
         # {proxy+} is used to allow for any pathParams after /upload/
-        api.add_route(
-            route="/upload/{proxy+}",
-            http_method="GET",
-            lambda_function=upload_api_lambda,
-        )
-        api.add_route(
-            route="/authorized/upload/{proxy+}",
-            http_method="GET",
-            lambda_function=upload_api_lambda,
-        )
+        for prefix in auth_route_prefixes:
+            api.add_route(
+                route=f"{prefix}/upload/{{proxy+}}",
+                http_method="GET",
+                lambda_function=upload_api_lambda,
+            )
 
         # query API lambda
         query_api_lambda = lambda_.Function(
@@ -126,16 +127,13 @@ class SdsApiManager(Construct):
             layers=layers,
         )
 
-        api.add_route(
-            route="/query",
-            http_method="GET",
-            lambda_function=query_api_lambda,
-        )
-        api.add_route(
-            route="/authorized/query",
-            http_method="GET",
-            lambda_function=query_api_lambda,
-        )
+        for prefix in auth_route_prefixes:
+            # {proxy+} is used to allow for any pathParams after /query/
+            api.add_route(
+                route=f"{prefix}/query",
+                http_method="GET",
+                lambda_function=query_api_lambda,
+            )
 
         # SPICE query API lambda
         spice_query_api_lambda = lambda_.Function(
@@ -208,16 +206,12 @@ class SdsApiManager(Construct):
         download_api.add_to_role_policy(s3_read_policy)
 
         # {proxy+} is used to allow for any pathParams after /download/
-        api.add_route(
-            route="/download/{proxy+}",
-            http_method="GET",
-            lambda_function=download_api,
-        )
-        api.add_route(
-            route="/authorized/download/{proxy+}",
-            http_method="GET",
-            lambda_function=download_api,
-        )
+        for prefix in auth_route_prefixes:
+            api.add_route(
+                route=f"{prefix}/download/{{proxy+}}",
+                http_method="GET",
+                lambda_function=download_api,
+            )
 
         universal_spin_table_handler = lambda_.Function(
             self,
@@ -255,16 +249,13 @@ class SdsApiManager(Construct):
             },
             layers=layers,
         )
-        api.add_route(
-            route="/processing-jobs",
-            http_method="GET",
-            lambda_function=batch_job_query_api_lambda,
-        )
-        api.add_route(
-            route="/authorized/processing-jobs",
-            http_method="GET",
-            lambda_function=batch_job_query_api_lambda,
-        )
+        for prefix in auth_route_prefixes:
+            # {proxy+} is used to allow for any pathParams after /processing-jobs/
+            api.add_route(
+                route=f"{prefix}/processing-jobs",
+                http_method="GET",
+                lambda_function=batch_job_query_api_lambda,
+            )
 
         # API to query batch job logs
         batch_logs_api_lambda = lambda_.Function(
@@ -279,20 +270,14 @@ class SdsApiManager(Construct):
             allow_public_subnet=True,
             layers=layers,
         )
-        api.add_route(
-            # {id+} is used to allow for any pathParams after /batch-logs/
-            # This is needed because the log stream ID can contain slashes
-            route="/processing-logs/{id+}",
-            http_method="GET",
-            lambda_function=batch_logs_api_lambda,
-        )
-        api.add_route(
-            # {id+} is used to allow for any pathParams after /batch-logs/
-            # This is needed because the log stream ID can contain slashes
-            route="/authorized/processing-logs/{id+}",
-            http_method="GET",
-            lambda_function=batch_logs_api_lambda,
-        )
+        for prefix in auth_route_prefixes:
+            api.add_route(
+                # {id+} is used to allow for any pathParams after /batch-logs/
+                # This is needed because the log stream ID can contain slashes
+                route=f"{prefix}/processing-logs/{{id+}}",
+                http_method="GET",
+                lambda_function=batch_logs_api_lambda,
+            )
 
         batch_logs_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,

@@ -26,6 +26,8 @@ def template(stack, code):
     apigw.add_route("/test-route", "GET", test_func)
     # Add a route with an authorizer
     apigw.add_route("/authorized/test-route", "GET", test_func)
+    # Add a route with an API key authorizer
+    apigw.add_route("/api-key/test-route", "GET", test_func)
     template = Template.from_stack(stack)
     return template
 
@@ -43,14 +45,18 @@ def test_apigw_routes(template):
             },
         },
     )
-    # Test that we have an authorizer
-    template.resource_count_is("AWS::ApiGatewayV2::Authorizer", 1)
+    # Test that we have two authorizers
+    template.resource_count_is("AWS::ApiGatewayV2::Authorizer", 2)
     template.has_resource_properties(
         "AWS::ApiGatewayV2::Authorizer",
         props={"AuthorizerType": "JWT"},
     )
+    template.has_resource_properties(
+        "AWS::ApiGatewayV2::Authorizer",
+        props={"AuthorizerType": "REQUEST"},
+    )
 
-    template.resource_count_is("AWS::ApiGatewayV2::Route", 2)
+    template.resource_count_is("AWS::ApiGatewayV2::Route", 3)
     # No authorizer
     template.has_resource_properties(
         "AWS::ApiGatewayV2::Route",
@@ -60,6 +66,11 @@ def test_apigw_routes(template):
     template.has_resource_properties(
         "AWS::ApiGatewayV2::Route",
         props={"AuthorizationType": "JWT", "RouteKey": "GET /authorized/test-route"},
+    )
+    # Lambda authorizer
+    template.has_resource_properties(
+        "AWS::ApiGatewayV2::Route",
+        props={"AuthorizationType": "CUSTOM", "RouteKey": "GET /api-key/test-route"},
     )
 
 
