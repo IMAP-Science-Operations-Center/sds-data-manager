@@ -19,7 +19,6 @@ from imap_data_access import (
 from imap_data_access.file_validation import CadenceFilePath
 from sqlalchemy import desc, func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import aliased
 
 from ..api_lambdas import download_api, upload_api
 from ..database import database as db
@@ -625,58 +624,32 @@ def generate_queue_url(event):
     return queue_url
 
 
-def get_latest_repoint_file_from_db(session, end_date: datetime):
-    """Retrieve the latest version of repoint files for a given end date.
-
-    This function selects the most recent version of repoint files that
-    match the provided end date. To do that, in this function, it
-    groups (partitions) by end_date and sorts version in descending
-    order and then adds new column 'row_num' with incrementing values.
-    Eg.
-        path/imap_2026_269_05.repoint.csv,2026-09-25,05,2025-07-16,1
-        path/imap_2026_269_04.repoint.csv,2026-09-25,04,2025-07-16,2
-        path/imap_2026_269_03.repoint.csv,2026-09-25,03,2025-07-16,3
-        path/imap_2026_269_02.repoint.csv,2026-09-25,02,2025-07-16,4
-        path/imap_2026_269_01.repoint.csv,2026-09-25,01,2025-07-16,5
-
-    As a result, the latest version of repoint file will have
-    row_num == 1. This is used to filter the results of the query.
+def get_latest_repoint_file_from_db(session):
+    """Retrieve the latest version of repoint file.
 
     Parameters
     ----------
     session : sqlalchemy.orm.Session
         Active SQLAlchemy session for querying the database.
-    end_date : datetime.datetime
-        End date to filter repoint files.
 
     Returns
     -------
-    List[str]
-        List of file names for the latest repoint files.
+    str
+        The file name for the latest repoint file.
     """
-    repoint = aliased(models.RepointTable)
-
-    row_number = (
-        func.row_number()
-        .over(partition_by=repoint.end_date, order_by=desc(repoint.version))
-        .label("row_num")
+    # Look for latest and greatest file_path in the repointing table.
+    query = (
+        session.query(models.RepointTable)
+        .order_by(desc(models.RepointTable.file_path))
+        .limit(1)
     )
+    latest_repoint_file = query.first()
+    if not latest_repoint_file:
+        raise ValueError("No repoint file found in the database.")
 
-    subquery = (
-        session.query(
-            repoint.file_path,
-            repoint.end_date,
-            repoint.version,
-            repoint.ingestion_date,
-            row_number,
-        )
-        .filter(repoint.end_date == end_date)
-        .subquery()
-    )
-
-    query = session.query(subquery).filter(subquery.c.row_num == 1)
-
-    return query.all()
+    latest_repoint_file = latest_repoint_file.file_path
+    logger.info(f"Latest repoint file found: {latest_repoint_file}")
+    return latest_repoint_file
 
 
 def calculate_repoint_date_range(session, file_obj):
@@ -694,16 +667,9 @@ def calculate_repoint_date_range(session, file_obj):
     tuple
         A tuple containing the start date and end date in the format YYYYMMDD.
     """
-    repoint_end_date = datetime.datetime.strptime(file_obj.start_date, "%Y%m%d")
     latest_repoint_file = get_latest_repoint_file_from_db(
         session,
-        end_date=repoint_end_date,
     )
-
-    if not latest_repoint_file:
-        raise ValueError(
-            f"No repoint file found for end date: {repoint_end_date.strftime('%Y%m%d')}"
-        )
 
     logger.info(
         "Latest repoint file used to calculate date range"
@@ -714,10 +680,11 @@ def calculate_repoint_date_range(session, file_obj):
     repoint_df = pd.read_csv(repoint_path)
     # Set start date to be repoint_end_utc of i_pointing from the input file.
     # Set end date to be repoint_end_utc of i_pointing + 1.
-    # TODO: will there be a case when i_pointing + 1 is not in the
-    # repoint file? and what to do in that case?
-    logger.info(f"repoint_id: {file_obj.repointing}")
-    logger.info(f"{repoint_df.head(5)}")
+    # Will there be a case when i_pointing + 1 is not in the
+    # repoint file?
+    #   No. Because WebPODA takes care of this. It makes sure that the L0 data
+    #   has i_pointing + 1 in the repoint file.
+
     start_date = repoint_df.loc[
         repoint_df["repoint_id"] == file_obj.repointing, "repoint_start_utc"
     ].iloc[0]
@@ -750,7 +717,6 @@ def determine_date_range(session, file_obj):
     tuple
         A tuple containing the start date and end date in the format YYYYMMDD.
     """
-    # Set the start and end dates for the upstream query event message
     if isinstance(file_obj, SPICEFilePath):
         # TODO: fix date range if/when repoint file ingestion event is
         # passed to batch starter to kickoff HARD or SOFT_TRIGGER downstream jobs.
@@ -777,9 +743,9 @@ def determine_date_range(session, file_obj):
         # Ancillary files can have an end date.
         # If there is no end date for the ancillary file, then it is implicitly
         # valid through today.
-        end_date = getattr(file_obj, "end_date", None) or datetime.today().strftime(
-            "%Y%m%d"
-        )
+        end_date = getattr(
+            file_obj, "end_date", None
+        ) or datetime.datetime.now().strftime("%Y%m%d")
     else:
         raise ValueError("Unsupported file type")
     return start_date, end_date
@@ -824,6 +790,7 @@ def s3_processing_event(session, events):
             else:
                 triggered_from_glows_l3e = True
 
+        # Determine the start and end dates for the upstream query.
         start_date, end_date = determine_date_range(session, file_obj)
 
         potential_jobs = dependency.get_jobs(

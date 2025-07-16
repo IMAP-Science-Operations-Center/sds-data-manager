@@ -1650,7 +1650,8 @@ def test_spice_event(session, s3_client):
 
 
 @patch.object(imap_data_access, "download")
-def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
+@patch.object(batch_starter, "SQS_CLIENT")
+def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_path):
     """Test that the repoint date range is correct."""
     filepath = "imap/hi/l0/2000/02/imap_hi_l0_raw_20000224-repoint00047_v001.pkts"
     current_path = os.path.dirname(os.path.abspath(__file__))
@@ -1660,6 +1661,8 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
     repoint_file = os.path.join(test_spice_data_dir, "imap_2000_056_03.repoint.csv")
     mock_download.return_value = repoint_file
 
+    sqs_mock.delete_message = Mock()
+    sqs_mock.get_queue_url = Mock(return_value="")
     # Write data to the database that batch starter can query
     # for dependencies
     session.add_all(
@@ -1748,7 +1751,7 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
         "Records": [
             {
                 "eventSourceARN": (
-                    "arn:aws:sqs:us-east-1:123456789012:my-queue-name.fifo"
+                    "arn:aws:sqs:us-east-1:123456789012:test-queue.fifo"
                 ),
                 "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
                 "body": '{"detail": '
