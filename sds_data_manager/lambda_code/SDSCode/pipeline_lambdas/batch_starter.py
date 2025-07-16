@@ -630,16 +630,17 @@ def get_latest_repoint_file_from_db(session, end_date: datetime):
 
     This function selects the most recent version of repoint files that
     match the provided end date. To do that, in this function, it
-    groups by end_date, as a result every repoint file with the same
-    end_date will have new column 'row_num' incrementing values. Eg.
+    groups (partitions) by end_date and sorts version in descending
+    order and then adds new column 'row_num' with incrementing values.
+    Eg.
         path/imap_2026_269_05.repoint.csv,2026-09-25,05,2025-07-16,1
         path/imap_2026_269_04.repoint.csv,2026-09-25,04,2025-07-16,2
         path/imap_2026_269_03.repoint.csv,2026-09-25,03,2025-07-16,3
         path/imap_2026_269_02.repoint.csv,2026-09-25,02,2025-07-16,4
         path/imap_2026_269_01.repoint.csv,2026-09-25,01,2025-07-16,5
 
-    This row_num is used to select latest repoint for the end_date by
-    filtering on row_num == 1.
+    As a result, the latest version of repoint file will have
+    row_num == 1. This is used to filter the results of the query.
 
     Parameters
     ----------
@@ -747,6 +748,7 @@ def determine_date_range(session, file_obj):
     tuple
         A tuple containing the start date and end date in the format YYYYMMDD.
     """
+    # Set the start and end dates for the upstream query event message
     if isinstance(file_obj, SPICEFilePath):
         # TODO: fix date range if/when repoint file ingestion event is
         # passed to batch starter to kickoff HARD or SOFT_TRIGGER downstream jobs.
@@ -754,6 +756,7 @@ def determine_date_range(session, file_obj):
         start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
         end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
     elif isinstance(file_obj, ScienceFilePath):
+        # TODO: GLOWS may need other handling using carrington rotation.
         if file_obj.repointing is not None and file_obj.instrument in [
             "glows",
             "hi",
@@ -799,6 +802,8 @@ def s3_processing_event(session, events):
     triggered_from_glows_l3e = False
 
     for event in events["Records"]:
+        sqs_queue_url = generate_queue_url(event)
+
         # Event details:
         logger.info("Individual event: " + json.dumps(event, indent=2))
         body = json.loads(event["body"])
@@ -870,6 +875,18 @@ def s3_processing_event(session, events):
                 end_date,
                 calculate_crids,
                 filter_dependencies,
+            )
+
+        if sqs_queue_url:
+            # When the record from the sqs event has been processed, it can safely be
+            # deleted from the queue.
+            SQS_CLIENT.delete_message(
+                QueueUrl=sqs_queue_url,
+                ReceiptHandle=event["receiptHandle"],
+            )
+            logger.info(
+                f"SQS record with receipt handle: {event['receiptHandle']} "
+                f"processed and deleted from the SQS."
             )
 
 
