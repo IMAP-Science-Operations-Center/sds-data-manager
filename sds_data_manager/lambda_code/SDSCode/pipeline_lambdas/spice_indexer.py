@@ -396,6 +396,7 @@ def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
         "ephemeris_nominal",
         "ephemeris_predict",
         "spin",
+        "repoint",
         "thruster",
     ]
     if spice_obj.spice_metadata["type"] not in spice_events:

@@ -3,7 +3,6 @@
 import base64
 import json
 import logging
-import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -11,7 +10,6 @@ from os.path import basename
 from pathlib import Path
 from typing import Optional
 
-import boto3
 import imap_data_access
 from imap_data_access import processing_input
 from imap_data_access.processing_input import ProcessingInputCollection
@@ -566,7 +564,7 @@ def get_spin_files(
 def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     """Get latest repoint file.
 
-    Query S3 bucket for the latest repoint file.
+    Query for the latest repoint file for given end_date.
 
     Parameters
     ----------
@@ -578,44 +576,18 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     str
         Latest repoint file name.
     """
-    bucket_name = os.getenv("S3_BUCKET")
-    prefix = "imap/spice/repoint/"
-
-    s3 = boto3.client("s3")
-    paginator = s3.get_paginator("list_objects_v2")
-    pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
-
-    repoint_files = []
-
-    for page in pages:
-        for obj in page.get("Contents", []):
-            filename = obj["Key"]
-            file_obj = processing_input.SPICEFilePath(filename)
-            repoint_files.append(
-                (
-                    file_obj.spice_metadata["end_date"],
-                    file_obj.spice_metadata["version"],
-                    filename,
-                )
-            )
-
-    if not repoint_files:
-        return None
-
-    # Sort by end_date and version
-    latest = sorted(repoint_files, key=lambda x: (x[0], x[1]))[-1]
-    latest_file_date = latest[0]
-
-    # Check that input end is within latest repoint file end date
-    if latest_file_date < end_date:
-        logger.info(
-            f"Latest repoint file end date {latest_file_date} "
-            f"is before input end date {end_date}"
+    with db.Session() as session:
+        query = (
+            session.query(models.RepointTable)
+            .filter(models.RepointTable.end_date == end_date)
+            .order_by(desc(models.RepointTable.version))
+            .limit(1)
         )
-        return None
+        latest_repoint_file = query.first()
+        if not latest_repoint_file:
+            raise ValueError("No repoint file found in the database.")
 
-    # Otherwise, return the latest repoint file without the path prefix
-    return basename(latest[2])
+        return latest_repoint_file.file_path
 
 
 def get_upstream_versions(session, record, versions) -> dict:
@@ -872,6 +844,14 @@ def get_upstream_dependency_inputs(
                 )
                 return None
             metakernel_files = json.loads(metakernel_response["body"])
+            # If number of kernels doesn't match the number of file types,
+            if len(metakernel_files) != len(combined_kernel_sources.split(",")):
+                raise ValueError(
+                    f"Number of metakernel files {metakernel_files} "
+                    "does not match number of file types requested "
+                    f"{combined_kernel_sources.split(',')}."
+                )
+
             logger.info(
                 f"Found metakernel files: {metakernel_files}. Adding to collection."
             )

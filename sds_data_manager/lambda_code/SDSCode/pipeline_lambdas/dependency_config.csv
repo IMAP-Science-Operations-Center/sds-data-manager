@@ -651,12 +651,11 @@ leapseconds, spice, historical, spacecraft, l1a, all, HARD_NO_TRIGGER, DOWNSTREA
 spacecraft_clock, spice, historical, spacecraft, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Pointing kernel
-repoint, repoint, historical, spacecraft, spice, all, HARD, DOWNSTREAM
-leapseconds, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
-imap_frames, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
-science_frames, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
-pointing_attitude, spice, historical, spacecraft, spice, all, HARD_NO_TRIGGER, DOWNSTREAM
+repoint, repoint, historical, spacecraft, l1a, spice, HARD, DOWNSTREAM
+leapseconds, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 

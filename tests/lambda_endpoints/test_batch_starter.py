@@ -33,7 +33,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
     CadenceDays,
-    calculate_repoint_date_range,
+    calculate_ena_date_range,
     determine_date_range,
     determine_job_version,
     lambda_handler,
@@ -1722,25 +1722,25 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
             ),
             # Save repoint files to the database
             RepointTable(
-                file_path="/path/to/imap_2001_055_01.repoint.csv",
+                file_path="/path/to/imap_2000_055_01.repoint.csv",
                 end_date=datetime(2000, 2, 24),
                 version="01",
                 ingestion_date=datetime.now(),
             ),
             RepointTable(
-                file_path="/path/to/imap_2001_056_01.repoint.csv",
+                file_path="/path/to/imap_2000_056_01.repoint.csv",
                 end_date=datetime(2000, 2, 25),
                 version="01",
                 ingestion_date=datetime.now(),
             ),
             RepointTable(
-                file_path="/path/to/imap_2001_056_02.repoint.csv",
+                file_path="/path/to/imap_2000_056_02.repoint.csv",
                 end_date=datetime(2000, 2, 25),
                 version="02",
                 ingestion_date=datetime.now(),
             ),
             RepointTable(
-                file_path="/path/to/imap_2001_056_03.repoint.csv",
+                file_path="/path/to/imap_2000_056_03.repoint.csv",
                 end_date=datetime(2000, 2, 25),
                 version="03",
                 ingestion_date=datetime.now(),
@@ -1774,7 +1774,7 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
     date_range = determine_date_range(session, file_obj)
     assert date_range == ("20000224", "20000225")
 
-    repoint_date_range = calculate_repoint_date_range(session, file_obj)
+    repoint_date_range = calculate_ena_date_range(session, file_obj)
     assert repoint_date_range == ("20000224", "20000225")
 
     # Now check that other instrument returns expected date range
@@ -1782,6 +1782,95 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
     file_obj = imap_data_access.ScienceFilePath(filename)
     non_repoint_date_range = determine_date_range(session, file_obj)
     assert non_repoint_date_range == ("20260926", "20260926")
+
+    # Add files other needed for the pointing attitude job
+    session.add_all(
+        [
+            SPICEFiles(
+                file_path="/path/to/imap_001.tf",
+                file_name="imap_001.tf",
+                ingestion_date=datetime.now(),
+                file_root="imap_.tf",
+                kernel_type="imap_frames",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=1,
+            ),
+            SPICEFiles(
+                file_path="/path/to/imap_science_0001.tf",
+                file_name="imap_science_0001.tf",
+                ingestion_date=datetime.now(),
+                file_root="imap_science_.tf",
+                kernel_type="science_frames",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=1,
+            ),
+        ]
+    )
+    session.commit()
+
+    # Test that repoint file ingestion kicks off pointing attitude job
+    events = {
+        "Records": [
+            {
+                "eventSourceARN": (
+                    "arn:aws:sqs:us-east-1:123456789012:test-queue.fifo"
+                ),
+                "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+                "body": '{"detail": '
+                '{"object": {"key": "imap/spice/repoint/imap_2000_056_03.repoint.csv"}}'
+                "}",
+            }
+        ]
+    }
+
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, None)
+        # verify that the function was called once
+        mock_batch_client.submit_job.assert_called_once()
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="spacecraft-l1a-spice-job-3",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-spacecraft",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "spacecraft",
+                    "--data-level",
+                    "l1a",
+                    "--descriptor",
+                    "spice",
+                    "--start-date",
+                    "20000224",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    "imap_spacecraft_l1a_spice_20000224_v001.json",
+                    "--upload-to-sdc",
+                ]
+            },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
+        )
+
 
 def test_lambda_skip_processing_due_to_crid_check(session, caplog):
     """Test that processing stops when the calculated CRID is mismatched.
