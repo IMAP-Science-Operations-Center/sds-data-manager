@@ -94,3 +94,32 @@ Codespaces actually comes with a fully functional virtual desktop.  To open, cli
 Inside of the "scripts" folder is a python script you can use to call the APIs.  It is completely independent of the rest of the project, so you should be able to pull this single file out and run it anywhere.  It only depends on basic python libraries.
 
 Unfortunately right now you need to "hard code" in the lambda API URL and the Cognito App Client at the top of the file after every build.  I'm hoping in the future to determine a better way to automate this.
+
+
+## Account / User Management
+
+There are some things that may need to be run by administrators or updated outside of infrastructure
+as code. These are documented here to help future admins with the steps required.
+
+### API Keys for file access
+
+There are public endpoints and private/team endpoints. The private/team endpoints are meant
+to allow IMAP team members access to data files that may not be publicly released, get access
+to instrument job logs, etc.
+
+#### URLs
+
+The public urls are all located at the root level, with private authorization urls have an additional
+path prefix on the front to indicate it is a restricted endpoint. Examples:
+
+- `/query`: URL to query for publicly released files
+- `/authorized/query`: URL to query for private/team files in addition to public files. Uses oauth2 style
+  authentication, which is primarily used by humans on the team websites.
+- `/api-key/query`: URL to query for private/team files in addition to public files. Uses API keys
+  for authentication, which is primarily used by automated scripts at team institutions for data access.
+
+#### Key management
+
+Management of these keys is done through a script located at `sds_data_manager/lambda_code/authorization`.
+That script can add, remove, and list the current keys. To add keys, add the name and e-mail of the associated
+user or account and get returned an API Key that you can then give to the external user for access.
