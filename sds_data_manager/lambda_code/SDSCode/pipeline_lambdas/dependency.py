@@ -577,13 +577,11 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
         Latest repoint file name.
     """
     with db.Session() as session:
-        query = (
+        latest_repoint_file = (
             session.query(models.RepointTable)
-            .filter(models.RepointTable.end_date == end_date)
-            .order_by(desc(models.RepointTable.version))
-            .limit(1)
+            .order_by(desc(models.RepointTable.file_path))
+            .first()
         )
-        latest_repoint_file = query.first()
         if not latest_repoint_file:
             raise ValueError("No repoint file found in the database.")
 

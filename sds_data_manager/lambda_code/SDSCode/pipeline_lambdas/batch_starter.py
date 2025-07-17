@@ -718,12 +718,11 @@ def calculate_ena_date_range(session, file_obj):
         A tuple containing the start date and end date in the format YYYYMMDD.
     """
     # Look for latest and greatest file_path in the repointing table.
-    query = (
+    latest_repoint_file = (
         session.query(models.RepointTable)
         .order_by(desc(models.RepointTable.file_path))
-        .limit(1)
+        .first()
     )
-    latest_repoint_file = query.first()
     if not latest_repoint_file:
         raise ValueError("No repoint file found in the database.")
 
