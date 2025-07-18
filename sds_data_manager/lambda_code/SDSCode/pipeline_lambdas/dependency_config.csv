@@ -656,6 +656,7 @@ leapseconds, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTR
 spacecraft_clock, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 

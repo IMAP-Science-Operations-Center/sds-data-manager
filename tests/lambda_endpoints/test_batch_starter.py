@@ -1824,6 +1824,25 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
                 lsk_kernel="naif0012.tls",
                 version=1,
             ),
+            SPICEFiles(
+                file_path="path/to/imap_2000_055_2000_056_01.ah.bc",
+                file_name="imap_2000_055_2000_056_01.ah.bc",
+                ingestion_date=datetime.now(),
+                file_root="imap_2000_055_2000_056_.ah.bc",
+                kernel_type="attitude_history",
+                min_date_j2000=86400.1854936,
+                max_date_j2000=4575787269.1854936,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=1,
+            ),
         ]
     )
     session.commit()
