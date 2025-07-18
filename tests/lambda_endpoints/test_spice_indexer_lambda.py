@@ -234,25 +234,25 @@ def test_s3_spin_files(session, s3_client, events_client):
     assert spin_table_rows[1].version == "02"
 
 
-def test_s3_repoint_files(session, s3_client, events_client):
+@patch("sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download")
+def test_s3_repoint_files(mock_download, session, s3_client, events_client):
     """Test s3 event for repoint files."""
     current_path = os.path.dirname(os.path.abspath(__file__))
     one_level_up = os.path.abspath(os.path.join(current_path, ".."))
     test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
-
+    # Mock download to return the test file path
+    repoint_file = os.path.join(test_spice_data_dir, "imap_2000_056_03.repoint.csv")
+    mock_download.return_value = repoint_file
     # Repoint file ingestion test
     repoint_file_event = put_local_file_in_bucket(
         s3_client,
-        "imap/spice/repoint/imap_2001_052_001.repoint.csv",
-        os.path.join(test_spice_data_dir, "imap_2001_052_001.repoint.csv"),
+        "imap/spice/repoint/imap_2000_056_03.repoint.csv",
+        os.path.join(test_spice_data_dir, "imap_2000_056_03.repoint.csv"),
     )
     spice_indexer.lambda_handler(repoint_file_event, None)
-    query = select(models.RepointTable.__table__)
-    repoint_table_rows = session.execute(query).all()
-    assert len(repoint_table_rows) == 1
-    assert repoint_table_rows[0].file_path == (
-        "imap/spice/repoint/imap_2001_052_001.repoint.csv"
-    )
+    # Query PointingTable to verify ingestion
+    pointing_ids = session.query(models.PointingTable.pointing_id).all()
+    assert len(pointing_ids) == 49
 
 
 def test_send_spice_event(session, events_client, s3_client):

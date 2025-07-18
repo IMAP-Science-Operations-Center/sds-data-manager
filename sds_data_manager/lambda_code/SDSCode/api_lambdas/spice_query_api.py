@@ -12,7 +12,7 @@ from ..database import models
 
 # Logger setup
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 def lambda_handler(event, context):
@@ -29,7 +29,7 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
-    logger.info("SPICE Query Event: " + json.dumps(event, indent=2))
+    logger.debug("SPICE Query Event: " + json.dumps(event, indent=2))
 
     # add session, pick model like in indexer and add query to filter_as
     query_params = event["queryStringParameters"]
@@ -116,7 +116,7 @@ def lambda_handler(event, context):
     search_results = [
         _convert_spice_metadata_model_to_dict(result) for result in search_results
     ]
-    logger.info(
+    logger.debug(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
 

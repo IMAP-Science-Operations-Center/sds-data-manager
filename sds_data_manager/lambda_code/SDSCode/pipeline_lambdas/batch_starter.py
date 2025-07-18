@@ -9,7 +9,6 @@ from pathlib import Path
 
 import boto3
 import imap_data_access
-import pandas as pd
 import requests
 from imap_data_access import (
     AncillaryFilePath,
@@ -17,9 +16,8 @@ from imap_data_access import (
     SPICEFilePath,
 )
 from imap_data_access.file_validation import CadenceFilePath
-from sqlalchemy import desc, func
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import aliased
 
 from ..api_lambdas import download_api, upload_api
 from ..database import database as db
@@ -543,7 +541,10 @@ def submit_all_jobs(
 
     # Handle special case reprocessing jobs.
     logger.info(f"All required dependencies found for the dependency: {job_node}")
-    if job_node["data_source"] == "spacecraft" and job_node["descriptor"] == "spice":
+    if (
+        job_node["data_source"] == "spacecraft"
+        and job_node["descriptor"] == "pointing-attitude"
+    ):
         job_version = determine_job_version(
             session=session,
             instrument=job_node["data_source"],
@@ -642,117 +643,38 @@ def generate_queue_url(event):
     return queue_url
 
 
-def calculate_pointing_date_range(session):
-    """Calculate date range for the pointing attitude using repoint files.
+def calculate_pointing_date_range(session, repoint_id):
+    """Calculate date range for the pointing data range using repoint files.
 
     Parameters
     ----------
     session : sqlalchemy.orm.Session
         Database session.
+    repoint_id : int
+        The ID of the repointing record.
 
     Returns
     -------
     tuple
         A tuple containing the start date and end date in the format YYYYMMDD.
     """
-    repoint = aliased(models.RepointTable)
+    # Query the pointing table to find the repointing information.
+    repoint_record = (
+        session.query(models.PointingTable).filter(
+            models.PointingTable.pointing_id == repoint_id
+        )
+    ).first()
 
-    # Partition by end_date and give incrementing row numbers based on version.
-    # This makes sure that latest file gets assigned row number 1.
-    row_number = (
-        func.row_number()
-        .over(partition_by=repoint.end_date, order_by=desc(repoint.version))
-        .label("row_num")
-    )
+    if not repoint_record:
+        raise ValueError(f"No PointingTable record found for ID: {repoint_id}")
 
-    # Add that row_number column to the query table
-    subquery = session.query(
-        repoint.file_path,
-        repoint.end_date,
-        repoint.version,
-        repoint.ingestion_date,
-        row_number,
-    ).subquery()
-
-    # Filter latest version of latest two repoint files
-    query = (
-        session.query(subquery)
-        .filter(subquery.c.row_num == 1)
-        .order_by(desc(subquery.c.end_date))
-        .limit(2)
-    )
-
-    latest_repoint_files = query.all()
-
-    if not latest_repoint_files:
-        raise ValueError("No repoint file found in the database.")
-
-    # Calculate start date using first file's repoint's end date from file_obj.
-    first_repoint_file = latest_repoint_files[0].file_path
-    first_obj = SPICEFilePath(os.path.basename(first_repoint_file))
-    end_date = first_obj.spice_metadata["end_date"].strftime("%Y%m%d")
-    # Calculate end date using second file's repoint's end date from file_obj.
-    second_repoint_file = latest_repoint_files[1].file_path
-    second_obj = SPICEFilePath(os.path.basename(second_repoint_file))
-    start_date = second_obj.spice_metadata["end_date"].strftime("%Y%m%d")
-
+    # TODO: double check which time to use for the start and end dates.
+    start_date = repoint_record.pointing_start_utc.strftime("%Y%m%d")
+    end_date = repoint_record.pointing_end_utc.strftime("%Y%m%d")
     logger.info(
         f"repointing date range, start_date: {start_date}, end_date: {end_date}"
     )
-    return start_date, end_date
 
-
-def calculate_ena_date_range(session, file_obj):
-    """Calculate date range using data from the repointing table in the database.
-
-    Parameters
-    ----------
-    session : sqlalchemy.orm.Session
-        Database session.
-    file_obj : ScienceFilePath
-        The file object for which to calculate the date range.
-
-    Returns
-    -------
-    tuple
-        A tuple containing the start date and end date in the format YYYYMMDD.
-    """
-    # Look for latest and greatest file_path in the repointing table.
-    latest_repoint_file = (
-        session.query(models.RepointTable)
-        .order_by(desc(models.RepointTable.file_path))
-        .first()
-    )
-    if not latest_repoint_file:
-        raise ValueError("No repoint file found in the database.")
-
-    latest_repoint_file = latest_repoint_file.file_path
-
-    logger.info(
-        "Latest repoint file used to calculate date range"
-        f"for ENA and GLOWS instruments - {latest_repoint_file}"
-    )
-
-    repoint_path = imap_data_access.download(latest_repoint_file)
-    repoint_df = pd.read_csv(repoint_path)
-    # Set start date to be repoint_end_utc of i_pointing from the input file.
-    # Set end date to be repoint_end_utc of i_pointing + 1.
-    # Will there be a case when i_pointing + 1 is not in the
-    # repoint file?
-    #   No. Because WebPODA takes care of this. It makes sure that the L0 data
-    #   has i_pointing + 1 in the repoint file.
-    start_date = repoint_df.loc[
-        repoint_df["repoint_id"] == file_obj.repointing, "repoint_start_utc"
-    ].iloc[0]
-    start_date = datetime.datetime.strptime(
-        start_date, "%Y-%m-%dT%H:%M:%S.%f"
-    ).strftime("%Y%m%d")
-    end_date = repoint_df.loc[
-        repoint_df["repoint_id"] == file_obj.repointing + 1, "repoint_end_utc"
-    ].iloc[0]
-    end_date = datetime.datetime.strptime(end_date, "%Y-%m-%dT%H:%M:%S.%f").strftime(
-        "%Y%m%d"
-    )
     return start_date, end_date
 
 
@@ -774,15 +696,16 @@ def determine_date_range(session, file_obj):
         A tuple containing the start date and end date in the format YYYYMMDD.
     """
     if isinstance(file_obj, SPICEFilePath):
-        # TODO: fix date range if/when repoint file ingestion event is
-        # passed to batch starter to kickoff HARD or SOFT_TRIGGER downstream jobs.
-        # Convert datetime object to string of format YYYYMMDD
         file_type = file_obj.spice_metadata["type"]
         if file_type == "repoint":
-            # Get last two repoint files from the database.
-            # Then calculate the date range based on those two files.
-            start_date, end_date = calculate_pointing_date_range(session)
+            # TODO: fix calculations for repoint date range in upcoming PR
+            # when we work on pointing attitude job.
+            start_date = (
+                file_obj.spice_metadata["end_date"] - datetime.timedelta(days=1)
+            ).strftime("%Y%m%d")
+            end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
         else:
+            # Convert datetime object to string of format YYYYMMDD
             start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
             end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
     elif isinstance(file_obj, ScienceFilePath):
@@ -797,7 +720,9 @@ def determine_date_range(session, file_obj):
                 "Using repointing file to calculate date range for"
                 f" {file_obj.instrument}."
             )
-            start_date, end_date = calculate_ena_date_range(session, file_obj)
+            start_date, end_date = calculate_pointing_date_range(
+                session, file_obj.repointing
+            )
         else:
             start_date = end_date = file_obj.start_date
     elif isinstance(file_obj, AncillaryFilePath):

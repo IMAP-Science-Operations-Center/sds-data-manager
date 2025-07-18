@@ -585,7 +585,17 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
         if not latest_repoint_file:
             raise ValueError("No repoint file found in the database.")
 
-        return latest_repoint_file.file_path
+    if not latest_repoint_file:
+        raise ValueError("No Repoint file found in the database.")
+
+    if latest_repoint_file.end_date < end_date:
+        logger.info(
+            f"Latest repoint file end date {latest_repoint_file.end_date} "
+            f"is before input end date {end_date}"
+        )
+        return None
+
+    return basename(latest_repoint_file.file_path)
 
 
 def get_upstream_versions(session, record, versions) -> dict:
@@ -842,13 +852,15 @@ def get_upstream_dependency_inputs(
                 )
                 return None
             metakernel_files = json.loads(metakernel_response["body"])
-            # If number of kernels doesn't match the number of file types,
+            # If number of kernels returned doesn't match the number of file types
+            # requested
             if len(metakernel_files) != len(combined_kernel_sources.split(",")):
-                raise ValueError(
+                logger.debug(
                     f"Number of metakernel files {metakernel_files} "
                     "does not match number of file types requested "
                     f"{combined_kernel_sources.split(',')}."
                 )
+                return None
 
             logger.info(
                 f"Found metakernel files: {metakernel_files}. Adding to collection."

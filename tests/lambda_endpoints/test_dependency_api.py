@@ -1,7 +1,5 @@
 """Test data dependency functions."""
 
-import base64
-import os
 from datetime import datetime
 from unittest.mock import patch
 
@@ -16,6 +14,7 @@ from imap_data_access.processing_input import (
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
+    RepointTable,
     ScienceFiles,
     SpinTable,
 )
@@ -27,7 +26,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
     matching_crids_exist,
 )
 from tests.lambda_endpoints.conftest import (
-    _populate_file_catalog,
+    _static_spice_files,
 )
 
 #####################################
@@ -75,7 +74,36 @@ def test_missing_dependency(session):
 
 def test_soft_dependencies(session):
     """Test that the correct soft dependencies are returned."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_mag_l1b_burst-mago_20240101_v001.cdf",
+            instrument="mag",
+            data_level="l1b",
+            descriptor="burst-mago",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v002.cdf",
+            instrument="mag",
+            data_level="l1b",
+            descriptor="norm-mago",
+            start_date=datetime(2024, 1, 1),
+            version="v002",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
     dependency_response = dependency.get_jobs(
         data_source="mag",
         data_type="l1c",
@@ -253,7 +281,82 @@ def test_get_kickoff_jobs():
 
 def test_get_upstream_ancillary_trigger(session, caplog):
     """Tests get upstream dependencies with an ancillary trigger source."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240101_v010.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            extension="cdf",
+            start_date=datetime(2024, 1, 1),
+            version="v010",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240102_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            extension="cdf",
+            start_date=datetime(2024, 1, 2),
+            version="v001",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240103_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            extension="cdf",
+            start_date=datetime(2024, 1, 3),
+            version="v001",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_l1b-in-flight-cal_20230102_v001.csv",
+            instrument="swe",
+            descriptor="l1b-in-flight-cal",
+            extension="csv",
+            start_date=datetime(2023, 1, 2),
+            version="v001",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_esa-lut_20221231_v001.csv",
+            instrument="swe",
+            descriptor="esa-lut",
+            extension="csv",
+            start_date=datetime(2022, 12, 31),
+            version="v001",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_eu-conversion_20221231_v001.csv",
+            instrument="swe",
+            descriptor="eu-conversion",
+            extension="csv",
+            start_date=datetime(2022, 12, 31),
+            version="v001",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
     dependency_response = dependency.get_jobs(
         data_source="swe",
         data_type="l1b",
@@ -271,15 +374,31 @@ def test_get_upstream_ancillary_trigger(session, caplog):
     )
     ancillary_in = [
         AncillaryInput(
-            "imap_swe_l1b-in-flight-cal_20230102_v001.cdf",
+            "imap_swe_l1b-in-flight-cal_20230102_v001.csv",
         ),
-        AncillaryInput("imap_swe_esa-lut_20221231_v001.cdf"),
-        AncillaryInput("imap_swe_eu-conversion_20221231_v001.cdf"),
+        AncillaryInput("imap_swe_esa-lut_20221231_v001.csv"),
+        AncillaryInput("imap_swe_eu-conversion_20221231_v001.csv"),
     ]
     # Expect ancillary dependencies and science dependencies
     expected_processing_input = ProcessingInputCollection(science_in, *ancillary_in)
 
     assert dependency_response.serialize() == expected_processing_input.serialize()
+
+    record = [
+        AncillaryFiles(
+            file_path="path/to/imap_swe_l1b-in-flight-cal_20240104_20240106_v002.csv",
+            instrument="swe",
+            descriptor="l1b-in-flight-cal",
+            extension="csv",
+            start_date=datetime(2024, 1, 4),
+            version="v002",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        )
+    ]
+    session.add_all(record)
+    session.commit()
     # Move end_date forward by one
     # There are now three valid ancillary in-flight-cal files for this date but the
     # one with the latest start_date is returned.
@@ -294,10 +413,10 @@ def test_get_upstream_ancillary_trigger(session, caplog):
     )
     ancillary_in = [
         AncillaryInput(
-            "imap_swe_l1b-in-flight-cal_20240104_20240106_v002.cdf",
+            "imap_swe_l1b-in-flight-cal_20240104_20240106_v002.csv",
         ),
-        AncillaryInput("imap_swe_esa-lut_20221231_v001.cdf"),
-        AncillaryInput("imap_swe_eu-conversion_20221231_v001.cdf"),
+        AncillaryInput("imap_swe_esa-lut_20221231_v001.csv"),
+        AncillaryInput("imap_swe_eu-conversion_20221231_v001.csv"),
     ]
 
     expected_processing_input = ProcessingInputCollection(science_in, *ancillary_in)
@@ -323,7 +442,36 @@ def test_dependency_class(mock_load_dependencies):
 #####################################
 def test_get_primary_science_files(session):
     """Tests the get_file function for science files."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+
+    records = [
+        ScienceFiles(
+            file_path="path/to/imap_mag_l1b_burst-mago_20240101_v001.cdf",
+            instrument="mag",
+            data_level="l1b",
+            descriptor="burst-mago",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_swe_l1a_sci_20240106_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 6),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
 
     dep = {"data_source": "mag", "data_type": "l1b", "descriptor": "burst-mago"}
     record = get_files(
@@ -369,7 +517,35 @@ def test_get_primary_science_files(session):
 
 def test_get_science_files_date_range(session):
     """Tests the get_file function for science files dependent on start_date."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+    records = [
+        ScienceFiles(
+            file_path="path/to/imap_swe_l1a_sci_20240102_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 2),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_swe_l1a_sci_20240103_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 3),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
     # Test with larger date_range
     # It should return two swe records
     dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
@@ -384,7 +560,22 @@ def test_get_science_files_date_range(session):
 
 def test_get_ancillary_files(session):
     """Tests the get_file function."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+    records = [
+        AncillaryFiles(
+            file_path="path/to/imap_swe_l1b-in-flight-cal_20230101_v001.csv",
+            instrument="swe",
+            descriptor="l1b-in-flight-cal",
+            extension="csv",
+            start_date=datetime(2023, 1, 1),
+            version="v001",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
 
     dep = {
         "data_source": "swe",
@@ -417,29 +608,67 @@ def test_get_ancillary_files(session):
 
 def test_get_files_max_version(session):
     """Test get_files returns the max version."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
     dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
-    records = get_files(
+
+    records = [
+        ScienceFiles(
+            file_path="path/to/imap_swe_l1a_sci_20240101_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_swe_l1a_sci_20240101_v010.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 1),
+            version="v010",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_swe_l1a_sci_20240102_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 2),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
+    science_files = get_files(
         session,
         dependency=dep,
         start_date=datetime(2024, 1, 1),
         end_date=datetime(2024, 1, 3),
     )
 
-    assert len(records) == 3
-    for rec in records:
+    assert len(science_files) == 2
+    for rec in science_files:
         assert rec.instrument == "swe"
         assert rec.data_level == "l1a"
         assert rec.descriptor == "sci"
     # Make sure the dates and versions are the latest ones
-    assert records[0].start_date == datetime(2024, 1, 1)
-    assert records[0].version == "v010"
-
-    assert records[1].start_date == datetime(2024, 1, 2)
-    assert records[1].version == "v001"
-
-    assert records[2].start_date == datetime(2024, 1, 3)
-    assert records[2].version == "v001"
+    assert science_files[0].start_date == datetime(2024, 1, 1)
+    assert science_files[0].version == "v010"
+    assert science_files[1].start_date == datetime(2024, 1, 2)
+    assert science_files[1].version == "v001"
 
 
 # #####################################
@@ -447,35 +676,40 @@ def test_get_files_max_version(session):
 # #####################################
 
 
-def test_get_latest_repoint_file(s3_client):
+def test_get_latest_repoint_file(session):
     """Test get_latest_repoint_file function."""
-    # Write repoint files to the S3 bucket
-    bucket_name = "test-data-bucket"
-    s3_client.create_bucket(Bucket=bucket_name)
-    os.environ["S3_BUCKET"] = bucket_name
-
-    s3_client.put_object(
-        Bucket=bucket_name,
-        Key="imap/spice/repoint/imap_2025_120_01.repoint.csv",  # 20250430
-        Body=b"test",
-    )
+    records = [
+        RepointTable(
+            file_path="imap/spice/repoint/imap_2025_120_01.repoint.csv",
+            end_date=datetime(2025, 4, 30),
+            version="01",
+            ingestion_date=datetime.now(),
+        )
+    ]
+    session.add_all(records)
+    session.commit()
 
     # Test with date of the file
     end_date = datetime(2025, 4, 30)
     latest_file = dependency.get_latest_repoint_file(end_date)
     assert latest_file == "imap_2025_120_01.repoint.csv"
 
-    # Add more files to the bucket
-    s3_client.put_object(
-        Bucket=bucket_name,
-        Key="imap/spice/repoint/imap_2025_121_01.repoint.csv",  # 20250501
-        Body=b"test",
-    )
-    s3_client.put_object(
-        Bucket=bucket_name,
-        Key="imap/spice/repoint/imap_2025_121_02.repoint.csv",  # 20250501
-        Body=b"test",
-    )
+    records = [
+        RepointTable(
+            file_path="imap/spice/repoint/imap_2025_121_01.repoint.csv",
+            end_date=datetime(2025, 5, 1),
+            version="01",
+            ingestion_date=datetime.now(),
+        ),
+        RepointTable(
+            file_path="imap/spice/repoint/imap_2025_121_02.repoint.csv",
+            end_date=datetime(2025, 5, 1),
+            version="02",
+            ingestion_date=datetime.now(),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
 
     # Test with date before the first file
     end_date = datetime(2025, 3, 1)

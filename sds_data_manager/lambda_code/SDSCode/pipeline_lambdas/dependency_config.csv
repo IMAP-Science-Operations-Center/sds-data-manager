@@ -651,12 +651,12 @@ leapseconds, spice, historical, spacecraft, l1a, all, HARD_NO_TRIGGER, DOWNSTREA
 spacecraft_clock, spice, historical, spacecraft, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Pointing kernel
-repoint, repoint, historical, spacecraft, l1a, spice, HARD, DOWNSTREAM
-leapseconds, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
-imap_frames, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
-science_frames, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
+repoint, repoint, historical, spacecraft, l1a, pointing-attitude, HARD, DOWNSTREAM
+attitude_history, spice, historical, spacecraft, l1a, pointing-attitude, HARD, DOWNSTREAM
+leapseconds, spice, historical, spacecraft, l1a, pointing-attitude, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, spacecraft, l1a, pointing-attitude, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, spacecraft, l1a, pointing-attitude, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, spacecraft, l1a, pointing-attitude, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 
@@ -1115,7 +1115,8 @@ imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, H
 glows, l3e, survival-probability-ul, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
 ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
 science_frames, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
-pointing_attitude, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+
+# pointing_attitude, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 
