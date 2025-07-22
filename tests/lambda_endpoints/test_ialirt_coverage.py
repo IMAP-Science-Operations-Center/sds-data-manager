@@ -3,7 +3,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
     SPICEInput,
@@ -11,64 +10,56 @@ from imap_data_access.processing_input import (
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage import (
     download_spice_file,
+    generate_and_upload_30_days,
     get_dsn,
     get_latest_outage_file,
     get_latest_spice_kernels,
+    lambda_handler,
     parse_outage_file,
 )
 
 
-@pytest.fixture
-def s3_test_packet(s3_client):
-    """Add a fake binary packet file to the mock S3 bucket."""
-    test_file = "iois_1_packets_YYYY_DOY_HH_MM_SS.ccsds"
-
-    s3_client.put_object(
-        Bucket="test-data-bucket",
-        Key=test_file,
-        Body=b"dummy test data",
-    )
-
-    return test_file
-
-
 @patch("spiceypy.furnsh")
 @patch("imap_data_access.processing_input.ProcessingInputCollection.download_all_files")
-@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
-def test_lambda_handler(mock_get, mock_download, mock_furnsh, setup_dynamodb):
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.requests.get")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.get_dsn")
+def test_lambda_handler(
+    mock_get_dsn,
+    mock_requests_get,
+    mock_download,
+    mock_furnsh,
+    s3_client,
+):
     """Test the lambda_handler function."""
-    # Mock event data
-    algorithm_table = setup_dynamodb["algorithm_table"]
+    bucket = "test-data-bucket"
+    region = "us-west-2"
+
+    s3_client.put_object(
+        Bucket=bucket,
+        Key="outages_20260922.txt",
+        Body=(
+            "Kiel,2026-09-22T13:50:00.00Z,2026-09-22T14:10:00.00Z\n"
+            "DSS-75,2026-09-25T08:00:00.00Z,2026-09-25T09:30:00.00Z"
+        ),
+    )
 
     mock_response = MagicMock()
-    mock_response.json.return_value = [
-        "imap_sclk_0000.tsc",
-        "naif0012.tls",
-        "imap_001.tf",
-    ]
-    mock_get.return_value = mock_response
+    mock_response.json.return_value = ["de440.bsp", "pck00011.tpc"]
+    mock_requests_get.return_value = mock_response
+
     mock_download.return_value = None
     mock_furnsh.return_value = None
+    mock_get_dsn.return_value = (Path("/dsn_contact_schedule.txt"), {})
 
     event = {
-        "region": "us-west-2",
+        "region": region,
         "detail": {
             "object": {"key": "packets/file.txt"},
-            "bucket": {"name": "test-data-bucket"},
+            "bucket": {"name": bucket},
         },
     }
 
     lambda_handler(event, {})
-
-    response = algorithm_table.get_item(
-        Key={
-            "apid": 478,
-            "met": 123,
-        }
-    )
-    item = response.get("Item")
-
-    assert item is None
 
 
 def test_get_latest_outage_file(s3_client):
@@ -78,8 +69,8 @@ def test_get_latest_outage_file(s3_client):
 
     # Files in the desired time range
     keys = [
-        "outages/outages_2026_09_21.txt",
-        "outages/outages_2026_09_22.txt",
+        "outages/outages_20260921.txt",
+        "outages/outages_20260922.txt",
     ]
 
     for key in keys:
@@ -87,7 +78,7 @@ def test_get_latest_outage_file(s3_client):
 
     result = get_latest_outage_file(bucket, region)
 
-    assert result == "outages/outages_2026_09_22.txt"
+    assert result == "outages/outages_20260922.txt"
 
 
 def test_parse_outage_file(s3_client):
@@ -110,6 +101,35 @@ def test_parse_outage_file(s3_client):
     }
 
     assert outages == expected_outages
+
+
+def test_generate_and_upload_30_days(s3_client):
+    """Test the generate_and_upload_30_days function."""
+    bucket = "test-data-bucket"
+    region = "us-west-2"
+    s3_client.create_bucket(Bucket=bucket)
+
+    outages = {"Kiel": [("2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00.00Z")]}
+    dsn = {"DSS-55": [("2026-09-22T08:00:00.00Z", "2026-09-22T09:00:00.00Z")]}
+
+    generate_and_upload_30_days(bucket, region, outages, dsn)
+
+    objects = s3_client.list_objects_v2(Bucket=bucket)
+    keys = [obj["Key"] for obj in objects.get("Contents", [])]
+
+    # Verify that 30 files were created
+    assert len(keys) == 30
+
+    # Check the naming pattern
+    assert keys[0].startswith("coverage/coverage_")
+
+    # Download and verify one file's content
+    response = s3_client.get_object(Bucket=bucket, Key=keys[0])
+    content = response["Body"].read().decode("utf-8")
+
+    assert "# I-ALiRT Coverage Summary" in content
+    assert "Kiel" in content
+    assert "DSS-55" in content
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.requests.get")
@@ -156,7 +176,7 @@ def test_download_spice_file(mock_download, mock_furnsh):
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.AncillaryFilePath"
 )
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.query")
-def test_get_dsn(mock_query, mock_ancillaryfilepath, mock_download):
+def test_get_dsn(mock_query, mock_ancillaryfilepath, mock_download, tmp_path):
     """Test get_dsn function."""
     mock_path = Path("/ialirt/contact-schedule/dsn_file.txt")
     mock_download.return_value = mock_path
@@ -165,7 +185,7 @@ def test_get_dsn(mock_query, mock_ancillaryfilepath, mock_download):
     mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
 
     with patch.object(Path, "exists", return_value=False):
-        path, dict = get_dsn(Path("/tmp"))
+        path, dict = get_dsn(tmp_path)
 
     assert path == mock_path
     assert dict == {}

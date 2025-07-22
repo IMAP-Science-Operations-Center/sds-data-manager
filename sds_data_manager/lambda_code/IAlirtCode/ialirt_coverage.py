@@ -157,7 +157,7 @@ def get_latest_outage_file(bucket: str, region: str) -> str | None:
     if not objects:
         return None
 
-    # Assumes filenames sort by date, e.g., outages_2026_09_22.txt
+    # Assumes filenames sort by date, e.g., outages_20260922.txt
     latest_outage_file = max(objects, key=lambda obj: obj["Key"])["Key"]
     return latest_outage_file
 
@@ -227,20 +227,16 @@ def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: di
         Dictionary containing outages data.
     dsn : dict
         Dictionary containing DSN data.
-
-    Returns
-    -------
-    latest_outage_file : str
-        File path.
     """
     today = datetime.now(timezone.utc)
 
     for i in range(30):
         day = today + timedelta(days=i)
-        start_time = day.strftime("%Y-%m-%dT00:00:00Z")
+        # start_time = day.strftime("%Y-%m-%dT00:00:00Z")
 
         # Placeholder for after we import from imap_processing.
-        # coverage_dict = generate_coverage(start_time=start_time, outages=outages, dsn=dsn)
+        # coverage_dict = generate_coverage(start_time=start_time,
+        # outages=outages, dsn=dsn)
         # table_output = format_coverage_summary(coverage_dict, start_time)
         table_output = (
             "# I-ALiRT Coverage Summary\n"
@@ -285,10 +281,13 @@ def lambda_handler(event, context):
     # Get latest outage file
     latest_key = get_latest_outage_file(bucket, region)
 
-    if not latest_key:
-        logger.info("No outage files found in bucket %s", bucket)
-
-    outages = parse_outage_file(bucket, region, latest_key)
-    logger.info("Parsed outages: %s", outages)
+    if latest_key:
+        outages = parse_outage_file(bucket, region, latest_key)
+        logger.info("Parsed outages: %s", outages)
+    else:
+        outages = {}
+        logger.info(
+            "No outage files found in bucket %s. Using empty outages dict.", bucket
+        )
 
     generate_and_upload_30_days(bucket, region, outages, dsn)
