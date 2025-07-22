@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import boto3
-import botocore
 import imap_data_access
 import requests
 import spiceypy
@@ -56,7 +55,7 @@ def get_dsn(download_dir: Path):
     dsn_path = dsn_files[0]
 
     download_path = imap_data_access.download(dsn_path["file_path"])
-    logger.info(f"Adding to {download_path} to calibration files.")
+    logger.info(f"Downloading to {download_path}.")
 
     # Placeholder
     # TODO: parse the file and return a populated dict once we know the file structure.
@@ -105,8 +104,8 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     return dependency_inputs
 
 
-def download_spice_file(dependencies) -> list[Path]:
-    """Download SPICE kernel files.
+def setup_spice_file(dependencies) -> list[Path]:
+    """Download and furnish SPICE kernel files.
 
     Parameters
     ----------
@@ -131,50 +130,44 @@ def download_spice_file(dependencies) -> list[Path]:
     return spice_files
 
 
-def get_latest_outage_file(bucket: str, region: str) -> str | None:
+def get_latest_outage_file(download_dir: Path) -> Path | None:
     """Get the most recent outage file key from S3.
 
     Parameters
     ----------
-    bucket : str
-        The name of the S3 bucket.
-    region : str
-        The region in which the s3 bucket resides.
+    download_dir : Path
+        The directory where the file will be downloaded.
 
     Returns
     -------
-    latest_outage_file : str
+    download_path : Path
         File path.
     """
-    s3_client = boto3.client(
-        "s3",
-        region_name=region,
-        config=botocore.client.Config(signature_version="s3v4"),
+    imap_data_access.config["DATA_DIR"] = download_dir
+    outages = imap_data_access.query(
+        table="ancillary",
+        instrument="ialirt",
+        descriptor="outages",
+        version="latest",
     )
-
-    response = s3_client.list_objects_v2(Bucket=bucket, Prefix="outages")
-    objects = response.get("Contents", [])
-    if not objects:
+    if not outages:
         return None
 
-    # Assumes filenames sort by date, e.g., outages_20260922.txt
-    latest_outage_file = max(objects, key=lambda obj: obj["Key"])["Key"]
-    return latest_outage_file
+    latest_outage_file = outages[0]
+
+    download_path = imap_data_access.download(latest_outage_file["file_path"])
+    logger.info(f"Downloading to {download_path}.")
+
+    return download_path
 
 
-def parse_outage_file(
-    bucket: str, region: str, key: str
-) -> dict[str, list[tuple[str, str]]]:
-    """Download outage file and parse into outages dict.
+def parse_outage_file(file_path: Path) -> dict[str, list[tuple[str, str]]]:
+    """Parse outage file into outages dict.
 
     Parameters
     ----------
-    bucket : str
-        The name of the S3 bucket.
-    region : str
-        The region in which the s3 bucket resides.
-    key : str
-        The key of the latest S3 object containing the outage data.
+    file_path : Path
+        File path.
 
     Returns
     -------
@@ -195,14 +188,7 @@ def parse_outage_file(
         ],
     }
     """
-    s3_client = boto3.client(
-        "s3",
-        region_name=region,
-        config=botocore.client.Config(signature_version="s3v4"),
-    )
-
-    response = s3_client.get_object(Bucket=bucket, Key=key)
-    content = response["Body"].read().decode("utf-8").strip().splitlines()
+    content = file_path.read_text(encoding="utf-8").strip().splitlines()
 
     outages: dict[str, list[tuple[str, str]]] = {}
     for line in content:
@@ -227,6 +213,12 @@ def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: di
         Dictionary containing outages data.
     dsn : dict
         Dictionary containing DSN data.
+
+    Notes
+    -----
+    Example dictionary structure for outages and dsn:
+    outages = {"Kiel": [("2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00.00Z")]}
+    dsn = {"DSS-55": [("2026-09-22T08:00:00.00Z", "2026-09-22T09:00:00.00Z")]}
     """
     today = datetime.now(timezone.utc)
 
@@ -276,13 +268,13 @@ def lambda_handler(event, context):
     # Download latest SPICE kernels
     dependency_inputs = get_latest_spice_kernels()
     logger.info("dependency_inputs: %s", dependency_inputs)
-    download_spice_file(dependency_inputs)
+    setup_spice_file(dependency_inputs)
 
     # Get latest outage file
-    latest_key = get_latest_outage_file(bucket, region)
+    outage_file_path = get_latest_outage_file(Path("/tmp"))  # noqa: S108
 
-    if latest_key:
-        outages = parse_outage_file(bucket, region, latest_key)
+    if outage_file_path:
+        outages = parse_outage_file(outage_file_path)
         logger.info("Parsed outages: %s", outages)
     else:
         outages = {}

@@ -9,13 +9,13 @@ from imap_data_access.processing_input import (
 )
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage import (
-    download_spice_file,
     generate_and_upload_30_days,
     get_dsn,
     get_latest_outage_file,
     get_latest_spice_kernels,
     lambda_handler,
     parse_outage_file,
+    setup_spice_file,
 )
 
 
@@ -62,38 +62,39 @@ def test_lambda_handler(
     lambda_handler(event, {})
 
 
-def test_get_latest_outage_file(s3_client):
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.download"
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.AncillaryFilePath"
+)
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.query")
+def test_get_latest_outage_file(
+    mock_query, mock_ancillaryfilepath, mock_download, tmp_path
+):
     """Test the get_latest_outage_file function."""
-    bucket = "test-data-bucket"
-    region = "us-west-2"
+    mock_path = Path("/ialirt/outages/outages_20260922.txt")
+    mock_download.return_value = mock_path
+    mock_query.return_value = [{"file_path": "ialirt/outages/outages_20260922.txt"}]
+    mock_construct_path = MagicMock(return_value=mock_path)
+    mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
 
-    # Files in the desired time range
-    keys = [
-        "outages/outages_20260921.txt",
-        "outages/outages_20260922.txt",
-    ]
+    with patch.object(Path, "exists", return_value=False):
+        path = get_latest_outage_file(tmp_path)
 
-    for key in keys:
-        s3_client.put_object(Bucket=bucket, Key=key, Body=b"dummy data")
-
-    result = get_latest_outage_file(bucket, region)
-
-    assert result == "outages/outages_20260922.txt"
+    assert path == mock_path
 
 
-def test_parse_outage_file(s3_client):
-    """Test the parse_outage_file function."""
-    bucket = "test-data-bucket"
-    region = "us-west-2"
-    key = "outages_2026_09_22.txt"
+def test_parse_outage_file(tmp_path: Path):
+    """Test the parse_outage_file function with a local file."""
+    file_path = tmp_path / "outages_2026_09_22.txt"
     file_content = (
         "Kiel,2026-09-22T13:50:00.00Z,2026-09-22T14:10:00Z\n"
         "DSS-75,2026-09-25T08:00:00.00Z,2026-09-25T09:30:00Z\n"
     )
+    file_path.write_text(file_content, encoding="utf-8")
 
-    s3_client.put_object(Bucket=bucket, Key=key, Body=file_content)
-
-    outages = parse_outage_file(bucket, region, key)
+    outages = parse_outage_file(file_path)
 
     expected_outages = {
         "Kiel": [("2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00Z")],
@@ -152,8 +153,8 @@ def test_get_latest_spice_kernels(mock_get):
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.ProcessingInputCollection.download_all_files"
 )
-def test_download_spice_file(mock_download, mock_furnsh):
-    """Test download_spice_file function."""
+def test_setup_spice_file(mock_download, mock_furnsh):
+    """Test setup_spice_file function."""
     mock_files = [
         "de440.bsp",
         "pck00011.tpc",
@@ -161,7 +162,7 @@ def test_download_spice_file(mock_download, mock_furnsh):
     collection = ProcessingInputCollection()
     collection.add(SPICEInput(*mock_files))
 
-    result = download_spice_file(collection)
+    result = setup_spice_file(collection)
 
     assert [file.name for file in result] == [
         "de440.bsp",
