@@ -3,14 +3,13 @@
 import json
 import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
 import boto3
 import botocore
-from pathlib import Path
+import imap_data_access
 import requests
 import spiceypy
-
-
-import imap_data_access
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
     SPICEInput,
@@ -22,8 +21,8 @@ logger.setLevel(logging.INFO)
 
 
 KERNELS = {
-    "planetary_ephemeris", # e.g., de440s.bsp
-    "planetary_constants", # e.g. pck00011.tpc
+    "planetary_ephemeris",  # e.g., de440s.bsp
+    "planetary_constants",  # e.g. pck00011.tpc
 }
 
 
@@ -37,9 +36,12 @@ def get_dsn(download_dir: Path):
 
     Returns
     -------
+    dsn_path : Path
+        Path to the downloaded DSN file.
     dsn_dict : dict
         Contents of latest contact schedule.
     """
+    imap_data_access.config["DATA_DIR"] = download_dir
     dsn_files = imap_data_access.query(
         table="ancillary",
         instrument="ialirt",
@@ -51,15 +53,16 @@ def get_dsn(download_dir: Path):
         dsn_dict = {}
         logger.info("No DSN files found for IALiRT. Returning empty dict.")
 
-    dsn_file = dsn_files[0]
+    dsn_path = dsn_files[0]
 
-    download_path = imap_data_access.download(dsn_file["file_path"])
+    download_path = imap_data_access.download(dsn_path["file_path"])
     logger.info(f"Adding to {download_path} to calibration files.")
 
+    # Placeholder
     # TODO: parse the file and return a populated dict once we know the file structure.
     dsn_dict = {}
 
-    return dsn_dict
+    return download_path, dsn_dict
 
 
 def get_latest_spice_kernels() -> ProcessingInputCollection:
@@ -159,8 +162,39 @@ def get_latest_outage_file(bucket: str, region: str) -> str | None:
     return latest_outage_file
 
 
-def parse_outage_file(bucket: str, region: str, key: str) -> dict[str, list[tuple[str, str]]]:
-    """Download outage file and parse into outages dict."""
+def parse_outage_file(
+    bucket: str, region: str, key: str
+) -> dict[str, list[tuple[str, str]]]:
+    """Download outage file and parse into outages dict.
+
+    Parameters
+    ----------
+    bucket : str
+        The name of the S3 bucket.
+    region : str
+        The region in which the s3 bucket resides.
+    key : str
+        The key of the latest S3 object containing the outage data.
+
+    Returns
+    -------
+    outages : dict
+        Dictionary containing the data.
+
+    Notes
+    -----
+    Input text file format:
+    Kiel,2026-09-22T13:50:00.00Z,2026-09-22T14:10:00Z
+    Kiel,2026-09-25T08:00:00.00Z,2026-09-25T09:30:00Z
+
+    Output dictionary structure:
+        outages = {
+        "Kiel": [
+            ("2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00Z"),
+            ("2026-09-25T08:00:00.00Z", "2026-09-25T09:30:00Z"),
+        ],
+    }
+    """
     s3_client = boto3.client(
         "s3",
         region_name=region,
@@ -180,33 +214,57 @@ def parse_outage_file(bucket: str, region: str, key: str) -> dict[str, list[tupl
     return outages
 
 
-def upload_coverage_to_s3(bucket: str, region: str, key: str, table_output: str):
-    """Upload human-readable coverage summary table to S3."""
-    s3_client = boto3.client("s3", region_name=region)
-    s3_client.put_object(
-        Bucket=bucket,
-        Key=key,
-        Body=table_output.encode("utf-8"),
-        ContentType="text/plain"
-    )
-    logger.info(f"Uploaded coverage table to s3://{bucket}/{key}")
-
-
 def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: dict):
+    """Upload new coverage json files to S3.
+
+    Parameters
+    ----------
+    bucket : str
+        The name of the S3 bucket.
+    region : str
+        The region in which the s3 bucket resides.
+    outages : dict
+        Dictionary containing outages data.
+    dsn : dict
+        Dictionary containing DSN data.
+
+    Returns
+    -------
+    latest_outage_file : str
+        File path.
+    """
     today = datetime.now(timezone.utc)
 
     for i in range(30):
         day = today + timedelta(days=i)
         start_time = day.strftime("%Y-%m-%dT00:00:00Z")
 
-        coverage_dict = generate_coverage(start_time=start_time, outages=outages, dsn=dsn)
-        table_output = format_coverage_summary(coverage_dict, start_time)
+        # Placeholder for after we import from imap_processing.
+        # coverage_dict = generate_coverage(start_time=start_time, outages=outages, dsn=dsn)
+        # table_output = format_coverage_summary(coverage_dict, start_time)
+        table_output = (
+            "# I-ALiRT Coverage Summary\n"
+            "# Generated: 2026-09-22T00:00:00Z\n"
+            "# Stations: Kiel, DSS-55\n"
+            "# Time format: UTC (ISOC)\n"
+            "Time (UTC)                Kiel     DSS-55\n"
+            "-----------------------------------------\n"
+            "2026-09-22T07:00:00.000   1        0\n"
+            "2026-09-22T08:00:00.000   1        0\n"
+            "-----------------------------------------\n"
+            "Total Coverage Percent: 37.5%"
+        )
 
         output_key = f"coverage/coverage_{day.strftime('%Y%m%d')}.json"
 
-        upload_coverage_to_s3(bucket, region, output_key, table_output)
-        logger.info(f"Uploaded (overwritten if existed): s3://{bucket}/{output_key}")
-
+        s3_client = boto3.client("s3", region_name=region)
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=output_key,
+            Body=table_output.encode("utf-8"),
+            ContentType="text/plain",
+        )
+        logger.info(f"Uploaded coverage table to s3://{bucket}/{output_key}")
 
 
 def lambda_handler(event, context):
@@ -217,7 +275,7 @@ def lambda_handler(event, context):
     region = event["region"]
 
     # Get dsn_schedule
-    dsn = get_dsn(Path("/tmp"))  # noqa: S108
+    _, dsn = get_dsn(Path("/tmp"))  # noqa: S108
 
     # Download latest SPICE kernels
     dependency_inputs = get_latest_spice_kernels()
@@ -225,7 +283,7 @@ def lambda_handler(event, context):
     download_spice_file(dependency_inputs)
 
     # Get latest outage file
-    latest_key = get_latest_outage_file(bucket, region, "outages")
+    latest_key = get_latest_outage_file(bucket, region)
 
     if not latest_key:
         logger.info("No outage files found in bucket %s", bucket)
@@ -234,5 +292,3 @@ def lambda_handler(event, context):
     logger.info("Parsed outages: %s", outages)
 
     generate_and_upload_30_days(bucket, region, outages, dsn)
-
-    return

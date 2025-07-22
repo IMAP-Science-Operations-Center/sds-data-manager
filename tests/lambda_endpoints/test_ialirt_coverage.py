@@ -1,30 +1,21 @@
-"""Test the I-Alirt ingest lambda function."""
+"""Test the I-Alirt coverage lambda function."""
 
-from datetime import datetime, timezone
-from decimal import Decimal
 from pathlib import Path
-from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
-import xarray as xr
-from boto3.dynamodb.conditions import Key
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
     SPICEInput,
 )
 
-from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
+from sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage import (
     download_spice_file,
-    get_ancillary,
+    get_dsn,
+    get_latest_outage_file,
     get_latest_spice_kernels,
-    insert_data,
-    lambda_handler,
-    parse_packets,
-    process_algorithms,
-    query_filenames,
+    parse_outage_file,
 )
-from sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage import get_latest_outage_file
 
 
 @pytest.fixture
@@ -81,7 +72,7 @@ def test_lambda_handler(mock_get, mock_download, mock_furnsh, setup_dynamodb):
 
 
 def test_get_latest_outage_file(s3_client):
-    """Test the query_filenames function."""
+    """Test the get_latest_outage_file function."""
     bucket = "test-data-bucket"
     region = "us-west-2"
 
@@ -96,26 +87,29 @@ def test_get_latest_outage_file(s3_client):
 
     result = get_latest_outage_file(bucket, region)
 
-    assert result == 'outages/outages_2026_09_22.txt'
+    assert result == "outages/outages_2026_09_22.txt"
 
 
-def test_query_filenames_crossing_hour_boundary(s3_client):
-    """Test query_filenames when crossing hour boundary."""
+def test_parse_outage_file(s3_client):
+    """Test the parse_outage_file function."""
     bucket = "test-data-bucket"
     region = "us-west-2"
+    key = "outages_2026_09_22.txt"
+    file_content = (
+        "Kiel,2026-09-22T13:50:00.00Z,2026-09-22T14:10:00Z\n"
+        "DSS-75,2026-09-25T08:00:00.00Z,2026-09-25T09:30:00Z\n"
+    )
 
-    now = datetime(2025, 4, 28, 1, 2, 0, tzinfo=timezone.utc)
+    s3_client.put_object(Bucket=bucket, Key=key, Body=file_content)
 
-    first_prefix_key = "packets/iois_1_packets_2025_118_00_58_00"
-    second_prefix_key = "packets/iois_1_packets_2025_118_01_00_00"
-    outside_range_key = "packets/iois_1_packets_2025_118_00_50_00"
+    outages = parse_outage_file(bucket, region, key)
 
-    for key in [first_prefix_key, second_prefix_key, outside_range_key]:
-        s3_client.put_object(Bucket=bucket, Key=key, Body=b"dummy data")
+    expected_outages = {
+        "Kiel": [("2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00Z")],
+        "DSS-75": [("2026-09-25T08:00:00.00Z", "2026-09-25T09:30:00Z")],
+    }
 
-    result = query_filenames(bucket, region, now)
-
-    assert sorted(result) == sorted([first_prefix_key, second_prefix_key])
+    assert outages == expected_outages
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.requests.get")
@@ -156,25 +150,22 @@ def test_download_spice_file(mock_download, mock_furnsh):
 
 
 @patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_data_access.download"
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.download"
 )
 @patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_data_access.AncillaryFilePath"
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.AncillaryFilePath"
 )
-@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_data_access.query")
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.EFS_BASE_PATH",
-    Path("/mock/efs"),
-)
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.query")
 def test_get_dsn(mock_query, mock_ancillaryfilepath, mock_download):
-    """Test get_ancillary function."""
-    mock_path = Path("/mock/efs/swe/l1b-in-flight-cal/calibration.cdf")
+    """Test get_dsn function."""
+    mock_path = Path("/ialirt/contact-schedule/dsn_file.txt")
     mock_download.return_value = mock_path
-    mock_query.return_value = [{"file_path": "swe/l1b-in-flight-cal/calibration.cdf"}]
+    mock_query.return_value = [{"file_path": "ialirt/contact-schedule/dsn_file.txt"}]
     mock_construct_path = MagicMock(return_value=mock_path)
     mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
 
     with patch.object(Path, "exists", return_value=False):
-        path = get_ancillary("swe", "l1b-in-flight-cal")
+        path, dict = get_dsn(Path("/tmp"))
 
     assert path == mock_path
+    assert dict == {}
