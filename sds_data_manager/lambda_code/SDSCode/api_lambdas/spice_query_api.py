@@ -38,7 +38,13 @@ def lambda_handler(event, context):
         query = select(models.SPICEFiles)
 
         # get a list of all valid search parameters
-        valid_parameters = ["file_name", "start_time", "end_time", "type", "latest"]
+        valid_parameters = ["file_name", 
+                            "start_time", 
+                            "end_time", 
+                            "type", 
+                            "latest",
+                            "start_ingest_date",
+                            "end_ingest_date"]
 
         # go through each query parameter to set up sqlalchemy query conditions
         for param, value in query_params.items():
@@ -99,6 +105,10 @@ def lambda_handler(event, context):
                     (models.SPICEFiles.file_root == latest_versions_subq.c.file_root)
                     & (models.SPICEFiles.version == latest_versions_subq.c.max_version),
                 )
+            elif param == 'start_ingest_date':
+                query = query.where(models.SPICEFiles.ingestion_date >= datetime.datetime.strptime(value, "%Y%m%d"))
+            elif param == 'end_ingest_date':
+                query = query.where(models.SPICEFiles.ingestion_date <= datetime.datetime.strptime(value, "%Y%m%d"))
 
         search_results = session.execute(query).scalars().all()
 
