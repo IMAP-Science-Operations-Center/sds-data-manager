@@ -215,7 +215,8 @@ def test_invalid_query(session):
     expected_response = json.dumps(
         "size is not a valid query parameter. "
         + "Valid query parameters are: "
-        + "['file_name', 'start_time', 'end_time', 'type', 'latest', 'start_ingest_date', 'end_ingest_date']"
+        + "['file_name', 'start_time', 'end_time', 'type'," 
+        + " 'latest', 'start_ingest_date', 'end_ingest_date']"
     )
     returned_query = spice_query_api.lambda_handler(event=event, context={})
     assert returned_query["statusCode"] == 400
@@ -238,7 +239,7 @@ def test_latest_query(session, expected_ck_response):
 
 
 def test_ingest_time_queries(session):
-    """Test 'start_ingest_date' and 'end_ingest_date' for accuracy"""
+    """Test 'start_ingest_date' and 'end_ingest_date' for accuracy."""
     _insert_ck_test_data(session)
 
     # This event *does not* contain the time range of the test ck file
