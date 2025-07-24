@@ -215,7 +215,7 @@ def test_invalid_query(session):
     expected_response = json.dumps(
         "size is not a valid query parameter. "
         + "Valid query parameters are: "
-        + "['file_name', 'start_time', 'end_time', 'type'," 
+        + "['file_name', 'start_time', 'end_time', 'type',"
         + " 'latest', 'start_ingest_date', 'end_ingest_date']"
     )
     returned_query = spice_query_api.lambda_handler(event=event, context={})
