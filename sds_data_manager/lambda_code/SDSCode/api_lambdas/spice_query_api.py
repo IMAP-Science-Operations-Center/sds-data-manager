@@ -64,59 +64,50 @@ def lambda_handler(event, context):
                     " valid options are: {valid_parameters}"
                 )
                 return response
-
-            if param == "start_time":
-                try:
+            try:
+                if param == "start_time":
                     query = query.where(models.SPICEFiles.max_date_j2000 >= int(value))
-                except ValueError:
-                    response = {
-                        "statusCode": 400,
-                        "body": json.dumps(f"Invalid value for {param}: {value}"),
-                    }
-                    logger.debug(f"Invalid value for {param}: {value}")
-                    return response
-            elif param == "end_time":
-                try:
+                elif param == "end_time":
                     query = query.where(models.SPICEFiles.min_date_j2000 <= int(value))
-                except ValueError:
-                    response = {
-                        "statusCode": 400,
-                        "body": json.dumps(f"Invalid value for {param}: {value}"),
-                    }
-                    logger.debug(f"Invalid value for {param}: {value}")
-                    return response
-            elif param == "type":
-                query = query.where(models.SPICEFiles.kernel_type == value)
-            elif param == "file_name":
-                query = query.where(models.SPICEFiles.file_name == value)
-            elif param == "latest" and value.lower() == "true":
-                # Make a subquery that gives us (file_root, MAX(version))
-                latest_versions_subq = (
-                    session.query(
-                        models.SPICEFiles.file_root,
-                        func.max(models.SPICEFiles.version).label("max_version"),
+                elif param == "type":
+                    query = query.where(models.SPICEFiles.kernel_type == value)
+                elif param == "file_name":
+                    query = query.where(models.SPICEFiles.file_name == value)
+                elif param == "latest" and value.lower() == "true":
+                    # Make a subquery that gives us (file_root, MAX(version))
+                    latest_versions_subq = (
+                        session.query(
+                            models.SPICEFiles.file_root,
+                            func.max(models.SPICEFiles.version).label("max_version"),
+                        )
+                        .group_by(models.SPICEFiles.file_root)
+                        .subquery()
                     )
-                    .group_by(models.SPICEFiles.file_root)
-                    .subquery()
-                )
 
-                # Join main query to subquery so that we only keep rows
-                # with the matching max version for each file_root
-                query = query.join(
-                    latest_versions_subq,
-                    (models.SPICEFiles.file_root == latest_versions_subq.c.file_root)
-                    & (models.SPICEFiles.version == latest_versions_subq.c.max_version),
-                )
-            elif param == "start_ingest_date":
-                query = query.where(
-                    models.SPICEFiles.ingestion_date
-                    >= datetime.datetime.strptime(value, "%Y%m%d")
-                )
-            elif param == "end_ingest_date":
-                query = query.where(
-                    models.SPICEFiles.ingestion_date
-                    <= datetime.datetime.strptime(value, "%Y%m%d")
-                )
+                    # Join main query to subquery so that we only keep rows
+                    # with the matching max version for each file_root
+                    query = query.join(
+                        latest_versions_subq,
+                        (models.SPICEFiles.file_root == latest_versions_subq.c.file_root)
+                        & (models.SPICEFiles.version == latest_versions_subq.c.max_version),
+                    )
+                elif param == "start_ingest_date":
+                    query = query.where(
+                        models.SPICEFiles.ingestion_date
+                        >= datetime.datetime.strptime(value, "%Y%m%d")
+                    )
+                elif param == "end_ingest_date":
+                    query = query.where(
+                        models.SPICEFiles.ingestion_date
+                        <= datetime.datetime.strptime(value, "%Y%m%d")
+                    )
+            except ValueError:
+                response = {
+                    "statusCode": 400,
+                    "body": json.dumps(f"Invalid value for {param}: {value}"),
+                }
+                logger.debug(f"Invalid value for {param}: {value}")
+                return response
 
         search_results = session.execute(query).scalars().all()
 

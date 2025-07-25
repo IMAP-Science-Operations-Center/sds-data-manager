@@ -250,7 +250,6 @@ def test_ingest_time_queries(session):
         }
     }
     returned_query = spice_query_api.lambda_handler(event=event, context={})
-    print(returned_query)
     assert len(json.loads(returned_query["body"])) == 0
 
     # This event *does* contain the time range of the test ck file
@@ -261,5 +260,4 @@ def test_ingest_time_queries(session):
         }
     }
     returned_query = spice_query_api.lambda_handler(event=event, context={})
-    print(returned_query)
     assert len(json.loads(returned_query["body"])) == 1
