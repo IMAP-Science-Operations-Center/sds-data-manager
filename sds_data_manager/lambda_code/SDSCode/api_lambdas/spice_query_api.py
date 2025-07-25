@@ -88,8 +88,14 @@ def lambda_handler(event, context):
                     # with the matching max version for each file_root
                     query = query.join(
                         latest_versions_subq,
-                        (models.SPICEFiles.file_root == latest_versions_subq.c.file_root)
-                        & (models.SPICEFiles.version == latest_versions_subq.c.max_version),
+                        (
+                            models.SPICEFiles.file_root
+                            == latest_versions_subq.c.file_root
+                        )
+                        & (
+                            models.SPICEFiles.version
+                            == latest_versions_subq.c.max_version
+                        ),
                     )
                 elif param == "start_ingest_date":
                     query = query.where(
