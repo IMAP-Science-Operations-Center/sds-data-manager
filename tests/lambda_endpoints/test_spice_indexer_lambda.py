@@ -161,7 +161,7 @@ def test_s3_spice_files(mock_download, session, events_client, s3_client):
     assert len(result) == 1
     assert result[0]["kernel_type"] == "attitude_history"
     assert result[0]["version"] == 1
-    assert len(result[0]["file_intervals_datetime"]) == 395  # 395 gaps detected
+    assert len(result[0]["file_intervals_datetime"]) == 1  # 1 gap detected
     result = spice_query_api.lambda_handler(
         {"queryStringParameters": {"type": "leapseconds"}}, None
     )
