@@ -415,7 +415,7 @@ def index_pointing_data(s3_key: str):
                 "repoint_start_utc": repoint_start_utc,
                 "repoint_end_utc": repoint_end_utc,
             }
-            # print(f"Processing repoint_id: {params}")
+
             pointing_entry = models.PointingTable(**params)
             session.add(pointing_entry)
         session.commit()

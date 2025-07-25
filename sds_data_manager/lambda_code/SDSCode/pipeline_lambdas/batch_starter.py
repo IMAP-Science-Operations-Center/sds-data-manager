@@ -643,37 +643,34 @@ def generate_queue_url(event):
     return queue_url
 
 
-def calculate_pointing_date_range(session, repoint_id):
+def calculate_pointing_date_range(session, pointing_id):
     """Calculate date range for the pointing data range using repoint files.
 
     Parameters
     ----------
     session : sqlalchemy.orm.Session
         Database session.
-    repoint_id : int
-        The ID of the repointing record.
+    pointing_id : int
+        The ID of the repointing.
 
     Returns
     -------
     tuple
         A tuple containing the start date and end date in the format YYYYMMDD.
     """
-    # Query the pointing table to find the repointing information.
-    repoint_record = (
+    # Query the pointing table to find the pointing information.
+    pointing_record = (
         session.query(models.PointingTable).filter(
-            models.PointingTable.pointing_id == repoint_id
+            models.PointingTable.pointing_id == pointing_id
         )
     ).first()
 
-    if not repoint_record:
-        raise ValueError(f"No PointingTable record found for ID: {repoint_id}")
+    if not pointing_record:
+        raise ValueError(f"No PointingTable record found for ID: {pointing_id}")
 
-    # TODO: double check which time to use for the start and end dates.
-    start_date = repoint_record.pointing_start_utc.strftime("%Y%m%d")
-    end_date = repoint_record.pointing_end_utc.strftime("%Y%m%d")
-    logger.info(
-        f"repointing date range, start_date: {start_date}, end_date: {end_date}"
-    )
+    start_date = pointing_record.pointing_start_utc.strftime("%Y%m%d")
+    end_date = pointing_record.pointing_end_utc.strftime("%Y%m%d")
+    logger.info(f"pointing date range, start_date: {start_date}, end_date: {end_date}")
 
     return start_date, end_date
 
@@ -698,8 +695,9 @@ def determine_date_range(session, file_obj):
     if isinstance(file_obj, SPICEFilePath):
         file_type = file_obj.spice_metadata["type"]
         if file_type == "repoint":
-            # TODO: fix calculations for repoint date range in upcoming PR
-            # when we work on pointing attitude job.
+            # NOTE:
+            # Repoint file is used to kicks off pointing_attitude job only.
+            # This date range is used to query attitude kernel file(s).
             start_date = (
                 file_obj.spice_metadata["end_date"] - datetime.timedelta(days=1)
             ).strftime("%Y%m%d")
