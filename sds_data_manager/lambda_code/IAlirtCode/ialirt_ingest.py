@@ -105,7 +105,7 @@ def get_latest_spice_kernels(account: str) -> ProcessingInputCollection:
 
     file_types = ",".join(KERNELS)
     if account == "prod":
-        url = "https://api.prod.imap-mission.com/metakernel"
+        url = "https://api.imap-mission.com/metakernel"
     else:
         url = "https://api.dev.imap-mission.com/metakernel"
 
