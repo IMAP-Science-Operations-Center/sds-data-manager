@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import boto3
@@ -26,6 +27,12 @@ from imap_processing.ialirt.l0.process_codice import process_codice
 from imap_processing.ialirt.l0.process_hit import process_hit
 from imap_processing.ialirt.l0.process_swapi import process_swapi_ialirt
 from imap_processing.ialirt.l0.process_swe import process_swe
+from imap_processing.spice.geometry import (
+    SpiceBody,
+    SpiceFrame,
+    imap_state,
+)
+from imap_processing.spice.time import met_to_sclkticks, sct_to_et
 from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
@@ -318,6 +325,15 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         existing = existing_items.get(met)
         raw["last_modified"] = datetime.now(timezone.utc).isoformat()
 
+        # Calculate the spacecraft position and velocity in GSM coordinates.
+        et = sct_to_et(met_to_sclkticks(met))
+        gsm_state = imap_state(
+            et, ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
+        )
+
+        raw["sc_position_GSM"] = [Decimal(str(val)) for val in gsm_state[0, :3]]
+        raw["sc_velocity_GSM"] = [Decimal(str(val)) for val in gsm_state[0, 3:]]
+
         if existing:
             if any(key.startswith(instrument) for key in existing.keys()):
                 continue
@@ -325,13 +341,29 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
             update_expr = "SET " + ", ".join(
                 f"{field} = :{field}"
                 for field in raw
-                if field not in {"apid", "met", "met_in_utc", "ttj2000ns"}
+                if field
+                not in {
+                    "apid",
+                    "met",
+                    "met_in_utc",
+                    "ttj2000ns",
+                    "sc_position_GSM",
+                    "sc_velocity_GSM",
+                }
             )
 
             expression_values = {
                 f":{field}": value
                 for field, value in raw.items()
-                if field not in {"apid", "met", "met_in_utc", "ttj2000ns"}
+                if field
+                not in {
+                    "apid",
+                    "met",
+                    "met_in_utc",
+                    "ttj2000ns",
+                    "sc_position_GSM",
+                    "sc_velocity_GSM",
+                }
             }
 
             algorithm_table.update_item(
