@@ -80,13 +80,13 @@ def test_lambda_handler(session, s3_client):
     # Other records needed for this test
     records = [
         ScienceFiles(
-            file_path="/path/to/imap_swe_l0_raw_20240110_v001.pkts",
+            file_path="/path/to/imap_swe_l0_raw_20240101_v001.pkts",
             instrument="swe",
             data_level="l0",
             descriptor="raw",
-            start_date=datetime(2024, 1, 10),
+            start_date=datetime(2024, 1, 1),
             version="v001",
-            extension="cdf",
+            extension="pkts",
             ingestion_date=datetime.strptime(
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
@@ -129,9 +129,9 @@ def test_lambda_handler(session, s3_client):
                     "--start-date",
                     "20240101",
                     "--version",
-                    "v011",
+                    "v001",
                     "--dependency",
-                    "imap_swe_l1a_sci_20240101_v011.json",
+                    "imap_swe_l1a_sci_20240101_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -154,7 +154,7 @@ def test_lambda_handler(session, s3_client):
             session,
             {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"},
             dt.datetime(2024, 1, 1, 0, 0),
-            "v012",
+            "v002",
             processing_input.serialize(),
         )
 
@@ -573,6 +573,32 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
             ingestion_date=datetime.strptime(
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
+        ),
+        # add pointing_attitude
+        SPICEFiles(
+            file_path="path/to/imap_dps_2024_001_2026_001_01.ah.bc",
+            file_name="imap_dps_2024_001_2026_001_01.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_dps_2024_001_2026_.ah.bc",
+            kernel_type="pointing_attitude",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
         ),
     ]
     session.add_all(records)
@@ -1918,7 +1944,163 @@ def test_lambda_skip_processing_due_to_crid_check(session, caplog):
 
     This indicates that a new upstream file is expected.
     """
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_lo_l1a_de_20240101_v001.cdf",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="de",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            crid="8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_lo_l1b_de_20240101_v002.cdf",
+            instrument="lo",
+            data_level="l1b",
+            descriptor="de",
+            start_date=datetime(2010, 1, 1),
+            version="v002",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_lo_l1a_de_20240102_v002.cdf",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="de",
+            start_date=datetime(2010, 1, 2),
+            version="v002",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_lo_l1a_spin_20240101_v001.cdf",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="spin",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        SPICEFiles(
+            file_path="path/to/imap_recon_20240101_20240101_v01.bsp",
+            file_name="imap_recon_20240101_20240101_v01.bsp",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_recon_20240101_20240101_.bsp",
+            kernel_type="ephemeris_reconstructed",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+        # Add ephemeris predicted file
+        SPICEFiles(
+            file_path="path/to/imap_pred_20240101_20240101_v01.bsp",
+            file_name="imap_pred_20240101_20240101_v01.bsp",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_pred_20240101_20240101_.bsp",
+            kernel_type="ephemeris_predicted",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+        # Attitude history file
+        SPICEFiles(
+            file_path="path/to/imap_2024_001_2024_001_01.ah.bc",
+            file_name="imap_2024_001_2024_001_01.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_2024_001_2024_001_.ah.bc",
+            kernel_type="attitude_history",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+        # pointing attitude file
+        SPICEFiles(
+            file_path="path/to/imap_dps_2024_001_2024_001_01.ah.bc",
+            file_name="imap_dps_2024_001_2024_001_01.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_dps_2024_001_2024_001_01.ah.bc",
+            kernel_type="pointing_attitude",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
     events = {
         "Records": [
             {

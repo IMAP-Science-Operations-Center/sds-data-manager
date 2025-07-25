@@ -256,6 +256,32 @@ def _static_spice_files(session):
             lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
             version=0,
         ),
+        # de###.bsp
+        SPICEFiles(
+            file_path="path/to/de440.bsp",
+            file_name="de440.bsp",
+            ingestion_date=datetime.strptime(
+                "2025-04-30 18:24:02+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="de440.bsp",
+            kernel_type="planetary_ephemeris",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T12:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=440,
+        ),
     ]
     session.add_all(common_spice_records)
     session.commit()

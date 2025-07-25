@@ -302,7 +302,7 @@ class DependencyConfig:
                 f"Invalid data source: {node[0]}. "
                 f"Valid data sources: {self.data_source.valid_source}"
             )
-        if node[1] not in self.data_type.valid_type:
+        if node[1] != "best" and node[1] not in self.data_type.valid_type:
             raise ValueError(
                 f"Invalid data type: {node[1]}. "
                 f"Valid data types: {self.data_type.valid_type}"
@@ -740,7 +740,7 @@ def matching_crids_exist(session, records) -> bool:
     return matching_crid
 
 
-# ruff: noqa: PLR0915, PLR0912
+# ruff: noqa: PLR0915, PLR0912, PLR0911
 def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
@@ -846,6 +846,10 @@ def get_upstream_dependency_inputs(
                 },
                 None,
             )
+            logger.error(
+                f"Metakernel lambda response: {metakernel_response} "
+                f"for {start_date} to {end_date}"
+            )
             if metakernel_response["statusCode"] != 200:
                 logger.info(
                     f"Metakernel lambda raised error: {metakernel_response['body']}"
@@ -855,7 +859,7 @@ def get_upstream_dependency_inputs(
             # If number of kernels returned doesn't match the number of file types
             # requested
             if len(metakernel_files) != len(combined_kernel_sources.split(",")):
-                logger.debug(
+                logger.error(
                     f"Number of metakernel files {metakernel_files} "
                     "does not match number of file types requested "
                     f"{combined_kernel_sources.split(',')}."
@@ -875,14 +879,17 @@ def get_upstream_dependency_inputs(
             for dep in dependencies
             if dep["data_type"] not in ["spice", "spin", "repoint"]
         ]
+        logger.debug(
+            f"Non-SPICE dependencies: {non_spice_dependencies} "
+            f"for {start_date} to {end_date}"
+        )
         for dep in non_spice_dependencies:
             relationship = dep["relationship"]
 
             dep_string = f"{dep=}\n{start_date=}\n{end_date=}"
 
             logger.info(
-                "Searching for upstream dependencies with dependency string: "
-                f"{dep_string}"
+                f"Searching for upstream dependencies with dependency string: {dep}"
             )
 
             records = get_files(session, dep, start_date, end_date)
@@ -1115,7 +1122,7 @@ def get_jobs(
         dependency_type,
         relationship,
     )
-    logger.info(f"Dependency nodes found: {dependencies}")
+    logger.info(f"{relationship} dependency nodes found: {dependencies}")
     if dependencies is None:
         logger.warning("Failed to load dependencies")
         raise ValueError("Failed to load dependencies")

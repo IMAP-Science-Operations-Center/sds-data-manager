@@ -1,5 +1,6 @@
 """Test data dependency functions."""
 
+import base64
 from datetime import datetime
 from unittest.mock import patch
 
@@ -935,7 +936,7 @@ def test_get_cadence_jobs():
 
 def test_calculate_crid(session):
     """Test CRID calculation."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
 
     record = (
         session.query(models.ScienceFiles)
@@ -966,7 +967,7 @@ def test_calculate_crid(session):
 
 def test_calculate_crid_l0(session):
     """Test CRID calculation."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
 
     record = (
         session.query(models.ScienceFiles)
@@ -984,7 +985,7 @@ def test_calculate_crid_l0(session):
 
 def test_matching_crid(session):
     """Test CRID check."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
 
     records = [
         AncillaryFiles(
@@ -1024,7 +1025,7 @@ def test_matching_crid(session):
 
 def test_new_crid(session):
     """Test that a new CRID is generated for a file with no CRID."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
 
     filename = "/path/to/imap_swe_l1b_sci_20240102_v001.cdf"
     records = [

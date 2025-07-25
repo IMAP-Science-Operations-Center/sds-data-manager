@@ -136,7 +136,7 @@ def lambda_handler(event, context):
             d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
         result["ingestion_date"] = d.strftime("%Y%m%d %H:%M:%S")
 
-    logger.info(
+    logger.debug(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
 
