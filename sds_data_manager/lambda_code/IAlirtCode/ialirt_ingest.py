@@ -79,8 +79,13 @@ def get_ancillary(instrument, descriptor):
     return download_path
 
 
-def get_latest_spice_kernels() -> ProcessingInputCollection:
+def get_latest_spice_kernels(account: str) -> ProcessingInputCollection:
     """Query the SPICE metakernel API for latest SPICE kernel filenames.
+
+    Parameters
+    ----------
+    account: str
+        AWS account name.
 
     Returns
     -------
@@ -99,7 +104,10 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     et_start_time = (one_week_ago - j2000).total_seconds()
 
     file_types = ",".join(KERNELS)
-    url = "https://api.dev.imap-mission.com/metakernel"
+    if account == "prod":
+        url = "https://api.prod.imap-mission.com/metakernel"
+    else:
+        url = "https://api.dev.imap-mission.com/metakernel"
 
     params = {
         "start_time": str(int(et_start_time)),
@@ -359,6 +367,7 @@ def lambda_handler(event, context):
     logger.info("Received event: %s", json.dumps(event))
 
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
+    account = os.environ.get("AWS_ACCOUNT")
     dynamodb = boto3.resource("dynamodb")
     algorithm_table = dynamodb.Table(algorithm_table_name)
 
@@ -368,7 +377,7 @@ def lambda_handler(event, context):
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
-    dependency_inputs = get_latest_spice_kernels()
+    dependency_inputs = get_latest_spice_kernels(account)
     logger.info("dependency_inputs: %s", dependency_inputs)
     download_spice_file(dependency_inputs)
 

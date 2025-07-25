@@ -22,6 +22,7 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         vpc: ec2.Vpc,
         efs_access_point: efs.AccessPoint,
+        account: str,
         docker_path: str = "sds_data_manager/lambda_code",
         **kwargs,
     ) -> None:
@@ -39,6 +40,8 @@ class IalirtIngestLambda(Construct):
             VPC into which to put the resources that require networking.
         efs_access_point: efs.AccessPoint
             EFS access point to mount inside the Lambda function.
+        account : str
+            AWS account name: "prod" or "dev".
         docker_path : str
             Path to the Dockerfile.
         kwargs : dict
@@ -59,6 +62,7 @@ class IalirtIngestLambda(Construct):
             ialirt_bucket,
             self.algorithm_data_table,
             docker_path,
+            account,
         )
 
         # Create Event Rule
@@ -123,6 +127,7 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         algorithm_data_table: aws_dynamodb.Table,
         docker_path: str,
+        account: str,
     ) -> lambda_.DockerImageFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -173,6 +178,7 @@ class IalirtIngestLambda(Construct):
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
                 "EFS_SPICE_MOUNT_PATH": "/mnt/data",
+                "AWS_ACCOUNT": account,
             },
         )
         ialirt_ingest_lambda.add_to_role_policy(s3_read_policy)
