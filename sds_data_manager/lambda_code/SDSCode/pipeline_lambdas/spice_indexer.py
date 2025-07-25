@@ -127,7 +127,7 @@ def get_coverage_dictionary(spice_file: Path, **kwargs):
     for i_window in range(card):
         # 4) Retrieve the time span of each interval
         (left, right) = spiceypy.wnfetd(cover, i_window)
-        # 5) Throw out any singleton points. You cannot interpolate between these. 
+        # 5) Throw out any singleton points. You cannot interpolate between these.
         if left != right:
             results_j2000.append([left, right])
             # 6) Convert the time span to datetime
