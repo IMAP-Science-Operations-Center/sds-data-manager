@@ -98,15 +98,11 @@ def lambda_handler(event, context):
                         ),
                     )
                 elif param == "start_ingest_date":
-                    query = query.where(
-                        models.SPICEFiles.ingestion_date
-                        >= datetime.datetime.strptime(value, "%Y%m%d")
-                    )
+                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+                    query = query.where(models.SPICEFiles.ingestion_date >= parsed_date)
                 elif param == "end_ingest_date":
-                    query = query.where(
-                        models.SPICEFiles.ingestion_date
-                        <= datetime.datetime.strptime(value, "%Y%m%d")
-                    )
+                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+                    query = query.where(models.SPICEFiles.ingestion_date <= parsed_date)
             except ValueError:
                 response = {
                     "statusCode": 400,
