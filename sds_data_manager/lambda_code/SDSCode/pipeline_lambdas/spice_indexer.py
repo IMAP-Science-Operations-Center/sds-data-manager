@@ -37,7 +37,7 @@ MAXIMUM_J2000_INTERVAL = [
 COVERAGE_ANGULAR_VELOCITY_ONLY = False  # Only include segments with angular velocity?
 COVERAGE_SPICE_ARRAY_LENGTH = 10000  # Use an array size of 10000 for coverage calc
 COVERAGE_LEVEL = "INTERVAL"  # the granularity at which the coverage is examined
-COVERAGE_TOLERANCE = 50000.0  # Tolerance value expressed in ticks of the spacecraft.
+COVERAGE_TOLERANCE = 0.0  # Tolerance value expressed in ticks of the spacecraft.
 COVERAGE_TIME_SYSTEM = "TDB"  # Whether to use J2000 (TDB) or spacecraft clock (SCLK)
 
 
@@ -127,18 +127,20 @@ def get_coverage_dictionary(spice_file: Path, **kwargs):
     for i_window in range(card):
         # 4) Retrieve the time span of each interval
         (left, right) = spiceypy.wnfetd(cover, i_window)
-        results_j2000.append([left, right])
-        # 5) Convert the time span to datetime
-        results_datetime.append(
-            [spiceypy.et2datetime(left), spiceypy.et2datetime(right)]
-        )
-        # 6) Convert the time span to spacecraft clock time
-        results_sclk.append(
-            [
-                spiceypy.sce2s(SPACECRAFT_ID, left),
-                spiceypy.sce2s(SPACECRAFT_ID, right),
-            ]
-        )
+        # 5) Throw out any singleton points. You cannot interpolate between these. 
+        if left != right:
+            results_j2000.append([left, right])
+            # 6) Convert the time span to datetime
+            results_datetime.append(
+                [spiceypy.et2datetime(left), spiceypy.et2datetime(right)]
+            )
+            # 7) Convert the time span to spacecraft clock time
+            results_sclk.append(
+                [
+                    spiceypy.sce2s(SPACECRAFT_ID, left),
+                    spiceypy.sce2s(SPACECRAFT_ID, right),
+                ]
+            )
 
     return results_j2000, results_datetime, results_sclk
 
