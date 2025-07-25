@@ -758,7 +758,16 @@ ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-cullingmask, HARD, DOWNST
 ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-cullingmask,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
 
+# LUTS
 ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-leftslit-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-rightslit-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-back-pos-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tdc-norm-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-gf, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+
 
 spacecraft_clock, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -789,6 +798,7 @@ ultra, ancillary, l1c-90sensor-dps-exposure, ultra, l1c, 45sensor-spacecraftpset
 ultra, ancillary, l1c-90sensor-gf, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-efficiencies, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-dps-exposure, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 
 spacecraft_clock, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
@@ -812,6 +822,14 @@ ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREA
 ultra, l1b, 90sensor-cullingmask,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
 
 ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-back-pos-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tdc-norm-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-gf, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 
 spacecraft_clock, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
