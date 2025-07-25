@@ -99,8 +99,7 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     et_start_time = (one_week_ago - j2000).total_seconds()
 
     file_types = ",".join(KERNELS)
-    # TODO: replace this url with the endpoint from imap-data-access.
-    url = "https://ylxiee1ond.execute-api.us-west-2.amazonaws.com/metakernel"
+    url = "https://api.dev.imap-mission.com/metakernel"
 
     params = {
         "start_time": str(int(et_start_time)),
