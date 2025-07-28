@@ -207,7 +207,7 @@ class PointingTable(Base):
 
     __tablename__ = "pointing_table"
     pointing_id = Column(Integer, nullable=False, primary_key=True, unique=True)
-    pointing_start_utc = Column(DateTime(timezone=True))
+    pointing_start_utc = Column(DateTime(timezone=True), nullable=False)
     pointing_end_utc = Column(DateTime(timezone=True))
     repoint_start_utc = Column(DateTime(timezone=True))
     repoint_end_utc = Column(DateTime(timezone=True))

@@ -349,16 +349,17 @@ def index_pointing_data(s3_key: str):
     """Insert pointing data into pointing database table.
 
     Pointing data is derived from the repoint file data. Steps:
-    1. Download the repoint file from S3
-    2. Read the CSV file using pandas
-    3. Filter repoint_id that's not in pointing_table
-    4. For each new repoint_id, calculate pointing_start_utc and pointing_end_utc
+    * Download the repoint file from S3
+    * Read the CSV file using pandas
+    * Filter repoint_id that's not in pointing_table
+    * Fill rows with None values with new values
+    * For each new repoint_id, calculate pointing_start_utc and pointing_end_utc
         Formula are:
         pointing_start_utc = repoint_end_utc of repoint_id
         pointing_end_utc = repoint_end_utc of repoint_id + 1
         repoint_start_utc = repoint_start_utc of repoint_id + 1
         repoint_end_utc = repoint_end_utc of repoint_id + 1
-    5. Insert into pointing table
+    * Insert into pointing table
 
     Parameters
     ----------
@@ -366,20 +367,53 @@ def index_pointing_data(s3_key: str):
         S3 path of the repoint file.
     """
     logger.info(f"Indexing {s3_key} to pointing table")
-    # 1. Download repoint file
+    # Download repoint file
     repoint_file_path = download(s3_key)
-    # 2. Read CSV file using pandas
+    # Read CSV file using pandas
     repoint_df = pd.read_csv(repoint_file_path)
 
     with db.Session() as session:
-        # 3. Filter repoint_id that's not in pointing_table
+        # Update existing entries with None values
+        for pointing_entry in (
+            session.query(models.PointingTable)
+            .filter(
+                (models.PointingTable.pointing_end_utc.is_(None))
+                | (models.PointingTable.repoint_start_utc.is_(None))
+                | (models.PointingTable.repoint_end_utc.is_(None))
+            )
+            .all()
+        ):
+            repoint_row = repoint_df[
+                repoint_df["repoint_id"] == pointing_entry.pointing_id
+            ]
+            if not repoint_row.empty:
+                next_row = repoint_df[
+                    repoint_df["repoint_id"] == pointing_entry.pointing_id + 1
+                ]
+
+                if not next_row.empty:
+                    pointing_entry.pointing_end_utc = pd.to_datetime(
+                        next_row.iloc[0]["repoint_end_utc"]
+                    )
+                    pointing_entry.repoint_start_utc = pd.to_datetime(
+                        next_row.iloc[0]["repoint_start_utc"]
+                    )
+                    pointing_entry.repoint_end_utc = pd.to_datetime(
+                        next_row.iloc[0]["repoint_end_utc"]
+                    )
+                else:
+                    pointing_entry.repoint_start_utc = None
+                    pointing_entry.repoint_end_utc = None
+                    pointing_entry.pointing_end_utc = None
+
+        # Filter repoint_id that's not in pointing_table
         pointing_ids = session.query(models.PointingTable.pointing_id).all()
         existing_ids = [id[0] for id in pointing_ids]
 
         # Only process repoint_ids not already in the table
         new_repoint_df = repoint_df[~repoint_df["repoint_id"].isin(existing_ids)]
 
-        # 4. For each new repoint_id, calculate pointing_start_utc and pointing_end_utc
+        # For each new repoint_id, calculate pointing_start_utc and pointing_end_utc
         for _, row in new_repoint_df.iterrows():
             repoint_id = row["repoint_id"]
             try:
