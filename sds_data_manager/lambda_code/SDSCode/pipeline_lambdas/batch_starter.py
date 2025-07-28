@@ -644,7 +644,7 @@ def generate_queue_url(event):
 
 
 def calculate_pointing_date_range(session, pointing_id):
-    """Calculate date range for the pointing data range using repoint files.
+    """Calculate date range for the pointing id using pointing data.
 
     Parameters
     ----------
@@ -670,7 +670,7 @@ def calculate_pointing_date_range(session, pointing_id):
 
     start_date = pointing_record.pointing_start_utc.strftime("%Y%m%d")
     end_date = pointing_record.pointing_end_utc.strftime("%Y%m%d")
-    logger.info(f"pointing date range, start_date: {start_date}, end_date: {end_date}")
+    logger.debug(f"pointing date range, start_date: {start_date}, end_date: {end_date}")
 
     return start_date, end_date
 
@@ -697,7 +697,8 @@ def determine_date_range(session, file_obj):
         if file_type == "repoint":
             # NOTE:
             # Repoint file is used to kicks off pointing_attitude job only.
-            # This date range is used to query attitude kernel file(s).
+            # This date range is used to query attitude kernel file(s). If
+            # Other is dependent on the repoint file, please revisit this logic.
             start_date = (
                 file_obj.spice_metadata["end_date"] - datetime.timedelta(days=1)
             ).strftime("%Y%m%d")
@@ -714,7 +715,7 @@ def determine_date_range(session, file_obj):
             "lo",
             "ultra",
         ]:
-            logger.info(
+            logger.debug(
                 "Using repointing file to calculate date range for"
                 f" {file_obj.instrument}."
             )
