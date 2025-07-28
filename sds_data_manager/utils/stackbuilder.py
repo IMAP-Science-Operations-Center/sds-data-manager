@@ -17,6 +17,7 @@ from sds_data_manager.constructs import (
     ialirt_api_manager_construct,
     ialirt_archive_construct,
     ialirt_bucket_construct,
+    ialirt_coverage_construct,
     ialirt_efs_construct,
     ialirt_ingest_lambda_construct,
     ialirt_processing_construct,
@@ -317,6 +318,13 @@ def build_sds(
         construct_id="IalirtArchive",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         algorithm_data_table=ingest.algorithm_data_table,
+    )
+
+    # I-ALiRT IOIS coverage lambda (facilitates creating coverage json in s3)
+    ialirt_coverage_construct.IalirtCoverageConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtCoverage",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
     )
 
     ialirt_monitoring = monitoring_construct.MonitoringConstruct(

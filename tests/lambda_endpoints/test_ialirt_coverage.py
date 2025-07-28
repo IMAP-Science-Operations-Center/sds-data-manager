@@ -1,5 +1,6 @@
 """Test the I-Alirt coverage lambda function."""
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -36,10 +37,12 @@ def test_lambda_handler(
 
     s3_client.put_object(
         Bucket=bucket,
-        Key="outages_20260922.txt",
-        Body=(
-            "Kiel,2026-09-22T13:50:00.00Z,2026-09-22T14:10:00.00Z\n"
-            "DSS-75,2026-09-25T08:00:00.00Z,2026-09-25T09:30:00.00Z"
+        Key="imap_ialirt_outages_20260922_v001.json",
+        Body=json.dumps(
+            {
+                "Kiel": [["2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00.00Z"]],
+                "DSS-75": [["2026-09-25T08:00:00.00Z", "2026-09-25T09:30:00.00Z"]],
+            }
         ),
     )
 
@@ -49,12 +52,14 @@ def test_lambda_handler(
 
     mock_download.return_value = None
     mock_furnsh.return_value = None
-    mock_get_dsn.return_value = (Path("/dsn_contact_schedule.txt"), {})
+    mock_get_dsn.return_value = (
+        Path("/imap_ialirt_contact-schedule_20260922_v001.tsv"),
+        {},
+    )
 
     event = {
         "region": region,
         "detail": {
-            "object": {"key": "packets/file.txt"},
             "bucket": {"name": bucket},
         },
     }
@@ -73,9 +78,9 @@ def test_get_latest_outage_file(
     mock_query, mock_ancillaryfilepath, mock_download, tmp_path
 ):
     """Test the get_latest_outage_file function."""
-    mock_path = Path("/ialirt/outages/outages_20260922.txt")
+    mock_path = Path("/imap_ialirt_outages_20260922_v001.json")
     mock_download.return_value = mock_path
-    mock_query.return_value = [{"file_path": "ialirt/outages/outages_20260922.txt"}]
+    mock_query.return_value = [{"file_path": "/imap_ialirt_outages_20260922_v001.json"}]
     mock_construct_path = MagicMock(return_value=mock_path)
     mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
 
@@ -87,12 +92,14 @@ def test_get_latest_outage_file(
 
 def test_parse_outage_file(tmp_path: Path):
     """Test the parse_outage_file function with a local file."""
-    file_path = tmp_path / "outages_2026_09_22.txt"
-    file_content = (
-        "Kiel,2026-09-22T13:50:00.00Z,2026-09-22T14:10:00Z\n"
-        "DSS-75,2026-09-25T08:00:00.00Z,2026-09-25T09:30:00Z\n"
-    )
-    file_path.write_text(file_content, encoding="utf-8")
+    file_path = tmp_path / "imap_ialirt_outages_20260922_vxxx.json"
+    json_data = {
+        "Kiel": [
+            ["2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00Z"],
+        ],
+        "DSS-75": [["2026-09-25T08:00:00.00Z", "2026-09-25T09:30:00Z"]],
+    }
+    file_path.write_text(json.dumps(json_data), encoding="utf-8")
 
     outages = parse_outage_file(file_path)
 
@@ -122,7 +129,7 @@ def test_generate_and_upload_30_days(s3_client):
     assert len(keys) == 30
 
     # Check the naming pattern
-    assert keys[0].startswith("coverage/coverage_")
+    assert keys[0].startswith("coverage/imap_ialirt_coverage_")
 
     # Download and verify one file's content
     response = s3_client.get_object(Bucket=bucket, Key=keys[0])
@@ -179,9 +186,11 @@ def test_setup_spice_file(mock_download, mock_furnsh):
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.query")
 def test_get_dsn(mock_query, mock_ancillaryfilepath, mock_download, tmp_path):
     """Test get_dsn function."""
-    mock_path = Path("/ialirt/contact-schedule/dsn_file.txt")
+    mock_path = Path("imap_ialirt_contact-schedule_20260922_v001.tsv")
     mock_download.return_value = mock_path
-    mock_query.return_value = [{"file_path": "ialirt/contact-schedule/dsn_file.txt"}]
+    mock_query.return_value = [
+        {"file_path": "imap_ialirt_contact-schedule_20260922_v001.tsv"}
+    ]
     mock_construct_path = MagicMock(return_value=mock_path)
     mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
 

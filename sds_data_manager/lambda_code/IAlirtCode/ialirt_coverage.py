@@ -116,7 +116,7 @@ def setup_spice_file(dependencies) -> list[Path]:
     Returns
     -------
     spice_files: list[Path]
-        A list of Path objects representing the SPICE files stored in EFS.
+        A list of Path objects representing the downloaded SPICE files.
 
     Notes
     -----
@@ -176,9 +176,13 @@ def parse_outage_file(file_path: Path) -> dict[str, list[tuple[str, str]]]:
 
     Notes
     -----
-    Input text file format:
-    Kiel,2026-09-22T13:50:00.00Z,2026-09-22T14:10:00Z
-    Kiel,2026-09-25T08:00:00.00Z,2026-09-25T09:30:00Z
+    Input json file format:
+    {
+        "Kiel": [
+            ["2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00Z"],
+            ["2026-09-25T08:00:00.00Z", "2026-09-25T09:30:00Z"]
+        ]
+    }
 
     Output dictionary structure:
         outages = {
@@ -188,14 +192,14 @@ def parse_outage_file(file_path: Path) -> dict[str, list[tuple[str, str]]]:
         ],
     }
     """
-    content = file_path.read_text(encoding="utf-8").strip().splitlines()
+    with file_path.open("r", encoding="utf-8") as f:
+        raw_outages: dict[str, list[list[str]]] = json.load(f)
 
-    outages: dict[str, list[tuple[str, str]]] = {}
-    for line in content:
-        if not line.strip():
-            continue
-        station, start, end = [x.strip() for x in line.split(",")]
-        outages.setdefault(station, []).append((start, end))
+    # Convert inner lists to tuples
+    outages = {
+        station: [tuple(period) for period in periods]
+        for station, periods in raw_outages.items()
+    }
 
     return outages
 
@@ -243,7 +247,7 @@ def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: di
             "Total Coverage Percent: 37.5%"
         )
 
-        output_key = f"coverage/coverage_{day.strftime('%Y%m%d')}.json"
+        output_key = f"coverage/imap_ialirt_coverage_{day.strftime('%Y%m%d')}.json"
 
         s3_client = boto3.client("s3", region_name=region)
         s3_client.put_object(
