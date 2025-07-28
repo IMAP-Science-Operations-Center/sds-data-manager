@@ -598,6 +598,94 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     return basename(latest_repoint_file.file_path)
 
 
+def check_requested_kernels(combined_kernel_sources, metakernel_files):
+    """Check if all requested kernels are present in the metakernel files.
+
+    We need to check that returned metakernel files contain all requested
+    kernels. We need to add special check for ephemeris kernels because
+    API can return 'best' ephemeris kernels, which can contain both
+    historical and predicted kernels based on input times. If user
+    requests historical ephemeris kernels only, then we need to check that
+    we only returns historical ephemeris kernel file. Otherwise,
+    we can return both historical and predicted ephemeris kernels.
+
+    Parameters
+    ----------
+    combined_kernel_sources : str
+        Comma-separated string of requested kernel sources.
+    metakernel_files : list
+        List of metakernel files found.
+
+    Returns
+    -------
+    bool
+        True if all requested kernels are found, False otherwise.
+    """
+    requested_kernels = set(combined_kernel_sources.split(","))
+    ephemeris_expected = set(
+        [kernel for kernel in requested_kernels if "ephemeris_" in kernel]
+    )
+    other_kernels_expected = set(
+        [kernel for kernel in requested_kernels if "ephemeris_" not in kernel]
+    )
+
+    ephemeris_found = set()
+    other_found = set()
+
+    for file in metakernel_files:
+        file_obj = imap_data_access.SPICEFilePath(file)
+        # Extract the kernel type from the file name
+        kernel_type = file_obj.spice_metadata["type"]
+        if "ephemeris_" in kernel_type:
+            ephemeris_found.add(kernel_type)
+        else:
+            other_found.add(kernel_type)
+
+    logger.error(
+        f"Requested ephemeris kernels: {ephemeris_expected}, "
+        f"found in metakernel files: {ephemeris_found}"
+        f"\nRequested other kernels: {other_kernels_expected}, "
+        f"found in metakernel files: {other_found}"
+    )
+    # Check if all requested other kernels are found
+    if other_kernels_expected == other_found:
+        pass
+    else:
+        logger.error(
+            f"Non-ephemeris kernels {other_kernels_expected} not found in "
+            f"metakernel files {other_found}"
+        )
+        return False
+
+    # If only historical ephemeris kernel is requested, check that it
+    # is found.
+    if (
+        len(ephemeris_expected) == 1
+        and ephemeris_expected[0] == "ephemeris_reconstructed"
+        and "ephemeris_reconstructed" in ephemeris_found
+    ):
+        logger.error(
+            f"Found historical ephemeris kernel: {ephemeris_expected} in "
+            f"metakernel files: {ephemeris_found}"
+        )
+        return True
+
+    # If 'best' ephemeris kernel is requested, check that at least one of the kernels
+    # is found in the metakernel files.
+    if (
+        len(ephemeris_expected) > 1
+        and any("ephemeris_" in kernel for kernel in ephemeris_expected)
+        and ("ephemeris_" in ephemeris_found)
+    ):
+        logger.error(
+            f"Found 'best' ephemeris kernels: {ephemeris_expected} in "
+            f"metakernel files: {ephemeris_found}"
+        )
+        return True
+
+    return False
+
+
 def get_upstream_versions(session, record, versions) -> dict:
     """Recursively retrieves all upstream versions for a given record.
 
@@ -858,11 +946,14 @@ def get_upstream_dependency_inputs(
             metakernel_files = json.loads(metakernel_response["body"])
             # If number of kernels returned doesn't match the number of file types
             # requested
-            if len(metakernel_files) != len(combined_kernel_sources.split(",")):
+            has_all_kernels = check_requested_kernels(
+                combined_kernel_sources, metakernel_files
+            )
+            if not has_all_kernels:
                 logger.error(
-                    f"Number of metakernel files {metakernel_files} "
-                    "does not match number of file types requested "
-                    f"{combined_kernel_sources.split(',')}."
+                    f"Not all requested kernels were found. "
+                    f"Requested: {combined_kernel_sources}. "
+                    f"Found: {metakernel_files}."
                 )
                 return None
 

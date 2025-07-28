@@ -275,7 +275,6 @@ def test_metakernel_filtered_file_types(session):
     assert result["body"] == "No files found."
 
 
-# skip this test
 @pytest.mark.skip(reason="Need to fix the spiceypy.datetime2et() call")
 def test_metakernel_string_input(session):
     """Test that string input is allowed, and is converted to a datetime object."""
