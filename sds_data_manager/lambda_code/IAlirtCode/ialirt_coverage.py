@@ -39,6 +39,14 @@ def get_dsn(download_dir: Path):
         Path to the downloaded DSN file.
     dsn_dict : dict
         Contents of latest contact schedule.
+
+    Notes
+    -----
+    Example of DSN structure:
+    S/C   Year/DOY    AOS       LOS      STA    Orbit  SOE/TR  Local Time (UTC -0600)
+    ---------------------------------------------------------------------------------
+    IMAP  2025/203  21:40:00  01:40:00  DSS-56  -----  ------  Tue Jul 22 03:40PM
+    IMAP  2025/204  22:00:00  01:10:00  DSS-55  -----  ------  Wed Jul 23 04:00PM
     """
     imap_data_access.config["DATA_DIR"] = download_dir
     dsn_files = imap_data_access.query(
@@ -49,17 +57,41 @@ def get_dsn(download_dir: Path):
     )
 
     if not dsn_files:
-        dsn_dict = {}
         logger.info("No DSN files found for IALiRT. Returning empty dict.")
+        return None, {}
 
     dsn_path = dsn_files[0]
-
     download_path = imap_data_access.download(dsn_path["file_path"])
     logger.info(f"Downloading to {download_path}.")
 
-    # Placeholder
-    # TODO: parse the file and return a populated dict once we know the file structure.
-    dsn_dict = {}
+    dsn_dict: dict[str, list[tuple[str, str]]] = {}
+
+    with open(download_path, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    # Skip header lines
+    for line in lines:
+        if line.startswith("IMAP"):
+            parts = line.split()
+
+            year_doy = parts[1]
+            aos = parts[2]
+            los = parts[3]
+            station = parts[4]
+
+            # Parse AOS time
+            year, doy = map(int, year_doy.split("/"))
+            aos_dt = datetime.strptime(f"{year} {doy} {aos}", "%Y %j %H:%M:%S")
+            los_dt = datetime.strptime(f"{year} {doy} {los}", "%Y %j %H:%M:%S")
+
+            # If LOS time is earlier than AOS, it must be the next day
+            if los_dt < aos_dt:
+                los_dt += timedelta(days=1)
+
+            start = aos_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+            end = los_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+            dsn_dict.setdefault(station, []).append((start, end))
 
     return download_path, dsn_dict
 

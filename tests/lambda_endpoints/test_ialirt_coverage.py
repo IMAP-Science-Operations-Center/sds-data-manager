@@ -1,6 +1,7 @@
 """Test the I-Alirt coverage lambda function."""
 
 import json
+import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -186,16 +187,29 @@ def test_setup_spice_file(mock_download, mock_furnsh):
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.imap_data_access.query")
 def test_get_dsn(mock_query, mock_ancillaryfilepath, mock_download, tmp_path):
     """Test get_dsn function."""
-    mock_path = Path("imap_ialirt_contact-schedule_20260922_v001.tsv")
-    mock_download.return_value = mock_path
+    dsn_file = tmp_path / "imap_ialirt_contact-schedule_20260922_v001.tsv"
+    dsn_file.write_text(
+        textwrap.dedent(
+            """\
+            S/C   Year/DOY    AOS       LOS      STA    Orbit  SOE/TR  Local Time
+            ---------------------------------------------------------------------
+            IMAP  2025/203  21:40:00  01:40:00  DSS-56  -----  ------  Tue Jul 22
+            IMAP  2025/204  22:00:00  01:10:00  DSS-55  -----  ------  Wed Jul 23
+            """
+        )
+    )
+    mock_download.return_value = dsn_file
     mock_query.return_value = [
         {"file_path": "imap_ialirt_contact-schedule_20260922_v001.tsv"}
     ]
-    mock_construct_path = MagicMock(return_value=mock_path)
-    mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
+    mock_ancillaryfilepath.return_value.construct_path = MagicMock(
+        return_value=dsn_file
+    )
 
-    with patch.object(Path, "exists", return_value=False):
-        path, dict = get_dsn(tmp_path)
+    path, dsn_dict = get_dsn(tmp_path)
 
-    assert path == mock_path
-    assert dict == {}
+    assert path == dsn_file
+    assert dsn_dict == {
+        "DSS-56": [("2025-07-22T21:40:00Z", "2025-07-23T01:40:00Z")],
+        "DSS-55": [("2025-07-23T22:00:00Z", "2025-07-24T01:10:00Z")],
+    }
