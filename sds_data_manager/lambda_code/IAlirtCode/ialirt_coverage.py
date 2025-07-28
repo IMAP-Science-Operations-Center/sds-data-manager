@@ -263,9 +263,9 @@ def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: di
         # start_time = day.strftime("%Y-%m-%dT00:00:00Z")
 
         # Placeholder for after we import from imap_processing.
-        # coverage_dict = generate_coverage(start_time=start_time,
-        # outages=outages, dsn=dsn)
-        # table_output = format_coverage_summary(coverage_dict, start_time)
+        # coverage_dict, outage_dict = generate_coverage(start_time,
+        # outages, dsn)
+        # table_output = format_coverage_summary(coverage_dict, outage_dict, start_time)
         table_output = (
             "# I-ALiRT Coverage Summary\n"
             "# Generated: 2026-09-22T00:00:00Z\n"
