@@ -657,6 +657,9 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
         )
         return False
 
+    # If no ephemeris kernels are requested, we can return True.
+    if not ephemeris_expected:
+        return True
     # If only historical ephemeris kernel is requested, check that it
     # is found.
     if (
@@ -664,10 +667,6 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
         and ephemeris_expected[0] == "ephemeris_reconstructed"
         and "ephemeris_reconstructed" in ephemeris_found
     ):
-        logger.error(
-            f"Found historical ephemeris kernel: {ephemeris_expected} in "
-            f"metakernel files: {ephemeris_found}"
-        )
         return True
 
     # If 'best' ephemeris kernel is requested, check that at least one of the kernels
@@ -675,12 +674,8 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
     if (
         len(ephemeris_expected) > 1
         and any("ephemeris_" in kernel for kernel in ephemeris_expected)
-        and ("ephemeris_" in ephemeris_found)
+        and any("ephemeris_" in kernel for kernel in ephemeris_found)
     ):
-        logger.error(
-            f"Found 'best' ephemeris kernels: {ephemeris_expected} in "
-            f"metakernel files: {ephemeris_found}"
-        )
         return True
 
     return False
