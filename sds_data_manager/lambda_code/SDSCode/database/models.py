@@ -218,8 +218,6 @@ class RepointTable(Base):
 
     __tablename__ = "repoint_table"
     file_path = Column(String, nullable=False, primary_key=True, unique=True)
-    # TODO: determine start date in upcoming PR
-    # date from file name
     end_date = Column(DateTime, nullable=False)
     version = Column(String(2), nullable=False)
     ingestion_date = Column(DateTime(timezone=True))

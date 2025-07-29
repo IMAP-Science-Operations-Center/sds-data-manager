@@ -601,13 +601,19 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
 def check_requested_kernels(combined_kernel_sources, metakernel_files):
     """Check if all requested kernels are present in the metakernel files.
 
-    We need to check that returned metakernel files contain all requested
-    kernels. We need to add special check for ephemeris kernels because
-    API can return 'best' ephemeris kernels, which can contain both
-    historical and predicted kernels based on input times. If user
-    requests historical ephemeris kernels only, then we need to check that
-    we only returns historical ephemeris kernel file. Otherwise,
-    we can return both historical and predicted ephemeris kernels.
+    We need to ensure that the returned list of metakernel files includes
+    all requested kernels, especially for ephemeris kernels. The API can
+    return the "best" ephemeris kernels, which can include both historical
+    and predicted kernels depending on the input time range. If the user
+    specifically requests only historical ephemeris kernels, we must verify
+    that only historical files are returned. Otherwise, both historical
+    and predicted kernels are acceptable.
+
+    Additionally, the API can return multiple kernels for the same source
+    if the files cover specific date ranges. Because of this, we must
+    check that all requested sources are present in the returned
+    metakernel files, rather than performing a direct one-to-one
+    comparison. Each source may correspond to multiple kernel files.
 
     Parameters
     ----------
