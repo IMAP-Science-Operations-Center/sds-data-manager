@@ -285,8 +285,8 @@ def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: di
         s3_client.put_object(
             Bucket=bucket,
             Key=output_key,
-            Body=table_output.encode("utf-8"),
-            ContentType="text/plain",
+            Body=json.dumps(table_output, indent=2).encode("utf-8"),
+            ContentType="application/json",
         )
         logger.info(f"Uploaded coverage table to s3://{bucket}/{output_key}")
 
