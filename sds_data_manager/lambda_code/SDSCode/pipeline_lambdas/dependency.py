@@ -622,15 +622,15 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
         True if all requested kernels are found, False otherwise.
     """
     requested_kernels = set(combined_kernel_sources.split(","))
-    ephemeris_expected = set(
+    expected_ephemeris = set(
         [kernel for kernel in requested_kernels if "ephemeris_" in kernel]
     )
-    other_kernels_expected = set(
+    expected_other_kernels = set(
         [kernel for kernel in requested_kernels if "ephemeris_" not in kernel]
     )
 
     ephemeris_found = set()
-    other_found = set()
+    other_kernels_found = set()
 
     for file in metakernel_files:
         file_obj = imap_data_access.SPICEFilePath(file)
@@ -639,32 +639,27 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
         if "ephemeris_" in kernel_type:
             ephemeris_found.add(kernel_type)
         else:
-            other_found.add(kernel_type)
+            other_kernels_found.add(kernel_type)
 
-    logger.error(
-        f"Requested ephemeris kernels: {ephemeris_expected}, "
-        f"found in metakernel files: {ephemeris_found}"
-        f"\nRequested other kernels: {other_kernels_expected}, "
-        f"found in metakernel files: {other_found}"
-    )
-    # Check if all requested other kernels are found
-    if other_kernels_expected == other_found:
+    # Check if all other requested kernels are found
+    if expected_other_kernels == other_kernels_found:
         pass
     else:
         logger.error(
-            f"Non-ephemeris kernels {other_kernels_expected} not found in "
-            f"metakernel files {other_found}"
+            f"Non-ephemeris kernels {expected_other_kernels} not found in "
+            f"metakernel files {other_kernels_found}"
         )
         return False
 
     # If no ephemeris kernels are requested, we can return True.
-    if not ephemeris_expected:
+    if not expected_ephemeris:
         return True
+
     # If only historical ephemeris kernel is requested, check that it
     # is found.
     if (
-        len(ephemeris_expected) == 1
-        and ephemeris_expected[0] == "ephemeris_reconstructed"
+        len(expected_ephemeris) == 1
+        and expected_ephemeris[0] == "ephemeris_reconstructed"
         and "ephemeris_reconstructed" in ephemeris_found
     ):
         return True
@@ -672,12 +667,18 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
     # If 'best' ephemeris kernel is requested, check that at least one of the kernels
     # is found in the metakernel files.
     if (
-        len(ephemeris_expected) > 1
-        and any("ephemeris_" in kernel for kernel in ephemeris_expected)
+        len(expected_ephemeris) > 1
+        and any("ephemeris_" in kernel for kernel in expected_ephemeris)
         and any("ephemeris_" in kernel for kernel in ephemeris_found)
     ):
         return True
 
+    logger.error(
+        f"Requested ephemeris kernels: {expected_ephemeris}, "
+        f"found in metakernel files: {ephemeris_found}"
+        f"\nRequested other kernels: {expected_other_kernels}, "
+        f"found in metakernel files: {other_kernels_found}"
+    )
     return False
 
 
@@ -929,12 +930,8 @@ def get_upstream_dependency_inputs(
                 },
                 None,
             )
-            logger.error(
-                f"Metakernel lambda response: {metakernel_response} "
-                f"for {start_date} to {end_date}"
-            )
             if metakernel_response["statusCode"] != 200:
-                logger.info(
+                logger.error(
                     f"Metakernel lambda raised error: {metakernel_response['body']}"
                 )
                 return None
@@ -945,11 +942,6 @@ def get_upstream_dependency_inputs(
                 combined_kernel_sources, metakernel_files
             )
             if not has_all_kernels:
-                logger.error(
-                    f"Not all requested kernels were found. "
-                    f"Requested: {combined_kernel_sources}. "
-                    f"Found: {metakernel_files}."
-                )
                 return None
 
             logger.info(
@@ -965,10 +957,6 @@ def get_upstream_dependency_inputs(
             for dep in dependencies
             if dep["data_type"] not in ["spice", "spin", "repoint"]
         ]
-        logger.debug(
-            f"Non-SPICE dependencies: {non_spice_dependencies} "
-            f"for {start_date} to {end_date}"
-        )
         for dep in non_spice_dependencies:
             relationship = dep["relationship"]
 
