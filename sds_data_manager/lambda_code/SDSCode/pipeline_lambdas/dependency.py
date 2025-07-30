@@ -302,7 +302,7 @@ class DependencyConfig:
                 f"Invalid data source: {node[0]}. "
                 f"Valid data sources: {self.data_source.valid_source}"
             )
-        if node[1] != "best" and node[1] not in self.data_type.valid_type:
+        if node[1] not in self.data_type.valid_type:
             raise ValueError(
                 f"Invalid data type: {node[1]}. "
                 f"Valid data types: {self.data_type.valid_type}"
@@ -582,8 +582,6 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
             .order_by(desc(models.RepointTable.file_path))
             .first()
         )
-        if not latest_repoint_file:
-            raise ValueError("No repoint file found in the database.")
 
     if not latest_repoint_file:
         raise ValueError("No Repoint file found in the database.")
@@ -648,9 +646,7 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
             other_kernels_found.add(kernel_type)
 
     # Check if all other requested kernels are found
-    if expected_other_kernels == other_kernels_found:
-        pass
-    else:
+    if expected_other_kernels != other_kernels_found:
         logger.error(
             f"Non-ephemeris kernels {expected_other_kernels} not found in "
             f"metakernel files {other_kernels_found}"
