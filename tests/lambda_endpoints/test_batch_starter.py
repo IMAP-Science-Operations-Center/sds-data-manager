@@ -1528,18 +1528,18 @@ def test_cadence_to_datetime_range():
         assert (end_date - start_date) == dt.timedelta(days=CadenceDays.ONE_YEAR.value)
 
 
-def test_upload_dependency_file(s3_client, tmp_path, cadence_file, caplog):
+def test_upload_dependency_file(s3_client, tmp_path, dependency_file, caplog):
     """Test uploading a cadence json file to S3."""
     caplog.set_level("INFO")
     dependencies = ProcessingInputCollection(
         ScienceInput("imap_ultra_l1c_45sensor-pset_20250201_v001.cdf")
     )
-    cadence_file = imap_data_access.file_validation.CadenceFilePath(
-        basename(cadence_file)
+    dep_file = imap_data_access.file_validation.DependencyFilePath(
+        basename(dependency_file)
     )
     with patch("imap_data_access.config", {"DATA_DIR": tmp_path}):
-        cadence_dependency_path = pathlib.Path(cadence_file.construct_path())
-        upload_dependency_file(cadence_dependency_path, dependencies.serialize())
+        dependency_path = pathlib.Path(dep_file.construct_path())
+        upload_dependency_file(dependency_path, dependencies.serialize())
     assert "Dependency file uploaded successfully" in caplog.text
 
 

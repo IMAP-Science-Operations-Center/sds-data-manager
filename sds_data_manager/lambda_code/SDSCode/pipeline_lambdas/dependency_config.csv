@@ -373,6 +373,10 @@ hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER,
 
 hi, l2, h90-ena-h-sf-nsp-ram-hae-4deg-6mo, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
 hi, l2, h90-ena-h-sf-nsp-anti-hae-4deg-6mo, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+science_frames, spice, historical, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
 
 hi, l3, h90-ena-h-hf-sp-full-hae-4deg-6mo, hi, l3, h90-spx-h-hf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
 
@@ -593,6 +597,10 @@ pointing_attitude, spice, historical, lo, l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr
 science_frames, spice, historical, lo, l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l2, l090-ena-h-sf-nsp-ram-hae-4deg-6mo, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
+science_frames, spice, historical, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, lo, l3, l090-spx-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
 

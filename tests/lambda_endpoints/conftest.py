@@ -73,10 +73,10 @@ def science_file():
 
 
 @pytest.fixture(scope="module")
-def cadence_file():
-    """Path to a valid cadence file."""
+def dependency_file():
+    """Path to a valid dependency file."""
     return (
-        "imap/cadence/ultra/l2/2025/03/imap_ultra_l2_u45-ena-h-hf-nsp-test-hae-6deg"
+        "imap/dependency/ultra/l2/2025/03/imap_ultra_l2_u45-ena-h-hf-nsp-test-hae-6deg"
         "-3mo_20250301_v001.json"
     )
 
