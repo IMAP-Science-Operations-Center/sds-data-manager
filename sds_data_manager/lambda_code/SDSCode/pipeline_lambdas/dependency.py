@@ -304,7 +304,7 @@ class DependencyConfig:
                 f"Invalid data source: {node[0]}. "
                 f"Valid data sources: {self.data_source.valid_source}"
             )
-        if node[1] not in self.data_type.valid_type:
+        if node[1] != "best" and node[1] not in self.data_type.valid_type:
             raise ValueError(
                 f"Invalid data type: {node[1]}. "
                 f"Valid data types: {self.data_type.valid_type}"
