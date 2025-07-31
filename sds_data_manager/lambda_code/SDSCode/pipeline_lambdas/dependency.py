@@ -578,8 +578,8 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     """
     with db.Session() as session:
         latest_repoint_file = (
-            session.query(models.RepointTable)
-            .order_by(desc(models.RepointTable.file_path))
+            session.query(models.RepointFiles)
+            .order_by(desc(models.RepointFiles.file_path))
             .first()
         )
 

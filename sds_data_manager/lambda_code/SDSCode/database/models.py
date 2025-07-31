@@ -213,7 +213,7 @@ class PointingTable(Base):
     repoint_end_utc = Column(DateTime(timezone=True))
 
 
-class RepointTable(Base):
+class RepointFiles(Base):
     """Repoint table."""
 
     __tablename__ = "repoint_table"

@@ -23,7 +23,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
     PointingTable,
     ProcessingJob,
-    RepointTable,
+    RepointFiles,
     ScienceFiles,
     SPICEFiles,
 )
@@ -1796,25 +1796,25 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
                 version=2,
             ),
             # Save repoint files to the database
-            RepointTable(
+            RepointFiles(
                 file_path="/path/to/imap_2000_055_01.repoint.csv",
                 end_date=datetime(2000, 2, 24),
                 version="01",
                 ingestion_date=datetime.now(),
             ),
-            RepointTable(
+            RepointFiles(
                 file_path="/path/to/imap_2000_056_01.repoint.csv",
                 end_date=datetime(2000, 2, 25),
                 version="01",
                 ingestion_date=datetime.now(),
             ),
-            RepointTable(
+            RepointFiles(
                 file_path="/path/to/imap_2000_056_02.repoint.csv",
                 end_date=datetime(2000, 2, 25),
                 version="02",
                 ingestion_date=datetime.now(),
             ),
-            RepointTable(
+            RepointFiles(
                 file_path="/path/to/imap_2000_056_03.repoint.csv",
                 end_date=datetime(2000, 2, 25),
                 version="03",

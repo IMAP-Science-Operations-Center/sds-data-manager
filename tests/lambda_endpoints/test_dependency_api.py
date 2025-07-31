@@ -15,7 +15,7 @@ from imap_data_access.processing_input import (
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
-    RepointTable,
+    RepointFiles,
     ScienceFiles,
     SpinTable,
 )
@@ -680,7 +680,7 @@ def test_get_files_max_version(session):
 def test_get_latest_repoint_file(session):
     """Test get_latest_repoint_file function."""
     records = [
-        RepointTable(
+        RepointFiles(
             file_path="imap/spice/repoint/imap_2025_120_01.repoint.csv",
             end_date=datetime(2025, 4, 30),
             version="01",
@@ -696,13 +696,13 @@ def test_get_latest_repoint_file(session):
     assert latest_file == "imap_2025_120_01.repoint.csv"
 
     records = [
-        RepointTable(
+        RepointFiles(
             file_path="imap/spice/repoint/imap_2025_121_01.repoint.csv",
             end_date=datetime(2025, 5, 1),
             version="01",
             ingestion_date=datetime.now(),
         ),
-        RepointTable(
+        RepointFiles(
             file_path="imap/spice/repoint/imap_2025_121_02.repoint.csv",
             end_date=datetime(2025, 5, 1),
             version="02",
