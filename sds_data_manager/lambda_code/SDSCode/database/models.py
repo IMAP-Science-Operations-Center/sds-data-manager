@@ -202,6 +202,27 @@ class SpinTable(Base):
     ingestion_date = Column(DateTime(timezone=True))
 
 
+class PointingTable(Base):
+    """Pointing table."""
+
+    __tablename__ = "pointing_table"
+    pointing_id = Column(Integer, nullable=False, primary_key=True, unique=True)
+    pointing_start_utc = Column(DateTime(timezone=True), nullable=False)
+    pointing_end_utc = Column(DateTime(timezone=True))
+    repoint_start_utc = Column(DateTime(timezone=True))
+    repoint_end_utc = Column(DateTime(timezone=True))
+
+
+class RepointFiles(Base):
+    """Repoint table."""
+
+    __tablename__ = "repoint_table"
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    end_date = Column(DateTime, nullable=False)
+    version = Column(String(2), nullable=False)
+    ingestion_date = Column(DateTime(timezone=True))
+
+
 class Version(Base):
     """Version table."""
 

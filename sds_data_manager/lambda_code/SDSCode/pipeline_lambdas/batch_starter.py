@@ -539,6 +539,26 @@ def submit_all_jobs(
 
     # Handle special case reprocessing jobs.
     logger.info(f"All required dependencies found for the dependency: {job_node}")
+    if (
+        job_node["data_source"] == "spacecraft"
+        and job_node["descriptor"] == "pointing-attitude"
+    ):
+        job_version = determine_job_version(
+            session=session,
+            instrument=job_node["data_source"],
+            descriptor=job_node["descriptor"],
+            start_date=start_date,
+            data_level=job_node["data_type"],
+        )
+        try_to_submit_job(
+            session,
+            job_node,
+            datetime.datetime.strptime(start_date, "%Y%m%d"),
+            job_version,
+            upstream_dependencies.serialize(),
+        )
+        return
+
     # Find the first science processingInput that has the same source as the
     # potential job. Use this to determine the start date.
     primary_science_inputs = upstream_dependencies.get_science_inputs(
@@ -621,17 +641,110 @@ def generate_queue_url(event):
     return queue_url
 
 
+def calculate_pointing_date_range(session, pointing_id):
+    """Calculate date range for the pointing id using pointing data.
+
+    Parameters
+    ----------
+    session : sqlalchemy.orm.Session
+        Database session.
+    pointing_id : int
+        The ID of the repointing.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the start date and end date in the format YYYYMMDD.
+    """
+    # Query the pointing table to find the pointing information.
+    pointing_record = (
+        session.query(models.PointingTable).filter(
+            models.PointingTable.pointing_id == pointing_id
+        )
+    ).first()
+
+    if not pointing_record:
+        raise ValueError(f"No PointingTable record found for ID: {pointing_id}")
+
+    start_date = pointing_record.pointing_start_utc.strftime("%Y%m%d")
+    end_date = pointing_record.pointing_end_utc.strftime("%Y%m%d")
+    logger.debug(f"pointing date range, start_date: {start_date}, end_date: {end_date}")
+
+    return start_date, end_date
+
+
+def determine_date_range(session, file_obj):
+    """Determine the start and end dates based on the file type.
+
+    This date range is used to query upstream dependencies for the file.
+
+    Parameters
+    ----------
+    session : sqlalchemy.orm.Session
+        Database session.
+    file_obj : SPICEFilePath, ScienceFilePath, or AncillaryFilePath
+        The file object for which to determine the date range.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the start date and end date in the format YYYYMMDD.
+    """
+    if isinstance(file_obj, SPICEFilePath):
+        file_type = file_obj.spice_metadata["type"]
+        if file_type == "repoint":
+            # NOTE:
+            # Repoint file is used to kicks off pointing_attitude job only.
+            # This date range is used to query attitude kernel file(s). If
+            # Other is dependent on the repoint file, please revisit this logic.
+            start_date = (
+                file_obj.spice_metadata["end_date"] - datetime.timedelta(days=1)
+            ).strftime("%Y%m%d")
+            end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
+        else:
+            # Convert datetime object to string of format YYYYMMDD
+            start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
+            end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
+    elif isinstance(file_obj, ScienceFilePath):
+        # TODO: GLOWS may need other handling using carrington rotation.
+        if file_obj.repointing is not None and file_obj.instrument in [
+            "glows",
+            "hi",
+            "lo",
+            "ultra",
+        ]:
+            logger.debug(
+                "Using repointing file to calculate date range for"
+                f" {file_obj.instrument}."
+            )
+            start_date, end_date = calculate_pointing_date_range(
+                session, file_obj.repointing
+            )
+        else:
+            start_date = end_date = file_obj.start_date
+    elif isinstance(file_obj, AncillaryFilePath):
+        start_date = file_obj.start_date
+        # Ancillary files can have an end date.
+        # If there is no end date for the ancillary file, then it is implicitly
+        # valid through today.
+        end_date = getattr(
+            file_obj, "end_date", None
+        ) or datetime.datetime.now().strftime("%Y%m%d")
+    else:
+        raise ValueError("Unsupported file type")
+    return start_date, end_date
+
+
 def s3_processing_event(session, events):
     """Process SQS events that were triggered by S3 file arrivals.
 
     Parameters
     ----------
-    session : orm session
+    session : sqlalchemy.orm.Session
         Database session.
     events : dict
         SQS event input.
     """
-    # ruff: noqa: PLR0912
     # Since the SQS events can be batched together, we need to loop through
     # each event. In this loop, "event" represents one file landing.
 
@@ -661,29 +774,9 @@ def s3_processing_event(session, events):
             else:
                 triggered_from_glows_l3e = True
 
-        if isinstance(file_obj, SPICEFilePath):
-            # Set the start and end dates for the upstream event message.
-            # TODO: fix date range if/when repoint file ingestion event is
-            # passed to batch starter to kickoff HARD or SOFT_TRIGGER downstream jobs.
-            # Convert datetime object to string of format YYYYMMDD
-            start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
-            end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
-        elif isinstance(file_obj, ScienceFilePath):
-            # Set the start and end dates for the upstream event message
-            # TODO: if ENA or glows instrument, then get repoint number from filename
-            # and set start date and end date differently.
-            start_date = end_date = file_obj.start_date
-        elif isinstance(file_obj, AncillaryFilePath):
-            # Set the start and end dates for the upstream event message
-            start_date = file_obj.start_date
-            # Ancillary files can have an end date.
-            end_date = getattr(file_obj, "end_date", None)
-            # If there is no end date for the ancillary file, then it is implicitly
-            # valid through today.
-            if not end_date:
-                end_date = datetime.datetime.today().strftime("%Y%m%d")
-        # Potential jobs are the instruments that depend on the current file,
-        # which are the downstream dependencies.
+        # Determine the start and end dates for the upstream query.
+        start_date, end_date = determine_date_range(session, file_obj)
+
         potential_jobs = dependency.get_jobs(
             data_source=input_obj.source,
             descriptor=input_obj.descriptor,

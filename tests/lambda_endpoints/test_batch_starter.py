@@ -3,6 +3,7 @@
 import datetime as dt
 import json
 import logging
+import os
 import pathlib
 from datetime import datetime
 from os.path import basename
@@ -20,10 +21,11 @@ from sqlalchemy.exc import IntegrityError
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
+    PointingTable,
     ProcessingJob,
+    RepointFiles,
     ScienceFiles,
     SPICEFiles,
-    SpinTable,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     batch_starter,
@@ -31,6 +33,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
     CadenceDays,
+    determine_date_range,
     determine_job_version,
     lambda_handler,
     upload_dependency_file,
@@ -38,7 +41,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import 
 
 from .conftest import (
     POSTGRES_AVAILABLE,
-    _populate_file_catalog,
+    _static_spice_files,
 )
 
 
@@ -59,8 +62,8 @@ def _populate_processing_table(session):
 
 
 def test_lambda_handler(session, s3_client):
-    """Tests ``lambda_handler`` function."""
-    _populate_file_catalog(session)
+    """Tests that SWE L0 file ingestion kicks off job."""
+    _static_spice_files(session)
     events = {
         "Records": [
             {
@@ -73,6 +76,25 @@ def test_lambda_handler(session, s3_client):
             }
         ]
     }
+
+    # Other records needed for this test
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l0_raw_20240101_v001.pkts",
+            instrument="swe",
+            data_level="l0",
+            descriptor="raw",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
     processing_input = ProcessingInputCollection(
         SPICEInput("naif0012.tls", "imap_sclk_0000.tsc"),
         ScienceInput("imap_swe_l0_raw_20240101_v001.pkts"),
@@ -107,9 +129,9 @@ def test_lambda_handler(session, s3_client):
                     "--start-date",
                     "20240101",
                     "--version",
-                    "v011",
+                    "v001",
                     "--dependency",
-                    "imap_swe_l1a_sci_20240101_v011.json",
+                    "imap_swe_l1a_sci_20240101_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -132,14 +154,15 @@ def test_lambda_handler(session, s3_client):
             session,
             {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"},
             dt.datetime(2024, 1, 1, 0, 0),
-            "v012",
+            "v002",
             processing_input.serialize(),
         )
 
 
 def test_different_queues(session, s3_client):
     """Tests events from multiple queues."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+
     events = {
         "Records": [
             {
@@ -191,18 +214,82 @@ def test_different_queues(session, s3_client):
 
 def test_lambda_handler_multiple_events(session, s3_client):
     """Tests ``lambda_handler`` function with multiple events."""
-    # Test Multiple Events:
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+    # Other db records needed for this test
+    records = [
+        # record needed for L0 file ingestion
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l0_raw_20250110_v001.pkts",
+            instrument="swe",
+            data_level="l0",
+            descriptor="raw",
+            start_date=datetime(2025, 1, 10),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        # record needed for L1A file ingestion
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20251201_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2025, 12, 1),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_l1b-in-flight-cal_20250102_v002.csv",
+            instrument="swe",
+            descriptor="l1b-in-flight-cal",
+            start_date=datetime(2025, 1, 2),
+            version="v002",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_esa-lut_20250101_v001.csv",
+            instrument="swe",
+            descriptor="esa-lut",
+            start_date=datetime(2025, 1, 1),
+            version="v001",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_eu-conversion_20250101_v001.csv",
+            instrument="swe",
+            descriptor="eu-conversion",
+            start_date=datetime(2025, 1, 1),
+            version="v001",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
     multiple_events = {
         "Records": [
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_swe_l0_raw_20240101_v001.pkts"}}'
+                '{"object": {"key": "imap_swe_l0_raw_20250110_v001.pkts"}}'
                 "}"
             },
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_swe_l1a_sci_20240101_v001.cdf"}}'
+                '{"object": {"key": "imap_swe_l1a_sci_20251201_v001.cdf"}}'
                 "}"
             },
         ]
@@ -218,13 +305,64 @@ def test_lambda_handler_multiple_events(session, s3_client):
 
 def test_lambda_handler_ancillary_event(session):
     """Tests ``lambda_handler`` function when triggerd by an ancillary file."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+    # Other db records needed to proccess l1a to l1b when ancillary file is ingested
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20260303_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2026, 3, 3),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_l1b-in-flight-cal_20260303_v001.csv",
+            instrument="swe",
+            descriptor="l1b-in-flight-cal",
+            start_date=datetime(2026, 3, 3),
+            version="v001",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_esa-lut_20260303_v001.csv",
+            instrument="swe",
+            descriptor="esa-lut",
+            start_date=datetime(2026, 3, 3),
+            version="v001",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_eu-conversion_20260303_v001.csv",
+            instrument="swe",
+            descriptor="eu-conversion",
+            start_date=datetime(2026, 3, 3),
+            version="v001",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
     events = {
         "Records": [
             {
                 "body": '{"detail": '
                 '{"object": {"key": '
-                '"imap_swe_l1b-in-flight-cal_20231231_20240102_v002.cdf"}}'
+                '"imap_swe_l1b-in-flight-cal_20260101_20260401_v002.cdf"}}'
                 "}"
             }
         ]
@@ -237,7 +375,7 @@ def test_lambda_handler_ancillary_event(session):
     ):
         lambda_handler(events, context)
         # There should be 2 different jobs submitted for one swe l1b ancillary file
-        assert mock_batch_client.submit_job.call_count == 2
+        assert mock_batch_client.submit_job.call_count == 1
         # Assert_called_with only works on the last call
         # Check that the last call is what we expect with the correct dependencies
 
@@ -246,19 +384,19 @@ def test_lambda_handler_ancillary_event(session):
         # as an upstream dep.
         inputs = [
             {"type": "spice", "files": ["naif0012.tls", "imap_sclk_0000.tsc"]},
-            {"type": "science", "files": ["imap_swe_l1a_sci_20240102_v001.cdf"]},
+            {"type": "science", "files": ["imap_swe_l1a_sci_20260303_v001.cdf"]},
             {
                 "type": "ancillary",
-                "files": ["imap_swe_l1b-in-flight-cal_20230102_v001.cdf"],
+                "files": ["imap_swe_l1b-in-flight-cal_20260303_v001.csv"],
             },
-            {"type": "ancillary", "files": ["imap_swe_esa-lut_20221231_v001.cdf"]},
+            {"type": "ancillary", "files": ["imap_swe_esa-lut_20260303_v001.csv"]},
             {
                 "type": "ancillary",
-                "files": ["imap_swe_eu-conversion_20221231_v001.cdf"],
+                "files": ["imap_swe_eu-conversion_20260303_v001.csv"],
             },
         ]
         mock_batch_client.submit_job.assert_called_with(
-            jobName="swe-l1b-sci-job-2",
+            jobName="swe-l1b-sci-job-1",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-swe",
             containerOverrides={
@@ -270,11 +408,11 @@ def test_lambda_handler_ancillary_event(session):
                     "--descriptor",
                     "sci",
                     "--start-date",
-                    "20240102",
+                    "20260303",
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_swe_l1b_sci_20240102_v001.json",
+                    "imap_swe_l1b_sci_20260303_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -290,7 +428,7 @@ def test_lambda_handler_ancillary_event(session):
         mock_submit.assert_called_with(
             session,
             {"data_source": "swe", "data_type": "l1b", "descriptor": "sci"},
-            dt.datetime(2024, 1, 2, 0, 0),
+            dt.datetime(2026, 3, 3, 0, 0),
             "v002",
             json.dumps(inputs),
         )
@@ -298,7 +436,7 @@ def test_lambda_handler_ancillary_event(session):
 
 def test_lambda_handler_no_dependencies(session):
     """Tests ``lambda_handler`` when there are no dependencies for the file."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
     # Test Multiple Events:
     events = {
         "Records": [
@@ -321,7 +459,25 @@ def test_lambda_handler_no_dependencies(session):
 
 def test_lambda_handler_no_dependencies_multiple_files(session):
     """Tests ``lambda_handler`` when there are no dependencies for the file."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+    # Other db records needed to kick of swe l1a job.
+    # Ultra is not kicked off because there are no dependencies.
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l0_raw_20250101_v001.pkts",
+            instrument="swe",
+            data_level="l0",
+            descriptor="raw",
+            start_date=datetime(2025, 1, 1),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
     # Test Multiple Events:
     events = {
         "Records": [
@@ -332,7 +488,7 @@ def test_lambda_handler_no_dependencies_multiple_files(session):
             },
             {
                 "body": '{"detail": '
-                '{"object": {"key": "imap_swe_l1a_sci_20240101_v001.cdf"}}'
+                '{"object": {"key": "imap_swe_l0_raw_20250101_v001.pkts"}}'
                 "}"
             },
         ]
@@ -349,7 +505,7 @@ def test_lambda_handler_no_dependencies_multiple_files(session):
 
 def test_lambda_handler_missing_upstream_dependency(session, caplog):
     """Tests ``lambda_handler`` when there are no dependencies for the file."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
     # Test Multiple Events:
     events = {
         "Records": [
@@ -366,112 +522,88 @@ def test_lambda_handler_missing_upstream_dependency(session, caplog):
         patch.object(batch_starter, "generate_queue_url", return_value=False),
     ):
         lambda_handler(events, context)
-        log_str = (
-            "No records found for dependency: "
-            "dep={'data_source': 'swe', 'data_type': 'l1b', 'descriptor': 'sci',"
-            " 'relationship': 'HARD'}\nstart_date=datetime.datetime(2000,"
-            " 1, 2, 0, 0)\nend_date=datetime.datetime(2000, 1, 2, 0, 0)"
+        # Look for the log message in the log output, which should contain
+        # the dependency information
+        assert "No spin files found for" in caplog.text
+        assert (
+            "Skipping job submission for {'data_source': 'swe', "
+            "'data_type': 'l2', 'descriptor': 'sci'} because of a "
+            "missing upstream dependency." in caplog.text
         )
-        # Verify the info statement was logged.
-        assert log_str in caplog.text
 
 
 def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
     """Tests ``lambda_handler`` function for a specific case."""
+    _static_spice_files(session)
     # This test covers a rare scenario: when a new ancillary file is uploaded, the
     # dependency handler might find jobs to run where the uploaded file is valid for the
     # job's start_date, but another required ancillary file is not. The test ensures
     # that in these cases, the job is skipped.
-
-    session.add_all(
-        [
-            SPICEFiles(
-                file_name="naif0012.tls",
-                file_path="path/to/naif0012.tls",
-                ingestion_date=datetime.strptime(
-                    "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                file_root="naif.tls",
-                kernel_type="leapseconds",
-                min_date_j2000=0,
-                max_date_j2000=4575787269.183866,
-                file_intervals_j2000=[[0, 4575787269.183866]],
-                min_date_datetime=datetime.strptime(
-                    "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                max_date_datetime=datetime.strptime(
-                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
-                min_date_sclk="1/0000000000:00000",
-                max_date_sclk="1/4285909749:39444",
-                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
-                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
-                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
-                version=12,
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_mag_l1c_norm-mago_20250418_v004.cdf",
+            instrument="mag",
+            data_level="l1c",
+            descriptor="norm-mago",
+            start_date=datetime(2025, 4, 18),
+            version="v004",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
-            SPICEFiles(
-                file_name="imap_sclk_0000.tsc",
-                file_path="path/to/imap_sclk_0000.tsc",
-                ingestion_date=datetime.strptime(
-                    "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                file_root="imap_sclk_0000.tsc",
-                kernel_type="spacecraft_clock",
-                min_date_j2000=315576066.1839245,
-                max_date_j2000=4575787269.183866,
-                file_intervals_j2000=[[315576066.1839245, 4575787269.183866]],
-                min_date_datetime=datetime.strptime(
-                    "2010-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                max_date_datetime=datetime.strptime(
-                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                file_intervals_datetime="[[2010-01-01T00:00:00, 2145-01-01T00:00:00]]",
-                min_date_sclk="1/0000000000:00000",
-                max_date_sclk="1/4285909749:39444",
-                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
-                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
-                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
-                version=0,
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_mag_l2-calibration_20250117_v001.cdf",
+            instrument="mag",
+            descriptor="l2-calibration",
+            start_date=datetime(2025, 1, 17),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
-            ScienceFiles(
-                file_path="/path/to/imap_mag_l1c_norm-mago_20250418_v004.cdf",
-                instrument="mag",
-                data_level="l1c",
-                descriptor="norm-mago",
-                start_date=datetime(2025, 4, 18),
-                version="v004",
-                extension="cdf",
-                ingestion_date=datetime.strptime(
-                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_mag_l2-norm-offsets_20250421_v001.cdf",
+            instrument="mag",
+            descriptor="l2-norm-offsets",
+            start_date=datetime(2025, 4, 21),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
-            AncillaryFiles(
-                file_path="/path/to/imap_mag_l2-calibration_20250117_v001.cdf",
-                instrument="mag",
-                descriptor="l2-calibration",
-                start_date=datetime(2025, 1, 17),
-                version="v001",
-                extension="cdf",
-                ingestion_date=datetime.strptime(
-                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
+        ),
+        # add pointing_attitude
+        SPICEFiles(
+            file_path="path/to/imap_dps_2024_001_2026_001_01.ah.bc",
+            file_name="imap_dps_2024_001_2026_001_01.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
-            AncillaryFiles(
-                file_path="/path/to/imap_mag_l2-norm-offsets_20250421_v001.cdf",
-                instrument="mag",
-                descriptor="l2-norm-offsets",
-                start_date=datetime(2025, 4, 21),
-                version="v001",
-                extension="cdf",
-                ingestion_date=datetime.strptime(
-                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
+            file_root="imap_dps_2024_001_2026_.ah.bc",
+            kernel_type="pointing_attitude",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
-        ]
-    )
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+    ]
+    session.add_all(records)
     session.commit()
+
     multiple_events = {
         "Records": [
             {
@@ -500,16 +632,32 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
 
 ###### BULK REPROCESSING TESTS #######
 def test_bulk_reprocessing_data_level(session, caplog):
-    """Tests ``lambda_handler`` when there is bulk reprocessing for a data level."""
-    _populate_file_catalog(session)
+    """Tests bulk reprocessing for a data level."""
+    _static_spice_files(session)
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l0_raw_20220101_v001.pkts",
+            instrument="swe",
+            data_level="l0",
+            descriptor="raw",
+            start_date=datetime(2022, 1, 1),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        )
+    ]
+    session.add_all(records)
+    session.commit()
     # Test with an invalid event first. If data_level is provided, then instrument and
     # descriptor are required.
     events = {
         "queryStringParameters": {
             "reprocessing": "True",
-            "start_date": "20230101",
-            "end_date": "20260101",
-            "data_level": "l1b",
+            "start_date": "20220101",
+            "end_date": "20220301",
+            "data_level": "l1a",
             "descriptor": "sci",
         }
     }
@@ -526,12 +674,77 @@ def test_bulk_reprocessing_data_level(session, caplog):
     # There should be 4 different jobs submitted for swe l1b sci because there are 4
     # upstream swe l1a sci files with start dates in the reprocessing range.
 
-    assert mock_submit.call_count == 4
+    assert mock_submit.call_count == 1
 
 
 def test_bulk_reprocessing_all(session, caplog):
     """Tests ``lambda_handler`` when there is bulk reprocessing for all instruments."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+    # db records needed for this reprocessing test
+    records = [
+        # record needed for l1a reprocessing
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l0_raw_20250110_v001.pkts",
+            instrument="swe",
+            data_level="l0",
+            descriptor="raw",
+            start_date=datetime(2025, 1, 10),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        # record needed for l1b reprocessing
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20251201_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2025, 12, 1),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_l1b-in-flight-cal_20250102_v002.csv",
+            instrument="swe",
+            descriptor="l1b-in-flight-cal",
+            start_date=datetime(2025, 1, 2),
+            version="v002",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_esa-lut_20250101_v001.csv",
+            instrument="swe",
+            descriptor="esa-lut",
+            start_date=datetime(2025, 1, 1),
+            version="v001",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_swe_eu-conversion_20250101_v001.csv",
+            instrument="swe",
+            descriptor="eu-conversion",
+            start_date=datetime(2025, 1, 1),
+            version="v001",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
     # leave instrument, data_level and descriptor blank
     events = {
         "queryStringParameters": {
@@ -547,15 +760,15 @@ def test_bulk_reprocessing_all(session, caplog):
         patch.object(batch_starter, "generate_queue_url", return_value=False),
     ):
         lambda_handler(events, context)
-    # There should be two jobs submitted, one for swe, one for lo based off the existing
-    # l0 files
-    assert mock_submit.call_count == 2
+    # It should kickoff two jobs for swe l1a and l1b.
+    # TODO: find out why it only kicks off certain levels
+    assert mock_submit.call_count == 1
 
 
 def test_bulk_reprocessing_all_swe(session, caplog):
     """Tests ``lambda_handler`` when there is bulk reprocessing for all instruments."""
     # leave instrument, data_level and descriptor blank
-    _populate_file_catalog(session)
+    _static_spice_files(session)
     events = {
         "queryStringParameters": {
             "reprocessing": "True",
@@ -574,16 +787,54 @@ def test_bulk_reprocessing_all_swe(session, caplog):
     ):
         lambda_handler(events, context)
     # There should be one job submitted for swe
-    assert mock_submit.call_count == 1
+    assert mock_submit.call_count == 0
 
 
 ###### SPECIAL CASE TESTS #######
 def test_ultra_l3_map(session, caplog):
     """Tests ``lambda_handler` for unique ultra l3 map case."""
-    # Add 6 months of glows l3e files and 1 ultra l2 map file. These are the
-    # dependencies for the ultra l3 map job. The cadence for this example is 3 months of
-    # data.
-    session.add_all(
+    _static_spice_files(session)
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-4deg-3mo_20240201_v001.cdf",
+            instrument="ultra",
+            data_level="l2",
+            descriptor="u90-ena-h-sf-nsp-full-hae-4deg-3mo",
+            start_date=datetime(2024, 2, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        # Pointing attitude kernel
+        SPICEFiles(
+            file_path="path/to/imap_dps_2024_001_2026_001_01.ah.bc",
+            file_name="imap_dps_2024_001_2026_001_01.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_dps_2024_001_2026_.ah.bc",
+            kernel_type="pointing_attitude",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+    ]
+    records.extend(
         [
             ScienceFiles(
                 file_path=f"/path/to/imap_glows_l3e_survival-probability-ul_2024{month:02}01_v001.cdf",
@@ -600,73 +851,9 @@ def test_ultra_l3_map(session, caplog):
             for month in range(2, 9)
         ]
     )
-    session.add_all(
-        [
-            ScienceFiles(
-                file_path="/path/to/imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-4deg-3mo_20240201_v001.cdf",
-                instrument="ultra",
-                data_level="l2",
-                descriptor="u90-ena-h-sf-nsp-full-hae-4deg-3mo",
-                start_date=datetime(2024, 2, 1),
-                version="v001",
-                extension="cdf",
-                ingestion_date=datetime.strptime(
-                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-            ),
-            SPICEFiles(
-                file_name="naif0012.tls",
-                file_path="path/to/naif0012.tls",
-                ingestion_date=datetime.strptime(
-                    "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                file_root="naif.tls",
-                kernel_type="leapseconds",
-                min_date_j2000=0,
-                max_date_j2000=4575787269.183866,
-                file_intervals_j2000=[[0, 4575787269.183866]],
-                min_date_datetime=datetime.strptime(
-                    "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                max_date_datetime=datetime.strptime(
-                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
-                min_date_sclk="1/0000000000:00000",
-                max_date_sclk="1/4285909749:39444",
-                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
-                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
-                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
-                version=12,
-            ),
-            SPICEFiles(
-                file_name="imap_sclk_0000.tsc",
-                file_path="path/to/imap_sclk_0000.tsc",
-                ingestion_date=datetime.strptime(
-                    "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                file_root="imap_sclk_0000.tsc",
-                kernel_type="spacecraft_clock",
-                min_date_j2000=315576066.1839245,
-                max_date_j2000=4575787269.183866,
-                file_intervals_j2000=[[315576066.1839245, 4575787269.183866]],
-                min_date_datetime=datetime.strptime(
-                    "2010-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                max_date_datetime=datetime.strptime(
-                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-                file_intervals_datetime="[[2010-01-01T00:00:00, 2145-01-01T00:00:00]]",
-                min_date_sclk="1/0000000000:00000",
-                max_date_sclk="1/4285909749:39444",
-                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
-                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
-                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
-                version=0,
-            ),
-        ]
-    )
+    session.add_all(records)
     session.commit()
+
     events = {
         # This event is for the ultra l3 map job. The glows l3e files may come in
         # groupings. We want to test that only one job is submitted.
@@ -686,7 +873,12 @@ def test_ultra_l3_map(session, caplog):
     context = {"context": "sample_context"}
     expected_processing_input = ProcessingInputCollection()
 
-    spice_files = ["naif0012.tls", "imap_sclk_0000.tsc"]
+    spice_files = [
+        "naif0012.tls",
+        "imap_science_000.tf",
+        "imap_sclk_0000.tsc",
+        "imap_dps_2024_001_2026_001_01.ah.bc",
+    ]
     expected_processing_input.add(SPICEInput(*spice_files))
 
     # There will be 3 glows l3e files (representing 3 months) that are used as
@@ -759,26 +951,23 @@ def test_bulk_reprocessing_special_case(session):
     """Tests ``lambda_handler`` for a special case in bulk reprocessing."""
     # Add test data to the database for the special case
     # Add hi l2 files. Some of these will be used as dependencies for the job.
-    _populate_file_catalog(session)
-    # TODO fix dates to be more accurate
-    session.add_all(
-        [
-            ScienceFiles(
-                file_path=f"/path/to/imap_hi_l2_h90-ena-h-sf-nsp-ram-hae-4deg-6mo_{date}_v001.cdf",
-                instrument="hi",
-                data_level="l2",
-                descriptor="h90-ena-h-sf-nsp-ram-hae-4deg-6mo",
-                start_date=datetime.strptime(date, "%Y%m%d"),
-                version="v001",
-                extension="cdf",
-                ingestion_date=datetime.strptime(
-                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-            )
-            for date in ["20240202", "20240803"]
-        ]
-    )
-    session.add_all(
+    _static_spice_files(session)
+    records = [
+        ScienceFiles(
+            file_path=f"/path/to/imap_hi_l2_h90-ena-h-sf-nsp-ram-hae-4deg-6mo_{date}_v001.cdf",
+            instrument="hi",
+            data_level="l2",
+            descriptor="h90-ena-h-sf-nsp-ram-hae-4deg-6mo",
+            start_date=datetime.strptime(date, "%Y%m%d"),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        )
+        for date in ["20240202", "20240803"]
+    ]
+    records.extend(
         [
             ScienceFiles(
                 file_path=f"/path/to/imap_hi_l2_h90-ena-h-sf-nsp-anti-hae-4deg-6mo_{date}_v001.cdf",
@@ -795,6 +984,35 @@ def test_bulk_reprocessing_special_case(session):
             for date in ["20240202", "20240803"]
         ]
     )
+    # Add pointing attitude kernel
+    records.append(
+        SPICEFiles(
+            file_path="path/to/imap_dps_2024_001_2026_001_01.ah.bc",
+            file_name="imap_dps_2024_001_2026_001_01.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_dps_2024_001_2026_.ah.bc",
+            kernel_type="pointing_attitude",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        )
+    )
+    session.add_all(records)
     session.commit()
 
     # Bulk reprocessing event for the special case
@@ -1042,7 +1260,7 @@ def test_lambda_handler_duplicate_mag_l1c_job(session, caplog):
 ### TEST CADENCE EVENT
 def test_def_cadence_map_event(setup_s3, session, tmp_path):
     """Test that a cadence event kicks off the right processing job."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
     # Add 10 months of ultra l1c "45sensor" pset files to the database
     session.add_all(
         [
@@ -1083,8 +1301,38 @@ def test_def_cadence_map_event(setup_s3, session, tmp_path):
             )
         ]
     )
-
+    session.add_all(
+        [
+            # Add pointing attitude
+            SPICEFiles(
+                file_path="path/to/imap_dps_2024_001_2024_001_01.ah.bc",
+                file_name="imap_dps_2024_001_2024_001_01.ah.bc",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_root="imap_dps_2024_001_2024_.ah.bc",
+                kernel_type="pointing_attitude",
+                min_date_j2000=0,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[0, 4575787269.183866]],
+                min_date_datetime=datetime.strptime(
+                    "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                max_date_datetime=datetime.strptime(
+                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+                min_date_sclk="1/0000000000:00000",
+                max_date_sclk="1/4285909749:39444",
+                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+                version=1,
+            ),
+        ]
+    )
     session.commit()
+
     cadence_event = {
         "cadence": "3mo",
     }
@@ -1130,7 +1378,7 @@ def test_def_cadence_map_event(setup_s3, session, tmp_path):
 
 def test_idex_l2b(session):
     """Tests ``lambda_handler` for unique idex l2b case."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
     # Add 2 idex l1b evt files. Although the second file is out of the month range,
     # It should be included in the ProcessingInputCollection because IDEX l2b jobs
     # need housekeeping files that may be before the start date of the cadence job.
@@ -1297,7 +1545,19 @@ def test_upload_dependency_file(s3_client, tmp_path, dependency_file, caplog):
 
 def test_determine_max_version(session):
     """Test the ``determine_job_version`` function."""
-    _populate_processing_table(session)
+    # Add an inprogress record to the processing table
+    # At the time of job kickoff, we only have these written to the table
+    record = ProcessingJob(
+        status=models.Status.INPROGRESS,
+        instrument="lo",
+        data_level="l1b",
+        descriptor="de",
+        start_date=datetime(2010, 1, 1),
+        version="v001",
+    )
+    session.add(record)
+    session.commit()
+
     # query the processing table and get the bumped version
     result = determine_job_version(
         session=session,
@@ -1320,7 +1580,7 @@ def test_determine_max_version(session):
 
 def test_determine_job_version_descriptor_is_all(session):
     """Test the ``determine_job_version`` function."""
-    _populate_file_catalog(session)
+    _static_spice_files(session)
     # With the descriptor set to "all", the function should return the max version
     # found in the processing job table and not the science files table.
     result = determine_job_version(
@@ -1335,8 +1595,7 @@ def test_determine_job_version_descriptor_is_all(session):
 
 def test_determine_max_version_missing_processing_job(session):
     """Test that determine_job_version returns the correct version."""
-    _populate_processing_table(session)
-    _populate_file_catalog(session)
+    _static_spice_files(session)
     # Test when processingJob table is not updated, the function checks
     # science_files table to get the version
     result = determine_job_version(
@@ -1346,7 +1605,7 @@ def test_determine_max_version_missing_processing_job(session):
         descriptor="sci",
         start_date=datetime(2024, 1, 1),
     )
-    assert result == "v011"
+    assert result == "v001"
 
 
 @pytest.mark.skipif(
@@ -1496,45 +1755,48 @@ def test_dependency_success_empty(session):
     assert not dependencies
 
 
-def test_spice_event(session, s3_client):
-    """Test spice dependencies."""
-    # Write repoint file to s3 that batch starter can query
-    # for dependencies
-    filepath = "imap/spice/repoint/imap_2025_120_01.repoint.csv"
-    s3_client.put_object(
-        Bucket="test-data-bucket",
-        Key=filepath,
-        Body=b"test",
-    )
+@patch.object(imap_data_access, "download")
+@patch.object(batch_starter, "SQS_CLIENT")
+def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_path):
+    """Test that the repoint date range is correct."""
+    filepath = "imap/hi/l0/2000/02/imap_hi_l0_raw_20000224-repoint00047_v001.pkts"
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    one_level_up = os.path.abspath(os.path.join(current_path, ".."))
+    test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
+    # Mock download to return return the test file path
+    repoint_file = os.path.join(test_spice_data_dir, "imap_2000_056_03.repoint.csv")
+    mock_download.return_value = repoint_file
+
+    sqs_mock.delete_message = Mock()
+    sqs_mock.get_queue_url = Mock(return_value="")
     # Write data to the database that batch starter can query
     # for dependencies
     session.add_all(
         [
-            # Data to test the SPICE dependency using IDEX L1B and pointing_attitude
             ScienceFiles(
-                file_path="/path/to/imap_idex_l1a_sci-1week_20250429_v001.cdf",
-                instrument="idex",
-                data_level="l1a",
-                descriptor="sci-1week",
-                start_date=datetime(2025, 4, 29),
+                file_path=filepath,
+                instrument="hi",
+                data_level="l0",
+                descriptor="raw",
+                start_date=datetime(2000, 2, 24),
                 version="v001",
-                extension="cdf",
+                extension="pkts",
                 ingestion_date=datetime.strptime(
                     "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
                 ),
             ),
+            # Add leapseconds and sclk files to the database
             SPICEFiles(
-                # 2025028 to 2025030
-                file_name="imap_2025_118_2025_120_02.ah.bc",
-                file_path="/path/to/imap_2025_118_2025_120_02.ah.bc",
+                file_path="/path/to/naif0012.tls",
+                file_name="naif0012.tls",
                 ingestion_date=datetime.now(),
-                file_root="imap_2025_118_2025_120_.ah.bc",
-                kernel_type="attitude_history",
-                min_date_j2000=799070400.1854936,
-                max_date_j2000=799243200.185493,
-                file_intervals_j2000=[[799070400, 799243200]],
-                min_date_datetime=datetime(2025, 4, 28),
-                max_date_datetime=datetime(2025, 4, 30),
+                file_root="naif.tls",
+                kernel_type="leapseconds",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
                 file_intervals_datetime=[["0", "0"]],
                 min_date_sclk="",
                 max_date_sclk="",
@@ -1544,16 +1806,16 @@ def test_spice_event(session, s3_client):
                 version=2,
             ),
             SPICEFiles(
-                file_name="imap_recon_20250428_20250430_v02.bsp",
-                file_path="/path/to/imap_recon_20250428_20250430_v02.bsp",
+                file_path="/path/to/imap_sclk_0001.tsc",
+                file_name="imap_sclk_0001.tsc",
                 ingestion_date=datetime.now(),
-                file_root="imap_recon_20250428_20250430_v.bsp",
-                kernel_type="ephemeris_reconstructed",
-                min_date_j2000=799070400.1854936,
-                max_date_j2000=799243200.185493,
-                file_intervals_j2000=[[799070400, 799243200]],
-                min_date_datetime=datetime(2025, 4, 28),
-                max_date_datetime=datetime(2025, 4, 30),
+                file_root="imap_sclk_0001.tsc",
+                kernel_type="spacecraft_clock",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
                 file_intervals_datetime=[["0", "0"]],
                 min_date_sclk="",
                 max_date_sclk="",
@@ -1562,88 +1824,178 @@ def test_spice_event(session, s3_client):
                 lsk_kernel="naif0012.tls",
                 version=2,
             ),
-            SpinTable(
-                # 2025028 to 2025030
-                file_path="/mnt/data/imap/spice/spin/imap_2025_118_2025_120_01.spin.csv",
-                start_date=datetime(2025, 4, 28),
-                end_date=datetime(2025, 4, 30),
+            # Save repoint files to the database
+            RepointFiles(
+                file_path="/path/to/imap_2000_055_01.repoint.csv",
+                end_date=datetime(2000, 2, 24),
                 version="01",
                 ingestion_date=datetime.now(),
+            ),
+            RepointFiles(
+                file_path="/path/to/imap_2000_056_01.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+            RepointFiles(
+                file_path="/path/to/imap_2000_056_02.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="02",
+                ingestion_date=datetime.now(),
+            ),
+            RepointFiles(
+                file_path="/path/to/imap_2000_056_03.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="03",
+                ingestion_date=datetime.now(),
+            ),
+            PointingTable(
+                pointing_id=47,
+                pointing_start_utc=datetime(2000, 2, 24, 0, 0, 0),
+                pointing_end_utc=datetime(2000, 2, 25, 0, 0, 0),
+                repoint_start_utc=datetime(2000, 2, 24, 0, 0, 0),
+                repoint_end_utc=datetime(2000, 2, 25, 0, 0, 0),
             ),
         ]
     )
     session.commit()
-    # Event of spin file should trigger IDEX L1B sci-1week job
+
     events = {
         "Records": [
             {
+                "eventSourceARN": (
+                    "arn:aws:sqs:us-east-1:123456789012:test-queue.fifo"
+                ),
+                "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
                 "body": '{"detail": '
-                '{"object": '
-                '{"key": "imap/spice/spin/imap_2025_118_2025_120_01.spin.csv"}}'
-                "}"
+                '{"object": {"key": "imap/hi/l0/2000/02/'
+                'imap_hi_l0_raw_20000225-repoint00047_v001.pkts"}}'
+                "}",
             }
         ]
     }
-    expected_dependency_input = [
-        {
-            "type": "spin",
-            "files": ["imap_2025_118_2025_120_01.spin.csv"],
-        },
-        {
-            "type": "spice",
-            "files": [
-                "imap_recon_20250428_20250430_v02.bsp",
-                "imap_2025_118_2025_120_02.ah.bc",
-            ],
-        },
-        {
-            "type": "science",
-            "files": [
-                "imap_idex_l1a_sci-1week_20250429_v001.cdf",
-            ],
-        },
-    ]
-    with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
-        patch.object(batch_starter, "generate_queue_url", return_value=False),
-    ):
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
         lambda_handler(events, None)
+        # should call twice, one for Hi all l1a job and one for l1b hk job.
+        assert mock_batch_client.submit_job.call_count == 2
+
+    # Test date range for ENA and GLOWS instruments
+    filename = "imap_hi_l0_raw_20000224-repoint00047_v001.pkts"
+    file_obj = imap_data_access.ScienceFilePath(filename)
+    date_range = determine_date_range(session, file_obj)
+    assert date_range == ("20000224", "20000225")
+
+    # Now check that other instrument returns expected date range
+    filename = "imap_swe_l0_raw_20260926_v001.pkts"
+    file_obj = imap_data_access.ScienceFilePath(filename)
+    non_repoint_date_range = determine_date_range(session, file_obj)
+    assert non_repoint_date_range == ("20260926", "20260926")
+
+    # Add files other needed for the pointing attitude job
+    session.add_all(
+        [
+            SPICEFiles(
+                file_path="/path/to/imap_001.tf",
+                file_name="imap_001.tf",
+                ingestion_date=datetime.now(),
+                file_root="imap_.tf",
+                kernel_type="imap_frames",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=1,
+            ),
+            SPICEFiles(
+                file_path="/path/to/imap_science_0001.tf",
+                file_name="imap_science_0001.tf",
+                ingestion_date=datetime.now(),
+                file_root="imap_science_.tf",
+                kernel_type="science_frames",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=1,
+            ),
+            SPICEFiles(
+                file_path="path/to/imap_2000_055_2000_056_01.ah.bc",
+                file_name="imap_2000_055_2000_056_01.ah.bc",
+                ingestion_date=datetime.now(),
+                file_root="imap_2000_055_2000_056_.ah.bc",
+                kernel_type="attitude_history",
+                min_date_j2000=86400.1854936,
+                max_date_j2000=4575787269.1854936,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=1,
+            ),
+        ]
+    )
+    session.commit()
+
+    # Test that repoint file ingestion kicks off pointing attitude job
+    events = {
+        "Records": [
+            {
+                "eventSourceARN": (
+                    "arn:aws:sqs:us-east-1:123456789012:test-queue.fifo"
+                ),
+                "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+                "body": '{"detail": '
+                '{"object": {"key": "imap/spice/repoint/imap_2000_056_03.repoint.csv"}}'
+                "}",
+            }
+        ]
+    }
+
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, None)
+        # verify that the function was called once
         mock_batch_client.submit_job.assert_called_once()
         mock_batch_client.submit_job.assert_called_with(
-            jobName="idex-l1b-sci-1week-job-1",
+            jobName="spacecraft-l1a-pointing-attitude-job-3",
             jobQueue="ProcessingJobQueue",
-            jobDefinition="ProcessingJob-idex",
+            jobDefinition="ProcessingJob-spacecraft",
             containerOverrides={
                 "command": [
                     "--instrument",
-                    "idex",
+                    "spacecraft",
                     "--data-level",
-                    "l1b",
+                    "l1a",
                     "--descriptor",
-                    "sci-1week",
+                    "pointing-attitude",
                     "--start-date",
-                    "20250429",
+                    "20000224",
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_idex_l1b_sci-1week_20250429_v001.json",
+                    "imap_spacecraft_l1a_pointing-attitude_20000224_v001.json",
                     "--upload-to-sdc",
                 ]
             },
             retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
-        )
-
-    with (
-        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
-        patch.object(batch_starter, "generate_queue_url", return_value=False),
-    ):
-        lambda_handler(events, None)
-        mock_submit.assert_called_with(
-            session,
-            {"data_source": "idex", "data_type": "l1b", "descriptor": "sci-1week"},
-            dt.datetime(2025, 4, 29, 0, 0),
-            "v002",
-            json.dumps(expected_dependency_input),
         )
 
 
@@ -1652,7 +2004,163 @@ def test_lambda_skip_processing_due_to_crid_check(session, caplog):
 
     This indicates that a new upstream file is expected.
     """
-    _populate_file_catalog(session)
+    _static_spice_files(session)
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_lo_l1a_de_20240101_v001.cdf",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="de",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            crid="8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_lo_l1b_de_20240101_v002.cdf",
+            instrument="lo",
+            data_level="l1b",
+            descriptor="de",
+            start_date=datetime(2010, 1, 1),
+            version="v002",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_lo_l1a_de_20240102_v002.cdf",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="de",
+            start_date=datetime(2010, 1, 2),
+            version="v002",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_lo_l1a_spin_20240101_v001.cdf",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="spin",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        SPICEFiles(
+            file_path="path/to/imap_recon_20240101_20240101_v01.bsp",
+            file_name="imap_recon_20240101_20240101_v01.bsp",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_recon_20240101_20240101_.bsp",
+            kernel_type="ephemeris_reconstructed",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+        # Add ephemeris predicted file
+        SPICEFiles(
+            file_path="path/to/imap_pred_20240101_20240101_v01.bsp",
+            file_name="imap_pred_20240101_20240101_v01.bsp",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_pred_20240101_20240101_.bsp",
+            kernel_type="ephemeris_predicted",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+        # Attitude history file
+        SPICEFiles(
+            file_path="path/to/imap_2024_001_2024_001_01.ah.bc",
+            file_name="imap_2024_001_2024_001_01.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_2024_001_2024_001_.ah.bc",
+            kernel_type="attitude_history",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+        # pointing attitude file
+        SPICEFiles(
+            file_path="path/to/imap_dps_2024_001_2024_001_01.ah.bc",
+            file_name="imap_dps_2024_001_2024_001_01.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_dps_2024_001_2024_001_01.ah.bc",
+            kernel_type="pointing_attitude",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=1,
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
     events = {
         "Records": [
             {

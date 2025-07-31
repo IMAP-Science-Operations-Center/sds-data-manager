@@ -3,7 +3,6 @@
 import base64
 import json
 import logging
-import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -11,7 +10,6 @@ from os.path import basename
 from pathlib import Path
 from typing import Optional
 
-import boto3
 import imap_data_access
 from imap_data_access import processing_input
 from imap_data_access.processing_input import ProcessingInputCollection
@@ -566,7 +564,7 @@ def get_spin_files(
 def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     """Get latest repoint file.
 
-    Query S3 bucket for the latest repoint file.
+    Query for the latest repoint file for given end_date.
 
     Parameters
     ----------
@@ -578,44 +576,112 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     str
         Latest repoint file name.
     """
-    bucket_name = os.getenv("S3_BUCKET")
-    prefix = "imap/spice/repoint/"
+    with db.Session() as session:
+        latest_repoint_file = (
+            session.query(models.RepointFiles)
+            .order_by(desc(models.RepointFiles.file_path))
+            .first()
+        )
 
-    s3 = boto3.client("s3")
-    paginator = s3.get_paginator("list_objects_v2")
-    pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
+    if not latest_repoint_file:
+        raise ValueError("No Repoint file found in the database.")
 
-    repoint_files = []
-
-    for page in pages:
-        for obj in page.get("Contents", []):
-            filename = obj["Key"]
-            file_obj = processing_input.SPICEFilePath(filename)
-            repoint_files.append(
-                (
-                    file_obj.spice_metadata["end_date"],
-                    file_obj.spice_metadata["version"],
-                    filename,
-                )
-            )
-
-    if not repoint_files:
-        return None
-
-    # Sort by end_date and version
-    latest = sorted(repoint_files, key=lambda x: (x[0], x[1]))[-1]
-    latest_file_date = latest[0]
-
-    # Check that input end is within latest repoint file end date
-    if latest_file_date < end_date:
+    if latest_repoint_file.end_date < end_date:
         logger.info(
-            f"Latest repoint file end date {latest_file_date} "
+            f"Latest repoint file end date {latest_repoint_file.end_date} "
             f"is before input end date {end_date}"
         )
         return None
 
-    # Otherwise, return the latest repoint file without the path prefix
-    return basename(latest[2])
+    return basename(latest_repoint_file.file_path)
+
+
+def check_requested_kernels(combined_kernel_sources, metakernel_files):
+    """Check if all requested kernels are present in the metakernel files.
+
+    We need to ensure that the returned list of metakernel files includes
+    all requested kernels, especially for ephemeris kernels. The API can
+    return the "best" ephemeris kernels, which can include both historical
+    and predicted kernels depending on the input time range. If the user
+    specifically requests only historical ephemeris kernels, we must verify
+    that only historical files are returned. Otherwise, both historical
+    and predicted kernels are acceptable.
+
+    Additionally, the API can return multiple kernels for the same source
+    if the files cover specific date ranges. Because of this, we must
+    check that all requested sources are present in the returned
+    metakernel files, rather than performing a direct one-to-one
+    comparison. Each source may correspond to multiple kernel files.
+
+    Parameters
+    ----------
+    combined_kernel_sources : str
+        Comma-separated string of requested kernel sources.
+    metakernel_files : list
+        List of metakernel files found.
+
+    Returns
+    -------
+    bool
+        True if all requested kernels are found, False otherwise.
+    """
+    requested_kernels = set(combined_kernel_sources.split(","))
+    expected_ephemeris = set(
+        [kernel for kernel in requested_kernels if "ephemeris_" in kernel]
+    )
+    expected_other_kernels = set(
+        [kernel for kernel in requested_kernels if "ephemeris_" not in kernel]
+    )
+
+    ephemeris_found = set()
+    other_kernels_found = set()
+
+    for file in metakernel_files:
+        file_obj = imap_data_access.SPICEFilePath(file)
+        # Extract the kernel type from the file name
+        kernel_type = file_obj.spice_metadata["type"]
+        if "ephemeris_" in kernel_type:
+            ephemeris_found.add(kernel_type)
+        else:
+            other_kernels_found.add(kernel_type)
+
+    # Check if all other requested kernels are found
+    if expected_other_kernels != other_kernels_found:
+        logger.error(
+            f"Non-ephemeris kernels {expected_other_kernels} not found in "
+            f"metakernel files {other_kernels_found}"
+        )
+        return False
+
+    # If no ephemeris kernels are requested, we can return True.
+    if not expected_ephemeris:
+        return True
+
+    # If only historical ephemeris kernel is requested, check that it
+    # is found.
+    if (
+        len(expected_ephemeris) == 1
+        and expected_ephemeris[0] == "ephemeris_reconstructed"
+        and "ephemeris_reconstructed" in ephemeris_found
+    ):
+        return True
+
+    # If 'best' ephemeris kernel is requested, check that at least one of the kernels
+    # is found in the metakernel files.
+    if (
+        len(expected_ephemeris) > 1
+        and any("ephemeris_" in kernel for kernel in expected_ephemeris)
+        and any("ephemeris_" in kernel for kernel in ephemeris_found)
+    ):
+        return True
+
+    logger.error(
+        f"Requested ephemeris kernels: {expected_ephemeris}, "
+        f"found in metakernel files: {ephemeris_found}"
+        f"\nRequested other kernels: {expected_other_kernels}, "
+        f"found in metakernel files: {other_kernels_found}"
+    )
+    return False
 
 
 def get_upstream_versions(session, record, versions) -> dict:
@@ -760,7 +826,7 @@ def matching_crids_exist(session, records) -> bool:
     return matching_crid
 
 
-# ruff: noqa: PLR0915, PLR0912
+# ruff: noqa: PLR0915, PLR0912, PLR0911
 def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
@@ -867,11 +933,19 @@ def get_upstream_dependency_inputs(
                 None,
             )
             if metakernel_response["statusCode"] != 200:
-                logger.info(
+                logger.error(
                     f"Metakernel lambda raised error: {metakernel_response['body']}"
                 )
                 return None
             metakernel_files = json.loads(metakernel_response["body"])
+            # If number of kernels returned doesn't match the number of file types
+            # requested
+            has_all_kernels = check_requested_kernels(
+                combined_kernel_sources, metakernel_files
+            )
+            if not has_all_kernels:
+                return None
+
             logger.info(
                 f"Found metakernel files: {metakernel_files}. Adding to collection."
             )
@@ -891,8 +965,7 @@ def get_upstream_dependency_inputs(
             dep_string = f"{dep=}\n{start_date=}\n{end_date=}"
 
             logger.info(
-                "Searching for upstream dependencies with dependency string: "
-                f"{dep_string}"
+                f"Searching for upstream dependencies with dependency string: {dep}"
             )
 
             records = get_files(session, dep, start_date, end_date)
@@ -1125,7 +1198,7 @@ def get_jobs(
         dependency_type,
         relationship,
     )
-    logger.info(f"Dependency nodes found: {dependencies}")
+    logger.info(f"{relationship} dependency nodes found: {dependencies}")
     if dependencies is None:
         logger.warning("Failed to load dependencies")
         raise ValueError("Failed to load dependencies")

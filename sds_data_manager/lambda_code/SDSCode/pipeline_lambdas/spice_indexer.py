@@ -3,10 +3,11 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import boto3
+import pandas as pd
 import spiceypy
 from imap_data_access import SPICEFilePath, download
 from sqlalchemy.dialects.postgresql import insert
@@ -337,10 +338,120 @@ def index_spin_file(s3_key: Path):
             "start_date": spin_metadata["start_date"],
             "end_date": spin_metadata["end_date"],
             "version": spin_metadata["version"],
-            "ingestion_date": datetime.now(timezone.utc),
+            "ingestion_date": get_file_ingestion_date(s3_key),
         }
         spin_table = models.SpinTable(**params)
         session.add(spin_table)
+        session.commit()
+
+
+def index_pointing_data(s3_key: str):
+    """Insert pointing data into pointing database table.
+
+    Pointing data is derived from the repoint file data. Steps:
+    * Download the repoint file from S3
+    * Read the CSV file using pandas
+    * Filter repoint_id that's not in pointing_table
+    * Fill rows with None values with new values
+    * For each new repoint_id, calculate pointing_start_utc and pointing_end_utc
+        Formula are:
+        pointing_start_utc = repoint_end_utc of repoint_id
+        pointing_end_utc = repoint_end_utc of repoint_id + 1
+        repoint_start_utc = repoint_start_utc of repoint_id + 1
+        repoint_end_utc = repoint_end_utc of repoint_id + 1
+    * Insert into pointing table
+
+    Parameters
+    ----------
+    s3_key: str
+        S3 path of the repoint file.
+    """
+    logger.info(f"Indexing {s3_key} to pointing table")
+    # Download repoint file
+    repoint_file_path = download(s3_key)
+    # Read CSV file using pandas
+    repoint_df = pd.read_csv(repoint_file_path)
+
+    with db.Session() as session:
+        # Update existing entries with None values
+        for pointing_entry in (
+            session.query(models.PointingTable)
+            .filter(
+                (models.PointingTable.pointing_end_utc.is_(None))
+                | (models.PointingTable.repoint_start_utc.is_(None))
+                | (models.PointingTable.repoint_end_utc.is_(None))
+            )
+            .all()
+        ):
+            repoint_row = repoint_df[
+                repoint_df["repoint_id"] == pointing_entry.pointing_id
+            ]
+            if not repoint_row.empty:
+                next_row = repoint_df[
+                    repoint_df["repoint_id"] == pointing_entry.pointing_id + 1
+                ]
+
+                if not next_row.empty:
+                    pointing_entry.pointing_end_utc = pd.to_datetime(
+                        next_row.iloc[0]["repoint_end_utc"]
+                    )
+                    pointing_entry.repoint_start_utc = pd.to_datetime(
+                        next_row.iloc[0]["repoint_start_utc"]
+                    )
+                    pointing_entry.repoint_end_utc = pd.to_datetime(
+                        next_row.iloc[0]["repoint_end_utc"]
+                    )
+                else:
+                    pointing_entry.repoint_start_utc = None
+                    pointing_entry.repoint_end_utc = None
+                    pointing_entry.pointing_end_utc = None
+
+        # Filter repoint_id that's not in pointing_table
+        pointing_ids = session.query(models.PointingTable.pointing_id).all()
+        existing_ids = [id[0] for id in pointing_ids]
+
+        # Only process repoint_ids not already in the table
+        new_repoint_df = repoint_df[~repoint_df["repoint_id"].isin(existing_ids)]
+
+        # For each new repoint_id, calculate pointing_start_utc and pointing_end_utc
+        for _, row in new_repoint_df.iterrows():
+            repoint_id = row["repoint_id"]
+            try:
+                # Convert to datetime for SQLite compatibility
+                pointing_start_utc = pd.to_datetime(row["repoint_end_utc"])
+                next_row = repoint_df[repoint_df["repoint_id"] == repoint_id + 1]
+
+                if not next_row.empty:
+                    pointing_end_utc = pd.to_datetime(
+                        next_row.iloc[0]["repoint_end_utc"]
+                    )
+                    repoint_start_utc = pd.to_datetime(
+                        next_row.iloc[0]["repoint_start_utc"]
+                    )
+                    repoint_end_utc = pd.to_datetime(
+                        next_row.iloc[0]["repoint_end_utc"]
+                    )
+                else:
+                    repoint_start_utc = None
+                    repoint_end_utc = None
+                    pointing_end_utc = None
+
+            except Exception as e:
+                logger.error(
+                    f"Error calculating pointing UTCs for repoint_id {repoint_id}: {e}"
+                )
+                continue
+
+            params = {
+                "pointing_id": repoint_id,
+                "pointing_start_utc": pointing_start_utc,
+                "pointing_end_utc": pointing_end_utc,
+                "repoint_start_utc": repoint_start_utc,
+                "repoint_end_utc": repoint_end_utc,
+            }
+
+            pointing_entry = models.PointingTable(**params)
+            session.add(pointing_entry)
         session.commit()
 
 
@@ -374,6 +485,7 @@ def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
         "ephemeris_nominal",
         "ephemeris_predict",
         "spin",
+        "repoint",
         "thruster",
     ]
     if spice_obj.spice_metadata["type"] not in spice_events:
@@ -455,17 +567,15 @@ def lambda_handler(event, context):
     s3_key = event["detail"]["object"]["key"]
 
     spice_obj = SPICEFilePath(os.path.basename(s3_key))
-    # If file is of type 'spin' or 'repoint', don't index to SPICE table
+
+    # Index file to its respective table
     if spice_obj.spice_metadata["type"] == "repoint":
-        return {
-            "statusCode": 200,
-            "body": f"{s3_key} file moved to EFS successfully",
-        }
+        index_pointing_data(s3_key)
     elif spice_obj.spice_metadata["type"] == "spin":
         logger.info(f"Indexing {s3_key} spin table")
         index_spin_file(s3_key)
     else:
-        # Index the SPICE kerenels to the SPICE table
+        # Index the SPICE kernels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
         index_spice_file(s3_key)
 
