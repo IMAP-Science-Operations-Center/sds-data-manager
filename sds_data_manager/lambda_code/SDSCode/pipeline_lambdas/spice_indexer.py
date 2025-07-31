@@ -371,87 +371,72 @@ def index_pointing_data(s3_key: str):
     repoint_file_path = download(s3_key)
     # Read CSV file using pandas
     repoint_df = pd.read_csv(repoint_file_path)
+    max_repoint_id = repoint_df["repoint_id"].max()
+    repoint_records = []
+
+    for repoint_id in repoint_df["repoint_id"].values:
+        # Had to convert to match the type in the database
+        repoint_id = int(repoint_id)  # noqa: PLW2901
+        # First find if next row exists
+        if repoint_id < max_repoint_id:
+            # If next row exists, calculate the pointing data
+            row_data = {
+                "pointing_id": repoint_id,
+                "pointing_start_utc": datetime.strptime(
+                    repoint_df.loc[
+                        repoint_df["repoint_id"] == repoint_id, "repoint_end_utc"
+                    ].values[0],
+                    "%Y-%m-%dT%H:%M:%S.%f",
+                ),
+                "pointing_end_utc": datetime.strptime(
+                    repoint_df.loc[
+                        repoint_df["repoint_id"] == repoint_id + 1, "repoint_end_utc"
+                    ].values[0],
+                    "%Y-%m-%dT%H:%M:%S.%f",
+                ),
+                "repoint_start_utc": datetime.strptime(
+                    repoint_df.loc[
+                        repoint_df["repoint_id"] == repoint_id + 1, "repoint_start_utc"
+                    ].values[0],
+                    "%Y-%m-%dT%H:%M:%S.%f",
+                ),
+                "repoint_end_utc": datetime.strptime(
+                    repoint_df.loc[
+                        repoint_df["repoint_id"] == repoint_id + 1, "repoint_end_utc"
+                    ].values[0],
+                    "%Y-%m-%dT%H:%M:%S.%f",
+                ),
+            }
+        else:
+            row_data = {
+                "pointing_id": repoint_id,
+                "pointing_start_utc": datetime.strptime(
+                    repoint_df.loc[
+                        repoint_df["repoint_id"] == repoint_id, "repoint_end_utc"
+                    ].values[0],
+                    "%Y-%m-%dT%H:%M:%S.%f",
+                ),
+                "pointing_end_utc": None,
+                "repoint_start_utc": None,
+                "repoint_end_utc": None,
+            }
+        repoint_records.append(row_data)
 
     with db.Session() as session:
-        # Update existing entries with None values
-        for pointing_entry in (
-            session.query(models.PointingTable)
-            .filter(
-                (models.PointingTable.pointing_end_utc.is_(None))
-                | (models.PointingTable.repoint_start_utc.is_(None))
-                | (models.PointingTable.repoint_end_utc.is_(None))
-            )
-            .all()
-        ):
-            repoint_row = repoint_df[
-                repoint_df["repoint_id"] == pointing_entry.pointing_id
-            ]
-            if not repoint_row.empty:
-                next_row = repoint_df[
-                    repoint_df["repoint_id"] == pointing_entry.pointing_id + 1
-                ]
-
-                if not next_row.empty:
-                    pointing_entry.pointing_end_utc = pd.to_datetime(
-                        next_row.iloc[0]["repoint_end_utc"]
-                    )
-                    pointing_entry.repoint_start_utc = pd.to_datetime(
-                        next_row.iloc[0]["repoint_start_utc"]
-                    )
-                    pointing_entry.repoint_end_utc = pd.to_datetime(
-                        next_row.iloc[0]["repoint_end_utc"]
-                    )
-                else:
-                    pointing_entry.repoint_start_utc = None
-                    pointing_entry.repoint_end_utc = None
-                    pointing_entry.pointing_end_utc = None
-
-        # Filter repoint_id that's not in pointing_table
-        pointing_ids = session.query(models.PointingTable.pointing_id).all()
-        existing_ids = [id[0] for id in pointing_ids]
-
-        # Only process repoint_ids not already in the table
-        new_repoint_df = repoint_df[~repoint_df["repoint_id"].isin(existing_ids)]
-
-        # For each new repoint_id, calculate pointing_start_utc and pointing_end_utc
-        for _, row in new_repoint_df.iterrows():
-            repoint_id = row["repoint_id"]
-            try:
-                # Convert to datetime for SQLite compatibility
-                pointing_start_utc = pd.to_datetime(row["repoint_end_utc"])
-                next_row = repoint_df[repoint_df["repoint_id"] == repoint_id + 1]
-
-                if not next_row.empty:
-                    pointing_end_utc = pd.to_datetime(
-                        next_row.iloc[0]["repoint_end_utc"]
-                    )
-                    repoint_start_utc = pd.to_datetime(
-                        next_row.iloc[0]["repoint_start_utc"]
-                    )
-                    repoint_end_utc = pd.to_datetime(
-                        next_row.iloc[0]["repoint_end_utc"]
-                    )
-                else:
-                    repoint_start_utc = None
-                    repoint_end_utc = None
-                    pointing_end_utc = None
-
-            except Exception as e:
-                logger.error(
-                    f"Error calculating pointing UTCs for repoint_id {repoint_id}: {e}"
-                )
-                continue
-
-            params = {
-                "pointing_id": repoint_id,
-                "pointing_start_utc": pointing_start_utc,
-                "pointing_end_utc": pointing_end_utc,
-                "repoint_start_utc": repoint_start_utc,
-                "repoint_end_utc": repoint_end_utc,
-            }
-
-            pointing_entry = models.PointingTable(**params)
-            session.add(pointing_entry)
+        # Similar to _upsert_into_spice_table, update db to latest repoint
+        # if data already exists. Otherwise, insert new data. This will
+        # take care of the None values or new updated values.
+        records = insert(models.PointingTable).values(repoint_records)
+        records = records.on_conflict_do_update(
+            index_elements=["pointing_id"],
+            set_={
+                "pointing_start_utc": records.excluded.pointing_start_utc,
+                "pointing_end_utc": records.excluded.pointing_end_utc,
+                "repoint_start_utc": records.excluded.repoint_start_utc,
+                "repoint_end_utc": records.excluded.repoint_end_utc,
+            },
+        )
+        session.execute(records)
         session.commit()
 
 
