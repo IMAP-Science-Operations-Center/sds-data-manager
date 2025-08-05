@@ -373,9 +373,7 @@ def index_pointing_data(s3_key: str):
     repoint_df = pd.read_csv(repoint_file_path)
     repoint_records = []
 
-    for i_row, repoint_id in enumerate(
-        repoint_df["repoint_id"].values[:-1].astype(int)
-    ):
+    for i_row, repoint_id in enumerate(repoint_df["repoint_id"].values[:-1]):
         # Had to convert to match the type in the database
         repoint_id = int(repoint_id)  # noqa: PLW2901
         # Since for loop stops at -1, we can assume that next row exists
