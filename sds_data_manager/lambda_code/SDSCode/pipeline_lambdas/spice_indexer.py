@@ -371,56 +371,50 @@ def index_pointing_data(s3_key: str):
     repoint_file_path = download(s3_key)
     # Read CSV file using pandas
     repoint_df = pd.read_csv(repoint_file_path)
-    max_repoint_id = repoint_df["repoint_id"].max()
     repoint_records = []
 
-    for repoint_id in repoint_df["repoint_id"].values:
+    for i_row, repoint_id in enumerate(
+        repoint_df["repoint_id"].values[:-1].astype(int)
+    ):
         # Had to convert to match the type in the database
         repoint_id = int(repoint_id)  # noqa: PLW2901
-        # First find if next row exists
-        if repoint_id < max_repoint_id:
-            # If next row exists, calculate the pointing data
-            row_data = {
-                "pointing_id": repoint_id,
-                "pointing_start_utc": datetime.strptime(
-                    repoint_df.loc[
-                        repoint_df["repoint_id"] == repoint_id, "repoint_end_utc"
-                    ].values[0],
-                    "%Y-%m-%dT%H:%M:%S.%f",
-                ),
-                "pointing_end_utc": datetime.strptime(
-                    repoint_df.loc[
-                        repoint_df["repoint_id"] == repoint_id + 1, "repoint_end_utc"
-                    ].values[0],
-                    "%Y-%m-%dT%H:%M:%S.%f",
-                ),
-                "repoint_start_utc": datetime.strptime(
-                    repoint_df.loc[
-                        repoint_df["repoint_id"] == repoint_id + 1, "repoint_start_utc"
-                    ].values[0],
-                    "%Y-%m-%dT%H:%M:%S.%f",
-                ),
-                "repoint_end_utc": datetime.strptime(
-                    repoint_df.loc[
-                        repoint_df["repoint_id"] == repoint_id + 1, "repoint_end_utc"
-                    ].values[0],
-                    "%Y-%m-%dT%H:%M:%S.%f",
-                ),
-            }
-        else:
-            row_data = {
-                "pointing_id": repoint_id,
-                "pointing_start_utc": datetime.strptime(
-                    repoint_df.loc[
-                        repoint_df["repoint_id"] == repoint_id, "repoint_end_utc"
-                    ].values[0],
-                    "%Y-%m-%dT%H:%M:%S.%f",
-                ),
-                "pointing_end_utc": None,
-                "repoint_start_utc": None,
-                "repoint_end_utc": None,
-            }
+        # Since for loop stops at -1, we can assume that next row exists
+        # and should be able to calculate the pointing data
+        current_row = repoint_df.iloc[i_row]
+        next_row = repoint_df.iloc[i_row + 1]  # Get the next
+        row_data = {
+            "pointing_id": repoint_id,
+            "pointing_start_utc": datetime.strptime(
+                current_row["repoint_end_utc"],
+                "%Y-%m-%dT%H:%M:%S.%f",
+            ),
+            "pointing_end_utc": datetime.strptime(
+                next_row["repoint_end_utc"],
+                "%Y-%m-%dT%H:%M:%S.%f",
+            ),
+            "repoint_start_utc": datetime.strptime(
+                next_row["repoint_start_utc"],
+                "%Y-%m-%dT%H:%M:%S.%f",
+            ),
+            "repoint_end_utc": datetime.strptime(
+                next_row["repoint_end_utc"],
+                "%Y-%m-%dT%H:%M:%S.%f",
+            ),
+        }
         repoint_records.append(row_data)
+
+    # Store last record data
+    row_data = {
+        "pointing_id": int(repoint_df.iloc[-1]["repoint_id"]),
+        "pointing_start_utc": datetime.strptime(
+            repoint_df.iloc[-1]["repoint_end_utc"],
+            "%Y-%m-%dT%H:%M:%S.%f",
+        ),
+        "pointing_end_utc": None,
+        "repoint_start_utc": None,
+        "repoint_end_utc": None,
+    }
+    repoint_records.append(row_data)
 
     with db.Session() as session:
         # Similar to _upsert_into_spice_table, update db to latest repoint
