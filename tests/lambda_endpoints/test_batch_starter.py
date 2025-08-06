@@ -1454,7 +1454,7 @@ def test_idex_l2b(session):
         lambda_handler(cadence_event, None)
         # Verify the function was called
         mock_batch_client.submit_job.assert_called_with(
-            jobName="idex-l2b-sci-1mo-job-1",
+            jobName="idex-l2b-all-1mo-job-1",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-idex",
             containerOverrides={
@@ -1464,13 +1464,13 @@ def test_idex_l2b(session):
                     "--data-level",
                     "l2b",
                     "--descriptor",
-                    "sci-1mo",
+                    "all-1mo",
                     "--start-date",
                     "20230109",
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_idex_l2b_sci-1mo_20230109_v001.json",
+                    "imap_idex_l2b_all-1mo_20230109_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -1488,7 +1488,7 @@ def test_idex_l2b(session):
         lambda_handler(cadence_event, None)
         mock_submit.assert_called_with(
             session,
-            {"data_source": "idex", "data_type": "l2b", "descriptor": "sci-1mo"},
+            {"data_source": "idex", "data_type": "l2b", "descriptor": "all-1mo"},
             dt.datetime(2023, 1, 9, 0, 0),
             "v001",
             expected_processing_input.serialize(),
