@@ -576,6 +576,7 @@ def lambda_handler(event, context):
     # Index file to its respective table
     if spice_obj.spice_metadata["type"] == "repoint":
         index_pointing_data(s3_key)
+        index_repoint_file(s3_key)
     elif spice_obj.spice_metadata["type"] == "spin":
         logger.info(f"Indexing {s3_key} spin table")
         index_spin_file(s3_key)
