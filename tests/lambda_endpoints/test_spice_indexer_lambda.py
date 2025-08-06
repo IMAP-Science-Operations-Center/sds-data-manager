@@ -326,6 +326,7 @@ def test_index_pointing_data_updates_null_values(mock_download, session, tmpdir)
     test_csv_content = """repoint_id,repoint_start_utc,repoint_end_utc
     1,2025-07-01T10:00:00.000000,2025-07-01T10:10:00.000000
     2,2025-07-02T10:00:00.000000,2025-07-02T10:10:00.000000
+    3,NaN,NaN
     """
     with open(new_repoint_file, "w") as f:
         f.write(test_csv_content)

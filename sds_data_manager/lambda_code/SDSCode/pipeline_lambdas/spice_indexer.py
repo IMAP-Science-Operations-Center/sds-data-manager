@@ -370,6 +370,29 @@ def index_repoint_file(s3_key):
     logger.info(f"Indexed {s3_key} to SPICEFiles table")
 
 
+def parse_datetime(val):
+    """Parse a datetime string safely, returning None for invalid inputs.
+
+    Parameters
+    ----------
+    val: str
+        The datetime string to parse.
+
+    Returns
+    -------
+    datetime or None
+        The parsed datetime object or None if parsing failed.
+    """
+    if val is None or str(val).strip().lower() in ("", "nan", "none"):
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%d %H:%M:%S.%f"):
+        try:
+            return datetime.strptime(val, fmt)
+        except ValueError:
+            continue
+    return None
+
+
 def index_pointing_data(s3_key: str):
     """Insert pointing data into pointing database table.
 
@@ -414,18 +437,10 @@ def index_pointing_data(s3_key: str):
         row_data = {
             # Converting to int to match the SQL type
             "pointing_id": int(data["repoint_id"]),
-            "pointing_start_utc": datetime.strptime(
-                current_row["repoint_end_utc"], "%Y-%m-%dT%H:%M:%S.%f"
-            ),
-            "pointing_end_utc": datetime.strptime(
-                next_row["repoint_end_utc"], "%Y-%m-%dT%H:%M:%S.%f"
-            ),
-            "repoint_start_utc": datetime.strptime(
-                next_row["repoint_start_utc"], "%Y-%m-%dT%H:%M:%S.%f"
-            ),
-            "repoint_end_utc": datetime.strptime(
-                next_row["repoint_end_utc"], "%Y-%m-%dT%H:%M:%S.%f"
-            ),
+            "pointing_start_utc": parse_datetime(current_row["repoint_end_utc"]),
+            "pointing_end_utc": parse_datetime(next_row["repoint_end_utc"]),
+            "repoint_start_utc": parse_datetime(next_row["repoint_start_utc"]),
+            "repoint_end_utc": parse_datetime(next_row["repoint_end_utc"]),
         }
         repoint_db_records.append(row_data)
 
@@ -433,9 +448,7 @@ def index_pointing_data(s3_key: str):
     last_row = repoind_data[-1]
     row_data = {
         "pointing_id": int(last_row["repoint_id"]),
-        "pointing_start_utc": datetime.strptime(
-            last_row["repoint_end_utc"], "%Y-%m-%dT%H:%M:%S.%f"
-        ),
+        "pointing_start_utc": parse_datetime(last_row["repoint_end_utc"]),
         "pointing_end_utc": None,
         "repoint_start_utc": None,
         "repoint_end_utc": None,
