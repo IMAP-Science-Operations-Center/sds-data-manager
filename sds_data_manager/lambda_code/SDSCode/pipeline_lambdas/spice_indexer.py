@@ -1,5 +1,6 @@
 """Functions to write SPICE ingested files to EFS."""
 
+import csv
 import json
 import logging
 import os
@@ -7,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 
 import boto3
-import pandas as pd
 import spiceypy
 from imap_data_access import SPICEFilePath, download
 from sqlalchemy.dialects.postgresql import insert
@@ -350,7 +350,7 @@ def index_pointing_data(s3_key: str):
 
     Pointing data is derived from the repoint file data. Steps:
     * Download the repoint file from S3
-    * Read the CSV file using pandas
+    * Read the CSV file
     * Filter repoint_id that's not in pointing_table
     * Fill rows with None values with new values
     * For each new repoint_id, calculate pointing_start_utc and pointing_end_utc
@@ -369,56 +369,59 @@ def index_pointing_data(s3_key: str):
     logger.info(f"Indexing {s3_key} to pointing table")
     # Download repoint file
     repoint_file_path = download(s3_key)
-    # Read CSV file using pandas
-    repoint_df = pd.read_csv(repoint_file_path)
-    repoint_records = []
+    repoind_data = []
+    repoint_db_records = []
+    # Read CSV file using Python's native csv module
+    with open(repoint_file_path) as file:
+        reader = csv.DictReader(file)
+        repoind_data = list(reader)
 
-    for i_row, repoint_id in enumerate(repoint_df["repoint_id"].values[:-1]):
-        # Had to convert to match the type in the database
-        repoint_id = int(repoint_id)  # noqa: PLW2901
+    # Filter out rows with empty repoint_id or all values are empty
+    # This can happen if there is empty row in the CSV file
+    repoind_data = [
+        row for row in repoind_data if any(row.values()) and row["repoint_id"].strip()
+    ]
+    for i_row, data in enumerate(repoind_data[:-1]):
         # Since for loop stops at -1, we can assume that next row exists
         # and should be able to calculate the pointing data
-        current_row = repoint_df.iloc[i_row]
-        next_row = repoint_df.iloc[i_row + 1]  # Get the next
+        current_row = repoind_data[i_row]
+        next_row = repoind_data[i_row + 1]
         row_data = {
-            "pointing_id": repoint_id,
+            # Converting to int to match the SQL type
+            "pointing_id": int(data["repoint_id"]),
             "pointing_start_utc": datetime.strptime(
-                current_row["repoint_end_utc"],
-                "%Y-%m-%dT%H:%M:%S.%f",
+                current_row["repoint_end_utc"], "%Y-%m-%dT%H:%M:%S.%f"
             ),
             "pointing_end_utc": datetime.strptime(
-                next_row["repoint_end_utc"],
-                "%Y-%m-%dT%H:%M:%S.%f",
+                next_row["repoint_end_utc"], "%Y-%m-%dT%H:%M:%S.%f"
             ),
             "repoint_start_utc": datetime.strptime(
-                next_row["repoint_start_utc"],
-                "%Y-%m-%dT%H:%M:%S.%f",
+                next_row["repoint_start_utc"], "%Y-%m-%dT%H:%M:%S.%f"
             ),
             "repoint_end_utc": datetime.strptime(
-                next_row["repoint_end_utc"],
-                "%Y-%m-%dT%H:%M:%S.%f",
+                next_row["repoint_end_utc"], "%Y-%m-%dT%H:%M:%S.%f"
             ),
         }
-        repoint_records.append(row_data)
+        repoint_db_records.append(row_data)
 
     # Store last record data
+    last_row = repoind_data[-1]
     row_data = {
-        "pointing_id": int(repoint_df.iloc[-1]["repoint_id"]),
+        "pointing_id": int(last_row["repoint_id"]),
         "pointing_start_utc": datetime.strptime(
-            repoint_df.iloc[-1]["repoint_end_utc"],
-            "%Y-%m-%dT%H:%M:%S.%f",
+            last_row["repoint_end_utc"], "%Y-%m-%dT%H:%M:%S.%f"
         ),
         "pointing_end_utc": None,
         "repoint_start_utc": None,
         "repoint_end_utc": None,
     }
-    repoint_records.append(row_data)
+    repoint_db_records.append(row_data)
 
     with db.Session() as session:
         # Similar to _upsert_into_spice_table, update db to latest repoint
         # if data already exists. Otherwise, insert new data. This will
         # take care of the None values or new updated values.
-        records = insert(models.PointingTable).values(repoint_records)
+        records = insert(models.PointingTable).values(repoint_db_records)
         records = records.on_conflict_do_update(
             index_elements=["pointing_id"],
             set_={
