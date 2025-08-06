@@ -340,9 +340,34 @@ def index_spin_file(s3_key: Path):
             "version": spin_metadata["version"],
             "ingestion_date": get_file_ingestion_date(s3_key),
         }
-        spin_table = models.SpinTable(**params)
+        spin_table = models.SpinFiles(**params)
         session.add(spin_table)
         session.commit()
+
+
+def index_repoint_file(s3_key):
+    """Insert repoint file metadata into repoint database table.
+
+    Parameters
+    ----------
+    s3_key: str
+        S3 path of the repoint file.
+    """
+    logger.info(f"Indexing {s3_key} to RepointFiles table")
+    with db.Session() as session:
+        spin_obj = SPICEFilePath(os.path.basename(s3_key))
+        spin_metadata = spin_obj.spice_metadata
+        params = {
+            "file_path": s3_key,
+            "end_date": spin_metadata["end_date"],
+            "version": spin_metadata["version"],
+            "ingestion_date": get_file_ingestion_date(s3_key),
+        }
+        spin_table = models.RepointFiles(**params)
+        session.add(spin_table)
+        session.commit()
+
+    logger.info(f"Indexed {s3_key} to SPICEFiles table")
 
 
 def index_pointing_data(s3_key: str):

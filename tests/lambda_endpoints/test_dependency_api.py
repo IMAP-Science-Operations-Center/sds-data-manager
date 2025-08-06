@@ -17,7 +17,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
     RepointFiles,
     ScienceFiles,
-    SpinTable,
+    SpinFiles,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
@@ -728,49 +728,49 @@ def test_get_spin_files(session):
     # Add spin files to the database
     session.add_all(
         [
-            SpinTable(
+            SpinFiles(
                 file_path="/imap/spice/spin/imap_2025_119_2025_120_01.spin.csv",
                 start_date=datetime(2025, 4, 29),
                 end_date=datetime(2025, 4, 30),
                 version="01",
                 ingestion_date=datetime.now(),
             ),
-            SpinTable(
+            SpinFiles(
                 file_path="/imap/spice/spin/imap_2025_120_2025_121_01.spin.csv",
                 start_date=datetime(2025, 4, 30),
                 end_date=datetime(2025, 5, 1),
                 version="01",
                 ingestion_date=datetime.now(),
             ),
-            SpinTable(
+            SpinFiles(
                 file_path="/imap/spice/spin/imap_2026_267_2026_268_01.spin.csv",
                 start_date=datetime(2026, 9, 23),
                 end_date=datetime(2026, 9, 24),
                 version="01",
                 ingestion_date=datetime.now(),
             ),
-            SpinTable(
+            SpinFiles(
                 file_path="/imap/spice/spin/imap_2026_267_2026_268_02.spin.csv",
                 start_date=datetime(2026, 9, 23),
                 end_date=datetime(2026, 9, 24),
                 version="02",
                 ingestion_date=datetime.now(),
             ),
-            SpinTable(
+            SpinFiles(
                 file_path="/imap/spice/spin/imap_2026_268_2026_268_01.spin.csv",
                 start_date=datetime(2026, 9, 24),
                 end_date=datetime(2026, 9, 24),
                 version="01",
                 ingestion_date=datetime.now(),
             ),
-            SpinTable(
+            SpinFiles(
                 file_path="/imap/spice/spin/imap_2026_268_2026_268_02.spin.csv",
                 start_date=datetime(2026, 9, 24),
                 end_date=datetime(2026, 9, 24),
                 version="02",
                 ingestion_date=datetime.now(),
             ),
-            SpinTable(
+            SpinFiles(
                 file_path="/imap/spice/spin/imap_2026_268_2026_269_01.spin.csv",
                 start_date=datetime(2026, 9, 24),
                 end_date=datetime(2026, 9, 25),

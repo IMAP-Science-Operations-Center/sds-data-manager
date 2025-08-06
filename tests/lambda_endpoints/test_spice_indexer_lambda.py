@@ -214,7 +214,7 @@ def test_s3_spin_files(session, s3_client, events_client):
         os.path.join(test_spice_data_dir, "imap_2026_267_2026_267_01.spin.csv"),
     )
     spice_indexer.lambda_handler(spin_file1_event, None)
-    query = select(models.SpinTable.__table__)
+    query = select(models.SpinFiles.__table__)
     spin_table_rows = session.execute(query).all()
     assert len(spin_table_rows) == 1
     assert spin_table_rows[0].file_path == (
@@ -228,7 +228,7 @@ def test_s3_spin_files(session, s3_client, events_client):
         os.path.join(test_spice_data_dir, "imap_2026_267_2026_267_02.spin.csv"),
     )
     spice_indexer.lambda_handler(spin_file2_event, None)
-    query = select(models.SpinTable.__table__)
+    query = select(models.SpinFiles.__table__)
     spin_table_rows = session.execute(query).all()
     assert len(spin_table_rows) == 2
     assert spin_table_rows[1].file_path == (

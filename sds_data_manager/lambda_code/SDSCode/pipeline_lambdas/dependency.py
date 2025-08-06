@@ -520,7 +520,7 @@ def get_spin_files(
     list
         List of spin files.
     """
-    spin = aliased(models.SpinTable)
+    spin = aliased(models.SpinFiles)
 
     # Define the row_number() window function
     row_number = (
