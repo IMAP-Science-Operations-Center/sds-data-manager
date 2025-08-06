@@ -632,6 +632,21 @@ mag, l1b, burst-mago, mag, l1d, burst, HARD, DOWNSTREAM
 mag, l1b, burst-magi, mag, l1d, burst, HARD, DOWNSTREAM
 mag, ancillary, l1d-calibration, mag, l1d, norm, HARD, DOWNSTREAM
 
+
+# all L1D processing occurs in one step
+mag, ancillary, l1d-calibration, mag, l1d, norm-srf, HARD, DOWNSTREAM
+mag, l1c, norm-mago, mag, l1d, norm-srf, HARD, DOWNSTREAM
+mag, l1c, norm-magi, mag, l1d, norm-srf, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1d, norm-srf, HARD, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1d, norm-srf, HARD, DOWNSTREAM
+
+imap_frames, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
+leapseconds, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+
+# MAG L2 and L1D look pretty similar.
 mag, l1c, norm-mago, mag, l2, norm-srf, HARD, DOWNSTREAM
 mag, l1b, burst-mago, mag, l2, burst-srf, HARD, DOWNSTREAM
 mag, ancillary, l2-calibration, mag, l2, norm-srf, HARD, DOWNSTREAM
