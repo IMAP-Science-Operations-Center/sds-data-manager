@@ -20,6 +20,31 @@ logger.setLevel(logging.INFO)
 s3 = boto3.client("s3")
 
 
+def get_file_tagging(file_path):
+    """Get s3 file tagging.
+
+    Parameters
+    ----------
+    file_path: str
+        S3 object path. Eg. filepath/filename.ext
+
+    Returns
+    -------
+    dict
+        Dictionary of tags for the s3 file.
+
+    """
+    # Create an S3 client
+    s3_client = boto3.client("s3")
+
+    # Retrieve the metadata of the object
+    bucket_name = os.getenv("S3_BUCKET")
+    logger.info(f"looking up tags for {file_path}")
+
+    response = s3_client.get_object_tagging(Bucket=bucket_name, Key=file_path)
+    return response["TagSet"]
+
+
 def get_file_ingestion_date(file_path):
     """Get s3 file ingestion date.
 
@@ -81,7 +106,7 @@ def http_response(headers=None, status_code=200, body="Success"):
     }
 
 
-def send_event_from_indexer(file_obj):
+def send_event_from_indexer(file_obj, tags):
     """Send custom PutEvent to EventBridge.
 
     Example of what PutEvent looks like:
@@ -92,6 +117,7 @@ def send_event_from_indexer(file_obj):
             "object": {
                   "key": filename
                   "instrument": instrument_name
+                  "tags": file_tags
             },
         },
     }
@@ -100,6 +126,8 @@ def send_event_from_indexer(file_obj):
     ----------
     file_obj : AncillaryFilePath, ScienceFilePath
         The filename to use in the PutEvent
+    tags : dict
+        Dictionary of tags for the s3 file.
 
     Returns
     -------
@@ -119,6 +147,7 @@ def send_event_from_indexer(file_obj):
             "key": str(file_obj.filename),
             "instrument": file_obj.instrument,
             "data_level": "ancillary",
+            "tags": tags,
         }
     }
 
@@ -237,9 +266,11 @@ def s3_event_handler(event):
             msg = "Error: file name does not match ancillary or science file paths."
             return http_response(status_code=400, body=msg)
 
+    # Get any s3 tags for the file
+    tags = get_file_tagging(s3_filepath)
     # Send event from this lambda for Batch starter
     # lambda
-    send_event_from_indexer(file_obj)
+    send_event_from_indexer(file_obj, tags)
     logger.debug("S3 event handler complete")
     return http_response(status_code=200, body="Success")
 

@@ -1152,7 +1152,8 @@ def lambda_handler(events: dict, context):
                     {
                         "body": '{"detail": '
                         '{"object": {"key": '
-                        '"imap_swe_l1b-in-flight-cal_20240101_v001.cdf"}}'
+                        '"imap_swe_l1b-in-flight-cal_20240101_v001.cdf"},
+                        "tags": [{"Key": "manually_reprocessed", "Value": "true"}]}'
                         "}"
                     }
                 ]
