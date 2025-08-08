@@ -14,6 +14,7 @@ from sds_data_manager.constructs import (
     backup_bucket_construct,
     data_bucket_construct,
     database_construct,
+    ialirt_alarm_construct,
     ialirt_api_manager_construct,
     ialirt_archive_construct,
     ialirt_bucket_construct,
@@ -362,6 +363,12 @@ def build_sds(
     ialirt_realtime_construct.IalirtRealTimeConstruct(
         scope=ialirt_stack,
         construct_id="IalirtRealTime",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
+    )
+
+    ialirt_alarm_construct.IalirtAlarmConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtAlarm",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
     )
 
