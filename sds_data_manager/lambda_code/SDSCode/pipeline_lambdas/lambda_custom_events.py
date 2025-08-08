@@ -11,6 +11,7 @@ class IMAPLambdaPutEvent:
     detail_type: str
     detail: dict
     source: str = "imap.lambda"
+    job_id: str = None
 
     def to_event(self):
         """Return the event details."""

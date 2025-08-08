@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import indexer
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.indexer import (
+    manually_reprocessed_file,
     send_event_from_indexer,
 )
 
@@ -252,3 +253,22 @@ def test_send_lambda_put_event(events_client):
 
     result = send_event_from_indexer(file_obj)
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+
+def test_manually_reprocessed_file(session, s3_client, events_client):
+    """Test that the function returns true when the file has a reprocessed tag."""
+    filepath = "imap/idex/l0/2024/01/imap_index_l0_sci-test_20240101_v001.pkts"
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=filepath,
+        Body=b"test",
+        Tagging="manually_reprocessed=true",
+    )
+    assert manually_reprocessed_file(filepath)
+    filepath_no_tag = "imap/idex/l0/2024/01/imap_index_l0_sci-test_20240101_v002.pkts"
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=filepath_no_tag,
+        Body=b"test",
+    )
+    assert not manually_reprocessed_file(filepath_no_tag)

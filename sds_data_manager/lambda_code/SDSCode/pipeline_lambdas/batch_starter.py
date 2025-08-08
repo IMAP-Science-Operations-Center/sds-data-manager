@@ -380,6 +380,7 @@ def try_to_submit_job(
     start_date: datetime,
     version: str,
     serialized_dependencies: str,
+    skip_duplicate_jobs: bool = True,
 ):
     """Try to submit a batch job with the given job information.
 
@@ -396,6 +397,11 @@ def try_to_submit_job(
     serialized_dependencies : str
         The serialized ProcessingInputCollection of the upstream
         dependencies.
+    skip_duplicate_jobs : bool
+        In normal reprocessing (due to a new file upload) duplicate jobs should be
+        skipped to avoid redundant products. In cases where a user has manually
+        triggered reprocessing, we want to reprocess even if the job looks like a
+        duplicate. Default is True.
     """
     instrument = job_info["data_source"]
     data_level = job_info["data_type"]
@@ -406,27 +412,32 @@ def try_to_submit_job(
     # instrument, data level, descriptor, and start date by checking the CRID.
     # Only check for duplicates if this is a reprocessing job.
     # We know this is a reprocessing job if the version is not "v001".
-    if version != "v001":
-        previous_version = f"v{int(version[1:]) - 1:03d}"
-        if duplicate_job(
-            instrument,
-            data_level,
-            descriptor,
-            start_date_str,
-            previous_version,
-            serialized_dependencies,
-        ):
+    if skip_duplicate_jobs:
+        if version != "v001":
+            previous_version = f"v{int(version[1:]) - 1:03d}"
+            if duplicate_job(
+                instrument,
+                data_level,
+                descriptor,
+                start_date_str,
+                previous_version,
+                serialized_dependencies,
+            ):
+                logger.info(
+                    f"This job is a duplicate of the previous one for: "
+                    f"{instrument=},"
+                    f" {data_level=},"
+                    f" {descriptor=},"
+                    f" {start_date_str=},"
+                    f" and {previous_version=}. "
+                    f"Skipping submission."
+                )
+                return
+        else:
             logger.info(
-                f"This job is a duplicate of the previous one for: "
-                f"{instrument=},"
-                f" {data_level=},"
-                f" {descriptor=},"
-                f" {start_date_str=},"
-                f" and {previous_version=}. "
-                f"Skipping submission."
+                "This is a manually triggered reprocessing job. Not checking"
+                "for duplicate jobs."
             )
-            return
-    # TODO: do we need a reprocessing column to indicate if this is a reprocessing job?
 
     # Serialize the upstream dependencies and write them to a JSON file. The Imap
     # processing code will read the JSON file and deserialize the dependencies. This is
@@ -516,6 +527,7 @@ def submit_all_jobs(
     end_date,
     calculate_crids=False,
     filter_dependencies=True,
+    skip_duplicate_jobs=True,
 ):
     """Submit all jobs for the given job and upstream dependencies.
 
@@ -538,6 +550,11 @@ def submit_all_jobs(
         not want to filter any dependencies out, for example, ULTRA l3
         "u90-ena-h-sf-sp-full-hae-4deg-3mo" needs all the psets in the collection.
         Default is set to True.
+    skip_duplicate_jobs : bool
+        In normal reprocessing (due to a new file upload) duplicate jobs should be
+        skipped to avoid redundant products. In cases where a user has manually
+        triggered reprocessing, we want to reprocess even if the job looks like a
+        duplicate. Default is True.
 
 
     """
@@ -580,6 +597,7 @@ def submit_all_jobs(
             datetime.datetime.strptime(start_date, "%Y%m%d"),
             job_version,
             upstream_dependencies.serialize(),
+            skip_duplicate_jobs,
         )
         return
 
@@ -635,6 +653,7 @@ def submit_all_jobs(
             job_start_date,
             job_version,
             upstream_deps_for_job.serialize(),
+            skip_duplicate_jobs,
         )
 
 
@@ -784,6 +803,25 @@ def s3_processing_event(session, events):
         logger.info("Individual event: " + json.dumps(event, indent=2))
         body = json.loads(event["body"])
         filename = body["detail"]["object"]["key"]
+        # Determine if the file is a manually reprocessed file. E.g. the file was
+        # reprocessed due to a bulk reprocessing api event.
+        # This bool is necessary to avoid skipping duplicate jobs in a
+        # "bulk reprocessing" or "manual reprocessing" run. In normal processing or
+        # reprocessing due to a new file version, duplicate jobs are found by seeing if
+        # a dependency file already exists in S3. Since the dependency file contains a
+        # hash of the serialized dependencies, it's unique to that job. Sometimes,
+        # reprocessing is desired for a job that has already been run with the same
+        # dependencies — for example, if the software has been updated.
+        try:
+            manually_reprocessed = body["detail"]["object"]["manually_reprocessed"]
+            # Invert for clarity
+            skip_duplicate_jobs = not manually_reprocessed
+        except KeyError as e:
+            logger.warning(
+                f"manually_reprocessed key not found in event body: {e}. "
+                f"Assuming this is not a manually reprocessed file."
+            )
+            skip_duplicate_jobs = True
 
         file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
         input_obj = imap_data_access.processing_input.generate_imap_input(filename)
@@ -852,6 +890,7 @@ def s3_processing_event(session, events):
                 end_date,
                 calculate_crids,
                 filter_dependencies,
+                skip_duplicate_jobs,
             )
 
         if sqs_queue_url:
@@ -910,7 +949,12 @@ def handle_special_case_reprocessing_jobs(session, job_node, start_date, end_dat
             session, job_node, filepath.start_date
         )
         submit_all_jobs(
-            session, job_node, start_date, end_date, filter_dependencies=False
+            session,
+            job_node,
+            start_date,
+            end_date,
+            filter_dependencies=False,
+            skip_duplicate_jobs=False,
         )
 
 
@@ -924,7 +968,6 @@ def bulk_reprocessing_event(session, events):
     events : dict
         Event input.
     """
-    # TODO: We need s3 tag or column in db to track bulk reprocessing
     instrument = events.get("instrument")
     data_level = events.get("data_level")
     descriptor = events.get("descriptor")
@@ -977,7 +1020,9 @@ def bulk_reprocessing_event(session, events):
         if job in SPECIAL_CASE_JOBS:
             handle_special_case_reprocessing_jobs(session, job, start_date, end_date)
         else:
-            submit_all_jobs(session, job, start_date, end_date)
+            submit_all_jobs(
+                session, job, start_date, end_date, skip_duplicate_jobs=False
+            )
 
 
 def upload_dependency_file(dependency_file_path: Path, serialized_dependencies: str):
@@ -1153,7 +1198,7 @@ def lambda_handler(events: dict, context):
                         "body": '{"detail": '
                         '{"object": {"key": '
                         '"imap_swe_l1b-in-flight-cal_20240101_v001.cdf"},
-                        "tags": [{"Key": "manually_reprocessed", "Value": "true"}]}'
+                        "manually_reprocessed": true'
                         "}"
                     }
                 ]

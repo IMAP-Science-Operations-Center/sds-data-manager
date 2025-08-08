@@ -20,8 +20,8 @@ logger.setLevel(logging.INFO)
 s3 = boto3.client("s3")
 
 
-def get_file_tagging(file_path):
-    """Get s3 file tagging.
+def manually_reprocessed_file(file_path):
+    """Check if a file was manually reprocessed triggered by an API event.
 
     Parameters
     ----------
@@ -30,8 +30,9 @@ def get_file_tagging(file_path):
 
     Returns
     -------
-    dict
-        Dictionary of tags for the s3 file.
+    manually_reprocessed : bool
+        True if the file was reprocessed due to a manual reprocessing event, False
+        otherwise.
 
     """
     # Create an S3 client
@@ -41,8 +42,15 @@ def get_file_tagging(file_path):
     bucket_name = os.getenv("S3_BUCKET")
     logger.info(f"looking up tags for {file_path}")
 
-    response = s3_client.get_object_tagging(Bucket=bucket_name, Key=file_path)
-    return response["TagSet"]
+    tags = s3_client.get_object_tagging(Bucket=bucket_name, Key=file_path)["TagSet"]
+    # Tags are a list of dictionaries, each with a Key and Value.
+    # E.g: [{"Key": "manually_reprocessed", "Value": "true"}]
+    return any(
+        [
+            (tag["Key"] == "manually_reprocessed" and tag["Value"] == "true")
+            for tag in tags
+        ]
+    )
 
 
 def get_file_ingestion_date(file_path):
@@ -106,7 +114,7 @@ def http_response(headers=None, status_code=200, body="Success"):
     }
 
 
-def send_event_from_indexer(file_obj, tags):
+def send_event_from_indexer(file_obj, manually_reprocessed=False):
     """Send custom PutEvent to EventBridge.
 
     Example of what PutEvent looks like:
@@ -117,7 +125,7 @@ def send_event_from_indexer(file_obj, tags):
             "object": {
                   "key": filename
                   "instrument": instrument_name
-                  "tags": file_tags
+                  "manually_reprocessed": true
             },
         },
     }
@@ -126,8 +134,9 @@ def send_event_from_indexer(file_obj, tags):
     ----------
     file_obj : AncillaryFilePath, ScienceFilePath
         The filename to use in the PutEvent
-    tags : dict
-        Dictionary of tags for the s3 file.
+    manually_reprocessed : bool
+        True if the file was reprocessed due to a manual reprocessing event, False
+        otherwise.
 
     Returns
     -------
@@ -147,7 +156,7 @@ def send_event_from_indexer(file_obj, tags):
             "key": str(file_obj.filename),
             "instrument": file_obj.instrument,
             "data_level": "ancillary",
-            "tags": tags,
+            "manually_reprocessed": manually_reprocessed,
         }
     }
 
@@ -266,11 +275,11 @@ def s3_event_handler(event):
             msg = "Error: file name does not match ancillary or science file paths."
             return http_response(status_code=400, body=msg)
 
-    # Get any s3 tags for the file
-    tags = get_file_tagging(s3_filepath)
+    # Check if the file was manually reprocessed
+    manually_reprocessed = manually_reprocessed_file(s3_filepath)
     # Send event from this lambda for Batch starter
     # lambda
-    send_event_from_indexer(file_obj, tags)
+    send_event_from_indexer(file_obj, manually_reprocessed)
     logger.debug("S3 event handler complete")
     return http_response(status_code=200, body="Success")
 

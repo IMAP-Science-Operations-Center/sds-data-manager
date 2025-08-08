@@ -156,6 +156,7 @@ def test_lambda_handler(session, s3_client):
             dt.datetime(2024, 1, 1, 0, 0),
             "v002",
             processing_input.serialize(),
+            True,
         )
 
 
@@ -431,6 +432,7 @@ def test_lambda_handler_ancillary_event(session):
             dt.datetime(2026, 3, 3, 0, 0),
             "v002",
             json.dumps(inputs),
+            True,
         )
 
 
@@ -944,6 +946,7 @@ def test_ultra_l3_map(session, caplog):
                 dt.datetime(2024, 2, 1, 0, 0),
                 "v002",
                 expected_processing_input.serialize(),
+                True,
             )
 
 
@@ -1180,6 +1183,7 @@ def test_lambda_handler_mag_l1c_case(session):
             dt.datetime(2024, 1, 1, 0, 0),
             "v003",
             expected_processing_input.serialize(),
+            True,
         )
 
 
