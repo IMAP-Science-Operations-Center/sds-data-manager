@@ -1,6 +1,7 @@
 """Tests for the Upload API."""
 
 import os
+from urllib.parse import urlparse
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
 
@@ -89,8 +90,8 @@ def test_ancillary_file_upload(s3_client, ancillary_file):
     assert response["statusCode"] == 409
 
 
-def test_cadence_file_upload(s3_client, dependency_file):
-    """Test cadence files being uploaded."""
+def test_dependency_file_upload(s3_client, dependency_file):
+    """Test dependency files being uploaded."""
     event = {
         "version": "2.0",
         "routeKey": "$default",
@@ -99,7 +100,6 @@ def test_cadence_file_upload(s3_client, dependency_file):
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 200
-
     # Try to upload again and we should get a 409 duplicate error
     s3_client.put_object(
         Bucket=os.getenv("S3_BUCKET"),
@@ -140,3 +140,22 @@ def test_incorrect_file_type(s3_client, invalid_file):
     response = upload_api.lambda_handler(event=event, context=None)
     # It should now go into staging area instead of throwing an error
     assert response["statusCode"] == 400
+
+
+def test_upload_with_reprocessing_tag(s3_client, science_file):
+    """Test that a file can be uploaded with the manually reprocessed tag."""
+    event = {
+        "version": "2.0",
+        "routeKey": "$default",
+        "rawPath": "/",
+        "pathParameters": {
+            "proxy": science_file,
+        },
+        "queryStringParameters": {"manually_reprocessed": "true"},
+    }
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 200
+
+    # Check that the file was uploaded with the correct tag
+    parsed_url = urlparse(response["body"])
+    assert "x-amz-tagging=manually_reprocessed" in parsed_url.query

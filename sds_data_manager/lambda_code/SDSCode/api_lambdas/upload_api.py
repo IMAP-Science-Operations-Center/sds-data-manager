@@ -77,7 +77,7 @@ def _generate_signed_upload_response(s3_key_path, tags=None):
         Params={
             "Bucket": BUCKET_NAME,
             "Key": s3_key_path,
-            "Metadata": tags or dict(),
+            "Tagging": "&".join(f"{k}={v}" for k, v in (tags or {}).items()),
         },
         ExpiresIn=3600,
     )
@@ -96,6 +96,9 @@ def lambda_handler(event, context):
     event : dict
         Specifically looking at the event['pathParameters']['proxy'], which
         specifies the filename to upload.
+        If event['pathParameters']['manually_reprocessed'] == "true", the file will be
+        uploaded with the "manually_reprocessed=true" S3 tag. This tag indicates that
+        the file was reprocessed due to a manual reprocessing API request.
     context : None
         Currently not used
 
@@ -106,6 +109,12 @@ def lambda_handler(event, context):
 
     """
     path_params = event.get("pathParameters", {}).get("proxy", None)
+    manually_reprocessed = (
+        event.get("queryStringParameters", {})
+        .get("manually_reprocessed", "false")
+        .lower()
+        == "true"
+    )
     logger.info("Parsing path parameters=[%s] from event=[%s]", path_params, event)
 
     if not path_params:
@@ -152,5 +161,7 @@ def lambda_handler(event, context):
     s3_key_path_str = str(
         s3_key_path.relative_to(imap_data_access.config["DATA_DIR"]).as_posix()
     )
-
-    return _generate_signed_upload_response(s3_key_path_str)
+    s3tags = {"manually_reprocessed": "true"} if manually_reprocessed else None
+    if s3tags:
+        logger.info(f"Uploading file with S3 tags: {s3tags}.")
+    return _generate_signed_upload_response(s3_key_path_str, tags=s3tags)

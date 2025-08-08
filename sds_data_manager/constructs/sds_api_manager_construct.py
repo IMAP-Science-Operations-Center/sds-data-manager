@@ -62,6 +62,13 @@ class SdsApiManager(Construct):
                 f"{data_bucket.bucket_arn}/*",
             ],
         )
+        s3_tag_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:PutObjectTagging"],
+            resources=[
+                f"{data_bucket.bucket_arn}/*",
+            ],
+        )
         s3_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:GetObject"],
@@ -91,6 +98,7 @@ class SdsApiManager(Construct):
             layers=layers,
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
+        upload_api_lambda.add_to_role_policy(s3_tag_policy)
         upload_api_lambda.add_to_role_policy(s3_read_policy)
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
