@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest_plots import (
+from sds_data_manager.lambda_code.IAlirtCode.ialirt_realtime import (
     lambda_handler,
     query_filenames,
     read_ingest_logs,
