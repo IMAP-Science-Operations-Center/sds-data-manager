@@ -66,7 +66,7 @@ class IalirtAlarmConstruct(Construct):
         put_metric = cloudwatch.Metric(
             namespace="AWS/S3",
             metric_name="PutRequests",
-            period=Duration.days(1),  # 1 day period
+            period=Duration.minutes(1),  # Check every minute
             statistic="Sum",
             dimensions_map={
                 "BucketName": ialirt_bucket.bucket_name,
@@ -74,15 +74,15 @@ class IalirtAlarmConstruct(Construct):
             },
         )
 
-        # Alarm: “no puts for 120 minutes”
+        # Alarm: “no puts for 1 day”
         cloudwatch.Alarm(
             self,
-            "NoPuts15m",
+            "IalirtNoPutsDay",
             metric=put_metric,
             threshold=1,  # < 1 put
             # How many periods should it be evaluated before triggering the alarm.
-            evaluation_periods=120,  # 120 minutes total window
-            datapoints_to_alarm=120,  # all 120 minutes must be quiet
+            evaluation_periods=1440,  # 120 minutes total window
+            datapoints_to_alarm=1440,  # all 120 minutes must be quiet
             treat_missing_data=cloudwatch.TreatMissingData.BREACHING,
             comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             alarm_description="Alarm when no packets have arrived.",
