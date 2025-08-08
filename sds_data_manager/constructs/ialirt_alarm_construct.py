@@ -66,7 +66,7 @@ class IalirtAlarmConstruct(Construct):
         put_metric = cloudwatch.Metric(
             namespace="AWS/S3",
             metric_name="PutRequests",
-            period=Duration.minutes(1),
+            period=Duration.days(1),  # 1 day period
             statistic="Sum",
             dimensions_map={
                 "BucketName": ialirt_bucket.bucket_name,
