@@ -433,11 +433,11 @@ def try_to_submit_job(
                     f"Skipping submission."
                 )
                 return
-        else:
-            logger.info(
-                "This is a manually triggered reprocessing job. Not checking"
-                "for duplicate jobs."
-            )
+    else:
+        logger.info(
+            "This is a manually triggered reprocessing job. Skipping check for "
+            "duplicate jobs."
+        )
 
     # Serialize the upstream dependencies and write them to a JSON file. The Imap
     # processing code will read the JSON file and deserialize the dependencies. This is
