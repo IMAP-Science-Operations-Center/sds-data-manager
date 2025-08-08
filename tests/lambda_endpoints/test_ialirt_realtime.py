@@ -40,7 +40,6 @@ def test_lambda_handler3(s3_client):
 def test_query_filenames(s3_client):
     """Test the query_filenames function."""
     bucket = "test-data-bucket"
-    region = "us-west-2"
     now = datetime(2025, 7, 31, 16, 55, 28, 531613, tzinfo=timezone.utc)
 
     inside_range_keys = [
@@ -53,7 +52,7 @@ def test_query_filenames(s3_client):
     for key in [*inside_range_keys, outside_range_key]:
         s3_client.put_object(Bucket=bucket, Key=key, Body=b"dummy data")
 
-    result = query_filenames(bucket, region, now)
+    result = query_filenames(s3_client, bucket, now)
 
     assert sorted(result) == [
         "flight_iois_1.log.2025-212T15_55_27.531613",
@@ -67,10 +66,10 @@ def test_read_ingest_logs(s3_client):
     filenames = ["file1.log", "file2.log"]
 
     file_contents = {
-        "file1.log": (
+        "logs/file1.log": (
             "Thu Jul 31 16:32:38 UTC 2025\n2025/212-16:32:38.239 some log line\n"
         ),
-        "file2.log": (
+        "logs/file2.log": (
             "2025/212-16:33:04.063 another log line\n"
             "2025/212-16:33:06.070 more log lines\n"
         ),
