@@ -55,4 +55,7 @@ class IAlirtBucketConstruct(Construct):
                     max_age=86400,  # Cache CORS preflight for 24 hours
                 )
             ],
+            metrics=[
+                s3.BucketMetrics(id="PacketsPrefix", prefix="packets/"),
+            ],
         )
