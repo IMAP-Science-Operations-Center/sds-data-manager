@@ -21,6 +21,7 @@ from sds_data_manager.constructs import (
     ialirt_efs_construct,
     ialirt_ingest_lambda_construct,
     ialirt_processing_construct,
+    ialirt_realtime_construct,
     indexer_lambda_construct,
     instrument_lambdas,
     lambda_layer_construct,
@@ -326,6 +327,13 @@ def build_sds(
     ialirt_coverage_construct.IalirtCoverageConstruct(
         scope=ialirt_stack,
         construct_id="IalirtCoverage",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
+    )
+
+    # I-ALiRT IOIS realtime lambda (facilitates creating realtime json in s3)
+    ialirt_realtime_construct.IalirtRealTimeConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtRealTime",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
     )
 
