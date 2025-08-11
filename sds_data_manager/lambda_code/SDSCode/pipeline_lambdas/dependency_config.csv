@@ -208,6 +208,8 @@ spacecraft_clock, spice, historical, hi, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
 
 # L1B 45sensor-de
 hi, l1a, 45sensor-de, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
+hi, l1b, 45sensor-hk, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
+hi, ancillary, 45sensor-esa-energies, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
 leapseconds, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -220,6 +222,8 @@ spin, spin, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 
 # L1B 90sensor-de
 hi, l1a, 90sensor-de, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
+hi, l1b, 90sensor-hk, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
+hi, ancillary, 90sensor-esa-energies, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
 leapseconds, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM

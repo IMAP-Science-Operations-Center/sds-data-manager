@@ -224,6 +224,10 @@ class ApiGateway(Construct):
         lambda_function : lambda_.Function
             Lambda function to trigger when this route is hit.
         """
+        # normalize root route
+        if route in ["", "/"]:
+            route = "/"
+
         # Add the authorizer to the route if it is a route that requires authentication
         authorizer = None
         authorization_scopes = None
