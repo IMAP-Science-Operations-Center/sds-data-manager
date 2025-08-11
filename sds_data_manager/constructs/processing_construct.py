@@ -83,6 +83,13 @@ class ProcessingConstruct(Construct):
             removal_policy=cdk.RemovalPolicy.DESTROY,
         )
         # Create the job definition
+        account_name = self.node.get_context("account_name")
+        # once we have the account_name, get that section out of cdk.json
+        account_config = self.node.get_context(account_name)
+        domain_name = account_config.get("domain_name", "no-domain-set")
+        # https://api.imap-mission.com
+        # https://api.dev.imap-mission.com
+        data_access_url = f"https://api.{domain_name}"
         batch.EcsJobDefinition(
             self,
             f"ProcessingJob-{job_name}",
@@ -97,7 +104,7 @@ class ProcessingConstruct(Construct):
                 memory=cdk.Size.mebibytes(4096),
                 cpu=1,
                 environment={
-                    "IMAP_DATA_ACCESS_URL": f"https://api.{self.node.get_context('account_name')}.imap-mission.com",
+                    "IMAP_DATA_ACCESS_URL": data_access_url,
                 },
                 # TODO: Do we need to explicitly specify architecture and OS family?
                 #       We are building containers in GitHub Actions and need to
