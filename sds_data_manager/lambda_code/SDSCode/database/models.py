@@ -9,6 +9,7 @@ from enum import Enum
 import imap_data_access
 from sqlalchemy import (
     JSON,
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -147,6 +148,7 @@ class ScienceFiles(Base):
     ingestion_date = Column(DateTime(timezone=True))
     cr = Column(Integer, nullable=True)
     crid = Column(String, nullable=True)
+    released = Column(Boolean, nullable=False, default=False)
 
 
 class SPICEFiles(Base):
@@ -171,6 +173,7 @@ class SPICEFiles(Base):
     sclk_kernel = Column(String)
     lsk_kernel = Column(String)
     version = Column(Integer, nullable=True)
+    released = Column(Boolean, nullable=False, default=False)
 
 
 class AncillaryFiles(Base):
@@ -187,6 +190,7 @@ class AncillaryFiles(Base):
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(String, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
+    released = Column(Boolean, nullable=False, default=False)
 
 
 class SpinFiles(Base):
@@ -200,6 +204,7 @@ class SpinFiles(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String(2), nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
+    released = Column(Boolean, nullable=False, default=False)
 
 
 class PointingTable(Base):
@@ -221,6 +226,7 @@ class RepointFiles(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String(2), nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
+    released = Column(Boolean, nullable=False, default=False)
 
 
 class Version(Base):

@@ -109,6 +109,8 @@ def lambda_handler(event, context):
                 )
             file_params["file_path"] = filepath
             file_params["ingestion_date"] = s3_files_dict[filepath]
+            # TODO: update to get release flag from S3 tags
+            file_params["released"] = False
 
             if isinstance(imap_file, imap_data_access.ScienceFilePath):
                 record = models.ScienceFiles(**file_params)
