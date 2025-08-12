@@ -1,5 +1,8 @@
 """Cron job to create ialirt alarm."""
 
+from typing import Optional
+
+import aws_cdk as cdk
 from aws_cdk import (
     Duration,
     aws_s3,
@@ -49,18 +52,20 @@ class IalirtAlarmConstruct(Construct):
         # cdk deploy -c alarm_email=ops@example.com
         ialirt_alarm_email = self.node.try_get_context("alarm_email")
         if not (isinstance(ialirt_alarm_email, str) and "@" in ialirt_alarm_email):
-            raise ValueError(
-                "Set a valid alarm email via context: "
-                "cdk deploy -c alarm_email=ops@example.com."
+            ialirt_alarm_email = None
+            cdk.Annotations.of(self).add_warning(
+                "No alarm_email provided. Set one with: "
+                "cdk deploy -c alarm_email=ops@example.com"
             )
         self.setup_monitoring(ialirt_bucket, ialirt_alarm_email)
 
-    def setup_monitoring(self, ialirt_bucket, ialirt_alarm_email: str):
+    def setup_monitoring(self, ialirt_bucket, ialirt_alarm_email: Optional[str]):
         """Create SNS topic for CloudWatch alarm."""
         alarm_topic = sns.Topic(
             self, "IalirtAlarmTopic", display_name="I-ALiRT Alarm Notifications"
         )
-        alarm_topic.add_subscription(subs.EmailSubscription(ialirt_alarm_email))
+        if ialirt_alarm_email:
+            alarm_topic.add_subscription(subs.EmailSubscription(ialirt_alarm_email))
 
         # CloudWatch metric for PutRequests with dimensions
         put_metric = cloudwatch.Metric(
@@ -81,8 +86,8 @@ class IalirtAlarmConstruct(Construct):
             metric=put_metric,
             threshold=1,  # < 1 put
             # How many periods should it be evaluated before triggering the alarm.
-            evaluation_periods=1440,  # 120 minutes total window
-            datapoints_to_alarm=1440,  # all 120 minutes must be quiet
+            evaluation_periods=1440,  # 1 day total window
+            datapoints_to_alarm=1440,  # all must be quiet
             treat_missing_data=cloudwatch.TreatMissingData.BREACHING,
             comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             alarm_description="Alarm when no packets have arrived.",
