@@ -22,7 +22,6 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         vpc: ec2.Vpc,
         efs_access_point: efs.AccessPoint,
-        account: str,
         docker_path: str = "sds_data_manager/lambda_code",
         **kwargs,
     ) -> None:
@@ -40,8 +39,6 @@ class IalirtIngestLambda(Construct):
             VPC into which to put the resources that require networking.
         efs_access_point: efs.AccessPoint
             EFS access point to mount inside the Lambda function.
-        account : str
-            AWS account name: "prod" or "dev".
         docker_path : str
             Path to the Dockerfile.
         kwargs : dict

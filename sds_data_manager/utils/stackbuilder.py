@@ -310,7 +310,6 @@ def build_sds(
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
         efs_access_point=ialirt_efs_instance.spice_access_point,
-        account=account_config["account_name"],
     )
 
     # I-ALiRT IOIS archive lambda (facilitates dynamodb to s3)
