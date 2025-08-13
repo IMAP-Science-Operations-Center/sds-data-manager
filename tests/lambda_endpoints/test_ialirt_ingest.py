@@ -176,12 +176,7 @@ def test_query_filenames_crossing_hour_boundary(s3_client):
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.sct_to_et",
     return_value=12345.0,
 )
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_sclkticks",
-    return_value=67890.0,
-)
 def test_insert_data(
-    mock_sclkticks,
     mock_sct_to_et,
     mock_imap_state,
     mock_spiceframe,
@@ -189,8 +184,6 @@ def test_insert_data(
     setup_dynamodb,
 ):
     """Test insert_data function."""
-    mock_spiceframe.IMAP_GSM = "IMAP_GSM"
-    mock_spicebody.EARTH = "EARTH"
     algorithm_table = setup_dynamodb["algorithm_table"]
 
     # Existing item with 'hit' keys
