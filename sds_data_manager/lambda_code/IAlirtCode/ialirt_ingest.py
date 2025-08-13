@@ -79,12 +79,12 @@ def get_ancillary(instrument, descriptor):
     return download_path
 
 
-def get_latest_spice_kernels(account: str) -> ProcessingInputCollection:
+def get_latest_spice_kernels(url: str) -> ProcessingInputCollection:
     """Query the SPICE metakernel API for latest SPICE kernel filenames.
 
     Parameters
     ----------
-    account: str
+    url: str
         AWS account name.
 
     Returns
@@ -104,10 +104,7 @@ def get_latest_spice_kernels(account: str) -> ProcessingInputCollection:
     et_start_time = (one_week_ago - j2000).total_seconds()
 
     file_types = ",".join(KERNELS)
-    if account == "prod":
-        url = "https://api.imap-mission.com/metakernel"
-    else:
-        url = "https://api.dev.imap-mission.com/metakernel"
+    metakernel_url = url + "/metakernel"
 
     params = {
         "start_time": str(int(et_start_time)),
@@ -116,8 +113,8 @@ def get_latest_spice_kernels(account: str) -> ProcessingInputCollection:
         "file_types": file_types,
     }
 
-    logger.info(f"Sending request to {url} with params: {params}")
-    response = requests.get(url, params=params, timeout=10)
+    logger.info(f"Sending request to {metakernel_url} with params: {params}")
+    response = requests.get(metakernel_url, params=params, timeout=10)
     metakernel_files = response.json()
 
     logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")
@@ -367,9 +364,9 @@ def lambda_handler(event, context):
     logger.info("Received event: %s", json.dumps(event))
 
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
-    account = os.environ.get("AWS_ACCOUNT")
     dynamodb = boto3.resource("dynamodb")
     algorithm_table = dynamodb.Table(algorithm_table_name)
+    url = os.environ.get("IMAP_DATA_ACCESS_URL")
 
     bucket = event["detail"]["bucket"]["name"]
     region = event["region"]
@@ -377,7 +374,7 @@ def lambda_handler(event, context):
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
-    dependency_inputs = get_latest_spice_kernels(account)
+    dependency_inputs = get_latest_spice_kernels(url)
     logger.info("dependency_inputs: %s", dependency_inputs)
     download_spice_file(dependency_inputs)
 

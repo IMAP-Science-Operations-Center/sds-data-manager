@@ -57,12 +57,20 @@ class IalirtIngestLambda(Construct):
         # Create DynamoDB Table
         self.algorithm_data_table = self.create_algorithm_dynamodb_table()
 
+        account_name = self.node.get_context("account_name")
+        # once we have the account_name, get that section out of cdk.json
+        account_config = self.node.get_context(account_name)
+        domain_name = account_config.get("domain_name", "no-domain-set")
+        # https://api.imap-mission.com
+        # https://api.dev.imap-mission.com
+        data_access_url = f"https://api.{domain_name}"
+
         # Create Lambda Function
         self.ialirt_ingest_lambda = self.create_lambda_function(
             ialirt_bucket,
             self.algorithm_data_table,
             docker_path,
-            account,
+            data_access_url,
         )
 
         # Create Event Rule
@@ -127,7 +135,7 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         algorithm_data_table: aws_dynamodb.Table,
         docker_path: str,
-        account: str,
+        data_access_url: str,
     ) -> lambda_.DockerImageFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -178,7 +186,7 @@ class IalirtIngestLambda(Construct):
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
                 "EFS_SPICE_MOUNT_PATH": "/mnt/data",
-                "AWS_ACCOUNT": account,
+                "IMAP_DATA_ACCESS_URL": data_access_url,
             },
         )
         ialirt_ingest_lambda.add_to_role_policy(s3_read_policy)
