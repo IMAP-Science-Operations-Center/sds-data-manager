@@ -330,9 +330,14 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         gsm_state = imap_state(
             et, ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
         )
+        gse_state = imap_state(
+            et, ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
+        )
 
         raw["sc_position_GSM"] = [Decimal(str(val)) for val in gsm_state[0, :3]]
         raw["sc_velocity_GSM"] = [Decimal(str(val)) for val in gsm_state[0, 3:]]
+        raw["sc_position_GSE"] = [Decimal(str(val)) for val in gse_state[0, :3]]
+        raw["sc_velocity_GSE"] = [Decimal(str(val)) for val in gse_state[0, 3:]]
 
         if existing:
             if any(key.startswith(instrument) for key in existing.keys()):
@@ -349,6 +354,8 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
                     "ttj2000ns",
                     "sc_position_GSM",
                     "sc_velocity_GSM",
+                    "sc_position_GSE",
+                    "sc_velocity_GSE",
                 }
             )
 
@@ -363,6 +370,8 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
                     "ttj2000ns",
                     "sc_position_GSM",
                     "sc_velocity_GSM",
+                    "sc_position_GSE",
+                    "sc_velocity_GSE",
                 }
             }
 
