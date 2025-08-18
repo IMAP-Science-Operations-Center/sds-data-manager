@@ -166,8 +166,6 @@ def test_query_filenames_crossing_hour_boundary(s3_client):
     assert sorted(result) == sorted([first_prefix_key, second_prefix_key])
 
 
-@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.SpiceFrame", create=True)
-@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.SpiceBody", create=True)
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_state",
     return_value=np.array([[1, 2, 3, 4, 5, 6]]),
@@ -179,8 +177,6 @@ def test_query_filenames_crossing_hour_boundary(s3_client):
 def test_insert_data(
     mock_sct_to_et,
     mock_imap_state,
-    mock_spiceframe,
-    mock_spicebody,
     setup_dynamodb,
 ):
     """Test insert_data function."""
