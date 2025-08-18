@@ -235,8 +235,6 @@ def test_insert_data(
     assert item3["hit_e_a_side_low_en"] == Decimal("5.0")
 
 
-@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.SpiceFrame", create=True)
-@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.SpiceBody", create=True)
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_state",
     return_value=np.array([[1, 2, 3, 4, 5, 6]]),
@@ -269,13 +267,9 @@ def test_process_algorithms(
     mock_sclkticks,
     mock_sct_to_et,
     mock_imap_state,
-    mock_spiceframe,
-    mock_spicebody,
     setup_dynamodb,
 ):
     """Tests process_algorithms function."""
-    mock_spiceframe.IMAP_GSM = "IMAP_GSM"
-    mock_spicebody.EARTH = "EARTH"
     algorithm_table = setup_dynamodb["algorithm_table"]
     mock_load_cdf.return_value = {"mock": "calibration data"}
 
