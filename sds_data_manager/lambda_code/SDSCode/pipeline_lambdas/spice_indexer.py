@@ -28,10 +28,10 @@ minimum_mission_time = datetime(2010, 1, 1)
 maximum_mission_time = datetime(2145, 1, 1)
 MAXIMUM_DATETIME_INTERVAL = [[minimum_mission_time, maximum_mission_time]]
 MAXIMUM_SCLK_INTERVAL = [
-    ["1/0410227203:00000", "1/4288750963:38093"]
+    ["1/0000000000:00000", "1/4260211203:00000"]
 ]  # Calculated from the above datetimes seperately
 MAXIMUM_J2000_INTERVAL = [
-    [725803269.1839136, 4575787269.183866]
+    [315576066.1839245, 4575787269.183866]
 ]  # Calculated from the above datetimes seperately
 
 # Set constants for the time interval calculations
