@@ -153,6 +153,7 @@ class ApiGateway(Construct):
             default_domain_mapping=domain_mapping,
             description="HTTP API Gateway for lambda function endpoints.",
             cors_preflight={
+                "allow_headers": ["*"],
                 "allow_origins": ["*"],
                 "allow_methods": [
                     apigwv2.CorsHttpMethod.GET,
