@@ -62,7 +62,8 @@ def build_sds(
     domain_name = account_config.get("domain_name", None)
     us_east_env = Environment(account=env.account, region="us-east-1")
     hosted_zone_stack = Stack(scope, "HostedZoneCertificateStack", env=us_east_env)
-    if account_config["account_name"] == "prod":
+    account_name = account_config["account_name"]
+    if account_name == "prod":
         # This is for the root level account So it should be the base url
         # e.g."imap-mission.com"
         domain = route53_hosted_zone.DomainConstruct(
@@ -214,6 +215,7 @@ def build_sds(
         rds_security_group=rds_construct.rds_security_group,
         db_secret_name=db_secret_name,
         layers=[db_lambda_layer, spice_lambda_layer],
+        account_name=account_name,
     )
 
     # Packet Downloader Lambda

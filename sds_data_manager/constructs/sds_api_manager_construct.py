@@ -65,6 +65,7 @@ class SdsApiManager(Construct):
         rds_security_group,
         db_secret_name: str,
         layers: list,
+        account_name: str,
         **kwargs,
     ) -> None:
         """Initialize the SdsApiManagerConstruct.
@@ -91,6 +92,8 @@ class SdsApiManager(Construct):
             The DB secret name
         layers : list
             List of Lambda layers arns
+        account_name : str
+            The account name. Eg. 'prod' or 'dev'
         kwargs : dict
             Keyword arguments
         """
@@ -156,8 +159,17 @@ class SdsApiManager(Construct):
         # API key authorizer: /api-key/upload/{proxy+}
         auth_route_prefixes = ["", "/authorized", "/api-key"]
 
+        # We need to restrict upload API on production. Production
+        # account only can allow upload through API key.
+        if account_name == "prod":
+            upload_route_prefixes = ["/api-key"]
+        else:
+            upload_route_prefixes = auth_route_prefixes
+
         # {proxy+} is used to allow for any pathParams after /upload/
-        add_stable_route(api, "/upload", "GET", upload_api_lambda, auth_route_prefixes)
+        add_stable_route(
+            api, "/upload", "GET", upload_api_lambda, upload_route_prefixes
+        )
 
         # query API lambda
         query_api_lambda = lambda_.Function(

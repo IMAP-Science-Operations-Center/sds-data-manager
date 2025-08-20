@@ -34,6 +34,7 @@ def template(stack, env):
         rds_security_group=test_security_group,
         db_secret_name="test-secrets",  # noqa
         layers=[],
+        account_name="dev",
     )
 
     template = Template.from_stack(stack)
