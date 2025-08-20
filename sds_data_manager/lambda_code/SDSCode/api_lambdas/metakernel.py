@@ -210,7 +210,7 @@ seconds since J2000.
         for i in range(0, len(file_list)):
             if i in indicies_to_delete:
                 continue
-            logger.info(
+            logger.debug(
                 f"Searching for duplicates for file {file_list[i]['file_name']}"
             )
             for j in range(i + 1, len(file_list)):
@@ -264,14 +264,14 @@ seconds since J2000.
             # Don't even bother if the gap is too small
             return []
 
-        logger.info(f"Attempting to find file to cover {trange[0]!s} to {trange[1]!s}")
+        logger.debug(f"Attempting to find file to cover {trange[0]!s} to {trange[1]!s}")
 
         if len(files_to_check) == 0:
-            logger.info("No files left to check!")
+            logger.debug("No files left to check!")
             return [trange]
 
         best_file = files_to_check[-1]
-        logger.info(f"Checking file {best_file['file_name']} as a possible inclusion")
+        logger.debug(f"Checking file {best_file['file_name']} as a possible inclusion")
 
         # Preliminary filter.
         # Does this file even have the *potential* for matching?
@@ -291,11 +291,11 @@ seconds since J2000.
             and gap_list[0][0] == trange[0]
             and gap_list[0][1] == trange[1]
         ):
-            logger.info(
+            logger.debug(
                 "The file does not cover our time range and will not be loaded."
             )
         else:
-            logger.info(
+            logger.debug(
                 "The file start/end time is included in the time range we are "
                 "looking for. Examining sub-gaps."
             )
@@ -309,18 +309,18 @@ seconds since J2000.
                 and subgap_list[0][0] <= trange[0]
                 and subgap_list[0][1] >= trange[1]
             ):
-                logger.info(
+                logger.debug(
                     "File did not cover time range, not adding to metakernal list."
                 )
                 gap_list.extend(subgap_list)
             elif not subgap_list:
-                logger.info(
+                logger.debug(
                     "File was valid, and no further gaps were found. "
                     "Adding to metakernal list."
                 )
                 files_to_load.append(best_file)
             else:
-                logger.info(
+                logger.debug(
                     "File was valid, though more gaps were found. "
                     "Adding to metakernal list."
                 )

@@ -12,8 +12,6 @@ from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 from imap_data_access import VALID_INSTRUMENTS
 
-from .efs_construct import EFSConstruct
-
 
 class IndexerLambda(Construct):
     """Construct for indexer lambda."""
@@ -159,7 +157,6 @@ class SPICEIndexerLambda(Construct):
         layers: list,
         rds_security_group,
         data_bucket: s3.Bucket,
-        efs_construct: EFSConstruct,
         **kwargs,
     ) -> None:
         """Construct the EFS lambdas.
@@ -184,8 +181,6 @@ class SPICEIndexerLambda(Construct):
             The RDS security group
         data_bucket : obj
             The data bucket
-        efs_construct : obj
-            The EFS filesystem construct
         kwargs : dict
             Keyword arguments
 
@@ -208,17 +203,11 @@ class SPICEIndexerLambda(Construct):
                 ),
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess"),
                 iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonElasticFileSystemFullAccess"
-                ),
-                iam.ManagedPolicy.from_aws_managed_policy_name(
                     "SecretsManagerReadWrite"
                 ),
             ],
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
         )
-
-        # This access point is used by other resources to read from EFS
-        spice_mount_path = "/mnt/data"
 
         self.spice_ingest_lambda = lambda_.Function(
             self,
@@ -234,18 +223,15 @@ class SPICEIndexerLambda(Construct):
                            them in our database.""",
             # Access to the EFS requires to be within the VPC
             vpc=vpc,
-            # Mount EFS access point to /mnt/data within the lambda
-            filesystem=lambda_.FileSystem.from_efs_access_point(
-                efs_construct.spice_access_point, spice_mount_path
-            ),
             timeout=cdk.Duration.minutes(1),
             architecture=lambda_.Architecture.X86_64,
             layers=layers,
             memory_size=1000,
             security_groups=[rds_security_group],
             environment={
-                "DATA_DIR": spice_mount_path,
+                "IMAP_DATA_DIR": "/tmp",  # noqa: S108
                 "SECRET_NAME": db_secret_name,
+                "S3_BUCKET": data_bucket.bucket_name,
             },
         )
 

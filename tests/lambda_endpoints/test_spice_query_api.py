@@ -13,6 +13,7 @@ def _insert_ck_test_data(session):
     """Put a filepath into the test data."""
     metadata_params = {
         "file_name": "imap_2025_118_2025_120_009.ah.bc",
+        "file_path": "imap/spice/ck/imap_2025_118_2025_120_009.ah.bc",
         "file_root": "imap_2025_118_2025_120_.ah.bc",
         "kernel_type": "attitude_history",
         "version": 9,
@@ -49,6 +50,7 @@ def _insert_many_versions_test_data(session):
     for version in range(0, 10):
         metadata_params = {
             "file_name": f"imap_2025_118_2025_120_00{version}.ah.bc",
+            "file_path": f"imap/spice/ck/imap_2025_118_2025_120_00{version}.ah.bc",
             "file_root": "imap_2025_118_2025_120_.ah.bc",
             "kernel_type": "attitude_history",
             "version": version,
@@ -213,10 +215,10 @@ def test_invalid_query(session):
     expected_response = json.dumps(
         "size is not a valid query parameter. "
         + "Valid query parameters are: "
-        + "['file_name', 'start_time', 'end_time', 'type', 'latest']"
+        + "['file_name', 'start_time', 'end_time', 'type',"
+        + " 'latest', 'start_ingest_date', 'end_ingest_date']"
     )
     returned_query = spice_query_api.lambda_handler(event=event, context={})
-
     assert returned_query["statusCode"] == 400
     assert returned_query["body"] == expected_response
 
@@ -234,3 +236,28 @@ def test_latest_query(session, expected_ck_response):
     event = {"queryStringParameters": {"latest": "True"}}
     returned_query = spice_query_api.lambda_handler(event=event, context={})
     assert returned_query["body"] == expected_ck_response
+
+
+def test_ingest_time_queries(session):
+    """Test 'start_ingest_date' and 'end_ingest_date' for accuracy."""
+    _insert_ck_test_data(session)
+
+    # This event *does not* contain the time range of the test ck file
+    event = {
+        "queryStringParameters": {
+            "start_ingest_date": "20220101",
+            "end_ingest_date": "20230101",
+        }
+    }
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+    assert len(json.loads(returned_query["body"])) == 0
+
+    # This event *does* contain the time range of the test ck file
+    event = {
+        "queryStringParameters": {
+            "start_ingest_date": "20250401",
+            "end_ingest_date": "20250415",
+        }
+    }
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+    assert len(json.loads(returned_query["body"])) == 1

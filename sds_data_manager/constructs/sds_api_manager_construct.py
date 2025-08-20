@@ -9,6 +9,47 @@ from constructs import Construct
 from .api_gateway_construct import ApiGateway
 
 
+def add_stable_route(api, base_path, http_method, lambda_function, prefix_list):
+    """Add routes to handle variations in path formatting.
+
+    When the prefix of the route is passed in, any trailing '/' will be
+    removed and checked for a starting '/'. This ensures that each route
+    variation a user could call will result in a proper response.
+
+    The two main routes handled and registered are a normalized (/api/upload)
+    and a route with subpaths handled in proxy (/api/upload/{proxy+}).
+
+    Parameters
+    ----------
+    api : obj
+        The APIGateway stack.
+    base_path : str
+        The base route path (e.g., "/upload").
+    http_method : str
+        The HTTP method to allow (e.g., "GET", "POST").
+    lambda_function : obj
+        The lambda function.
+    prefix_list : list[str]
+        List of route prefixes.
+    """
+    # remove trailing backslash to circumvent error
+    for prefix in prefix_list:
+        clean = f"{prefix}{base_path}".rstrip("/")
+        # add a starting '/' if not present
+        if not clean.startswith("/"):
+            clean = "/" + clean
+
+        # the proxy route for subcommands
+        proxy = f"{clean}/{{proxy+}}"
+        # register both base (clean) and proxy routes
+        for path in [clean, proxy]:
+            api.add_route(
+                route=path,
+                http_method=http_method,
+                lambda_function=lambda_function,
+            )
+
+
 class SdsApiManager(Construct):
     """Construct for API Management."""
 
@@ -24,6 +65,7 @@ class SdsApiManager(Construct):
         rds_security_group,
         db_secret_name: str,
         layers: list,
+        account_name: str,
         **kwargs,
     ) -> None:
         """Initialize the SdsApiManagerConstruct.
@@ -50,6 +92,8 @@ class SdsApiManager(Construct):
             The DB secret name
         layers : list
             List of Lambda layers arns
+        account_name : str
+            The account name. Eg. 'prod' or 'dev'
         kwargs : dict
             Keyword arguments
         """
@@ -68,6 +112,22 @@ class SdsApiManager(Construct):
             resources=[
                 f"{data_bucket.bucket_arn}/*",
             ],
+        )
+
+        # landing page redirect
+        landing_page_lambda = lambda_.Function(
+            self,
+            id="LandingPageLambda",
+            code=code,
+            handler="SDSCode.api_lambdas.landing_page_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+        )
+
+        # Redirect root '/' to the landing page
+        api.add_route(
+            route="/",
+            http_method="GET",
+            lambda_function=landing_page_lambda,
         )
 
         # upload API lambda
@@ -94,16 +154,21 @@ class SdsApiManager(Construct):
         upload_api_lambda.add_to_role_policy(s3_read_policy)
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
+        # basic route: /upload/{proxy+}
+        # oauth2 JWT authorizer: /authorized/upload/{proxy+}
+        # API key authorizer: /api-key/upload/{proxy+}
+        auth_route_prefixes = ["", "/authorized", "/api-key"]
+
+        # We need to restrict upload API on production. Production
+        # account only can allow upload through API key.
+        if account_name == "prod":
+            upload_route_prefixes = ["/api-key"]
+        else:
+            upload_route_prefixes = auth_route_prefixes
+
         # {proxy+} is used to allow for any pathParams after /upload/
-        api.add_route(
-            route="/upload/{proxy+}",
-            http_method="GET",
-            lambda_function=upload_api_lambda,
-        )
-        api.add_route(
-            route="/authorized/upload/{proxy+}",
-            http_method="GET",
-            lambda_function=upload_api_lambda,
+        add_stable_route(
+            api, "/upload", "GET", upload_api_lambda, upload_route_prefixes
         )
 
         # query API lambda
@@ -126,16 +191,8 @@ class SdsApiManager(Construct):
             layers=layers,
         )
 
-        api.add_route(
-            route="/query",
-            http_method="GET",
-            lambda_function=query_api_lambda,
-        )
-        api.add_route(
-            route="/authorized/query",
-            http_method="GET",
-            lambda_function=query_api_lambda,
-        )
+        # {proxy+} is used to allow for any pathParams after /query/
+        add_stable_route(api, "/query", "GET", query_api_lambda, auth_route_prefixes)
 
         # SPICE query API lambda
         spice_query_api_lambda = lambda_.Function(
@@ -171,7 +228,7 @@ class SdsApiManager(Construct):
             code=code,
             handler="SDSCode.api_lambdas.spice_metakernel_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
-            timeout=cdk.Duration.minutes(1),
+            timeout=cdk.Duration.minutes(5),  # Reduce after issue #719 is done
             memory_size=1000,
             allow_public_subnet=True,
             vpc=vpc,
@@ -208,16 +265,7 @@ class SdsApiManager(Construct):
         download_api.add_to_role_policy(s3_read_policy)
 
         # {proxy+} is used to allow for any pathParams after /download/
-        api.add_route(
-            route="/download/{proxy+}",
-            http_method="GET",
-            lambda_function=download_api,
-        )
-        api.add_route(
-            route="/authorized/download/{proxy+}",
-            http_method="GET",
-            lambda_function=download_api,
-        )
+        add_stable_route(api, "/download", "GET", download_api, auth_route_prefixes)
 
         universal_spin_table_handler = lambda_.Function(
             self,
@@ -255,11 +303,45 @@ class SdsApiManager(Construct):
             },
             layers=layers,
         )
-        api.add_route(
-            route="/batch-job",
-            http_method="GET",
-            lambda_function=batch_job_query_api_lambda,
+        for prefix in auth_route_prefixes:
+            # {proxy+} is used to allow for any pathParams after /processing-jobs/
+            api.add_route(
+                route=f"{prefix}/processing-jobs",
+                http_method="GET",
+                lambda_function=batch_job_query_api_lambda,
+            )
+
+        # API to query batch job logs
+        batch_logs_api_lambda = lambda_.Function(
+            self,
+            id="BatchLogsAPILambda",
+            function_name="batch-logs-api-handler",
+            code=code,
+            handler="SDSCode.api_lambdas.batch_logs_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            allow_public_subnet=True,
+            layers=layers,
         )
+        for prefix in auth_route_prefixes:
+            api.add_route(
+                # {id+} is used to allow for any pathParams after /batch-logs/
+                # This is needed because the log stream ID can contain slashes
+                route=f"{prefix}/processing-logs/{{id+}}",
+                http_method="GET",
+                lambda_function=batch_logs_api_lambda,
+            )
+
+        batch_logs_read_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["logs:GetLogEvents"],
+            resources=[
+                "arn:aws:logs:*:*:log-group:/aws/batch/*",
+            ],
+        )
+        batch_logs_api_lambda.add_to_role_policy(batch_logs_read_policy)
+
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
         )

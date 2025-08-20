@@ -60,7 +60,69 @@ class SqsConstruct(Construct):
             ),
         )
 
+        # This queue is a special queue that delivers messages after a 15 minute delay
+        # to avoid race conditions between files arriving. Currently, only MAG L1B are
+        # in this queue.
+        self.delay_queue = aws_sqs.Queue(
+            self,
+            "FileArrivalDelayQueue",
+            queue_name="file_arrival_delay_queue.fifo",
+            fifo=True,
+            encryption=aws_sqs.QueueEncryption.UNENCRYPTED,
+            # This timeout determines how long the queue waits for processing. It must
+            # be longer than the timeout of the lambda.
+            visibility_timeout=Duration.seconds(300),
+            # This is required. It removes messages with identical content. Since
+            # the event includes a filename each event should be totally unique.
+            content_based_deduplication=True,
+            # The dead letter queue will take messages that failed retry.
+            dead_letter_queue=aws_sqs.DeadLetterQueue(
+                max_receive_count=1, queue=self.dead_letter_queue
+            ),
+            delivery_delay=Duration.seconds(900),
+        )
+
+        delayed_cases = {"mag": "l1b"}
+
         for instrument_name in instrument_names:
+            instrument_event_match = {
+                "object": {
+                    "key": [{"exists": True}],
+                    "instrument": [instrument_name],
+                },
+            }
+
+            if instrument_name in delayed_cases:
+                data_level = delayed_cases[instrument_name]
+                # Update main queue filters to not send delay queue events.
+                instrument_event_match["object"]["data_level"] = [
+                    {"anything-but": data_level}
+                ]
+
+                # Create another rule for delayed events based on instrument+level.
+                delay_event = events.Rule(
+                    self,
+                    f"{instrument_name}FileArrived{data_level.upper()}",
+                    rule_name=f"{instrument_name}_file_arrived_{data_level}",
+                    event_pattern=events.EventPattern(
+                        source=["imap.lambda"],
+                        detail_type=["Processed File"],
+                        detail={
+                            "object": {
+                                "key": [{"exists": True}],
+                                "instrument": [instrument_name],
+                                "data_level": [data_level],
+                            },
+                        },
+                    ),
+                )
+
+                group_id = f"{instrument_name}_{data_level}"
+
+                delay_event.add_target(
+                    targets.SqsQueue(self.delay_queue, message_group_id=group_id)
+                )
+
             # Event has filename in it, we need an EventPattern that matches that
             # EventBridge Rule for the SQS queue
             event_from_indexer = events.Rule(
@@ -70,12 +132,7 @@ class SqsConstruct(Construct):
                 event_pattern=events.EventPattern(
                     source=["imap.lambda"],
                     detail_type=["Processed File"],
-                    detail={
-                        "object": {
-                            "key": [{"exists": True}],
-                            "instrument": [instrument_name],
-                        },
-                    },
+                    detail=instrument_event_match,
                 ),
             )
 

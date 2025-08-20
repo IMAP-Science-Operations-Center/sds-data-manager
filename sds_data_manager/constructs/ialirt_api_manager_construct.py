@@ -61,13 +61,13 @@ class IalirtApiManager(Construct):
             ],
         )
 
-        # query API lambda
-        query_api_lambda = lambda_.Function(
+        # log query API lambda
+        log_query_api_lambda = lambda_.Function(
             self,
-            id="IAlirtCodeQueryAPILambda",
-            function_name="ialirt-query-api-handler",
+            id="IAlirtCodeLogQueryAPILambda",
+            function_name="ialirt-log-query-api-handler",
             code=code,
-            handler="IAlirtCode.ialirt_query_api.lambda_handler",
+            handler="IAlirtCode.ialirt_log_query_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
@@ -80,12 +80,39 @@ class IalirtApiManager(Construct):
             layers=layers,
         )
 
-        query_api_lambda.add_to_role_policy(s3_read_policy)
+        log_query_api_lambda.add_to_role_policy(s3_read_policy)
 
         api.add_route(
             route="/ialirt-log-query",
             http_method="GET",
-            lambda_function=query_api_lambda,
+            lambda_function=log_query_api_lambda,
+        )
+
+        # packets query API lambda
+        packets_query_api_lambda = lambda_.Function(
+            self,
+            id="IAlirtCodePacketsQueryAPILambda",
+            function_name="ialirt-packets-query-api-handler",
+            code=code,
+            handler="IAlirtCode.ialirt_packets_query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            environment={
+                "S3_BUCKET": data_bucket.bucket_name,
+                "REGION": env.region,
+            },
+            layers=layers,
+        )
+
+        packets_query_api_lambda.add_to_role_policy(s3_read_policy)
+
+        api.add_route(
+            route="/ialirt-packet-query",
+            http_method="GET",
+            lambda_function=packets_query_api_lambda,
         )
 
         # download API lambda
@@ -106,8 +133,9 @@ class IalirtApiManager(Construct):
 
         download_api.add_to_role_policy(s3_read_policy)
 
+        # {proxy+} is used to allow for any pathParams after /ialirt-download/
         api.add_route(
-            route="/ialirt-download",
+            route="/ialirt-download/{proxy+}",
             http_method="GET",
             lambda_function=download_api,
         )

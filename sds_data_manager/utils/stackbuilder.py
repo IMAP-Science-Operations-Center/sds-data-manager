@@ -14,10 +14,11 @@ from sds_data_manager.constructs import (
     backup_bucket_construct,
     data_bucket_construct,
     database_construct,
-    efs_construct,
     ialirt_api_manager_construct,
     ialirt_archive_construct,
     ialirt_bucket_construct,
+    ialirt_coverage_construct,
+    ialirt_efs_construct,
     ialirt_ingest_lambda_construct,
     ialirt_processing_construct,
     indexer_lambda_construct,
@@ -61,7 +62,8 @@ def build_sds(
     domain_name = account_config.get("domain_name", None)
     us_east_env = Environment(account=env.account, region="us-east-1")
     hosted_zone_stack = Stack(scope, "HostedZoneCertificateStack", env=us_east_env)
-    if account_config["account_name"] == "prod":
+    account_name = account_config["account_name"]
+    if account_name == "prod":
         # This is for the root level account So it should be the base url
         # e.g."imap-mission.com"
         domain = route53_hosted_zone.DomainConstruct(
@@ -213,6 +215,7 @@ def build_sds(
         rds_security_group=rds_construct.rds_security_group,
         db_secret_name=db_secret_name,
         layers=[db_lambda_layer, spice_lambda_layer],
+        account_name=account_name,
     )
 
     # Packet Downloader Lambda
@@ -225,11 +228,6 @@ def build_sds(
         layers=[db_lambda_layer],
     )
 
-    # create EFS
-    efs_instance = efs_construct.EFSConstruct(
-        scope=sdc_stack, construct_id="EFSConstruct", vpc=networking.vpc
-    )
-
     # This valid instrument list is from imap-data-access package
     processing = processing_construct.ProcessingConstruct(
         sdc_stack, "ProcessingConstruct", vpc=networking.vpc
@@ -240,11 +238,14 @@ def build_sds(
             processing.add_job(f"{instrument.lower()}{step}")
 
     # Create SQS pipeline for each instrument and add it to instrument_sqs
-    instrument_sqs = sqs_construct.SqsConstruct(
+    file_arrive_sqs_construct = sqs_construct.SqsConstruct(
         scope=sdc_stack,
         construct_id="SqsConstruct",
         instrument_names=imap_data_access.VALID_INSTRUMENTS,
-    ).instrument_queue
+    )
+    instrument_sqs = file_arrive_sqs_construct.instrument_queue
+
+    instrument_delay_sqs = file_arrive_sqs_construct.delay_queue
 
     instrument_lambdas.BatchStarterLambda(
         scope=sdc_stack,
@@ -256,7 +257,7 @@ def build_sds(
         rds_construct=rds_construct,
         rds_security_group=rds_construct.rds_security_group,
         vpc=networking.vpc,
-        sqs_queue=instrument_sqs,
+        sqs_queues=[instrument_sqs, instrument_delay_sqs],
         layers=[db_lambda_layer, spice_lambda_layer],
     )
 
@@ -271,7 +272,6 @@ def build_sds(
         layers=[db_lambda_layer, spice_lambda_layer],
         rds_security_group=rds_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
-        efs_construct=efs_instance,
     )
 
     # I-ALiRT Stack
@@ -300,14 +300,18 @@ def build_sds(
         scope=ialirt_stack, construct_id="IAlirtBucket", env=env
     )
 
+    # create EFS
+    ialirt_efs_instance = ialirt_efs_construct.IAlirtEFSConstruct(
+        scope=ialirt_stack, construct_id="IAlirtEFSConstruct", vpc=networking.vpc
+    )
+
     # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
     ingest = ialirt_ingest_lambda_construct.IalirtIngestLambda(
         scope=ialirt_stack,
         construct_id="IalirtIngestLambda",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
-        efs_access_point=efs_instance.spice_access_point,
-        efs_security_group=efs_instance.efs_security_group,
+        efs_access_point=ialirt_efs_instance.spice_access_point,
     )
 
     # I-ALiRT IOIS archive lambda (facilitates dynamodb to s3)
@@ -316,6 +320,13 @@ def build_sds(
         construct_id="IalirtArchive",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         algorithm_data_table=ingest.algorithm_data_table,
+    )
+
+    # I-ALiRT IOIS coverage lambda (facilitates creating coverage json in s3)
+    ialirt_coverage_construct.IalirtCoverageConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtCoverage",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
     )
 
     ialirt_monitoring = monitoring_construct.MonitoringConstruct(

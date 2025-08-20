@@ -9,6 +9,7 @@ from enum import Enum
 import imap_data_access
 from sqlalchemy import (
     JSON,
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -146,6 +147,8 @@ class ScienceFiles(Base):
     extension = Column(EXTENSIONS, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
     cr = Column(Integer, nullable=True)
+    crid = Column(String, nullable=True)
+    released = Column(Boolean, nullable=False, default=False)
 
 
 class SPICEFiles(Base):
@@ -153,7 +156,8 @@ class SPICEFiles(Base):
 
     __tablename__ = "spice_files"
 
-    file_name = Column(String, nullable=False, primary_key=True, unique=True)
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    file_name = Column(String, nullable=False, unique=True)
     ingestion_date = Column(DateTime(timezone=True))
     file_root = Column(String)
     kernel_type = Column(String)
@@ -169,6 +173,7 @@ class SPICEFiles(Base):
     sclk_kernel = Column(String)
     lsk_kernel = Column(String)
     version = Column(Integer, nullable=True)
+    released = Column(Boolean, nullable=False, default=False)
 
 
 class AncillaryFiles(Base):
@@ -185,12 +190,13 @@ class AncillaryFiles(Base):
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(String, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
+    released = Column(Boolean, nullable=False, default=False)
 
 
-class SpinTable(Base):
-    """Spin table."""
+class SpinFiles(Base):
+    """Spin files table."""
 
-    __tablename__ = "spin_table"
+    __tablename__ = "spin_files"
     # Spin number will be unique
     file_path = Column(String, nullable=False, primary_key=True, unique=True)
     # start and end date from file name
@@ -198,6 +204,29 @@ class SpinTable(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String(2), nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
+    released = Column(Boolean, nullable=False, default=False)
+
+
+class PointingTable(Base):
+    """Pointing table."""
+
+    __tablename__ = "pointing_table"
+    pointing_id = Column(Integer, nullable=False, primary_key=True, unique=True)
+    pointing_start_utc = Column(DateTime(timezone=True))
+    pointing_end_utc = Column(DateTime(timezone=True))
+    repoint_start_utc = Column(DateTime(timezone=True))
+    repoint_end_utc = Column(DateTime(timezone=True))
+
+
+class RepointFiles(Base):
+    """Repoint table."""
+
+    __tablename__ = "repoint_files"
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    end_date = Column(DateTime, nullable=False)
+    version = Column(String(2), nullable=False)
+    ingestion_date = Column(DateTime(timezone=True))
+    released = Column(Boolean, nullable=False, default=False)
 
 
 class Version(Base):

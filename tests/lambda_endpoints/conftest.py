@@ -13,9 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import (
-    AncillaryFiles,
     Base,
-    ScienceFiles,
     SPICEFiles,
 )
 
@@ -75,11 +73,11 @@ def science_file():
 
 
 @pytest.fixture(scope="module")
-def cadence_file():
-    """Path to a valid cadence file."""
+def dependency_file():
+    """Path to a valid dependency file."""
     return (
-        "imap/cadence/ultra/l2/2025/03/imap_ultra_l2_u45-ena-h-hf-nsp-test-hae-6deg"
-        "-3mo_20250301_v001.json"
+        "imap/dependency/ultra/l2/2025/03/imap_ultra_l2_u45-ena-h-hf-nsp-test-hae-6deg"
+        "-3mo-4d649e314e8ac32e3fb76fe5d5aad46f_20250301_v001.json"
     )
 
 
@@ -98,7 +96,7 @@ def invalid_file():
     )
 
 
-@pytest.fixture(autouse=True, scope="module")
+@pytest.fixture(autouse=True)
 def s3_client():
     """Mock S3 Client, so we don't need network requests."""
     with mock_s3():
@@ -149,240 +147,18 @@ def session():
             Base.metadata.drop_all(engine)
 
 
-def _populate_file_catalog(session):
-    """Add records to the ScienceFiles table."""
-    # Setup: Add records to the database
-    test_records = [
-        ScienceFiles(
-            file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v002.cdf",
-            instrument="mag",
-            data_level="l1b",
-            descriptor="norm-mago",
-            start_date=datetime(2024, 1, 1),
-            version="v002",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_swe_l0_raw_20240110_v001.pkts",
-            instrument="swe",
-            data_level="l0",
-            descriptor="raw",
-            start_date=datetime(2024, 1, 10),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_lo_l0_raw_20240101_v001.pkts",
-            instrument="lo",
-            data_level="l0",
-            descriptor="raw",
-            start_date=datetime(2024, 1, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_mag_l1b_burst-mago_20240101_v001.cdf",
-            instrument="mag",
-            data_level="l1b",
-            descriptor="burst-mago",
-            start_date=datetime(2024, 1, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_swe_l1a_sci_20240101_v002.cdf",
-            instrument="swe",
-            data_level="l1a",
-            descriptor="sci",
-            start_date=datetime(2024, 1, 1),
-            version="v001",
-            extension="pkts",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_swe_l1a_sci_20240101_v010.cdf",
-            instrument="swe",
-            data_level="l1a",
-            descriptor="sci",
-            start_date=datetime(2024, 1, 1),
-            version="v010",
-            extension="pkts",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        # Add multiple swe l1a records but with different start dates
-        ScienceFiles(
-            file_path="/path/to/imap_swe_l1a_sci_20240102_v001.cdf",
-            instrument="swe",
-            data_level="l1a",
-            descriptor="sci",
-            start_date=datetime(2024, 1, 2),
-            version="v001",
-            extension="pkts",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_swe_l1a_sci_20240103_v001.cdf",
-            instrument="swe",
-            data_level="l1a",
-            descriptor="sci",
-            start_date=datetime(2024, 1, 3),
-            version="v001",
-            extension="pkts",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_swe_l1a_sci_20240106_v001.cdf",
-            instrument="swe",
-            data_level="l1a",
-            descriptor="sci",
-            start_date=datetime(2024, 1, 6),
-            version="v001",
-            extension="pkts",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        # Adding a downstream swe l1b file that depends on the science file above
-        ScienceFiles(
-            file_path="/path/to/imap_swe_l1b_sci_20240102_v001.cdf",
-            instrument="swe",
-            data_level="l1b",
-            descriptor="sci",
-            start_date=datetime(2024, 1, 2),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        # Adding files to test for duplicate job
-        ScienceFiles(
-            file_path="/path/to/imap_lo_l1a_de_20100101_v001.cdf",
-            instrument="lo",
-            data_level="l1a",
-            descriptor="de",
-            start_date=datetime(2010, 1, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_lo_l1a_sci_20240101_v001.cdf",
-            instrument="lo",
-            data_level="l1a",
-            descriptor="sci",
-            start_date=datetime(2024, 1, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_lo_l1a_sci_20240101_v002.cdf",
-            instrument="lo",
-            data_level="l1a",
-            descriptor="sci",
-            start_date=datetime(2010, 1, 1),
-            version="v002",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        ScienceFiles(
-            file_path="/path/to/imap_lo_l1a_sci_20240102_v002.cdf",
-            instrument="lo",
-            data_level="l1a",
-            descriptor="sci",
-            start_date=datetime(2010, 1, 2),
-            version="v003",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        AncillaryFiles(
-            file_path="/path/to/imap_swe_l1b-in-flight-cal_20230101_v001.cdf",
-            instrument="swe",
-            descriptor="l1b-in-flight-cal",
-            start_date=datetime(2023, 1, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        AncillaryFiles(
-            file_path="/path/to/imap_swe_l1b-in-flight-cal_20230102_v001.cdf",
-            instrument="swe",
-            descriptor="l1b-in-flight-cal",
-            start_date=datetime(2023, 1, 2),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        AncillaryFiles(
-            file_path="/path/to/imap_swe_l1b-in-flight-cal_20240104_20240106_v002.cdf",
-            instrument="swe",
-            descriptor="l1b-in-flight-cal",
-            start_date=datetime(2024, 1, 5),
-            end_date=datetime(2025, 1, 4),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        AncillaryFiles(
-            file_path="/path/to/imap_swe_esa-lut_20221231_v001.cdf",
-            instrument="swe",
-            descriptor="esa-lut",
-            start_date=datetime(2022, 12, 31),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        AncillaryFiles(
-            file_path="/path/to/imap_swe_eu-conversion_20221231_v001.cdf",
-            instrument="swe",
-            descriptor="eu-conversion",
-            start_date=datetime(2022, 12, 31),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        # Write leapseconds and sclk kernel files
+def _static_spice_files(session):
+    """Populate the SPICEFiles table with static SPICE files."""
+    # Common SPICE files:
+    # leapseconds
+    # spacecraft clock
+    # imap frames
+    # science frames
+    # pointing attitude
+    common_spice_records = [
         SPICEFiles(
             file_name="naif0012.tls",
+            file_path="path/to/naif0012.tls",
             ingestion_date=datetime.strptime(
                 "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
@@ -407,6 +183,7 @@ def _populate_file_catalog(session):
         ),
         SPICEFiles(
             file_name="imap_sclk_0000.tsc",
+            file_path="path/to/imap_sclk_0000.tsc",
             ingestion_date=datetime.strptime(
                 "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
@@ -429,6 +206,82 @@ def _populate_file_catalog(session):
             lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
             version=0,
         ),
+        SPICEFiles(
+            file_name="imap_000.tf",
+            file_path="path/to/imap_000.tf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_.tf",
+            kernel_type="imap_frames",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T12:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=0,
+        ),
+        SPICEFiles(
+            file_path="path/to/imap_science_000.tf",
+            file_name="imap_science_000.tf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_science_.tf",
+            kernel_type="science_frames",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=0,
+        ),
+        # de###.bsp
+        SPICEFiles(
+            file_path="path/to/de440.bsp",
+            file_name="de440.bsp",
+            ingestion_date=datetime.strptime(
+                "2025-04-30 18:24:02+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="de440.bsp",
+            kernel_type="planetary_ephemeris",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T12:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+            version=440,
+        ),
     ]
-    session.add_all(test_records)
+    session.add_all(common_spice_records)
     session.commit()

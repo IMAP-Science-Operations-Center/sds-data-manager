@@ -7,9 +7,9 @@ astropy-healpix==1.1.2 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:ee37b14700d28cf53e2376c65f8cb6224a59f80067feb3f3cd6dd6f9a4577337 \
     --hash=sha256:f6b3e50c49e73a66bb1847dc3451e1d22bf828c10881275bf359928e95d25fe3 \
     --hash=sha256:fb504c998e1661215c74da9537558cd2048d29b44acb2d63e613aae133b91668
-astropy-iers-data==0.2025.5.26.0.37.21 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:0a725f7f84f44f6718347518a2a559bc5464aa53fa2f335d47188d1467a9926b \
-    --hash=sha256:a910ed22a46e5b1961aaabfa085da77c9772284a5b982379623f441f8b9856fc
+astropy-iers-data==0.2025.6.2.0.38.23 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:55893f9bc1d7acb364bc683707104cc9de00b588b5a386e3cdedc38a05f26460 \
+    --hash=sha256:b78895b0d1137ce0800ff8e90f2a58123687d2965d58297065356f2e1d4f3cbe
 astropy==6.1.7 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:072f62a67992393beb016dc80bee8fb994fda9aa69e945f536ed8ac0e51291e6 \
     --hash=sha256:09edca01276ee63f7b2ff511da9bfb432068ba3242e27ef27d76e5a171087b7e \
@@ -142,12 +142,12 @@ charset-normalizer==3.4.2 ; python_version >= "3.10" and python_version < "4" \
 idna==3.10 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9 \
     --hash=sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3
-imap-data-access==0.31.0 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:4f8544cc9f6f936d43253cff0ebd26734d483bc8d4818160694a989f017d5dc4 \
-    --hash=sha256:c0c8064bcd0978087764c846ba8c420027ca5c6d76b6f7fba9c4602691a1db9d
-imap-processing==0.12.0 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:3ed372c08384e54f3fd36846ea47cad9c0c7a3619bf68f65c88b1f49cd5f239e \
-    --hash=sha256:9c5bd9f1f3309c43b681cfaa6f6430df9169dbd21c2b07e26919e54eaf2d4992
+imap-data-access==0.34.1 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:967b3df4fb684e315087f9de7eef97512ae01e8eb5121c39b24df9a07a98201f \
+    --hash=sha256:c399b7db47a86c5dd04e76fb9dd27ba66c7caee6f7ede819997b450a639fe9ae
+imap-processing==0.18.0 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:047f40bf24a8a4471675aca95625b5106d7927ac0c2409ab4db8a169b968d618 \
+    --hash=sha256:5487d93cec7574c310b3ab1f08328a01c0ff0e053fedc63be502f3a752fc3b1e
 lxml==5.4.0 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:00b8686694423ddae324cf614e1b9659c2edb754de617703c3d29ff568448df5 \
     --hash=sha256:073eb6dcdf1f587d9b88c8c93528b57eccda40209cf9be549d469b942b41d70b \

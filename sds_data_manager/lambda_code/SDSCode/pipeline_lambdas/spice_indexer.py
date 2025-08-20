@@ -1,18 +1,21 @@
 """Functions to write SPICE ingested files to EFS."""
 
+import csv
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import boto3
 import spiceypy
-from imap_data_access import SPICEFilePath
+from imap_data_access import SPICEFilePath, download
 from sqlalchemy.dialects.postgresql import insert
 
+from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
 from ..database import models
+from ..pipeline_lambdas.indexer import get_file_ingestion_date
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 logger = logging.getLogger(__name__)
@@ -25,40 +28,58 @@ minimum_mission_time = datetime(2010, 1, 1)
 maximum_mission_time = datetime(2145, 1, 1)
 MAXIMUM_DATETIME_INTERVAL = [[minimum_mission_time, maximum_mission_time]]
 MAXIMUM_SCLK_INTERVAL = [
-    ["1/0410227203:00000", "1/4288750963:38093"]
+    ["1/0000000000:00000", "1/4260211203:00000"]
 ]  # Calculated from the above datetimes seperately
 MAXIMUM_J2000_INTERVAL = [
-    [725803269.1839136, 4575787269.183866]
+    [315576066.1839245, 4575787269.183866]
 ]  # Calculated from the above datetimes seperately
 
 # Set constants for the time interval calculations
 COVERAGE_ANGULAR_VELOCITY_ONLY = False  # Only include segments with angular velocity?
 COVERAGE_SPICE_ARRAY_LENGTH = 10000  # Use an array size of 10000 for coverage calc
 COVERAGE_LEVEL = "INTERVAL"  # the granularity at which the coverage is examined
-COVERAGE_TOLERANCE = 50000.0  # Tolerance value expressed in ticks of the spacecraft.
+COVERAGE_TOLERANCE = 0.0  # Tolerance value expressed in ticks of the spacecraft.
 COVERAGE_TIME_SYSTEM = "TDB"  # Whether to use J2000 (TDB) or spacecraft clock (SCLK)
 
 
-def furnish_best_spice_file(spice_path: Path):
-    """Furnish the best kernel from spice_path.
+def furnish_best_spice_file(kernel_type: str):
+    """Furnish the best kernel for given type.
 
     Parameters
     ----------
-    spice_path: Path
-        The path to the direcory where SPICE is stored
+    kernel_type: str
+        Kernel type to furnish, e.g. 'leapseconds' or 'spacecraft_clock'.
 
     Returns
     -------
     highest_version_spice_file: Path
         The path to the SPICE file that was furnished
     """
-    kernels_sorted = sorted([f for f in spice_path.iterdir() if f.is_file()])
-    if kernels_sorted:
-        highest_version_spice_file = spice_path / kernels_sorted[-1]
-        spiceypy.furnsh(str(highest_version_spice_file))
-        return highest_version_spice_file
-    else:
-        raise FileNotFoundError(f"No SPICE files found in the directory {spice_path}")
+    # Query for latest kernel
+    metakernel_response = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 0,
+                "end_time": MAXIMUM_J2000_INTERVAL[0][1],
+                "list_files": "True",
+                "file_types": kernel_type,
+            }
+        },
+        None,
+    )
+    if metakernel_response["statusCode"] != 200:
+        raise FileNotFoundError(
+            f"Unable to find the latest {kernel_type} kernel. "
+            "Please ensure that the kernel is available in the database."
+        )
+    kernel_filename = json.loads(metakernel_response["body"])[0]
+    logger.info(f"Furnishing the latest {kernel_type} kernel: {kernel_filename}")
+    # Download the latest kernel file
+    highest_version_spice_file = download(kernel_filename)
+    logger.info(f"Downloaded SPICE file: {highest_version_spice_file}")
+    # Furnish the SPICE file
+    spiceypy.furnsh(str(highest_version_spice_file))
+    return highest_version_spice_file
 
 
 def get_coverage_dictionary(spice_file: Path, **kwargs):
@@ -90,10 +111,15 @@ def get_coverage_dictionary(spice_file: Path, **kwargs):
     results_sclk = []
     results_datetime = []
 
+    # TODO: add handler for earth attitude .bpc files
     if spice_file.suffix == ".bc":
         coverage_function = spiceypy.ckcov
     elif spice_file.suffix == ".bsp":
         coverage_function = spiceypy.spkcov
+    elif spice_file.suffix == ".bpc":
+        # TODO: uncomment once scipy releases
+        # coverage_function = spiceypy.pckcov
+        pass
     else:
         raise ValueError(
             f"Unable to handle spice file with the extension {spice_file.suffix}."
@@ -107,23 +133,26 @@ def get_coverage_dictionary(spice_file: Path, **kwargs):
     for i_window in range(card):
         # 4) Retrieve the time span of each interval
         (left, right) = spiceypy.wnfetd(cover, i_window)
-        results_j2000.append([left, right])
-        # 5) Convert the time span to datetime
-        results_datetime.append(
-            [spiceypy.et2datetime(left), spiceypy.et2datetime(right)]
-        )
-        # 6) Convert the time span to spacecraft clock time
-        results_sclk.append(
-            [
-                spiceypy.sce2s(SPACECRAFT_ID, left),
-                spiceypy.sce2s(SPACECRAFT_ID, right),
-            ]
-        )
+        # 5) Throw out any singleton points. You cannot interpolate between these.
+        if left != right:
+            results_j2000.append([left, right])
+            # 6) Convert the time span to datetime
+            results_datetime.append(
+                [spiceypy.et2datetime(left), spiceypy.et2datetime(right)]
+            )
+            # 7) Convert the time span to spacecraft clock time
+            results_sclk.append(
+                [
+                    spiceypy.sce2s(SPACECRAFT_ID, left),
+                    spiceypy.sce2s(SPACECRAFT_ID, right),
+                ]
+            )
 
     return results_j2000, results_datetime, results_sclk
 
 
 def _upsert_into_spice_table(
+    s3_key: str,
     spice_object: SPICEFilePath,
     file_coverage_j2000: list[list[float]],
     file_coverage_datetime: list[list[datetime]],
@@ -135,6 +164,8 @@ def _upsert_into_spice_table(
 
     Parameters
     ----------
+    s3_key: str
+        The S3 path of the SPICE file to upsert
     spice_object: SPICEFilePath
         The SPICE file to upsert
     file_coverage_j2000: list[list[float]]
@@ -150,13 +181,17 @@ def _upsert_into_spice_table(
     """
     # Format the data to insert
     filename = str(spice_object.filename.name)
-    version = spice_object.spice_metadata["version"]
+    # earth attitude kernel doesn't have version.
+    if spice_object.spice_metadata["type"] == "earth_attitude":
+        version = "1"
+    else:
+        version = spice_object.spice_metadata["version"]
     spice_params = {
-        "ingestion_date": datetime.now(timezone.utc),
-        "kernel_type": spice_object.spice_metadata["type"],
-        "version": version,
+        "file_path": s3_key,
         "file_name": filename,
+        "ingestion_date": get_file_ingestion_date(s3_key),
         "file_root": "".join(filename.rsplit(version, 1)),
+        "kernel_type": spice_object.spice_metadata["type"],
         "min_date_j2000": file_coverage_j2000[0][0],
         "max_date_j2000": file_coverage_j2000[-1][-1],
         "file_intervals_j2000": file_coverage_j2000,
@@ -168,8 +203,9 @@ def _upsert_into_spice_table(
         "min_date_sclk": file_coverage_sclk[0][0],
         "max_date_sclk": file_coverage_sclk[-1][-1],
         "file_intervals_sclk": file_coverage_sclk,
-        "lsk_kernel": str(latest_lsk),
         "sclk_kernel": str(latest_sclk),
+        "lsk_kernel": str(latest_lsk),
+        "version": version,
     }
 
     with db.Session() as session:
@@ -191,21 +227,30 @@ def _upsert_into_spice_table(
     logger.info(f"Wrote {spice_params} to the SPICEFiles table")
 
 
-def index_spice_file(spice_file: Path):
+def index_spice_file(s3_key: str):
     """Insert SPICE file metadata into SPICE database table.
 
     Parameters
     ----------
-    spice_file: Path
-        The full name and path the SPICE file to index
+    s3_key: str
+        Path of kernel file in S3 bucket.
     """
     latest_lsk = None
     latest_sclk = None
-    spice_object = SPICEFilePath(spice_file)
-    spice_metadata = SPICEFilePath(spice_file).spice_metadata
+    filename = os.path.basename(s3_key)
+    spice_object = SPICEFilePath(filename)
+    spice_metadata = spice_object.spice_metadata
+    # Download the ingested SPICE file from S3
     try:
-        latest_lsk = furnish_best_spice_file(spice_file.parent.parent / "lsk")
-        latest_sclk = furnish_best_spice_file(spice_file.parent.parent / "sclk")
+        spice_file = download(s3_key)
+    except Exception as e:
+        logger.error(f"Failed to download SPICE file {s3_key}: {e}")
+        raise ValueError(f"Error downloading file {s3_key}") from e
+
+    # Load time coverage data from the SPICE file
+    try:
+        latest_lsk = furnish_best_spice_file("leapseconds")
+        latest_sclk = furnish_best_spice_file("spacecraft_clock")
     except FileNotFoundError as e:
         if spice_metadata["type"] in ("leapseconds", "spacecraft_clock"):
             # This block will likely only be reached if this is the very first
@@ -270,12 +315,15 @@ def index_spice_file(spice_file: Path):
                 function_arguments["level"] = COVERAGE_LEVEL
                 function_arguments["tol"] = COVERAGE_TOLERANCE
                 function_arguments["timsys"] = COVERAGE_TIME_SYSTEM
+            if spice_metadata["type"] in ["earth_attitude"]:
+                function_arguments["idcode"] = 3000
             file_coverage_j2000, file_coverage_datetime, file_coverage_sclk = (
                 get_coverage_dictionary(spice_file, **function_arguments)
             )
 
     # Insert/Update the gathered data into the database
     _upsert_into_spice_table(
+        s3_key,
         spice_object,
         file_coverage_j2000,
         file_coverage_datetime,
@@ -285,68 +333,155 @@ def index_spice_file(spice_file: Path):
     )
 
 
-def index_spin_file(spin_file: Path):
+def index_spin_file(s3_key: Path):
     """Insert spin file metadata into spin database table.
 
     Parameters
     ----------
-    spin_file: Path
-        The full name and path the spin file to index
+    s3_key: str
+        S3 path of the spin file.
     """
     with db.Session() as session:
-        spin_obj = SPICEFilePath(spin_file)
+        spin_obj = SPICEFilePath(os.path.basename(s3_key))
         spin_metadata = spin_obj.spice_metadata
         params = {
-            "file_path": str(spin_file),
+            "file_path": s3_key,
             "start_date": spin_metadata["start_date"],
             "end_date": spin_metadata["end_date"],
             "version": spin_metadata["version"],
-            "ingestion_date": datetime.now(timezone.utc),
+            "ingestion_date": get_file_ingestion_date(s3_key),
         }
-        spin_table = models.SpinTable(**params)
+        spin_table = models.SpinFiles(**params)
         session.add(spin_table)
         session.commit()
 
 
-def write_data_to_efs(s3_key: str, s3_bucket: str, data_mount_path: Path) -> Path:
-    """Write data to EFS and create/update symlink.
+def index_repoint_file(s3_key):
+    """Insert repoint file metadata into repoint database table.
 
     Parameters
     ----------
-    s3_key : str
-        S3 object key
-    s3_bucket : str
-        The S3 bucket
-    data_mount_path: Path
-        The path to the local SPICE directory. Eg. /mnt/data
+    s3_key: str
+        S3 path of the repoint file.
+    """
+    logger.info(f"Indexing {s3_key} to RepointFiles table")
+    with db.Session() as session:
+        spin_obj = SPICEFilePath(os.path.basename(s3_key))
+        spin_metadata = spin_obj.spice_metadata
+        params = {
+            "file_path": s3_key,
+            "end_date": spin_metadata["end_date"],
+            "version": spin_metadata["version"],
+            "ingestion_date": get_file_ingestion_date(s3_key),
+        }
+        spin_table = models.RepointFiles(**params)
+        session.add(spin_table)
+        session.commit()
+
+    logger.info(f"Indexed {s3_key} to SPICEFiles table")
+
+
+def parse_datetime(val):
+    """Parse a datetime string safely, returning None for invalid inputs.
+
+    Parameters
+    ----------
+    val: str
+        The datetime string to parse.
 
     Returns
     -------
-    efs_spice_filename_and_path : Path
-        The local location of the SPICE file
-
+    datetime or None
+        The parsed datetime object or None if parsing failed.
     """
-    # Create an S3 client
-    s3_client = boto3.client("s3")
+    if val is None or str(val).strip().lower() in ("", "nan", "none"):
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%d %H:%M:%S.%f"):
+        try:
+            return datetime.strptime(val, fmt)
+        except ValueError:
+            continue
+    return None
 
-    # Get directory structure from the S3 key
-    dirname, filename = os.path.split(s3_key)
-    # Prepend EFS path to the s3 directory structure
-    efs_spice_path = data_mount_path / dirname
-    # Create the folder if it does not exist
-    efs_spice_path.mkdir(parents=True, exist_ok=True)
-    try:
-        # Download path to the EFS path
-        efs_spice_filename_and_path = efs_spice_path / filename
-        # Download file from S3 to the EFS path
-        logger.info(f"Downloading {s3_key} to {efs_spice_filename_and_path}")
-        s3_client.download_file(s3_bucket, s3_key, efs_spice_filename_and_path)
-        logger.info("Download Successfull")
-    except Exception as e:
-        raise ValueError(f"Error downloading file: {e!s}") from e
 
-    logger.info(f"{filename} was written to EFS path: {efs_spice_path}")
-    return efs_spice_filename_and_path
+def index_pointing_data(s3_key: str):
+    """Insert pointing data into pointing database table.
+
+    Pointing data is derived from the repoint file data. Steps:
+    * Download the repoint file from S3
+    * Read the CSV file
+    * Filter repoint_id that's not in pointing_table
+    * Fill rows with None values with new values
+    * For each new repoint_id, calculate pointing_start_utc and pointing_end_utc
+        Formula are:
+        pointing_start_utc = repoint_end_utc of repoint_id
+        pointing_end_utc = repoint_end_utc of repoint_id + 1
+        repoint_start_utc = repoint_start_utc of repoint_id + 1
+        repoint_end_utc = repoint_end_utc of repoint_id + 1
+    * Insert into pointing table
+
+    Parameters
+    ----------
+    s3_key: str
+        S3 path of the repoint file.
+    """
+    logger.info(f"Indexing {s3_key} to pointing table")
+    # Download repoint file
+    repoint_file_path = download(s3_key)
+    repoind_data = []
+    repoint_db_records = []
+    # Read CSV file using Python's native csv module
+    with open(repoint_file_path) as file:
+        reader = csv.DictReader(file)
+        repoind_data = list(reader)
+
+    # Filter out rows with empty repoint_id or all values are empty
+    # This can happen if there is empty row in the CSV file
+    repoind_data = [
+        row for row in repoind_data if any(row.values()) and row["repoint_id"].strip()
+    ]
+    for i_row, data in enumerate(repoind_data[:-1]):
+        # Since for loop stops at -1, we can assume that next row exists
+        # and should be able to calculate the pointing data
+        current_row = repoind_data[i_row]
+        next_row = repoind_data[i_row + 1]
+        row_data = {
+            # Converting to int to match the SQL type
+            "pointing_id": int(data["repoint_id"]),
+            "pointing_start_utc": parse_datetime(current_row["repoint_end_utc"]),
+            "pointing_end_utc": parse_datetime(next_row["repoint_end_utc"]),
+            "repoint_start_utc": parse_datetime(next_row["repoint_start_utc"]),
+            "repoint_end_utc": parse_datetime(next_row["repoint_end_utc"]),
+        }
+        repoint_db_records.append(row_data)
+
+    # Store last record data
+    last_row = repoind_data[-1]
+    row_data = {
+        "pointing_id": int(last_row["repoint_id"]),
+        "pointing_start_utc": parse_datetime(last_row["repoint_end_utc"]),
+        "pointing_end_utc": None,
+        "repoint_start_utc": None,
+        "repoint_end_utc": None,
+    }
+    repoint_db_records.append(row_data)
+
+    with db.Session() as session:
+        # Similar to _upsert_into_spice_table, update db to latest repoint
+        # if data already exists. Otherwise, insert new data. This will
+        # take care of the None values or new updated values.
+        records = insert(models.PointingTable).values(repoint_db_records)
+        records = records.on_conflict_do_update(
+            index_elements=["pointing_id"],
+            set_={
+                "pointing_start_utc": records.excluded.pointing_start_utc,
+                "pointing_end_utc": records.excluded.pointing_end_utc,
+                "repoint_start_utc": records.excluded.repoint_start_utc,
+                "repoint_end_utc": records.excluded.repoint_end_utc,
+            },
+        )
+        session.execute(records)
+        session.commit()
 
 
 def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
@@ -379,6 +514,7 @@ def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
         "ephemeris_nominal",
         "ephemeris_predict",
         "spin",
+        "repoint",
         "thruster",
     ]
     if spice_obj.spice_metadata["type"] not in spice_events:
@@ -455,31 +591,23 @@ def lambda_handler(event, context):
 
     """
     logger.info("SPICE Indexer event: " + json.dumps(event, indent=2))
-    # Define the paths
-    data_mount_path = Path(os.getenv("DATA_DIR"))  # Eg. /mnt/data
 
     # Retrieve the S3 bucket and key from the event
-    s3_bucket = event["detail"]["bucket"]["name"]
     s3_key = event["detail"]["object"]["key"]
 
-    file_path = write_data_to_efs(s3_key, s3_bucket, data_mount_path)
-    logger.info(f"File {s3_key} moved to EFS successfully")
+    spice_obj = SPICEFilePath(os.path.basename(s3_key))
 
-    spice_obj = SPICEFilePath(file_path)
-    # If file is of type 'spin' or 'repoint', don't index to SPICE table
+    # Index file to its respective table
     if spice_obj.spice_metadata["type"] == "repoint":
-        return {
-            "statusCode": 200,
-            "body": f"{s3_key} file moved to EFS successfully",
-        }
+        index_pointing_data(s3_key)
+        index_repoint_file(s3_key)
     elif spice_obj.spice_metadata["type"] == "spin":
-        # TODO: Write spin information to spin table
         logger.info(f"Indexing {s3_key} spin table")
-        index_spin_file(file_path)
+        index_spin_file(s3_key)
     else:
-        # Index the SPICE kerenels to the SPICE table
+        # Index the SPICE kernels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
-        index_spice_file(file_path)
+        index_spice_file(s3_key)
 
     send_spice_event(spice_obj, s3_key)
 

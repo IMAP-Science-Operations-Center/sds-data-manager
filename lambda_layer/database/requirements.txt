@@ -153,9 +153,9 @@ greenlet==3.2.2 ; python_version < "3.14" and (platform_machine == "aarch64" or 
 idna==3.10 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9 \
     --hash=sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3
-imap-data-access==0.31.0 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:4f8544cc9f6f936d43253cff0ebd26734d483bc8d4818160694a989f017d5dc4 \
-    --hash=sha256:c0c8064bcd0978087764c846ba8c420027ca5c6d76b6f7fba9c4602691a1db9d
+imap-data-access==0.34.1 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:967b3df4fb684e315087f9de7eef97512ae01e8eb5121c39b24df9a07a98201f \
+    --hash=sha256:c399b7db47a86c5dd04e76fb9dd27ba66c7caee6f7ede819997b450a639fe9ae
 psycopg2-binary==2.9.10 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:04392983d0bb89a8717772a193cfaac58871321e3ec69514e1c4e0d4957b5aff \
     --hash=sha256:056470c3dc57904bbf63d6f534988bafc4e970ffd50f6271fc4ee7daad9498a5 \
@@ -289,9 +289,9 @@ sqlalchemy==2.0.41 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:dd5ec3aa6ae6e4d5b5de9357d2133c07be1aff6405b136dad753a16afb6717dd \
     --hash=sha256:edba70118c4be3c2b1f90754d308d0b79c6fe2c0fdc52d8ddf603916f83f4db9 \
     --hash=sha256:ff8e80c4c4932c10493ff97028decfdb622de69cae87e0f127a7ebe32b4069c6
-typing-extensions==4.13.2 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c \
-    --hash=sha256:e6c81219bd689f51865d9e372991c540bda33a0379d5573cddb9a3a23f7caaef
+typing-extensions==4.14.0 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:8676b788e32f02ab42d9e7c61324048ae4c6d844a399eebace3d4979d75ceef4 \
+    --hash=sha256:a1514509136dd0b477638fc68d6a91497af5076466ad0fa6c338e44e359944af
 tzdata==2025.2 ; python_version >= "3.10" and python_version < "4" and sys_platform == "win32" \
     --hash=sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8 \
     --hash=sha256:b60a638fcc0daffadf82fe0f57e53d06bdec2f36c4df66280ae79bce6bd6f2b9

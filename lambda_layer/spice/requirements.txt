@@ -97,9 +97,9 @@ charset-normalizer==3.4.2 ; python_version >= "3.10" and python_version < "4" \
 idna==3.10 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9 \
     --hash=sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3
-imap-data-access==0.31.0 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:4f8544cc9f6f936d43253cff0ebd26734d483bc8d4818160694a989f017d5dc4 \
-    --hash=sha256:c0c8064bcd0978087764c846ba8c420027ca5c6d76b6f7fba9c4602691a1db9d
+imap-data-access==0.34.1 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:967b3df4fb684e315087f9de7eef97512ae01e8eb5121c39b24df9a07a98201f \
+    --hash=sha256:c399b7db47a86c5dd04e76fb9dd27ba66c7caee6f7ede819997b450a639fe9ae
 numpy==2.2.6 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:038613e9fb8c72b0a41f025a7e4c3f0b7a1b5d768ece4796b674c8f3fe13efff \
     --hash=sha256:0678000bb9ac1475cd454c6b8c799206af8107e310843532b04d49649c717a47 \

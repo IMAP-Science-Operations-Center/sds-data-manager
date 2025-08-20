@@ -34,6 +34,7 @@ def template(stack, env):
         rds_security_group=test_security_group,
         db_secret_name="test-secrets",  # noqa
         layers=[],
+        account_name="dev",
     )
 
     template = Template.from_stack(stack)
@@ -42,6 +43,6 @@ def template(stack, env):
 
 def test_indexer_role(template):
     """Ensure that the template has appropriate IAM roles."""
-    template.resource_count_is("AWS::IAM::Role", 9)
+    template.resource_count_is("AWS::IAM::Role", 12)
     # Ensure that the template has appropriate lambda count
-    template.resource_count_is("AWS::Lambda::Function", 8)
+    template.resource_count_is("AWS::Lambda::Function", 11)

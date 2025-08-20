@@ -1,5 +1,6 @@
 """Contains the lambda handler for the 'query' data access API."""
 
+import datetime
 import json
 import logging
 
@@ -28,7 +29,7 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
-    logger.info("SPICE Query Event: " + json.dumps(event, indent=2))
+    logger.debug("SPICE Query Event: " + json.dumps(event, indent=2))
 
     # add session, pick model like in indexer and add query to filter_as
     query_params = event["queryStringParameters"]
@@ -37,7 +38,15 @@ def lambda_handler(event, context):
         query = select(models.SPICEFiles)
 
         # get a list of all valid search parameters
-        valid_parameters = ["file_name", "start_time", "end_time", "type", "latest"]
+        valid_parameters = [
+            "file_name",
+            "start_time",
+            "end_time",
+            "type",
+            "latest",
+            "start_ingest_date",
+            "end_ingest_date",
+        ]
 
         # go through each query parameter to set up sqlalchemy query conditions
         for param, value in query_params.items():
@@ -55,62 +64,66 @@ def lambda_handler(event, context):
                     " valid options are: {valid_parameters}"
                 )
                 return response
-
-            if param == "start_time":
-                try:
+            try:
+                if param == "start_time":
                     query = query.where(models.SPICEFiles.max_date_j2000 >= int(value))
-                except ValueError:
-                    response = {
-                        "statusCode": 400,
-                        "body": json.dumps(f"Invalid value for {param}: {value}"),
-                    }
-                    logger.debug(f"Invalid value for {param}: {value}")
-                    return response
-            elif param == "end_time":
-                try:
+                elif param == "end_time":
                     query = query.where(models.SPICEFiles.min_date_j2000 <= int(value))
-                except ValueError:
-                    response = {
-                        "statusCode": 400,
-                        "body": json.dumps(f"Invalid value for {param}: {value}"),
-                    }
-                    logger.debug(f"Invalid value for {param}: {value}")
-                    return response
-            elif param == "type":
-                query = query.where(models.SPICEFiles.kernel_type == value)
-            elif param == "file_name":
-                query = query.where(models.SPICEFiles.file_name == value)
-            elif param == "latest" and value.lower() == "true":
-                # Make a subquery that gives us (file_root, MAX(version))
-                latest_versions_subq = (
-                    session.query(
-                        models.SPICEFiles.file_root,
-                        func.max(models.SPICEFiles.version).label("max_version"),
+                elif param == "type":
+                    query = query.where(models.SPICEFiles.kernel_type == value)
+                elif param == "file_name":
+                    query = query.where(models.SPICEFiles.file_name == value)
+                elif param == "latest" and value.lower() == "true":
+                    # Make a subquery that gives us (file_root, MAX(version))
+                    latest_versions_subq = (
+                        session.query(
+                            models.SPICEFiles.file_root,
+                            func.max(models.SPICEFiles.version).label("max_version"),
+                        )
+                        .group_by(models.SPICEFiles.file_root)
+                        .subquery()
                     )
-                    .group_by(models.SPICEFiles.file_root)
-                    .subquery()
-                )
 
-                # Join main query to subquery so that we only keep rows
-                # with the matching max version for each file_root
-                query = query.join(
-                    latest_versions_subq,
-                    (models.SPICEFiles.file_root == latest_versions_subq.c.file_root)
-                    & (models.SPICEFiles.version == latest_versions_subq.c.max_version),
-                )
+                    # Join main query to subquery so that we only keep rows
+                    # with the matching max version for each file_root
+                    query = query.join(
+                        latest_versions_subq,
+                        (
+                            models.SPICEFiles.file_root
+                            == latest_versions_subq.c.file_root
+                        )
+                        & (
+                            models.SPICEFiles.version
+                            == latest_versions_subq.c.max_version
+                        ),
+                    )
+                elif param == "start_ingest_date":
+                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+                    query = query.where(models.SPICEFiles.ingestion_date >= parsed_date)
+                elif param == "end_ingest_date":
+                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+                    query = query.where(models.SPICEFiles.ingestion_date <= parsed_date)
+            except ValueError:
+                response = {
+                    "statusCode": 400,
+                    "body": json.dumps(f"Invalid value for {param}: {value}"),
+                }
+                logger.debug(f"Invalid value for {param}: {value}")
+                return response
 
         search_results = session.execute(query).scalars().all()
 
     search_results = [
         _convert_spice_metadata_model_to_dict(result) for result in search_results
     ]
-    logger.info(
+    logger.debug(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
 
     # Format the response
     response = {
         "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
         "body": json.dumps(search_results),  # returns a list of tuples
     }
 
@@ -151,6 +164,8 @@ def _convert_spice_metadata_model_to_dict(file: models.SPICEFiles) -> dict:
         "sclk_kernel": file.sclk_kernel,
         "lsk_kernel": file.lsk_kernel,
         "ingestion_date": file.ingestion_date.strftime("%Y-%m-%d, %H:%M:%S"),
-        "timestamp": file.ingestion_date.timestamp(),
+        "timestamp": file.ingestion_date.replace(
+            tzinfo=datetime.timezone.utc
+        ).timestamp(),
     }
     return spice_file_dict

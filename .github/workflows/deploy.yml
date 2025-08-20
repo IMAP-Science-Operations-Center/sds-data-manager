@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - prod
 
 jobs:
   cdk-deploy:
@@ -14,8 +15,20 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Set deployment account and role
+        id: set_account
+        run: |
+          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+            echo "account_name=dev" >> $GITHUB_ENV
+            echo "role_arn=arn:aws:iam::449431850278:role/GitHubDeploy" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF##*/}" == "prod" ]]; then
+            echo "account_name=prod" >> $GITHUB_ENV
+            echo "role_arn=arn:aws:iam::593025701104:role/GitHubDeploy" >> $GITHUB_ENV
+          else
+            echo "Branch not configured for deployment." && exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - uses: Gr1N/setup-poetry@v8
@@ -34,15 +47,19 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::449431850278:role/GitHubDeploy
+          role-to-assume: ${{ env.role_arn }}
           aws-region: us-west-2
 
       - name: Synth
+        env:
+          ACCOUNT_NAME: ${{ env.account_name }}
         run: |
           # poetry run to get the environment we installed everything into
-          poetry run cdk synth --context account_name=dev
+          poetry run cdk synth --context account_name=$ACCOUNT_NAME
 
       - name: Deploy
+        env:
+          ACCOUNT_NAME: ${{ env.account_name }}
         run: |
           # poetry run to get the environment we installed everything into
-          poetry run cdk deploy --all --context account_name=dev --require-approval never
+          poetry run cdk deploy --all --context account_name=$ACCOUNT_NAME --require-approval never

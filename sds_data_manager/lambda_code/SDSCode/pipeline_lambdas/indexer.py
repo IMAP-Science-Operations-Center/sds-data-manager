@@ -10,6 +10,7 @@ from imap_data_access import AncillaryFilePath, ImapFilePath, ScienceFilePath
 
 from ..database import database as db
 from ..database import models
+from .dependency import calculate_crid
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup
@@ -110,12 +111,20 @@ def send_event_from_indexer(file_obj):
     event_client = boto3.client("events")
 
     # Create event["detail"] information
-    # TODO: This is what batch starter expect
-    # as input. Revisit this.
 
+    # Batch starter uses "key" to retrieve the filename. SQS/Eventbridge use the
+    # other object items to sort or filter messages.
     detail = {
-        "object": {"key": str(file_obj.filename), "instrument": file_obj.instrument}
+        "object": {
+            "key": str(file_obj.filename),
+            "instrument": file_obj.instrument,
+            "data_level": "ancillary",
+        }
     }
+
+    # used to filter science file events in SQS
+    if isinstance(file_obj, ScienceFilePath):
+        detail["object"]["data_level"] = file_obj.data_level
 
     # create PutEvent dictionary
     event = IMAPLambdaPutEvent(detail_type="Processed File", detail=detail)
@@ -182,7 +191,10 @@ def s3_event_handler(event):
 
         sci_params["ingestion_date"] = ingestion_date_object
         with db.Session() as session, session.begin():
-            session.add(models.ScienceFiles(**sci_params))
+            science_file = models.ScienceFiles(**sci_params)
+            session.add(science_file)
+            crid = calculate_crid(session, science_file)
+            science_file.crid = crid
         logger.info("Wrote data to the ScienceFiles table")
     except ImapFilePath.InvalidImapFileError:
         logger.info(
@@ -325,7 +337,6 @@ def batch_event_handler(event):
         job.job_definition = event["detail"]["jobDefinition"]
         job.job_log_stream_id = event["detail"]["container"]["logStreamName"]
         job.container_image = event["detail"]["container"]["image"]
-        job.container_command = " ".join(event["detail"]["container"]["command"])
         job.started_at = started_at
         job.stopped_at = stopped_at
         session.commit()

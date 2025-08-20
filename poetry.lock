@@ -109,13 +109,13 @@ test = ["hypothesis", "pytest-astropy"]
 
 [[package]]
 name = "astropy-iers-data"
-version = "0.2025.5.26.0.37.21"
+version = "0.2025.6.2.0.38.23"
 description = "IERS Earth Rotation and Leap Second tables for the astropy core package"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "astropy_iers_data-0.2025.5.26.0.37.21-py3-none-any.whl", hash = "sha256:0a725f7f84f44f6718347518a2a559bc5464aa53fa2f335d47188d1467a9926b"},
-    {file = "astropy_iers_data-0.2025.5.26.0.37.21.tar.gz", hash = "sha256:a910ed22a46e5b1961aaabfa085da77c9772284a5b982379623f441f8b9856fc"},
+    {file = "astropy_iers_data-0.2025.6.2.0.38.23-py3-none-any.whl", hash = "sha256:55893f9bc1d7acb364bc683707104cc9de00b588b5a386e3cdedc38a05f26460"},
+    {file = "astropy_iers_data-0.2025.6.2.0.38.23.tar.gz", hash = "sha256:b78895b0d1137ce0800ff8e90f2a58123687d2965d58297065356f2e1d4f3cbe"},
 ]
 
 [package.extras]
@@ -153,13 +153,13 @@ tests-mypy = ["mypy (>=1.11.1)", "pytest-mypy-plugins"]
 
 [[package]]
 name = "aws-cdk-asset-awscli-v1"
-version = "2.2.237"
+version = "2.2.240"
 description = "A library that contains the AWS CLI for use in Lambda Layers"
 optional = false
 python-versions = "~=3.9"
 files = [
-    {file = "aws_cdk_asset_awscli_v1-2.2.237-py3-none-any.whl", hash = "sha256:642805ba143b35d11d5b5e80ab728db2ec8b894b2837b629ad95601e7e189e4c"},
-    {file = "aws_cdk_asset_awscli_v1-2.2.237.tar.gz", hash = "sha256:e1dd0086af180c381d3ee81eb963a1f469627763e0507982b6f2d4075446bdf4"},
+    {file = "aws_cdk_asset_awscli_v1-2.2.240-py3-none-any.whl", hash = "sha256:bcfa7124d40b9180697489d6875ed1c34a5dbb4db6eaad68148664c0d56b5af1"},
+    {file = "aws_cdk_asset_awscli_v1-2.2.240.tar.gz", hash = "sha256:73a0787fedcc7e2010779593aa0c66398a4bc8e2291c918b07edc11ffd092612"},
 ]
 
 [package.dependencies]
@@ -185,17 +185,17 @@ typeguard = ">=2.13.3,<5.0.0"
 
 [[package]]
 name = "aws-cdk-aws-lambda-python-alpha"
-version = "2.199.0a0"
+version = "2.202.0a0"
 description = "The CDK Construct Library for AWS Lambda in Python"
 optional = false
 python-versions = "~=3.9"
 files = [
-    {file = "aws_cdk_aws_lambda_python_alpha-2.199.0a0-py3-none-any.whl", hash = "sha256:8aad9f4f69385e778fe63a3c61aa1fe8a766cd45e16d2f22ff75797e1f00cfd8"},
-    {file = "aws_cdk_aws_lambda_python_alpha-2.199.0a0.tar.gz", hash = "sha256:962c6d692fe6df4d4a85d344281040f9a515f5587af9afff9e300fe5b7a74dfd"},
+    {file = "aws_cdk_aws_lambda_python_alpha-2.202.0a0-py3-none-any.whl", hash = "sha256:26afb0810b4984af77c0a4412f3e0f1e93c88257acf142c47919052a7c9ba7a9"},
+    {file = "aws_cdk_aws_lambda_python_alpha-2.202.0a0.tar.gz", hash = "sha256:c76e29168d30331443db8f54a6ceb2622b3418b6477f31d1f4e6ab62cfc91a07"},
 ]
 
 [package.dependencies]
-aws-cdk-lib = ">=2.199.0,<3.0.0"
+aws-cdk-lib = ">=2.202.0,<3.0.0"
 constructs = ">=10.0.0,<11.0.0"
 jsii = ">=1.112.0,<2.0.0"
 publication = ">=0.0.3"
@@ -203,35 +203,35 @@ typeguard = ">=2.13.3,<4.3.0"
 
 [[package]]
 name = "aws-cdk-cloud-assembly-schema"
-version = "41.2.0"
+version = "44.8.0"
 description = "Schema for the protocol between CDK framework and CDK CLI"
 optional = false
-python-versions = "~=3.8"
+python-versions = "~=3.9"
 files = [
-    {file = "aws_cdk.cloud_assembly_schema-41.2.0-py3-none-any.whl", hash = "sha256:779ca7e3edb02695e0a94a1f38e322b04fbe192cd7944553f80b681a21edd670"},
-    {file = "aws_cdk_cloud_assembly_schema-41.2.0.tar.gz", hash = "sha256:7064ac13f6944fd53f8d8eace611d3c5d8db7014049d629f5c47ede8dc5f2e3b"},
+    {file = "aws_cdk_cloud_assembly_schema-44.8.0-py3-none-any.whl", hash = "sha256:3d76cdb871918794941eab5292e7dc13acd1fced61e00c8aba47db257fae33a2"},
+    {file = "aws_cdk_cloud_assembly_schema-44.8.0.tar.gz", hash = "sha256:31b88005f070dddc77a7fd10fa4eb1f366c97dd03461ce78db37bbbd07708466"},
 ]
 
 [package.dependencies]
-jsii = ">=1.108.0,<2.0.0"
+jsii = ">=1.112.0,<2.0.0"
 publication = ">=0.0.3"
 typeguard = ">=2.13.3,<4.3.0"
 
 [[package]]
 name = "aws-cdk-lib"
-version = "2.199.0"
+version = "2.202.0"
 description = "Version 2 of the AWS Cloud Development Kit library"
 optional = false
 python-versions = "~=3.9"
 files = [
-    {file = "aws_cdk_lib-2.199.0-py3-none-any.whl", hash = "sha256:0c0476db7d4c7800839508259502293fc126e1d3d55aa3dc156d8e0348a36e11"},
-    {file = "aws_cdk_lib-2.199.0.tar.gz", hash = "sha256:3a9e2d12393ce459940a972d64a48bb6a684d70958bbc7ac28928eb2f2608b71"},
+    {file = "aws_cdk_lib-2.202.0-py3-none-any.whl", hash = "sha256:38183380494cef1fca47660536d704b9a2af461399580220939306f0c27f9db1"},
+    {file = "aws_cdk_lib-2.202.0.tar.gz", hash = "sha256:cd01bff16595b8f0740b302c16ff9bcf64bf43fe035332052a0b4b89c5338710"},
 ]
 
 [package.dependencies]
-"aws-cdk.asset-awscli-v1" = "2.2.237"
+"aws-cdk.asset-awscli-v1" = "2.2.240"
 "aws-cdk.asset-node-proxy-agent-v6" = ">=2.1.0,<3.0.0"
-"aws-cdk.cloud-assembly-schema" = ">=41.2.0,<42.0.0"
+"aws-cdk.cloud-assembly-schema" = ">=44.2.0,<45.0.0"
 constructs = ">=10.0.0,<11.0.0"
 jsii = ">=1.112.0,<2.0.0"
 publication = ">=0.0.3"
@@ -275,17 +275,17 @@ lxml = ["lxml"]
 
 [[package]]
 name = "boto3"
-version = "1.38.23"
+version = "1.38.28"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "boto3-1.38.23-py3-none-any.whl", hash = "sha256:70ab8364f1f6f0a7e0eaf97f62fbdacf9c1e4cc1de330faf1c146ef9ab01e7d0"},
-    {file = "boto3-1.38.23.tar.gz", hash = "sha256:bcf73aca469add09e165b8793be18e7578db8d2604d82505ab13dc2495bad982"},
+    {file = "boto3-1.38.28-py3-none-any.whl", hash = "sha256:1bbf770339d294c91dd396ac90588753d89b9fdd63496edc9bc6f710f24ed25a"},
+    {file = "boto3-1.38.28.tar.gz", hash = "sha256:69395075d54be4552719ccadad9f65a3dee5bb3751701e8851d65d71974a791d"},
 ]
 
 [package.dependencies]
-botocore = ">=1.38.23,<1.39.0"
+botocore = ">=1.38.28,<1.39.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.13.0,<0.14.0"
 
@@ -294,13 +294,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.38.23"
+version = "1.38.28"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "botocore-1.38.23-py3-none-any.whl", hash = "sha256:a7f818672f10d7a080c2c4558428011c3e0abc1039a047d27ac76ec846158457"},
-    {file = "botocore-1.38.23.tar.gz", hash = "sha256:29685c91050a870c3809238dc5da1ac65a48a3a20b4bca46b6057dcb6b39c72a"},
+    {file = "botocore-1.38.28-py3-none-any.whl", hash = "sha256:515e1a535a27f17e1381aec1fb48eaa2c2308258c4db0bfd09e4f1cd1f239c44"},
+    {file = "botocore-1.38.28.tar.gz", hash = "sha256:63d5977a10a375c3fc11c8e15e1ae5a4daaf450af135d55c170cc537648edf25"},
 ]
 
 [package.dependencies]
@@ -890,13 +890,13 @@ files = [
 
 [[package]]
 name = "imap-data-access"
-version = "0.31.0"
+version = "0.34.1"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = "*"
 files = [
-    {file = "imap_data_access-0.31.0-py3-none-any.whl", hash = "sha256:c0c8064bcd0978087764c846ba8c420027ca5c6d76b6f7fba9c4602691a1db9d"},
-    {file = "imap_data_access-0.31.0.tar.gz", hash = "sha256:4f8544cc9f6f936d43253cff0ebd26734d483bc8d4818160694a989f017d5dc4"},
+    {file = "imap_data_access-0.34.1-py3-none-any.whl", hash = "sha256:c399b7db47a86c5dd04e76fb9dd27ba66c7caee6f7ede819997b450a639fe9ae"},
+    {file = "imap_data_access-0.34.1.tar.gz", hash = "sha256:967b3df4fb684e315087f9de7eef97512ae01e8eb5121c39b24df9a07a98201f"},
 ]
 
 [package.dependencies]
@@ -908,19 +908,19 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "imap-processing"
-version = "0.12.0"
+version = "0.18.0"
 description = "IMAP Science Operations Center Processing"
 optional = false
 python-versions = "<4,>=3.10"
 files = [
-    {file = "imap_processing-0.12.0-py3-none-any.whl", hash = "sha256:9c5bd9f1f3309c43b681cfaa6f6430df9169dbd21c2b07e26919e54eaf2d4992"},
-    {file = "imap_processing-0.12.0.tar.gz", hash = "sha256:3ed372c08384e54f3fd36846ea47cad9c0c7a3619bf68f65c88b1f49cd5f239e"},
+    {file = "imap_processing-0.18.0-py3-none-any.whl", hash = "sha256:5487d93cec7574c310b3ab1f08328a01c0ff0e053fedc63be502f3a752fc3b1e"},
+    {file = "imap_processing-0.18.0.tar.gz", hash = "sha256:047f40bf24a8a4471675aca95625b5106d7927ac0c2409ab4db8a169b968d618"},
 ]
 
 [package.dependencies]
 astropy-healpix = ">=1.0"
 cdflib = ">=1.3.1,<2.0.0"
-imap-data-access = ">=0.10.1"
+imap-data-access = ">=0.32.0"
 numpy = "<=3"
 sammi-cdf = ">=1.0,<2.0"
 scipy = ">=1.13,<2.0"
@@ -932,7 +932,7 @@ xarray = ">=2024.10.0"
 dev = ["mypy (==1.10.1)", "pre-commit (>=3.3.3,<4.0.0)", "ruff (==0.2.1)"]
 doc = ["numpydoc (>=1.5.0,<2.0.0)", "pydata-sphinx-theme", "sphinx", "sphinxcontrib-openapi (>=0.8.3,<0.9.0)"]
 map-visualization = ["healpy (>=1.18.0,<2.0.0)"]
-test = ["netcdf4 (>=1.7.2,<2.0.0)", "openpyxl (>=3.0.7)", "pytest (>=6.2.5)", "pytest-cov (>=4.0.0,<5.0.0)", "requests (>=2.32.3,<3.0.0)"]
+test = ["netcdf4 (>=1.7.2,<2.0.0)", "openpyxl (>=3.0.7)", "pytest (>=6.2.5)", "pytest-cov (>=4.0.0,<5.0.0)", "pytest-xdist (>=3.2,<4.0)", "requests (>=2.32.3,<3.0.0)"]
 tools = ["openpyxl (>=3.0.7)", "pandas (>=2.0.0)"]
 
 [[package]]
@@ -2432,13 +2432,13 @@ test = ["mypy", "pytest", "typing-extensions"]
 
 [[package]]
 name = "typing-extensions"
-version = "4.13.2"
-description = "Backported and Experimental Type Hints for Python 3.8+"
+version = "4.14.0"
+description = "Backported and Experimental Type Hints for Python 3.9+"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "typing_extensions-4.13.2-py3-none-any.whl", hash = "sha256:a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c"},
-    {file = "typing_extensions-4.13.2.tar.gz", hash = "sha256:e6c81219bd689f51865d9e372991c540bda33a0379d5573cddb9a3a23f7caaef"},
+    {file = "typing_extensions-4.14.0-py3-none-any.whl", hash = "sha256:a1514509136dd0b477638fc68d6a91497af5076466ad0fa6c338e44e359944af"},
+    {file = "typing_extensions-4.14.0.tar.gz", hash = "sha256:8676b788e32f02ab42d9e7c61324048ae4c6d844a399eebace3d4979d75ceef4"},
 ]
 
 [[package]]
@@ -2548,4 +2548,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "518dc713a1325d28237600e914e101f5b79110864c48a0ec1f64114c85b8b352"
+content-hash = "28250f226d921e91b473e978c49f64e8df5e44604ac790103a81b6291cc8c243"

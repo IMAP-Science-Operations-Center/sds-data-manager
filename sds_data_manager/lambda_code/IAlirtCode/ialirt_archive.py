@@ -46,11 +46,11 @@ def lambda_handler(event, context):
     start_iso = yesterday.isoformat()
     end_iso = now.isoformat()
 
-    # Query using insert_time GSI
+    # Query using utc GSI
     response = algorithm_table.query(
-        IndexName="insert_time",
+        IndexName="last_modified",
         KeyConditionExpression=(
-            Key("apid").eq(478) & Key("insert_time").between(start_iso, end_iso)
+            Key("apid").eq(478) & Key("last_modified").between(start_iso, end_iso)
         ),
     )
 

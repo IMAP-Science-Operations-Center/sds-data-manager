@@ -47,6 +47,8 @@ def expected_response():
                 "extension": "pkts",
                 "ingestion_date": "20251107 10:13:12",
                 "cr": None,
+                "crid": None,
+                "released": False,
             }
         ]
     )
@@ -61,6 +63,17 @@ def test_query_result_body(session):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert json.loads(returned_query["body"])
+
+
+def test_query_result_header(session):
+    """Tests that the query result header is json."""
+    _populate_test_data(session)
+    event = {"queryStringParameters": {}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["headers"] is not None
+    assert returned_query["headers"]["Content-Type"] == "application/json"
 
 
 def test_start_date_query(session, expected_response):
@@ -237,7 +250,8 @@ def test_invalid_query(session):
         + "Valid query parameters are: "
         + "['file_path', 'instrument', 'data_level', 'descriptor', "
         "'start_date', 'repointing', 'version', 'extension', 'ingestion_date', "
-        + "'cr', 'end_date', 'ingestion_start_date', 'ingestion_end_date']"
+        + "'cr', 'crid', 'released', 'end_date', 'ingestion_start_date', "
+        + "'ingestion_end_date']"
     )
     returned_query = query_api.lambda_handler(event=event, context={})
 
@@ -274,6 +288,8 @@ def test_sorting_of_query(session):
                 "extension": "pkts",
                 "ingestion_date": "20251107 10:13:12",
                 "cr": None,
+                "crid": None,
+                "released": False,
             },
             {
                 "file_path": "test/file/path/imap_hit_l0_raw_20251107_v001.pkts",
@@ -286,6 +302,8 @@ def test_sorting_of_query(session):
                 "extension": "pkts",
                 "ingestion_date": "20251107 10:13:12",
                 "cr": None,
+                "crid": None,
+                "released": False,
             },
         ]
     )
@@ -337,6 +355,7 @@ def expected_response_ancillary_table():
                 "version": "v001",
                 "extension": "csv",
                 "ingestion_date": "20210101 10:13:12",
+                "released": False,
             }
         ]
     )
@@ -375,7 +394,7 @@ def test_invalid_param_ancillary_query(session):
         "repointing is not a valid query parameter for ancillary table. "
         + "Valid query parameters are: ['file_path', 'instrument', 'descriptor'"
         ", 'start_date', 'end_date', 'version', 'extension', 'ingestion_date', "
-        "'ingestion_start_date', 'ingestion_end_date']"
+        "'released', 'ingestion_start_date', 'ingestion_end_date']"
     )
 
     returned_query = query_api.lambda_handler(event=event, context={})

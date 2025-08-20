@@ -16,6 +16,7 @@ from aws_cdk import aws_apigatewayv2_integrations as apigwv2_integrations
 from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_cloudwatch_actions as cloudwatch_actions
+from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_route53 as route53
 from aws_cdk import aws_route53_targets as targets
@@ -93,6 +94,29 @@ class ApiGateway(Construct):
             jwt_audience=[self.auth_audience],
         )
 
+        # Lambda function for API Key authorizer
+        self.api_key_authorizer_lambda = lambda_.Function(
+            self,
+            f"{self.lowercase_prefix}ApiKeyAuthorizerLambda",
+            runtime=lambda_.Runtime.PYTHON_3_13,
+            handler="lambda_api_key_authorizer.lambda_handler",
+            code=lambda_.Code.from_asset("sds_data_manager/lambda_code/authorization"),
+            timeout=Duration.seconds(10),
+        )
+        self.api_key_authorizer_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["ssm:GetParameter"],
+                resources=["arn:aws:ssm:*:*:parameter/imap-sdc-api-keys"],
+            )
+        )
+
+        self.api_key_authorizer = apigwv2_authorizers.HttpLambdaAuthorizer(
+            id=f"{self.lowercase_prefix}ApiKeyAuthorizer",
+            handler=self.api_key_authorizer_lambda,
+            response_types=[apigwv2_authorizers.HttpLambdaResponseType.SIMPLE],
+            identity_source=["$request.header.x-api-key"],
+        )
+
         # Add a custom domain to the API if we have one
         if domain_construct is not None:
             api_domain_name = f"{self.lowercase_prefix}.{domain_construct.domain_name}"
@@ -129,6 +153,7 @@ class ApiGateway(Construct):
             default_domain_mapping=domain_mapping,
             description="HTTP API Gateway for lambda function endpoints.",
             cors_preflight={
+                "allow_headers": ["*"],
                 "allow_origins": ["*"],
                 "allow_methods": [
                     apigwv2.CorsHttpMethod.GET,
@@ -188,6 +213,9 @@ class ApiGateway(Construct):
     ):
         """Add a route to the HTTP API Gateway.
 
+        If the route begins with /authorized, use the JWT authorizer.
+        If the route beings with /api-key, use the API Key authorizer.
+
         Parameters
         ----------
         route : str
@@ -197,9 +225,19 @@ class ApiGateway(Construct):
         lambda_function : lambda_.Function
             Lambda function to trigger when this route is hit.
         """
+        # normalize root route
+        if route in ["", "/"]:
+            route = "/"
+
         # Add the authorizer to the route if it is a route that requires authentication
-        authorizer = self.authorizer if route.startswith("/auth") else None
-        authorization_scopes = [self.auth_scope] if route.startswith("/auth") else None
+        authorizer = None
+        authorization_scopes = None
+        if route.startswith("/api-key"):
+            authorizer = self.api_key_authorizer
+        elif route.startswith("/authorized"):
+            authorizer = self.authorizer
+            authorization_scopes = [self.auth_scope]
+
         # Add the route to the HTTP API
         self.api.add_routes(
             path=route,

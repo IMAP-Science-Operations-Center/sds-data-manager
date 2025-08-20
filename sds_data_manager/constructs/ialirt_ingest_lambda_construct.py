@@ -9,7 +9,6 @@ from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
 from constructs import Construct
 
 
@@ -23,7 +22,6 @@ class IalirtIngestLambda(Construct):
         ialirt_bucket: aws_s3.Bucket,
         vpc: ec2.Vpc,
         efs_access_point: efs.AccessPoint,
-        efs_security_group: ec2.SecurityGroup,
         docker_path: str = "sds_data_manager/lambda_code",
         **kwargs,
     ) -> None:
@@ -41,8 +39,6 @@ class IalirtIngestLambda(Construct):
             VPC into which to put the resources that require networking.
         efs_access_point: efs.AccessPoint
             EFS access point to mount inside the Lambda function.
-        efs_security_group: ec2.SecurityGroup
-            Security group associated with the EFS file system.
         docker_path : str
             Path to the Dockerfile.
         kwargs : dict
@@ -53,64 +49,29 @@ class IalirtIngestLambda(Construct):
 
         # EFS resources
         self.efs_access_point = efs_access_point
-        self.efs_security_group = efs_security_group
         self.vpc = vpc
 
         # Create DynamoDB Table
-        self.packet_data_table = self.create_ingest_dynamodb_table()
         self.algorithm_data_table = self.create_algorithm_dynamodb_table()
+
+        account_name = self.node.get_context("account_name")
+        # once we have the account_name, get that section out of cdk.json
+        account_config = self.node.get_context(account_name)
+        domain_name = account_config.get("domain_name", "no-domain-set")
+        # https://api.imap-mission.com
+        # https://api.dev.imap-mission.com
+        data_access_url = f"https://api.{domain_name}"
 
         # Create Lambda Function
         self.ialirt_ingest_lambda = self.create_lambda_function(
             ialirt_bucket,
-            self.packet_data_table,
             self.algorithm_data_table,
             docker_path,
+            data_access_url,
         )
 
         # Create Event Rule
         self.create_event_rule(ialirt_bucket, self.ialirt_ingest_lambda)
-
-    def create_ingest_dynamodb_table(self) -> aws_dynamodb.Table:
-        """Create and return the DynamoDB table."""
-        table = ddb.Table(
-            self,
-            "IalirtPacketDataTable",
-            table_name="ialirt-packetdata-table",
-            # Change to RemovalPolicy.RETAIN to keep the table after stack deletion.
-            # TODO: change to RETAIN in production.
-            removal_policy=RemovalPolicy.DESTROY,
-            # Restore data to any point in time within the last 35 days.
-            # TODO: change to True in production.
-            point_in_time_recovery=False,
-            # Partition key (PK) = APID.
-            partition_key=ddb.Attribute(
-                name="apid",
-                type=ddb.AttributeType.NUMBER,
-            ),
-            # Sort key (SK) = Mission Elapsed Time (MET).
-            sort_key=ddb.Attribute(
-                name="met",
-                type=ddb.AttributeType.NUMBER,
-            ),
-            # Define the read and write capacity units.
-            # TODO: change to provisioned capacity mode in production.
-            billing_mode=ddb.BillingMode.PAY_PER_REQUEST,  # On-Demand capacity mode.
-        )
-
-        # Add a GSI for ingest time.
-        table.add_global_secondary_index(
-            index_name="ingest_time",
-            # Partition key (PK) = APID.
-            partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
-            # Sort key (SK) = Ingest Time (ISO).
-            sort_key=ddb.Attribute(
-                name="ingest_time",
-                type=ddb.AttributeType.STRING,
-            ),
-            projection_type=ddb.ProjectionType.ALL,
-        )
-        return table
 
     def create_algorithm_dynamodb_table(self) -> aws_dynamodb.Table:
         """Create and return the algorithm data product table."""
@@ -141,12 +102,12 @@ class IalirtIngestLambda(Construct):
 
         # Add a GSI for ingest time.
         self.algorithm_data_table.add_global_secondary_index(
-            index_name="insert_time",
+            index_name="met_in_utc",
             # Partition key (PK) = APID.
             partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
             # Sort key (SK) = Insert Time (ISO).
             sort_key=ddb.Attribute(
-                name="insert_time",
+                name="met_in_utc",
                 type=ddb.AttributeType.STRING,
             ),
             projection_type=ddb.ProjectionType.ALL,
@@ -154,12 +115,12 @@ class IalirtIngestLambda(Construct):
 
         # Add a GSI for instrument product name.
         self.algorithm_data_table.add_global_secondary_index(
-            index_name="product_name",
+            index_name="last_modified",
             # Partition key (PK) = APID.
             partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
             # Sort key (SK) = Instrument product name.
             sort_key=ddb.Attribute(
-                name="product_name",
+                name="last_modified",
                 type=ddb.AttributeType.STRING,
             ),
             projection_type=ddb.ProjectionType.ALL,
@@ -169,10 +130,10 @@ class IalirtIngestLambda(Construct):
     def create_lambda_function(
         self,
         ialirt_bucket: aws_s3.Bucket,
-        packet_data_table: aws_dynamodb.Table,
         algorithm_data_table: aws_dynamodb.Table,
         docker_path: str,
-    ) -> lambda_alpha_.PythonFunction:
+        data_access_url: str,
+    ) -> lambda_.DockerImageFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
             self,
@@ -191,16 +152,13 @@ class IalirtIngestLambda(Construct):
             ],
         )
 
-        lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "s3:GetObject",
-                ],
-                resources=[
-                    packet_data_table.table_arn,
-                    f"{ialirt_bucket.bucket_arn}/*",
-                ],
-            )
+        s3_read_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:ListBucket", "s3:GetObject"],
+            resources=[
+                ialirt_bucket.bucket_arn,
+                f"{ialirt_bucket.bucket_arn}/*",
+            ],
         )
 
         ialirt_ingest_lambda = lambda_.DockerImageFunction(
@@ -211,23 +169,24 @@ class IalirtIngestLambda(Construct):
                 file="IAlirtCode/Dockerfile.ingest",
             ),
             function_name="ialirt-ingest",
-            timeout=cdk.Duration.minutes(1),
+            timeout=cdk.Duration.minutes(4),
             memory_size=1000,
             role=lambda_role,
             vpc=self.vpc,
-            security_groups=[self.efs_security_group],
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            ),
             filesystem=lambda_.FileSystem.from_efs_access_point(
                 self.efs_access_point, "/mnt/data"
             ),
             environment={
-                "INGEST_TABLE": packet_data_table.table_name,
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
                 "EFS_SPICE_MOUNT_PATH": "/mnt/data",
+                "IMAP_DATA_ACCESS_URL": data_access_url,
             },
         )
-
-        packet_data_table.grant_read_write_data(ialirt_ingest_lambda)
+        ialirt_ingest_lambda.add_to_role_policy(s3_read_policy)
         algorithm_data_table.grant_read_write_data(ialirt_ingest_lambda)
 
         # The resource is deleted when the stack is deleted.
@@ -238,7 +197,7 @@ class IalirtIngestLambda(Construct):
     def create_event_rule(
         self,
         ialirt_bucket: aws_s3.Bucket,
-        ialirt_ingest_lambda: lambda_alpha_.PythonFunction,
+        ialirt_ingest_lambda: lambda_.DockerImageFunction,
     ) -> None:
         """Create the event rule to trigger Lambda on S3 object creation."""
         ialirt_data_arrival_rule = events.Rule(

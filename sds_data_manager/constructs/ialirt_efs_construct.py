@@ -6,7 +6,7 @@ from aws_cdk import aws_efs as efs
 from constructs import Construct
 
 
-class EFSConstruct(Construct):
+class IAlirtEFSConstruct(Construct):
     """Elastic File System for storing various software and data.
 
     This file system can be mounted by multiple resources. It
@@ -50,17 +50,17 @@ class EFSConstruct(Construct):
 
         # Initialize EFS related information that other resources
         # will need to access EFS or mount EFS.
-        self.volume_name = "SPICE-EFS"
+        self.volume_name = "IALIRT-SPICE-EFS"
         self.efs_path = "/data"
 
         # Define EFS security group, ports are added in EC2 stack
         self.efs_security_group = ec2.SecurityGroup(
             self,
-            "EFSSecurityGroup",
+            "IAlirtEFSSecurityGroup",
             vpc=vpc,
             description="No outbound rule for EFS",
             allow_all_outbound=False,
-            security_group_name="EFSSecurityGroup",
+            security_group_name="IAlirtEFSSecurityGroup",
         )
 
         # Add inbound rule for TCP port 2049
@@ -71,7 +71,7 @@ class EFSConstruct(Construct):
 
         self.efs = efs.FileSystem(
             self,
-            "EFS",
+            "IAlirtEFS",
             vpc=vpc,
             file_system_name=self.volume_name,
             # This will automatically downscale infrequently accessed
@@ -94,7 +94,7 @@ class EFSConstruct(Construct):
 
         # Make an access point for others to be able to access the drive
         self.spice_access_point = self.efs.add_access_point(
-            "SpiceAccessPoint",
+            "IAlirtSpiceAccessPoint",
             create_acl=efs.Acl(owner_gid="1000", owner_uid="1000", permissions="750"),
             path=self.efs_path,
             posix_user=efs.PosixUser(gid="1000", uid="1000"),

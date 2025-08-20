@@ -4,47 +4,157 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import boto3
 import botocore
+import imap_data_access
+import numpy as np
+import requests
+import spiceypy
+import xarray as xr
+from boto3.dynamodb.conditions import Key
+from imap_data_access.processing_input import (
+    ProcessingInputCollection,
+    SPICEInput,
+    SPICESource,
+)
 from imap_processing import imap_module_directory
+from imap_processing.cdf.utils import load_cdf
+from imap_processing.ialirt.l0.parse_mag import process_packet
+from imap_processing.ialirt.l0.process_codice import process_codice
+from imap_processing.ialirt.l0.process_hit import process_hit
+from imap_processing.ialirt.l0.process_swapi import process_swapi_ialirt
+from imap_processing.ialirt.l0.process_swe import process_swe
+from imap_processing.spice.geometry import (
+    SpiceBody,
+    SpiceFrame,
+    imap_state,
+)
+from imap_processing.spice.time import met_to_sclkticks, sct_to_et
 from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+KERNELS = {
+    "ephemeris_predicted",
+    "ephemeris_90days",
+    "planetary_ephemeris",
+    "spacecraft_clock",
+    "leapseconds",
+    "imap_frames",
+    "science_frames",
+}
+EFS_BASE_PATH = Path("/mnt/data")
 
-def parse_packet(filename: str, bucket: str, key: str, download_dir: Path):
-    """Parse the packet.
+
+def get_ancillary(instrument, descriptor):
+    """Query and download ancillary data if not already present.
 
     Parameters
     ----------
-    filename : str
-        The name of the file to be downloaded from S3.
-    bucket : str
-        The name of the S3 bucket.
-    key : str
-        The key of the file in the S3 bucket.
-    download_dir : Path
-        The directory where the file will be downloaded.
+    instrument : str
+        The name of the instrument.
+    descriptor : str
+        The name of the descriptor.
 
     Returns
     -------
-    datasets_by_apid : xr.Dataset
-        Parsed dataset.
+    download_path : Path
+        Download path of calibration file.
     """
-    local_path = os.path.join(download_dir, filename)
+    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    calibration_files = imap_data_access.query(
+        table="ancillary",
+        instrument=instrument,
+        descriptor=descriptor,
+        version="latest",
+    )
 
-    s3 = boto3.client("s3")
-    s3.download_file(bucket, key, local_path)
-    logger.info("Downloaded file to %s", local_path)
+    if not calibration_files:
+        raise FileNotFoundError(
+            f"No calibration file found for {instrument=}, {descriptor=}"
+        )
 
-    xtce = os.path.join(imap_module_directory, "ialirt.xml")
+    calibration_file = calibration_files[0]
 
-    datasets_by_apid = packet_file_to_datasets(local_path, xtce)
+    download_path = imap_data_access.download(calibration_file["file_path"])
+    logger.info(f"Adding to {download_path} to calibration files.")
 
-    return datasets_by_apid
+    return download_path
+
+
+def get_latest_spice_kernels(url: str) -> ProcessingInputCollection:
+    """Query the SPICE metakernel API for latest SPICE kernel filenames.
+
+    Parameters
+    ----------
+    url: str
+        AWS account name.
+
+    Returns
+    -------
+    dependency_inputs: ProcessingInputCollection
+        A collection containing a SPICEInput object with the list of kernel filenames
+        returned from the metakernel API.
+    """
+    dependency_inputs = ProcessingInputCollection()
+
+    now = datetime.now(timezone.utc)
+    one_week_ago = now - timedelta(weeks=1)
+    # Define J2000 epoch: 2000-01-01T12:00:00 UTC
+    # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
+    j2000 = datetime(2000, 1, 1, 11, 58, 56, tzinfo=timezone.utc)
+    et_end_time = (now - j2000).total_seconds()
+    et_start_time = (one_week_ago - j2000).total_seconds()
+
+    file_types = ",".join(KERNELS)
+    metakernel_url = url + "/metakernel"
+
+    params = {
+        "start_time": str(int(et_start_time)),
+        "end_time": str(int(et_end_time)),
+        "list_files": "True",
+        "file_types": file_types,
+    }
+
+    logger.info(f"Sending request to {metakernel_url} with params: {params}")
+    response = requests.get(metakernel_url, params=params, timeout=10)
+    metakernel_files = response.json()
+
+    logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")
+    dependency_inputs.add(SPICEInput(*metakernel_files))
+
+    return dependency_inputs
+
+
+def download_spice_file(dependencies) -> list[Path]:
+    """Download SPICE kernel files from the IMAP data archive and store them in EFS.
+
+    Parameters
+    ----------
+    dependencies: ProcessingInputCollection
+        A collection containing a SPICEInput object with the list of kernel filenames
+        returned from the metakernel API.
+
+    Returns
+    -------
+    spice_files: list[Path]
+        A list of Path objects representing the SPICE files stored in EFS.
+
+    Notes
+    -----
+    List is priority ordered so furnishing in order results in correct SPICE priority.
+    """
+    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    dependencies.download_all_files()
+
+    spice_files = dependencies.get_file_paths(data_type=SPICESource.SPICE.value)
+    spiceypy.furnsh([str(file.resolve()) for file in spice_files])
+
+    return spice_files
 
 
 def query_filenames(bucket: str, region: str, now: datetime):
@@ -91,6 +201,7 @@ def query_filenames(bucket: str, region: str, now: datetime):
     for obj in objects:
         key = obj["Key"]
         timestamp_str = key.split("iois_1_packets_")[1]
+        timestamp_str = timestamp_str.removesuffix(".bin")
         timestamp = datetime.strptime(timestamp_str, "%Y_%j_%H_%M_%S")
         timestamp = timestamp.replace(tzinfo=timezone.utc)
 
@@ -98,6 +209,180 @@ def query_filenames(bucket: str, region: str, now: datetime):
             filenames.append(key)
 
     return filenames
+
+
+def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
+    """Get packets into datasets and combine.
+
+    This function is an event handler for s3 ingest bucket.
+    It is also used to ingest data to the DynamoDB table.
+
+    Parameters
+    ----------
+    filenames : list
+        List of file paths.
+    bucket : str
+        The name of the S3 bucket.
+    download_dir : Path
+        The directory where the file will be downloaded.
+    apid : int
+        The apid of the packet to be processed.
+
+    Returns
+    -------
+    combined : xr.Dataset
+        Combined dataset.
+    """
+    s3 = boto3.client("s3")
+    xtce_ialirt_path = (
+        imap_module_directory / "ialirt" / "packet_definitions" / "ialirt.xml"
+    )
+    datasets = []
+
+    for filename in filenames:
+        local_path = download_dir / Path(filename).name
+        s3.download_file(bucket, filename, str(local_path))
+        xarray_data = packet_file_to_datasets(local_path, xtce_ialirt_path)[apid]
+        datasets.append(xarray_data)
+
+    combined = xr.concat(datasets, dim="epoch")
+    # Drop duplicate epochs. This could happen if there are duplicate packets.
+    _, unique_idx = np.unique(combined["epoch"], return_index=True)
+    combined = combined.isel(epoch=sorted(unique_idx))
+
+    return combined
+
+
+def process_algorithms(combined: xr.Dataset, algorithm_table):
+    """Process the algorithms and insert data, as needed.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data.
+    algorithm_table : dynamodb.Table
+        The DynamoDB table to insert or update the data.
+    """
+    processors = [
+        ("hit", process_hit),
+        ("swe", process_swe),
+        ("mag", process_packet),
+        ("codicelo", process_codice),
+        ("codicehi", process_codice),
+        ("swapi", process_swapi_ialirt),
+    ]
+
+    for instrument, process_func in processors:
+        if instrument == "swe":
+            download_path = get_ancillary(instrument, "l1b-in-flight-cal")
+            result = process_func(combined, [download_path])
+        elif instrument == "mag":
+            download_path = get_ancillary(instrument, "l1b-calibration")
+            calibration_data = load_cdf(download_path)
+            result, _ = process_func(combined, calibration_data)
+        elif instrument == "codicelo":
+            result, _ = process_func(combined)
+        elif instrument == "codicehi":
+            _, result = process_func(combined)
+        else:
+            result = process_func(combined)
+
+        logger.info("%s result: %s", instrument, result)
+
+        if any(result) and all(result):
+            insert_data(result, algorithm_table, instrument)
+
+
+def insert_data(data: list[dict], algorithm_table, instrument: str):
+    """Insert or update database row, depending on content of item.
+
+    Parameters
+    ----------
+    data : list[dict]
+        Data product produced from processing respectively instrument.
+    algorithm_table : dynamodb.Table
+        The DynamoDB table to insert or update the data.
+    instrument : str
+        The prefix for the product name.
+    """
+    apid = data[0]["apid"]
+    mets = [item["met"] for item in data]
+    min_met = min(mets)
+    max_met = max(mets)
+
+    # Query existing items.
+    response = algorithm_table.query(
+        KeyConditionExpression=Key("apid").eq(apid)
+        & Key("met").between(min_met, max_met)
+    )
+
+    existing_items = {item["met"]: item for item in response.get("Items", [])}
+
+    # Insert or update as needed
+    for raw in data:
+        met = raw["met"]
+        key = {"apid": apid, "met": met}
+        existing = existing_items.get(met)
+        raw["last_modified"] = datetime.now(timezone.utc).isoformat()
+
+        # Calculate the spacecraft position and velocity in GSM coordinates.
+        et = sct_to_et(met_to_sclkticks(met))
+        gsm_state = imap_state(
+            et, ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
+        )
+        gse_state = imap_state(
+            et, ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
+        )
+
+        raw["sc_position_GSM"] = [Decimal(str(val)) for val in gsm_state[0, :3]]
+        raw["sc_velocity_GSM"] = [Decimal(str(val)) for val in gsm_state[0, 3:]]
+        raw["sc_position_GSE"] = [Decimal(str(val)) for val in gse_state[0, :3]]
+        raw["sc_velocity_GSE"] = [Decimal(str(val)) for val in gse_state[0, 3:]]
+
+        if existing:
+            if any(key.startswith(instrument) for key in existing.keys()):
+                continue
+
+            update_expr = "SET " + ", ".join(
+                f"{field} = :{field}"
+                for field in raw
+                if field
+                not in {
+                    "apid",
+                    "met",
+                    "met_in_utc",
+                    "ttj2000ns",
+                    "sc_position_GSM",
+                    "sc_velocity_GSM",
+                    "sc_position_GSE",
+                    "sc_velocity_GSE",
+                }
+            )
+
+            expression_values = {
+                f":{field}": value
+                for field, value in raw.items()
+                if field
+                not in {
+                    "apid",
+                    "met",
+                    "met_in_utc",
+                    "ttj2000ns",
+                    "sc_position_GSM",
+                    "sc_velocity_GSM",
+                    "sc_position_GSE",
+                    "sc_velocity_GSE",
+                }
+            }
+
+            algorithm_table.update_item(
+                Key=key,
+                UpdateExpression=update_expr,
+                ExpressionAttributeValues=expression_values,
+            )
+        else:
+            algorithm_table.put_item(Item=raw)
+        logger.info(f"Inserted {instrument.upper()}.")
 
 
 def lambda_handler(event, context):
@@ -122,6 +407,7 @@ def lambda_handler(event, context):
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
     dynamodb = boto3.resource("dynamodb")
     algorithm_table = dynamodb.Table(algorithm_table_name)
+    url = os.environ.get("IMAP_DATA_ACCESS_URL")
 
     bucket = event["detail"]["bucket"]["name"]
     region = event["region"]
@@ -129,23 +415,26 @@ def lambda_handler(event, context):
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
+    dependency_inputs = get_latest_spice_kernels(url)
+    logger.info("dependency_inputs: %s", dependency_inputs)
+    download_spice_file(dependency_inputs)
 
-    # TODO: Each of these steps in temporary, but provides an idea
-    #  of how the lambda will be used.
-
-    # 1. Query s3 for packet filenames from past 5 minutes.
-    now = datetime.now(timezone.utc)
+    # Query s3 for packet filenames from past 5 minutes.
+    if "now" in event:
+        now = datetime.fromisoformat(event["now"].replace("Z", "")).replace(
+            tzinfo=timezone.utc
+        )
+    else:
+        now = datetime.now(timezone.utc)
     filenames = query_filenames(bucket, region, now)
-    print(filenames)
-    # TODO: will use filenames here.
 
-    # 2. After processing insert data into Algorithm Table.
-    item = {
-        "apid": 478,
-        "met": 123,
-        "insert_time": "2021-01-01T00:00:00Z",
-        "product_name": "hit_product_1",
-        "data_product_1": str(1234.56),
-    }
-    algorithm_table.put_item(Item=item)
-    logger.info("Successfully wrote item to DynamoDB: %s", item)
+    if filenames:
+        logger.info("Found %d files to process", len(filenames))
+        # Get packets into datasets and combine.
+        combined = parse_packets(filenames, bucket, Path("/tmp"))  # noqa: S108
+        # Process algorithms and insert new data.
+        process_algorithms(combined, algorithm_table)
+
+        logger.info("Successfully wrote all new items to DynamoDB")
+    else:
+        logger.info("No files found to process in the last 5 minutes.")

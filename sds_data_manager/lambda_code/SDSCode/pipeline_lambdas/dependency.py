@@ -1,8 +1,8 @@
 """Dependency tracking module."""
 
+import base64
 import json
 import logging
-import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -10,7 +10,6 @@ from os.path import basename
 from pathlib import Path
 from typing import Optional
 
-import boto3
 import imap_data_access
 from imap_data_access import processing_input
 from imap_data_access.processing_input import ProcessingInputCollection
@@ -20,6 +19,7 @@ from sqlalchemy.orm import aliased
 from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
 from ..database import models
+from ..database.models import AncillaryFiles, ScienceFiles
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -302,7 +302,7 @@ class DependencyConfig:
                 f"Invalid data source: {node[0]}. "
                 f"Valid data sources: {self.data_source.valid_source}"
             )
-        if node[1] not in self.data_type.valid_type:
+        if node[1] != "best" and node[1] not in self.data_type.valid_type:
             raise ValueError(
                 f"Invalid data type: {node[1]}. "
                 f"Valid data types: {self.data_type.valid_type}"
@@ -375,20 +375,20 @@ class DependencyConfig:
         Parameters
         ----------
         cadence : str
-            Cadence string. Either "3mo", "6mo", or "1yr".
+            Cadence string. Either "1mo", "3mo", "6mo", or "1yr".
 
         Returns
         -------
         list
             List of cadence jobs.
         """
-        # Cadence jobs are only at data level l2 and contain either "3mo", "6mo", or
-        # "1yr" strings as the last part of the descriptor.
+        # Cadence jobs are only at data level l2 and contain either "1mo", "3mo", "6mo",
+        # or "1yr" strings as the last part of the descriptor.
 
         return [
             node
             for node in self.get_all_nodes("DOWNSTREAM")
-            if node[1] == "l2" and cadence == node[2].split("-")[-1]
+            if node[1] in ["l2", "l2b"] and cadence == node[2].split("-")[-1]
         ]
 
 
@@ -520,7 +520,7 @@ def get_spin_files(
     list
         List of spin files.
     """
-    spin = aliased(models.SpinTable)
+    spin = aliased(models.SpinFiles)
 
     # Define the row_number() window function
     row_number = (
@@ -564,7 +564,7 @@ def get_spin_files(
 def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     """Get latest repoint file.
 
-    Query S3 bucket for the latest repoint file.
+    Query for the latest repoint file for given end_date.
 
     Parameters
     ----------
@@ -576,51 +576,262 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     str
         Latest repoint file name.
     """
-    bucket_name = os.getenv("S3_BUCKET")
-    prefix = "imap/spice/repoint/"
+    with db.Session() as session:
+        latest_repoint_file = (
+            session.query(models.RepointFiles)
+            .order_by(desc(models.RepointFiles.file_path))
+            .first()
+        )
 
-    s3 = boto3.client("s3")
-    paginator = s3.get_paginator("list_objects_v2")
-    pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
+    if not latest_repoint_file:
+        raise ValueError("No Repoint file found in the database.")
 
-    repoint_files = []
-
-    for page in pages:
-        for obj in page.get("Contents", []):
-            filename = obj["Key"]
-            file_obj = processing_input.SPICEFilePath(filename)
-            repoint_files.append(
-                (
-                    file_obj.spice_metadata["end_date"],
-                    file_obj.spice_metadata["version"],
-                    filename,
-                )
-            )
-
-    if not repoint_files:
-        return None
-
-    # Sort by end_date and version
-    latest = sorted(repoint_files, key=lambda x: (x[0], x[1]))[-1]
-    latest_file_date = latest[0]
-
-    # Check that input end is within latest repoint file end date
-    if latest_file_date < end_date:
+    if latest_repoint_file.end_date < end_date:
         logger.info(
-            f"Latest repoint file end date {latest_file_date} "
+            f"Latest repoint file end date {latest_repoint_file.end_date} "
             f"is before input end date {end_date}"
         )
         return None
 
-    # Otherwise, return the latest repoint file without the path prefix
-    return basename(latest[2])
+    return basename(latest_repoint_file.file_path)
 
 
-# ruff: noqa: PLR0915
+def check_requested_kernels(combined_kernel_sources, metakernel_files):
+    """Check if all requested kernels are present in the metakernel files.
+
+    We need to ensure that the returned list of metakernel files includes
+    all requested kernels, especially for ephemeris kernels. The API can
+    return the "best" ephemeris kernels, which can include both historical
+    and predicted kernels depending on the input time range. If the user
+    specifically requests only historical ephemeris kernels, we must verify
+    that only historical files are returned. Otherwise, both historical
+    and predicted kernels are acceptable.
+
+    Additionally, the API can return multiple kernels for the same source
+    if the files cover specific date ranges. Because of this, we must
+    check that all requested sources are present in the returned
+    metakernel files, rather than performing a direct one-to-one
+    comparison. Each source may correspond to multiple kernel files.
+
+    Parameters
+    ----------
+    combined_kernel_sources : str
+        Comma-separated string of requested kernel sources.
+    metakernel_files : list
+        List of metakernel files found.
+
+    Returns
+    -------
+    bool
+        True if all requested kernels are found, False otherwise.
+    """
+    requested_kernels = set(combined_kernel_sources.split(","))
+    expected_ephemeris = set(
+        [kernel for kernel in requested_kernels if "ephemeris_" in kernel]
+    )
+    expected_other_kernels = set(
+        [kernel for kernel in requested_kernels if "ephemeris_" not in kernel]
+    )
+
+    ephemeris_found = set()
+    other_kernels_found = set()
+
+    for file in metakernel_files:
+        file_obj = imap_data_access.SPICEFilePath(file)
+        # Extract the kernel type from the file name
+        kernel_type = file_obj.spice_metadata["type"]
+        if "ephemeris_" in kernel_type:
+            ephemeris_found.add(kernel_type)
+        else:
+            other_kernels_found.add(kernel_type)
+
+    # Check if all other requested kernels are found
+    if expected_other_kernels != other_kernels_found:
+        logger.error(
+            f"Non-ephemeris kernels {expected_other_kernels} not found in "
+            f"metakernel files {other_kernels_found}"
+        )
+        return False
+
+    # If no ephemeris kernels are requested, we can return True.
+    if not expected_ephemeris:
+        return True
+
+    # If only historical ephemeris kernel is requested, check that it
+    # is found.
+    if (
+        len(expected_ephemeris) == 1
+        and next(iter(expected_ephemeris)) == "ephemeris_reconstructed"
+        and "ephemeris_reconstructed" in ephemeris_found
+    ):
+        return True
+
+    # If 'best' ephemeris kernel is requested, check that at least one of the kernels
+    # is found in the metakernel files.
+    if (
+        len(expected_ephemeris) > 1
+        and any("ephemeris_" in kernel for kernel in expected_ephemeris)
+        and any("ephemeris_" in kernel for kernel in ephemeris_found)
+    ):
+        return True
+
+    logger.error(
+        f"Requested ephemeris kernels: {expected_ephemeris}, "
+        f"found in metakernel files: {ephemeris_found}"
+        f"\nRequested other kernels: {expected_other_kernels}, "
+        f"found in metakernel files: {other_kernels_found}"
+    )
+    return False
+
+
+def get_upstream_versions(session, record, versions) -> dict:
+    """Recursively retrieves all upstream versions for a given record.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    record : models.ScienceFiles, models.AncillaryFiles or models.SPICEFiles
+        The current record for which upstream versions are being retrieved.
+    versions : dict
+        A dict to store all of the upstream versions.
+
+    Returns
+    -------
+    dict
+        All upstream versions and their filenames.
+    """
+    # Make a copy of the dictionary to avoid modifying the original
+    versions = versions.copy()
+    if not isinstance(record, ScienceFiles):
+        # Only science files have upstream dependencies.
+        return versions
+
+    dep_node = {
+        "data_source": record.instrument,
+        "data_type": record.data_level,
+        "descriptor": record.descriptor,
+    }
+    upstream_deps = get_dependencies(
+        tuple(dep_node.values()),
+        "UPSTREAM",
+        "ALL",
+    )
+    for upstream_dep in upstream_deps:
+        upstream_records = get_files(
+            session,
+            upstream_dep,
+            record.start_date,
+            record.start_date,
+        )
+        if not upstream_records:
+            logger.warning(
+                f"Could not find upstream dep for {record} during CRID calculation."
+            )
+            return versions
+
+        # for now take the most recent start date:
+        upstream_record = sorted(upstream_records, key=lambda rec: rec.start_date)[0]
+        # Add the record version to the dictionary.
+        versions[upstream_record.file_path] = upstream_record.version
+        versions = get_upstream_versions(session, upstream_record, versions)
+
+    return versions
+
+
+def calculate_crid(session, record) -> str:
+    """Calculate a CRID (Composite Release ID) for a file.
+
+    The CRID is calculated as a hash of the file name and the versions of all its
+    upstream dependency files. It is unique to a file.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    record : models.ScienceFiles, models.AncillaryFiles, or models.SPICEFiles
+        The record for which the CRID is being calculated.
+
+    Returns
+    -------
+    str
+        The calculated CRID as a SHA-256 hash.
+    """
+    upstream_versions = get_upstream_versions(session, record, {})
+    # Sort the upstream versions by file path
+    sorted_dict = sorted(upstream_versions.items(), key=lambda x: x[0])
+    # Pack the version numbers into 2 bytes
+    sorted_bytes = b"".join([int(v[1:]).to_bytes(2, "big") for path, v in sorted_dict])
+    logger.info(
+        f"Calculating CRID using upstream versions: {sorted_dict} and "
+        f"filepath {record.file_path}"
+    )
+    # Encode the file path and the sorted bytes
+    return base64.a85encode(record.file_path.encode() + sorted_bytes).decode("ascii")
+
+
+def matching_crids_exist(session, records) -> bool:
+    """Check if the matching CRIDs exist for the given records.
+
+    A difference between the calculated CRID of an upstream dependency and the actual
+    CRID of the file retrieved for processing, indicates that a new version of that file
+    is expected based on the files in S3.
+
+    In the case above, Batch starter will skip processing the current job, as it
+    expects that the reprocessed upstream file will soon be uploaded to S3,
+    triggering a new batch job run (we want to avoid needless reprocessing).
+    If the CRID matches the calculated CRID, we will continue with processing.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    records : list[Union[models.ScienceFiles, models.AncillaryFiles, models.SPICEFiles]]
+        List of records to check for CRIDs.
+
+    Returns
+    -------
+    bool
+        True if all expected CRIDs exist or are successfully set, False otherwise.
+    """
+    matching_crid = True
+    for upstream_record in records:
+        if isinstance(upstream_record, AncillaryFiles):
+            # Ancillary files do not have CRIDs.
+            continue
+
+        # Calculate CRID and convert to string
+        crid = calculate_crid(session, upstream_record)
+
+        existing_crid = upstream_record.crid
+        if existing_crid:
+            # Check if the CRID already exists in the database
+            if existing_crid == crid:
+                logger.info(
+                    f"Found matching CRID for {upstream_record.file_path}. Continuing.."
+                )
+            else:
+                logger.info(
+                    f"Found mismatched CRID for {upstream_record.file_path}. "
+                    f"This indicates that we are expecting a reprocessing for"
+                    f" this file."
+                )
+                matching_crid = False
+        else:
+            # If no existing CRID, insert CRID into the database for the record.
+            upstream_record.crid = crid
+            session.commit()
+            logger.info(f"Set CRID for {upstream_record.file_path}.")
+
+    return matching_crid
+
+
+# ruff: noqa: PLR0915, PLR0912, PLR0911
 def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
     end_date: datetime,
+    calculate_crids: bool,
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
@@ -636,6 +847,12 @@ def get_upstream_dependency_inputs(
         Start date to find dependent files with.
     end_date : datetime
         End date to find dependent files with.
+    calculate_crids : bool
+        If True, we will check if the expected CRIDs exist for the upstream
+        dependencies. If so, processing will continue. If not, it will return None.
+        This check should only be done for jobs that were triggered by a science file
+        because this indicates that there may be a reprocessing of an upstream file,
+        and we want to avoid multiple reprocessing of the same file.
 
     Returns
     -------
@@ -716,11 +933,19 @@ def get_upstream_dependency_inputs(
                 None,
             )
             if metakernel_response["statusCode"] != 200:
-                logger.info(
+                logger.error(
                     f"Metakernel lambda raised error: {metakernel_response['body']}"
                 )
                 return None
             metakernel_files = json.loads(metakernel_response["body"])
+            # If number of kernels returned doesn't match the number of file types
+            # requested
+            has_all_kernels = check_requested_kernels(
+                combined_kernel_sources, metakernel_files
+            )
+            if not has_all_kernels:
+                return None
+
             logger.info(
                 f"Found metakernel files: {metakernel_files}. Adding to collection."
             )
@@ -740,8 +965,7 @@ def get_upstream_dependency_inputs(
             dep_string = f"{dep=}\n{start_date=}\n{end_date=}"
 
             logger.info(
-                "Searching for upstream dependencies with dependency string: "
-                f"{dep_string}"
+                f"Searching for upstream dependencies with dependency string: {dep}"
             )
 
             records = get_files(session, dep, start_date, end_date)
@@ -754,6 +978,15 @@ def get_upstream_dependency_inputs(
 
             elif not records:
                 continue
+            # Skip CRID checks for glows l3 products. Menlo is handling this in their
+            # processing code.
+            if (
+                calculate_crids
+                and dep["data_source"] != "glows"
+                and "l3" not in dep["data_type"]
+            ):
+                if not matching_crids_exist(session, records):
+                    return None
 
             filenames = [basename(record.file_path) for record in records]
 
@@ -873,6 +1106,7 @@ def get_jobs(
     descriptor: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    calculate_crids: bool = False,
 ) -> list | ProcessingInputCollection | None:
     """Get dependencies for the given inputs.
 
@@ -895,6 +1129,12 @@ def get_jobs(
     end_date : str, optional
         End date to find dependent files with, in YYYYMMDD format. Required if
         start_date is provided.
+    calculate_crids : bool, optional
+        If True, we will check if the expected CRIDs exist for the upstream
+        dependencies. If so, processing will continue. If not, it will return None.
+        This check should only be done for jobs that were triggered by a science file
+        because this indicates that there may be a reprocessing of an upstream file,
+        and we want to avoid multiple reprocessing of the same file. Default is False.
 
     Returns
     -------
@@ -958,7 +1198,7 @@ def get_jobs(
         dependency_type,
         relationship,
     )
-    logger.info(f"Dependency nodes found: {dependencies}")
+    logger.info(f"{relationship} dependency nodes found: {dependencies}")
     if dependencies is None:
         logger.warning("Failed to load dependencies")
         raise ValueError("Failed to load dependencies")
@@ -978,6 +1218,7 @@ def get_jobs(
         dependencies=dependencies,
         start_date=start_date,
         end_date=end_date,
+        calculate_crids=calculate_crids,
     )
     if upstream_dependencies_output is None:
         logger.info(
