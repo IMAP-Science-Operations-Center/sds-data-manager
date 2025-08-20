@@ -85,7 +85,6 @@ def test_batch_job_query_api(session):
     assert response_data[0]["job_definition"] is None
     assert response_data[0]["job_log_stream_id"] is None
     assert response_data[0]["container_image"] is None
-    assert response_data[0]["container_command"] is None
     assert response_data[0]["started_at"] is None
     assert response_data[0]["stopped_at"] is None
 

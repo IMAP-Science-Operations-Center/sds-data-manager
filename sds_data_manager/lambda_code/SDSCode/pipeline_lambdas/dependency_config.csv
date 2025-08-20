@@ -675,8 +675,8 @@ spacecraft_clock, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNST
 # <---- Spacecraft Dependencies ---->
 # Quaternions
 spacecraft, l0, raw, spacecraft, l1a, quaternions, HARD, DOWNSTREAM
-leapseconds, spice, historical, spacecraft, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, spacecraft, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, spacecraft, l1a, quaternions, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, spacecraft, l1a, quaternions, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Pointing kernel
 repoint, repoint, historical, spacecraft, l1a, pointing-attitude, HARD, DOWNSTREAM

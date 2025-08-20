@@ -154,7 +154,7 @@ def test_lambda_handler(session, s3_client):
             session,
             {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"},
             dt.datetime(2024, 1, 1, 0, 0),
-            "v002",
+            "v001",
             processing_input.serialize(),
         )
 
@@ -429,7 +429,7 @@ def test_lambda_handler_ancillary_event(session):
             session,
             {"data_source": "swe", "data_type": "l1b", "descriptor": "sci"},
             dt.datetime(2026, 3, 3, 0, 0),
-            "v002",
+            "v001",
             json.dumps(inputs),
         )
 
@@ -942,7 +942,7 @@ def test_ultra_l3_map(session, caplog):
                     "descriptor": "u90-ena-h-sf-sp-full-hae-4deg-3mo",
                 },
                 dt.datetime(2024, 2, 1, 0, 0),
-                "v002",
+                "v001",
                 expected_processing_input.serialize(),
             )
 
@@ -1178,7 +1178,7 @@ def test_lambda_handler_mag_l1c_case(session):
             session,
             {"data_source": "mag", "data_type": "l1c", "descriptor": "norm-mago"},
             dt.datetime(2024, 1, 1, 0, 0),
-            "v003",
+            "v002",
             expected_processing_input.serialize(),
         )
 
@@ -1250,7 +1250,7 @@ def test_lambda_handler_duplicate_mag_l1c_job(session, caplog):
         # Verify the function not called
         assert mock_batch_client.submit_job.call_count == 0
 
-        assert ("This job is a duplicate of the previous one") in caplog.text
+        assert ("Job already completed or in progress") in caplog.text
 
 
 ### TEST CADENCE EVENT
@@ -1552,6 +1552,7 @@ def test_determine_max_version(session):
         descriptor="de",
         start_date=datetime(2010, 1, 1),
         version="v001",
+        container_command="--dependency imap_lo_l1b_de-27005a05_20100101_v001.json",
     )
     session.add(record)
     session.commit()
@@ -1563,6 +1564,7 @@ def test_determine_max_version(session):
         data_level="l1b",
         descriptor="de",
         start_date=datetime(2010, 1, 1),
+        current_dependency_hash="abcdsf",
     )
     assert result == "v002"
     # Assert that the version returned is "v001" when the job has not been processed.
@@ -1572,6 +1574,7 @@ def test_determine_max_version(session):
         data_level="l1b",
         descriptor="sci",
         start_date=datetime(2010, 1, 1),
+        current_dependency_hash="7f101966",
     )
     assert result == "v001"
 
@@ -1587,6 +1590,7 @@ def test_determine_job_version_descriptor_is_all(session):
         data_level="l1b",
         descriptor="all",
         start_date=datetime(2024, 1, 1),
+        current_dependency_hash="7f101966",
     )
     assert result == "v001"
 
@@ -1602,6 +1606,7 @@ def test_determine_max_version_missing_processing_job(session):
         data_level="l1a",
         descriptor="sci",
         start_date=datetime(2024, 1, 1),
+        current_dependency_hash="7f101966",
     )
     assert result == "v001"
 
@@ -1629,8 +1634,6 @@ def test_duplicate_job(session, first_status, second_status):
                 descriptor="de",
                 start_date=datetime(2010, 1, 1),
                 version="v001",
-                dependencies='[{"type": "ancillary", "files": '
-                '["imap_mag_l1b-cal_20250101_v001.cdf"]}]',
             )
         )
     session.commit()

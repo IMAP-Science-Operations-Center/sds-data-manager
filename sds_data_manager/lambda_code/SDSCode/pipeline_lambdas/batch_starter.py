@@ -21,7 +21,6 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from ..api_lambdas import upload_api
-from ..api_lambdas.upload_api import _file_exists
 from ..database import database as db
 from ..database import models
 from . import dependency
@@ -146,6 +145,7 @@ def determine_job_version(
     data_level: str,
     descriptor: str,
     start_date: datetime,
+    current_dependency_hash: str,
 ) -> str:
     """Return the maximum existing file version in the pipeline increased by one.
 
@@ -161,6 +161,8 @@ def determine_job_version(
         Data descriptor.
     start_date : datetime
         Start date.
+    current_dependency_hash : str
+        The hash of the serialized dependencies for the current job.
 
     Returns
     -------
@@ -185,11 +187,30 @@ def determine_job_version(
         return conditions
 
     # First check to see if there are any jobs in progress and get the max version
-    max_version = (
-        session.query(func.max(models.ProcessingJob.version)).filter(
-            *filter_conditions(models.ProcessingJob)
-        )
-    ).scalar()
+    max_version_record = (
+        session.query(models.ProcessingJob)
+        .filter(*filter_conditions(models.ProcessingJob))
+        .order_by(models.ProcessingJob.version.desc())
+        .first()
+    )
+    if max_version_record:
+        max_version = max_version_record.version
+        # If there is a job already in progress, determine whether the current job
+        # is a duplicate of the in-progress job by checking the dependency file hash.
+        # If the hashes are different, then we know the dependencies have changed and
+        # we should bump the version number and continue with processing.
+        if max_version_record.status == models.Status.INPROGRESS:
+            command = max_version_record.container_command
+            if current_dependency_hash in command:
+                # Return the current max version and this job will not proceed if
+                # everything else is the same.
+                return max_version
+            logger.info(
+                f"Job with id: {max_version_record.id} is in progress, but the "
+                f"dependencies have changed. Bumping version number."
+            )
+    else:
+        max_version = None
     # If the descriptor is "all", we should only check the processing job table. The
     # ScienceFiles table does not have descriptors of "all" since the products
     # produced will have their own specific descriptors.
@@ -301,63 +322,6 @@ def get_special_case_date_range(session, job_node, start_date):
     return new_start_date, new_end_date
 
 
-def duplicate_job(
-    instrument,
-    data_level,
-    descriptor,
-    start_date,
-    previous_version,
-    serialized_dependencies,
-) -> bool:
-    """Determine if the current job is a duplicate of the most recent job.
-
-    Parameters
-    ----------
-    instrument : str
-        Instrument.
-    data_level : str
-        Data level.
-    descriptor : str
-        Data descriptor.
-    start_date : str
-        Start date.
-    previous_version : str
-        The previous version of the job
-    serialized_dependencies : str
-        The serialized upstream dependencies of the job.
-
-    Returns
-    -------
-    bool
-        True if the job is a duplicate, False otherwise.
-    """
-    # Generate the previous dependency file path based on the inputs.
-    # The descriptor should include a hash of the serialized dependencies.
-    dep_descriptor = f"{descriptor}-{dependency_hash(serialized_dependencies)}"
-    previous_dependency_file = DependencyFilePath.generate_from_inputs(
-        instrument=instrument,
-        data_level=data_level,
-        descriptor=dep_descriptor,
-        start_time=start_date,
-        version=previous_version,
-        extension="json",
-    )
-    previous_dep_path = previous_dependency_file.construct_path()
-    # Strip off the data directory to get the upload path + name
-    # Must be posix style for the URL
-    s3_key_path_str = str(
-        previous_dep_path.relative_to(imap_data_access.config["DATA_DIR"]).as_posix()
-    )
-    # If the file already exists, then we know that an exact duplicate job has been
-    # run with the same dependencies, start date, descriptor, instrument, data level,
-    # and version.
-    # TODO currently this will skip bulk reprocessing jobs that have been kicked off
-    #   Due to algorithm updates. The job might look like a duplicate but have new code.
-    #   We need to somehow track if we are reprocessing due to a manual trigger
-    #   or not.
-    return _file_exists(s3_key_path_str)
-
-
 def dependency_hash(serialized_dependencies):
     """Generate a hash for the serialized dependencies. Use only the first 8 characters.
 
@@ -402,32 +366,6 @@ def try_to_submit_job(
     descriptor = job_info["descriptor"]
     start_date_str = datetime.datetime.strftime(start_date, "%Y%m%d")
 
-    # Search for any duplicate jobs that have the same exact dependencies for this
-    # instrument, data level, descriptor, and start date by checking the CRID.
-    # Only check for duplicates if this is a reprocessing job.
-    # We know this is a reprocessing job if the version is not "v001".
-    if version != "v001":
-        previous_version = f"v{int(version[1:]) - 1:03d}"
-        if duplicate_job(
-            instrument,
-            data_level,
-            descriptor,
-            start_date_str,
-            previous_version,
-            serialized_dependencies,
-        ):
-            logger.info(
-                f"This job is a duplicate of the previous one for: "
-                f"{instrument=},"
-                f" {data_level=},"
-                f" {descriptor=},"
-                f" {start_date_str=},"
-                f" and {previous_version=}. "
-                f"Skipping submission."
-            )
-            return
-    # TODO: do we need a reprocessing column to indicate if this is a reprocessing job?
-
     # Serialize the upstream dependencies and write them to a JSON file. The Imap
     # processing code will read the JSON file and deserialize the dependencies. This is
     # to avoid passing a large string through the batch job command line.
@@ -449,29 +387,6 @@ def try_to_submit_job(
     if not response:
         return
 
-    # All of our upstream requirements have been met.
-    # Try to insert a record into the Processing Jobs table
-    # If this job already exists, then we will get an integrity error
-    # and know that some other process has already taken care of it
-    processing_job = models.ProcessingJob(
-        status=models.Status.INPROGRESS,
-        instrument=instrument,
-        data_level=data_level,
-        descriptor=descriptor,
-        start_date=start_date,
-        version=version,
-    )
-    try:
-        session.add(processing_job)
-        session.commit()
-    except IntegrityError:
-        logger.info(f"Job already completed or in progress: {processing_job}")
-        return
-
-    logger.info(
-        f"Wrote job INPROGRESS to Processing Jobs Table with id: {processing_job.id}"
-    )
-
     batch_command = [
         "--instrument",
         instrument,
@@ -488,6 +403,29 @@ def try_to_submit_job(
         "--upload-to-sdc",
     ]
 
+    # All of our upstream requirements have been met.
+    # Try to insert a record into the Processing Jobs table
+    # If this job already exists, then we will get an integrity error
+    # and know that some other process has already taken care of it
+    processing_job = models.ProcessingJob(
+        status=models.Status.INPROGRESS,
+        instrument=instrument,
+        data_level=data_level,
+        descriptor=descriptor,
+        start_date=start_date,
+        version=version,
+        container_command=" ".join(batch_command),
+    )
+    try:
+        session.add(processing_job)
+        session.commit()
+    except IntegrityError:
+        logger.info(f"Job already completed or in progress: {processing_job}")
+        return
+
+    logger.info(
+        f"Wrote job INPROGRESS to Processing Jobs Table with id: {processing_job.id}"
+    )
     # NOTE: The batch job name should contain only alphanumeric characters and hyphens
     # E.g. "codice-l1a-sci-job-1"
     # The `processing_job.id` is used later for updating the job processing table
@@ -567,19 +505,21 @@ def submit_all_jobs(
         job_node["data_source"] == "spacecraft"
         and job_node["descriptor"] == "pointing-attitude"
     ):
+        serialized_deps = upstream_dependencies.serialize()
         job_version = determine_job_version(
             session=session,
             instrument=job_node["data_source"],
             descriptor=job_node["descriptor"],
             start_date=start_date,
             data_level=job_node["data_type"],
+            current_dependency_hash=dependency_hash(serialized_deps),
         )
         try_to_submit_job(
             session,
             job_node,
             datetime.datetime.strptime(start_date, "%Y%m%d"),
             job_version,
-            upstream_dependencies.serialize(),
+            serialized_deps,
         )
         return
 
@@ -599,13 +539,6 @@ def submit_all_jobs(
     logger.info(f"Found {num_jobs} jobs to process.")
     for filepath in primary_science.imap_file_paths:
         job_start_date = datetime.datetime.strptime(filepath.start_date, "%Y%m%d")
-        job_version = determine_job_version(
-            session=session,
-            instrument=job_node["data_source"],
-            descriptor=job_node["descriptor"],
-            start_date=job_start_date,
-            data_level=job_node["data_type"],
-        )
         # If there is only one file to process, then we can use upstream dependencies
         # that have already been queried.
         if num_jobs > 1 or filter_dependencies:
@@ -629,12 +562,21 @@ def submit_all_jobs(
                 continue
         else:
             upstream_deps_for_job = upstream_dependencies
+        serialized_deps = upstream_deps_for_job.serialize()
+        job_version = determine_job_version(
+            session=session,
+            instrument=job_node["data_source"],
+            descriptor=job_node["descriptor"],
+            start_date=job_start_date,
+            data_level=job_node["data_type"],
+            current_dependency_hash=dependency_hash(serialized_deps),
+        )
         try_to_submit_job(
             session,
             job_node,
             job_start_date,
             job_version,
-            upstream_deps_for_job.serialize(),
+            serialized_deps,
         )
 
 
@@ -1119,12 +1061,14 @@ def cadence_processing_event(session, events):
             upstream_dependencies.add(additional_input)
 
         logger.info(f"All required dependencies found for the dependency: {job_node}")
+        serialized_deps = upstream_dependencies.serialize()
         job_version = determine_job_version(
             session=session,
             instrument=job_node[0],
             data_level=job_node[1],
             descriptor=job_node[2],
             start_date=start_date,
+            current_dependency_hash=serialized_deps,
         )
         # Submit the map job with all of the upstream dependencies in the date range
         node = {
@@ -1137,7 +1081,7 @@ def cadence_processing_event(session, events):
             node,
             datetime.datetime.strptime(start_date, "%Y%m%d"),
             job_version,
-            upstream_dependencies.serialize(),
+            serialized_deps,
         )
 
 

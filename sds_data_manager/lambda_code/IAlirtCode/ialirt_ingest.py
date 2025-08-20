@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import boto3
@@ -26,6 +27,12 @@ from imap_processing.ialirt.l0.process_codice import process_codice
 from imap_processing.ialirt.l0.process_hit import process_hit
 from imap_processing.ialirt.l0.process_swapi import process_swapi_ialirt
 from imap_processing.ialirt.l0.process_swe import process_swe
+from imap_processing.spice.geometry import (
+    SpiceBody,
+    SpiceFrame,
+    imap_state,
+)
+from imap_processing.spice.time import met_to_sclkticks, sct_to_et
 from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
@@ -79,8 +86,13 @@ def get_ancillary(instrument, descriptor):
     return download_path
 
 
-def get_latest_spice_kernels() -> ProcessingInputCollection:
+def get_latest_spice_kernels(url: str) -> ProcessingInputCollection:
     """Query the SPICE metakernel API for latest SPICE kernel filenames.
+
+    Parameters
+    ----------
+    url: str
+        AWS account name.
 
     Returns
     -------
@@ -99,8 +111,7 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     et_start_time = (one_week_ago - j2000).total_seconds()
 
     file_types = ",".join(KERNELS)
-    # TODO: replace this url with the endpoint from imap-data-access.
-    url = "https://ylxiee1ond.execute-api.us-west-2.amazonaws.com/metakernel"
+    metakernel_url = url + "/metakernel"
 
     params = {
         "start_time": str(int(et_start_time)),
@@ -109,8 +120,8 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
         "file_types": file_types,
     }
 
-    logger.info(f"Sending request to {url} with params: {params}")
-    response = requests.get(url, params=params, timeout=10)
+    logger.info(f"Sending request to {metakernel_url} with params: {params}")
+    response = requests.get(metakernel_url, params=params, timeout=10)
     metakernel_files = response.json()
 
     logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")
@@ -314,6 +325,20 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         existing = existing_items.get(met)
         raw["last_modified"] = datetime.now(timezone.utc).isoformat()
 
+        # Calculate the spacecraft position and velocity in GSM coordinates.
+        et = sct_to_et(met_to_sclkticks(met))
+        gsm_state = imap_state(
+            et, ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
+        )
+        gse_state = imap_state(
+            et, ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
+        )
+
+        raw["sc_position_GSM"] = [Decimal(str(val)) for val in gsm_state[0, :3]]
+        raw["sc_velocity_GSM"] = [Decimal(str(val)) for val in gsm_state[0, 3:]]
+        raw["sc_position_GSE"] = [Decimal(str(val)) for val in gse_state[0, :3]]
+        raw["sc_velocity_GSE"] = [Decimal(str(val)) for val in gse_state[0, 3:]]
+
         if existing:
             if any(key.startswith(instrument) for key in existing.keys()):
                 continue
@@ -321,13 +346,33 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
             update_expr = "SET " + ", ".join(
                 f"{field} = :{field}"
                 for field in raw
-                if field not in {"apid", "met", "met_in_utc", "ttj2000ns"}
+                if field
+                not in {
+                    "apid",
+                    "met",
+                    "met_in_utc",
+                    "ttj2000ns",
+                    "sc_position_GSM",
+                    "sc_velocity_GSM",
+                    "sc_position_GSE",
+                    "sc_velocity_GSE",
+                }
             )
 
             expression_values = {
                 f":{field}": value
                 for field, value in raw.items()
-                if field not in {"apid", "met", "met_in_utc", "ttj2000ns"}
+                if field
+                not in {
+                    "apid",
+                    "met",
+                    "met_in_utc",
+                    "ttj2000ns",
+                    "sc_position_GSM",
+                    "sc_velocity_GSM",
+                    "sc_position_GSE",
+                    "sc_velocity_GSE",
+                }
             }
 
             algorithm_table.update_item(
@@ -362,6 +407,7 @@ def lambda_handler(event, context):
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
     dynamodb = boto3.resource("dynamodb")
     algorithm_table = dynamodb.Table(algorithm_table_name)
+    url = os.environ.get("IMAP_DATA_ACCESS_URL")
 
     bucket = event["detail"]["bucket"]["name"]
     region = event["region"]
@@ -369,7 +415,7 @@ def lambda_handler(event, context):
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
-    dependency_inputs = get_latest_spice_kernels()
+    dependency_inputs = get_latest_spice_kernels(url)
     logger.info("dependency_inputs: %s", dependency_inputs)
     download_spice_file(dependency_inputs)
 

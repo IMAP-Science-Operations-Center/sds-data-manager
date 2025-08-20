@@ -337,7 +337,6 @@ def batch_event_handler(event):
         job.job_definition = event["detail"]["jobDefinition"]
         job.job_log_stream_id = event["detail"]["container"]["logStreamName"]
         job.container_image = event["detail"]["container"]["image"]
-        job.container_command = " ".join(event["detail"]["container"]["command"])
         job.started_at = started_at
         job.stopped_at = stopped_at
         session.commit()

@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 import xarray as xr
 from boto3.dynamodb.conditions import Key
@@ -165,7 +166,19 @@ def test_query_filenames_crossing_hour_boundary(s3_client):
     assert sorted(result) == sorted([first_prefix_key, second_prefix_key])
 
 
-def test_insert_data(setup_dynamodb):
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_state",
+    return_value=np.array([[1, 2, 3, 4, 5, 6]]),
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.sct_to_et",
+    return_value=12345.0,
+)
+def test_insert_data(
+    mock_sct_to_et,
+    mock_imap_state,
+    setup_dynamodb,
+):
     """Test insert_data function."""
     algorithm_table = setup_dynamodb["algorithm_table"]
 
@@ -222,6 +235,18 @@ def test_insert_data(setup_dynamodb):
     assert item3["hit_e_a_side_low_en"] == Decimal("5.0")
 
 
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_state",
+    return_value=np.array([[1, 2, 3, 4, 5, 6]]),
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.sct_to_et",
+    return_value=12345.0,
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_sclkticks",
+    return_value=67890.0,
+)
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.load_cdf")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.get_ancillary")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_hit")
@@ -239,6 +264,9 @@ def test_process_algorithms(
     mock_hit,
     mock_get_ancillary,
     mock_load_cdf,
+    mock_sclkticks,
+    mock_sct_to_et,
+    mock_imap_state,
     setup_dynamodb,
 ):
     """Tests process_algorithms function."""
@@ -331,7 +359,7 @@ def test_get_latest_spice_kernels(mock_get):
     mock_response.json.return_value = mock_files
     mock_get.return_value = mock_response
 
-    result = get_latest_spice_kernels()
+    result = get_latest_spice_kernels("https://api.dev.imap-mission.com")
     assert result.processing_input[0].filename_list == mock_files
 
 
