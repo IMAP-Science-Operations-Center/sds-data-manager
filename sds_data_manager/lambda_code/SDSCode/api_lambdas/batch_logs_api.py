@@ -46,6 +46,8 @@ def lambda_handler(event, context):
         response = LOGS_CLIENT.get_log_events(
             logGroupName=batch_log_group_name,
             logStreamName=job_log_stream_id,
+            # We need to start from the beginning to get all logs
+            startFromHead=True,
         )
         logs = [event["message"] for event in response.get("events", [])]
         logger.info(f"Fetched logs for {job_log_stream_id}.")
