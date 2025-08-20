@@ -111,6 +111,7 @@ def get_coverage_dictionary(spice_file: Path, **kwargs):
     results_sclk = []
     results_datetime = []
 
+    # TODO: add handler for earth attitude .bpc files
     if spice_file.suffix == ".bc":
         coverage_function = spiceypy.ckcov
     elif spice_file.suffix == ".bsp":
@@ -176,7 +177,11 @@ def _upsert_into_spice_table(
     """
     # Format the data to insert
     filename = str(spice_object.filename.name)
-    version = spice_object.spice_metadata["version"]
+    # earth attitude kernel doesn't have version.
+    if spice_object.spice_metadata["type"] == "earth_attitude":
+        version = "1"
+    else:
+        version = spice_object.spice_metadata["version"]
     spice_params = {
         "file_path": s3_key,
         "file_name": filename,
