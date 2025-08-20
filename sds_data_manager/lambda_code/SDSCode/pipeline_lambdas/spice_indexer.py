@@ -116,6 +116,10 @@ def get_coverage_dictionary(spice_file: Path, **kwargs):
         coverage_function = spiceypy.ckcov
     elif spice_file.suffix == ".bsp":
         coverage_function = spiceypy.spkcov
+    elif spice_file.suffix == ".bpc":
+        # TODO: uncomment once scipy releases
+        # coverage_function = spiceypy.pckcov
+        pass
     else:
         raise ValueError(
             f"Unable to handle spice file with the extension {spice_file.suffix}."
@@ -311,6 +315,8 @@ def index_spice_file(s3_key: str):
                 function_arguments["level"] = COVERAGE_LEVEL
                 function_arguments["tol"] = COVERAGE_TOLERANCE
                 function_arguments["timsys"] = COVERAGE_TIME_SYSTEM
+            if spice_metadata["type"] in ["earth_attitude"]:
+                function_arguments["idcode"] = 3000
             file_coverage_j2000, file_coverage_datetime, file_coverage_sclk = (
                 get_coverage_dictionary(spice_file, **function_arguments)
             )
