@@ -49,7 +49,6 @@ class IAlirtBucketConstruct(Construct):
                     allowed_methods=[
                         s3.HttpMethods.GET,  # For downloading JSON files
                         s3.HttpMethods.HEAD,  # For metadata requests
-                        s3.HttpMethods.OPTIONS,  # Required for presigned URLs
                     ],
                     allowed_origins=["*"],
                     allowed_headers=["*"],  # Required for presigned URLs
