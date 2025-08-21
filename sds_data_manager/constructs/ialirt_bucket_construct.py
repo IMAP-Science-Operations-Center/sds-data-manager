@@ -44,4 +44,16 @@ class IAlirtBucketConstruct(Construct):
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            cors=[
+                s3.CorsRule(
+                    allowed_methods=[
+                        s3.HttpMethods.GET,  # For downloading JSON files
+                        s3.HttpMethods.HEAD,  # For metadata requests
+                        s3.HttpMethods.OPTIONS,  # Required for presigned URLs
+                    ],
+                    allowed_origins=["*"],
+                    allowed_headers=["*"],  # Required for presigned URLs
+                    max_age=86400,  # Cache CORS preflight for 24 hours
+                )
+            ],
         )
