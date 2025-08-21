@@ -96,8 +96,6 @@ def get_coverage_dictionary(spice_file: Path):
     ----------
     spice_file: Path
         The path to the spice file
-    kwargs: dict
-        The key word arguments to use when determining the coverage dictionary
 
     Returns
     -------
