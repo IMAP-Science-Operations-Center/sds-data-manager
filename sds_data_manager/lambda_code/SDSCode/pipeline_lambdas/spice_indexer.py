@@ -112,27 +112,26 @@ def get_coverage_dictionary(spice_file: Path):
     results_sclk = []
     results_datetime = []
 
-    # cover is a mutable object, modified by the below functions.
+    # cover defines the array we need to write to
     cover = spiceypy.cell_double(COVERAGE_SPICE_ARRAY_LENGTH)
 
     # 1) Calculate the time coverage of the file
     if spice_file.suffix == ".bc":
-        spiceypy.ckcov(str(spice_file), 
-                       idcode=SPACECRAFT_ID*1000,
-                       cover=cover,
-                       needav = COVERAGE_ANGULAR_VELOCITY_ONLY,
-                       level = COVERAGE_LEVEL,
-                       tol = COVERAGE_TOLERANCE,
-                       timsys=COVERAGE_TIME_SYSTEM)
+        cover = spiceypy.ckcov(
+            str(spice_file),
+            idcode=SPACECRAFT_ID * 1000,
+            cover=cover,
+            needav=COVERAGE_ANGULAR_VELOCITY_ONLY,
+            level=COVERAGE_LEVEL,
+            tol=COVERAGE_TOLERANCE,
+            timsys=COVERAGE_TIME_SYSTEM,
+        )
     elif spice_file.suffix == ".bsp":
-        spiceypy.spkcov(str(spice_file),
-                        idcode=SPACECRAFT_ID,
-                        cover=cover)
+        cover = spiceypy.spkcov(str(spice_file), idcode=SPACECRAFT_ID, cover=cover)
     elif spice_file.suffix == ".bpc":
-        spiceypy.pckcov(str(spice_file),
-                        idcode=EARTH_SPICE_ID*1000,
-                        cover=cover)
-        pass
+        # pckcov does *not* return a new "cover" object.
+        # Instead, we retrieve it from the original input, which is a mutable object.
+        spiceypy.pckcov(str(spice_file), idcode=EARTH_SPICE_ID * 1000, cover=cover)
     else:
         raise ValueError(
             f"Unable to handle spice file with the extension {spice_file.suffix}."

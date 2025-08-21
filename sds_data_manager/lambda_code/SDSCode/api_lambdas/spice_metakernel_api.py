@@ -111,6 +111,7 @@ class SpacecraftAttitudeKernels(Enum):
         """Category of SPICE file."""
         return "spacecraft_attitude_category"
 
+
 class EarthAttitudeKernels(Enum):
     """Container for Earth Attitude Kernel Types."""
 
@@ -120,6 +121,7 @@ class EarthAttitudeKernels(Enum):
     def spice_category_name():
         """Category of SPICE file."""
         return "earth_attitude_category"
+
 
 class PointingAttitudeKernels(Enum):
     """Container for Pointing Attitude Kernel Types."""
