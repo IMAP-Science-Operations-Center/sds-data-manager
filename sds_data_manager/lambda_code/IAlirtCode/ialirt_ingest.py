@@ -11,6 +11,7 @@ import boto3
 import botocore
 import imap_data_access
 import numpy as np
+import pandas as pd
 import requests
 import spiceypy
 import xarray as xr
@@ -284,6 +285,10 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
             result, _ = process_func(combined)
         elif instrument == "codicehi":
             _, result = process_func(combined)
+        elif instrument == "swapi":
+            download_path = get_ancillary(instrument, "esa-unit-conversion")
+            calibration_data = pd.read_csv(download_path)
+            result = process_func(combined, calibration_data)
         else:
             result = process_func(combined)
 

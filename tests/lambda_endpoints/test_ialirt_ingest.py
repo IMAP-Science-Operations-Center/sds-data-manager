@@ -7,6 +7,7 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 from boto3.dynamodb.conditions import Key
@@ -248,6 +249,7 @@ def test_insert_data(
     return_value=67890.0,
 )
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.load_cdf")
+@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.pd.read_csv")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.get_ancillary")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_hit")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_packet")
@@ -264,6 +266,7 @@ def test_process_algorithms(
     mock_hit,
     mock_get_ancillary,
     mock_load_cdf,
+    mock_read_csv,
     mock_sclkticks,
     mock_sct_to_et,
     mock_imap_state,
@@ -272,6 +275,7 @@ def test_process_algorithms(
     """Tests process_algorithms function."""
     algorithm_table = setup_dynamodb["algorithm_table"]
     mock_load_cdf.return_value = {"mock": "calibration data"}
+    mock_read_csv.return_value = pd.DataFrame({"mock": [1.23]})
 
     mock_hit.return_value = [
         {
