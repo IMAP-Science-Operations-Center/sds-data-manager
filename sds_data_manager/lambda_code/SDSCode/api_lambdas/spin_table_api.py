@@ -26,8 +26,8 @@ def lambda_handler(event, context):
         # get a list of all valid search parameters
         valid_parameters = [
             "file_path",
-            "start_time",
-            "end_time",
+            "start_date",
+            "end_date",
             "latest",
             "start_ingest_date",
             "end_ingest_date",
@@ -50,15 +50,16 @@ def lambda_handler(event, context):
                 )
                 return response
             try:
-                if param == "start_time":
+                if param == "start_date":
                     parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
                     query = query.where(SpinFiles.start_date >= parsed_date)
-                elif param == "end_time":
+                elif param == "end_date":
                     parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
                     query = query.where(SpinFiles.end_date <= parsed_date)
                 elif param == "file_path":
                     query = query.where(SpinFiles.file_path == value)
                 elif param == "latest" and value.lower() == "true":
+                    # TODO: fix this logic
                     # Make a subquery that gives latest spin file
                     row_number = (
                         func.row_number()
@@ -69,8 +70,17 @@ def lambda_handler(event, context):
                         .label("row_num")
                     )
 
-                    # select row_num == 1 since one indicates latest version
-                    query = query.where(row_number == 1).all()
+                    # Use a subquery to select only rows where row_num == 1
+                    # (latest version)
+                    subquery = select(
+                        SpinFiles.file_path,
+                        SpinFiles.start_date,
+                        SpinFiles.end_date,
+                        SpinFiles.version,
+                        SpinFiles.ingestion_date,
+                        row_number,
+                    ).alias("latest_spin_files")
+                    query = select(subquery).where(subquery.c.row_num == 1)
                 elif param == "start_ingest_date":
                     parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
                     query = query.where(SpinFiles.ingestion_date >= parsed_date)
@@ -90,14 +100,11 @@ def lambda_handler(event, context):
     search_results = [
         {
             "file_path": result.file_path,
-            "start_time": result.start_time,
-            "end_time": result.end_time,
+            "start_date": result.start_date.strftime("%Y-%m-%d, %H:%M:%S"),
+            "end_date": result.end_date.strftime("%Y-%m-%d, %H:%M:%S"),
             "version": result.version,
-            "ingestion_date": result.ingestion_date,
+            "ingestion_date": result.ingestion_date.strftime("%Y-%m-%d, %H:%M:%S"),
         }
         for result in search_results
     ]
-    print(event)
-    # TODO: extend this lambda code once we finish creating
-    # spin table schema
     return {"statusCode": 200, "body": json.dumps(search_results)}
