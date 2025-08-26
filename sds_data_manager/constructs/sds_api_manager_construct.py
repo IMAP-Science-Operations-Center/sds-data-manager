@@ -353,7 +353,7 @@ class SdsApiManager(Construct):
         rds_secret.grant_read(grantee=batch_job_query_api_lambda)
 
         api.add_route(
-            route="/spin_table",
+            route="/spin-table",
             http_method="GET",
             lambda_function=universal_spin_table_handler,
         )
