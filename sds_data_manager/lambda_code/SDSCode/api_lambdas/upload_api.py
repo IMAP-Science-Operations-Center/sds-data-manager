@@ -139,7 +139,7 @@ def lambda_handler(event, context):
             return {
                 "statusCode": 400,
                 "body": json.dumps(
-                    "error: file name does "
+                    f"error: {filename} does "
                     "not match ancillary, "
                     "science, cadence, or SPICE file "
                     "naming convention."
