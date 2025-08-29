@@ -83,7 +83,9 @@ leapseconds, spice, historical, glows, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, glows, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 glows, l1a, de, glows, l1b, de, HARD, DOWNSTREAM
+
 glows, l1a, hist, glows, l1b, hist, HARD, DOWNSTREAM
+spin, spin, historical, glows, l1b, hist, HARD, DOWNSTREAM
 
 glows, l1b, hist, glows, l2, hist, HARD, DOWNSTREAM
 
