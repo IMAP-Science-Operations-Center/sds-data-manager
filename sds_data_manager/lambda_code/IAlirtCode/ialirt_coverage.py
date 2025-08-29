@@ -19,12 +19,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-KERNELS = {
-    "planetary_ephemeris",  # e.g., de440s.bsp
-    "planetary_constants",  # e.g. pck00011.tpc
-}
-
-
 def get_dsn(download_dir: Path):
     """Query and download DSN data.
 
@@ -96,8 +90,13 @@ def get_dsn(download_dir: Path):
     return download_path, dsn_dict
 
 
-def get_latest_spice_kernels() -> ProcessingInputCollection:
+def get_latest_spice_kernels(kernels: list[str]) -> ProcessingInputCollection:
     """Query the SPICE metakernel API for latest SPICE kernel filenames.
+
+    Parameters
+    ----------
+    kernels : list[str]
+        List of SPICE kernel categories to collect.
 
     Returns
     -------
@@ -115,7 +114,7 @@ def get_latest_spice_kernels() -> ProcessingInputCollection:
     et_end_time = (now - j2000).total_seconds()
     et_start_time = (one_week_ago - j2000).total_seconds()
 
-    file_types = ",".join(KERNELS)
+    file_types = ",".join(kernels)
     # TODO: replace this url with the endpoint from imap-data-access.
     url = "https://ylxiee1ond.execute-api.us-west-2.amazonaws.com/metakernel"
 
@@ -302,7 +301,12 @@ def lambda_handler(event, context):
     _, dsn = get_dsn(Path("/tmp"))  # noqa: S108
 
     # Download latest SPICE kernels
-    dependency_inputs = get_latest_spice_kernels()
+    dependency_inputs = get_latest_spice_kernels(
+        [
+            "planetary_ephemeris",  # e.g., de440s.bsp
+            "planetary_constants",  # e.g. pck00011.tpc
+        ]
+    )
     logger.info("dependency_inputs: %s", dependency_inputs)
     setup_spice_file(dependency_inputs)
 

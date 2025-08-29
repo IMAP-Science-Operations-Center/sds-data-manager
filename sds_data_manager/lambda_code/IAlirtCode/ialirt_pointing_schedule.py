@@ -71,7 +71,15 @@ def lambda_handler(event, context):
     region = event["region"]
 
     # Download latest SPICE kernels
-    dependency_inputs = get_latest_spice_kernels()
+    dependency_inputs = get_latest_spice_kernels(
+        [
+            "planetary_ephemeris",  # e.g., de440s.bsp
+            "planetary_constants",  # e.g. pck00011.tpc
+            "leapseconds",  # e.g., naif0012.tls
+            "spacecraft_ephemeris",  # e.g., imap_spk_demo.bsp
+            "earth_attitude",  # e.g., earth_latest_high_prec.bpc
+        ]
+    )
     logger.info("dependency_inputs: %s", dependency_inputs)
     setup_spice_file(dependency_inputs)
 
