@@ -15,7 +15,12 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule import (
 @patch("imap_data_access.processing_input.ProcessingInputCollection.download_all_files")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.requests.get")
 @patch("imap_processing.ialirt.constants.STATIONS")
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule."
+    "generate_text_files"
+)
 def test_lambda_handler(
+    mock_generate_text_files,
     mock_stations,
     mock_requests_get,
     mock_download,
@@ -70,6 +75,22 @@ def test_lambda_handler(
         },
     }
 
+    first_generate_text_files_response = [
+        "Station: Kiel\n",
+        "Target: IMAP\n",
+        "Creation date (UTC): \n",
+    ]
+
+    second_generate_text_files_response = [
+        "Station: Korea\n",
+        "Target: IMAP\n",
+        "Creation date (UTC): \n",
+    ]
+
+    mock_generate_text_files.side_effect = [
+        first_generate_text_files_response,
+        second_generate_text_files_response,
+    ]
     lambda_handler(event, {})
 
     objects = s3_client.list_objects_v2(Bucket=bucket)
@@ -80,13 +101,32 @@ def test_lambda_handler(
     assert keys[1].startswith("pointing_schedules/Korea/")
 
 
-def test_generate_and_upload_schedule(s3_client):
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule."
+    "generate_text_files"
+)
+def test_generate_and_upload_schedule(mock_generate_text_files, s3_client):
     """Test the generate_and_upload_30_days function."""
     bucket = "test-data-bucket"
     region = "us-west-2"
     s3_client.create_bucket(Bucket=bucket)
 
-    day = (datetime.now(timezone.utc) + timedelta(days=10)).strftime("%Y%m%d")
+    mock_generate_text_files.return_value = [
+        "Station: Kiel\n",
+        "Target: IMAP\n",
+        "Creation date (UTC): \n",
+        "Start time: \n",
+        "End time: \n",
+        "Cadence (sec): 60\n\n",
+        "Date/Time"
+        + "Azimuth".rjust(29)
+        + "Elevation".rjust(17)
+        + "Doppler".rjust(15)
+        + "\n",
+        "(UTC)" + "(deg.)".rjust(33) + "(deg.)".rjust(16) + "(km/s)".rjust(16) + "\n",
+    ]
+
+    day = (datetime.now(timezone.utc) + timedelta(days=10)).strftime("%Y-%m-%d")
 
     generate_and_upload_schedule(bucket, region, "Kiel", day)
 
@@ -102,3 +142,4 @@ def test_generate_and_upload_schedule(s3_client):
 
     assert "Station: Kiel" in content
     assert "Target: IMAP" in content
+    assert "(km/s)" in content
