@@ -17,15 +17,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-KERNELS = [
-    "planetary_ephemeris",  # e.g., de440s.bsp
-    "planetary_constants",  # e.g. pck00011.tpc
-    "leapseconds",  # e.g., naif0012.tls
-    "spacecraft_ephemeris",  # e.g., imap_spk_demo.bsp
-    "earth_attitude",  # e.g., earth_latest_high_prec.bpc
-]
-
-
 def generate_and_upload_schedule(bucket: str, region: str, station: str, day: str):
     """Generate and upload pointing schedule files to S3.
 
@@ -76,7 +67,8 @@ def lambda_handler(event, context):
             "planetary_ephemeris",  # e.g., de440s.bsp
             "planetary_constants",  # e.g. pck00011.tpc
             "leapseconds",  # e.g., naif0012.tls
-            "spacecraft_ephemeris",  # e.g., imap_spk_demo.bsp
+            "ephemeris_predicted",  # e.g., imap_spk_demo.bsp
+            "ephemeris_90days",  # e.g., imap_spk_demo.bsp
             "earth_attitude",  # e.g., earth_latest_high_prec.bpc
         ]
     )
