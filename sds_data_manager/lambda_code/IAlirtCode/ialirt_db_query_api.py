@@ -3,12 +3,43 @@
 import json
 import logging
 import os
+from decimal import Decimal
 
 import boto3
 from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def process_item_types(item: dict) -> dict:
+    """Convert Decimal values to int/float for known fields.
+
+    Parameters
+    ----------
+    item : dict
+        The item in the dictionary.
+
+    Returns
+    -------
+    result : dict
+        Properly formatted parameters.
+    """
+    result = {}
+
+    for key, value in item.items():
+        # Vectors fields
+        if key in {"mag_B_GSE", "mag_B_GSM", "mag_B_RTN"} and isinstance(value, list):
+            result[key] = [float(v) for v in value]
+
+        # Scalar fields
+        elif isinstance(value, Decimal):
+            result[key] = int(value) if value % 1 == 0 else float(value)
+
+        else:
+            result[key] = value
+
+    return result
 
 
 def lambda_handler(event, context):  # noqa: PLR0912
@@ -146,7 +177,8 @@ def lambda_handler(event, context):  # noqa: PLR0912
     query_kwargs["KeyConditionExpression"] = key_expr
 
     response = table.query(**query_kwargs)
-    return {
-        "statusCode": 200,
-        "body": json.dumps(response.get("Items", []), default=str),
-    }
+
+    items = response.get("Items", [])
+    processed_items = [process_item_types(item) for item in items]
+
+    return {"statusCode": 200, "body": json.dumps(processed_items)}
