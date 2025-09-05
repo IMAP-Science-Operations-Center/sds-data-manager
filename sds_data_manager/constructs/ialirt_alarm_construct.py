@@ -65,8 +65,8 @@ class IalirtAlarmConstruct(Construct):
                 "No alarm_email provided. Set one with: "
                 "cdk deploy -c alarm_email=ops@example.com"
             )
-        self.setup_monitoring(ialirt_bucket, ialirt_alarm_email)
-        self.create_reset_alarm_lambda(code)
+        alarm = self.setup_monitoring(ialirt_bucket, ialirt_alarm_email)
+        self.create_reset_alarm_lambda(code, alarm.alarm_name)
 
     def setup_monitoring(self, ialirt_bucket, ialirt_alarm_email: Optional[str]):
         """Create SNS topic for CloudWatch alarm."""
@@ -89,7 +89,7 @@ class IalirtAlarmConstruct(Construct):
         )
 
         # Alarm: “no puts for 1 day”
-        cloudwatch.Alarm(
+        alarm = cloudwatch.Alarm(
             self,
             "IalirtNoPutsDay",
             metric=put_metric,
@@ -100,9 +100,12 @@ class IalirtAlarmConstruct(Construct):
             treat_missing_data=cloudwatch.TreatMissingData.BREACHING,
             comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             alarm_description="Alarm when no packets have arrived.",
-        ).add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
+        )
+        alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
 
-    def create_reset_alarm_lambda(self, code):
+        return alarm
+
+    def create_reset_alarm_lambda(self, code, alarm_name):
         """Create a Lambda that resets the alarm daily using existing code."""
         reset_lambda = lambda_.Function(
             self,
@@ -113,6 +116,7 @@ class IalirtAlarmConstruct(Construct):
             runtime=lambda_.Runtime.PYTHON_3_12,
             memory_size=512,
             timeout=Duration.seconds(30),
+            environment={"ALARM_NAME": alarm_name},
         )
 
         lambda_policy = iam.PolicyStatement(

@@ -1,5 +1,7 @@
 """IALiRT alarm lambda."""
 
+import os
+
 import boto3
 
 
@@ -22,9 +24,10 @@ def lambda_handler(event, context):
         The response from the cloudwatch client.
     """
     client = boto3.client("cloudwatch")
+    alarm_name = os.environ["ALARM_NAME"]
 
     response = client.set_alarm_state(
-        AlarmName="IalirtNoPutsDay",
+        AlarmName=alarm_name,
         StateValue="OK",
         StateReason="Resetting alarm daily to re-trigger if no packets arrive.",
     )
