@@ -291,16 +291,13 @@ def test_process_algorithms(
             "swe_normalized_counts_quarter_1_esa_0": Decimal("0.123"),
         }
     ]
-    mock_packet.return_value = (
-        [
-            {
-                "apid": 478,
-                "met": 333,
-                "mag_phi_4s_b_gsm": Decimal("0.456"),
-            }
-        ],
-        None,
-    )
+    mock_packet.return_value = [
+        {
+            "apid": 478,
+            "met": 333,
+            "mag_phi_4s_b_gsm": Decimal("0.456"),
+        }
+    ]
 
     mock_codice.return_value = (
         [

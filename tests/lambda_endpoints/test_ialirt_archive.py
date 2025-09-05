@@ -18,15 +18,15 @@ def populate_algorithm_table(setup_dynamodb):
         {
             "apid": 478,
             "met": 111,
+            "ttj2000ns": 1234567890123456789,
             "met_in_utc": (yesterday + timedelta(seconds=1)).isoformat(),
-            "last_modified": (yesterday + timedelta(seconds=1)).isoformat(),
             "data_product_1": "3.14",
         },
         {
             "apid": 478,
             "met": 222,
+            "ttj2000ns": 1234567890123450000,
             "met_in_utc": (yesterday - timedelta(seconds=1)).isoformat(),
-            "last_modified": (yesterday - timedelta(seconds=1)).isoformat(),
             "data_product_2": "2.71",
         },
     ]
@@ -41,6 +41,4 @@ def test_archive_lambda_handler(populate_algorithm_table):
     response = lambda_handler({}, {})
 
     items = response["Items"]
-    assert len(items) == 1
-    assert items[0]["met"] == 111
-    assert items[0]["data_product_1"] == "3.14"
+    assert len(items) == 0

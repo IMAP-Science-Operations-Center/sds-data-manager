@@ -63,7 +63,7 @@ def test_query_with_met_range(algorithm_table):
     items = json.loads(response["body"])
     met = sorted(item["met"] for item in items)
 
-    expected_data = [str(101), str(110)]
+    expected_data = [101, 110]
 
     assert met == expected_data
 
@@ -80,7 +80,7 @@ def test_query_with_met_start(algorithm_table):
     items = json.loads(response["body"])
     met = sorted(item["met"] for item in items)
 
-    expected_data = [str(120), str(130)]
+    expected_data = [120, 130]
     assert met == expected_data
 
 

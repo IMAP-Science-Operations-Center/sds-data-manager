@@ -59,6 +59,8 @@ def lambda_handler(event, context):
     )
 
     dataset = create_xarray_from_records(response["Items"])
+    dataset.attrs["Data_version"] = "000"
+    dataset.attrs["Start_date"] = yesterday.strftime("%Y%m%d")
     test_data_path = write_cdf(dataset, istp=True)
 
     output_key = f"archive/{test_data_path.name}"
@@ -71,3 +73,5 @@ def lambda_handler(event, context):
         ExtraArgs={"ContentType": "application/x-cdf"},
     )
     logger.info(f"Uploaded coverage table to s3://{bucket}/{output_key}")
+
+    return response
