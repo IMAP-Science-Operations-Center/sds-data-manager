@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 
 import boto3
 from boto3.dynamodb.conditions import Key
+from imap_processing.cdf.utils import write_cdf
+from imap_processing.ialirt.utils.create_xarray import create_xarray_from_records
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -39,6 +41,8 @@ def lambda_handler(event, context):
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
     dynamodb = boto3.resource("dynamodb")
     algorithm_table = dynamodb.Table(algorithm_table_name)
+    bucket = os.environ.get("S3_BUCKET")
+    region = os.environ.get("AWS_REGION")
 
     now = datetime.now(timezone.utc)
     yesterday = now - timedelta(days=1)
@@ -54,6 +58,16 @@ def lambda_handler(event, context):
         ),
     )
 
-    # TODO: create a cdf and put in S3
+    dataset = create_xarray_from_records(response["Items"])
+    test_data_path = write_cdf(dataset, istp=True)
 
-    return response
+    output_key = f"archive/{test_data_path.name}"
+
+    s3_client = boto3.client("s3", region_name=region)
+    s3_client.upload_file(
+        Filename=str(test_data_path),
+        Bucket=bucket,
+        Key=output_key,
+        ExtraArgs={"ContentType": "application/x-cdf"},
+    )
+    logger.info(f"Uploaded coverage table to s3://{bucket}/{output_key}")

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -294,8 +295,8 @@ def lambda_handler(event, context):
     """Create coverage json files."""
     logger.info("Received event: %s", json.dumps(event))
 
-    bucket = event["detail"]["bucket"]["name"]
-    region = event["region"]
+    bucket = os.environ.get("S3_BUCKET")
+    region = os.environ.get("AWS_REGION")
 
     # Get dsn_schedule
     _, dsn = get_dsn(Path("/tmp"))  # noqa: S108

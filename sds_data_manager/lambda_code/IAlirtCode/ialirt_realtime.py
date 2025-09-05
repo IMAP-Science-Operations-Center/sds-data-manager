@@ -3,10 +3,12 @@
 import json
 import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import boto3
 import botocore
 from botocore.client import BaseClient
+from imap_processing.ialirt.calculate_ingest import format_ingest_data
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -103,21 +105,18 @@ def lambda_handler(event, context):
 
     filenames = query_filenames(s3_client, bucket, datetime.now(timezone.utc))
     filenames = sorted(filenames)
-    all_lines = read_ingest_logs(s3_client, filenames, bucket)  # noqa: F841
+    all_lines = read_ingest_logs(s3_client, filenames, bucket)
 
-    # TODO: import format_ingest_data from imap_processing and add here.
-    # formatted = format_ingest_data(filenames[-1], all_lines)
-    # name = Path(filenames[-1]).name
-    # timestamp = name.split(".", 2)[-1]
-    # output_key = f"realtime/imap_ialirt_realtime_{timestamp}.json"
+    formatted = format_ingest_data(filenames[-1], all_lines)
+    name = Path(filenames[-1]).name
+    timestamp = name.split(".", 2)[-1]
+    output_key = f"realtime/imap_ialirt_realtime_{timestamp}.json"
 
-    # s3_client.put_object(
-    #     Bucket=bucket,
-    #     Key=output_key,
-    #     Body=json.dumps(formatted, indent=2).encode("utf-8"),
-    #     ContentType="application/json",
-    # )
+    s3_client.put_object(
+        Bucket=bucket,
+        Key=output_key,
+        Body=json.dumps(formatted, indent=2).encode("utf-8"),
+        ContentType="application/json",
+    )
 
-    # logger.info(
-    #     "Generated file %s.", output_key
-    # )
+    logger.info("Generated file %s.", output_key)

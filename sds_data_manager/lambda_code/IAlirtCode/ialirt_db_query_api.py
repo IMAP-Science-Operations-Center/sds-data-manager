@@ -28,7 +28,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
         and runtime environment.
 
     """
-    table_name = os.environ["ALGORITHM_TABLE"]
+    table_name = os.environ.get("ALGORITHM_TABLE")
     region = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
     dynamodb = boto3.resource("dynamodb", region_name=region)
     table = dynamodb.Table(table_name)

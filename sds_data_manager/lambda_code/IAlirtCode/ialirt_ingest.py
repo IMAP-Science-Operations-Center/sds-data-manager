@@ -280,7 +280,7 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
         elif instrument == "mag":
             download_path = get_ancillary(instrument, "l1b-calibration")
             calibration_data = load_cdf(download_path)
-            result, _ = process_func(combined, calibration_data)
+            result = process_func(combined, calibration_data)
         elif instrument == "codicelo":
             result, _ = process_func(combined)
         elif instrument == "codicehi":
