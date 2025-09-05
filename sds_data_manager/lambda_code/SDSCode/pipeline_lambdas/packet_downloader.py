@@ -5,7 +5,7 @@ from pathlib import Path
 
 import boto3
 import imap_data_access
-from imap_data_access import webpoda
+from imap_data_access import SPICEFilePath, webpoda
 
 S3_CLIENT = boto3.client("s3")
 # We need to access the webpoda-api-key
@@ -39,7 +39,9 @@ def get_two_most_recent_contact_times(bucket):
     """
     paginator = S3_CLIENT.get_paginator("list_objects_v2")
     # In case we have more than 1000 of these files (~3 years)
-    pages = paginator.paginate(Bucket=bucket, Prefix="spice/repoint/imap_")
+    pages = paginator.paginate(
+        Bucket=bucket, Prefix=f"{SPICEFilePath._dir_prefix}/repoint/imap_"
+    )
 
     repointing_file_times = []
     for page in pages:
@@ -118,7 +120,6 @@ def lambda_handler(event, context):
                 start_time=start_time,
                 end_time=end_time,
                 repointing_file=repointing_file,
-                version="v001",
                 upload_to_server=True,
             )
         else:
@@ -127,7 +128,6 @@ def lambda_handler(event, context):
                 instrument=instrument,
                 start_time=start_time,
                 end_time=end_time,
-                version="v001",
                 upload_to_server=True,
             )
 

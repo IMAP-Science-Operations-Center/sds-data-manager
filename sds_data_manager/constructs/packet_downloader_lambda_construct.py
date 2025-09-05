@@ -7,6 +7,7 @@ from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_s3_notifications as s3n
 from aws_cdk import aws_secretsmanager as secretsmanager
 from constructs import Construct
+from imap_data_access import SPICEFilePath
 
 
 class PacketDownloaderLambda(Construct):
@@ -81,6 +82,7 @@ class PacketDownloaderLambda(Construct):
             s3.EventType.OBJECT_CREATED,
             s3n.LambdaDestination(packet_lambda),  # Lambda notification
             s3.NotificationKeyFilter(
-                prefix="spice/repoint/imap_", suffix=".repoint.csv"
+                prefix=f"{SPICEFilePath._dir_prefix}/repoint/imap_",
+                suffix=".repoint.csv",
             ),
         )
