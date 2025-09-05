@@ -31,10 +31,12 @@ def test_lambda_handler3(s3_client):
         "detail": {
             "object": {"key": "packets/file.txt"},
             "bucket": {"name": bucket},
+            "now": "2025-07-31T16:57:00Z",
         },
     }
 
-    lambda_handler(event, context={})
+    response = lambda_handler(event, context={})
+    assert response["statusCode"] == 204
 
 
 def test_query_filenames(s3_client):

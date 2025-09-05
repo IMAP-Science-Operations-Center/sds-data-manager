@@ -103,8 +103,18 @@ def lambda_handler(event, context):
         config=botocore.client.Config(signature_version="s3v4"),
     )
 
-    filenames = query_filenames(s3_client, bucket, datetime.now(timezone.utc))
+    if "now" in event:
+        now = datetime.fromisoformat(event["now"].replace("Z", "")).replace(
+            tzinfo=timezone.utc
+        )
+    else:
+        now = datetime.now(timezone.utc)
+
+    filenames = query_filenames(s3_client, bucket, now)
     filenames = sorted(filenames)
+    if not filenames:
+        logger.info("No log files found in the last 48 hours.")
+        return {"statusCode": 204, "body": ""}
     all_lines = read_ingest_logs(s3_client, filenames, bucket)
 
     formatted = format_ingest_data(filenames[-1], all_lines)
