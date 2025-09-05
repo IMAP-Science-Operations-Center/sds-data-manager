@@ -83,6 +83,5 @@ class PacketDownloaderLambda(Construct):
             s3n.LambdaDestination(packet_lambda),  # Lambda notification
             s3.NotificationKeyFilter(
                 prefix=f"{SPICEFilePath._dir_prefix}/repoint/imap_",
-                suffix=".repoint.csv",
             ),
         )
