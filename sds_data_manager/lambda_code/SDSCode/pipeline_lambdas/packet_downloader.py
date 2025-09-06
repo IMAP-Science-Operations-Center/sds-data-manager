@@ -53,9 +53,17 @@ def get_two_most_recent_contact_times(bucket):
             # We want last-modified time to know when these files were uploaded
             repointing_file_times.append(obj["LastModified"])
 
-    if len(repointing_file_times) < 2:
-        logger.warning("Less than 2 repointing files found")
+    if len(repointing_file_times) == 0:
+        # Nothing in the bucket yet, query from the start of the mission to right now.
+        logger.warning("No repointing files found")
         return None
+    elif len(repointing_file_times) == 1:
+        # Only one repointing file, so we can't bracket a contact yet.
+        # Use the first launch opportunity as an initial start time,
+        # and the time this repointing file landed as the end time to
+        # brack the queries with.
+        logger.warning("Only one repointing file found, using the start of the mission")
+        return ["2025-09-23T00:00:00.000Z", repointing_file_times[0]]
 
     # We only want the latest two times
     return sorted(repointing_file_times)[-2:]
