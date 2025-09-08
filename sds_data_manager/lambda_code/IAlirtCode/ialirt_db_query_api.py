@@ -28,19 +28,15 @@ def process_item_types(item: dict) -> dict:
     result = {}
 
     for key, value in item.items():
-        try:
-            # Vectors fields
-            if isinstance(value, list):
-                result[key] = [int(v) if v % 1 == 0 else float(v) for v in value]
+        # Vectors fields
+        if isinstance(value, list):
+            result[key] = [int(v) if v % 1 == 0 else float(v) for v in value]
 
-            # Scalar fields
-            elif isinstance(value, Decimal):
-                result[key] = int(value) if value % 1 == 0 else float(value)
+        # Scalar fields
+        elif isinstance(value, Decimal):
+            result[key] = int(value) if value % 1 == 0 else float(value)
 
-            else:
-                result[key] = value
-        except Exception as e:
-            logger.warning(f"Could not process key '{key}': {e}")
+        else:
             result[key] = value
 
     return result
