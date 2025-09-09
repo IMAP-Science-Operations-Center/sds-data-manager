@@ -276,11 +276,14 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
     for instrument, process_func in processors:
         if instrument == "swe":
             download_path = get_ancillary(instrument, "l1b-in-flight-cal")
+            logger.info("swe l1b-in-flight-cal: %s", download_path)
             result = process_func(combined, [download_path])
         elif instrument == "mag":
             download_path = get_ancillary(instrument, "ialirt-calibration")
             ialirt_calibration_data = load_cdf(download_path)
+            logger.info("mag ialirt-calibration: %s", download_path)
             download_path = get_ancillary(instrument, "l1b-calibration")
+            logger.info("mag l1b-calibration: %s", download_path)
             l1b_calibration_data = load_cdf(download_path)
             result = process_func(
                 combined, l1b_calibration_data, ialirt_calibration_data
@@ -291,6 +294,7 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
             _, result = process_func(combined)
         elif instrument == "swapi":
             download_path = get_ancillary(instrument, "esa-unit-conversion")
+            logger.info("swapi esa-unit-conversion: %s", download_path)
             calibration_data = pd.read_csv(download_path)
             result = process_func(combined, calibration_data)
         else:
