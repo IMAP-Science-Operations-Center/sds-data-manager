@@ -29,8 +29,8 @@ def process_item_types(item: dict) -> dict:
 
     for key, value in item.items():
         # Vectors fields
-        if key in {"mag_B_GSE", "mag_B_GSM", "mag_B_RTN"} and isinstance(value, list):
-            result[key] = [float(v) for v in value]
+        if isinstance(value, list):
+            result[key] = [int(v) if v % 1 == 0 else float(v) for v in value]
 
         # Scalar fields
         elif isinstance(value, Decimal):
