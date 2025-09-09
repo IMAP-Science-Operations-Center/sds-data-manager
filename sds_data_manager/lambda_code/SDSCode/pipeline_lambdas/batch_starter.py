@@ -418,7 +418,7 @@ def try_to_submit_job(
     ]
 
     if repoint is not None:
-        batch_command.extend(["--repointing", f"repoint{repoint}"])
+        batch_command.extend(["--repointing", f"repoint{repoint:05d}"])
 
     # All of our upstream requirements have been met.
     # Try to insert a record into the Processing Jobs table
