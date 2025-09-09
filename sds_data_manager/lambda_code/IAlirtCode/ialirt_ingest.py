@@ -278,9 +278,13 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
             download_path = get_ancillary(instrument, "l1b-in-flight-cal")
             result = process_func(combined, [download_path])
         elif instrument == "mag":
+            download_path = get_ancillary(instrument, "ialirt-calibration")
+            ialirt_calibration_data = load_cdf(download_path)
             download_path = get_ancillary(instrument, "l1b-calibration")
-            calibration_data = load_cdf(download_path)
-            result = process_func(combined, calibration_data)
+            l1b_calibration_data = load_cdf(download_path)
+            result = process_func(
+                combined, l1b_calibration_data, ialirt_calibration_data
+            )
         elif instrument == "codicelo":
             result, _ = process_func(combined)
         elif instrument == "codicehi":
