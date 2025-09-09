@@ -153,9 +153,10 @@ def test_lambda_handler(session, s3_client):
         mock_submit.assert_called_with(
             session,
             {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"},
-            dt.datetime(2024, 1, 1, 0, 0),
+            "20240101",
             "v001",
             processing_input.serialize(),
+            repoint=None,
         )
 
 
@@ -428,9 +429,10 @@ def test_lambda_handler_ancillary_event(session):
         mock_submit.assert_called_with(
             session,
             {"data_source": "swe", "data_type": "l1b", "descriptor": "sci"},
-            dt.datetime(2026, 3, 3, 0, 0),
+            "20260303",
             "v001",
             json.dumps(inputs),
+            repoint=None,
         )
 
 
@@ -624,7 +626,7 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
     # Check that the expected message was logged.
     expected_log = (
         "Skipping job submission for {'data_source': 'mag', 'data_type': "
-        "'l2', 'descriptor': 'norm-srf'} with start_date: 20250117 because"
+        "'l2', 'descriptor': 'norm-srf'} with start_date: 20250418 because"
         " of a missing upstream dependency."
     )
     assert expected_log in caplog.text
@@ -941,9 +943,10 @@ def test_ultra_l3_map(session, caplog):
                     "data_type": "l3",
                     "descriptor": "u90-ena-h-sf-sp-full-hae-4deg-3mo",
                 },
-                dt.datetime(2024, 2, 1, 0, 0),
+                "20240201",
                 "v001",
                 expected_processing_input.serialize(),
+                repoint=None,
             )
 
 
@@ -1177,9 +1180,10 @@ def test_lambda_handler_mag_l1c_case(session):
         mock_submit.assert_called_with(
             session,
             {"data_source": "mag", "data_type": "l1c", "descriptor": "norm-mago"},
-            dt.datetime(2024, 1, 1, 0, 0),
+            "20240101",
             "v002",
             expected_processing_input.serialize(),
+            repoint=None,
         )
 
 
@@ -1227,9 +1231,40 @@ def test_lambda_handler_duplicate_mag_l1c_job(session, caplog):
         ]
     }
     context = {"context": "sample_context"}
+
+    # Mock the database constraint that prevents duplicate ProcessingJob records
+    # The real database uses PostgreSQL constraints, but tests use SQLite which doesn't
+    # support them
+    original_add = session.add
+
+    def mock_add(obj):
+        if isinstance(obj, ProcessingJob):
+            # Check for duplicate based on unique constraint fields in the actual
+            # session
+            existing_jobs = (
+                session.query(ProcessingJob)
+                .filter(
+                    ProcessingJob.instrument == obj.instrument,
+                    ProcessingJob.data_level == obj.data_level,
+                    ProcessingJob.descriptor == obj.descriptor,
+                    ProcessingJob.start_date == obj.start_date,
+                    ProcessingJob.version == obj.version,
+                    ProcessingJob.repointing == obj.repointing,
+                    ProcessingJob.status.in_(["INPROGRESS", "SUCCEEDED"]),
+                )
+                .all()
+            )
+
+            if existing_jobs:
+                raise IntegrityError(
+                    "duplicate key value violates unique constraint", None, None
+                )
+        return original_add(obj)
+
     with (
         patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
         patch.object(batch_starter, "generate_queue_url", return_value=False),
+        patch.object(session, "add", side_effect=mock_add),
     ):
         lambda_handler(events, context)
         # Verify the function was called
@@ -1526,7 +1561,7 @@ def test_idex_l2b(session):
         mock_submit.assert_called_with(
             session,
             {"data_source": "idex", "data_type": "l2b", "descriptor": "all-1mo"},
-            dt.datetime(2023, 1, 9, 0, 0),
+            "20230109",
             "v002",
             expected_processing_input.serialize(),
         )
