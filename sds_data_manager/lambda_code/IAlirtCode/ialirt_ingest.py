@@ -293,7 +293,7 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
             l1b_calibration_data = MagAncillaryCombiner(input_files, date_str)
             logger.info("mag l1b-calibration: %s", download_path)
             result = process_func(
-                combined, l1b_calibration_data, ialirt_calibration_data
+                combined, l1b_calibration_data.combined_dataset, ialirt_calibration_data
             )
         elif instrument == "codicelo":
             result, _ = process_func(combined)

@@ -267,7 +267,11 @@ def test_insert_data(
 @mock.patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swapi_ialirt"
 )
+@mock.patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.MagAncillaryCombiner"
+)
 def test_process_algorithms(
+    mock_magancillarycombiner,
     mock_swapi,
     mock_codice,
     mock_swe,
@@ -286,6 +290,10 @@ def test_process_algorithms(
     algorithm_table = setup_dynamodb["algorithm_table"]
     mock_load_cdf.return_value = {"mock": "calibration data"}
     mock_read_csv.return_value = pd.DataFrame({"mock": [1.23]})
+
+    mock_combiner_instance = MagicMock()
+    mock_combiner_instance.combined_dataset = "mocked_combined_dataset"
+    mock_magancillarycombiner.return_value = mock_combiner_instance
 
     mock_hit.return_value = [
         {
@@ -334,7 +342,9 @@ def test_process_algorithms(
         }
     ]
 
-    mock_get_ancillary.return_value = Path("/mock/path.csv")
+    mock_get_ancillary.return_value = Path(
+        "/mock/imap_mag_l1b-calibration_20250101_v002.cdf"
+    )
 
     process_algorithms(combined=None, algorithm_table=algorithm_table)
 
