@@ -265,9 +265,9 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
         The DynamoDB table to insert or update the data.
     """
     processors = [
+        ("mag", process_packet),
         ("hit", process_hit),
         ("swe", process_swe),
-        ("mag", process_packet),
         ("codicelo", process_codice),
         ("codicehi", process_codice),
         ("swapi", process_swapi_ialirt),
