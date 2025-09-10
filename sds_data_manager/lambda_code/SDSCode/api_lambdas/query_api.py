@@ -34,12 +34,15 @@ def lambda_handler(event, context):
 
     logger.info("Received event: " + json.dumps(event, indent=2))
 
-    TableModels = namedtuple("TableModels", ["science", "ancillary", "spice"])
+    TableModels = namedtuple(
+        "TableModels", ["science", "ancillary", "spice", "quicklook"]
+    )
 
     table_models = TableModels(
         science=models.ScienceFiles,
         ancillary=models.AncillaryFiles,
         spice=models.SPICEFiles,
+        quicklook=models.QuicklookFiles,
     )
 
     # add session, pick model like in indexer and add query to filter_as

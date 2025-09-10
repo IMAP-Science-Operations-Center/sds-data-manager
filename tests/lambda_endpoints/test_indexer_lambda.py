@@ -252,3 +252,43 @@ def test_send_lambda_put_event(events_client):
 
     result = send_event_from_indexer(file_obj)
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+
+def test_s3_quicklook_event(session, s3_client, events_client):
+    """Test s3 event for quicklook files."""
+    # Use a clearly identifiable quicklook file pattern
+    filename = "imap_hit_l2_ql-survey_20240101_v001.png"
+    filepath = f"imap/hit/l2/ql/2024/01/{filename}"
+
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=filepath,
+        Body=b"test image data",
+    )
+
+    event = {
+        "detail-type": "Object Created",
+        "source": "aws.s3",
+        "time": "2024-01-16T17:35:08Z",
+        "detail": {
+            "version": "0",
+            "bucket": {"name": "test-data-bucket"},
+            "object": {
+                "key": (filepath),
+                "reason": "PutObject",
+            },
+        },
+    }
+
+    # Test for good event
+    returned_value = indexer.lambda_handler(event=event, context={})
+    assert returned_value["statusCode"] == 200
+
+    # Check that data was written to database by lambda
+    result = session.query(models.QuicklookFiles).all()
+    assert len(result) == 1
+    assert result[0].file_path == filepath
+    assert result[0].data_level == "l2"
+    assert result[0].instrument == "hit"
+    assert result[0].extension == "png"
+    assert result[0].descriptor == "ql-survey"

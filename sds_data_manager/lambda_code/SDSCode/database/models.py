@@ -155,6 +155,26 @@ class ScienceFiles(Base):
     released = Column(Boolean, nullable=False, default=False)
 
 
+class QuicklookFiles(Base):
+    """Quicklook files table."""
+
+    __tablename__ = "quicklook_files"
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    instrument = Column(INSTRUMENTS, nullable=False)
+    data_level = Column(DATA_LEVELS, nullable=False)
+    # TODO: determine character limit for descriptor
+    descriptor = Column(String, nullable=False)
+    start_date = Column(DateTime, nullable=False)
+    repointing = Column(Integer, nullable=True)
+    version = Column(String(4), nullable=False)  # vXXX
+    extension = Column(String, nullable=False)
+    ingestion_date = Column(DateTime(timezone=True))
+    cr = Column(Integer, nullable=True)
+    crid = Column(String, nullable=True)
+    released = Column(Boolean, nullable=False, default=False)
+    extension = Column(String, nullable=False)  # e.g., 'png', 'jpg'
+
+
 class SPICEFiles(Base):
     """SPICE files table."""
 

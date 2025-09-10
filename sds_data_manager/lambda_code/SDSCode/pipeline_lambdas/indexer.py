@@ -6,7 +6,12 @@ import os
 from datetime import datetime, timezone
 
 import boto3
-from imap_data_access import AncillaryFilePath, ImapFilePath, ScienceFilePath
+from imap_data_access import (
+    AncillaryFilePath,
+    ImapFilePath,
+    QuicklookFilePath,
+    ScienceFilePath,
+)
 
 from ..database import database as db
 from ..database import models
@@ -137,7 +142,7 @@ def send_event_from_indexer(file_obj):
     return response
 
 
-def s3_event_handler(event):
+def s3_event_handler(event):  # noqa: PLR0915
     """S3 events handler.
 
     S3 event handler takes s3 event and then writes information to
@@ -160,8 +165,6 @@ def s3_event_handler(event):
     s3_filepath = event["detail"]["object"]["key"]
 
     filename = os.path.basename(s3_filepath)
-    # SPICE will be handled in another lambda. This lambda handles
-    # science and ancillary files.
     file_obj = None
     try:
         file_obj = ScienceFilePath(filename)
@@ -233,12 +236,36 @@ def s3_event_handler(event):
             logger.info("Wrote data to the AncillaryFiles table")
 
         except ImapFilePath.InvalidImapFileError:
-            logger.error(f"Filename {filename} is not a valid ANCILLARY file.")
-            msg = "Error: file name does not match ancillary or science file paths."
-            return http_response(status_code=400, body=msg)
+            logger.error(f"Filename {filename} is not Science or Ancillary file.")
+            try:
+                file_obj = QuicklookFilePath(filename)
+                params = file_obj.extract_filename_components(filename)
+                # delete mission key from metadata params
+                params.pop("mission")
+                params["data_level"] = params.pop("data_level")
+                params["start_date"] = datetime.strptime(
+                    params.pop("start_date"), "%Y%m%d"
+                )
+                # Add file path and ingestion date
+                params["file_path"] = s3_filepath
+                params["ingestion_date"] = get_file_ingestion_date(s3_filepath)
 
-    # Send event from this lambda for Batch starter
-    # lambda
+                # Save to database
+                with db.Session() as session, session.begin():
+                    session.add(models.QuicklookFiles(**params))
+                    session.commit()
+            except ImapFilePath.InvalidImapFileError:
+                logger.error(f"Filename {filename} is not a valid QUICKLOOK file.")
+                return http_response(
+                    status_code=400,
+                    body=f"Filename {filename} is not a valid SCIENCE, "
+                    + "ANCILLARY or QUICKLOOK file.",
+                )
+
+    if isinstance(file_obj, QuicklookFilePath):
+        logger.info("Skipped Event no further processing required for quicklook.")
+        return http_response(status_code=200, body="Success")
+    # Send event from this lambda for Batch starter lambda
     send_event_from_indexer(file_obj)
     logger.debug("S3 event handler complete")
     return http_response(status_code=200, body="Success")
