@@ -805,7 +805,8 @@ ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-back-pos-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-tdc-norm-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-gf, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-tofxeflat, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-tofxemedium, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
@@ -898,7 +899,8 @@ ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-back-pos-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-tdc-norm-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-ultra, ancillary, l1b-90sensor-gf, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-tofxeflat, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-tofxemedium, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
