@@ -47,6 +47,7 @@ KERNELS = {
     "leapseconds",
     "imap_frames",
     "science_frames",
+    "planetary_constants",
 }
 EFS_BASE_PATH = Path("/mnt/data")
 
