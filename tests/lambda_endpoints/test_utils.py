@@ -17,7 +17,7 @@ def test_is_authenticated_path():
     event2 = {
         "version": "2.0",
         "routeKey": "GET /query",
-        "rawPath": "/auth/query",
+        "rawPath": "/authorized/query",
     }
     assert utils.is_authenticated_path(event2) is True
 

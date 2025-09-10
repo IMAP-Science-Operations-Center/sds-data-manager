@@ -7,7 +7,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import boto3
 import imap_data_access
@@ -24,6 +24,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from ..api_lambdas import upload_api
+from ..api_lambdas.utils import is_authenticated_path
 from ..database import database as db
 from ..database import models
 from . import VALID_CADENCE_STRS, dependency
@@ -70,8 +71,10 @@ SPECIAL_CASE_JOBS = [
 
 
 def cadence_to_datetime_range(
-    cadence: str, start_date: Optional[datetime] = None, as_str: Optional[bool] = False
-) -> tuple[datetime, datetime] | tuple[str, str]:
+    cadence: str,
+    start_date: Optional[datetime.datetime] = None,
+    as_str: Optional[bool] = False,
+) -> Union[tuple[datetime.datetime, datetime.datetime], tuple[str, str]]:
     """Convert the cadence to a datetime range.
 
     Parameters
@@ -1273,10 +1276,20 @@ def lambda_handler(events: dict, context):
         Lambda context object
     """
     logger.info(f"Events: {events}")
+    is_auth_user = is_authenticated_path(events)
+    is_reprocessing = (
+        api_event.get("reprocessing")
+        if (api_event := events.get("queryStringParameters"))
+        else False
+    )
+
+    if is_reprocessing and not is_auth_user:
+        logger.error("Unauthorized reprocessing attempt.")
+        return "Unauthorized reprocessing attempt."
 
     with db.Session() as session:
         api_event = events.get("queryStringParameters")
-        if api_event and api_event.get("reprocessing"):
+        if api_event and is_reprocessing and is_auth_user:
             # handle reprocessing event
             bulk_reprocessing_event(session, api_event)
         elif events.get("cadence"):

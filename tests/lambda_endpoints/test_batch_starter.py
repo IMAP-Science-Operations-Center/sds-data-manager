@@ -45,6 +45,34 @@ from .conftest import (
 )
 
 
+@pytest.fixture
+def auth_event():
+    """Create an event with authentication information."""
+
+    def _auth_event(event_dict=None):
+        # Start with a base event that includes authentication path info
+        auth_base = {
+            "version": "2.0",
+            "routeKey": "POST /api-key/reprocess",
+            "rawPath": "/api-key/reprocess",
+        }
+
+        # If event_dict is provided, merge it with auth_base
+        if event_dict:
+            # For queryStringParameters, we want to copy them specifically
+            if "queryStringParameters" in event_dict:
+                auth_base["queryStringParameters"] = event_dict["queryStringParameters"]
+
+            # For any other keys, just copy them over
+            for key, value in event_dict.items():
+                if key != "queryStringParameters":
+                    auth_base[key] = value
+
+        return auth_base
+
+    return _auth_event
+
+
 def _populate_processing_table(session):
     """Add test data to database."""
     # Add an inprogress record to the processing table
@@ -633,7 +661,7 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
 
 
 ###### BULK REPROCESSING TESTS #######
-def test_bulk_reprocessing_data_level(session, caplog):
+def test_bulk_reprocessing_data_level(session, caplog, auth_event):
     """Tests bulk reprocessing for a data level."""
     _static_spice_files(session)
     records = [
@@ -654,15 +682,15 @@ def test_bulk_reprocessing_data_level(session, caplog):
     session.commit()
     # Test with an invalid event first. If data_level is provided, then instrument and
     # descriptor are required.
-    events = {
-        "queryStringParameters": {
-            "reprocessing": "True",
-            "start_date": "20220101",
-            "end_date": "20220301",
-            "data_level": "l1a",
-            "descriptor": "sci",
-        }
+    query_params = {
+        "reprocessing": "True",
+        "start_date": "20220101",
+        "end_date": "20220301",
+        "data_level": "l1a",
+        "descriptor": "sci",
     }
+    # Create an authenticated event
+    events = auth_event({"queryStringParameters": query_params})
     context = {"context": "sample_context"}
     with pytest.raises(ValueError, match="instrument and descriptor are required"):
         lambda_handler(events, context)
@@ -679,7 +707,7 @@ def test_bulk_reprocessing_data_level(session, caplog):
     assert mock_submit.call_count == 1
 
 
-def test_bulk_reprocessing_all(session, caplog):
+def test_bulk_reprocessing_all(session, caplog, auth_event):
     """Tests ``lambda_handler`` when there is bulk reprocessing for all instruments."""
     _static_spice_files(session)
     # db records needed for this reprocessing test
@@ -748,13 +776,13 @@ def test_bulk_reprocessing_all(session, caplog):
     session.commit()
 
     # leave instrument, data_level and descriptor blank
-    events = {
-        "queryStringParameters": {
-            "reprocessing": "True",
-            "start_date": "20230101",
-            "end_date": "20260101",
-        }
+    query_params = {
+        "reprocessing": "True",
+        "start_date": "20230101",
+        "end_date": "20260101",
     }
+    # Create an authenticated event
+    events = auth_event({"queryStringParameters": query_params})
     context = {"context": "sample_context"}
     # Add instrument and try again
     with (
@@ -950,7 +978,7 @@ def test_ultra_l3_map(session, caplog):
             )
 
 
-def test_bulk_reprocessing_special_case(session):
+def test_bulk_reprocessing_special_case(session, auth_event):
     """Tests ``lambda_handler`` for a special case in bulk reprocessing."""
     # Add test data to the database for the special case
     # Add hi l2 files. Some of these will be used as dependencies for the job.
@@ -1019,16 +1047,16 @@ def test_bulk_reprocessing_special_case(session):
     session.commit()
 
     # Bulk reprocessing event for the special case
-    events = {
-        "queryStringParameters": {
-            "reprocessing": "True",
-            "start_date": "20240101",
-            "end_date": "20250210",
-            "instrument": "hi",
-            "data_level": "l3",
-            "descriptor": "h90-ena-h-sf-sp-full-hae-4deg-6mo",
-        }
+    query_params = {
+        "reprocessing": "True",
+        "start_date": "20240101",
+        "end_date": "20250210",
+        "instrument": "hi",
+        "data_level": "l3",
+        "descriptor": "h90-ena-h-sf-sp-full-hae-4deg-6mo",
     }
+    # Create an authenticated event
+    events = auth_event({"queryStringParameters": query_params})
     context = {"context": "None"}
 
     with (
@@ -1407,7 +1435,7 @@ def test_def_cadence_map_event(setup_s3, session, tmp_path):
         )
 
 
-def test_idex_l2b(session):
+def test_idex_l2b(session, auth_event):
     """Tests ``lambda_handler` for unique idex l2b case."""
     _static_spice_files(session)
     # Add 2 idex l1b evt files. Although the second file is out of the month range,
@@ -1508,16 +1536,16 @@ def test_idex_l2b(session):
             retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
     # Assert that reprocessing the cadence file works as expected
-    reprocessing_event = {
-        "queryStringParameters": {
-            "reprocessing": "True",
-            "start_date": "20230101",
-            "end_date": "20231209",
-            "instrument": "idex",
-            "data_level": "l2b",
-            "descriptor": "all-1mo",
-        }
+    reprocess_params = {
+        "reprocessing": "True",
+        "start_date": "20230101",
+        "end_date": "20231209",
+        "instrument": "idex",
+        "data_level": "l2b",
+        "descriptor": "all-1mo",
     }
+    # Create an authenticated event
+    reprocessing_event = auth_event({"queryStringParameters": reprocess_params})
     # Move ProcessingJob from in progress to succeeded to mimic the pipeline.
     processing_job_record = session.query(models.ProcessingJob).first()
     processing_job_record.status = models.Status.SUCCEEDED
