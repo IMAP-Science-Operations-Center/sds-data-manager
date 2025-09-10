@@ -7,7 +7,7 @@ from collections import namedtuple
 
 from sqlalchemy import func, select
 
-from ..api_lambdas.utils import filter_files
+from ..api_lambdas.utils import is_authenticated_user
 from ..database import database as db
 from ..database import models
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context):  # noqa: PLR0912
     """Entry point to the query API lambda.
 
     Parameters
@@ -53,6 +53,9 @@ def lambda_handler(event, context):
 
     # select the given table for the query
     query = select(model.__table__)
+    if not is_authenticated_user(event):
+        query = query.filter(model.released)
+
     # get a list of all valid search parameters
     valid_parameters = [
         column.key for column in model.__table__.columns if column.key not in ["id"]
@@ -141,13 +144,11 @@ def lambda_handler(event, context):
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
 
-    filtered_results = filter_files(event, search_results)
-
     # Format the response
     response = {
         "statusCode": 200,
         "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(filtered_results),  # returns a list of tuples
+        "body": json.dumps(search_results),  # returns a list of tuples
     }
 
     return response

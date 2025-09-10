@@ -8,7 +8,7 @@ import boto3
 import botocore
 import imap_data_access
 
-from ..api_lambdas.utils import is_authenticated_path
+from ..api_lambdas.utils import is_authenticated_user
 from ..database import database as db
 from ..database import models
 
@@ -159,10 +159,7 @@ def lambda_handler(event, context):
             ),
         )
 
-    is_auth_user = is_authenticated_path(event)
-    file_is_released = is_released(filepath)
-
-    if not is_auth_user and not file_is_released:
+    if not is_authenticated_user(event) and not is_released(filepath):
         return http_response(
             status_code=403,
             body="The requested file is not released yet. Please contact the "

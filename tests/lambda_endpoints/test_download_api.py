@@ -8,7 +8,7 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 
 
 @mock.patch(
-    "sds_data_manager.lambda_code.SDSCode.api_lambdas.download_api.is_authenticated_path"
+    "sds_data_manager.lambda_code.SDSCode.api_lambdas.download_api.is_authenticated_user"
 )
 @mock.patch("sds_data_manager.lambda_code.SDSCode.api_lambdas.download_api.is_released")
 def test_object_exists(mock_is_released, mock_is_authenticated, s3_client):
@@ -37,7 +37,7 @@ def test_object_exists(mock_is_released, mock_is_authenticated, s3_client):
 
 
 @mock.patch(
-    "sds_data_manager.lambda_code.SDSCode.api_lambdas.download_api.is_authenticated_path"
+    "sds_data_manager.lambda_code.SDSCode.api_lambdas.download_api.is_authenticated_user"
 )
 def test_nonexistant_object(mock_is_authenticated):
     """Test that objects exist in s3 fails."""
@@ -56,7 +56,7 @@ def test_nonexistant_object(mock_is_authenticated):
 
 
 @mock.patch(
-    "sds_data_manager.lambda_code.SDSCode.api_lambdas.download_api.is_authenticated_path"
+    "sds_data_manager.lambda_code.SDSCode.api_lambdas.download_api.is_authenticated_user"
 )
 def test_input_parameters_missing(mock_is_authenticated):
     """Test that required input parameters exist."""
