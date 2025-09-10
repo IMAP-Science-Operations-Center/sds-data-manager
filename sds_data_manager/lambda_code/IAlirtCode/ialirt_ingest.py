@@ -33,7 +33,7 @@ from imap_processing.spice.geometry import (
     SpiceFrame,
     imap_state,
 )
-from imap_processing.spice.time import met_to_sclkticks, sct_to_et
+from imap_processing.spice.time import met_to_sclkticks, met_to_utc, sct_to_et
 from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
@@ -322,6 +322,8 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
     mets = [item["met"] for item in data]
     min_met = min(mets)
     max_met = max(mets)
+    logger.info(f"Processing mets {min_met} to {max_met}.")
+    logger.info(f"Processing utc {met_to_utc(min_met)} to {met_to_utc(max_met)}.")
 
     # Query existing items.
     response = algorithm_table.query(
