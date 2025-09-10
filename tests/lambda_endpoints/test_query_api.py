@@ -24,6 +24,7 @@ def _populate_test_data(session):
         "ingestion_date": datetime.datetime.strptime(
             "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
         ),
+        "released": True,
     }
 
     # Add data to the ScienceFiles table and return the session
@@ -48,7 +49,7 @@ def expected_response():
                 "ingestion_date": "20251107 10:13:12",
                 "cr": None,
                 "crid": None,
-                "released": False,
+                "released": True,
             }
         ]
     )
@@ -273,6 +274,7 @@ def test_sorting_of_query(session):
         "ingestion_date": datetime.datetime.strptime(
             "20251107 10:13:12+00:00", "%Y%m%d %H:%M:%S%z"
         ),
+        "released": True,
     }
 
     expected_response = json.dumps(
@@ -289,7 +291,7 @@ def test_sorting_of_query(session):
                 "ingestion_date": "20251107 10:13:12",
                 "cr": None,
                 "crid": None,
-                "released": False,
+                "released": True,
             },
             {
                 "file_path": "test/file/path/imap_hit_l0_raw_20251107_v001.pkts",
@@ -303,12 +305,10 @@ def test_sorting_of_query(session):
                 "ingestion_date": "20251107 10:13:12",
                 "cr": None,
                 "crid": None,
-                "released": False,
+                "released": True,
             },
         ]
-    )
-
-    # Add data to the ScienceFiles table
+    )  # Add data to the ScienceFiles table
     session.add(models.ScienceFiles(**metadata_params2))
     session.commit()
 
@@ -334,6 +334,7 @@ def _populate_test_data_ancillary_table(session):
         "ingestion_date": datetime.datetime.strptime(
             "2021-01-01 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
         ),
+        "released": True,
     }
 
     # Add data to the AncillaryFiles table and return the session
@@ -355,7 +356,7 @@ def expected_response_ancillary_table():
                 "version": "v001",
                 "extension": "csv",
                 "ingestion_date": "20210101 10:13:12",
-                "released": False,
+                "released": True,
             }
         ]
     )
