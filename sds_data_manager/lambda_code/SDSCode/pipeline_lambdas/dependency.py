@@ -840,6 +840,7 @@ def get_upstream_dependency_inputs(
     start_date: datetime,
     end_date: datetime,
     calculate_crids: bool,
+    get_spice: bool = True,
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
@@ -861,6 +862,9 @@ def get_upstream_dependency_inputs(
         This check should only be done for jobs that were triggered by a science file
         because this indicates that there may be a reprocessing of an upstream file,
         and we want to avoid multiple reprocessing of the same file.
+    get_spice : bool, optional
+        If True, we will include SPICE dependencies in the ProcessingInputCollection.
+        Default is True.
 
     Returns
     -------
@@ -869,95 +873,104 @@ def get_upstream_dependency_inputs(
     """
     dependency_inputs = processing_input.ProcessingInputCollection()
     with db.Session() as session:
-        # -----------------------------
-        # Check for SPICE dependencies
-        # -----------------------------
-        # If spin is a dependency, query spin table for given date range
-        has_spin_dep = any(dep["data_source"] == "spin" for dep in dependencies)
-        if has_spin_dep:
-            spin_files = get_spin_files(session, start_date, end_date)
-            if not spin_files:
-                logger.info(f"No spin files found for {start_date} to {end_date}")
-                return None
-            logger.info(f"Found spin files: {spin_files}. Adding to collection.")
-            dependency_inputs.add(processing_input.SpinInput(*spin_files))
+        if get_spice:
+            # -----------------------------
+            # Check for SPICE dependencies
+            # -----------------------------
+            # If spin is a dependency, query spin table for given date range
+            has_spin_dep = any(dep["data_source"] == "spin" for dep in dependencies)
+            if has_spin_dep:
+                spin_files = get_spin_files(session, start_date, end_date)
+                if not spin_files:
+                    logger.info(f"No spin files found for {start_date} to {end_date}")
+                    return None
+                logger.info(f"Found spin files: {spin_files}. Adding to collection.")
+                dependency_inputs.add(processing_input.SpinInput(*spin_files))
 
-        # If repoint is a dependency, query s3 for latest repoint file
-        has_repoint_dep = any(dep["data_source"] == "repoint" for dep in dependencies)
-        if has_repoint_dep:
-            latest_repoint_file = get_latest_repoint_file(end_date)
-            if latest_repoint_file is None:
-                logger.info(f"No repoint file found for {start_date} to {end_date}")
-                return None
-            logger.info(
-                f"Found repoint file: {latest_repoint_file}. Adding to collection."
+            # If repoint is a dependency, query s3 for latest repoint file
+            has_repoint_dep = any(
+                dep["data_source"] == "repoint" for dep in dependencies
             )
-            dependency_inputs.add(processing_input.RepointInput(latest_repoint_file))
-
-        # Otherwise, combine rest of kernels types and query metakernel lambda
-        # for given date range
-        has_kernel_dep = any(
-            dep["data_source"] != "spin"
-            and dep["data_source"] != "repoint"
-            and dep["data_type"] == "spice"
-            for dep in dependencies
-        )
-        if has_kernel_dep:
-            combined_kernel_sources = combine_kernel_sources(dependencies)
-
-            # convert start_date and end_date in seconds after j2000.
-            # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
-            def yyyymmdd_to_seconds_since_j2000(
-                date_str: str, add_24_hrs=False
-            ) -> float:
-                # Parse input date string
-                dt = datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
-                if add_24_hrs:
-                    dt += timedelta(hours=24)
-                # Define J2000 epoch: 2000-01-01T12:00:00 UTC
-                j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-
-                # Compute seconds difference
-                delta = dt - j2000
-                return delta.total_seconds()
-
-            start_time = yyyymmdd_to_seconds_since_j2000(start_date.strftime("%Y%m%d"))
-            # TODO revisit setting end_time after SIT-4. This should be handled upstream
-            add_24_hrs = True if end_date == start_date else False
-            end_time = yyyymmdd_to_seconds_since_j2000(
-                end_date.strftime("%Y%m%d"), add_24_hrs
-            )
-            metakernel_response = spice_metakernel_api.lambda_handler(
-                {
-                    "queryStringParameters": {
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "list_files": "True",
-                        "file_types": combined_kernel_sources,
-                        # TODO: revisit this after SIT-4
-                        # "require_coverage": "True",
-                    }
-                },
-                None,
-            )
-            if metakernel_response["statusCode"] != 200:
-                logger.error(
-                    f"Metakernel lambda raised error: {metakernel_response['body']}"
+            if has_repoint_dep:
+                latest_repoint_file = get_latest_repoint_file(end_date)
+                if latest_repoint_file is None:
+                    logger.info(f"No repoint file found for {start_date} to {end_date}")
+                    return None
+                logger.info(
+                    f"Found repoint file: {latest_repoint_file}. Adding to collection."
                 )
-                return None
-            metakernel_files = json.loads(metakernel_response["body"])
-            # If number of kernels returned doesn't match the number of file types
-            # requested
-            has_all_kernels = check_requested_kernels(
-                combined_kernel_sources, metakernel_files
-            )
-            if not has_all_kernels:
-                return None
+                dependency_inputs.add(
+                    processing_input.RepointInput(latest_repoint_file)
+                )
 
-            logger.info(
-                f"Found metakernel files: {metakernel_files}. Adding to collection."
+            # Otherwise, combine rest of kernels types and query metakernel lambda
+            # for given date range
+            has_kernel_dep = any(
+                dep["data_source"] != "spin"
+                and dep["data_source"] != "repoint"
+                and dep["data_type"] == "spice"
+                for dep in dependencies
             )
-            dependency_inputs.add(processing_input.SPICEInput(*metakernel_files))
+            if has_kernel_dep:
+                combined_kernel_sources = combine_kernel_sources(dependencies)
+
+                # convert start_date and end_date in seconds after j2000.
+                # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
+                def yyyymmdd_to_seconds_since_j2000(
+                    date_str: str, add_24_hrs=False
+                ) -> float:
+                    # Parse input date string
+                    dt = datetime.strptime(date_str, "%Y%m%d").replace(
+                        tzinfo=timezone.utc
+                    )
+                    if add_24_hrs:
+                        dt += timedelta(hours=24)
+                    # Define J2000 epoch: 2000-01-01T12:00:00 UTC
+                    j2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+                    # Compute seconds difference
+                    delta = dt - j2000
+                    return delta.total_seconds()
+
+                start_time = yyyymmdd_to_seconds_since_j2000(
+                    start_date.strftime("%Y%m%d")
+                )
+                # TODO revisit setting end_time after SIT-4. Should be handled upstream
+                add_24_hrs = True if end_date == start_date else False
+                end_time = yyyymmdd_to_seconds_since_j2000(
+                    end_date.strftime("%Y%m%d"), add_24_hrs
+                )
+                metakernel_response = spice_metakernel_api.lambda_handler(
+                    {
+                        "queryStringParameters": {
+                            "start_time": start_time,
+                            "end_time": end_time,
+                            "list_files": "True",
+                            "file_types": combined_kernel_sources,
+                            # TODO: revisit this after SIT-4
+                            # "require_coverage": "True",
+                        }
+                    },
+                    None,
+                )
+                if metakernel_response["statusCode"] != 200:
+                    logger.error(
+                        f"Metakernel lambda raised error: {metakernel_response['body']}"
+                    )
+                    return None
+                metakernel_files = json.loads(metakernel_response["body"])
+                # If number of kernels returned doesn't match the number of file types
+                # requested
+                has_all_kernels = check_requested_kernels(
+                    combined_kernel_sources, metakernel_files
+                )
+                if not has_all_kernels:
+                    return None
+
+                logger.info(
+                    f"Found metakernel files: {metakernel_files}. Adding to collection."
+                )
+                dependency_inputs.add(processing_input.SPICEInput(*metakernel_files))
 
         # ---------------------------------
         # Check for non-spice dependencies
@@ -1115,6 +1128,7 @@ def get_jobs(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     calculate_crids: bool = False,
+    get_spice: bool = True,
 ) -> list | ProcessingInputCollection | None:
     """Get dependencies for the given inputs.
 
@@ -1143,6 +1157,9 @@ def get_jobs(
         This check should only be done for jobs that were triggered by a science file
         because this indicates that there may be a reprocessing of an upstream file,
         and we want to avoid multiple reprocessing of the same file. Default is False.
+    get_spice: bool, optional
+        If True, will include SPICE dependencies in the returned
+        ProcessingInputCollection. Default is True.
 
     Returns
     -------
@@ -1227,6 +1244,7 @@ def get_jobs(
         start_date=start_date,
         end_date=end_date,
         calculate_crids=calculate_crids,
+        get_spice=get_spice,
     )
     if upstream_dependencies_output is None:
         logger.info(

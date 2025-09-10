@@ -501,8 +501,9 @@ def submit_all_jobs(
     """
     logger.info(f"Finding dependencies for the job node: {job_node}")
 
-    # Submit downstream jobs for each upstream primary science dependency file.
-    # Find the files that this job depends on
+    # Make initial query for upstream dependency files.
+    # These dependencies will be used to determine the start dates of the jobs to
+    # submit.
     upstream_dependencies = dependency.get_jobs(
         data_source=job_node["data_source"],
         data_type=job_node["data_type"],
@@ -512,6 +513,7 @@ def submit_all_jobs(
         start_date=trigger_start_date,
         end_date=trigger_end_date,
         calculate_crids=calculate_crids,
+        get_spice=False,  # Skip spice files. Not needed to determine start dates
     )
     if not upstream_dependencies:
         logger.info(
@@ -581,6 +583,7 @@ def submit_all_jobs(
                 start_date=start_date,
                 end_date=end_date,
                 calculate_crids=False,
+                get_spice=True,
             )
             if not upstream_deps_for_job:
                 logger.info(
