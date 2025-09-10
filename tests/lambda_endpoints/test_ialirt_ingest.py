@@ -175,7 +175,12 @@ def test_query_filenames_crossing_hour_boundary(s3_client):
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.sct_to_et",
     return_value=12345.0,
 )
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_utc",
+    side_effect=lambda met: "2025-05-21T00:00:00",
+)
 def test_insert_data(
+    mock_met_to_utc,
     mock_sct_to_et,
     mock_imap_state,
     setup_dynamodb,
@@ -248,6 +253,10 @@ def test_insert_data(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_sclkticks",
     return_value=67890.0,
 )
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_utc",
+    side_effect=lambda met: "2025-05-21T00:00:00",
+)
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.load_cdf")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.pd.read_csv")
 @mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.get_ancillary")
@@ -269,6 +278,7 @@ def test_process_algorithms(
     mock_read_csv,
     mock_sclkticks,
     mock_sct_to_et,
+    mock_met_to_utc,
     mock_imap_state,
     setup_dynamodb,
 ):

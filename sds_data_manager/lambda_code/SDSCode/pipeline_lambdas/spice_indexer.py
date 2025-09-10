@@ -514,21 +514,28 @@ def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
     if spice_obj.spice_metadata["type"] not in spice_events:
         return None
 
-    logger.info(f"Sending SPICE event for {s3_key} to EventBridge")
-    eventbridge_client = boto3.client("events")
-
     # Create event["detail"] and event inputs
     detail = {
         "object": {
             "key": s3_key,
-            "instrument": "spacecraft",
         }
     }
+
+    eventbridge_client = boto3.client("events")
+    if spice_obj.spice_metadata["type"] == "repoint":
+        detail["object"]["instrument"] = "spacecraft"
+        detail["object"]["data_level"] = "l1a"
+
     event = IMAPLambdaPutEvent(
         detail_type="Processed File",
         detail=detail,
     )
     event_data = event.to_event()
+
+    logger.info(
+        f"Sending SPICE event for {s3_key} to EventBridge"
+        f" with detail {json.dumps(detail)}"
+    )
 
     # Send event to EventBridge
     response = eventbridge_client.put_events(Entries=[event_data])

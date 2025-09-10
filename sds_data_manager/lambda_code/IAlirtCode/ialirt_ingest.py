@@ -33,7 +33,7 @@ from imap_processing.spice.geometry import (
     SpiceFrame,
     imap_state,
 )
-from imap_processing.spice.time import met_to_sclkticks, sct_to_et
+from imap_processing.spice.time import met_to_sclkticks, met_to_utc, sct_to_et
 from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,7 @@ KERNELS = {
     "leapseconds",
     "imap_frames",
     "science_frames",
+    "planetary_constants",
 }
 EFS_BASE_PATH = Path("/mnt/data")
 
@@ -153,6 +154,7 @@ def download_spice_file(dependencies) -> list[Path]:
     dependencies.download_all_files()
 
     spice_files = dependencies.get_file_paths(data_type=SPICESource.SPICE.value)
+    logger.info(f"Downloaded SPICE files: {spice_files}. Furnishing kernels.")
     spiceypy.furnsh([str(file.resolve()) for file in spice_files])
 
     return spice_files
@@ -265,9 +267,9 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
         The DynamoDB table to insert or update the data.
     """
     processors = [
+        ("mag", process_packet),
         ("hit", process_hit),
         ("swe", process_swe),
-        ("mag", process_packet),
         ("codicelo", process_codice),
         ("codicehi", process_codice),
         ("swapi", process_swapi_ialirt),
@@ -322,6 +324,8 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
     mets = [item["met"] for item in data]
     min_met = min(mets)
     max_met = max(mets)
+    logger.info(f"Processing mets {min_met} to {max_met}.")
+    logger.info(f"Processing utc {met_to_utc(min_met)} to {met_to_utc(max_met)}.")
 
     # Query existing items.
     response = algorithm_table.query(
