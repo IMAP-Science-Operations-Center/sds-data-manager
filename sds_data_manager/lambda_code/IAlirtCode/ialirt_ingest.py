@@ -154,6 +154,7 @@ def download_spice_file(dependencies) -> list[Path]:
     dependencies.download_all_files()
 
     spice_files = dependencies.get_file_paths(data_type=SPICESource.SPICE.value)
+    logger.info(f"Downloaded SPICE files: {spice_files}. Furnishing kernels.")
     spiceypy.furnsh([str(file.resolve()) for file in spice_files])
 
     return spice_files
