@@ -7,6 +7,7 @@ from collections import namedtuple
 
 from sqlalchemy import func, select
 
+from ..api_lambdas.utils import filter_files
 from ..database import database as db
 from ..database import models
 
@@ -136,15 +137,17 @@ def lambda_handler(event, context):
             d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
         result["ingestion_date"] = d.strftime("%Y%m%d %H:%M:%S")
 
-    logger.debug(
+    logger.info(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
+
+    filtered_results = filter_files(event, search_results)
 
     # Format the response
     response = {
         "statusCode": 200,
         "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(search_results),  # returns a list of tuples
+        "body": json.dumps(filtered_results),  # returns a list of tuples
     }
 
     return response

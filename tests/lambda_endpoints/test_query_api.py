@@ -401,3 +401,57 @@ def test_invalid_param_ancillary_query(session):
 
     assert returned_query["statusCode"] == 400
     assert returned_query["body"] == expected_body
+
+
+def test_private_query(session):
+    """Test that private parameters are not allowed in the query."""
+    # Write test data to the ScienceFiles table with released=False
+    filepath = "test/file/path/imap_hit_l0_raw_20211107_v001.pkts"
+
+    metadata_params = {
+        "file_path": filepath,
+        "instrument": "hit",
+        "data_level": "l0",
+        "descriptor": "raw",
+        "start_date": datetime.datetime.strptime("20211107", "%Y%m%d"),
+        "version": "v001",
+        "extension": "pkts",
+        "ingestion_date": datetime.datetime.strptime(
+            "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+        ),
+        "released": False,
+    }
+
+    # Add data to the ScienceFiles table and return the session
+    session.add(models.ScienceFiles(**metadata_params))
+    session.commit()
+
+    # First test with public query (no api key)
+    event_public = {
+        "version": "2.0",
+        "routeKey": "GET /query",
+        "rawPath": "/query",
+        "queryStringParameters": {"instrument": "hit", "table": "science"},
+    }
+    returned_query = query_api.lambda_handler(event=event_public, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == json.dumps([])
+
+    private_event = {
+        "version": "2.0",
+        "routeKey": "GET /api-key/query",
+        "rawPath": "/api-key/query",
+        "rawQueryString": "table=science&instrument=swe",
+        "queryStringParameters": {"instrument": "hit", "table": "science"},
+        "isBase64Encoded": False,
+    }
+    returned_private_query = query_api.lambda_handler(private_event, context={})
+    assert returned_private_query["statusCode"] == 200
+    results = json.loads(returned_private_query["body"])
+    assert isinstance(results, list)
+    assert len(results) == 1
+    assert (
+        results[0]["file_path"] == "test/file/path/imap_hit_l0_raw_20211107_v001.pkts"
+    )
+    assert results[0]["released"] is False
