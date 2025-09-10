@@ -123,14 +123,15 @@ class BatchStarterLambda(Construct):
         for q in sqs_queues:
             self.instrument_lambda.add_event_source(SqsEventSource(q))
 
-        # Add api route for triggering batch starter with a bulk reprocessing request
+        # Add api routes for triggering batch starter with a bulk reprocessing request
+        # Only allow authenticated routes for reprocessing
         api.add_route(
-            route="/reprocess",
+            route="/authorized/reprocess",
             http_method="POST",
             lambda_function=self.instrument_lambda,
         )
         api.add_route(
-            route="/authorized/reprocess",
+            route="/api-key/reprocess",
             http_method="POST",
             lambda_function=self.instrument_lambda,
         )

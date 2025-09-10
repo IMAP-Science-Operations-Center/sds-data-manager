@@ -25,7 +25,7 @@ def is_authenticated_path(event):
         True if the path is authenticated, False otherwise
     """
     # Get the routeKey and rawPath, defaulting to empty strings if not present
-    auth_api_endpoint = ["api-key", "auth"]
+    auth_api_endpoint = ["api-key", "authorized"]
 
     # Safely extract route_key and raw_path
     route_key = ""
