@@ -18,7 +18,7 @@ Requires AWS credentials with SSM permissions.
 import json
 import secrets
 import sys
-from datetime import UTC, datetime
+from datetime import datetime
 
 import boto3
 
@@ -75,7 +75,7 @@ def add_key(owner, email):
     keys[new_key] = {
         "owner": owner,
         "email": email,
-        "created": datetime.now(UTC).isoformat(),
+        "created": datetime.now().isoformat(),
     }
     put_keys(keys)
     print(f"Added key: {new_key}")
