@@ -824,9 +824,10 @@ def s3_processing_event(session, events):
 
             # by default, we want to filter the upstream dependencies only if the
             # trigger file is an ancillary file.
-            # This is because ancillary files can trigger multiple jobs for the
+            # Ancillary files can trigger multiple jobs for the
             # same instrument, data level, and descriptor but with different start
-            # dates.
+            # dates. Once we know the start dates for the job, we "filter" the upstream
+            # dependencies to only include those valid for that date.
             filter_dependencies = False
             if isinstance(file_obj, AncillaryFilePath):
                 filter_dependencies = True
@@ -839,6 +840,8 @@ def s3_processing_event(session, events):
                     f"Using special case date range: "
                     f"{trigger_start_time} to {trigger_end_time}"
                 )
+                # Do not filter dependencies for special case jobs.
+                filter_dependencies = False
 
             submit_all_jobs(
                 session,
