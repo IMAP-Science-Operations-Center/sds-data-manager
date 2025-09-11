@@ -108,6 +108,7 @@ class IndexerLambda(Construct):
             {"prefix": f"imap/{instrument}/"} for instrument in VALID_INSTRUMENTS
         ]
         science_event_prefixes.append({"prefix": "imap/ancillary/"})
+        science_event_prefixes.append({"prefix": "imap/quicklook/"})
         imap_data_arrival_rule = events.Rule(
             self,
             "ImapDataArrival",
