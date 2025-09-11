@@ -135,24 +135,37 @@ class ProcessingJob(Base):
         }
 
 
-class ScienceFiles(Base):
-    """Science files table."""
+class ScienceFileBase:
+    """Base class for ScienceFiles and QuicklookFiles tables.
 
-    __tablename__ = "science_files"
+    Those two tables share many of the same columns.
+    """
 
     file_path = Column(String, nullable=False, primary_key=True, unique=True)
     instrument = Column(INSTRUMENTS, nullable=False)
     data_level = Column(DATA_LEVELS, nullable=False)
-    # TODO: determine character limit for descriptor
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
     repointing = Column(Integer, nullable=True)
     version = Column(String(4), nullable=False)  # vXXX
-    extension = Column(EXTENSIONS, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
     cr = Column(Integer, nullable=True)
     crid = Column(String, nullable=True)
     released = Column(Boolean, nullable=False, default=False)
+
+
+class ScienceFiles(ScienceFileBase, Base):
+    """Science files table."""
+
+    __tablename__ = "science_files"
+    extension = Column(EXTENSIONS, nullable=False)
+
+
+class QuicklookFiles(ScienceFileBase, Base):
+    """Quicklook files table."""
+
+    __tablename__ = "quicklook_files"
+    extension = Column(String, nullable=False)  # e.g., 'png', 'jpg'
 
 
 class SPICEFiles(Base):
