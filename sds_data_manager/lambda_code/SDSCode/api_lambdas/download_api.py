@@ -49,11 +49,11 @@ def is_released(s3_key):
 
         with db.Session() as session:
             file_record = session.query(table).filter(table.file_path == s3_key).first()
-            if file_record and hasattr(file_record, "release"):
-                return file_record.release
+            if file_record and hasattr(file_record, "released"):
+                return file_record.released
     except Exception as e:
         # If any error occurs, log it and default to not released for security
-        logger.error(f"Error checking release status: {e!s}")
+        logger.error(f"Error checking released status: {e!s}")
 
     return False
 
@@ -162,8 +162,7 @@ def lambda_handler(event, context):
     if not is_authenticated_user(event) and not is_released(filepath):
         return http_response(
             status_code=403,
-            body="The requested file is not released yet. Please contact the "
-            "SDC team for more information.",
+            body=f"The file {filepath} is not a part of a public release yet.",
         )
 
     pre_signed_url = s3_client.generate_presigned_url(

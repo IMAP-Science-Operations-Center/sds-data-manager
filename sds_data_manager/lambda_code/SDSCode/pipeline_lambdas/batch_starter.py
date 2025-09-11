@@ -24,7 +24,6 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from ..api_lambdas import upload_api
-from ..api_lambdas.utils import is_authenticated_user
 from ..database import database as db
 from ..database import models
 from . import VALID_CADENCE_STRS, dependency
@@ -1276,16 +1275,11 @@ def lambda_handler(events: dict, context):
         Lambda context object
     """
     logger.info(f"Events: {events}")
-    is_auth_user = is_authenticated_user(events)
-    is_reprocessing = events.get("queryStringParameters", {}).get("reprocessing", False)
-
-    if is_reprocessing and not is_auth_user:
-        logger.error("Unauthorized reprocessing attempt.")
-        return "Unauthorized reprocessing attempt."
+    api_event = events.get("queryStringParameters")
+    is_reprocessing = api_event.get("reprocessing", False)
 
     with db.Session() as session:
-        api_event = events.get("queryStringParameters")
-        if api_event and is_reprocessing and is_auth_user:
+        if api_event and is_reprocessing:
             # handle reprocessing event
             bulk_reprocessing_event(session, api_event)
         elif events.get("cadence"):

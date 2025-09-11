@@ -26,5 +26,4 @@ def is_authenticated_user(event):
     """
     rk = event.get("routeKey", "")
     route_key = rk.split("/")[1] if "/" in rk else ""
-    logger.error(f"Route Key: {route_key}")
     return route_key in ("authorized", "api-key")
