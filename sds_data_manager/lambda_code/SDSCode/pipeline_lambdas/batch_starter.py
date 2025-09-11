@@ -521,7 +521,7 @@ def submit_all_jobs(
         start_date=trigger_start_date,
         end_date=trigger_end_date,
         calculate_crids=calculate_crids,
-        get_spice=get_spice,  # Skip spice files. Not needed to determine start dates
+        get_spice=get_spice,
     )
     if not upstream_dependencies:
         logger.info(
