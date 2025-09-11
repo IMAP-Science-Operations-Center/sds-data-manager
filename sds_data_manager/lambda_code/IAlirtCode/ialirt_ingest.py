@@ -17,6 +17,7 @@ import spiceypy
 import xarray as xr
 from boto3.dynamodb.conditions import Key
 from imap_data_access.processing_input import (
+    AncillaryInput,
     ProcessingInputCollection,
     SPICEInput,
     SPICESource,
@@ -28,6 +29,7 @@ from imap_processing.ialirt.l0.process_codice import process_codice
 from imap_processing.ialirt.l0.process_hit import process_hit
 from imap_processing.ialirt.l0.process_swapi import process_swapi_ialirt
 from imap_processing.ialirt.l0.process_swe import process_swe
+from imap_processing.mag.l1b.mag_l1b import MagAncillaryCombiner
 from imap_processing.spice.geometry import (
     SpiceBody,
     SpiceFrame,
@@ -277,29 +279,39 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
 
     for instrument, process_func in processors:
         if instrument == "swe":
+            logger.info("Processing SWE.")
             download_path = get_ancillary(instrument, "l1b-in-flight-cal")
             logger.info("swe l1b-in-flight-cal: %s", download_path)
             result = process_func(combined, [download_path])
         elif instrument == "mag":
+            logger.info("Processing MAG.")
             download_path = get_ancillary(instrument, "ialirt-calibration")
-            ialirt_calibration_data = load_cdf(download_path)
+            parts = download_path.stem.split("_")
+            date_str = parts[-2]
+            input_files = AncillaryInput(download_path.name)
+            ialirt_calibration_data = MagAncillaryCombiner(input_files, date_str)
+
             logger.info("mag ialirt-calibration: %s", download_path)
             download_path = get_ancillary(instrument, "l1b-calibration")
             logger.info("mag l1b-calibration: %s", download_path)
             l1b_calibration_data = load_cdf(download_path)
             result = process_func(
-                combined, l1b_calibration_data, ialirt_calibration_data
+                combined, l1b_calibration_data, ialirt_calibration_data.combined_dataset
             )
         elif instrument == "codicelo":
+            logger.info("Processing CoDICE-Lo.")
             result, _ = process_func(combined)
         elif instrument == "codicehi":
+            logger.info("Processing CoDICE-Hi.")
             _, result = process_func(combined)
         elif instrument == "swapi":
+            logger.info("Processing SWAPI.")
             download_path = get_ancillary(instrument, "esa-unit-conversion")
             logger.info("swapi esa-unit-conversion: %s", download_path)
             calibration_data = pd.read_csv(download_path)
             result = process_func(combined, calibration_data)
         else:
+            logger.info("Processing HIT.")
             result = process_func(combined)
 
         logger.info("%s result: %s", instrument, result)
@@ -345,10 +357,10 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         # Calculate the spacecraft position and velocity in GSM coordinates.
         et = sct_to_et(met_to_sclkticks(met))
         gsm_state = imap_state(
-            et, ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
+            [et], ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
         )
         gse_state = imap_state(
-            et, ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
+            [et], ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
         )
 
         raw["sc_position_GSM"] = [Decimal(str(val)) for val in gsm_state[0, :3]]
@@ -447,8 +459,10 @@ def lambda_handler(event, context):
 
     if filenames:
         logger.info("Found %d files to process", len(filenames))
+        logger.info("Parsing packets.")
         # Get packets into datasets and combine.
         combined = parse_packets(filenames, bucket, Path("/tmp"))  # noqa: S108
+        logger.info("Packets parsed. Processing algorithms.")
         # Process algorithms and insert new data.
         process_algorithms(combined, algorithm_table)
 
