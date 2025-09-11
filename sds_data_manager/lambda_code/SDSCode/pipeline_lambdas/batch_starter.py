@@ -1276,10 +1276,9 @@ def lambda_handler(events: dict, context):
     """
     logger.info(f"Events: {events}")
     api_event = events.get("queryStringParameters")
-    is_reprocessing = api_event.get("reprocessing", False)
 
     with db.Session() as session:
-        if api_event and is_reprocessing:
+        if api_event and api_event.get("reprocessing"):
             # handle reprocessing event
             bulk_reprocessing_event(session, api_event)
         elif events.get("cadence"):
