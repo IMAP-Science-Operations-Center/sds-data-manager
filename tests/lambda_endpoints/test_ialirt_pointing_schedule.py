@@ -19,7 +19,11 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule import (
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule."
     "generate_text_files"
 )
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule.get_latest_spice_kernels"
+)
 def test_lambda_handler(
+    mock_get_latest_spice_kernels,
     mock_generate_text_files,
     mock_stations,
     mock_requests_get,
@@ -28,6 +32,8 @@ def test_lambda_handler(
     s3_client,
 ):
     """Test the lambda_handler function."""
+    mock_get_latest_spice_kernels.return_value = MagicMock()
+
     bucket = "test-data-bucket"
     region = "us-west-2"
 

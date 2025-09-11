@@ -153,7 +153,9 @@ def test_get_latest_spice_kernels(mock_get):
     mock_response.json.return_value = mock_files
     mock_get.return_value = mock_response
 
-    result = get_latest_spice_kernels(["planetary_ephemeris", "planetary_constants"])
+    result = get_latest_spice_kernels(
+        ["planetary_ephemeris", "planetary_constants"], "url"
+    )
     assert result.processing_input[0].filename_list == mock_files
 
 
