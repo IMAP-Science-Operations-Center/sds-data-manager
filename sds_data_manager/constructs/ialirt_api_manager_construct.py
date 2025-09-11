@@ -133,6 +133,19 @@ class IalirtApiManager(Construct):
 
         download_api.add_to_role_policy(s3_read_policy)
 
+        # Deny access to logs/ and raw_records/ for the download_api lambda role
+        data_bucket.add_to_resource_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.DENY,
+                actions=["s3:GetObject"],
+                principals=[iam.ArnPrincipal(download_api.role.role_arn)],
+                resources=[
+                    f"{data_bucket.bucket_arn}/logs/*",
+                    f"{data_bucket.bucket_arn}/raw_records/*",
+                ],
+            )
+        )
+
         # {proxy+} is used to allow for any pathParams after /ialirt-download/
         api.add_route(
             route="/ialirt-download/{proxy+}",

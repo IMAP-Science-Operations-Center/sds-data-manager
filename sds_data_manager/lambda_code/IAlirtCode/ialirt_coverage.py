@@ -91,13 +91,15 @@ def get_dsn(download_dir: Path):
     return download_path, dsn_dict
 
 
-def get_latest_spice_kernels(kernels: list[str]) -> ProcessingInputCollection:
+def get_latest_spice_kernels(kernels: list[str], url: str) -> ProcessingInputCollection:
     """Query the SPICE metakernel API for latest SPICE kernel filenames.
 
     Parameters
     ----------
     kernels : list[str]
         List of SPICE kernel categories to collect.
+    url: str
+        AWS account name.
 
     Returns
     -------
@@ -116,8 +118,6 @@ def get_latest_spice_kernels(kernels: list[str]) -> ProcessingInputCollection:
     et_start_time = (one_week_ago - j2000).total_seconds()
 
     file_types = ",".join(kernels)
-    # TODO: replace this url with the endpoint from imap-data-access.
-    url = "https://ylxiee1ond.execute-api.us-west-2.amazonaws.com/metakernel"
 
     params = {
         "start_time": str(int(et_start_time)),
@@ -297,6 +297,7 @@ def lambda_handler(event, context):
 
     bucket = os.environ.get("S3_BUCKET")
     region = os.environ.get("AWS_REGION")
+    url = os.environ.get("IMAP_DATA_ACCESS_URL")
 
     # Get dsn_schedule
     _, dsn = get_dsn(Path("/tmp"))  # noqa: S108
@@ -306,7 +307,8 @@ def lambda_handler(event, context):
         [
             "planetary_ephemeris",  # e.g., de440s.bsp
             "planetary_constants",  # e.g. pck00011.tpc
-        ]
+        ],
+        url,
     )
     logger.info("dependency_inputs: %s", dependency_inputs)
     setup_spice_file(dependency_inputs)

@@ -399,6 +399,7 @@ def build_sds(
         vpc=networking.vpc,
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         secret_name=ialirt_secret_name,
+        account_name=account_name,
     )
 
 

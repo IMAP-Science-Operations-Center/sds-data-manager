@@ -37,14 +37,25 @@ class IalirtCoverageConstruct(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
+        account_name = self.node.get_context("account_name")
+        # once we have the account_name, get that section out of cdk.json
+        account_config = self.node.get_context(account_name)
+        domain_name = account_config.get("domain_name", "no-domain-set")
+        # https://api.imap-mission.com
+        # https://api.dev.imap-mission.com
+        data_access_url = f"https://api.{domain_name}"
+
         # Create Lambda Function
-        ialirt_coverage_lambda = self.create_coverage_lambda(ialirt_bucket, docker_path)
+        ialirt_coverage_lambda = self.create_coverage_lambda(
+            ialirt_bucket, docker_path, data_access_url
+        )
         self.create_event_rule(ialirt_coverage_lambda)
 
     def create_coverage_lambda(
         self,
         ialirt_bucket: aws_s3.Bucket,
         docker_path: str,
+        data_access_url: str,
     ) -> lambda_.DockerImageFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -81,6 +92,7 @@ class IalirtCoverageConstruct(Construct):
             role=lambda_role,
             environment={
                 "S3_BUCKET": ialirt_bucket.bucket_name,
+                "IMAP_DATA_ACCESS_URL": data_access_url,
             },
         )
 

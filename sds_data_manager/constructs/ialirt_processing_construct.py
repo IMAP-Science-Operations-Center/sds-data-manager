@@ -28,6 +28,7 @@ class IalirtProcessing(Construct):
         vpc: ec2.Vpc,
         ialirt_bucket: s3.Bucket,
         secret_name: str,
+        account_name: str,
         **kwargs,
     ) -> None:
         """Construct the i-alirt processing stack.
@@ -46,6 +47,8 @@ class IalirtProcessing(Construct):
             S3 bucket
         secret_name : str,
             Database secret_name for Secrets Manager
+        account_name : str
+            The name of the account.
         kwargs : dict
             Keyword arguments
 
@@ -64,6 +67,12 @@ class IalirtProcessing(Construct):
         self.add_compute_resources()
         # Add autoscaling for each container
         self.add_autoscaling()
+
+        # Determine the latest tag based on the account name
+        if account_name == "prod":
+            self.latest_name = "latest"
+        else:
+            self.latest_name = "latest_dev"
 
     def create_ecs_security_group(self):
         """Create and return a security group for containers."""
@@ -172,7 +181,7 @@ class IalirtProcessing(Construct):
         task_definition.add_container(
             "IalirtContainer",
             image=ecs.ContainerImage.from_registry(
-                "lasp-registry.colorado.edu/ialirt/ialirt:latest",
+                f"lasp-registry.colorado.edu/ialirt/ialirt:{self.latest_name}",
                 credentials=nexus_secret,
             ),
             # Allowable values:
