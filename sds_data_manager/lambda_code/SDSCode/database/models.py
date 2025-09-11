@@ -207,7 +207,7 @@ class AncillaryFiles(Base):
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(String, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
-    released = Column(Boolean, nullable=False, default=False)
+    released = Column(Boolean, nullable=False, default=True)
 
 
 class SpinFiles(Base):
