@@ -162,7 +162,8 @@ class SdsApiManager(Construct):
         always_private_routes = ["/authorized", "/api-key"]
         # We need to restrict upload API on production. Production
         # account only can allow upload through API key.
-        if account_name == "prod":
+        # TODO: undo dev after launch test
+        if account_name in ["prod", "dev"]:
             upload_route_prefixes = ["/api-key"]
         else:
             upload_route_prefixes = auth_route_prefixes
