@@ -33,17 +33,13 @@ def is_released(s3_key):
         filename = os.path.basename(s3_key)
         file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
 
-        # Determine which table to use based on file type
-        if hasattr(file_obj, "__class__") and hasattr(file_obj.__class__, "__name__"):
-            class_name = file_obj.__class__.__name__
-            if class_name == "SPICEFilePath":
-                table = models.SPICEFiles
-            elif class_name == "AncillaryFilePath":
-                table = models.AncillaryFiles
-            elif class_name == "ScienceFilePath":
-                table = models.ScienceFiles
-            else:
-                return False
+        # Determine which table to use based on file type using isinstance
+        if isinstance(file_obj, imap_data_access.file_validation.SPICEFilePath):
+            table = models.SPICEFiles
+        elif isinstance(file_obj, imap_data_access.file_validation.AncillaryFilePath):
+            table = models.AncillaryFiles
+        elif isinstance(file_obj, imap_data_access.file_validation.ScienceFilePath):
+            table = models.ScienceFiles
         else:
             return False
 

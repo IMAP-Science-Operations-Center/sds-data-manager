@@ -117,7 +117,7 @@ def test_auth_path_unreleased_file_access(session, s3_client):
 
     # Public path should be denied access to unreleased file
     assert response_public["statusCode"] == 403
-    assert "not released yet" in response_public["body"]
+    assert "part of a public release yet" in response_public["body"]
 
     # Test with authenticated path (api-key in path)
     event_auth = {

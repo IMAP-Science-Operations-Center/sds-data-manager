@@ -24,6 +24,4 @@ def is_authenticated_user(event):
     bool
         True if the path is authenticated, False otherwise
     """
-    rk = event.get("routeKey", "")
-    route_key = rk.split("/")[1] if "/" in rk else ""
-    return route_key in ("authorized", "api-key")
+    return event.get("rawPath", "").startswith(("/authorized", "/api-key"))
