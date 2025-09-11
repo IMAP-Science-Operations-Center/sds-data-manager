@@ -295,7 +295,7 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
             download_path = get_ancillary(instrument, "l1b-calibration")
             logger.info("mag l1b-calibration: %s", download_path)
             l1b_calibration_data = load_cdf(download_path)
-            result = process_packet(
+            result = process_func(
                 combined, l1b_calibration_data, ialirt_calibration_data.combined_dataset
             )
         elif instrument == "codicelo":
