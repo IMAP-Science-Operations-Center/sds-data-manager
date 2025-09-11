@@ -186,6 +186,56 @@ def test_missing_required_params():
         )
 
 
+def test_get_jobs_spice(session):
+    """Test that spice files are returned as dependencies."""
+    # Glows l1a all depends on time kernels and one glows l0 raw file
+    session.add(
+        ScienceFiles(
+            file_path="/path/to/imap_glows_l0_raw_20240101_v001.pkts",
+            instrument="glows",
+            data_level="l0",
+            descriptor="raw",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        )
+    )
+    session.commit()
+    # Get upstream files for glows l1a all. This should return None because although
+    # the glows l0 raw file exists, the spice files do not exist in the database.
+    dependency_response = dependency.get_jobs(
+        data_source="glows",
+        data_type="l1a",
+        descriptor="all",
+        start_date="20240101",
+        end_date="20241231",
+        relationship="ALL",
+        dependency_type="UPSTREAM",
+        get_spice=True,  # Since we are checking spice, get_jobs will return None
+    )
+    assert not dependency_response
+
+    # Make the same call but skip checking spice files. This should return the glows
+    # l0 raw file.
+    dependency_response = dependency.get_jobs(
+        data_source="glows",
+        data_type="l1a",
+        descriptor="all",
+        start_date="20240101",
+        end_date="20240101",
+        relationship="ALL",
+        dependency_type="UPSTREAM",
+        get_spice=False,  # Since we skip spice, get_jobs will return the l0 raw file
+    )
+    expected_processing_input = ProcessingInputCollection(
+        ScienceInput("imap_glows_l0_raw_20240101_v001.pkts"),
+    )
+    assert dependency_response.serialize() == expected_processing_input.serialize()
+
+
 #####################################
 # LAMBDA HANDLER TESTS
 #####################################
