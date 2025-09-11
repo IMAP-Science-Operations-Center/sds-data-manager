@@ -37,6 +37,7 @@ class IalirtCoverageConstruct(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
+        # TODO: change once new code is merged in.
         account_name = self.node.get_context("account_name")
         # once we have the account_name, get that section out of cdk.json
         account_config = self.node.get_context(account_name)
