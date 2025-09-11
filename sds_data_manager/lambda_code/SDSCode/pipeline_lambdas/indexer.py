@@ -236,13 +236,11 @@ def s3_event_handler(event):  # noqa: PLR0915
             logger.info("Wrote data to the AncillaryFiles table")
 
         except ImapFilePath.InvalidImapFileError:
-            logger.error(f"Filename {filename} is not Science or Ancillary file.")
             try:
                 file_obj = QuicklookFilePath(filename)
                 params = file_obj.extract_filename_components(filename)
                 # delete mission key from metadata params
                 params.pop("mission")
-                params["data_level"] = params.pop("data_level")
                 params["start_date"] = datetime.strptime(
                     params.pop("start_date"), "%Y%m%d"
                 )
@@ -255,7 +253,7 @@ def s3_event_handler(event):  # noqa: PLR0915
                     session.add(models.QuicklookFiles(**params))
                     session.commit()
             except ImapFilePath.InvalidImapFileError:
-                logger.error(f"Filename {filename} is not a valid QUICKLOOK file.")
+                logger.error(f"Filename {filename} is not a valid filetype.")
                 return http_response(
                     status_code=400,
                     body=f"Filename {filename} is not a valid SCIENCE, "
