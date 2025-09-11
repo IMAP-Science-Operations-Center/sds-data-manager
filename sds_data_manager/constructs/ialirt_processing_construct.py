@@ -63,16 +63,16 @@ class IalirtProcessing(Construct):
         # Create security group in which containers will reside
         self.create_ecs_security_group()
 
-        # Add an ecs service and cluster for each container
-        self.add_compute_resources()
-        # Add autoscaling for each container
-        self.add_autoscaling()
-
         # Determine the latest tag based on the account name
         if account_name == "prod":
             self.latest_name = "latest"
         else:
             self.latest_name = "latest_dev"
+
+        # Add an ecs service and cluster for each container
+        self.add_compute_resources()
+        # Add autoscaling for each container
+        self.add_autoscaling()
 
     def create_ecs_security_group(self):
         """Create and return a security group for containers."""
