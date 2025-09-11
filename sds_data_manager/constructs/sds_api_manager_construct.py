@@ -159,7 +159,6 @@ class SdsApiManager(Construct):
         # API key authorizer: /api-key/upload/{proxy+}
         auth_route_prefixes = ["", "/authorized", "/api-key"]
 
-        always_private_routes = ["/authorized", "/api-key"]
         # We need to restrict upload API on production. Production
         # account only can allow upload through API key.
         if account_name == "prod":
@@ -304,13 +303,13 @@ class SdsApiManager(Construct):
             },
             layers=layers,
         )
-        add_stable_route(
-            api,
-            "/processing-jobs",
-            "GET",
-            batch_job_query_api_lambda,
-            always_private_routes,
-        )
+        for prefix in auth_route_prefixes:
+            # {proxy+} is used to allow for any pathParams after /processing-jobs/
+            api.add_route(
+                route=f"{prefix}/processing-jobs",
+                http_method="GET",
+                lambda_function=batch_job_query_api_lambda,
+            )
 
         # API to query batch job logs
         batch_logs_api_lambda = lambda_.Function(
@@ -325,13 +324,14 @@ class SdsApiManager(Construct):
             allow_public_subnet=True,
             layers=layers,
         )
-        add_stable_route(
-            api,
-            "/processing-logs",
-            "GET",
-            batch_logs_api_lambda,
-            always_private_routes,
-        )
+        for prefix in auth_route_prefixes:
+            api.add_route(
+                # {id+} is used to allow for any pathParams after /batch-logs/
+                # This is needed because the log stream ID can contain slashes
+                route=f"{prefix}/processing-logs/{{id+}}",
+                http_method="GET",
+                lambda_function=batch_logs_api_lambda,
+            )
 
         batch_logs_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
