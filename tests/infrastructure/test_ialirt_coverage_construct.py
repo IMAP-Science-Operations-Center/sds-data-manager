@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from aws_cdk import App, Stack
 from aws_cdk import aws_s3 as s3
 from aws_cdk.assertions import Match, Template
 
@@ -12,8 +13,11 @@ from sds_data_manager.constructs.ialirt_coverage_construct import (
 
 
 @pytest.fixture
-def template(stack):
+def template():
     """Create a template with the IalirtCoverageConstruct."""
+    app = App(context={"account_name": "test", "test": {}})
+    stack = Stack(app, "TestStack")
+
     ialirt_bucket = s3.Bucket(stack, "MockIalirtBucket")
 
     docker_dir = (
