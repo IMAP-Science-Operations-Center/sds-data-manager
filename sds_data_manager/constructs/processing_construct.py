@@ -57,11 +57,13 @@ class ProcessingConstruct(Construct):
         #  aws ssm put-parameter --name /imap-sdc/batch-jobs/api-key --value <the-key> \
         #    --type SecureString
         #
-        self.batch_api_key_param = ssm.StringParameter.from_string_parameter_name(
-            self,
-            "BatchApiKeyParam",
-            # Location in parameter store where the batch API key is stored
-            "/imap-sdc/batch-jobs/api-key",
+        self.batch_secret_api_key = batch.Secret.from_ssm_parameter(
+            ssm.StringParameter.from_secure_string_parameter_attributes(
+                self,
+                "BatchApiKeyParam",
+                # Location in parameter store where the batch API key is stored
+                parameter_name="/imap-sdc/batch-jobs/api-key",
+            )
         )
 
         # Create compute environment
@@ -122,11 +124,7 @@ class ProcessingConstruct(Construct):
             },
             # Use Batch secrets to securely inject the API key from SSM
             # This ensures the key is not visible in CloudFormation templates
-            secrets={
-                "IMAP_API_KEY": batch.Secret.from_ssm_parameter(
-                    self.batch_api_key_param
-                )
-            },
+            secrets={"IMAP_API_KEY": self.batch_secret_api_key},
             # TODO: Do we need to explicitly specify architecture and OS family?
             #       We are building containers in GitHub Actions and need to
             #       make sure these are aligned.
