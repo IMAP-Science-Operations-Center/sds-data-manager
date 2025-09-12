@@ -123,25 +123,32 @@ class BatchStarterLambda(Construct):
         for q in sqs_queues:
             self.instrument_lambda.add_event_source(SqsEventSource(q))
 
-        # Add api route for triggering batch starter with a bulk reprocessing request
-        api.add_route(
-            route="/reprocess",
-            http_method="POST",
-            lambda_function=self.instrument_lambda,
-        )
+        # Add api routes for triggering batch starter with a bulk reprocessing request
+        # Only allow authenticated routes for reprocessing
         api.add_route(
             route="/authorized/reprocess",
             http_method="POST",
             lambda_function=self.instrument_lambda,
         )
+        api.add_route(
+            route="/api-key/reprocess",
+            http_method="POST",
+            lambda_function=self.instrument_lambda,
+        )
 
         # Set up eventBridge rules to trigger batch starter lambda.
-        # create one permission for all eventbridge rules
+        # create one permission for Cadence rules and one for Scheduled rules
         self.instrument_lambda.add_permission(
-            "AllowEventBridgeInvoke",
+            "AllowEventBridgeInvokeCadence",
             principal=iam.ServicePrincipal("events.amazonaws.com"),
             action="lambda:InvokeFunction",
             source_arn=f"arn:aws:events:{env.region}:{env.account}:rule/ProcessingCadenceJob*",
+        )
+        self.instrument_lambda.add_permission(
+            "AllowEventBridgeInvokeScheduled",
+            principal=iam.ServicePrincipal("events.amazonaws.com"),
+            action="lambda:InvokeFunction",
+            source_arn=f"arn:aws:events:{env.region}:{env.account}:rule/ProcessingScheduledJob*",
         )
         # Many l2 jobs create maps and need 3-12 months worth of data to run.
         # Create eventBridge rules to trigger:

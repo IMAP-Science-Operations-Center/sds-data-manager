@@ -7,7 +7,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import boto3
 import imap_data_access
@@ -70,8 +70,10 @@ SPECIAL_CASE_JOBS = [
 
 
 def cadence_to_datetime_range(
-    cadence: str, start_date: Optional[datetime] = None, as_str: Optional[bool] = False
-) -> tuple[datetime, datetime] | tuple[str, str]:
+    cadence: str,
+    start_date: Optional[datetime.datetime] = None,
+    as_str: Optional[bool] = False,
+) -> Union[tuple[datetime.datetime, datetime.datetime], tuple[str, str]]:
     """Convert the cadence to a datetime range.
 
     Parameters
@@ -1293,9 +1295,9 @@ def lambda_handler(events: dict, context):
         Lambda context object
     """
     logger.info(f"Events: {events}")
+    api_event = events.get("queryStringParameters")
 
     with db.Session() as session:
-        api_event = events.get("queryStringParameters")
         if api_event and api_event.get("reprocessing"):
             # handle reprocessing event
             bulk_reprocessing_event(session, api_event)

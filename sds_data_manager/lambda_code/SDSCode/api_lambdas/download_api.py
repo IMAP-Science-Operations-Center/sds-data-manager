@@ -6,9 +6,52 @@ import os
 
 import boto3
 import botocore
+import imap_data_access
+
+from ..api_lambdas.utils import is_authenticated_user
+from ..database import database as db
+from ..database import models
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def is_released(s3_key):
+    """Check if the file is marked as released in the database.
+
+    Parameters
+    ----------
+    s3_key : str
+        The S3 key path of the file to check.
+
+    Returns
+    -------
+    bool
+        True if the file is released, False otherwise.
+    """
+    try:
+        filename = os.path.basename(s3_key)
+        file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
+
+        # Determine which table to use based on file type using isinstance
+        if isinstance(file_obj, imap_data_access.file_validation.SPICEFilePath):
+            table = models.SPICEFiles
+        elif isinstance(file_obj, imap_data_access.file_validation.AncillaryFilePath):
+            table = models.AncillaryFiles
+        elif isinstance(file_obj, imap_data_access.file_validation.ScienceFilePath):
+            table = models.ScienceFiles
+        else:
+            return False
+
+        with db.Session() as session:
+            file_record = session.query(table).filter(table.file_path == s3_key).first()
+            if file_record and hasattr(file_record, "released"):
+                return file_record.released
+    except Exception as e:
+        # If any error occurs, log it and default to not released for security
+        logger.error(f"Error checking released status: {e!s}")
+
+    return False
 
 
 def http_response(headers=None, status_code=200, body="Success"):
@@ -110,6 +153,12 @@ def lambda_handler(event, context):
                 "File not found, make sure you include the full path to the file in "
                 "the request, e.g. /download/path/to/file/filename.pkts."
             ),
+        )
+
+    if not is_authenticated_user(event) and not is_released(filepath):
+        return http_response(
+            status_code=403,
+            body=f"The file {filepath} is not a part of a public release yet.",
         )
 
     pre_signed_url = s3_client.generate_presigned_url(

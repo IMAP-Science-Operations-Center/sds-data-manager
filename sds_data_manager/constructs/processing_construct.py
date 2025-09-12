@@ -11,6 +11,7 @@ from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_ecs as ecs
+from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 
 
@@ -44,6 +45,27 @@ class ProcessingConstruct(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
+        # Set up secure reference to batch API key parameter name
+        # The actual key value is not resolved at synthesis time for security
+        # NOTE: To use this, create the key using the helper script:
+        #
+        #   python sds_data_manager/lambda_code/authorization/manage_api_keys.py \
+        #     add "batch-jobs" "imap-sdc@lists.lasp.colorado.edu"
+        #
+        # Then add that API Key to SSM as a separate parameter the ECS task can look up
+        #
+        #  aws ssm put-parameter --name /imap-sdc/batch-jobs/api-key --value <the-key> \
+        #    --type SecureString
+        #
+        self.batch_secret_api_key = batch.Secret.from_ssm_parameter(
+            ssm.StringParameter.from_secure_string_parameter_attributes(
+                self,
+                "BatchApiKeyParam",
+                # Location in parameter store where the batch API key is stored
+                parameter_name="/imap-sdc/batch-jobs/api-key",
+            )
+        )
+
         # Create compute environment
         compute_environment = batch.FargateComputeEnvironment(
             self,
@@ -66,13 +88,17 @@ class ProcessingConstruct(Construct):
             ],
         )
 
-    def add_job(self, job_name: str):
+    def add_job(self, job_name: str, data_access_url: str = ""):
         """Create an ECR repo and a job definition for the given job.
 
         Parameters
         ----------
         job_name : str
             Name of the job for which to create the job definition.
+        data_access_url : str, optional
+            The data access URL to use for this job, by default the empty string.
+            You should set this to the appropriate API endpoint, e.g.
+            https://api.dev.imap-mission.com/api-key
         """
         # Create a registry for each job definition (swe-repo)
         container_repo = ecr.Repository(
@@ -83,33 +109,32 @@ class ProcessingConstruct(Construct):
             removal_policy=cdk.RemovalPolicy.DESTROY,
         )
         # Create the job definition
-        account_name = self.node.get_context("account_name")
-        # once we have the account_name, get that section out of cdk.json
-        account_config = self.node.get_context(account_name)
-        domain_name = account_config.get("domain_name", "no-domain-set")
-        # https://api.imap-mission.com
-        # https://api.dev.imap-mission.com
-        data_access_url = f"https://api.{domain_name}"
+        container_definition = batch.EcsFargateContainerDefinition(
+            self,
+            f"FargateContainer-{job_name}",
+            assign_public_ip=True,  # Required to pull ECR images
+            image=ecs.ContainerImage.from_ecr_repository(
+                repository=container_repo, tag="latest"
+            ),
+            memory=cdk.Size.mebibytes(4096),
+            cpu=1,
+            environment={
+                # Useful for switching APIs between dev / prod endpoints
+                "IMAP_DATA_ACCESS_URL": data_access_url,
+            },
+            # Use Batch secrets to securely inject the API key from SSM
+            # This ensures the key is not visible in CloudFormation templates
+            secrets={"IMAP_API_KEY": self.batch_secret_api_key},
+            # TODO: Do we need to explicitly specify architecture and OS family?
+            #       We are building containers in GitHub Actions and need to
+            #       make sure these are aligned.
+            # fargate_cpu_architecture=ecs.CpuArchitecture.ARM64,
+            # fargate_operating_system_family=ecs.OperatingSystemFamily.LINUX
+        )
+
         batch.EcsJobDefinition(
             self,
             f"ProcessingJob-{job_name}",
             job_definition_name=f"ProcessingJob-{job_name}",
-            container=batch.EcsFargateContainerDefinition(
-                self,
-                f"FargateContainer-{job_name}",
-                assign_public_ip=True,  # Required to pull ECR images
-                image=ecs.ContainerImage.from_ecr_repository(
-                    repository=container_repo, tag="latest"
-                ),
-                memory=cdk.Size.mebibytes(4096),
-                cpu=1,
-                environment={
-                    "IMAP_DATA_ACCESS_URL": data_access_url,
-                },
-                # TODO: Do we need to explicitly specify architecture and OS family?
-                #       We are building containers in GitHub Actions and need to
-                #       make sure these are aligned.
-                # fargate_cpu_architecture=ecs.CpuArchitecture.ARM64,
-                # fargate_operating_system_family=ecs.OperatingSystemFamily.LINUX
-            ),
+            container=container_definition,
         )

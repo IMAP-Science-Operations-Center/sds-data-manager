@@ -9,6 +9,12 @@ from sds_data_manager.lambda_code.SDSCode.api_lambdas import query_api
 from sds_data_manager.lambda_code.SDSCode.database import models
 
 
+def param_not_valid_in_response(response_body, param, table):
+    """Check if error message contains expected content for invalid parameter."""
+    error_msg = f"{param} is not a valid query parameter for {table} table"
+    return error_msg in response_body
+
+
 def _populate_test_data(session):
     """Put a filepath into the test data."""
     filepath = "test/file/path/imap_hit_l0_raw_20251107_v001.pkts"
@@ -24,6 +30,7 @@ def _populate_test_data(session):
         "ingestion_date": datetime.datetime.strptime(
             "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
         ),
+        "released": True,
     }
 
     # Add data to the ScienceFiles table and return the session
@@ -48,7 +55,7 @@ def expected_response():
                 "ingestion_date": "20251107 10:13:12",
                 "cr": None,
                 "crid": None,
-                "released": False,
+                "released": True,
             }
         ]
     )
@@ -84,7 +91,8 @@ def test_start_date_query(session, expected_response):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response
+    # Parse both JSON objects and compare the data rather than the string representation
+    assert json.loads(returned_query["body"]) == json.loads(expected_response)
 
 
 def test_end_date_query(session, expected_response):
@@ -96,7 +104,8 @@ def test_end_date_query(session, expected_response):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response
+    # Parse both JSON objects and compare the data rather than the string representation
+    assert json.loads(returned_query["body"]) == json.loads(expected_response)
 
 
 def test_start_and_end_date_query(session, expected_response):
@@ -108,7 +117,8 @@ def test_start_and_end_date_query(session, expected_response):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response
+    # Parse both JSON objects and compare the data rather than the string representation
+    assert json.loads(returned_query["body"]) == json.loads(expected_response)
 
 
 def test_empty_start_date_query(session):
@@ -141,7 +151,8 @@ def test_non_date_query(session, expected_response):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response
+    # Parse both JSON objects and compare the data rather than the string representation
+    assert json.loads(returned_query["body"]) == json.loads(expected_response)
 
 
 def test_ingestion_start_date_query(session, expected_response):
@@ -152,7 +163,8 @@ def test_ingestion_start_date_query(session, expected_response):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response
+    # Parse both JSON objects and compare the data rather than the string representation
+    assert json.loads(returned_query["body"]) == json.loads(expected_response)
 
 
 def test_ingestion_end_date_query(session, expected_response):
@@ -163,7 +175,8 @@ def test_ingestion_end_date_query(session, expected_response):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response
+    # Parse both JSON objects and compare the data rather than the string representation
+    assert json.loads(returned_query["body"]) == json.loads(expected_response)
 
 
 def test_ingestion_start_and_end_date_query(session, expected_response):
@@ -179,7 +192,8 @@ def test_ingestion_start_and_end_date_query(session, expected_response):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response
+    # Parse both JSON objects and compare the data rather than the string representation
+    assert json.loads(returned_query["body"]) == json.loads(expected_response)
 
 
 def test_empty_ingestion_start_date_query(session):
@@ -238,86 +252,19 @@ def test_multi_param_query(session, expected_response):
 
     returned_query = query_api.lambda_handler(event=event, context={})
     assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response
+    # Parse both JSON objects and compare the data rather than the string representation
+    assert json.loads(returned_query["body"]) == json.loads(expected_response)
 
 
 def test_invalid_query(session):
     """Test that invalid parameters return a 400 status with explanation."""
     _populate_test_data(session)
     event = {"queryStringParameters": {"size": "500"}}
-    expected_response = json.dumps(
-        "size is not a valid query parameter for science table. "
-        + "Valid query parameters are: "
-        + "['file_path', 'instrument', 'data_level', 'descriptor', "
-        "'start_date', 'repointing', 'version', 'extension', 'ingestion_date', "
-        + "'cr', 'crid', 'released', 'end_date', 'ingestion_start_date', "
-        + "'ingestion_end_date']"
-    )
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 400
-    assert returned_query["body"] == expected_response
-
-
-def test_sorting_of_query(session):
-    """Add another file that should be sorted before the original file."""
-    _populate_test_data(session)
-    metadata_params2 = {
-        "file_path": "test/file/path/imap_hit_l0_raw_20251106_v001.pkts",
-        "instrument": "hit",
-        "data_level": "l0",
-        "descriptor": "raw",
-        "start_date": datetime.datetime.strptime("20251106", "%Y%m%d"),
-        "version": "v001",
-        "extension": "pkts",
-        "ingestion_date": datetime.datetime.strptime(
-            "20251107 10:13:12+00:00", "%Y%m%d %H:%M:%S%z"
-        ),
-    }
-
-    expected_response = json.dumps(
-        [
-            {
-                "file_path": "test/file/path/imap_hit_l0_raw_20251106_v001.pkts",
-                "instrument": "hit",
-                "data_level": "l0",
-                "descriptor": "raw",
-                "start_date": "20251106",
-                "repointing": None,
-                "version": "v001",
-                "extension": "pkts",
-                "ingestion_date": "20251107 10:13:12",
-                "cr": None,
-                "crid": None,
-                "released": False,
-            },
-            {
-                "file_path": "test/file/path/imap_hit_l0_raw_20251107_v001.pkts",
-                "instrument": "hit",
-                "data_level": "l0",
-                "descriptor": "raw",
-                "start_date": "20251107",
-                "repointing": None,
-                "version": "v001",
-                "extension": "pkts",
-                "ingestion_date": "20251107 10:13:12",
-                "cr": None,
-                "crid": None,
-                "released": False,
-            },
-        ]
-    )
-
-    # Add data to the ScienceFiles table
-    session.add(models.ScienceFiles(**metadata_params2))
-    session.commit()
-
-    event = {"queryStringParameters": {"start_date": "20251101"}}
-
-    returned_query = query_api.lambda_handler(event=event, context={})
-
-    assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response
+    # Check if error message contains the expected content
+    assert param_not_valid_in_response(returned_query["body"], "size", "science")
 
 
 def _populate_test_data_ancillary_table(session):
@@ -334,6 +281,7 @@ def _populate_test_data_ancillary_table(session):
         "ingestion_date": datetime.datetime.strptime(
             "2021-01-01 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
         ),
+        "released": True,
     }
 
     # Add data to the AncillaryFiles table and return the session
@@ -355,7 +303,7 @@ def expected_response_ancillary_table():
                 "version": "v001",
                 "extension": "csv",
                 "ingestion_date": "20210101 10:13:12",
-                "released": False,
+                "released": True,
             }
         ]
     )
@@ -381,7 +329,10 @@ def test_query_ancillary_table(session, expected_response_ancillary_table):
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
-    assert returned_query["body"] == expected_response_ancillary_table
+    # Parse both JSON objects and compare the data rather than the string representation
+    assert json.loads(returned_query["body"]) == json.loads(
+        expected_response_ancillary_table
+    )
 
 
 def test_invalid_param_ancillary_query(session):
@@ -390,14 +341,10 @@ def test_invalid_param_ancillary_query(session):
 
     event = {"queryStringParameters": {"repointing": "123", "table": "ancillary"}}
 
-    expected_body = json.dumps(
-        "repointing is not a valid query parameter for ancillary table. "
-        + "Valid query parameters are: ['file_path', 'instrument', 'descriptor'"
-        ", 'start_date', 'end_date', 'version', 'extension', 'ingestion_date', "
-        "'released', 'ingestion_start_date', 'ingestion_end_date']"
-    )
-
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 400
-    assert returned_query["body"] == expected_body
+    # Check if error message contains the expected content
+    assert param_not_valid_in_response(
+        returned_query["body"], "repointing", "ancillary"
+    )

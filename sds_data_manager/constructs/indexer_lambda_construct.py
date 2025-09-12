@@ -108,6 +108,7 @@ class IndexerLambda(Construct):
             {"prefix": f"imap/{instrument}/"} for instrument in VALID_INSTRUMENTS
         ]
         science_event_prefixes.append({"prefix": "imap/ancillary/"})
+        science_event_prefixes.append({"prefix": "imap/quicklook/"})
         imap_data_arrival_rule = events.Rule(
             self,
             "ImapDataArrival",
@@ -157,6 +158,7 @@ class SPICEIndexerLambda(Construct):
         layers: list,
         rds_security_group,
         data_bucket: s3.Bucket,
+        data_access_url: str = "",
         **kwargs,
     ) -> None:
         """Construct the EFS lambdas.
@@ -181,6 +183,10 @@ class SPICEIndexerLambda(Construct):
             The RDS security group
         data_bucket : obj
             The data bucket
+        data_access_url : str, optional
+            The data access URL to use for this job, by default the empty string.
+            You should set this to the appropriate API endpoint, e.g.
+            https://api.dev.imap-mission.com
         kwargs : dict
             Keyword arguments
 
@@ -230,6 +236,7 @@ class SPICEIndexerLambda(Construct):
             security_groups=[rds_security_group],
             environment={
                 "IMAP_DATA_DIR": "/tmp",  # noqa: S108
+                "IMAP_DATA_ACCESS_URL": data_access_url,
                 "SECRET_NAME": db_secret_name,
                 "S3_BUCKET": data_bucket.bucket_name,
             },

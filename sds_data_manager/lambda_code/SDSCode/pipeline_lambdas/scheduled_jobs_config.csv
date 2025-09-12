@@ -1,0 +1,4 @@
+# cron schedule expressions are "cron(minutes hours day-of-month month day-of-week year)"
+# For more information on available values see:
+# https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html
+cron(20 6 * * ? *), glows, l3b, ion-rate-profile

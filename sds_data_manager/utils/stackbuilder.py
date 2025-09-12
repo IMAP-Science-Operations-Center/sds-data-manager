@@ -31,6 +31,7 @@ from sds_data_manager.constructs import (
     packet_downloader_lambda_construct,
     processing_construct,
     route53_hosted_zone,
+    scheduled_job_lambda,
     sds_api_manager_construct,
     sqs_construct,
     website_hosting,
@@ -229,6 +230,17 @@ def build_sds(
         layers=[db_lambda_layer],
     )
 
+    account_name = sdc_stack.node.get_context("account_name")
+    # once we have the account_name, get that section out of cdk.json
+    account_config = sdc_stack.node.get_context(account_name)
+    domain_name = account_config.get("domain_name", "no-domain-set")
+    # https://api.imap-mission.com
+    # https://api.dev.imap-mission.com
+    # Append the /api-key so that these jobs are able to be authenticated
+    # to access the data and upload results as necessary.
+    general_data_access_url = f"https://api.{domain_name}"
+    api_key_data_access_url = f"{general_data_access_url}/api-key"
+
     # This valid instrument list is from imap-data-access package
     processing = processing_construct.ProcessingConstruct(
         sdc_stack, "ProcessingConstruct", vpc=networking.vpc
@@ -236,7 +248,9 @@ def build_sds(
     for instrument in imap_data_access.VALID_INSTRUMENTS:
         for step in ["", "-l3"]:
             # "swe" or "swe-l3"
-            processing.add_job(f"{instrument.lower()}{step}")
+            processing.add_job(
+                f"{instrument.lower()}{step}", data_access_url=api_key_data_access_url
+            )
 
     # Create SQS pipeline for each instrument and add it to instrument_sqs
     file_arrive_sqs_construct = sqs_construct.SqsConstruct(
@@ -262,6 +276,18 @@ def build_sds(
         layers=[db_lambda_layer, spice_lambda_layer],
     )
 
+    scheduled_job_lambda.ScheduledJobLambda(
+        scope=sdc_stack,
+        construct_id="ScheduledJobLambda",
+        env=env,
+        data_bucket=data_bucket.data_bucket,
+        code=lambda_code,
+        rds_construct=rds_construct,
+        rds_security_group=rds_construct.rds_security_group,
+        vpc=networking.vpc,
+        layers=[db_lambda_layer, spice_lambda_layer],
+    )
+
     # Create lambda that mounts EFS and writes SPICE files to the EFS and the database
     indexer_lambda_construct.SPICEIndexerLambda(
         scope=sdc_stack,
@@ -273,6 +299,8 @@ def build_sds(
         layers=[db_lambda_layer, spice_lambda_layer],
         rds_security_group=rds_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
+        # SPICE files are all public, so no need to use the api-key URL
+        data_access_url=general_data_access_url,
     )
 
     # I-ALiRT Stack
@@ -313,6 +341,7 @@ def build_sds(
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
         efs_access_point=ialirt_efs_instance.spice_access_point,
+        data_access_url=general_data_access_url,
     )
 
     # I-ALiRT IOIS archive lambda (facilitates dynamodb to s3)
