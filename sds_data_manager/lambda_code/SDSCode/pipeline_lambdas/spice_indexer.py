@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 import boto3
+import imap_data_access
 import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy.dialects.postgresql import insert
@@ -124,7 +125,14 @@ def furnish_best_spice_file(kernel_type: str):
     kernel_filename = json.loads(metakernel_response["body"])[0]
     logger.info(f"Furnishing the latest {kernel_type} kernel: {kernel_filename}")
     # Download the latest kernel file
-    highest_version_spice_file = download_from_s3(kernel_filename)
+    # Convert this into an s3 key
+    # Relative to our base directory to trim off the innitial path
+    s3_key = str(
+        SPICEFilePath(kernel_filename)
+        .construct_path()
+        .relative_to(imap_data_access.config["DATA_DIR"])
+    )
+    highest_version_spice_file = download_from_s3(s3_key)
     logger.info(f"Downloaded SPICE file: {highest_version_spice_file}")
     # Furnish the SPICE file
     spiceypy.furnsh(str(highest_version_spice_file))
