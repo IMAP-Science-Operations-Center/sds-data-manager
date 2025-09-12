@@ -99,7 +99,7 @@ def get_latest_spice_kernels(kernels: list[str], url: str) -> ProcessingInputCol
     kernels : list[str]
         List of SPICE kernel categories to collect.
     url: str
-        AWS account name.
+        URL to download the kernels from.
 
     Returns
     -------
