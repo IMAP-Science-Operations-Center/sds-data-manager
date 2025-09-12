@@ -299,8 +299,6 @@ def build_sds(
         layers=[db_lambda_layer, spice_lambda_layer],
         rds_security_group=rds_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
-        # SPICE files are all public, so no need to use the api-key URL
-        data_access_url=general_data_access_url,
     )
 
     # I-ALiRT Stack

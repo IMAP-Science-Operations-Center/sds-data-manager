@@ -80,7 +80,9 @@ def _insert_test_file(session, filename, s3_path, intervals, upload_time=0):
     session.commit()
 
 
-@patch("sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download")
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download_from_s3"
+)
 def test_s3_spice_files(mock_download, session, events_client, s3_client):
     """Test s3 event.
 
@@ -237,7 +239,9 @@ def test_s3_spin_files(session, s3_client, events_client):
     assert spin_table_rows[1].version == "02"
 
 
-@patch("sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download")
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download_from_s3"
+)
 def test_s3_repoint_files(mock_download, session, s3_client, events_client):
     """Test s3 event for repoint files."""
     current_path = os.path.dirname(os.path.abspath(__file__))
@@ -317,7 +321,9 @@ def test_send_spice_event(session, events_client, s3_client):
         spice_indexer.lambda_handler(event, None)
 
 
-@patch("sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download")
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download_from_s3"
+)
 def test_index_pointing_data_updates_null_values(mock_download, session, tmpdir):
     """Test that Null values in the pointing table are updated."""
     new_repoint_file = os.path.join(tmpdir, "test_repoint.csv")

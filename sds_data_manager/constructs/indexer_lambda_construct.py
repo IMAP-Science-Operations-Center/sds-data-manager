@@ -158,7 +158,6 @@ class SPICEIndexerLambda(Construct):
         layers: list,
         rds_security_group,
         data_bucket: s3.Bucket,
-        data_access_url: str = "",
         **kwargs,
     ) -> None:
         """Construct the EFS lambdas.
@@ -236,7 +235,6 @@ class SPICEIndexerLambda(Construct):
             security_groups=[rds_security_group],
             environment={
                 "IMAP_DATA_DIR": "/tmp",  # noqa: S108
-                "IMAP_DATA_ACCESS_URL": data_access_url,
                 "SECRET_NAME": db_secret_name,
                 "S3_BUCKET": data_bucket.bucket_name,
             },
