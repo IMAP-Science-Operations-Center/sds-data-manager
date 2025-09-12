@@ -17,6 +17,7 @@ class IalirtCoverageConstruct(Construct):
         construct_id: str,
         ialirt_bucket: aws_s3.Bucket,
         docker_path: str = "sds_data_manager/lambda_code",
+        data_access_url: str = "",
         **kwargs,
     ) -> None:
         """Create ialirt coverage files.
@@ -31,20 +32,15 @@ class IalirtCoverageConstruct(Construct):
             The data bucket.
         docker_path : str
             Path to the Dockerfile.
+        data_access_url : str, optional
+            The data access URL to use for this job, by default the empty string.
+            You should set this to the appropriate API endpoint, e.g.
+            https://api.dev.imap-mission.com
         kwargs : dict
             Keyword arguments.
 
         """
         super().__init__(scope, construct_id, **kwargs)
-
-        # TODO: change once new code is merged in.
-        account_name = self.node.get_context("account_name")
-        # once we have the account_name, get that section out of cdk.json
-        account_config = self.node.get_context(account_name)
-        domain_name = account_config.get("domain_name", "no-domain-set")
-        # https://api.imap-mission.com
-        # https://api.dev.imap-mission.com
-        data_access_url = f"https://api.{domain_name}"
 
         # Create Lambda Function
         ialirt_coverage_lambda = self.create_coverage_lambda(

@@ -355,6 +355,7 @@ def build_sds(
         scope=ialirt_stack,
         construct_id="IalirtCoverage",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
+        data_access_url=general_data_access_url,
     )
 
     # I-ALiRT IOIS realtime lambda (facilitates creating realtime json in s3)

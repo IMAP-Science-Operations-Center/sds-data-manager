@@ -65,7 +65,7 @@ class IalirtProcessing(Construct):
 
         # Determine the latest tag based on the account name
         if account_name == "prod":
-            self.latest_name = "latest"
+            self.latest_name = "latest_prod"
         else:
             self.latest_name = "latest_dev"
 
