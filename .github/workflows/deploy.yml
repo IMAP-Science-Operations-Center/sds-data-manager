@@ -62,4 +62,4 @@ jobs:
           ACCOUNT_NAME: ${{ env.account_name }}
         run: |
           # poetry run to get the environment we installed everything into
-          poetry run cdk deploy --all --context account_name=$ACCOUNT_NAME --context alarm_email="$ALARM_EMAIL" --require-approval never
+          poetry run cdk deploy --all --context account_name=$ACCOUNT_NAME --require-approval never
