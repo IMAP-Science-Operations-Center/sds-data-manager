@@ -645,6 +645,7 @@ swapi, ancillary, instrument-response-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, efficiency-lut, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
