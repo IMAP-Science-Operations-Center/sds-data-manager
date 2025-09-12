@@ -49,6 +49,29 @@ def check_for_rsync_failure(
     return False
 
 
+def publish_failure_metric():
+    """
+    Publish a custom CloudWatch metric for rsync failure.
+
+    This metric is used to trigger alarms when a failure is detected.
+    """
+    cloudwatch = boto3.client("cloudwatch")
+    cloudwatch.put_metric_data(
+        Namespace="IMAP/Ialirt",
+        MetricData=[
+            {
+                "MetricName": "RsyncFailures",
+                "Dimensions": [
+                    {"Name": "Function", "Value": "ialirt-rsync-alarm"},
+                ],
+                "Unit": "Count",
+                "Value": 1,
+            },
+        ],
+    )
+    logger.info("Published CloudWatch metric: IMAP/Ialirt::RsyncFailures = 1")
+
+
 def lambda_handler(event, context):
     """Check for 'command failed: rsync' messages in recent logs.
 
@@ -88,5 +111,8 @@ def lambda_handler(event, context):
         return {"statusCode": 204, "body": ""}
 
     found = check_for_rsync_failure(s3_client, filenames, bucket)
+
+    if found:
+        publish_failure_metric()
 
     return {"found_rsync_failure": found}

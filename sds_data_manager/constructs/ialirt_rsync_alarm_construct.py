@@ -6,6 +6,18 @@ from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from constructs import Construct
+from aws_cdk import aws_ssm as ssm
+
+from aws_cdk import (
+    aws_cloudwatch as cloudwatch,
+)
+from aws_cdk import (
+    aws_cloudwatch_actions as cloudwatch_actions,
+)
+from aws_cdk import aws_sns as sns
+from aws_cdk import aws_sns_subscriptions as subs
+
+from typing import Optional
 
 
 class IalirtRsyncAlarmConstruct(Construct):
@@ -41,6 +53,14 @@ class IalirtRsyncAlarmConstruct(Construct):
         ialirt_rsync_lambda = self.create_realtime_lambda(ialirt_bucket, code)
         # Create Event Rule
         self.create_event_rule(ialirt_bucket, ialirt_rsync_lambda)
+        # Parameter store lookup.
+        # Note: this must be run once for each account:
+        # aws ssm put-parameter --name /imap/ialirt/alarm_email
+        # --value ialirt@example.com --type String --overwrite
+        rsync_alarm_email = ssm.StringParameter.value_for_string_parameter(
+            self, "/imap/ialirt/rsync_alarm_email"
+        )
+        self.setup_monitoring(rsync_alarm_email)
 
     def create_realtime_lambda(
         self,
@@ -113,3 +133,38 @@ class IalirtRsyncAlarmConstruct(Construct):
 
         # Add the Lambda function as the target for the rules
         ialirt_log_arrival_rule.add_target(targets.LambdaFunction(ialirt_rsync_lambda))
+
+    def setup_monitoring(self, alarm_email: str):
+        """Create CloudWatch alarm and notify via SNS if rsync failures occur."""
+
+        alarm_topic = sns.Topic(
+            self,
+            "IalirtRsyncAlarmTopic",
+            display_name="I-ALiRT Rsync Failure Alarm Notifications",
+        )
+        alarm_topic.add_subscription(subs.EmailSubscription(alarm_email))
+
+        # Metric for rsync failures (emitted from Lambda)
+        rsync_metric = cloudwatch.Metric(
+            namespace="IMAP/Ialirt",
+            metric_name="IalirtRsyncFailures",
+            period=Duration.minutes(5),
+            statistic="Sum",
+            dimensions_map={"Function": "ialirt-rsync-alarm"},
+        )
+
+        alarm = cloudwatch.Alarm(
+            self,
+            "IalirtRsyncFailureAlarm",
+            metric=rsync_metric,
+            threshold=1,  # >=1 means a failure happened
+            evaluation_periods=1,  # one 5-minute period
+            datapoints_to_alarm=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+            alarm_description="Alarm if rsync failure is detected in Lambda output.",
+        )
+
+        alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
+
+        return alarm
