@@ -31,7 +31,6 @@ from sds_data_manager.constructs import (
     packet_downloader_lambda_construct,
     processing_construct,
     route53_hosted_zone,
-    scheduled_job_lambda,
     sds_api_manager_construct,
     sqs_construct,
     website_hosting,
@@ -260,18 +259,6 @@ def build_sds(
         rds_security_group=rds_construct.rds_security_group,
         vpc=networking.vpc,
         sqs_queues=[instrument_sqs, instrument_delay_sqs],
-        layers=[db_lambda_layer, spice_lambda_layer],
-    )
-
-    scheduled_job_lambda.ScheduledJobLambda(
-        scope=sdc_stack,
-        construct_id="ScheduledJobLambda",
-        env=env,
-        data_bucket=data_bucket.data_bucket,
-        code=lambda_code,
-        rds_construct=rds_construct,
-        rds_security_group=rds_construct.rds_security_group,
-        vpc=networking.vpc,
         layers=[db_lambda_layer, spice_lambda_layer],
     )
 

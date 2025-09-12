@@ -137,18 +137,12 @@ class BatchStarterLambda(Construct):
         )
 
         # Set up eventBridge rules to trigger batch starter lambda.
-        # create one permission for Cadence rules and one for Scheduled rules
+        # create one permission for all eventbridge rules
         self.instrument_lambda.add_permission(
-            "AllowEventBridgeInvokeCadence",
+            "AllowEventBridgeInvoke",
             principal=iam.ServicePrincipal("events.amazonaws.com"),
             action="lambda:InvokeFunction",
             source_arn=f"arn:aws:events:{env.region}:{env.account}:rule/ProcessingCadenceJob*",
-        )
-        self.instrument_lambda.add_permission(
-            "AllowEventBridgeInvokeScheduled",
-            principal=iam.ServicePrincipal("events.amazonaws.com"),
-            action="lambda:InvokeFunction",
-            source_arn=f"arn:aws:events:{env.region}:{env.account}:rule/ProcessingScheduledJob*",
         )
         # Many l2 jobs create maps and need 3-12 months worth of data to run.
         # Create eventBridge rules to trigger:
