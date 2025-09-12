@@ -23,6 +23,7 @@ class IalirtIngestLambda(Construct):
         vpc: ec2.Vpc,
         efs_access_point: efs.AccessPoint,
         docker_path: str = "sds_data_manager/lambda_code",
+        data_access_url: str = "",
         **kwargs,
     ) -> None:
         """IalirtIngestLambda Stack.
@@ -41,6 +42,10 @@ class IalirtIngestLambda(Construct):
             EFS access point to mount inside the Lambda function.
         docker_path : str
             Path to the Dockerfile.
+        data_access_url : str, optional
+            The data access URL to use for this job, by default the empty string.
+            You should set this to the appropriate API endpoint, e.g.
+            https://api.dev.imap-mission.com
         kwargs : dict
             Keyword arguments.
 
@@ -53,14 +58,6 @@ class IalirtIngestLambda(Construct):
 
         # Create DynamoDB Table
         self.algorithm_data_table = self.create_algorithm_dynamodb_table()
-
-        account_name = self.node.get_context("account_name")
-        # once we have the account_name, get that section out of cdk.json
-        account_config = self.node.get_context(account_name)
-        domain_name = account_config.get("domain_name", "no-domain-set")
-        # https://api.imap-mission.com
-        # https://api.dev.imap-mission.com
-        data_access_url = f"https://api.{domain_name}"
 
         # Create Lambda Function
         self.ialirt_ingest_lambda = self.create_lambda_function(
