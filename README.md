@@ -118,8 +118,19 @@ path prefix on the front to indicate it is a restricted endpoint. Examples:
 - `/api-key/query`: URL to query for private/team files in addition to public files. Uses API keys
   for authentication, which is primarily used by automated scripts at team institutions for data access.
 
-#### Key management
+#### API Key management
 
 Management of these keys is done through a script located at `sds_data_manager/lambda_code/authorization`.
 That script can add, remove, and list the current keys. To add keys, add the name and e-mail of the associated
 user or account and get returned an API Key that you can then give to the external user for access.
+
+For example from the command line with the proper AWS credentials:
+
+```bash
+python sds_data_manager/lambda_code/authorization/manage_api_keys.py list
+python sds_data_manager/lambda_code/authorization/manage_api_keys.py add <owner> <email>
+python sds_data_manager/lambda_code/authorization/manage_api_keys.py remove <key>
+AWS_PROFILE=imap-sdc-dev AWS_DEFAULT_REGION=us-west-2 \
+  python sds_data_manager/lambda_code/authorization/manage_api_keys.py \
+      add "First Last" "user@example.com"
+```

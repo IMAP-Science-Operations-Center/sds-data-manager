@@ -43,9 +43,12 @@ def test_scheduled_processing_event(mock_read_scheduled_job_config, session):
         ],
     }
 
+    expected_start_date = dt.datetime.now().strftime("%Y%m%d")
+
     with (
         patch.object(batch_starter, "BATCH_CLIENT") as mock_batch_client,
     ):
+        # call twice to ensure we submit a job each time the event is triggered
         lambda_handler({"scheduled": "cron(20 6 * * ? *)"}, context)
 
         # Verify we submit the glows daily job
@@ -63,11 +66,11 @@ def test_scheduled_processing_event(mock_read_scheduled_job_config, session):
                     "--descriptor",
                     "ion-rate-profile",
                     "--start-date",
-                    "20000101",
+                    expected_start_date,
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_glows_l3b_ion-rate-profile-4f53cda1_20000101_v001.json",
+                    f"imap_glows_l3b_ion-rate-profile-4f53cda1_{expected_start_date}_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -94,11 +97,11 @@ def test_scheduled_processing_event(mock_read_scheduled_job_config, session):
                             "--descriptor",
                             "h90-ena-h-sf-sp-full-hae-6deg-3mo",
                             "--start-date",
-                            "20000101",
+                            expected_start_date,
                             "--version",
                             "v001",
                             "--dependency",
-                            "imap_hi_l3_h90-ena-h-sf-sp-full-hae-6deg-3mo-4f53cda1_20000101_v001.json",
+                            f"imap_hi_l3_h90-ena-h-sf-sp-full-hae-6deg-3mo-4f53cda1_{expected_start_date}_v001.json",
                             "--upload-to-sdc",
                         ]
                     },
@@ -117,11 +120,11 @@ def test_scheduled_processing_event(mock_read_scheduled_job_config, session):
                             "--descriptor",
                             "ilo-ena-h-sf-sp-full-hae-6deg-3mo",
                             "--start-date",
-                            "20000101",
+                            expected_start_date,
                             "--version",
                             "v001",
                             "--dependency",
-                            "imap_lo_l3_ilo-ena-h-sf-sp-full-hae-6deg-3mo-4f53cda1_20000101_v001.json",
+                            f"imap_lo_l3_ilo-ena-h-sf-sp-full-hae-6deg-3mo-4f53cda1_{expected_start_date}_v001.json",
                             "--upload-to-sdc",
                         ]
                     },
@@ -162,17 +165,21 @@ def test_scheduled_job_passes_repointing(mock_read_job_config, session):
     session.add_all(records)
     session.commit()
 
+    expected_start_date = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d")
+
     with (
         patch.object(batch_starter, "try_to_submit_job") as mock_submit,
     ):
         repoint_input = RepointInput(repointing_file_name)
         expected_processing_input = ProcessingInputCollection(repoint_input)
-        events = {"scheduled": "cron(21 6 * * ? *)"}
+        events = {"scheduled": "cron(21 6 * * ? *)", "version": 5}
         lambda_handler(events, context)
-        mock_submit.assert_called_with(
-            session,
-            glows_job,
-            "20000101",
-            "v001",
-            expected_processing_input.serialize(),
-        )
+
+        assert 1 == mock_submit.call_count
+        [sess, job, start_date, version, deps] = mock_submit.call_args_list[0].args
+
+        assert session == sess
+        assert glows_job == job
+        assert expected_start_date == start_date
+        assert "v005" == version
+        assert expected_processing_input.serialize() == deps

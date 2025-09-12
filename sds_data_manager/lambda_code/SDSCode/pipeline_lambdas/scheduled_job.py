@@ -44,12 +44,14 @@ def scheduled_processing_event(session, events):
 
     processing_input_collection = ProcessingInputCollection(*processing_inputs)
 
+    version = events.get("version") or 1
+
     for job in triggered_jobs:
         batch_starter.try_to_submit_job(
             session,
             job,
-            "20000101",
-            "v001",
+            dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d"),
+            f"v{version:03}",
             processing_input_collection.serialize(),
         )
 
