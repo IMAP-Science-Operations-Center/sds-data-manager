@@ -126,7 +126,7 @@ def furnish_best_spice_file(kernel_type: str):
     logger.info(f"Furnishing the latest {kernel_type} kernel: {kernel_filename}")
     # Download the latest kernel file
     # Convert this into an s3 key
-    # Relative to our base directory to trim off the innitial path
+    # Relative to our base directory to trim off the initial path
     s3_key = str(
         SPICEFilePath(kernel_filename)
         .construct_path()
