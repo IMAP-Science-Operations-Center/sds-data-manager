@@ -13,7 +13,6 @@ from . import (
     batch_starter,
     dependency,
 )
-from .batch_starter import dependency_hash
 from .scheduled_job_config_reader import read_scheduled_job_config
 
 logger = logging.getLogger(__name__)
@@ -97,7 +96,9 @@ def try_to_submit_job(
     # release
     # The descriptor should include a hash of the serialized dependencies.
     # This makes it unique for this file and set of dependencies.
-    dep_descriptor = f"{descriptor}-{dependency_hash(serialized_dependencies)}"
+    dep_descriptor = (
+        f"{descriptor}-{batch_starter.dependency_hash(serialized_dependencies)}"
+    )
     dependency_file = DependencyFilePath.generate_from_inputs(
         instrument=instrument,
         data_level=data_level,
