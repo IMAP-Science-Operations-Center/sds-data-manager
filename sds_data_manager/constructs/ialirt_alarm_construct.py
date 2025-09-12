@@ -4,6 +4,7 @@ from typing import Optional
 
 from aws_cdk import (
     Duration,
+    RemovalPolicy,
     aws_s3,
 )
 from aws_cdk import (
@@ -12,6 +13,10 @@ from aws_cdk import (
 from aws_cdk import (
     aws_cloudwatch_actions as cloudwatch_actions,
 )
+from aws_cdk import aws_events as events
+from aws_cdk import aws_events_targets as targets
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as lambda_
 from aws_cdk import (
     aws_sns as sns,
 )
@@ -30,6 +35,7 @@ class IalirtAlarmConstruct(Construct):
         scope: Construct,
         construct_id: str,
         ialirt_bucket: aws_s3.Bucket,
+        code: lambda_.Code,
         **kwargs,
     ) -> None:
         """Create ialirt alarm.
@@ -42,6 +48,8 @@ class IalirtAlarmConstruct(Construct):
             A unique string identifier for this construct.
         ialirt_bucket : aws_s3.Bucket
             The data bucket to monitor.
+        code : lambda_.Code
+            Lambda code bundle.
         kwargs : dict
             Keyword arguments.
 
@@ -55,12 +63,13 @@ class IalirtAlarmConstruct(Construct):
         ialirt_alarm_email = ssm.StringParameter.value_for_string_parameter(
             self, "/imap/ialirt/alarm_email"
         )
-        self.setup_monitoring(ialirt_bucket, ialirt_alarm_email)
+        alarm = self.setup_monitoring(ialirt_bucket, ialirt_alarm_email)
+        self.create_reset_alarm_lambda(code, alarm.alarm_name)
 
     def setup_monitoring(self, ialirt_bucket, ialirt_alarm_email: Optional[str]):
         """Create SNS topic for CloudWatch alarm."""
         alarm_topic = sns.Topic(
-            self, "IalirtAlarmTopic", display_name="I-ALiRT Alarm Notifications"
+            self, "IalirtAlarmTopics", display_name="I-ALiRT Alarm Notifications"
         )
         if ialirt_alarm_email:
             alarm_topic.add_subscription(subs.EmailSubscription(ialirt_alarm_email))
@@ -69,7 +78,7 @@ class IalirtAlarmConstruct(Construct):
         put_metric = cloudwatch.Metric(
             namespace="AWS/S3",
             metric_name="PutRequests",
-            period=Duration.hours(24),  # aggregate per day
+            period=Duration.days(1),  # Check every day
             statistic="Sum",
             dimensions_map={
                 "BucketName": ialirt_bucket.bucket_name,
@@ -83,12 +92,48 @@ class IalirtAlarmConstruct(Construct):
             "IalirtNoPutsDay",
             metric=put_metric,
             threshold=1,  # < 1 put
-            evaluation_periods=1,  # single daily datapoint
-            datapoints_to_alarm=1,
+            # How many periods should it be evaluated before triggering the alarm.
+            evaluation_periods=1,  # 1 day total window
+            datapoints_to_alarm=1,  # all must be quiet
             treat_missing_data=cloudwatch.TreatMissingData.BREACHING,
             comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-            alarm_description="Alarm when no packets have arrived in the last day.",
+            alarm_description="Alarm when no packets have arrived.",
         )
         alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
 
         return alarm
+
+    def create_reset_alarm_lambda(self, code, alarm_name):
+        """Create a Lambda that resets the alarm daily using existing code."""
+        reset_lambda = lambda_.Function(
+            self,
+            "IalirtResetAlarmLambda",
+            function_name="ResetAlarmLambda",
+            code=code,
+            handler="IAlirtCode.ialirt_alarm.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            memory_size=512,
+            timeout=Duration.seconds(30),
+            environment={"ALARM_NAME": alarm_name},
+        )
+
+        lambda_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["cloudwatch:SetAlarmState"],
+            resources=["*"],
+        )
+
+        reset_lambda.add_to_role_policy(lambda_policy)
+        # Delete the Lambda when stack is deleted.
+        reset_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
+
+        # CloudWatch Event Rule (daily at 00:01 UTC)
+        # Reset alarm at this time.
+        rule = events.Rule(
+            self,
+            "IalirtResetAlarmSchedule",
+            schedule=events.Schedule.expression("cron(1 0 * * ? *)"),
+        )
+        rule.add_target(targets.LambdaFunction(reset_lambda))
+
+        return reset_lambda
