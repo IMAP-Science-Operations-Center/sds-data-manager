@@ -341,6 +341,7 @@ def build_sds(
         vpc=networking.vpc,
         efs_access_point=ialirt_efs_instance.spice_access_point,
         data_access_url=general_data_access_url,
+        account_name=account_name,
     )
 
     # I-ALiRT IOIS archive lambda (facilitates dynamodb to s3)

@@ -24,6 +24,7 @@ class IalirtIngestLambda(Construct):
         efs_access_point: efs.AccessPoint,
         docker_path: str = "sds_data_manager/lambda_code",
         data_access_url: str = "",
+        account_name: str = "dev",
         **kwargs,
     ) -> None:
         """IalirtIngestLambda Stack.
@@ -46,6 +47,8 @@ class IalirtIngestLambda(Construct):
             The data access URL to use for this job, by default the empty string.
             You should set this to the appropriate API endpoint, e.g.
             https://api.dev.imap-mission.com
+        account_name : str
+            The account name. Eg. 'prod' or 'dev'
         kwargs : dict
             Keyword arguments.
 
@@ -55,6 +58,7 @@ class IalirtIngestLambda(Construct):
         # EFS resources
         self.efs_access_point = efs_access_point
         self.vpc = vpc
+        self.account_name = account_name
 
         # Create DynamoDB Table
         self.algorithm_data_table = self.create_algorithm_dynamodb_table()
@@ -72,16 +76,21 @@ class IalirtIngestLambda(Construct):
 
     def create_algorithm_dynamodb_table(self) -> aws_dynamodb.Table:
         """Create and return the algorithm data product table."""
+        removal_policy = (
+            RemovalPolicy.RETAIN
+            if self.account_name == "prod"
+            else RemovalPolicy.DESTROY
+        )
+        point_in_time_recovery = True if self.account_name == "prod" else False
+
         self.algorithm_data_table = ddb.Table(
             self,
             "IalirtAlgorithmDataTable",
             table_name="ialirt-algorithm-table",
-            # Change to RemovalPolicy.RETAIN to keep the table after stack deletion.
-            # TODO: change to RETAIN in production.
-            removal_policy=RemovalPolicy.DESTROY,
+            # RemovalPolicy.RETAIN to keep the table after stack deletion.
+            removal_policy=removal_policy,
             # Restore data to any point in time within the last 35 days.
-            # TODO: change to True in production.
-            point_in_time_recovery=False,
+            point_in_time_recovery=point_in_time_recovery,
             # Partition key (PK) = APID.
             partition_key=ddb.Attribute(
                 name="apid",
