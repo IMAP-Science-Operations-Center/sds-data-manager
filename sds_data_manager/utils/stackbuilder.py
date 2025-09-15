@@ -396,6 +396,7 @@ def build_sds(
         vpc=networking.vpc,
         layers=[ialirt_spice_lambda_layer],
         algorithm_table=ingest.algorithm_data_table,
+        account_name=account_name,
     )
 
     ialirt_secret_name = "nexus-credentials"  # noqa

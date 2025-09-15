@@ -29,8 +29,9 @@ def is_released(s3_key):
     bool
         True if the file is released, False otherwise.
     """
-    if "test_data" in s3_key:
-        # Default to released for any test data files for our CI testing
+    if any(string in s3_key for string in ["test_data", "spice"]):
+        # Default to released for any test data files or
+        # SPICE kernels.
         return True
     try:
         filename = os.path.basename(s3_key)

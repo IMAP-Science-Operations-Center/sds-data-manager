@@ -7,6 +7,7 @@ from aws_cdk import aws_lambda as lambda_
 from constructs import Construct
 
 from .api_gateway_construct import ApiGateway
+from .sds_api_manager_construct import add_stable_route
 
 
 class IalirtApiManager(Construct):
@@ -23,6 +24,7 @@ class IalirtApiManager(Construct):
         vpc,
         layers: list,
         algorithm_table: ddb.Table,
+        account_name: str = "dev",
         **kwargs,
     ) -> None:
         """Initialize the SdsApiManagerConstruct.
@@ -47,6 +49,8 @@ class IalirtApiManager(Construct):
             List of Lambda layers arns
         algorithm_table : obj
             The algorithm DynamoDB table
+        account_name : str
+            The account name. Eg. 'prod' or 'dev'
         kwargs : dict
             Keyword arguments
         """
@@ -60,6 +64,12 @@ class IalirtApiManager(Construct):
                 f"{data_bucket.bucket_arn}/*",
             ],
         )
+
+        auth_route_prefixes = ["", "/authorized", "/api-key"]
+        if account_name == "prod":
+            restricted_route_prefixes = ["/api-key"]
+        else:
+            restricted_route_prefixes = auth_route_prefixes
 
         # log query API lambda
         log_query_api_lambda = lambda_.Function(
@@ -140,17 +150,13 @@ class IalirtApiManager(Construct):
                 actions=["s3:GetObject"],
                 principals=[iam.ArnPrincipal(download_api.role.role_arn)],
                 resources=[
-                    f"{data_bucket.bucket_arn}/logs/*",
                     f"{data_bucket.bucket_arn}/raw_records/*",
                 ],
             )
         )
 
-        # {proxy+} is used to allow for any pathParams after /ialirt-download/
-        api.add_route(
-            route="/ialirt-download/{proxy+}",
-            http_method="GET",
-            lambda_function=download_api,
+        add_stable_route(
+            api, "/ialirt-download", "GET", download_api, restricted_route_prefixes
         )
 
         # catalog API lambda
@@ -197,8 +203,10 @@ class IalirtApiManager(Construct):
         # Grant the lambda function read/write permissions on the DynamoDB table.
         algorithm_table.grant_read_write_data(ialirt_db_query_handler)
 
-        api.add_route(
-            route="/ialirt-db-query",
-            http_method="GET",
-            lambda_function=ialirt_db_query_handler,
+        add_stable_route(
+            api,
+            "/ialirt-db-query",
+            "GET",
+            ialirt_db_query_handler,
+            restricted_route_prefixes,
         )
