@@ -38,18 +38,18 @@ We will have a versioned image and latest image in the Nexus repo. The versioned
 #. Tag with the Nexus registry URL::
 
     docker tag ialirt:X.Y.Z docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y.Z
-    docker tag ialirt:X.Y.Z docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
+    docker tag ialirt:X.Y.Z docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest_{dev | prod}
 
 #. Push the image::
 
     docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y.Z
-    docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
+    docker push docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest_{dev | prod}
 
 #. Images may be viewed on the Nexus website: https://artifacts.pdmz.lasp.colorado.edu
 #. To verify that the latest image and the most recent version image are the same, run the following and compare the image IDs::
 
     docker inspect --format='{{.Id}}' docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:X.Y.Z
-    docker inspect --format='{{.Id}}' docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest
+    docker inspect --format='{{.Id}}' docker-registry.pdmz.lasp.colorado.edu/ialirt/ialirt:latest_{dev | prod}
 
 CDK Deployment
 ~~~~~~~~~~~~~
