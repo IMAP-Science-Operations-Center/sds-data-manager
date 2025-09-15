@@ -402,6 +402,10 @@ spacecraft_clock, spice, historical, lo, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1a, de, lo, l1b, de, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, de, HARD, DOWNSTREAM
+lo, ancillary, bad-times, lo, l1b, de, HARD, DOWNSTREAM
+lo, ancillary, sweep-table, lo, l1b, de, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1b, de, HARD, DOWNSTREAM
+repoint, repoint, historical, lo, l1b, de, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -423,7 +427,11 @@ lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 
 # TODO: add more dependencies for pset
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
-lo, ancillary, goodtimes, lo, l1c, pset, HARD, DOWNSTREAM
+lo, ancillary, good-times, lo, l1c, pset, HARD, DOWNSTREAM
+lo, ancillary, hydrogen-background, lo, l1c, pset, HARD, DOWNSTREAM
+lo, ancillary, oxygen-background, lo, l1c, pset, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1b, de, HARD, DOWNSTREAM
+repoint, repoint, historical, lo, l1b, de, HARD, DOWNSTREAM
 leapseconds, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 
