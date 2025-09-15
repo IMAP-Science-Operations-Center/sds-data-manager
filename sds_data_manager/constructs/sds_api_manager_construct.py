@@ -214,11 +214,12 @@ class SdsApiManager(Construct):
             layers=layers,
         )
 
-        api.add_route(
-            route="/spice-query",
-            http_method="GET",
-            lambda_function=spice_query_api_lambda,
-        )
+        for prefix in auth_route_prefixes:
+            api.add_route(
+                route=f"{prefix}/spice-query",
+                http_method="GET",
+                lambda_function=spice_query_api_lambda,
+            )
 
         # SPICE metakernel API lambda
         spice_metakernel_api_lambda = lambda_.Function(
@@ -240,11 +241,12 @@ class SdsApiManager(Construct):
             layers=layers,
         )
 
-        api.add_route(
-            route="/metakernel",
-            http_method="GET",
-            lambda_function=spice_metakernel_api_lambda,
-        )
+        for prefix in auth_route_prefixes:
+            api.add_route(
+                route=f"{prefix}/metakernel",
+                http_method="GET",
+                lambda_function=spice_metakernel_api_lambda,
+            )
 
         # download API lambda
         download_api = lambda_.Function(
@@ -352,8 +354,9 @@ class SdsApiManager(Construct):
         rds_secret.grant_read(grantee=upload_api_lambda)
         rds_secret.grant_read(grantee=batch_job_query_api_lambda)
 
-        api.add_route(
-            route="/spin-table",
-            http_method="GET",
-            lambda_function=universal_spin_table_handler,
-        )
+        for prefix in auth_route_prefixes:
+            api.add_route(
+                route=f"{prefix}/spin-table",
+                http_method="GET",
+                lambda_function=universal_spin_table_handler,
+            )
