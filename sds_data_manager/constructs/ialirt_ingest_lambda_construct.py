@@ -166,7 +166,7 @@ class IalirtIngestLambda(Construct):
                 file="IAlirtCode/Dockerfile.ingest",
             ),
             function_name="ialirt-ingest",
-            timeout=cdk.Duration.minutes(4),
+            timeout=cdk.Duration.minutes(10),
             memory_size=1000,
             role=lambda_role,
             vpc=self.vpc,
