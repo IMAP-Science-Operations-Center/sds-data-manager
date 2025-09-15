@@ -158,6 +158,9 @@ class IalirtApiManager(Construct):
         add_stable_route(
             api, "/ialirt-download", "GET", download_api, restricted_route_prefixes
         )
+        add_stable_route(
+            api, "/ialirt-download", "HEAD", download_api, restricted_route_prefixes
+        )
 
         # catalog API lambda
         catalog_api = lambda_.Function(
