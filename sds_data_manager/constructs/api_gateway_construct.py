@@ -155,11 +155,7 @@ class ApiGateway(Construct):
             cors_preflight={
                 "allow_headers": ["*"],
                 "allow_origins": ["*"],
-                "allow_methods": [
-                    apigwv2.CorsHttpMethod.GET,
-                    apigwv2.CorsHttpMethod.POST,
-                    apigwv2.CorsHttpMethod.OPTIONS,
-                ],
+                "allow_methods": [apigwv2.CorsHttpMethod.ANY],
             },
         )
 
