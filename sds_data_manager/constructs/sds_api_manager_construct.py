@@ -249,25 +249,31 @@ class SdsApiManager(Construct):
             )
 
         # download API lambda
-        download_api = lambda_.Function(
+        download_api_lambda = lambda_.Function(
             self,
             id="DownloadAPILambda",
             function_name="download-api-handler",
             code=code,
             handler="SDSCode.api_lambdas.download_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
+            allow_public_subnet=True,
+            vpc=vpc,
+            security_groups=[rds_security_group],
             timeout=cdk.Duration.minutes(1),
             environment={
                 "S3_BUCKET": data_bucket.bucket_name,
                 "REGION": env.region,
+                "SECRET_NAME": db_secret_name,
             },
             layers=layers,
         )
 
-        download_api.add_to_role_policy(s3_read_policy)
+        download_api_lambda.add_to_role_policy(s3_read_policy)
 
         # {proxy+} is used to allow for any pathParams after /download/
-        add_stable_route(api, "/download", "GET", download_api, auth_route_prefixes)
+        add_stable_route(
+            api, "/download", "GET", download_api_lambda, auth_route_prefixes
+        )
 
         universal_spin_table_handler = lambda_.Function(
             self,
@@ -349,6 +355,7 @@ class SdsApiManager(Construct):
         )
         rds_secret.grant_read(grantee=universal_spin_table_handler)
         rds_secret.grant_read(grantee=query_api_lambda)
+        rds_secret.grant_read(grantee=download_api_lambda)
         rds_secret.grant_read(grantee=spice_query_api_lambda)
         rds_secret.grant_read(grantee=spice_metakernel_api_lambda)
         rds_secret.grant_read(grantee=upload_api_lambda)
