@@ -123,7 +123,13 @@ def test_parse_outage_file(tmp_path: Path):
     assert outages == expected_outages
 
 
-def test_generate_and_upload_30_days(s3_client):
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.format_coverage_summary"
+)
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.generate_coverage")
+def test_generate_and_upload_30_days(
+    mock_generate_coverage, mock_format_coverage_summary, s3_client
+):
     """Test the generate_and_upload_30_days function."""
     bucket = "test-data-bucket"
     region = "us-west-2"
@@ -131,6 +137,15 @@ def test_generate_and_upload_30_days(s3_client):
 
     outages = {"Kiel": [("2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00.00Z")]}
     dsn = {"DSS-55": [("2026-09-22T08:00:00.00Z", "2026-09-22T09:00:00.00Z")]}
+
+    # Mock return values
+    mock_generate_coverage.return_value = (
+        {"DSS-55": ["mock coverage"]},
+        {"Kiel": ["mock outage"]},
+    )
+    mock_format_coverage_summary.return_value = (
+        "# I-ALiRT Coverage Summary\nKiel\nDSS-55\n"
+    )
 
     generate_and_upload_30_days(bucket, region, outages, dsn)
 
