@@ -21,6 +21,10 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage import (
 )
 
 
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.format_coverage_summary"
+)
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.generate_coverage")
 @patch("spiceypy.furnsh")
 @patch("imap_data_access.processing_input.ProcessingInputCollection.download_all_files")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.requests.get")
@@ -30,6 +34,8 @@ def test_lambda_handler(
     mock_requests_get,
     mock_download,
     mock_furnsh,
+    mock_generate_coverage,
+    mock_format_coverage_summary,
     s3_client,
 ):
     """Test the lambda_handler function."""
@@ -57,6 +63,11 @@ def test_lambda_handler(
         Path("/imap_ialirt_contact-schedule_20260922_v001.tsv"),
         {},
     )
+    mock_generate_coverage.return_value = (
+        {"DSS-55": ["some coverage"]},
+        {"Kiel": ["some outage"]},
+    )
+    mock_format_coverage_summary.return_value = "# I-ALiRT Coverage Summary\n"
 
     event = {
         "region": region,
@@ -147,6 +158,8 @@ def test_get_latest_spice_kernels(mock_get):
     mock_files = [
         "de440.bsp",
         "pck00011.tpc",
+        "naif0012.tls",
+        "imap_pred_20250401_20250501_v01.bsp",
     ]
 
     mock_response = MagicMock()
@@ -154,7 +167,14 @@ def test_get_latest_spice_kernels(mock_get):
     mock_get.return_value = mock_response
 
     result = get_latest_spice_kernels(
-        ["planetary_ephemeris", "planetary_constants"], "url"
+        [
+            "planetary_ephemeris",
+            "planetary_constants",
+            "leapseconds",
+            "ephemeris_predicted",
+            "ephemeris_90days",
+        ],
+        "url",
     )
     assert result.processing_input[0].filename_list == mock_files
 

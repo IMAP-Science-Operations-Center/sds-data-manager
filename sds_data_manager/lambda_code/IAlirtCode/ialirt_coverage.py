@@ -297,6 +297,9 @@ def lambda_handler(event, context):
         [
             "planetary_ephemeris",  # e.g., de440s.bsp
             "planetary_constants",  # e.g. pck00011.tpc
+            "leapseconds",
+            "ephemeris_predicted",
+            "ephemeris_90days",
         ],
         url,
     )
