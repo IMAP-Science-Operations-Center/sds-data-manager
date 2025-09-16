@@ -1,6 +1,7 @@
 """Lambda function to automate packet downloads and L0 file creation."""
 
 import logging
+import os
 from pathlib import Path
 
 import boto3
@@ -10,6 +11,8 @@ from imap_data_access import SPICEFilePath, webpoda
 S3_CLIENT = boto3.client("s3")
 # We need to access the webpoda-api-key
 SECRETS_MANAGER = boto3.client("secretsmanager")
+# We need to access the IMAP API key from SSM
+SSM_CLIENT = boto3.client("ssm")
 
 # Logger setup
 # Set default logging level to INFO, to also capture INFO for the underlying downloaders
@@ -106,6 +109,19 @@ def lambda_handler(event, context):
         }
     # Update the token to be used for use in subsequent requests
     imap_data_access.config["WEBPODA_TOKEN"] = response["SecretString"]
+
+    # Get the IMAP API key from SSM Parameter Store
+    ssm_parameter_name = os.environ.get(
+        "SSM_API_KEY_PARAMETER", "/imap-sdc/batch-jobs/api-key"
+    )
+    try:
+        ssm_response = SSM_CLIENT.get_parameter(
+            Name=ssm_parameter_name, WithDecryption=True
+        )
+        imap_data_access.config["API_KEY"] = ssm_response["Parameter"]["Value"]
+    except Exception as e:
+        logger.warning(f"Could not retrieve API key from SSM: {e}")
+        # Continue without API key - some operations might still work
 
     imap_data_access.config["DATA_DIR"] = Path("/tmp")  # noqa: S108
 

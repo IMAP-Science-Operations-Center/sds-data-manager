@@ -6,6 +6,7 @@ from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_s3_notifications as s3n
 from aws_cdk import aws_secretsmanager as secretsmanager
+from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 from imap_data_access import SPICEFilePath
 
@@ -66,11 +67,10 @@ class PacketDownloaderLambda(Construct):
             # We are downloading data, so make sure we have a longer timeout here
             timeout=cdk.Duration.minutes(15),
             memory_size=2048,
-            # Add environment variable with IMAP API key using CloudFormation
-            # dynamic reference. This keeps the actual value out of the template.
+            # Environment variables - API key will be retrieved from SSM at runtime
             environment={
-                "IMAP_API_KEY": "{{resolve:ssm-secure:/imap-sdc/batch-jobs/api-key}}",
                 "IMAP_DATA_ACCESS_URL": data_access_url,
+                "SSM_API_KEY_PARAMETER": "/imap-sdc/batch-jobs/api-key",
             },
         )
 
@@ -87,6 +87,14 @@ class PacketDownloaderLambda(Construct):
             self, "WebpodaSecret", "webpoda-token"
         )
         secret.grant_read(packet_lambda)
+
+        # Grant permission to read the API key from SSM Parameter Store
+        api_key_parameter = ssm.StringParameter.from_secure_string_parameter_attributes(
+            self,
+            "ApiKeyParameter",
+            parameter_name="/imap-sdc/batch-jobs/api-key",
+        )
+        api_key_parameter.grant_read(packet_lambda)
 
         # Notify the lambda whenever a new file matching our repoint filename is added
         data_bucket.add_event_notification(
