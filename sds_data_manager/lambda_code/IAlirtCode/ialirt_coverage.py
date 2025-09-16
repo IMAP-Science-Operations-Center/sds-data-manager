@@ -15,6 +15,10 @@ from imap_data_access.processing_input import (
     SPICEInput,
     SPICESource,
 )
+from imap_processing.ialirt.generate_coverage import (
+    format_coverage_summary,
+    generate_coverage,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -260,24 +264,10 @@ def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: di
 
     for i in range(30):
         day = today + timedelta(days=i)
-        # start_time = day.strftime("%Y-%m-%dT00:00:00Z")
+        start_time = day.strftime("%Y-%m-%dT00:00:00Z")
 
-        # Placeholder for after we import from imap_processing.
-        # coverage_dict, outage_dict = generate_coverage(start_time,
-        # outages, dsn)
-        # table_output = format_coverage_summary(coverage_dict, outage_dict, start_time)
-        table_output = (
-            "# I-ALiRT Coverage Summary\n"
-            "# Generated: 2026-09-22T00:00:00Z\n"
-            "# Stations: Kiel, DSS-55\n"
-            "# Time format: UTC (ISOC)\n"
-            "Time (UTC)                Kiel     DSS-55\n"
-            "-----------------------------------------\n"
-            "2026-09-22T07:00:00.000   1        0\n"
-            "2026-09-22T08:00:00.000   1        0\n"
-            "-----------------------------------------\n"
-            "Total Coverage Percent: 37.5%"
-        )
+        coverage_dict, outage_dict = generate_coverage(start_time, outages, dsn)
+        table_output = format_coverage_summary(coverage_dict, outage_dict, start_time)
 
         output_key = f"coverage/imap_ialirt_coverage_{day.strftime('%Y%m%d')}.json"
 
