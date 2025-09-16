@@ -40,7 +40,7 @@ def test_apigw_routes(template):
         "AWS::ApiGatewayV2::Api",
         props={
             "CorsConfiguration": {
-                "AllowMethods": ["GET", "POST", "OPTIONS"],
+                "AllowMethods": ["*"],
                 "AllowOrigins": ["*"],
             },
         },

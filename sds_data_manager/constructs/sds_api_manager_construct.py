@@ -274,6 +274,11 @@ class SdsApiManager(Construct):
         add_stable_route(
             api, "/download", "GET", download_api_lambda, auth_route_prefixes
         )
+        # NOTE: The frontend wants to be able to make a HEAD request to be able to
+        #       get the result without needing to follow the redirect.
+        add_stable_route(
+            api, "/download", "HEAD", download_api_lambda, auth_route_prefixes
+        )
 
         universal_spin_table_handler = lambda_.Function(
             self,
