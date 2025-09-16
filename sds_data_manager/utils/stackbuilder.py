@@ -221,16 +221,6 @@ def build_sds(
         account_name=account_name,
     )
 
-    # Packet Downloader Lambda
-    packet_downloader_lambda_construct.PacketDownloaderLambda(
-        scope=sdc_stack,
-        construct_id="PacketDownloaderLambda",
-        code=lambda_code,
-        data_bucket=data_bucket.data_bucket,
-        vpc=networking.vpc,
-        layers=[db_lambda_layer],
-    )
-
     account_name = sdc_stack.node.get_context("account_name")
     # once we have the account_name, get that section out of cdk.json
     account_config = sdc_stack.node.get_context(account_name)
@@ -241,6 +231,17 @@ def build_sds(
     # to access the data and upload results as necessary.
     general_data_access_url = f"https://api.{domain_name}"
     api_key_data_access_url = f"{general_data_access_url}/api-key"
+
+    # Packet Downloader Lambda
+    packet_downloader_lambda_construct.PacketDownloaderLambda(
+        scope=sdc_stack,
+        construct_id="PacketDownloaderLambda",
+        code=lambda_code,
+        data_bucket=data_bucket.data_bucket,
+        vpc=networking.vpc,
+        layers=[db_lambda_layer],
+        data_access_url=api_key_data_access_url,
+    )
 
     # This valid instrument list is from imap-data-access package
     processing = processing_construct.ProcessingConstruct(

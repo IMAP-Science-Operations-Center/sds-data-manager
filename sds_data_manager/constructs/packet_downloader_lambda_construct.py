@@ -21,6 +21,7 @@ class PacketDownloaderLambda(Construct):
         layers: list,
         data_bucket: s3.Bucket,
         vpc: ec2.Vpc,
+        data_access_url: str = "",
         **kwargs,
     ) -> None:
         """MonitoringLambda Construct.
@@ -39,6 +40,10 @@ class PacketDownloaderLambda(Construct):
             The S3 bucket to which the lambda will listen for events
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
+        data_access_url : str
+            The data access URL to use for this job, by default the empty string.
+            You should set this to the appropriate API endpoint, e.g.
+            https://api.dev.imap-mission.com
         kwargs : dict
             Keyword arguments
 
@@ -61,6 +66,12 @@ class PacketDownloaderLambda(Construct):
             # We are downloading data, so make sure we have a longer timeout here
             timeout=cdk.Duration.minutes(15),
             memory_size=2048,
+            # Add environment variable with IMAP API key using CloudFormation
+            # dynamic reference. This keeps the actual value out of the template.
+            environment={
+                "IMAP_API_KEY": "{{resolve:ssm-secure:/imap-sdc/batch-jobs/api-key}}",
+                "IMAP_DATA_ACCESS_URL": data_access_url,
+            },
         )
 
         # Allow the function to read/write from our bucket
