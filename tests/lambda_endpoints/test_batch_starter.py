@@ -26,6 +26,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
     RepointFiles,
     ScienceFiles,
     SPICEFiles,
+    SpinFiles,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     batch_starter,
@@ -2262,6 +2263,45 @@ def test_lambda_skip_processing_due_to_crid_check(session, caplog):
             sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
             lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
             version=1,
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_lo_bad-times_20240101_v002.csv",
+            instrument="lo",
+            descriptor="bad-times",
+            start_date=datetime(2024, 1, 1),
+            version="v002",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        AncillaryFiles(
+            file_path="/path/to/imap_lo_sweep-table_20240101_v002.csv",
+            instrument="lo",
+            descriptor="sweep-table",
+            start_date=datetime(2024, 1, 1),
+            version="v002",
+            extension="csv",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        RepointFiles(
+            file_path="/path/to/imap_2024_002_01.repoint.csv",
+            end_date=datetime(2024, 1, 2),
+            version="01",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        SpinFiles(
+            file_path="imap_2024_001_2024_001_01.spin.csv",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            version="01",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
         ),
     ]
     session.add_all(records)
