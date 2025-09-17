@@ -311,6 +311,11 @@ def build_sds(
         id="IAlirtSpiceDependencies",
         layer_dependencies_dir=str(layer_code_directory / "spice"),
     )
+    ialirt_db_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
+        scope=ialirt_stack,
+        id="IAlirtDatabaseDependencies",
+        layer_dependencies_dir=str(layer_code_directory / "database"),
+    )
 
     ialirt_root_certificate = None
     if domain is not None:
@@ -396,7 +401,7 @@ def build_sds(
         env=env,
         data_bucket=ialirt_bucket.ialirt_bucket,
         vpc=networking.vpc,
-        layers=[ialirt_spice_lambda_layer],
+        layers=[ialirt_spice_lambda_layer, ialirt_db_lambda_layer],
         algorithm_table=ingest.algorithm_data_table,
         account_name=account_name,
     )
