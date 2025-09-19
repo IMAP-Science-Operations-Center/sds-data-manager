@@ -6,11 +6,11 @@ for the account and region where the SSM parameter is stored.
 
 Usage:
   python manage_api_keys.py list
-  python manage_api_keys.py add <owner> <email>
+  python manage_api_keys.py add <owner> <email> <scope>
   python manage_api_keys.py remove <key>
   AWS_PROFILE=imap-sdc-dev AWS_DEFAULT_REGION=us-west-2 \
     python sds_data_manager/lambda_code/authorization/manage_api_keys.py \
-        add "First Last" "user@example.com"
+        add "First Last" "user@example.com" "full"
 
 Requires AWS credentials with SSM permissions.
 """
@@ -61,11 +61,14 @@ def list_keys():
     for k, meta in keys.items():
         owner = meta.get("owner", "?")
         email = meta.get("email", "?")
+        scope = meta.get("scope", "?")
         created = meta.get("created", "?")
-        print(f"- {k}\n    owner={owner}, email={email}, created={created}")
+        print(
+            f"- {k}\n    owner={owner}, email={email}, scope={scope}, created={created}"
+        )
 
 
-def add_key(owner, email):
+def add_key(owner, email, scope="full"):
     """Generate and add a new API key with owner and email metadata."""
     keys = get_keys()
     # Generate a secure random 32-byte hex key
@@ -76,6 +79,7 @@ def add_key(owner, email):
         "owner": owner,
         "email": email,
         "created": datetime.now().isoformat(),
+        "scope": scope,
     }
     put_keys(keys)
     print(f"Added key: {new_key}")
@@ -97,19 +101,21 @@ def main():
     """CLI entry point."""
     if len(sys.argv) < 2:
         print(
-            "Usage: python manage_api_keys.py [list|add|remove] <key> [owner] [email]"
+            "Usage: python manage_api_keys.py [list|add|remove] "
+            "<key> [owner] [email] [scope]"
         )
         sys.exit(1)
     cmd = sys.argv[1]
     if cmd == "list":
         list_keys()
-    elif cmd == "add" and len(sys.argv) == 4:
-        add_key(sys.argv[2], sys.argv[3])
+    elif cmd == "add" and len(sys.argv) == 5:
+        add_key(sys.argv[2], sys.argv[3], sys.argv[4])
     elif cmd == "remove" and len(sys.argv) == 3:
         remove_key(sys.argv[2])
     else:
         print(
-            "Usage: python manage_api_keys.py [list|add|remove] <key> [owner] [email]"
+            "Usage: python manage_api_keys.py [list|add|remove] "
+            "<key> [owner] [email] [scope]"
         )
         sys.exit(1)
 
