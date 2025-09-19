@@ -735,8 +735,8 @@ mag, l1b, burst-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
 mag, ancillary, l1d-calibration, mag, l1d, norm-srf, HARD, DOWNSTREAM
 mag, l1c, norm-mago, mag, l1d, norm-srf, HARD, DOWNSTREAM
 mag, l1c, norm-magi, mag, l1d, norm-srf, HARD, DOWNSTREAM
-mag, l1b, burst-mago, mag, l1d, norm-srf, SOFT, DOWNSTREAM
-mag, l1b, burst-magi, mag, l1d, norm-srf, SOFT, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1d, norm-srf, SOFT_TRIGGER, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1d, norm-srf, SOFT_TRIGGER, DOWNSTREAM
 mag, ancillary, l1d-calibration, mag, l1d, norm-srf, HARD, DOWNSTREAM
 
 imap_frames, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
