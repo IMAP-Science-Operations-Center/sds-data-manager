@@ -4,8 +4,10 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import boto3
+import imap_data_access
 from boto3.dynamodb.conditions import Key
 from imap_processing.cdf.utils import write_cdf
 from imap_processing.ialirt.utils.create_xarray import create_xarray_from_records
@@ -38,6 +40,8 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event))
 
+    imap_data_access.config["DATA_DIR"] = Path("/tmp")  # noqa: S108
+
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
     dynamodb = boto3.resource("dynamodb")
     algorithm_table = dynamodb.Table(algorithm_table_name)
@@ -57,6 +61,10 @@ def lambda_handler(event, context):
             Key("apid").eq(478) & Key("last_modified").between(start_iso, end_iso)
         ),
     )
+
+    if not response["Items"]:
+        logger.info("No new data to process.")
+        return response
 
     dataset = create_xarray_from_records(response["Items"])
     dataset.attrs["Data_version"] = "000"
