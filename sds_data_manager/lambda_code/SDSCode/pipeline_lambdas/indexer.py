@@ -348,11 +348,23 @@ def batch_event_handler(event):
     # We injected our table ID into the job name
     job_id = event["detail"]["jobName"].split("-")[-1]
 
-    # Convert startAt and stoppedAt to datetime with timezone
-    started_at_timestamp = event["detail"]["startedAt"]
-    started_at = datetime.fromtimestamp(started_at_timestamp / 1000, tz=timezone.utc)
-    stopped_at_timestamp = event["detail"]["stoppedAt"]
-    stopped_at = datetime.fromtimestamp(stopped_at_timestamp / 1000, tz=timezone.utc)
+    # Convert startedAt and stoppedAt to datetime with timezone
+    # These fields may not always be present, so use .get() and handle None
+    # Default to startedAt and fallback to createdAt if the job never started
+    started_at_timestamp = event["detail"].get(
+        "startedAt", event["detail"].get("createdAt")
+    )
+    stopped_at_timestamp = event["detail"].get("stoppedAt")
+    started_at = (
+        datetime.fromtimestamp(started_at_timestamp / 1000, tz=timezone.utc)
+        if started_at_timestamp is not None
+        else None
+    )
+    stopped_at = (
+        datetime.fromtimestamp(stopped_at_timestamp / 1000, tz=timezone.utc)
+        if stopped_at_timestamp is not None
+        else None
+    )
 
     with db.Session() as session:
         # Get the batch job by its ID
