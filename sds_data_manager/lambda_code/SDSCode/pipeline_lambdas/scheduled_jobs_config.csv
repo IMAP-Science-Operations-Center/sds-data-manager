@@ -2,3 +2,7 @@
 # For more information on available values see:
 # https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html
 cron(20 6 * * ? *), glows, l3b, ion-rate-profile
+
+cron(20 8 * * ? *), lo, l3, all-maps
+cron(20 8 * * ? *), hi, l3, all-maps
+cron(20 8 * * ? *), ultra, l3, all-maps
