@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy import select
 
@@ -17,7 +18,8 @@ from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer import (
-    index_pointing_data,
+    index_pointing_data, get_coverage_dictionary, MAXIMUM_J2000_INTERVAL, MAXIMUM_DATETIME_INTERVAL,
+    MAXIMUM_SCLK_INTERVAL,
 )
 
 
@@ -78,6 +80,29 @@ def _insert_test_file(session, filename, s3_path, intervals, upload_time=0):
     } | _irrelevant_data()
     session.add(models.SPICEFiles(**metadata_params))
     session.commit()
+
+
+@patch("sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.wnfetd")
+@patch("sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.wncard")
+@patch("sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.pckcov")
+def test_get_coverage_dictionary_left_out_of_range(mock_pckcov, mock_wncard, mock_wnfetd):
+    """Test coverage for get_coverage_dictionary when the left boundary is out of range."""
+    tests_path = Path(os.path.abspath(__file__)).parent.parent
+    test_spice_data_dir = tests_path / "test-data" / "test_spice_files"
+    with spiceypy.KernelPool(
+            [
+                str(test_spice_data_dir / "naif0012.tls"),
+                str(test_spice_data_dir / "imap_sclk_0012.tsc"),
+            ]
+    ) as kp:
+        mock_wncard.return_value = 1
+        mock_wnfetd.return_value = (
+                spiceypy.utc2et("2000-01-01T00:00:00"),
+                spiceypy.utc2et("2025-12-26T00:00:00"),
+        )
+        results_j2000, results_datetime, results_sclk = get_coverage_dictionary(Path("/foo/bar/earth_000101_251226_250929.bpc"))
+        assert results_j2000[0][0] == MAXIMUM_J2000_INTERVAL[0][0]
+        assert results_sclk[0][0] == MAXIMUM_SCLK_INTERVAL[0][0]
 
 
 @patch(

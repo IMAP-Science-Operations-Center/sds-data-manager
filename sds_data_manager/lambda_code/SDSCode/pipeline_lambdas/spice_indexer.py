@@ -197,6 +197,8 @@ def get_coverage_dictionary(spice_file: Path):
     for i_window in range(card):
         # 4) Retrieve the time span of each interval
         (left, right) = spiceypy.wnfetd(cover, i_window)
+        # Make sure that the left interval is not before the minimum mission time
+        left = max(left, MAXIMUM_J2000_INTERVAL[0][0])
         # 5) Throw out any singleton points. You cannot interpolate between these.
         if left != right:
             results_j2000.append([left, right])
