@@ -513,10 +513,10 @@ hit, l1b, standard-rates, hit, l2, standard-intensity, HARD, DOWNSTREAM
 hit, l1b, summed-rates, hit, l2, summed-intensity, HARD, DOWNSTREAM
 hit, l1b, sectored-rates, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
 
-hit, ancillary, l1b-to-l2-sectored-dt0-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
-hit, ancillary, l1b-to-l2-sectored-dt1-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
-hit, ancillary, l1b-to-l2-sectored-dt2-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
-hit, ancillary, l1b-to-l2-sectored-dt3-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-macropixel-dt0-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-macropixel-dt1-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-macropixel-dt2-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-macropixel-dt3-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
 
 hit, ancillary, l1b-to-l2-standard-dt0-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
 hit, ancillary, l1b-to-l2-standard-dt1-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
