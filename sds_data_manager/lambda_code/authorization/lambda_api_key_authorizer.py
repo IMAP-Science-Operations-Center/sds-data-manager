@@ -23,8 +23,6 @@ except Exception:
 
 def lambda_handler(event, context):
     """Get the API Key from the request header and check if it is valid."""
-    logger.info("Received event: %s", json.dumps(event))
-
     api_key = event.get("headers", {}).get("x-api-key", None)
     metadata = key_dict.get(api_key, {})
     scope = metadata.get("scope", "")
