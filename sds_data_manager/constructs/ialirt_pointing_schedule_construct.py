@@ -49,7 +49,7 @@ class IalirtPointingConstruct(Construct):
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
             self,
-            "IalirtPointingConstructRole",
+            "IalirtPointingLambdaRole",
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -67,7 +67,7 @@ class IalirtPointingConstruct(Construct):
                 file="IAlirtCode/Dockerfile.pointing",
             ),
             function_name="ialirt-pointing-schedule",
-            timeout=Duration.minutes(1),
+            timeout=Duration.minutes(5),
             memory_size=1000,
             role=lambda_role,
             environment={

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 
 import boto3
@@ -58,8 +59,8 @@ def lambda_handler(event, context):
     """Create pointing schedule files."""
     logger.info("Received event: %s", json.dumps(event))
 
-    bucket = event["detail"]["bucket"]["name"]
-    region = event["region"]
+    bucket = os.environ.get("S3_BUCKET")
+    region = os.environ.get("AWS_REGION")
 
     # Download latest SPICE kernels
     dependency_inputs = get_latest_spice_kernels(
