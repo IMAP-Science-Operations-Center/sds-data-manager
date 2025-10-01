@@ -47,6 +47,7 @@ def put_keys(keys):
             Value=value,
             Type="SecureString",
             Overwrite=True,
+            Tier="Advanced",
         )
         print(f"Updated {PARAM_NAME} with {len(keys)} key(s).")
     except Exception as e:
