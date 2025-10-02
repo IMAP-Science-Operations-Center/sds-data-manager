@@ -140,6 +140,7 @@ def build_sds(
         construct_id="ApiGateway",
         domain_construct=domain,
         certificate=root_certificate,
+        create_api_keys_table=True,  # Create the API keys table in SDC stack
     )
     api.deliver_to_sns(monitoring.sns_topic_notifications)
 
@@ -390,6 +391,7 @@ def build_sds(
         domain_construct=domain,
         certificate=ialirt_root_certificate,
         ialirt_prefix="IAlirt",
+        create_api_keys_table=False,  # Reference existing table from SDC stack
     )
     ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)
 
