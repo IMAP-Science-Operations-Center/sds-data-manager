@@ -30,11 +30,11 @@ def process_item_types(item: dict) -> dict:
     for key, value in item.items():
         # Vectors fields
         if isinstance(value, list):
-            result[key] = [int(v) if v % 1 == 0 else float(v) for v in value]
+            result[key] = [int(v) if v % 1 == 0 else round(float(v), 3) for v in value]
 
         # Scalar fields
         elif isinstance(value, Decimal):
-            result[key] = int(value) if value % 1 == 0 else float(value)
+            result[key] = int(value) if value % 1 == 0 else round(float(value), 3)
 
         else:
             result[key] = value
@@ -181,4 +181,14 @@ def lambda_handler(event, context):  # noqa: PLR0912
     items = response.get("Items", [])
     processed_items = [process_item_types(item) for item in items]
 
-    return {"statusCode": 200, "body": json.dumps(processed_items)}
+    if processed_items:
+        keys = processed_items[0].keys()
+        result = {
+            key: [item[key] for item in processed_items]
+            for key in keys
+            if key not in ("met", "ttj2000ns", "apid")
+        }
+    else:
+        result = {}
+
+    return {"statusCode": 200, "body": json.dumps(result)}
