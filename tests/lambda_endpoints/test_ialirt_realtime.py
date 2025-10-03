@@ -14,10 +14,10 @@ def test_lambda_handler3(s3_client):
     bucket = "test-data-bucket"
 
     file_contents = {
-        "logs/flight_iois_1.log.2025-212T16_55_27.531613": (
+        "logs/flight_iois_1.log.2025-212T16:55:27.531613": (
             "Thu Jul 31 16:32:38 UTC 2025\n2025/212-16:32:38.239 some log line\n"
         ),
-        "logs/flight_iois_1.log.2025-212T16_56_10.000000": (
+        "logs/flight_iois_1.log.2025-212T16:56:10.000000": (
             "2025/212-16:33:04.063 another log line\n"
             "2025/212-16:33:06.070 more log lines\n"
         ),
@@ -45,11 +45,11 @@ def test_query_filenames(s3_client):
     now = datetime(2025, 7, 31, 16, 55, 28, 531613, tzinfo=timezone.utc)
 
     inside_range_keys = [
-        "logs/flight_iois_1.log.2025-212T16_55_27.531613",
-        "logs/flight_iois_1.log.2025-212T15_55_27.531613",
+        "logs/flight_iois_1.log.2025-212T16:55:27.531613",
+        "logs/flight_iois_1.log.2025-212T15:55:27.531613",
     ]
 
-    outside_range_key = "logs/flight_iois_1.log.2024-212T16_55_27.531613"
+    outside_range_key = "logs/flight_iois_1.log.2024-212T16:55:27.531613"
 
     for key in [*inside_range_keys, outside_range_key]:
         s3_client.put_object(Bucket=bucket, Key=key, Body=b"dummy data")
@@ -57,8 +57,8 @@ def test_query_filenames(s3_client):
     result = query_filenames(s3_client, bucket, now)
 
     assert sorted(result) == [
-        "flight_iois_1.log.2025-212T15_55_27.531613",
-        "flight_iois_1.log.2025-212T16_55_27.531613",
+        "flight_iois_1.log.2025-212T15:55:27.531613",
+        "flight_iois_1.log.2025-212T16:55:27.531613",
     ]
 
 

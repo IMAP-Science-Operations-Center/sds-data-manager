@@ -9,14 +9,14 @@ https://ialirt.prod.imap-mission.com/ialirt-log-query
 
 from typing import Optional
 
-from aws_cdk import Duration, aws_sns
+from aws_cdk import Duration, RemovalPolicy, aws_sns
 from aws_cdk import aws_apigatewayv2 as apigwv2
 from aws_cdk import aws_apigatewayv2_authorizers as apigwv2_authorizers
 from aws_cdk import aws_apigatewayv2_integrations as apigwv2_integrations
 from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_cloudwatch_actions as cloudwatch_actions
-from aws_cdk import aws_iam as iam
+from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_route53 as route53
 from aws_cdk import aws_route53_targets as targets
@@ -36,6 +36,7 @@ class ApiGateway(Construct):
         domain_construct: Optional[DomainConstruct] = None,
         certificate: Optional[acm.Certificate] = None,
         ialirt_prefix: Optional[str] = None,
+        create_api_keys_table: bool = True,
         **kwargs,
     ) -> None:
         """Construct the API Gateway Construct.
@@ -52,6 +53,8 @@ class ApiGateway(Construct):
             SSL certificate for the custom domain (in the same region)
         ialirt_prefix : str
             Prefix for ialirt domain, Optional
+        create_api_keys_table : bool
+            Whether to create a new API keys table or reference existing one
         kwargs : dict
             Keyword arguments
         """
@@ -103,12 +106,18 @@ class ApiGateway(Construct):
             code=lambda_.Code.from_asset("sds_data_manager/lambda_code/authorization"),
             timeout=Duration.seconds(10),
         )
-        self.api_key_authorizer_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                actions=["ssm:GetParameter"],
-                resources=["arn:aws:ssm:*:*:parameter/imap-sdc-api-keys"],
+
+        # Create or reference the API Keys DynamoDB table
+        if create_api_keys_table:
+            self.api_keys_table = self._create_api_keys_table()
+        else:
+            # Reference existing table by name
+            self.api_keys_table = dynamodb.Table.from_table_name(
+                self, "ExistingApiKeysTable", table_name="imap-sdc-api-keys"
             )
-        )
+
+        # Grant the API key authorizer lambda permission to read from DynamoDB
+        self.api_keys_table.grant_read_data(self.api_key_authorizer_lambda)
 
         self.api_key_authorizer = apigwv2_authorizers.HttpLambdaAuthorizer(
             id=f"{self.lowercase_prefix}ApiKeyAuthorizer",
@@ -157,6 +166,28 @@ class ApiGateway(Construct):
                 "allow_origins": ["*"],
                 "allow_methods": [apigwv2.CorsHttpMethod.ANY],
             },
+        )
+
+    def _create_api_keys_table(self) -> dynamodb.Table:
+        """Create the DynamoDB table for API keys.
+
+        The partion key is the api_key to enable O(1) lookups of API keys for
+        quick verification in the lambda authorizer.
+
+        Returns
+        -------
+        dynamodb.Table
+            The created DynamoDB table for API keys
+        """
+        return dynamodb.Table(
+            self,
+            "ApiKeysTable",
+            table_name="imap-sdc-api-keys",
+            partition_key=dynamodb.Attribute(
+                name="api_key", type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.RETAIN,
         )
 
     def deliver_to_sns(self, sns_topic: aws_sns.Topic):

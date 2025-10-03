@@ -37,7 +37,7 @@ def query_filenames(s3_client: BaseClient, bucket: str, now: datetime):
 
     for hour_offset in range(48 + 1):  # +1 to include the current hour
         current = past_time + timedelta(hours=hour_offset)
-        prefix = current.strftime("logs/flight_iois_1.log.%Y-%jT%H_")
+        prefix = current.strftime("logs/flight_iois_1.log.%Y-%jT%H")
         response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
 
         for obj in response.get("Contents", []):

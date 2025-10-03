@@ -1,56 +1,93 @@
 #!/usr/bin/env python3
-"""Simple script to manage API keys in AWS SSM Parameter Store (SecureString).
+"""Simple script to manage API keys in AWS DynamoDB.
 
 AWS_PROFILE and AWS_REGION environment variables should be set to the appropriate values
-for the account and region where the SSM parameter is stored.
+for the account and region where the DynamoDB table is located.
 
 Usage:
   python manage_api_keys.py list
-  python manage_api_keys.py add <owner> <email>
+  python manage_api_keys.py add <owner> <email> <scope>
   python manage_api_keys.py remove <key>
   AWS_PROFILE=imap-sdc-dev AWS_DEFAULT_REGION=us-west-2 \
     python sds_data_manager/lambda_code/authorization/manage_api_keys.py \
-        add "First Last" "user@example.com"
+        add "First Last" "user@example.com" "full"
 
-Requires AWS credentials with SSM permissions.
+Requires AWS credentials with DynamoDB permissions.
 """
 
-import json
 import secrets
 import sys
 from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 
-PARAM_NAME = "imap-sdc-api-keys"
-ssm = boto3.client("ssm")
+TABLE_NAME = "imap-sdc-api-keys"
+
+
+def get_table():
+    """Get the DynamoDB table resource."""
+    dynamodb = boto3.resource("dynamodb")
+    return dynamodb.Table(TABLE_NAME)
 
 
 def get_keys():
-    """Retrieve API keys and metadata from SSM Parameter Store as a dict."""
+    """Retrieve API keys and metadata from DynamoDB as a dict."""
     try:
-        resp = ssm.get_parameter(Name=PARAM_NAME, WithDecryption=True)
-        return json.loads(resp["Parameter"]["Value"])
-    except ssm.exceptions.ParameterNotFound:
-        return {}
+        table = get_table()
+        response = table.scan()
+        keys = {}
+        for item in response["Items"]:
+            api_key = item["api_key"]
+            # Convert DynamoDB item to the expected format
+            keys[api_key] = {
+                "owner": item.get("owner", ""),
+                "email": item.get("email", ""),
+                "scope": item.get("scope", "full"),
+                "created": item.get("created", ""),
+            }
+        return keys
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            print(
+                f"DynamoDB table '{TABLE_NAME}' not found. "
+                "Please create the table first."
+            )
+            print("Table should have 'api_key' as the primary key (string).")
+            sys.exit(1)
+        else:
+            print(f"Error retrieving keys from DynamoDB: {e}")
+            sys.exit(1)
     except Exception as e:
-        print(f"Error retrieving parameter: {e}")
+        print(f"Error retrieving keys: {e}")
         sys.exit(1)
 
 
-def put_keys(keys):
-    """Store API keys and metadata in SSM Parameter Store as JSON."""
-    value = json.dumps(keys, indent=2)
+def add_key_to_db(api_key, owner, email, scope, created):
+    """Add a single API key to DynamoDB."""
     try:
-        ssm.put_parameter(
-            Name=PARAM_NAME,
-            Value=value,
-            Type="SecureString",
-            Overwrite=True,
+        table = get_table()
+        table.put_item(
+            Item={
+                "api_key": api_key,
+                "owner": owner,
+                "email": email,
+                "scope": scope,
+                "created": created,
+            }
         )
-        print(f"Updated {PARAM_NAME} with {len(keys)} key(s).")
     except Exception as e:
-        print(f"Error updating parameter: {e}")
+        print(f"Error adding key to DynamoDB: {e}")
+        sys.exit(1)
+
+
+def remove_key_from_db(api_key):
+    """Remove a single API key from DynamoDB."""
+    try:
+        table = get_table()
+        table.delete_item(Key={"api_key": api_key})
+    except Exception as e:
+        print(f"Error removing key from DynamoDB: {e}")
         sys.exit(1)
 
 
@@ -61,23 +98,23 @@ def list_keys():
     for k, meta in keys.items():
         owner = meta.get("owner", "?")
         email = meta.get("email", "?")
+        scope = meta.get("scope", "?")
         created = meta.get("created", "?")
-        print(f"- {k}\n    owner={owner}, email={email}, created={created}")
+        print(
+            f"- {k}\n    owner={owner}, email={email}, scope={scope}, created={created}"
+        )
 
 
-def add_key(owner, email):
+def add_key(owner, email, scope="full"):
     """Generate and add a new API key with owner and email metadata."""
     keys = get_keys()
     # Generate a secure random 32-byte hex key
     new_key = secrets.token_hex(32)
     while new_key in keys:
         new_key = secrets.token_hex(32)
-    keys[new_key] = {
-        "owner": owner,
-        "email": email,
-        "created": datetime.now().isoformat(),
-    }
-    put_keys(keys)
+
+    created = datetime.now().isoformat()
+    add_key_to_db(new_key, owner, email, scope, created)
     print(f"Added key: {new_key}")
     print("Share this key securely with the user.")
 
@@ -88,8 +125,7 @@ def remove_key(key):
     if key not in keys:
         print("Key not found.")
         return
-    del keys[key]
-    put_keys(keys)
+    remove_key_from_db(key)
     print(f"Removed key: {key}")
 
 
@@ -97,19 +133,21 @@ def main():
     """CLI entry point."""
     if len(sys.argv) < 2:
         print(
-            "Usage: python manage_api_keys.py [list|add|remove] <key> [owner] [email]"
+            "Usage: python manage_api_keys.py [list|add|remove] "
+            "<key> [owner] [email] [scope]"
         )
         sys.exit(1)
     cmd = sys.argv[1]
     if cmd == "list":
         list_keys()
-    elif cmd == "add" and len(sys.argv) == 4:
-        add_key(sys.argv[2], sys.argv[3])
+    elif cmd == "add" and len(sys.argv) == 5:
+        add_key(sys.argv[2], sys.argv[3], sys.argv[4])
     elif cmd == "remove" and len(sys.argv) == 3:
         remove_key(sys.argv[2])
     else:
         print(
-            "Usage: python manage_api_keys.py [list|add|remove] <key> [owner] [email]"
+            "Usage: python manage_api_keys.py [list|add|remove] "
+            "<key> [owner] [email] [scope]"
         )
         sys.exit(1)
 
