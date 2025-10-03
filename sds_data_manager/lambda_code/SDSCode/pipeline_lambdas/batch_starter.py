@@ -50,24 +50,6 @@ BATCH_JOB_RETRY_STRATEGY = {
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 
-SPECIAL_CASE_JOBS = [
-    {
-        "data_source": "hi",
-        "data_type": "l3",
-        "descriptor": "h90-ena-h-sf-sp-full-hae-4deg-6mo",
-    },
-    {
-        "data_source": "lo",
-        "data_type": "l3",
-        "descriptor": "ilo-ena-h-sf-sp-full-hae-4deg-6mo",
-    },
-    {
-        "data_source": "ultra",
-        "data_type": "l3",
-        "descriptor": "u90-ena-h-sf-sp-full-hae-4deg-3mo",
-    },
-]
-
 
 def cadence_to_datetime_range(
     cadence: str,
@@ -834,17 +816,6 @@ def s3_processing_event(session, events):
             if isinstance(file_obj, AncillaryFilePath):
                 filter_dependencies = True
 
-            if job in SPECIAL_CASE_JOBS:
-                trigger_start_time, trigger_end_time = get_special_case_date_range(
-                    session, job, trigger_start_time
-                )
-                logger.info(
-                    f"Using special case date range: "
-                    f"{trigger_start_time} to {trigger_end_time}"
-                )
-                # Do not filter dependencies for special case jobs.
-                filter_dependencies = False
-
             submit_all_jobs(
                 session,
                 job,
@@ -973,9 +944,7 @@ def bulk_reprocessing_event(session, events):
             )
         ]
     for job in potential_jobs:
-        if job in SPECIAL_CASE_JOBS:
-            handle_special_case_reprocessing_jobs(session, job, start_date, end_date)
-        elif (
+        if (
             job in DEPENDENCY_CONFIG.get_cadence_jobs()
             or job["descriptor"] in CadenceDays.valid_cadence_str()
         ):
