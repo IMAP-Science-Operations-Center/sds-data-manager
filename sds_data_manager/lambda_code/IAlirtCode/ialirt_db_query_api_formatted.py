@@ -42,7 +42,7 @@ def process_item_types(item: dict) -> dict:
     return result
 
 
-def lambda_handler(event, context):  # noqa: PLR0912
+def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
     """Create metadata and add it to the database.
 
     This function is an event handler for s3 ingest bucket.
@@ -186,8 +186,10 @@ def lambda_handler(event, context):  # noqa: PLR0912
         result = {
             key: [item[key] for item in processed_items]
             for key in keys
-            if key not in ("met", "ttj2000ns", "apid")
+            if key not in ("met", "ttj2000ns", "apid", "last_modified")
         }
+        if "met_in_utc" in result:
+            result["time"] = result.pop("met_in_utc")
     else:
         result = {}
 
