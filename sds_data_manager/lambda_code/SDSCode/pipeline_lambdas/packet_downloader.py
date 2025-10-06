@@ -15,8 +15,10 @@ SECRETS_MANAGER = boto3.client("secretsmanager")
 SSM_CLIENT = boto3.client("ssm")
 
 # Logger setup
-# Set default logging level to INFO, to also capture INFO for the underlying downloaders
-logging.basicConfig(level=logging.INFO)
+if len(logging.getLogger().handlers) > 0:
+    logging.getLogger().setLevel(logging.INFO)
+else:
+    logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
