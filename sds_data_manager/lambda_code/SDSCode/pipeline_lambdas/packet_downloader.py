@@ -2,12 +2,14 @@
 
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import boto3
 import imap_data_access
 from imap_data_access import SPICEFilePath, webpoda
 
+S3_BUCKET = os.environ["S3_BUCKET"]
 S3_CLIENT = boto3.client("s3")
 # We need to access the webpoda-api-key
 SECRETS_MANAGER = boto3.client("secretsmanager")
@@ -22,87 +24,8 @@ else:
 logger = logging.getLogger(__name__)
 
 
-def get_two_most_recent_contact_times(bucket):
-    """Retrieve the two most recent file upload times.
-
-    This is an approximation of Earth Received Times (ERT) to indicate when we should
-    be querying for data. The repointing files will be delivered to us after a contact.
-    So we will be querying for data between when a previous repointing file was uploaded
-    and the most recent one. It is a broader window than we need, but is a rough guess
-    with the information we have in an attempt to bracket the packet lookups.
-
-    Parameters
-    ----------
-    bucket : str
-        The name of the S3 bucket to search for repointing files.
-
-    Returns
-    -------
-    list or None
-        A list of the two most recent file upload times.
-        None if there are less than 2 repointing files available.
-    """
-    paginator = S3_CLIENT.get_paginator("list_objects_v2")
-    # In case we have more than 1000 of these files (~3 years)
-    pages = paginator.paginate(
-        Bucket=bucket, Prefix=f"{SPICEFilePath._dir_prefix}/repoint/imap_"
-    )
-
-    repointing_file_times = []
-    for page in pages:
-        if "Contents" not in page:
-            continue
-
-        # Process objects in the page and keep only the latest two
-        for obj in page["Contents"]:
-            # We want last-modified time to know when these files were uploaded
-            repointing_file_times.append(obj["LastModified"])
-
-    if len(repointing_file_times) == 0:
-        # Nothing in the bucket yet, query from the start of the mission to right now.
-        logger.warning("No repointing files found")
-        return None
-    elif len(repointing_file_times) == 1:
-        # Only one repointing file, so we can't bracket a contact yet.
-        # Use the first launch opportunity as an initial start time,
-        # and the time this repointing file landed as the end time to
-        # brack the queries with.
-        logger.warning("Only one repointing file found, using the start of the mission")
-        return ["2025-09-23T00:00:00.000Z", repointing_file_times[0]]
-
-    # We only want the latest two times
-    return sorted(repointing_file_times)[-2:]
-
-
-def lambda_handler(event, context):
-    """Lambda handler to download raw packet data and create L0 files.
-
-    The lambda function will be triggered by an S3 event when a new
-    repointing file is uploaded to the S3 bucket. This means a contact
-    has finished and the other SPICE / packet files are available now.
-
-    Parameters
-    ----------
-    event : dict
-        The JSON formatted document with the source s3 event (repointing file).
-    context : obj
-        The context object for the lambda function
-    """
-    logger.info("Received event: %s", event)
-    # Extract bucket name and key from event
-    record = event["Records"][0]
-    bucket_name = record["s3"]["bucket"]["name"]
-    repointing_key = record["s3"]["object"]["key"]
-    repointing_file = "/tmp/" + repointing_key.split("/")[-1]  # noqa: S108
-
-    times = get_two_most_recent_contact_times(bucket_name)
-    if times is None:
-        return {
-            "statusCode": 500,
-            "body": "There were fewer than 2 repointing files available.",
-        }
-    start_time, end_time = times
-
+def setup_environment():
+    """Get secrets and set necessary config values."""
     response = SECRETS_MANAGER.get_secret_value(SecretId="webpoda-token")
     if "SecretString" not in response:
         return {
@@ -127,15 +50,82 @@ def lambda_handler(event, context):
 
     imap_data_access.config["DATA_DIR"] = Path("/tmp")  # noqa: S108
 
+
+def get_latest_repoint_file():
+    """Retrieve the latest repointing file from S3.
+
+    If we want to connect to the database later, we could use the RepointingFile
+    database table to get this value instead.
+
+    Returns
+    -------
+    str or None
+        The string of the s3 key of the latest repointing file.
+        None if there are no repointing files.
+    """
+    paginator = S3_CLIENT.get_paginator("list_objects_v2")
+    # In case we have more than 1000 of these files (~3 years)
+    # Paginate through all objects in the repoint directory
+    pages = paginator.paginate(
+        Bucket=S3_BUCKET, Prefix=f"{SPICEFilePath._dir_prefix}/repoint/imap_"
+    )
+
+    # Collect all file keys
+    all_files = []
+    for page in pages:
+        if "Contents" in page:
+            all_files.extend([obj["Key"] for obj in page["Contents"]])
+
+    if not all_files:
+        logger.warning("No files found in the repoint directory.")
+        return None
+
+    # Sort files by key (filename); adjust if you want to sort by LastModified instead
+    last_file = sorted(all_files)[-1]
+    logger.info(f"Last file in directory: {last_file}")
+    return last_file
+
+
+def lambda_handler(event, context):
+    """Lambda handler to download raw packet data and create L0 files.
+
+    The lambda function is triggered based upon a cron job indicating new
+    data is available and should be fetched. Currently, this is downloading
+    6-hours of data on a cron-based schedule. In the future, this should be
+    updated to be triggered based upon the arrival of files or notifications
+    about the end of contacts and a database tracking what data has been
+    downloaded.
+
+    Parameters
+    ----------
+    event : dict
+        The JSON formatted document with the source s3 event.
+    context : obj
+        The context object for the lambda function
+    """
+    setup_environment()
+
+    repointing_key = get_latest_repoint_file()
+    imap_data_access.config["DATA_DIR"]
+    repointing_file = imap_data_access.config["DATA_DIR"] / Path(repointing_key).name
     # Download the repointing file from S3 for use in the repointing downloads
     S3_CLIENT.download_file(
-        Bucket=bucket_name,
+        Bucket=S3_BUCKET,
         Key=repointing_key,
         Filename=repointing_file,
     )
 
     # ENA imagers group by repointing
     repointing_instruments = {"glows", "hi", "lo", "ultra"}
+
+    # TODO: Update start_time and end_time based upon the actual downlink times
+    #       once those come in. Currently it is every 6-hours on a cron schedule.
+    now = datetime.now(timezone.utc)
+    # Floor to the previous 6-hour mark
+    end_time = now.replace(minute=0, second=0, microsecond=0)
+    end_time = end_time - timedelta(hours=end_time.hour % 6)
+    start_time = end_time - timedelta(hours=6)
+    logger.info(f"Downloading data from {start_time} to {end_time}")
 
     for instrument in webpoda.INSTRUMENT_APIDS:
         logger.info("Downloading data for instrument: %s", instrument)
