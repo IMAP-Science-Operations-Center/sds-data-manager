@@ -27,7 +27,7 @@ from ..api_lambdas import upload_api
 from ..database import database as db
 from ..database import models
 from . import VALID_CADENCE_STRS, dependency
-from .dependency import DependencyConfig, get_jobs
+from .dependency import DependencyConfig
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -219,101 +219,6 @@ def determine_job_version(
         ).scalar()
     # Bump the version number. "V001" will be returned if max_version is None.
     return f"v{int(max_version[1:]) + 1:03d}" if max_version else "v001"
-
-
-def get_special_case_date_range(session, job_node, start_date):
-    """Determine the start and end dates for special case jobs.
-
-    This function is used to handle unique processing jobs where the normal method of
-    determining the start and end date for the upstream dependencies is not enough.
-    For example, l3 survival probability correlated maps for HI, LO, and ULTRA
-    depend on their respective l2 maps and multiple GLOWS l3e files (containing the
-    survival probabilities) covering the date of the l2 map. We cannot simply use the
-    start date of the trigger file in this case. To determine the correct start date to
-    use, we need to find the most recent l2 map file and its cadence, e.g 3mo, 6mo, or
-    1yr and use that range to query for all the GLOWS l3e and l2 map files.
-
-    Note: This does not handle cadence jobs. Cadence jobs are handled in the
-    cadence_processing_event function.
-
-    Parameters
-    ----------
-    session : orm session
-        Database session.
-    job_node : dict
-        Dictionary containing job details: data source, data type, and descriptor.
-    start_date : str
-        Start date for querying data in the format 'YYYYMMDD'.
-
-    Returns
-    -------
-    tuple
-        Tuple containing the start and end date for the job.
-    """
-
-    def find_most_recent_start_date(dep: dict, date: datetime) -> datetime:
-        """Find the most recent start date for a dependency given the filters.
-
-        Parameters
-        ----------
-        dep : dict
-            Dependency details including data source, data type, and descriptor.
-        date : datetime
-            The date to filter dependencies up to.
-
-        Returns
-        -------
-        datetime
-            The most recent start date for the dependency.
-        """
-        return (
-            session.query(func.max(models.ScienceFiles.start_date))
-            .filter(
-                models.ScienceFiles.instrument == dep["data_source"],
-                models.ScienceFiles.data_level == dep["data_type"],
-                models.ScienceFiles.descriptor == dep["descriptor"],
-                models.ScienceFiles.start_date <= date,
-            )
-            .scalar()
-        )
-
-    start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
-
-    deps = get_jobs(
-        dependency_type="UPSTREAM",
-        relationship="HARD",
-        data_source=job_node["data_source"],
-        data_type=job_node["data_type"],
-        descriptor=job_node["descriptor"],
-    )
-    # Special case for l3 sp-correlated HI, LO, and ULTRA map jobs:
-    # These jobs require both l2 map files and corresponding GLOWS l3e files.
-    # Find the most recent l2 map file and use its date range to query GLOWS l3e
-    # files.
-    # Get the l2 upstream dependency (there should only be one).
-    l2_dep = next((dep for dep in deps if dep["data_type"] == "l2"), None)
-    if l2_dep is None:
-        raise ValueError(f"Missing required l2 dependency for job: {job_node}.")
-    # Find the most recent l2 map file start_date.
-    new_start_date = find_most_recent_start_date(l2_dep, start_date)
-    if not new_start_date:
-        raise ValueError(
-            f"No l2 map files found for {l2_dep['data_source']} "
-            f"{l2_dep['data_type']} {l2_dep['descriptor']}."
-        )
-    new_start_date = new_start_date.strftime("%Y%m%d")
-    # Determine the number of days the map was created for based on the cadence.
-    cadence_key = job_node["descriptor"].split("-")[-1]
-    if cadence_key not in CadenceDays.valid_cadence_str():
-        raise ValueError(
-            f"Invalid cadence '{cadence_key}' from descriptor"
-            f"'{job_node['descriptor']}'. Valid cadences are: "
-            f"{CadenceDays.valid_cadence_str()}"
-        )
-    map_days = CadenceDays.str_lookup(cadence_key).value
-    # Use the date range of the l2 map as the query range for the l3 job.
-    new_end_date = (start_date + datetime.timedelta(days=map_days)).strftime("%Y%m%d")
-    return new_start_date, new_end_date
 
 
 def dependency_hash(serialized_dependencies):
@@ -836,53 +741,6 @@ def s3_processing_event(session, events):
                 f"SQS record with receipt handle: {event['receiptHandle']} "
                 f"processed and deleted from the SQS."
             )
-
-
-def handle_special_case_reprocessing_jobs(session, job_node, start_date, end_date):
-    """Handle special case reprocessing jobs.
-
-    This function is used to handle unique jobs when reprocessing is triggered.
-
-    Parameters
-    ----------
-    session : orm session
-        Database session.
-    job_node : dict
-        job node to get the potential jobs from.
-    start_date : str
-        Start date to query the data.
-    end_date : str
-        End date to query the data.
-    """
-    # get the upstream dependencies for the reprocessing date range
-    upstream_dependencies = dependency.get_jobs(
-        data_source=job_node["data_source"],
-        data_type=job_node["data_type"],
-        descriptor=job_node["descriptor"],
-        dependency_type="UPSTREAM",
-        relationship="ALL",
-        start_date=start_date,
-        end_date=end_date,
-    )
-    if not upstream_dependencies:
-        return
-    # find the primary science processingInput that has the same source as the job.
-    primary_science = upstream_dependencies.get_science_inputs(job_node["data_source"])[
-        0
-    ]
-    logger.info(
-        f"Handling special case reprocessing. Found "
-        f"{len(primary_science.imap_file_paths)} files to reprocess."
-    )
-    for filepath in primary_science.imap_file_paths:
-        # For each file to reprocess we need to determine the correct
-        # start and end date to use for the job.
-        start_date, end_date = get_special_case_date_range(
-            session, job_node, filepath.start_date
-        )
-        submit_all_jobs(
-            session, job_node, start_date, end_date, filter_dependencies=False
-        )
 
 
 def bulk_reprocessing_event(session, events):
