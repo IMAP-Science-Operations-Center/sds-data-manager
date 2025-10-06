@@ -125,6 +125,33 @@ class IalirtApiManager(Construct):
             lambda_function=packets_query_api_lambda,
         )
 
+        # realtime query API lambda
+        realtime_query_api_lambda = lambda_.Function(
+            self,
+            id="IAlirtCodeRealtimeQueryAPILambda",
+            function_name="ialirt-realtime-query-api-handler",
+            code=code,
+            handler="IAlirtCode.ialirt_realtime_query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            environment={
+                "S3_BUCKET": data_bucket.bucket_name,
+                "REGION": env.region,
+            },
+            layers=layers,
+        )
+
+        realtime_query_api_lambda.add_to_role_policy(s3_read_policy)
+
+        api.add_route(
+            route="/ialirt-realtime-query",
+            http_method="GET",
+            lambda_function=realtime_query_api_lambda,
+        )
+
         # download API lambda
         download_api = lambda_.Function(
             self,
