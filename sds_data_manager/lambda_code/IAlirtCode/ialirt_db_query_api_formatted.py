@@ -209,7 +209,8 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
         result = {}
 
     # Append LastEvaluatedKey to the response if more data is available.
-    if "LastEvaluatedKey" in response:
-        result["last_evaluated_key"] = response.get("LastEvaluatedKey")
+    last_evaluated_key = response.get("LastEvaluatedKey")
+    if last_evaluated_key:
+        result["last_evaluated_key"] = process_item_types(last_evaluated_key)
 
     return {"statusCode": 200, "body": json.dumps(result)}

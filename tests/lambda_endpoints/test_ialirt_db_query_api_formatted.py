@@ -179,7 +179,7 @@ def test_query_with_multiple_filters(algorithm_table):
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
 
     items = json.loads(response["body"])
-    assert len(items) == 2
+    assert len(items["data"]) == 4
 
 
 def test_query_with_different_time_queries(algorithm_table):
@@ -272,3 +272,16 @@ def test_process_item_types():
             "met_in_utc": "2025-06-20T08:00:00",
         }
     ]
+
+
+def test_last_evaluated():
+    """Test last evaluated response."""
+    last_evaluated_key = {"apid": {"N": "478"}, "met": {"N": "497034344"}}
+
+    processed_item = ialirt_db_query_api_formatted.process_item_types(
+        last_evaluated_key
+    )
+    assert processed_item == {
+        "apid": 478,
+        "met": 497034344,
+    }
