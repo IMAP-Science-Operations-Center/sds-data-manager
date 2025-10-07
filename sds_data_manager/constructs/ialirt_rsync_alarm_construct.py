@@ -1,23 +1,20 @@
 """Cron job to alarm on rsync failure."""
 
 from aws_cdk import Duration, RemovalPolicy, aws_s3
-from aws_cdk import aws_events as events
-from aws_cdk import aws_events_targets as targets
-from aws_cdk import aws_iam as iam
-from aws_cdk import aws_lambda as lambda_
-from constructs import Construct
-from aws_cdk import aws_ssm as ssm
-
 from aws_cdk import (
     aws_cloudwatch as cloudwatch,
 )
 from aws_cdk import (
     aws_cloudwatch_actions as cloudwatch_actions,
 )
+from aws_cdk import aws_events as events
+from aws_cdk import aws_events_targets as targets
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_sns as sns
 from aws_cdk import aws_sns_subscriptions as subs
-
-from typing import Optional
+from aws_cdk import aws_ssm as ssm
+from constructs import Construct
 
 
 class IalirtRsyncAlarmConstruct(Construct):
@@ -81,7 +78,7 @@ class IalirtRsyncAlarmConstruct(Construct):
 
         s3_read_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["s3:ListBucket", "s3:GetObject", "s3:PutObject"],
+            actions=["s3:ListBucket", "s3:GetObject"],
             resources=[
                 ialirt_bucket.bucket_arn,
                 f"{ialirt_bucket.bucket_arn}/*",
@@ -136,7 +133,6 @@ class IalirtRsyncAlarmConstruct(Construct):
 
     def setup_monitoring(self, alarm_email: str):
         """Create CloudWatch alarm and notify via SNS if rsync failures occur."""
-
         alarm_topic = sns.Topic(
             self,
             "IalirtRsyncAlarmTopic",
@@ -148,7 +144,7 @@ class IalirtRsyncAlarmConstruct(Construct):
         rsync_metric = cloudwatch.Metric(
             namespace="IMAP/Ialirt",
             metric_name="IalirtRsyncFailures",
-            period=Duration.minutes(5),
+            period=Duration.hours(1),  # logs arrive every hour
             statistic="Sum",
             dimensions_map={"Function": "ialirt-rsync-alarm"},
         )
@@ -157,10 +153,14 @@ class IalirtRsyncAlarmConstruct(Construct):
             self,
             "IalirtRsyncFailureAlarm",
             metric=rsync_metric,
-            threshold=1,  # >=1 means a failure happened
-            evaluation_periods=1,  # one 5-minute period
+            # Alarm when at least one rsync failure
+            threshold=1,
+            # Evaluate the latest 1-hour metric window
+            evaluation_periods=1,
+            # Enter ALARM state if a single data point breaches threshold
             datapoints_to_alarm=1,
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            # If no data don't trigger
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
             alarm_description="Alarm if rsync failure is detected in Lambda output.",
         )

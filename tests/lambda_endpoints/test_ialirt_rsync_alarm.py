@@ -1,14 +1,17 @@
 """Test the I-ALiRT rsync failure checker lambda."""
 
+from unittest.mock import patch
+
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_rsync_alarm import (
     check_for_rsync_failure,
     lambda_handler,
-    publish_failure_metric
+    publish_failure_metric,
 )
-from unittest.mock import patch
 
 
-@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_rsync_alarm.publish_failure_metric")
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_rsync_alarm.publish_failure_metric"
+)
 def test_lambda_handler_detects_rsync_failure(mock_metric, s3_client):
     """Test lambda_handler returns True when rsync failure is found."""
     bucket = "test-data-bucket"
@@ -37,7 +40,10 @@ def test_lambda_handler_detects_rsync_failure(mock_metric, s3_client):
     mock_metric.assert_called_once()
 
 
-def test_lambda_handler_returns_false_when_no_failure(s3_client):
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_rsync_alarm.publish_failure_metric"
+)
+def test_lambda_handler_returns_false_when_no_failure(mock_metric, s3_client):
     """Test lambda_handler returns False when no rsync failure is found."""
     bucket = "test-data-bucket"
     key = "logs/flight_iois_1.log.2025-253T19_26_00"
@@ -97,13 +103,14 @@ def test_publish_failure_metric(mock_boto3_client):
     """Test that publish_failure_metric sends the correct metric to CloudWatch."""
     mock_cloudwatch = mock_boto3_client.return_value
 
-    publish_failure_metric()
+    found = True
+    publish_failure_metric(found)
 
     mock_cloudwatch.put_metric_data.assert_called_once_with(
         Namespace="IMAP/Ialirt",
         MetricData=[
             {
-                "MetricName": "RsyncFailures",
+                "MetricName": "IalirtRsyncFailures",
                 "Dimensions": [{"Name": "Function", "Value": "ialirt-rsync-alarm"}],
                 "Unit": "Count",
                 "Value": 1,
