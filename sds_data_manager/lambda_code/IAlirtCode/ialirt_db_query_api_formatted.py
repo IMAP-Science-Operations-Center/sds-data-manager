@@ -131,28 +131,29 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
         or ("last_modified_start" in params and "last_modified_end" in params)
     ):
         if "time_start" in params:
-            time_key = "time"
+            params_key = "time"
+            time_key = "met"
         elif "utc_start" in params:
-            time_key = "utc"
+            params_key = "utc"
+            time_key = "met_in_utc"
         else:
+            params_key = "last_modified"
             time_key = "last_modified"
 
         start_value = (
-            int(params[f"{time_key}_start"])
-            if time_key == "time"
-            else params[f"{time_key}_start"]
+            int(params[f"{params_key}_start"])
+            if params_key == "time"
+            else params[f"{params_key}_start"]
         )
         end_value = (
-            int(params[f"{time_key}_end"])
-            if time_key == "time"
-            else params[f"{time_key}_end"]
+            int(params[f"{params_key}_end"])
+            if params_key == "time"
+            else params[f"{params_key}_end"]
         )
 
         key_expr &= Key(time_key).between(start_value, end_value)
 
-        if time_key == "utc":
-            query_kwargs["IndexName"] = "met_in_utc"
-        if time_key == "last_modified":
+        if time_key in {"met_in_utc", "last_modified"}:
             query_kwargs["IndexName"] = time_key
 
     elif (
@@ -161,22 +162,23 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
         or "last_modified_start" in params
     ):
         if "time_start" in params:
+            params_key = "time"
             time_key = "met"
         elif "utc_start" in params:
+            params_key = "utc"
             time_key = "met_in_utc"
         else:
+            params_key = "last_modified"
             time_key = "last_modified"
 
         start_value = (
-            int(params[f"{time_key}_start"])
-            if time_key == "time"
-            else params[f"{time_key}_start"]
+            int(params[f"{params_key}_start"])
+            if params_key == "time"
+            else params[f"{params_key}_start"]
         )
         key_expr &= Key(time_key).gte(start_value)
 
-        if time_key == "utc":
-            query_kwargs["IndexName"] = "met_in_utc"
-        if time_key == "last_modified":
+        if time_key in {"met_in_utc", "last_modified"}:
             query_kwargs["IndexName"] = time_key
 
     elif "time_end" in params or "utc_end" in params or "last_modified_end" in params:
