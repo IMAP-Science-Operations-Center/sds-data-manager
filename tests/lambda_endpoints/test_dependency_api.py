@@ -173,8 +173,8 @@ def test_missing_required_params():
     """Test that 400 error is returned."""
     with pytest.raises(
         ValueError,
-        match="end_date not found. If 'start_date' is "
-        "supplied, 'end_date' is required.",
+        match=r"end_date not found. If 'start_date' is "
+        r"supplied, 'end_date' is required.",
     ):
         dependency.get_jobs(
             dependency_type="DOWNSTREAM",

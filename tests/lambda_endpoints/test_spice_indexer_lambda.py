@@ -110,7 +110,7 @@ def test_get_coverage_dictionary_left_out_of_range(
             spiceypy.utc2et("2000-01-01T00:00:00"),
             spiceypy.utc2et("2025-12-26T00:00:00"),
         )
-        results_j2000, results_datetime, results_sclk = get_coverage_dictionary(
+        results_j2000, _results_datetime, results_sclk = get_coverage_dictionary(
             Path("/foo/bar/earth_000101_251226_250929.bpc")
         )
         assert results_j2000[0][0] == MAXIMUM_J2000_INTERVAL[0][0]
