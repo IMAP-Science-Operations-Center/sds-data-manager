@@ -30,7 +30,10 @@ def test_lambda_handler_detects_rsync_failure(mock_metric, s3_client):
 
     event = {
         "region": "us-west-2",
-        "detail": {"bucket": {"name": bucket}},
+        "detail": {
+            "bucket": {"name": bucket},
+            "object": {"key": key},
+        },
         "now": "2025-09-10T19:30:00Z",
     }
 
@@ -57,7 +60,10 @@ def test_lambda_handler_returns_false_when_no_failure(mock_metric, s3_client):
 
     event = {
         "region": "us-west-2",
-        "detail": {"bucket": {"name": bucket}},
+        "detail": {
+            "bucket": {"name": bucket},
+            "object": {"key": key},
+        },
         "now": "2025-09-10T19:30:00Z",
     }
 
@@ -77,7 +83,7 @@ def test_check_for_rsync_failure(s3_client):
     )
 
     result = check_for_rsync_failure(
-        s3_client, ["flight_iois_1.log.2025-253T19_26_00"], bucket
+        s3_client, "logs/flight_iois_1.log.2025-253T19_26_00", bucket
     )
     assert result is True
 
@@ -93,7 +99,7 @@ def test_check_for_rsync_failure_returns_false(s3_client):
     )
 
     result = check_for_rsync_failure(
-        s3_client, ["flight_iois_1.log.2025-253T19_26_00"], bucket
+        s3_client, "logs/flight_iois_1.log.2025-253T19_26_00", bucket
     )
     assert result is False
 
