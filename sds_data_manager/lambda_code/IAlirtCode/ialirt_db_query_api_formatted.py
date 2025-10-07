@@ -24,6 +24,8 @@ def process_item_types(item: dict) -> dict:
     -------
     result : dict
         Properly formatted parameters.
+
+    Note: Truncates to 3 decimal places to reduce response size.
     """
     result = {}
 
@@ -31,6 +33,14 @@ def process_item_types(item: dict) -> dict:
         # Vectors fields
         if isinstance(value, list):
             result[key] = [int(v) if v % 1 == 0 else round(float(v), 3) for v in value]
+
+        # Dictionary with number
+        elif isinstance(value, dict) and "N" in value:
+            num = Decimal(value["N"])
+            result[key] = int(num) if num % 1 == 0 else round(float(num), 3)
+
+        elif isinstance(value, dict) and "BOOL" in value:
+            result[key] = bool(value["BOOL"])
 
         # Scalar fields
         elif isinstance(value, Decimal):
@@ -43,10 +53,7 @@ def process_item_types(item: dict) -> dict:
 
 
 def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
-    """Create metadata and add it to the database.
-
-    This function is an event handler for s3 ingest bucket.
-    It is also used to ingest data to the DynamoDB table.
+    """Read and format database query.
 
     Parameters
     ----------
@@ -58,6 +65,12 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
         information about the invocation, function,
         and runtime environment.
 
+    Example
+    -------
+    result = {'hit_he_omni_high_en': [0, None],
+    'mag_B_GSE': [[-6.382, -1.353, -5.045],
+    [-2.058, 3.792, -3.989]],
+    'time_tag': ['2025-10-02T07:07:13', '2025-10-02T07:07:17'], ...}
     """
     table_name = os.environ.get("ALGORITHM_TABLE")
     region = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
@@ -77,10 +90,8 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
     query_kwargs = {"KeyConditionExpression": key_expr}
 
     allowed_params = {
-        "met_start",
-        "met_end",
-        "met_in_utc_start",
-        "met_in_utc_end",
+        "start_time",
+        "end_time",
         "last_modified_start",
         "last_modified_end",
     }
@@ -184,12 +195,12 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
     if processed_items:
         keys = processed_items[0].keys()
         result = {
-            key: [item[key] for item in processed_items]
+            key: [item.get(key) for item in processed_items]
             for key in keys
             if key not in ("met", "ttj2000ns", "apid", "last_modified")
         }
         if "met_in_utc" in result:
-            result["time"] = result.pop("met_in_utc")
+            result["time_tag"] = result.pop("met_in_utc")
     else:
         result = {}
 

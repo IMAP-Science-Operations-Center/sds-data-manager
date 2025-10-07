@@ -232,7 +232,7 @@ class IalirtApiManager(Construct):
         )
 
         # Grant the lambda function read/write permissions on the DynamoDB table.
-        algorithm_table.grant_read_write_data(ialirt_db_query_handler)
+        algorithm_table.grant_read_data(ialirt_db_query_handler)
 
         add_stable_route(
             api,
@@ -259,11 +259,11 @@ class IalirtApiManager(Construct):
         )
 
         # Grant the lambda function read/write permissions on the DynamoDB table.
-        algorithm_table.grant_read_write_data(ialirt_db_query_formatted_handler)
+        algorithm_table.grant_read_data(ialirt_db_query_formatted_handler)
 
         add_stable_route(
             api,
-            "/ialirt-db",
+            "/space-weather",
             "GET",
             ialirt_db_query_formatted_handler,
             restricted_route_prefixes,
