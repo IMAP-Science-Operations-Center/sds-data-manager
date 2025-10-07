@@ -125,7 +125,8 @@ class IalirtApiManager(Construct):
             lambda_function=packets_query_api_lambda,
         )
 
-        # realtime query API lambda
+        # Queries latest realtime filename.
+        # Realtime file contains tcp connection and packet creation information.
         realtime_query_api_lambda = lambda_.Function(
             self,
             id="IAlirtCodeRealtimeQueryAPILambda",
