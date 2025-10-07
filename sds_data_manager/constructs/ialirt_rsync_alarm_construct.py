@@ -52,7 +52,7 @@ class IalirtRsyncAlarmConstruct(Construct):
         self.create_event_rule(ialirt_bucket, ialirt_rsync_lambda)
         # Parameter store lookup.
         # Note: this must be run once for each account:
-        # aws ssm put-parameter --name /imap/ialirt/alarm_email
+        # aws ssm put-parameter --name /imap/ialirt/rsync_alarm_email
         # --value ialirt@example.com --type String --overwrite
         rsync_alarm_email = ssm.StringParameter.value_for_string_parameter(
             self, "/imap/ialirt/rsync_alarm_email"
@@ -74,6 +74,13 @@ class IalirtRsyncAlarmConstruct(Construct):
                     "service-role/AWSLambdaBasicExecutionRole"
                 ),
             ],
+        )
+
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["cloudwatch:PutMetricData"],
+                resources=["*"],
+            )
         )
 
         s3_read_write_policy = iam.PolicyStatement(
