@@ -681,6 +681,57 @@ def calculate_pointing_date_range(session, pointing_id):
     return start_date, end_date
 
 
+def calculate_repoint_table_date_range(session, file_obj):
+    """Calculate the date range for a repoint-table.
+
+    The end date can easily be gotten from the filename. In order to determine
+    the start date, we query the database and use the end date from the previous
+    repoint table.
+
+    Notes
+    -----
+    Repoint file is used to kick off the pointing_attitude job only.
+    This date range is used to query attitude kernel file(s). If
+    other jobs become dependent on triggering off of the repoint file,
+    please revisit this logic.
+
+
+    Parameters
+    ----------
+    session : sqlalchemy.orm.Session
+        Database session.
+    file_obj : SPICEFilePath
+        Repoint table file object.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the start date and end date in the format YYYYMMDD.
+    """
+    # Query the pointing table to find the pointing information.
+    end_date = file_obj.spice_metadata["end_date"]
+    previous_entries = (
+        session.query(models.RepointFiles)
+        .filter(models.RepointFiles.end_date <= end_date)
+        .order_by(models.RepointFiles.end_date, models.RepointFiles.version)
+        .all()
+    )
+    # Check if a previous entry exists
+    if len(previous_entries) < 2:
+        # No previous entry exists. Use end_date minus one day as start date
+        start_date = end_date - datetime.timedelta(days=1)
+    else:
+        start_date = previous_entries[-2].end_date
+
+    start_date = start_date.strftime("%Y%m%d")
+    end_date = end_date.strftime("%Y%m%d")
+    logger.debug(
+        f"repoint table date range, start_date: {start_date}, end_date: {end_date}"
+    )
+
+    return start_date, end_date
+
+
 def determine_date_range(session, file_obj):
     """Determine the start and end dates based on the file type.
 
@@ -701,14 +752,7 @@ def determine_date_range(session, file_obj):
     if isinstance(file_obj, SPICEFilePath):
         file_type = file_obj.spice_metadata["type"]
         if file_type == "repoint":
-            # NOTE:
-            # Repoint file is used to kicks off pointing_attitude job only.
-            # This date range is used to query attitude kernel file(s). If
-            # Other is dependent on the repoint file, please revisit this logic.
-            start_date = (
-                file_obj.spice_metadata["end_date"] - datetime.timedelta(days=1)
-            ).strftime("%Y%m%d")
-            end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
+            start_date, end_date = calculate_repoint_table_date_range(session, file_obj)
         else:
             # Convert datetime object to string of format YYYYMMDD
             start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
