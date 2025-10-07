@@ -52,11 +52,11 @@ def algorithm_table(setup_dynamodb):
 
 def test_query_with_met_range(algorithm_table):
     """Test query with met range."""
-    # GET <invoke url>/query?met_start=100&met_end=111
+    # GET <invoke url>/query?time_start=100&time_end=111
     event = {
         "queryStringParameters": {
-            "met_start": "100",
-            "met_end": "111",
+            "time_start": "100",
+            "time_end": "111",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
@@ -64,22 +64,22 @@ def test_query_with_met_range(algorithm_table):
 
     expected_data = ["2021-01-01T00:00:00", "2021-01-04T00:00:00"]
 
-    assert items["time"] == expected_data
+    assert items["time_tag_utc"] == expected_data
 
 
 def test_query_with_met_start(algorithm_table):
     """Test query with met start."""
-    # GET <invoke url>/query?met_start=120
+    # GET <invoke url>/query?time_start=120
     event = {
         "queryStringParameters": {
-            "met_start": "120",
+            "time_start": "120",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
     items = json.loads(response["body"])
 
     expected_data = ["2021-01-02T00:00:00", "2021-01-03T00:00:00"]
-    assert items["time"] == expected_data
+    assert items["time_tag_utc"] == expected_data
 
 
 def test_query_with_met_end(algorithm_table):
@@ -87,7 +87,7 @@ def test_query_with_met_end(algorithm_table):
     # GET <invoke url>/query?met_end=120
     event = {
         "queryStringParameters": {
-            "met_end": "120",
+            "time_end": "120",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
@@ -99,12 +99,12 @@ def test_query_with_met_end(algorithm_table):
 
 def test_query_with_utc_range(algorithm_table):
     """Test query_with_utc_range."""
-    # GET <invoke url>/query?met_in_utc_start=<met_in_utc_start>&
-    # met_in_utc_end=<met_in_utc_end>
+    # GET <invoke url>/query?utc_start=<utc_start>&
+    # utc_end=<utc_end>
     event = {
         "queryStringParameters": {
-            "met_in_utc_start": "2021-01-01T00:00:00",
-            "met_in_utc_end": "2021-01-03T00:00:00",
+            "utc_start": "2021-01-01T00:00:00",
+            "utc_end": "2021-01-03T00:00:00",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
@@ -116,7 +116,7 @@ def test_query_with_utc_range(algorithm_table):
         "2021-01-03T00:00:00",
     ]
 
-    assert items["time"] == expected_utc
+    assert items["time_tag_utc"] == expected_utc
 
 
 def test_query_with_utc_start(algorithm_table):
@@ -124,7 +124,7 @@ def test_query_with_utc_start(algorithm_table):
     # GET <invoke url>/query?utc_start=<utc_start>
     event = {
         "queryStringParameters": {
-            "met_in_utc_start": "2021-01-02T00:00:00",
+            "utc_start": "2021-01-02T00:00:00",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
@@ -136,15 +136,15 @@ def test_query_with_utc_start(algorithm_table):
         "2021-01-04T00:00:00",
     ]
 
-    assert items["time"] == expected_data
+    assert items["time_tag_utc"] == expected_data
 
 
 def test_query_with_utc_end(algorithm_table):
     """Test query with insert time end."""
-    # GET <invoke url>/query?met_in_utc_end=<met_in_utc_end>
+    # GET <invoke url>/query?utc_end=<utc_end>
     event = {
         "queryStringParameters": {
-            "met_in_utc_end": "2021-01-02T00:00:00",
+            "utc_end": "2021-01-02T00:00:00",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
@@ -155,11 +155,11 @@ def test_query_with_utc_end(algorithm_table):
 
 def test_query_no_results(algorithm_table):
     """Test query if there are no results."""
-    # GET <invoke url>/query?met_start=<met_start>&met_end=<met_end>
+    # GET <invoke url>/query?time_start=<time_start>&met_end=<met_end>
     event = {
         "queryStringParameters": {
-            "met_start": "200",
-            "met_end": "300",
+            "time_start": "200",
+            "time_end": "300",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
@@ -169,11 +169,11 @@ def test_query_no_results(algorithm_table):
 
 def test_query_with_multiple_filters(algorithm_table):
     """Test query with multiple filters."""
-    # GET <invoke url>/query?met_start=100&met_end=130&product_name=codicelo_product_1
+    # GET <invoke url>/query?time_start=100&time_end=130&product_name=codicelo_product_1
     event = {
         "queryStringParameters": {
-            "met_start": "100",
-            "met_end": "130",
+            "time_start": "100",
+            "time_end": "130",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
@@ -184,19 +184,19 @@ def test_query_with_multiple_filters(algorithm_table):
 
 def test_query_with_different_time_queries(algorithm_table):
     """Test query API with multiple filters."""
-    # GET <invoke url>/query?met_start=100&met_end=130&product_name=hit*&
-    # met_in_utc_start=2021-01-02T00:00:00.
+    # GET <invoke url>/query?time_start=100&time_end=130&product_name=hit*&
+    # utc_start=2021-01-02T00:00:00.
     event = {
         "queryStringParameters": {
-            "met_start": "100",
-            "met_end": "130",
-            "met_in_utc_start": "2021-01-02T00:00:00",
+            "time_start": "100",
+            "time_end": "130",
+            "utc_start": "2021-01-02T00:00:00",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
     assert response["statusCode"] == 400
     expected_message = {
-        "message": "Cannot query multiple time keys (met, met_in_utc, last_modified)"
+        "message": "Cannot query multiple time keys (time, utc, last_modified)"
     }
     assert json.loads(response["body"]) == expected_message
 
@@ -229,18 +229,18 @@ def test_query_with_no_parameters(algorithm_table):
 
 def test_query_with_mixed_parameters(algorithm_table):
     """Test query with mixed parameters."""
-    # GET <invoke url>/query?met_start=100&met_in_utc_end=2021-01-02T00:00:00.
+    # GET <invoke url>/query?time_start=100&utc_end=2021-01-02T00:00:00.
     event = {
         "queryStringParameters": {
-            "met_start": "100",
-            "met_in_utc_end": "2021-01-02T00:00:00",
+            "time_start": "100",
+            "utc_end": "2021-01-02T00:00:00",
         }
     }
     response = ialirt_db_query_api_formatted.lambda_handler(event, context=None)
 
     assert response["statusCode"] == 400
     expected_message = {
-        "message": "Cannot query multiple time keys (met, met_in_utc, last_modified)"
+        "message": "Cannot query multiple time keys (time, utc, last_modified)"
     }
     assert json.loads(response["body"]) == expected_message
 
