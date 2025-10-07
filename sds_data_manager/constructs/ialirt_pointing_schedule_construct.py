@@ -1,4 +1,4 @@
-"""Cron job to created pointing schedule."""
+"""Cron job to create pointing schedules."""
 
 from aws_cdk import Duration, RemovalPolicy, aws_s3
 from aws_cdk import aws_events as events
