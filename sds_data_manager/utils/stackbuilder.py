@@ -21,6 +21,7 @@ from sds_data_manager.constructs import (
     ialirt_coverage_construct,
     ialirt_efs_construct,
     ialirt_ingest_lambda_construct,
+    ialirt_pointing_schedule_construct,
     ialirt_processing_construct,
     ialirt_realtime_construct,
     indexer_lambda_construct,
@@ -357,6 +358,13 @@ def build_sds(
         construct_id="IalirtArchive",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         algorithm_data_table=ingest.algorithm_data_table,
+    )
+
+    # I-ALiRT IOIS pointing schedule lambda
+    ialirt_pointing_schedule_construct.IalirtPointingConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtPointingConstruct",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
     )
 
     # I-ALiRT IOIS coverage lambda (facilitates creating coverage json in s3)

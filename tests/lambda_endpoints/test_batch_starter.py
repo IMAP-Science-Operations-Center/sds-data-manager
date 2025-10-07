@@ -1707,6 +1707,12 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
                 version="03",
                 ingestion_date=datetime.now(),
             ),
+            RepointFiles(
+                file_path="/path/to/imap_2000_060_01.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="03",
+                ingestion_date=datetime.now(),
+            ),
             PointingTable(
                 pointing_id=47,
                 pointing_start_utc=datetime(2000, 2, 24, 0, 0, 0),
@@ -1748,6 +1754,26 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
     file_obj = imap_data_access.ScienceFilePath(filename)
     non_repoint_date_range = determine_date_range(session, file_obj)
     assert non_repoint_date_range == ("20260926", "20260926")
+
+    # Check that with no previous repoint file, start date is
+    # end_date - 1 day
+    filename = "imap_2000_055_01.repoint.csv"
+    file_obj = imap_data_access.SPICEFilePath(filename)
+    repoint_date_range = determine_date_range(session, file_obj)
+    assert repoint_date_range == ("20000223", "20000224")
+
+    # Check that correct start date is returned when there is a previous
+    # repoint file.
+    # Last repoint file the same day as end date
+    filename = "imap_2000_056_03.repoint.csv"
+    file_obj = imap_data_access.SPICEFilePath(filename)
+    repoint_date_range = determine_date_range(session, file_obj)
+    assert repoint_date_range == ("20000225", "20000225")
+    # Last repoint several days before end date
+    filename = "imap_2000_060_01.repoint.csv"
+    file_obj = imap_data_access.SPICEFilePath(filename)
+    repoint_date_range = determine_date_range(session, file_obj)
+    assert repoint_date_range == ("20000225", "20000229")
 
     # Add files other needed for the pointing attitude job
     session.add_all(
@@ -1845,11 +1871,11 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
                     "--descriptor",
                     "pointing-attitude",
                     "--start-date",
-                    "20000224",
+                    "20000225",
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_spacecraft_l1a_pointing-attitude-60996159_20000224_v001.json",
+                    "imap_spacecraft_l1a_pointing-attitude-12ca6ae0_20000225_v001.json",
                     "--upload-to-sdc",
                 ]
             },
