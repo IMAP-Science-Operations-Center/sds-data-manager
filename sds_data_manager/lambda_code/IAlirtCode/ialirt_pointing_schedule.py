@@ -9,7 +9,7 @@ import boto3
 import imap_processing.ialirt.constants
 from imap_processing.ialirt.process_ephemeris import generate_text_files
 
-from sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage import (
+from .ialirt_coverage import (
     get_latest_spice_kernels,
     setup_spice_file,
 )
