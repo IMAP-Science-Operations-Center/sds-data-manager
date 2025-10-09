@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import boto3
@@ -150,6 +151,22 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
             else params[f"{params_key}_end"]
         )
 
+        # Raise an exception if the range is too large.
+        if params_key == "met":
+            time_range = end_value - start_value
+        else:
+            start_dt = datetime.fromisoformat(start_value)
+            end_dt = datetime.fromisoformat(end_value)
+            time_range = (end_dt - start_dt).total_seconds()
+
+        if time_range > 3600:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"message": "Query range too large (maximum 1 hour)."}
+                ),
+            }
+
         key_expr &= Key(time_key).between(start_value, end_value)
 
         if time_key in {"met_in_utc", "last_modified"}:
@@ -175,7 +192,17 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
             if params_key == "met"
             else params[f"{params_key}_start"]
         )
-        key_expr &= Key(time_key).gte(start_value)
+
+        # Calculating end time.
+        if params_key == "met":
+            end_value = 3600 + start_value
+        else:
+            start_dt = datetime.fromisoformat(start_value)
+            end_dt = start_dt + timedelta(hours=1)
+            end_value = end_dt.isoformat()
+
+        logger.info(f"Calculated end_value for {params_key}: {end_value}")
+        key_expr &= Key(time_key).between(start_value, end_value)
 
         if time_key in {"met_in_utc", "last_modified"}:
             query_kwargs["IndexName"] = time_key
