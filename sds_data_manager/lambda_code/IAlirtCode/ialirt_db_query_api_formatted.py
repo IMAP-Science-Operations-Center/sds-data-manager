@@ -198,11 +198,26 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
 
     if processed_items:
         keys = processed_items[0].keys()
-        result = {
-            key: [item.get(key) for item in processed_items]
-            for key in keys
-            if key not in ("met", "ttj2000ns", "apid", "last_modified")
-        }
+        prefixes_to_remove = (
+            "codice_hi_",
+            "codice_lo_",
+            "hit_",
+            "mag_",
+            "swe_",
+            "swapi_",
+        )
+        result = {}
+        for key in keys:
+            if key in ("met", "ttj2000ns", "apid", "last_modified"):
+                continue
+
+            new_key = key
+            for prefix in prefixes_to_remove:
+                if new_key.startswith(prefix):
+                    new_key = new_key[len(prefix) :]
+                    break
+
+            result[new_key] = [item.get(key) for item in processed_items]
         if "met_in_utc" in result:
             result["time_tag_utc"] = result.pop("met_in_utc")
     else:
