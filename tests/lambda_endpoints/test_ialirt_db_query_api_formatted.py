@@ -276,7 +276,7 @@ def test_process_item_types():
 
 def test_last_evaluated():
     """Test last evaluated response."""
-    last_evaluated_key = {"apid": {"N": "478"}, "met": {"N": "497034344"}}
+    last_evaluated_key = {"apid": Decimal("478"), "met": Decimal("497034344")}
 
     processed_item = ialirt_db_query_api_formatted.process_item_types(
         last_evaluated_key
