@@ -261,6 +261,7 @@ def test_process_item_types():
             "mag_B_GSE": [Decimal("0.0"), Decimal("0.1"), Decimal("0.2")],
             "mag_B_magnitude": Decimal("0.22"),
             "met_in_utc": "2025-06-20T08:00:00",  # string should stay unchanged
+            "mag_hk_status": {"pri_isvalid": True, "hkn8v5": Decimal("3680")},
         }
     ]
 
@@ -274,5 +275,6 @@ def test_process_item_types():
             "mag_B_GSE": [0.0, 0.1, 0.2],
             "mag_B_magnitude": 0.22,
             "met_in_utc": "2025-06-20T08:00:00",
+            "mag_hk_status": {"pri_isvalid": True, "hkn8v5": 3680},
         }
     ]
