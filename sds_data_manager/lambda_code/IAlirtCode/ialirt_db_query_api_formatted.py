@@ -197,7 +197,7 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
     processed_items = [process_item_types(item) for item in items]
 
     if processed_items:
-        keys = processed_items[0].keys()
+        keys = {k for item in processed_items for k in item.keys()}
         prefixes_to_remove = (
             "codice_hi_",
             "codice_lo_",

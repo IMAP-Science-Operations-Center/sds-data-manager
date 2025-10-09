@@ -19,28 +19,28 @@ def algorithm_table(setup_dynamodb):
             "met": 101,
             "last_modified": "2021-01-01T00:00:00",
             "met_in_utc": "2021-01-01T00:00:00",
-            "data": "item1",
+            "codice_hi_data": "item1",
         },
         {
             "apid": 478,
             "met": 120,
             "last_modified": "2021-01-02T00:00:00",
             "met_in_utc": "2021-01-02T00:00:00",
-            "data": "item2",
+            "codice_hi_data": "item2",
         },
         {
             "apid": 478,
             "met": 130,
             "last_modified": "2021-01-03T00:00:00",
             "met_in_utc": "2021-01-03T00:00:00",
-            "data": "item3",
+            "mag_data_product": "item3",
         },
         {
             "apid": 478,
             "met": 110,
             "last_modified": "2021-01-04T00:00:00",
             "met_in_utc": "2021-01-04T00:00:00",
-            "data": "item4",
+            "mag_data_product": "item4",
         },
     ]
 
