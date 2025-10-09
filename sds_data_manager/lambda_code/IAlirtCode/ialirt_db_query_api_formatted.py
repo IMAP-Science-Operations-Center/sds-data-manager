@@ -67,8 +67,8 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
 
     Example of result:
     -----------------
-    result = {'hit_he_omni_high_en': [0, None],
-    'mag_B_GSE': [[-6.382, -1.353, -5.045],
+    result = {'he_omni_high_en': [0, None],
+    'B_GSE': [[-6.382, -1.353, -5.045],
     [-2.058, 3.792, -3.989]],
     'time_tag_utc': ['2025-10-02T07:07:13', '2025-10-02T07:07:17'], ...}
     """
