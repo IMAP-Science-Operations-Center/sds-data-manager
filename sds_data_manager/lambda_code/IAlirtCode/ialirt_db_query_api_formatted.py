@@ -69,7 +69,7 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
 
     Example of result:
     -----------------
-    result = {'he_omni_high_en': [0, None],
+    result = {'he_omni_high_en': [0, "null"],
     'B_GSE': [[-6.382, -1.353, -5.045],
     [-2.058, 3.792, -3.989]],
     'time_tag_utc': ['2025-10-02T07:07:13', '2025-10-02T07:07:17'], ...}
@@ -92,8 +92,8 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
     query_kwargs = {"KeyConditionExpression": key_expr}
 
     allowed_params = {
-        "time_start",
-        "time_end",
+        "met_start",
+        "met_end",
         "utc_start",
         "utc_end",
         "last_modified_start",
@@ -109,7 +109,7 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
             ),
         }
 
-    time_prefixes = {"time", "utc", "last_modified"}
+    time_prefixes = {"met", "utc", "last_modified"}
     used_time_prefixes = {
         param.split("_start")[0].split("_end")[0]
         for param in params
@@ -120,20 +120,17 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
         return {
             "statusCode": 400,
             "body": json.dumps(
-                {
-                    "message": "Cannot query multiple time keys "
-                    "(time, utc, last_modified)"
-                }
+                {"message": "Cannot query multiple time keys (met, utc, last_modified)"}
             ),
         }
 
     if (
-        ("time_start" in params and "time_end" in params)
+        ("met_start" in params and "met_end" in params)
         or ("utc_start" in params and "utc_end" in params)
         or ("last_modified_start" in params and "last_modified_end" in params)
     ):
-        if "time_start" in params:
-            params_key = "time"
+        if "met_start" in params:
+            params_key = "met"
             time_key = "met"
         elif "utc_start" in params:
             params_key = "utc"
@@ -144,12 +141,12 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
 
         start_value = (
             int(params[f"{params_key}_start"])
-            if params_key == "time"
+            if params_key == "met"
             else params[f"{params_key}_start"]
         )
         end_value = (
             int(params[f"{params_key}_end"])
-            if params_key == "time"
+            if params_key == "met"
             else params[f"{params_key}_end"]
         )
 
@@ -159,12 +156,12 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
             query_kwargs["IndexName"] = time_key
 
     elif (
-        "time_start" in params
+        "met_start" in params
         or "utc_start" in params
         or "last_modified_start" in params
     ):
-        if "time_start" in params:
-            params_key = "time"
+        if "met_start" in params:
+            params_key = "met"
             time_key = "met"
         elif "utc_start" in params:
             params_key = "utc"
@@ -175,7 +172,7 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
 
         start_value = (
             int(params[f"{params_key}_start"])
-            if params_key == "time"
+            if params_key == "met"
             else params[f"{params_key}_start"]
         )
         key_expr &= Key(time_key).gte(start_value)
@@ -183,7 +180,7 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
         if time_key in {"met_in_utc", "last_modified"}:
             query_kwargs["IndexName"] = time_key
 
-    elif "time_end" in params or "utc_end" in params or "last_modified_end" in params:
+    elif "met_end" in params or "utc_end" in params or "last_modified_end" in params:
         return {
             "statusCode": 400,
             "body": json.dumps(
