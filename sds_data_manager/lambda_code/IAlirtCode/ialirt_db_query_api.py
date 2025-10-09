@@ -35,6 +35,7 @@ def process_item_types(item: dict) -> dict:
         elif isinstance(value, dict) and "N" in value:
             num = Decimal(value["N"])
             result[key] = int(num) if num % 1 == 0 else round(float(num), 3)
+        # Dictionary with boolean
         elif isinstance(value, dict) and "BOOL" in value:
             result[key] = bool(value["BOOL"])
         # Scalar fields
