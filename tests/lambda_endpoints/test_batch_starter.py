@@ -826,6 +826,7 @@ def test_lambda_handler_mag_l1c_case(session):
     # Mock the situation where mag l1b files trigger batch starter back to back.
     # We should expect the second job mag l1c to be submitted with a version bump and
     # both mag l1b files.
+    _static_spice_files(session)
     session.add(
         ScienceFiles(
             file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v001.cdf",
@@ -852,6 +853,7 @@ def test_lambda_handler_mag_l1c_case(session):
     }
     context = {"context": "sample_context"}
     expected_processing_input = ProcessingInputCollection(
+        SPICEInput("naif0012.tls", "imap_sclk_0000.tsc"),
         ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
     )
     with (
@@ -877,7 +879,7 @@ def test_lambda_handler_mag_l1c_case(session):
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_mag_l1c_norm-mago-7f101966_20240101_v001.json",
+                    "imap_mag_l1c_norm-mago-34e68524_20240101_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -945,7 +947,7 @@ def test_lambda_handler_mag_l1c_case(session):
                     "--version",
                     "v002",
                     "--dependency",
-                    "imap_mag_l1c_norm-mago-2ae6d6fe_20240101_v002.json",
+                    "imap_mag_l1c_norm-mago-78046f35_20240101_v002.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -973,6 +975,7 @@ def test_lambda_handler_duplicate_mag_l1c_job(session, caplog):
     # Mock the situation where mag l1b files trigger batch starter back to back but
     # with the same exact dependencies.
     # We should expect the duplicate job to be skipped.
+    _static_spice_files(session)
     session.add_all(
         [
             ScienceFiles(

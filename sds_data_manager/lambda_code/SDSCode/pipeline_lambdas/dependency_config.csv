@@ -700,10 +700,12 @@ lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, lo, l3, l090-spx-h-sf-sp-ram-hae-4deg
 
 # <---- MAG Dependencies ---->
 
+# L0 -> L1A
 mag, l0, raw, mag, l1a, all, HARD, DOWNSTREAM
 leapseconds, spice, historical, mag, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, mag, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
+# L1A -> L1B
 mag, l1a, norm-mago, mag, l1b, norm-mago, HARD, DOWNSTREAM
 mag, ancillary, l1b-calibration, mag, l1b, norm-mago, HARD, DOWNSTREAM
 mag, l1a, norm-magi, mag, l1b, norm-magi, HARD, DOWNSTREAM
@@ -713,27 +715,44 @@ mag, ancillary, l1b-calibration, mag, l1b, burst-mago, HARD, DOWNSTREAM
 mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
 mag, ancillary, l1b-calibration, mag, l1b, burst-magi, HARD, DOWNSTREAM
 
+leapseconds, spice, historical, mag, l1b, norm-mago, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1b, norm-mago, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l1b, norm-magi, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1b, norm-magi, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l1b, burst-mago, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1b, burst-mago, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l1b, burst-magi, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1b, burst-magi, HARD_NO_TRIGGER, DOWNSTREAM
+
+
+# L1B -> L1C
 # For L1C, we want to trigger on either burst or norm or both.
 mag, l1b, norm-mago, mag, l1c, norm-mago, SOFT_TRIGGER, DOWNSTREAM
 mag, l1b, burst-mago, mag, l1c, norm-mago, SOFT_TRIGGER, DOWNSTREAM
 mag, l1b, norm-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
 mag, l1b, burst-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
 
+leapseconds, spice, historical, mag, l1c, norm-mago, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1c, norm-mago, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l1c, norm-magi, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1c, norm-magi, HARD_NO_TRIGGER, DOWNSTREAM
+
+# L1C/L1B -> L1D
 # all L1D processing occurs in one step
 mag, ancillary, l1d-calibration, mag, l1d, norm-srf, HARD, DOWNSTREAM
 mag, l1c, norm-mago, mag, l1d, norm-srf, HARD, DOWNSTREAM
 mag, l1c, norm-magi, mag, l1d, norm-srf, HARD, DOWNSTREAM
 mag, l1b, burst-mago, mag, l1d, norm-srf, SOFT_TRIGGER, DOWNSTREAM
 mag, l1b, burst-magi, mag, l1d, norm-srf, SOFT_TRIGGER, DOWNSTREAM
-mag, ancillary, l1d-calibration, mag, l1d, norm-srf, HARD, DOWNSTREAM
 
 imap_frames, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
+spin, spin, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 leapseconds, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
-spin, spin, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 
+# L1C/L1B -> L2
 # MAG L2 and L1D look pretty similar.
 mag, l1c, norm-mago, mag, l2, norm-srf, HARD, DOWNSTREAM
 mag, l1b, burst-mago, mag, l2, burst-srf, HARD, DOWNSTREAM
@@ -753,7 +772,6 @@ science_frames, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTRE
 pointing_attitude, spice, historical, mag, l2, burst-srf, HARD, DOWNSTREAM
 leapseconds, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
-
 
 # <---- Spacecraft Dependencies ---->
 # Quaternions
