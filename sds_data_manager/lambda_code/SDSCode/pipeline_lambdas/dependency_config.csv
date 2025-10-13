@@ -600,10 +600,15 @@ lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, good-times, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, hydrogen-background, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, oxygen-background, lo, l1c, pset, HARD, DOWNSTREAM
-spin, spin, historical, lo, l1b, de, HARD, DOWNSTREAM
-repoint, repoint, historical, lo, l1b, de, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1c, pset, HARD, DOWNSTREAM
+repoint, repoint, historical, lo, l1c, pset, HARD, DOWNSTREAM
 leapseconds, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 
 # TODO: Maps for 5-7 days need to be defined. deg resolution for those maps are currently N/A in Lo mapping product sheet.
 

@@ -116,8 +116,8 @@ class ProcessingConstruct(Construct):
             image=ecs.ContainerImage.from_ecr_repository(
                 repository=container_repo, tag="latest"
             ),
-            memory=cdk.Size.mebibytes(4096),
-            cpu=1,
+            memory=cdk.Size.gibibytes(16),
+            cpu=4,
             environment={
                 # Useful for switching APIs between dev / prod endpoints
                 "IMAP_DATA_ACCESS_URL": data_access_url,
@@ -137,4 +137,5 @@ class ProcessingConstruct(Construct):
             f"ProcessingJob-{job_name}",
             job_definition_name=f"ProcessingJob-{job_name}",
             container=container_definition,
+            timeout=cdk.Duration.hours(2),
         )
