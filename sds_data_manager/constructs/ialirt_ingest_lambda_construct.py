@@ -62,11 +62,13 @@ class IalirtIngestLambda(Construct):
 
         # Create DynamoDB Table
         self.algorithm_data_table = self.create_algorithm_dynamodb_table()
+        self.data_table = self.create_table()
 
         # Create Lambda Function
         self.ialirt_ingest_lambda = self.create_lambda_function(
             ialirt_bucket,
             self.algorithm_data_table,
+            self.data_table,
             docker_path,
             data_access_url,
         )
@@ -133,10 +135,57 @@ class IalirtIngestLambda(Construct):
         )
         return self.algorithm_data_table
 
+    def create_table(self) -> aws_dynamodb.Table:
+        """Create and return the algorithm data product table."""
+        removal_policy = (
+            RemovalPolicy.RETAIN
+            if self.account_name == "prod"
+            else RemovalPolicy.DESTROY
+        )
+        point_in_time_recovery = True if self.account_name == "prod" else False
+
+        self.data_table = ddb.Table(
+            self,
+            "IalirtDataTable",
+            table_name="ialirt-data-table",
+            # RemovalPolicy.RETAIN to keep the table after stack deletion.
+            removal_policy=removal_policy,
+            # Restore data to any point in time within the last 35 days.
+            point_in_time_recovery=point_in_time_recovery,
+            # Partition key (PK) = instrument.
+            partition_key=ddb.Attribute(
+                name="instrument",
+                type=ddb.AttributeType.STRING,
+            ),
+            # Sort key (SK) = met_in_utc.
+            sort_key=ddb.Attribute(
+                name="met_in_utc",
+                type=ddb.AttributeType.STRING,
+            ),
+            billing_mode=ddb.BillingMode.PAY_PER_REQUEST,  # On-Demand capacity mode.
+        )
+
+        # Add a GSI for last modified timestamp.
+        self.data_table.add_global_secondary_index(
+            index_name="last_modified",
+            # Partition key (PK) = instrument.
+            partition_key=ddb.Attribute(
+                name="instrument", type=ddb.AttributeType.STRING
+            ),
+            # Sort key (SK) = last modified.
+            sort_key=ddb.Attribute(
+                name="last_modified",
+                type=ddb.AttributeType.STRING,
+            ),
+            projection_type=ddb.ProjectionType.ALL,
+        )
+        return self.data_table
+
     def create_lambda_function(
         self,
         ialirt_bucket: aws_s3.Bucket,
         algorithm_data_table: aws_dynamodb.Table,
+        data_table: aws_dynamodb.Table,
         docker_path: str,
         data_access_url: str,
     ) -> lambda_.DockerImageFunction:
@@ -187,6 +236,7 @@ class IalirtIngestLambda(Construct):
             ),
             environment={
                 "ALGORITHM_TABLE": algorithm_data_table.table_name,
+                "DATA_TABLE": data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
                 "EFS_SPICE_MOUNT_PATH": "/mnt/data",
                 "IMAP_DATA_ACCESS_URL": data_access_url,
@@ -194,6 +244,7 @@ class IalirtIngestLambda(Construct):
         )
         ialirt_ingest_lambda.add_to_role_policy(s3_read_policy)
         algorithm_data_table.grant_read_write_data(ialirt_ingest_lambda)
+        data_table.grant_read_write_data(ialirt_ingest_lambda)
 
         # The resource is deleted when the stack is deleted.
         ialirt_ingest_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)

@@ -56,3 +56,45 @@ def setup_dynamodb():
         yield {
             "algorithm_table": algorithm_table,
         }
+
+
+@pytest.fixture
+def setup_data_table():
+    """Initialize DynamoDB resource and create table."""
+    os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+    os.environ["INGEST_TABLE"] = "imap-ingest-table"
+    os.environ["DATA_TABLE"] = "imap-data-table"
+
+    with mock_dynamodb():
+        # Initialize DynamoDB resource
+        dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
+
+        data_table = dynamodb.create_table(
+            TableName=os.environ["DATA_TABLE"],
+            KeySchema=[
+                # Partition key
+                {"AttributeName": "instrument", "KeyType": "HASH"},
+                # Sort key
+                {"AttributeName": "met_in_utc", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "instrument", "AttributeType": "S"},
+                {"AttributeName": "met_in_utc", "AttributeType": "S"},
+                {"AttributeName": "last_modified", "AttributeType": "S"},
+            ],
+            GlobalSecondaryIndexes=[
+                {
+                    "IndexName": "last_modified",  # Unique index name
+                    "KeySchema": [
+                        {"AttributeName": "instrument", "KeyType": "HASH"},
+                        {"AttributeName": "last_modified", "KeyType": "RANGE"},
+                    ],
+                    "Projection": {"ProjectionType": "ALL"},
+                },
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+
+        yield {
+            "data_table": data_table,
+        }
