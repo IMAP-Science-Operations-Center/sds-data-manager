@@ -329,7 +329,13 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
             insert_data(result, algorithm_table, instrument)
 
 
-def insert_data(data: list[dict], algorithm_table, instrument: str):
+def insert_data(
+    data: list[dict],
+    algorithm_table,
+    instrument: str,
+    partition_key: str = "apid",
+    sort_key: str = "met",
+):
     """Insert or update database row, depending on content of item.
 
     Parameters
@@ -340,31 +346,37 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         The DynamoDB table to insert or update the data.
     instrument : str
         The prefix for the product name.
+    partition_key : str
+        The partition key for the DynamoDB table.
+    sort_key : str
+        The sort key for the DynamoDB table.
     """
-    apid = data[0]["apid"]
-    mets = [item["met"] for item in data]
-    min_met = min(mets)
-    max_met = max(mets)
-    logger.info(f"Processing mets {min_met} to {max_met}.")
-    logger.info(f"Processing utc {met_to_utc(min_met)} to {met_to_utc(max_met)}.")
+    instrument_key = data[0][partition_key]
+    times = [item[sort_key] for item in data]
+    min_time = min(times)
+    max_time = max(times)
+    logger.info(f"Processing {min_time} to {max_time}.")
 
     # Query existing items.
     response = algorithm_table.query(
-        KeyConditionExpression=Key("apid").eq(apid)
-        & Key("met").between(min_met, max_met)
+        KeyConditionExpression=Key(partition_key).eq(instrument_key)
+        & Key(sort_key).between(min_time, max_time)
     )
 
-    existing_items = {item["met"]: item for item in response.get("Items", [])}
+    existing_items = {item[sort_key]: item for item in response.get("Items", [])}
 
     # Insert or update as needed
     for raw in data:
-        met = raw["met"]
-        key = {"apid": apid, "met": met}
-        existing = existing_items.get(met)
+        time = raw[sort_key]
+        key = {partition_key: instrument_key, sort_key: time}
+        existing = existing_items.get(time)
         raw["last_modified"] = datetime.now(timezone.utc).isoformat()
 
         # Calculate the spacecraft position and velocity in GSM coordinates.
-        et = sct_to_et(met_to_sclkticks(met))
+        if isinstance(time, str):
+            et = str_to_et(time)
+        else:
+            et = sct_to_et(met_to_sclkticks(time))
         gsm_state = imap_state(
             [et], ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
         )
@@ -381,6 +393,9 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
             if any(key.startswith(instrument) for key in existing.keys()):
                 continue
 
+            # TODO: remove once we transition databases.
+            # This is if an item contains multiple instruments
+            # and that will never happen in the new database.
             update_expr = "SET " + ", ".join(
                 f"{field} = :{field}"
                 for field in raw
@@ -445,6 +460,7 @@ def insert_kernels(dependency_inputs, algorithm_table):
         "met": int(met),
         "met_in_utc": met_to_utc(met).split(".")[0],
         "ttj2000ns": int(met_to_ttj2000ns(met)),
+        "instrument": "spice",
         "last_modified": last_modified_utc,
         "spice_kernels": spice_kernels,
     }
@@ -477,8 +493,10 @@ def lambda_handler(event, context):
     logger.info("Received event: %s", json.dumps(event))
 
     algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
+    data_table_name = os.environ.get("DATA_TABLE")
     dynamodb = boto3.resource("dynamodb")
     algorithm_table = dynamodb.Table(algorithm_table_name)
+    data_table = dynamodb.Table(data_table_name)
     url = os.environ.get("IMAP_DATA_ACCESS_URL")
 
     bucket = event["detail"]["bucket"]["name"]
@@ -511,6 +529,9 @@ def lambda_handler(event, context):
         process_algorithms(combined, algorithm_table)
         # Insert kernel metadata every minute.
         insert_kernels(dependency_inputs, algorithm_table)
+
+        process_algorithms(combined, data_table)
+        insert_kernels(dependency_inputs, data_table)
 
         logger.info("Successfully wrote all new items to DynamoDB")
     else:

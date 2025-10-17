@@ -37,13 +37,13 @@ def populate_data_table(setup_data_table):
     items = [
         {
             "instrument": "mag",
-            "met_in_utc": "2021-01-01T00:00:00",
+            "met_in_utc": "2021-01-01T00:00:00.000000001",
             "last_modified": "2021-01-01T00:00:00",
             "data_product_1": str(1234.56),
         },
         {
             "instrument": "mag",
-            "met_in_utc": "2021-02-01T00:00:00",
+            "met_in_utc": "2021-02-01T00:00:00.000000005",
             "last_modified": "2021-02-01T00:00:00",
             "data_product_2": str(101.3),
         },

@@ -203,7 +203,7 @@ def test_insert_data(
         {
             "apid": 478,
             "met": 123456,
-            "utc": "2025-05-21T14:00:00",
+            "met_in_utc": "2025-05-21T14:00:00",
             "ttj2000ns": 759175836184000000,
             "hit_e_a_side_med_en": Decimal("2.0"),
         },
@@ -211,7 +211,7 @@ def test_insert_data(
         {
             "apid": 478,
             "met": 123457,
-            "utc": "2025-05-21T14:00:01",
+            "met_in_utc": "2025-05-21T14:00:01",
             "ttj2000ns": 759175836184000001,
             "hit_e_a_side_low_en": Decimal("3.0"),
         },
@@ -219,7 +219,7 @@ def test_insert_data(
         {
             "apid": 478,
             "met": 123458,
-            "utc": "2025-05-21T14:00:02",
+            "met_in_utc": "2025-05-21T14:00:02",
             "ttj2000ns": 759175836184000002,
             "hit_e_a_side_low_en": Decimal("5.0"),
         },
@@ -240,6 +240,87 @@ def test_insert_data(
 
     # New item should be inserted
     assert item3["hit_e_a_side_low_en"] == Decimal("5.0")
+
+
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_state",
+    return_value=np.array([[1, 2, 3, 4, 5, 6]]),
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.str_to_et",
+    return_value=12345.0,
+)
+def test_insert_restructured_data(
+    mock_str_to_et,
+    mock_imap_state,
+    setup_data_table,
+):
+    """Test insert_data function."""
+    data_table = setup_data_table["data_table"]
+
+    # Existing item.
+    data_table.put_item(
+        Item={
+            "instrument": "mag",
+            "met_in_utc": "2021-01-01T00:00:00.000000001",
+            "mag_data": Decimal("0.0"),
+        }
+    )
+
+    # Existing item.
+    data_table.put_item(
+        Item={
+            "instrument": "mag",
+            "met_in_utc": "2021-02-01T00:00:00.000000001",
+            "mag_data": Decimal("0.0"),
+        }
+    )
+
+    # Create data for all three cases
+    test_data = [
+        # Will skip.
+        {
+            "instrument": "mag",
+            "met_in_utc": "2021-01-01T00:00:00.000000001",
+            "ttj2000ns": 759175836184000000,
+            "mag_data": Decimal("2.0"),
+        },
+        # Will skip.
+        {
+            "instrument": "mag",
+            "met_in_utc": "2021-02-01T00:00:00.000000001",
+            "ttj2000ns": 759175836184000001,
+            "mag_data": Decimal("3.0"),
+        },
+        # Will insert.
+        {
+            "instrument": "mag",
+            "met_in_utc": "2021-03-01T00:00:00.000000001",
+            "ttj2000ns": 759175836184000002,
+            "mag_data": Decimal("5.0"),
+        },
+    ]
+
+    insert_data(
+        test_data, data_table, "mag", partition_key="instrument", sort_key="met_in_utc"
+    )
+
+    item1 = data_table.get_item(
+        Key={"instrument": "mag", "met_in_utc": "2021-01-01T00:00:00.000000001"}
+    )["Item"]
+    item2 = data_table.get_item(
+        Key={"instrument": "mag", "met_in_utc": "2021-02-01T00:00:00.000000001"}
+    )["Item"]
+    item3 = data_table.get_item(
+        Key={"instrument": "mag", "met_in_utc": "2021-03-01T00:00:00.000000001"}
+    )["Item"]
+
+    # Not updated
+    assert item1["mag_data"] == Decimal("0.0")
+    assert item2["mag_data"] == Decimal("0.0")
+
+    # New item should be inserted
+    assert item3["mag_data"] == Decimal("5.0")
 
 
 @patch(
