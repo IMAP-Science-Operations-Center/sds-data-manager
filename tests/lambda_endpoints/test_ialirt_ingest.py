@@ -1,5 +1,6 @@
 """Test the I-Alirt ingest lambda function."""
 
+import os
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -52,6 +53,7 @@ def test_lambda_handler(mock_get, mock_download, mock_furnsh, setup_dynamodb):
     """Test the lambda_handler function."""
     # Mock event data
     algorithm_table = setup_dynamodb["algorithm_table"]
+    os.environ["DATA_TABLE"] = algorithm_table.name
 
     mock_response = MagicMock()
     mock_response.json.return_value = [
