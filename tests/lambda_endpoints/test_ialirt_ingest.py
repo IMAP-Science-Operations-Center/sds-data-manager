@@ -26,6 +26,7 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     parse_packets,
     process_algorithms,
     query_filenames,
+    reformat_data,
 )
 
 
@@ -242,6 +243,74 @@ def test_insert_data(
     assert item3["hit_e_a_side_low_en"] == Decimal("5.0")
 
 
+def test_reformat_data():
+    """Test reformat_data function."""
+    test_data = [
+        {
+            "apid": 478,
+            "met": 374,
+            "instrument": "mag",
+            "met_in_utc": "2021-01-01T00:00:00",
+            "ttj2000ns": 759175836184000000,
+            "mag_data": Decimal("1.0"),
+            "mag_hk_status": {"hk1v5_warn": False, "hk1v5_danger": True},
+        },
+        {
+            "apid": 478,
+            "met": 375,
+            "instrument": "mag",
+            "met_in_utc": "2021-01-01T00:00:01",
+            "ttj2000ns": 759175836184000001,
+            "mag_data": Decimal("2.0"),
+            "mag_hk_status": {"hk1v5_warn": True, "hk1v5_danger": False},
+        },
+    ]
+
+    science_data, hk_data = reformat_data(test_data)
+
+    assert all("apid" not in d for d in science_data)
+    assert all("met" not in d for d in science_data)
+    assert all("mag_hk_status" not in d for d in science_data)
+    assert science_data[0]["time_utc"] == "2021-01-01T00:00:00"
+
+    assert hk_data[0]["instrument"] == "mag_hk"
+    assert hk_data[0]["time_utc"] == "2021-01-01T00:00:00"
+    assert hk_data[0]["mag_hk_status"]["hk1v5_danger"] is True
+
+
+def test_reformat_data_no_hk():
+    """Test reformat_data function with no HK data."""
+    test_data = [
+        {
+            "apid": 478,
+            "met": 374,
+            "instrument": "hit",
+            "met_in_utc": "2021-01-01T00:00:00",
+            "ttj2000ns": 759175836184000000,
+            "hit_data": Decimal("1.0"),
+        },
+        {
+            "apid": 478,
+            "met": 375,
+            "instrument": "hit",
+            "met_in_utc": "2021-01-01T00:00:01",
+            "ttj2000ns": 759175836184000001,
+            "hit_data": Decimal("2.0"),
+        },
+    ]
+
+    science_data, hk_data = reformat_data(test_data)
+
+    assert all("apid" not in d for d in science_data)
+    assert all("met" not in d for d in science_data)
+    assert all("mag_hk_status" not in d for d in science_data)
+    assert science_data[0]["time_utc"] == "2021-01-01T00:00:00"
+
+    assert hk_data[0]["instrument"] == "mag_hk"
+    assert hk_data[0]["time_utc"] == "2021-01-01T00:00:00"
+    assert hk_data[0]["mag_hk_status"]["hk1v5_danger"] is True
+
+
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_state",
     return_value=np.array([[1, 2, 3, 4, 5, 6]]),
@@ -250,19 +319,19 @@ def test_insert_data(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.str_to_et",
     return_value=12345.0,
 )
-def test_insert_restructured_data(
+def test_insert_formatted_data(
     mock_str_to_et,
     mock_imap_state,
     setup_data_table,
 ):
-    """Test insert_data function."""
+    """Test insert_formatted_data function."""
     data_table = setup_data_table["data_table"]
 
     # Existing item.
     data_table.put_item(
         Item={
             "instrument": "mag",
-            "met_in_utc": "2021-01-01T00:00:00.000000001",
+            "met_in_utc": "2021-01-01T00:00:00",
             "mag_data": Decimal("0.0"),
         }
     )
@@ -271,7 +340,7 @@ def test_insert_restructured_data(
     data_table.put_item(
         Item={
             "instrument": "mag",
-            "met_in_utc": "2021-02-01T00:00:00.000000001",
+            "met_in_utc": "2021-02-01T00:00:00",
             "mag_data": Decimal("0.0"),
         }
     )
@@ -281,21 +350,21 @@ def test_insert_restructured_data(
         # Will skip.
         {
             "instrument": "mag",
-            "met_in_utc": "2021-01-01T00:00:00.000000001",
+            "met_in_utc": "2021-01-01T00:00:00",
             "ttj2000ns": 759175836184000000,
             "mag_data": Decimal("2.0"),
         },
         # Will skip.
         {
             "instrument": "mag",
-            "met_in_utc": "2021-02-01T00:00:00.000000001",
+            "met_in_utc": "2021-02-01T00:00:00",
             "ttj2000ns": 759175836184000001,
             "mag_data": Decimal("3.0"),
         },
         # Will insert.
         {
             "instrument": "mag",
-            "met_in_utc": "2021-03-01T00:00:00.000000001",
+            "met_in_utc": "2021-03-01T00:00:00",
             "ttj2000ns": 759175836184000002,
             "mag_data": Decimal("5.0"),
         },

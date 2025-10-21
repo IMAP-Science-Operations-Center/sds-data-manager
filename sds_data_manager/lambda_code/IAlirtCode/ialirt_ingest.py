@@ -455,7 +455,11 @@ def reformat_data(data):
     ]
     keep_keys = {"met_in_utc", "instrument", "mag_hk_status"}
     hk_data = [
-        {rename_map.get(k, k): v for k, v in item.items() if k in keep_keys}
+        {
+            rename_map.get(k, k): ("mag_hk" if k == "instrument" and v == "mag" else v)
+            for k, v in item.items()
+            if k in keep_keys
+        }
         for item in data
     ]
 
