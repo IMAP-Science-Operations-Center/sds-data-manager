@@ -267,7 +267,7 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     return combined
 
 
-def process_algorithms(combined: xr.Dataset, algorithm_table):
+def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):
     """Process the algorithms and insert data, as needed.
 
     Parameters
@@ -276,6 +276,8 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
         L0 parsed data.
     algorithm_table : dynamodb.Table
         The DynamoDB table to insert or update the data.
+    table_name : str
+        Name of the DynamoDB table
     """
     processors = [
         ("mag", process_packet),
@@ -326,10 +328,107 @@ def process_algorithms(combined: xr.Dataset, algorithm_table):
         logger.info("%s result: %s", instrument, result)
 
         if any(result) and all(result):
-            insert_data(result, algorithm_table, instrument)
+            if table_name == "ialirt-algorithm-table":
+                insert_data(result, algorithm_table, instrument)
+            else:
+                insert_formatted_data(result, algorithm_table, instrument)
 
 
-def insert_data(
+def insert_data(data: list[dict], algorithm_table, instrument: str):
+    """Insert or update database row, depending on content of item.
+
+    Parameters
+    ----------
+    data : list[dict]
+        Data product produced from processing respectively instrument.
+    algorithm_table : dynamodb.Table
+        The DynamoDB table to insert or update the data.
+    instrument : str
+        The prefix for the product name.
+    """
+    apid = data[0]["apid"]
+    mets = [item["met"] for item in data]
+    min_met = min(mets)
+    max_met = max(mets)
+    logger.info(f"Processing mets {min_met} to {max_met}.")
+    logger.info(f"Processing utc {met_to_utc(min_met)} to {met_to_utc(max_met)}.")
+
+    # Query existing items.
+    response = algorithm_table.query(
+        KeyConditionExpression=Key("apid").eq(apid)
+        & Key("met").between(min_met, max_met)
+    )
+
+    existing_items = {item["met"]: item for item in response.get("Items", [])}
+
+    # Insert or update as needed
+    for raw in data:
+        met = raw["met"]
+        key = {"apid": apid, "met": met}
+        existing = existing_items.get(met)
+        raw["last_modified"] = datetime.now(timezone.utc).isoformat()
+
+        # Calculate the spacecraft position and velocity in GSM coordinates.
+        et = sct_to_et(met_to_sclkticks(met))
+        gsm_state = imap_state(
+            [et], ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
+        )
+        gse_state = imap_state(
+            [et], ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
+        )
+
+        raw["sc_position_GSM"] = [Decimal(str(val)) for val in gsm_state[0, :3]]
+        raw["sc_velocity_GSM"] = [Decimal(str(val)) for val in gsm_state[0, 3:]]
+        raw["sc_position_GSE"] = [Decimal(str(val)) for val in gse_state[0, :3]]
+        raw["sc_velocity_GSE"] = [Decimal(str(val)) for val in gse_state[0, 3:]]
+
+        if existing:
+            if any(key.startswith(instrument) for key in existing.keys()):
+                continue
+
+            update_expr = "SET " + ", ".join(
+                f"{field} = :{field}"
+                for field in raw
+                if field
+                not in {
+                    "apid",
+                    "met",
+                    "met_in_utc",
+                    "ttj2000ns",
+                    "sc_position_GSM",
+                    "sc_velocity_GSM",
+                    "sc_position_GSE",
+                    "sc_velocity_GSE",
+                }
+            )
+
+            expression_values = {
+                f":{field}": value
+                for field, value in raw.items()
+                if field
+                not in {
+                    "apid",
+                    "met",
+                    "met_in_utc",
+                    "ttj2000ns",
+                    "sc_position_GSM",
+                    "sc_velocity_GSM",
+                    "sc_position_GSE",
+                    "sc_velocity_GSE",
+                }
+            }
+
+            algorithm_table.update_item(
+                Key=key,
+                UpdateExpression=update_expr,
+                ExpressionAttributeValues=expression_values,
+            )
+        else:
+            algorithm_table.put_item(Item=raw)
+        logger.info(f"Inserted {instrument.upper()}.")
+
+
+def insert_formatted_data(
     data: list[dict],
     algorithm_table,
     instrument: str,
@@ -506,7 +605,6 @@ def lambda_handler(event, context):
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
     dependency_inputs = get_latest_spice_kernels(url)
-
     logger.info("dependency_inputs: %s", dependency_inputs)
     download_spice_file(dependency_inputs)
 
@@ -526,11 +624,11 @@ def lambda_handler(event, context):
         combined = parse_packets(filenames, bucket, Path("/tmp"))  # noqa: S108
         logger.info("Packets parsed. Processing algorithms.")
         # Process algorithms and insert new data.
-        process_algorithms(combined, algorithm_table)
+        process_algorithms(combined, algorithm_table, algorithm_table_name)
         # Insert kernel metadata every minute.
         insert_kernels(dependency_inputs, algorithm_table)
 
-        process_algorithms(combined, data_table)
+        process_algorithms(combined, data_table, data_table_name)
         insert_kernels(dependency_inputs, data_table)
 
         logger.info("Successfully wrote all new items to DynamoDB")
