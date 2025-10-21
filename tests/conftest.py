@@ -75,22 +75,11 @@ def setup_data_table():
                 # Partition key
                 {"AttributeName": "instrument", "KeyType": "HASH"},
                 # Sort key
-                {"AttributeName": "met_in_utc", "KeyType": "RANGE"},
+                {"AttributeName": "time_utc", "KeyType": "RANGE"},
             ],
             AttributeDefinitions=[
                 {"AttributeName": "instrument", "AttributeType": "S"},
-                {"AttributeName": "met_in_utc", "AttributeType": "S"},
-                {"AttributeName": "last_modified", "AttributeType": "S"},
-            ],
-            GlobalSecondaryIndexes=[
-                {
-                    "IndexName": "last_modified",  # Unique index name
-                    "KeySchema": [
-                        {"AttributeName": "instrument", "KeyType": "HASH"},
-                        {"AttributeName": "last_modified", "KeyType": "RANGE"},
-                    ],
-                    "Projection": {"ProjectionType": "ALL"},
-                },
+                {"AttributeName": "time_utc", "AttributeType": "S"},
             ],
             BillingMode="PAY_PER_REQUEST",
         )

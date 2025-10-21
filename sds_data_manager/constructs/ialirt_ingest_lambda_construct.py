@@ -157,28 +157,14 @@ class IalirtIngestLambda(Construct):
                 name="instrument",
                 type=ddb.AttributeType.STRING,
             ),
-            # Sort key (SK) = met_in_utc.
+            # Sort key (SK) = time_utc.
             sort_key=ddb.Attribute(
-                name="met_in_utc",
+                name="time_utc",
                 type=ddb.AttributeType.STRING,
             ),
             billing_mode=ddb.BillingMode.PAY_PER_REQUEST,  # On-Demand capacity mode.
         )
 
-        # Add a GSI for last modified timestamp.
-        self.data_table.add_global_secondary_index(
-            index_name="last_modified",
-            # Partition key (PK) = instrument.
-            partition_key=ddb.Attribute(
-                name="instrument", type=ddb.AttributeType.STRING
-            ),
-            # Sort key (SK) = last modified.
-            sort_key=ddb.Attribute(
-                name="last_modified",
-                type=ddb.AttributeType.STRING,
-            ),
-            projection_type=ddb.ProjectionType.ALL,
-        )
         return self.data_table
 
     def create_lambda_function(
