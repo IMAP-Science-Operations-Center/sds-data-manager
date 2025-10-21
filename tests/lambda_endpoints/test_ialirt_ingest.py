@@ -513,7 +513,11 @@ def test_process_algorithms(
         "/mock/imap_mag_l1b-calibration_20250101_v002.cdf"
     )
 
-    process_algorithms(combined=None, algorithm_table=algorithm_table)
+    process_algorithms(
+        combined=None,
+        algorithm_table=algorithm_table,
+        table_name="ialirt-algorithm-table",
+    )
 
     response = algorithm_table.query(KeyConditionExpression=Key("apid").eq(478))[
         "Items"
