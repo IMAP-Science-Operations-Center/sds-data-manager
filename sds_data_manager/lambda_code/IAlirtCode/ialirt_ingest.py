@@ -430,10 +430,8 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
 
 def insert_formatted_data(
     data: list[dict],
-    algorithm_table,
+    data_table,
     instrument: str,
-    partition_key: str = "apid",
-    sort_key: str = "met",
 ):
     """Insert or update database row, depending on content of item.
 
@@ -441,7 +439,7 @@ def insert_formatted_data(
     ----------
     data : list[dict]
         Data product produced from processing respectively instrument.
-    algorithm_table : dynamodb.Table
+    data_table : dynamodb.Table
         The DynamoDB table to insert or update the data.
     instrument : str
         The prefix for the product name.
@@ -450,32 +448,49 @@ def insert_formatted_data(
     sort_key : str
         The sort key for the DynamoDB table.
     """
-    instrument_key = data[0][partition_key]
-    times = [item[sort_key] for item in data]
+    # Get time range.
+    times = [item["time_utc"] for item in data]
     min_time = min(times)
     max_time = max(times)
     logger.info(f"Processing {min_time} to {max_time}.")
 
+    # Reformat data (remove all keep/exclude keys except hk
+    # once imap_processing is updated)
+    exclude_keys = {"apid", "met", "mag_hk_status"}
+    rename_map = {"met_in_utc": "time_utc"}
+    science_data = [
+        {rename_map.get(k, k): v for k, v in item.items() if k not in exclude_keys}
+        for item in data
+    ]
+    keep_keys = {"met_in_utc", "instrument", "mag_hk_status"}
+    hk_data = [
+        {rename_map.get(k, k): v for k, v in item.items() if k in keep_keys}
+        for item in data
+    ]
+
     # Query existing items.
-    response = algorithm_table.query(
-        KeyConditionExpression=Key(partition_key).eq(instrument_key)
-        & Key(sort_key).between(min_time, max_time)
+    response = data_table.query(
+        KeyConditionExpression=Key("instrument").eq(instrument)
+        & Key("time_utc").between(min_time, max_time)
+    )
+    hk_response = data_table.query(
+        KeyConditionExpression=Key("instrument").eq(f"{instrument}_hk")
+        & Key("time_utc").between(min_time, max_time)
     )
 
-    existing_items = {item[sort_key]: item for item in response.get("Items", [])}
+    existing_items = {item["time_utc"]: item for item in response.get("Items", [])}
+    existing_hk_items = {
+        item["time_utc"]: item for item in hk_response.get("Items", [])
+    }
 
-    # Insert or update as needed
-    for raw in data:
-        time = raw[sort_key]
-        key = {partition_key: instrument_key, sort_key: time}
+    # Insert data
+    for raw in science_data:
+        time = raw["time_utc"]
         existing = existing_items.get(time)
-        raw["last_modified"] = datetime.now(timezone.utc).isoformat()
 
         # Calculate the spacecraft position and velocity in GSM coordinates.
-        if isinstance(time, str):
-            et = str_to_et(time)
-        else:
-            et = sct_to_et(met_to_sclkticks(time))
+        et = str_to_et(time)
+
         gsm_state = imap_state(
             [et], ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
         )
@@ -488,53 +503,17 @@ def insert_formatted_data(
         raw["sc_position_GSE"] = [Decimal(str(val)) for val in gse_state[0, :3]]
         raw["sc_velocity_GSE"] = [Decimal(str(val)) for val in gse_state[0, 3:]]
 
-        if existing:
-            if any(key.startswith(instrument) for key in existing.keys()):
-                continue
-
-            # TODO: remove once we transition databases.
-            # This is if an item contains multiple instruments
-            # and that will never happen in the new database.
-            update_expr = "SET " + ", ".join(
-                f"{field} = :{field}"
-                for field in raw
-                if field
-                not in {
-                    "apid",
-                    "met",
-                    "met_in_utc",
-                    "ttj2000ns",
-                    "sc_position_GSM",
-                    "sc_velocity_GSM",
-                    "sc_position_GSE",
-                    "sc_velocity_GSE",
-                }
-            )
-
-            expression_values = {
-                f":{field}": value
-                for field, value in raw.items()
-                if field
-                not in {
-                    "apid",
-                    "met",
-                    "met_in_utc",
-                    "ttj2000ns",
-                    "sc_position_GSM",
-                    "sc_velocity_GSM",
-                    "sc_position_GSE",
-                    "sc_velocity_GSE",
-                }
-            }
-
-            algorithm_table.update_item(
-                Key=key,
-                UpdateExpression=update_expr,
-                ExpressionAttributeValues=expression_values,
-            )
-        else:
-            algorithm_table.put_item(Item=raw)
+        if not existing:
+            data_table.put_item(Item=raw)
         logger.info(f"Inserted {instrument.upper()}.")
+
+    for raw in hk_data:
+        time = raw["time_utc"]
+        existing = existing_hk_items.get(time)
+
+        if not existing:
+            data_table.put_item(Item=raw)
+        logger.info(f"Inserted Housekeeping for {instrument.upper()}.")
 
 
 def insert_kernels(dependency_inputs, algorithm_table):
