@@ -399,6 +399,7 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
                     "sc_velocity_GSM",
                     "sc_position_GSE",
                     "sc_velocity_GSE",
+                    "instrument",
                 }
             )
 
@@ -415,6 +416,7 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
                     "sc_velocity_GSM",
                     "sc_position_GSE",
                     "sc_velocity_GSE",
+                    "instrument",
                 }
             }
 
@@ -428,32 +430,21 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         logger.info(f"Inserted {instrument.upper()}.")
 
 
-def insert_formatted_data(
-    data: list[dict],
-    data_table,
-    instrument: str,
-):
-    """Insert or update database row, depending on content of item.
+def reformat_data(data):
+    """Reformat science and housekeeping data.
 
     Parameters
     ----------
     data : list[dict]
-        Data product produced from processing respectively instrument.
-    data_table : dynamodb.Table
-        The DynamoDB table to insert or update the data.
-    instrument : str
-        The prefix for the product name.
-    partition_key : str
-        The partition key for the DynamoDB table.
-    sort_key : str
-        The sort key for the DynamoDB table.
-    """
-    # Get time range.
-    times = [item["time_utc"] for item in data]
-    min_time = min(times)
-    max_time = max(times)
-    logger.info(f"Processing {min_time} to {max_time}.")
+        Data product.
 
+    Returns
+    -------
+    science_data : list[dict]
+        Reformatted science data.
+    hk_data : list[dict]
+        Reformatted housekeeping data.
+    """
     # Reformat data (remove all keep/exclude keys except hk
     # once imap_processing is updated)
     exclude_keys = {"apid", "met", "mag_hk_status"}
@@ -467,6 +458,33 @@ def insert_formatted_data(
         {rename_map.get(k, k): v for k, v in item.items() if k in keep_keys}
         for item in data
     ]
+
+    return science_data, hk_data
+
+
+def insert_formatted_data(
+    data: list[dict],
+    data_table,
+    instrument: str,
+):
+    """Insert database rows.
+
+    Parameters
+    ----------
+    data : list[dict]
+        Data product produced from processing respectively instrument.
+    data_table : dynamodb.Table
+        The DynamoDB table to insert or update the data.
+    instrument : str
+        The prefix for the product name.
+    """
+    # Get time range.
+    times = [item["time_utc"] for item in data]
+    min_time = min(times)
+    max_time = max(times)
+    logger.info(f"Processing {min_time} to {max_time}.")
+
+    science_data, hk_data = reformat_data(data)
 
     # Query existing items.
     response = data_table.query(
@@ -483,30 +501,16 @@ def insert_formatted_data(
         item["time_utc"]: item for item in hk_response.get("Items", [])
     }
 
-    # Insert data
+    # Insert science data
     for raw in science_data:
         time = raw["time_utc"]
         existing = existing_items.get(time)
-
-        # Calculate the spacecraft position and velocity in GSM coordinates.
-        et = str_to_et(time)
-
-        gsm_state = imap_state(
-            [et], ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
-        )
-        gse_state = imap_state(
-            [et], ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
-        )
-
-        raw["sc_position_GSM"] = [Decimal(str(val)) for val in gsm_state[0, :3]]
-        raw["sc_velocity_GSM"] = [Decimal(str(val)) for val in gsm_state[0, 3:]]
-        raw["sc_position_GSE"] = [Decimal(str(val)) for val in gse_state[0, :3]]
-        raw["sc_velocity_GSE"] = [Decimal(str(val)) for val in gse_state[0, 3:]]
 
         if not existing:
             data_table.put_item(Item=raw)
         logger.info(f"Inserted {instrument.upper()}.")
 
+    # Insert hk data
     for raw in hk_data:
         time = raw["time_utc"]
         existing = existing_hk_items.get(time)
@@ -514,6 +518,26 @@ def insert_formatted_data(
         if not existing:
             data_table.put_item(Item=raw)
         logger.info(f"Inserted Housekeeping for {instrument.upper()}.")
+
+    # Calculate the spacecraft position and velocity in GSE/GSM coordinates.
+    et = str_to_et(min_time)
+    gsm_state = imap_state(
+        [et], ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
+    )
+    gse_state = imap_state(
+        [et], ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
+    )
+    geolocation = {
+        "instrument": "geolocation",
+        "time_utc": min_time,
+        "sc_position_GSM": [Decimal(str(val)) for val in gsm_state[0, :3]],
+        "sc_velocity_GSM": [Decimal(str(val)) for val in gsm_state[0, 3:]],
+        "sc_position_GSE": [Decimal(str(val)) for val in gse_state[0, :3]],
+        "sc_velocity_GSE": [Decimal(str(val)) for val in gse_state[0, 3:]],
+    }
+
+    # Insert geolocation data
+    data_table.put_item(Item=geolocation)
 
 
 def insert_kernels(dependency_inputs, algorithm_table):
