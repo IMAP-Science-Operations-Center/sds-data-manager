@@ -21,6 +21,7 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     get_ancillary,
     get_latest_spice_kernels,
     insert_data,
+    insert_formatted_data,
     insert_kernels,
     lambda_handler,
     parse_packets,
@@ -303,12 +304,9 @@ def test_reformat_data_no_hk():
 
     assert all("apid" not in d for d in science_data)
     assert all("met" not in d for d in science_data)
-    assert all("mag_hk_status" not in d for d in science_data)
     assert science_data[0]["time_utc"] == "2021-01-01T00:00:00"
 
-    assert hk_data[0]["instrument"] == "mag_hk"
-    assert hk_data[0]["time_utc"] == "2021-01-01T00:00:00"
-    assert hk_data[0]["mag_hk_status"]["hk1v5_danger"] is True
+    assert hk_data == []
 
 
 @patch(
@@ -331,7 +329,7 @@ def test_insert_formatted_data(
     data_table.put_item(
         Item={
             "instrument": "mag",
-            "met_in_utc": "2021-01-01T00:00:00",
+            "time_utc": "2021-01-01T00:00:00",
             "mag_data": Decimal("0.0"),
         }
     )
@@ -340,8 +338,17 @@ def test_insert_formatted_data(
     data_table.put_item(
         Item={
             "instrument": "mag",
-            "met_in_utc": "2021-02-01T00:00:00",
+            "time_utc": "2021-02-01T00:00:00",
             "mag_data": Decimal("0.0"),
+        }
+    )
+
+    # Existing item.
+    data_table.put_item(
+        Item={
+            "instrument": "mag_hk",
+            "time_utc": "2021-02-01T00:00:00",
+            "mag_hk_status": {"hk1v5_warn": False, "hk1v5_danger": True},
         }
     )
 
@@ -353,6 +360,7 @@ def test_insert_formatted_data(
             "met_in_utc": "2021-01-01T00:00:00",
             "ttj2000ns": 759175836184000000,
             "mag_data": Decimal("2.0"),
+            "mag_hk_status": {"hk1v5_warn": False, "hk1v5_danger": True},
         },
         # Will skip.
         {
@@ -360,6 +368,7 @@ def test_insert_formatted_data(
             "met_in_utc": "2021-02-01T00:00:00",
             "ttj2000ns": 759175836184000001,
             "mag_data": Decimal("3.0"),
+            "mag_hk_status": {"hk1v5_warn": False, "hk1v5_danger": True},
         },
         # Will insert.
         {
@@ -367,21 +376,26 @@ def test_insert_formatted_data(
             "met_in_utc": "2021-03-01T00:00:00",
             "ttj2000ns": 759175836184000002,
             "mag_data": Decimal("5.0"),
+            "mag_hk_status": {"hk1v5_warn": False, "hk1v5_danger": True},
         },
     ]
 
-    insert_data(
-        test_data, data_table, "mag", partition_key="instrument", sort_key="met_in_utc"
-    )
+    insert_formatted_data(test_data, data_table, "mag")
 
     item1 = data_table.get_item(
-        Key={"instrument": "mag", "met_in_utc": "2021-01-01T00:00:00.000000001"}
+        Key={"instrument": "mag", "time_utc": "2021-01-01T00:00:00"}
     )["Item"]
     item2 = data_table.get_item(
-        Key={"instrument": "mag", "met_in_utc": "2021-02-01T00:00:00.000000001"}
+        Key={"instrument": "mag", "time_utc": "2021-02-01T00:00:00"}
     )["Item"]
     item3 = data_table.get_item(
-        Key={"instrument": "mag", "met_in_utc": "2021-03-01T00:00:00.000000001"}
+        Key={"instrument": "mag", "time_utc": "2021-03-01T00:00:00"}
+    )["Item"]
+    item4 = data_table.get_item(
+        Key={"instrument": "mag_hk", "time_utc": "2021-02-01T00:00:00"}
+    )["Item"]
+    item5 = data_table.get_item(
+        Key={"instrument": "geolocation", "time_utc": "2021-01-01T00:00:00"}
     )["Item"]
 
     # Not updated
@@ -390,6 +404,8 @@ def test_insert_formatted_data(
 
     # New item should be inserted
     assert item3["mag_data"] == Decimal("5.0")
+    assert item4["mag_hk_status"]["hk1v5_danger"] is True
+    assert item5["sc_position_GSM"] == [Decimal("1"), Decimal("2"), Decimal("3")]
 
 
 @patch(

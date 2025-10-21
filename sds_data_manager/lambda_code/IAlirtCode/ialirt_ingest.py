@@ -461,6 +461,7 @@ def reformat_data(data):
             if k in keep_keys
         }
         for item in data
+        if item.get("instrument") == "mag"
     ]
 
     return science_data, hk_data
@@ -483,7 +484,7 @@ def insert_formatted_data(
         The prefix for the product name.
     """
     # Get time range.
-    times = [item["time_utc"] for item in data]
+    times = [item["met_in_utc"] for item in data]
     min_time = min(times)
     max_time = max(times)
     logger.info(f"Processing {min_time} to {max_time}.")
@@ -515,13 +516,14 @@ def insert_formatted_data(
         logger.info(f"Inserted {instrument.upper()}.")
 
     # Insert hk data
-    for raw in hk_data:
-        time = raw["time_utc"]
-        existing = existing_hk_items.get(time)
+    if hk_data:
+        for raw in hk_data:
+            time = raw["time_utc"]
+            existing = existing_hk_items.get(time)
 
-        if not existing:
-            data_table.put_item(Item=raw)
-        logger.info(f"Inserted Housekeeping for {instrument.upper()}.")
+            if not existing:
+                data_table.put_item(Item=raw)
+            logger.info(f"Inserted Housekeeping for {instrument.upper()}.")
 
     # Calculate the spacecraft position and velocity in GSE/GSM coordinates.
     et = str_to_et(min_time)
