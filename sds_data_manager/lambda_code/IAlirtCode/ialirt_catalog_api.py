@@ -56,7 +56,7 @@ def lambda_handler(event, context) -> dict:
             },
             'body': '{
                     "file_names":
-                        ["20250206_station1_01.txt", "20250206_station1_02.txt"],
+                        ["2025-02-06_station1_01.txt", "2025-02-06_station1_02.txt"],
                      "dates_modified":
                         ["2025-02-12 18:37", "2025-02-12 18:37"]}
             }'
