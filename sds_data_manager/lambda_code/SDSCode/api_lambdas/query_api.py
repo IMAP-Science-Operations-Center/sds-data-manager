@@ -3,8 +3,10 @@
 import datetime
 import json
 import logging
+import os
 from collections import namedtuple
 
+import boto3
 from sqlalchemy import func, select
 
 from ..api_lambdas.utils import is_authenticated_user
@@ -16,7 +18,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event, context):  # noqa: PLR0912
+def lambda_handler(event, context):  # noqa: PLR0912 PLR0915
     """Entry point to the query API lambda.
 
     Parameters
@@ -131,6 +133,16 @@ def lambda_handler(event, context):  # noqa: PLR0912
     # Convert the search results (list of tuples) to a list of dicts
     search_results = [result._asdict() for result in search_results]
 
+    # Check if those files exists in S3 before returning them
+    s3_client = boto3.client("s3")
+    data_bucket = boto3.resource("s3").Bucket(os.environ["S3_BUCKET"])
+    existing_files = []
+    for result in search_results:
+        s3_key = f"{result['file_path']}/{result['file_name']}"
+        if s3_client.head_object(Bucket=data_bucket.bucket_name, Key=s3_key):
+            existing_files.append(result)
+
+    search_results = existing_files
     # Convert datetimes to string values of format 'YYYYMMDD'
     # Also remove values that are not needed by users
     for result in search_results:
