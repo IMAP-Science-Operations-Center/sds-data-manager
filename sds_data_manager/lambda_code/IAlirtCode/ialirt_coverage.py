@@ -122,6 +122,7 @@ def get_latest_spice_kernels(kernels: list[str], url: str) -> ProcessingInputCol
     et_start_time = (one_week_ago - j2000).total_seconds()
 
     file_types = ",".join(kernels)
+    metakernel_url = url + "/metakernel"
 
     params = {
         "start_time": str(int(et_start_time)),
@@ -130,8 +131,8 @@ def get_latest_spice_kernels(kernels: list[str], url: str) -> ProcessingInputCol
         "file_types": file_types,
     }
 
-    logger.info(f"Sending request to {url} with params: {params}")
-    response = requests.get(url, params=params, timeout=10)
+    logger.info(f"Sending request to {metakernel_url} with params: {params}")
+    response = requests.get(metakernel_url, params=params, timeout=10)
     metakernel_files = response.json()
 
     logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")

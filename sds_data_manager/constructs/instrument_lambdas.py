@@ -89,7 +89,7 @@ class BatchStarterLambda(Construct):
             runtime=lambda_.Runtime.PYTHON_3_12,
             environment=lambda_environment,
             memory_size=512,
-            timeout=Duration.minutes(1),
+            timeout=Duration.minutes(5),
             vpc=vpc,
             vpc_subnets=subnet,
             security_groups=[rds_security_group],

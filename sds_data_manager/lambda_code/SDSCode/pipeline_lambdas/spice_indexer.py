@@ -171,9 +171,16 @@ def get_coverage_dictionary(spice_file: Path):
 
     # 1) Calculate the time coverage of the file
     if spice_file.suffix == ".bc":
+        # get the objects covered by the CK
+        objs = spiceypy.ckobj(str(spice_file))
+        if len(objs) > 1:
+            raise ValueError(
+                f"Unable to handle ck files with more than one object. "
+                f"Found {len(objs)} objects in {spice_file}"
+            )
         cover = spiceypy.ckcov(
             str(spice_file),
-            idcode=SPACECRAFT_ID * 1000,
+            idcode=objs[0],
             cover=cover,
             needav=COVERAGE_ANGULAR_VELOCITY_ONLY,
             level=COVERAGE_LEVEL,
@@ -197,6 +204,8 @@ def get_coverage_dictionary(spice_file: Path):
     for i_window in range(card):
         # 4) Retrieve the time span of each interval
         (left, right) = spiceypy.wnfetd(cover, i_window)
+        # Make sure that the left interval is not before the minimum mission time
+        left = max(left, MAXIMUM_J2000_INTERVAL[0][0])
         # 5) Throw out any singleton points. You cannot interpolate between these.
         if left != right:
             results_j2000.append([left, right])
@@ -349,23 +358,6 @@ def index_spice_file(s3_key: str):
                     spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][1]),
                 ]
             ]
-        elif spice_metadata["type"] == "pointing_attitude":
-            # Calculate the coverage for pointing attitude files
-            file_coverage_datetime = [
-                [spice_metadata["start_date"], spice_metadata["end_date"]]
-            ]
-            file_coverage_j2000 = [
-                [
-                    spiceypy.datetime2et(spice_metadata["start_date"]),
-                    spiceypy.datetime2et(spice_metadata["end_date"]),
-                ]
-            ]
-            file_coverage_sclk = [
-                [
-                    spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][0]),
-                    spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][1]),
-                ]
-            ]
         else:
             file_coverage_j2000, file_coverage_datetime, file_coverage_sclk = (
                 get_coverage_dictionary(spice_file)
@@ -416,16 +408,33 @@ def index_repoint_file(s3_key):
     """
     logger.info(f"Indexing {s3_key} to RepointFiles table")
     with db.Session() as session:
-        spin_obj = SPICEFilePath(os.path.basename(s3_key))
-        spin_metadata = spin_obj.spice_metadata
+        repoint_obj = SPICEFilePath(os.path.basename(s3_key))
+        metadata = repoint_obj.spice_metadata
+
+        # Query Pointing Table to get the exact date/time of the latest data
+        # in the repoint file. This requires that `index_pointing_data` is run
+        # before indexing the repoint file.
+        final_pointings = (
+            session.query(models.PointingTable)
+            .order_by(models.PointingTable.pointing_id.desc())
+            .limit(2)
+            .all()
+        )
+        # The repoint end time should be the last Pointing start time if it is not
+        # null. Otherwise, it should be the second-to-last repoint start time.
+        end_date = (
+            final_pointings[0].pointing_start_utc
+            or final_pointings[1].repoint_start_utc
+        )
+
         params = {
             "file_path": s3_key,
-            "end_date": spin_metadata["end_date"],
-            "version": spin_metadata["version"],
+            "end_date": end_date,
+            "version": metadata["version"],
             "ingestion_date": get_file_ingestion_date(s3_key),
         }
-        spin_table = models.RepointFiles(**params)
-        session.add(spin_table)
+        repoint_table = models.RepointFiles(**params)
+        session.add(repoint_table)
         session.commit()
 
     logger.info(f"Indexed {s3_key} to SPICEFiles table")
@@ -578,9 +587,11 @@ def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
     }
 
     eventbridge_client = boto3.client("events")
-    if spice_obj.spice_metadata["type"] == "repoint":
-        detail["object"]["instrument"] = "spacecraft"
-        detail["object"]["data_level"] = "l1a"
+    # In order to trigger batch starter, the event must have a key, instrument and
+    # data_level. Otherwise, it sends event but never makes it because of SQS filter
+    # policy
+    detail["object"]["instrument"] = "spacecraft"
+    detail["object"]["data_level"] = "l1a"
 
     event = IMAPLambdaPutEvent(
         detail_type="Processed File",

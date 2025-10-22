@@ -21,6 +21,7 @@ from sds_data_manager.constructs import (
     ialirt_coverage_construct,
     ialirt_efs_construct,
     ialirt_ingest_lambda_construct,
+    ialirt_pointing_schedule_construct,
     ialirt_processing_construct,
     ialirt_realtime_construct,
     indexer_lambda_construct,
@@ -140,6 +141,7 @@ def build_sds(
         construct_id="ApiGateway",
         domain_construct=domain,
         certificate=root_certificate,
+        create_api_keys_table=True,  # Create the API keys table in SDC stack
     )
     api.deliver_to_sns(monitoring.sns_topic_notifications)
 
@@ -358,6 +360,14 @@ def build_sds(
         algorithm_data_table=ingest.algorithm_data_table,
     )
 
+    # I-ALiRT IOIS pointing schedule lambda
+    ialirt_pointing_schedule_construct.IalirtPointingConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtPointingConstruct",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
+        data_access_url=general_data_access_url,
+    )
+
     # I-ALiRT IOIS coverage lambda (facilitates creating coverage json in s3)
     ialirt_coverage_construct.IalirtCoverageConstruct(
         scope=ialirt_stack,
@@ -390,6 +400,7 @@ def build_sds(
         domain_construct=domain,
         certificate=ialirt_root_certificate,
         ialirt_prefix="IAlirt",
+        create_api_keys_table=False,  # Reference existing table from SDC stack
     )
     ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)
 

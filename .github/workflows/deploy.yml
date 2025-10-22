@@ -4,33 +4,73 @@ on:
   push:
     branches:
       - dev
-      - prod
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+        default: prod
+      ref:
+        description: "Optional git ref (commit SHA, branch, or tag) to deploy (for rollback)"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: write  # needed for tagging and release creation
+  actions: read
 
 jobs:
   cdk-deploy:
     runs-on: ubuntu-latest
-    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
-      - name: Set deployment account and role
+      # ----------------------------------------------------
+      # 🧭 Determine environment + AWS role + tagging behavior
+      # ----------------------------------------------------
+      - name: Determine deployment target
         id: set_account
         run: |
-          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
-            echo "account_name=dev" >> $GITHUB_ENV
-            echo "role_arn=arn:aws:iam::449431850278:role/GitHubDeploy" >> $GITHUB_ENV
-          elif [[ "${GITHUB_REF##*/}" == "prod" ]]; then
-            echo "account_name=prod" >> $GITHUB_ENV
-            echo "role_arn=arn:aws:iam::593025701104:role/GitHubDeploy" >> $GITHUB_ENV
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+              echo "account_name=dev" >> $GITHUB_ENV
+              echo "role_arn=arn:aws:iam::449431850278:role/GitHubDeploy" >> $GITHUB_ENV
+              echo "should_tag=false" >> $GITHUB_ENV
+            else
+              echo "Branch not configured for deployment." && exit 1
+            fi
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
+              echo "account_name=dev" >> $GITHUB_ENV
+              echo "role_arn=arn:aws:iam::449431850278:role/GitHubDeploy" >> $GITHUB_ENV
+              echo "should_tag=false" >> $GITHUB_ENV
+            elif [[ "${{ github.event.inputs.environment }}" == "prod" ]]; then
+              echo "account_name=prod" >> $GITHUB_ENV
+              echo "role_arn=arn:aws:iam::593025701104:role/GitHubDeploy" >> $GITHUB_ENV
+              echo "should_tag=true" >> $GITHUB_ENV
+            else
+              echo "Invalid environment specified." && exit 1
+            fi
           else
-            echo "Branch not configured for deployment." && exit 1
+            echo "Unsupported trigger type" && exit 1
           fi
+
+      # ----------------------------------------------------
+      # 🔄 Checkout code (use ref input if provided for rollback)
+      # ----------------------------------------------------
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - uses: Gr1N/setup-poetry@v8
         with:
           poetry-version: "1.8.0"
@@ -50,10 +90,14 @@ jobs:
           role-to-assume: ${{ env.role_arn }}
           aws-region: us-west-2
 
+      # ----------------------------------------------------
+      # 🧱 CDK Synth + Deploy
+      # ----------------------------------------------------
       - name: Synth
         env:
           ACCOUNT_NAME: ${{ env.account_name }}
         run: |
+          echo "Synthesizing for environment: $ACCOUNT_NAME"
           # poetry run to get the environment we installed everything into
           poetry run cdk synth --context account_name=$ACCOUNT_NAME
 
@@ -61,5 +105,23 @@ jobs:
         env:
           ACCOUNT_NAME: ${{ env.account_name }}
         run: |
+          echo "Deploying to environment: $ACCOUNT_NAME"
           # poetry run to get the environment we installed everything into
           poetry run cdk deploy --all --context account_name=$ACCOUNT_NAME --require-approval never
+
+      # ----------------------------------------------------
+      # 🏷️ Tag Release (prod only)
+      # ----------------------------------------------------
+      - name: Create tag
+        if: env.should_tag == 'true'
+        run: |
+          # Configure Git identity for tagging
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Create and push tag
+          TAG_NAME="prod-$(date -u +'%Y-%m-%d-%H%M%S')"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          git tag -a "$TAG_NAME" -m "Production deployment on $(date -u)"
+          git push origin "$TAG_NAME"
+          echo "Created tag $TAG_NAME"

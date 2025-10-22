@@ -56,8 +56,8 @@ def test_no_files_ialirt_catalog_api(s3_client):
 
 def test_success_ialirt_catalog_api(s3_client):
     """Test a successful call to the catalog endpoint."""
-    test_file1 = "pointing_schedules/station1/20250206/20250206_station1_01.txt"
-    test_file2 = "pointing_schedules/station1/20250206/20250206_station1_02.txt"
+    test_file1 = "pointing_schedules/station1/2025-02-06_station1_01.txt"
+    test_file2 = "pointing_schedules/station1/2025-02-06_station1_02.txt"
     s3_client.put_object(
         Bucket="test-data-bucket",
         Key=test_file1,
@@ -77,7 +77,7 @@ def test_success_ialirt_catalog_api(s3_client):
     }
     response = ialirt_catalog_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 200
-    assert json.loads(response["body"])["2025-02-06 00:00:00"]["file_names"] == [
-        "20250206_station1_01.txt",
-        "20250206_station1_02.txt",
+    assert json.loads(response["body"])["file_names"] == [
+        "2025-02-06_station1_01.txt",
+        "2025-02-06_station1_02.txt",
     ]

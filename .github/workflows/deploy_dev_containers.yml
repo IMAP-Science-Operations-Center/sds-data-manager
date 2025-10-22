@@ -1,51 +1,130 @@
-name: (dev) Docker image build and publish
+name: Build and Deploy Dev Container Images
 on:
   workflow_dispatch:
     inputs:
-      instrument_name:
-        description: 'Instrument name'
+      instruments:
+        description: 'Instruments to build'
         required: true
-        type: string
+        type: choice
+        options:
+          - all
+          - codice
+          - glows
+          - hit
+          - hi
+          - ialirt
+          - idex
+          - lo
+          - mag
+          - spacecraft
+          - swapi
+          - swe
+          - ultra
+        default: all
       git_url:
         description: 'IMAP Processing Git URL to build from'
-        required: true
+        required: false
         type: string
         default: 'https://github.com/IMAP-Science-Operations-Center/imap_processing.git@dev'
 
-# concurrency required to avoid lock contention during ECR provisioning
-concurrency: ci-${{ github.repository }}-${{ inputs.instrument_name }}-dev-docker-pipeline
+# Prevent multiple builds running concurrently
+concurrency:
+  group: container-build-dev-${{ github.repository }}
+  cancel-in-progress: false
+
+env:
+  # IMAP instruments - keep in sync with imap_data_access.VALID_INSTRUMENTS
+  VALID_INSTRUMENTS: "codice,glows,hit,hi,ialirt,idex,lo,mag,spacecraft,swapi,swe,ultra"
+  DEV_ACCOUNT: "449431850278"
+  AWS_REGION: "us-west-2"
 
 jobs:
-  deploy_containers:
+  prepare:
     runs-on: ubuntu-latest
-    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    outputs:
+      instruments: ${{ steps.setup.outputs.instruments }}
+      matrix: ${{ steps.setup.outputs.matrix }}
+    steps:
+      - name: Setup build parameters
+        id: setup
+        run: |
+          # Determine which instruments to build
+          if [ "${{ inputs.instruments }}" = "all" ]; then
+            instruments="${{ env.VALID_INSTRUMENTS }}"
+          else
+            instruments="${{ inputs.instruments }}"
+          fi
+
+          # Clean up whitespace and convert to JSON array
+          instruments_json=$(echo "$instruments" | tr ',' '\n' | tr -d ' ' | grep -v '^$' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "instruments=$instruments_json" >> $GITHUB_OUTPUT
+          echo "matrix={\"instrument\": $instruments_json}" >> $GITHUB_OUTPUT
+
+          echo "Building instruments: $instruments_json"
+          echo "Git URL: ${{ inputs.git_url }}"
+
+  build_and_push:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+      fail-fast: false  # Continue building other instruments if one fails
     permissions:
       id-token: write
       contents: read
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # https://github.com/aws-actions/configure-aws-credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::449431850278:role/GitHubDeploy
-          aws-region: us-west-2
+          role-to-assume: arn:aws:iam::${{ env.DEV_ACCOUNT }}:role/GitHubDeploy
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-${{ matrix.instrument }}-dev
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
         with:
-         mask-password: "true" # see: https://github.com/aws-actions/amazon-ecr-login#docker-credentials
+          mask-password: "true"
 
       - name: Build, tag, and push docker image to Amazon ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: ${{ inputs.instrument_name}}
+          REPOSITORY: ${{ matrix.instrument }}-repo
           IMAGE_TAG: latest
         run: |
-          docker build -t $REGISTRY/$REPOSITORY-repo:$IMAGE_TAG \
+          echo "Building image: $REGISTRY/$REPOSITORY:$IMAGE_TAG"
+
+          # Build with dev dockerfile and git URL
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
             --build-arg GIT_URL=${{ inputs.git_url }} \
             -f dockerfiles/Dockerfile.dev .
-          docker push $REGISTRY/$REPOSITORY-repo:$IMAGE_TAG
+
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          echo "✅ Successfully pushed $REGISTRY/$REPOSITORY:$IMAGE_TAG"
+
+  summary:
+    needs: [prepare, build_and_push]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Build Summary
+        run: |
+          echo "## Dev Container Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** dev" >> $GITHUB_STEP_SUMMARY
+          echo "**Account:** ${{ env.DEV_ACCOUNT }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Instruments:** $(echo '${{ needs.prepare.outputs.instruments }}' | jq -r 'join(", ")')" >> $GITHUB_STEP_SUMMARY
+          echo "**Git URL:** ${{ inputs.git_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.build_and_push.result }}" = "success" ]; then
+            echo "✅ All builds completed successfully" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.build_and_push.result }}" = "failure" ]; then
+            echo "❌ Some builds failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Build status: ${{ needs.build_and_push.result }}" >> $GITHUB_STEP_SUMMARY
+          fi

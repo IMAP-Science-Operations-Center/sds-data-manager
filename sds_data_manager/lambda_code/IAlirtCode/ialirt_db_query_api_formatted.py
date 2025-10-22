@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-import time
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import boto3
@@ -30,6 +30,8 @@ def process_item_types(item: dict) -> dict:
     -------
     result : dict
         Properly formatted parameters.
+
+    Note: Truncates to 3 decimal places to reduce response size.
     """
     result = {}
 
@@ -37,6 +39,7 @@ def process_item_types(item: dict) -> dict:
         # Vectors fields
         if isinstance(value, list):
             result[key] = [int(v) if v % 1 == 0 else round(float(v), 3) for v in value]
+
         # Dictionary fields
         elif isinstance(value, dict):
             nested = {}
@@ -46,6 +49,7 @@ def process_item_types(item: dict) -> dict:
                 else:
                     nested[k] = v
             result[key] = nested
+
         # Scalar fields
         elif isinstance(value, Decimal):
             result[key] = int(value) if value % 1 == 0 else round(float(value), 3)
@@ -56,11 +60,8 @@ def process_item_types(item: dict) -> dict:
     return result
 
 
-def lambda_handler(event, context):  # noqa: PLR0912
-    """Create metadata and add it to the database.
-
-    This function is an event handler for s3 ingest bucket.
-    It is also used to ingest data to the DynamoDB table.
+def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
+    """Read and format database query.
 
     Parameters
     ----------
@@ -72,12 +73,14 @@ def lambda_handler(event, context):  # noqa: PLR0912
         information about the invocation, function,
         and runtime environment.
 
+    Example of result:
+    -----------------
+    result = {'he_omni_high_en': [0, "null"],
+    'B_GSE': [[-6.382, -1.353, -5.045],
+    [-2.058, 3.792, -3.989]],
+    'time_tag_utc': ['2025-10-02T07:07:13', '2025-10-02T07:07:17'], ...}
     """
-    t1 = time.perf_counter()
-
     logger.info(f"Received event: {json.dumps(event)}")
-
-    # --- Parse event ---
     params = event.get("queryStringParameters", {})
 
     if not params:
@@ -88,14 +91,12 @@ def lambda_handler(event, context):  # noqa: PLR0912
 
     key_expr = Key("apid").eq(478)
     query_kwargs = {"KeyConditionExpression": key_expr}
-    t2 = time.perf_counter()
 
-    # --- Determine key condition ---
     allowed_params = {
         "met_start",
         "met_end",
-        "met_in_utc_start",
-        "met_in_utc_end",
+        "utc_start",
+        "utc_end",
         "last_modified_start",
         "last_modified_end",
     }
@@ -109,7 +110,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
             ),
         }
 
-    time_prefixes = {"met", "met_in_utc", "last_modified"}
+    time_prefixes = {"met", "utc", "last_modified"}
     used_time_prefixes = {
         param.split("_start")[0].split("_end")[0]
         for param in params
@@ -120,35 +121,51 @@ def lambda_handler(event, context):  # noqa: PLR0912
         return {
             "statusCode": 400,
             "body": json.dumps(
-                {
-                    "message": "Cannot query multiple time keys "
-                    "(met, met_in_utc, last_modified)"
-                }
+                {"message": "Cannot query multiple time keys (met, utc, last_modified)"}
             ),
         }
 
     if (
         ("met_start" in params and "met_end" in params)
-        or ("met_in_utc_start" in params and "met_in_utc_end" in params)
+        or ("utc_start" in params and "utc_end" in params)
         or ("last_modified_start" in params and "last_modified_end" in params)
     ):
         if "met_start" in params:
+            params_key = "met"
             time_key = "met"
-        elif "met_in_utc_start" in params:
+        elif "utc_start" in params:
+            params_key = "utc"
             time_key = "met_in_utc"
         else:
+            params_key = "last_modified"
             time_key = "last_modified"
 
         start_value = (
-            int(params[f"{time_key}_start"])
-            if time_key == "met"
-            else params[f"{time_key}_start"]
+            int(params[f"{params_key}_start"])
+            if params_key == "met"
+            else params[f"{params_key}_start"]
         )
         end_value = (
-            int(params[f"{time_key}_end"])
-            if time_key == "met"
-            else params[f"{time_key}_end"]
+            int(params[f"{params_key}_end"])
+            if params_key == "met"
+            else params[f"{params_key}_end"]
         )
+
+        # Raise an exception if the range is too large.
+        if params_key == "met":
+            time_range = end_value - start_value
+        else:
+            start_dt = datetime.fromisoformat(start_value)
+            end_dt = datetime.fromisoformat(end_value)
+            time_range = (end_dt - start_dt).total_seconds()
+
+        if time_range > 3600:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"message": "Query range too large (maximum 1 hour)."}
+                ),
+            }
 
         key_expr &= Key(time_key).between(start_value, end_value)
 
@@ -157,31 +174,40 @@ def lambda_handler(event, context):  # noqa: PLR0912
 
     elif (
         "met_start" in params
-        or "met_in_utc_start" in params
+        or "utc_start" in params
         or "last_modified_start" in params
     ):
         if "met_start" in params:
+            params_key = "met"
             time_key = "met"
-        elif "met_in_utc_start" in params:
+        elif "utc_start" in params:
+            params_key = "utc"
             time_key = "met_in_utc"
         else:
+            params_key = "last_modified"
             time_key = "last_modified"
 
         start_value = (
-            int(params[f"{time_key}_start"])
-            if time_key == "met"
-            else params[f"{time_key}_start"]
+            int(params[f"{params_key}_start"])
+            if params_key == "met"
+            else params[f"{params_key}_start"]
         )
-        key_expr &= Key(time_key).gte(start_value)
+
+        # Calculating end time.
+        if params_key == "met":
+            end_value = 3600 + start_value
+        else:
+            start_dt = datetime.fromisoformat(start_value)
+            end_dt = start_dt + timedelta(hours=1)
+            end_value = end_dt.isoformat()
+
+        logger.info(f"Calculated end_value for {params_key}: {end_value}")
+        key_expr &= Key(time_key).between(start_value, end_value)
 
         if time_key in {"met_in_utc", "last_modified"}:
             query_kwargs["IndexName"] = time_key
 
-    elif (
-        "met_end" in params
-        or "met_in_utc_end" in params
-        or "last_modified_end" in params
-    ):
+    elif "met_end" in params or "utc_end" in params or "last_modified_end" in params:
         return {
             "statusCode": 400,
             "body": json.dumps(
@@ -190,29 +216,42 @@ def lambda_handler(event, context):  # noqa: PLR0912
         }
 
     query_kwargs["KeyConditionExpression"] = key_expr
-    t3 = time.perf_counter()
 
-    # --- Query DynamoDB ---
     response = table.query(**query_kwargs)
-    t4 = time.perf_counter()
 
-    # --- Process items ---
     items = response.get("Items", [])
     processed_items = [process_item_types(item) for item in items]
-    t5 = time.perf_counter()
 
-    # --- Serialize to JSON ---
-    json_body = json.dumps(processed_items)
-    t6 = time.perf_counter()
+    if processed_items:
+        keys = {k for item in processed_items for k in item.keys()}
+        prefixes_to_remove = (
+            "codice_hi_",
+            "codice_lo_",
+            "hit_",
+            "mag_",
+            "swe_",
+            "swapi_",
+        )
+        result = {}
+        for key in keys:
+            if key in ("met", "ttj2000ns", "apid", "last_modified"):
+                continue
 
-    num_items = len(processed_items)
+            new_key = key
+            for prefix in prefixes_to_remove:
+                if new_key.startswith(prefix):
+                    new_key = new_key[len(prefix) :]
+                    break
 
-    text = (
-        f"Param parse: {t2 - t1:.3f}s | KeyCondition setup: {t3 - t2:.3f}s | "
-        f"Query: {t4 - t3:.3f}s | Process: {t5 - t4:.3f}s | "
-        f"JSON: {t6 - t5:.3f}s | TOTAL: {t6 - t1:.3f}s | "
-        f"Items: {num_items}"
-    )
-    logger.info(text)
+            result[new_key] = [item.get(key) for item in processed_items]
+        if "met_in_utc" in result:
+            result["time_tag_utc"] = result.pop("met_in_utc")
+    else:
+        result = {}
 
-    return {"statusCode": 200, "body": json_body}
+    # Append LastEvaluatedKey to the response if more data is available.
+    last_evaluated_key = response.get("LastEvaluatedKey")
+    if last_evaluated_key:
+        result["last_evaluated_key"] = process_item_types(last_evaluated_key)
+
+    return {"statusCode": 200, "body": json.dumps(result)}

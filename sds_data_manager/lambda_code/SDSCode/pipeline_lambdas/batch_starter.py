@@ -26,8 +26,8 @@ from sqlalchemy.exc import IntegrityError
 from ..api_lambdas import upload_api
 from ..database import database as db
 from ..database import models
-from . import VALID_CADENCE_STRS, dependency
-from .dependency import DependencyConfig, get_jobs
+from . import REPOINT_DEPENDENT_INSTRUMENTS, VALID_CADENCE_STRS, dependency
+from .dependency import DependencyConfig
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -49,24 +49,6 @@ BATCH_JOB_RETRY_STRATEGY = {
 }
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
-
-SPECIAL_CASE_JOBS = [
-    {
-        "data_source": "hi",
-        "data_type": "l3",
-        "descriptor": "h90-ena-h-sf-sp-full-hae-4deg-6mo",
-    },
-    {
-        "data_source": "lo",
-        "data_type": "l3",
-        "descriptor": "ilo-ena-h-sf-sp-full-hae-4deg-6mo",
-    },
-    {
-        "data_source": "ultra",
-        "data_type": "l3",
-        "descriptor": "u90-ena-h-sf-sp-full-hae-4deg-3mo",
-    },
-]
 
 
 def cadence_to_datetime_range(
@@ -198,7 +180,7 @@ def determine_job_version(
             )
         return conditions
 
-    # First check to see if there are any jobs in progress and get the max version
+    # Step 1: query to get the max version from the processing jobs table
     max_version_record = (
         session.query(models.ProcessingJob)
         .filter(*filter_conditions(models.ProcessingJob))
@@ -206,132 +188,57 @@ def determine_job_version(
         .first()
     )
     if max_version_record:
-        max_version = max_version_record.version
-        # If there is a job already in progress, determine whether the current job
-        # is a duplicate of the in-progress job by checking the dependency file hash.
-        # If the hashes are different, then we know the dependencies have changed and
-        # we should bump the version number and continue with processing.
+        max_version_processing = max_version_record.version
+        # Step 2: If there is a job already in progress, determine whether the current
+        # job is a duplicate of the in-progress job by checking the dependency file
+        # hash. If the hashes are different, then we know the dependencies have changed
+        # and we should bump the version number and continue with processing.
         if max_version_record.status == models.Status.INPROGRESS:
             command = max_version_record.container_command
             if dependency_hash(current_dependencies) in command:
                 # Return the current max version and this job will not proceed if
                 # everything else is the same.
-                return max_version
-            logger.info(
-                f"Job with id: {max_version_record.id} is in progress, but the "
-                f"dependencies have changed. Bumping version number."
-            )
+                return max_version_processing
+            else:
+                # Dependencies have changed, so bump the version number.
+                logger.info(
+                    f"Job with id: {max_version_record.id} is in progress, but the "
+                    f"dependencies have changed. Bumping version number."
+                )
+                return f"v{int(max_version_processing[1:]) + 1:03d}"
+
     else:
-        max_version = None
-    # If the descriptor is "all", we should only check the processing job table. The
-    # ScienceFiles table does not have descriptors of "all" since the products
-    # produced will have their own specific descriptors.
-    if descriptor == "all":
-        return f"v{int(max_version[1:]) + 1:03d}" if max_version else "v001"
-    # If no jobs are in progress, check the science files table for the max version.
-    if not max_version:
-        max_version = (
-            session.query(func.max(models.ScienceFiles.version)).filter(
-                *filter_conditions(models.ScienceFiles)
-            )
-        ).scalar()
+        max_version_processing = None
+    # Step 3: If the descriptor is "all", only use the max version from the processing
+    # job table. The ScienceFiles table does not have descriptors of "all" since the
+    # products produced will have their own specific descriptors.
+    if "all" in descriptor:
+        return (
+            f"v{int(max_version_processing[1:]) + 1:03d}"
+            if max_version_processing
+            else "v001"
+        )
+
+    # Step 4: Get the max version from the science files table.
+    max_version_sci = (
+        session.query(func.max(models.ScienceFiles.version)).filter(
+            *filter_conditions(models.ScienceFiles)
+        )
+    ).scalar()
+
+    # Step 5: By default, use the max version from the science files table unless
+    # it is a spacecraft "pointing-attitude" job. If a so, then use the max version
+    # from the processing jobs table. If the job is a spacecraft pointing-attitude job,
+    # it will produce a SPICE kernel and not a science file. There is no way to
+    # determine the filename of the kernel that will be produced, so we rely on the max
+    # version from the processing jobs table.
+    if instrument == "spacecraft" and descriptor == "pointing-attitude":
+        max_version = max_version_processing
+    else:
+        max_version = max_version_sci
+
     # Bump the version number. "V001" will be returned if max_version is None.
     return f"v{int(max_version[1:]) + 1:03d}" if max_version else "v001"
-
-
-def get_special_case_date_range(session, job_node, start_date):
-    """Determine the start and end dates for special case jobs.
-
-    This function is used to handle unique processing jobs where the normal method of
-    determining the start and end date for the upstream dependencies is not enough.
-    For example, l3 survival probability correlated maps for HI, LO, and ULTRA
-    depend on their respective l2 maps and multiple GLOWS l3e files (containing the
-    survival probabilities) covering the date of the l2 map. We cannot simply use the
-    start date of the trigger file in this case. To determine the correct start date to
-    use, we need to find the most recent l2 map file and its cadence, e.g 3mo, 6mo, or
-    1yr and use that range to query for all the GLOWS l3e and l2 map files.
-
-    Note: This does not handle cadence jobs. Cadence jobs are handled in the
-    cadence_processing_event function.
-
-    Parameters
-    ----------
-    session : orm session
-        Database session.
-    job_node : dict
-        Dictionary containing job details: data source, data type, and descriptor.
-    start_date : str
-        Start date for querying data in the format 'YYYYMMDD'.
-
-    Returns
-    -------
-    tuple
-        Tuple containing the start and end date for the job.
-    """
-
-    def find_most_recent_start_date(dep: dict, date: datetime) -> datetime:
-        """Find the most recent start date for a dependency given the filters.
-
-        Parameters
-        ----------
-        dep : dict
-            Dependency details including data source, data type, and descriptor.
-        date : datetime
-            The date to filter dependencies up to.
-
-        Returns
-        -------
-        datetime
-            The most recent start date for the dependency.
-        """
-        return (
-            session.query(func.max(models.ScienceFiles.start_date))
-            .filter(
-                models.ScienceFiles.instrument == dep["data_source"],
-                models.ScienceFiles.data_level == dep["data_type"],
-                models.ScienceFiles.descriptor == dep["descriptor"],
-                models.ScienceFiles.start_date <= date,
-            )
-            .scalar()
-        )
-
-    start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
-
-    deps = get_jobs(
-        dependency_type="UPSTREAM",
-        relationship="HARD",
-        data_source=job_node["data_source"],
-        data_type=job_node["data_type"],
-        descriptor=job_node["descriptor"],
-    )
-    # Special case for l3 sp-correlated HI, LO, and ULTRA map jobs:
-    # These jobs require both l2 map files and corresponding GLOWS l3e files.
-    # Find the most recent l2 map file and use its date range to query GLOWS l3e
-    # files.
-    # Get the l2 upstream dependency (there should only be one).
-    l2_dep = next((dep for dep in deps if dep["data_type"] == "l2"), None)
-    if l2_dep is None:
-        raise ValueError(f"Missing required l2 dependency for job: {job_node}.")
-    # Find the most recent l2 map file start_date.
-    new_start_date = find_most_recent_start_date(l2_dep, start_date)
-    if not new_start_date:
-        raise ValueError(
-            f"No l2 map files found for {l2_dep['data_source']} "
-            f"{l2_dep['data_type']} {l2_dep['descriptor']}."
-        )
-    new_start_date = new_start_date.strftime("%Y%m%d")
-    # Determine the number of days the map was created for based on the cadence.
-    cadence_key = job_node["descriptor"].split("-")[-1]
-    if cadence_key not in CadenceDays.valid_cadence_str():
-        raise ValueError(
-            f"Invalid cadence '{cadence_key}' from descriptor"
-            f"'{job_node['descriptor']}'. Valid cadences are: "
-            f"{CadenceDays.valid_cadence_str()}"
-        )
-    map_days = CadenceDays.str_lookup(cadence_key).value
-    # Use the date range of the l2 map as the query range for the l3 job.
-    new_end_date = (start_date + datetime.timedelta(days=map_days)).strftime("%Y%m%d")
-    return new_start_date, new_end_date
 
 
 def dependency_hash(serialized_dependencies):
@@ -474,6 +381,7 @@ def submit_all_jobs(
     job_node,
     trigger_start_date,
     trigger_end_date,
+    repoint: Optional[int] = None,
     calculate_crids=False,
     filter_dependencies=True,
 ):
@@ -491,6 +399,8 @@ def submit_all_jobs(
         determines the range of potential jobs.
     trigger_end_date : str
         The end date of the file that triggered the job in the format 'YYYYMMDD'.
+    repoint : int, optional
+        The repointing number for the job. Default is None.
     calculate_crids : bool
         True if the file that triggered the job is a science file, False if it is SPICE
         or ancillary.
@@ -522,6 +432,7 @@ def submit_all_jobs(
         relationship="ALL",
         start_date=trigger_start_date,
         end_date=trigger_end_date,
+        repoint=repoint,
         calculate_crids=calculate_crids,
         get_spice=get_spice,
     )
@@ -592,6 +503,7 @@ def submit_all_jobs(
                 relationship="ALL",
                 start_date=start_date,
                 end_date=end_date,
+                repoint=job_repointing,
                 calculate_crids=False,
                 get_spice=True,
             )
@@ -681,6 +593,57 @@ def calculate_pointing_date_range(session, pointing_id):
     return start_date, end_date
 
 
+def calculate_repoint_table_date_range(session, file_obj):
+    """Calculate the date range for a repoint-table.
+
+    The end date can easily be gotten from the filename. In order to determine
+    the start date, we query the database and use the end date from the previous
+    repoint table.
+
+    Notes
+    -----
+    Repoint file is used to kick off the pointing_attitude job only.
+    This date range is used to query attitude kernel file(s). If
+    other jobs become dependent on triggering off of the repoint file,
+    please revisit this logic.
+
+
+    Parameters
+    ----------
+    session : sqlalchemy.orm.Session
+        Database session.
+    file_obj : SPICEFilePath
+        Repoint table file object.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the start date and end date in the format YYYYMMDD.
+    """
+    # Query the repoint table to get the exact date/time.
+    end_date = file_obj.spice_metadata["end_date"]
+    previous_entries = (
+        session.query(models.RepointFiles)
+        .filter(models.RepointFiles.end_date <= end_date)
+        .order_by(models.RepointFiles.end_date, models.RepointFiles.version)
+        .all()
+    )
+    # Check if a previous entry exists
+    if len(previous_entries) < 2:
+        # No previous entry exists. Use end_date minus one day as start date
+        start_date = end_date - datetime.timedelta(days=1)
+    else:
+        start_date = previous_entries[-2].end_date
+
+    start_date = start_date.strftime("%Y%m%d")
+    end_date = end_date.strftime("%Y%m%d")
+    logger.debug(
+        f"repoint table date range, start_date: {start_date}, end_date: {end_date}"
+    )
+
+    return start_date, end_date
+
+
 def determine_date_range(session, file_obj):
     """Determine the start and end dates based on the file type.
 
@@ -701,26 +664,17 @@ def determine_date_range(session, file_obj):
     if isinstance(file_obj, SPICEFilePath):
         file_type = file_obj.spice_metadata["type"]
         if file_type == "repoint":
-            # NOTE:
-            # Repoint file is used to kicks off pointing_attitude job only.
-            # This date range is used to query attitude kernel file(s). If
-            # Other is dependent on the repoint file, please revisit this logic.
-            start_date = (
-                file_obj.spice_metadata["end_date"] - datetime.timedelta(days=1)
-            ).strftime("%Y%m%d")
-            end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
+            start_date, end_date = calculate_repoint_table_date_range(session, file_obj)
         else:
             # Convert datetime object to string of format YYYYMMDD
             start_date = file_obj.spice_metadata["start_date"].strftime("%Y%m%d")
             end_date = file_obj.spice_metadata["end_date"].strftime("%Y%m%d")
     elif isinstance(file_obj, ScienceFilePath):
         # TODO: GLOWS may need other handling using carrington rotation.
-        if file_obj.repointing is not None and file_obj.instrument in [
-            "glows",
-            "hi",
-            "lo",
-            "ultra",
-        ]:
+        if (
+            file_obj.repointing is not None
+            and file_obj.instrument in REPOINT_DEPENDENT_INSTRUMENTS
+        ):
             logger.debug(
                 "Using repointing file to calculate date range for"
                 f" {file_obj.instrument}."
@@ -784,6 +738,14 @@ def s3_processing_event(session, events):
             else:
                 triggered_from_glows_l3e = True
 
+        # For spice files, the source is a list of kernel types because
+        # metakernel can contain multiple sources.
+        #     eg spacecraft_clock, spacecraft_clock and so on.
+        # But the file in the batch starter event will always only have one
+        # type of kernel, so we take the first element of the list.
+        if input_obj.data_type == "spice":
+            input_obj.source = input_obj.source[0]
+
         potential_jobs = dependency.get_jobs(
             data_source=input_obj.source,
             descriptor=input_obj.descriptor,
@@ -834,22 +796,16 @@ def s3_processing_event(session, events):
             if isinstance(file_obj, AncillaryFilePath):
                 filter_dependencies = True
 
-            if job in SPECIAL_CASE_JOBS:
-                trigger_start_time, trigger_end_time = get_special_case_date_range(
-                    session, job, trigger_start_time
-                )
-                logger.info(
-                    f"Using special case date range: "
-                    f"{trigger_start_time} to {trigger_end_time}"
-                )
-                # Do not filter dependencies for special case jobs.
-                filter_dependencies = False
-
+            # Pass along the repointing number if the file is a science file.
+            repoint = (
+                file_obj.repointing if isinstance(file_obj, ScienceFilePath) else None
+            )
             submit_all_jobs(
                 session,
                 job,
                 trigger_start_time,
                 trigger_end_time,
+                repoint,
                 calculate_crids,
                 filter_dependencies,
             )
@@ -865,53 +821,6 @@ def s3_processing_event(session, events):
                 f"SQS record with receipt handle: {event['receiptHandle']} "
                 f"processed and deleted from the SQS."
             )
-
-
-def handle_special_case_reprocessing_jobs(session, job_node, start_date, end_date):
-    """Handle special case reprocessing jobs.
-
-    This function is used to handle unique jobs when reprocessing is triggered.
-
-    Parameters
-    ----------
-    session : orm session
-        Database session.
-    job_node : dict
-        job node to get the potential jobs from.
-    start_date : str
-        Start date to query the data.
-    end_date : str
-        End date to query the data.
-    """
-    # get the upstream dependencies for the reprocessing date range
-    upstream_dependencies = dependency.get_jobs(
-        data_source=job_node["data_source"],
-        data_type=job_node["data_type"],
-        descriptor=job_node["descriptor"],
-        dependency_type="UPSTREAM",
-        relationship="ALL",
-        start_date=start_date,
-        end_date=end_date,
-    )
-    if not upstream_dependencies:
-        return
-    # find the primary science processingInput that has the same source as the job.
-    primary_science = upstream_dependencies.get_science_inputs(job_node["data_source"])[
-        0
-    ]
-    logger.info(
-        f"Handling special case reprocessing. Found "
-        f"{len(primary_science.imap_file_paths)} files to reprocess."
-    )
-    for filepath in primary_science.imap_file_paths:
-        # For each file to reprocess we need to determine the correct
-        # start and end date to use for the job.
-        start_date, end_date = get_special_case_date_range(
-            session, job_node, filepath.start_date
-        )
-        submit_all_jobs(
-            session, job_node, start_date, end_date, filter_dependencies=False
-        )
 
 
 def bulk_reprocessing_event(session, events):
@@ -973,15 +882,31 @@ def bulk_reprocessing_event(session, events):
             )
         ]
     for job in potential_jobs:
-        if job in SPECIAL_CASE_JOBS:
-            handle_special_case_reprocessing_jobs(session, job, start_date, end_date)
-        elif (
+        if (
             job in DEPENDENCY_CONFIG.get_cadence_jobs()
             or job["descriptor"] in CadenceDays.valid_cadence_str()
         ):
             cadence_reprocessing_event(session, job, start_date, end_date)
         else:
-            submit_all_jobs(session, job, start_date, end_date)
+            # Spacecraft pointing-attitude jobs are special cases:
+            # Unlike other reprocessing jobs, they have no upstream science
+            # dependencies, meaning there is only one pointing-attitude job per
+            # reprocessing call. Therefore, dependencies should not be filtered
+            # after the initial upstream dependency query in "submit_all_jobs".
+            if (
+                job["data_source"] == "spacecraft"
+                and job["descriptor"] == "pointing-attitude"
+            ):
+                filter_dependencies = False
+            else:
+                filter_dependencies = True
+            submit_all_jobs(
+                session,
+                job,
+                start_date,
+                end_date,
+                filter_dependencies=filter_dependencies,
+            )
 
 
 def upload_dependency_file(dependency_file_path: Path, serialized_dependencies: str):

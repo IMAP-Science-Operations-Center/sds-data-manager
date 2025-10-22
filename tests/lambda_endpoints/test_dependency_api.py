@@ -2,6 +2,7 @@
 
 import base64
 from datetime import datetime
+from os.path import basename
 from unittest.mock import patch
 
 import imap_data_access
@@ -173,8 +174,8 @@ def test_missing_required_params():
     """Test that 400 error is returned."""
     with pytest.raises(
         ValueError,
-        match="end_date not found. If 'start_date' is "
-        "supplied, 'end_date' is required.",
+        match=r"end_date not found. If 'start_date' is "
+        r"supplied, 'end_date' is required.",
     ):
         dependency.get_jobs(
             dependency_type="DOWNSTREAM",
@@ -184,6 +185,73 @@ def test_missing_required_params():
             descriptor="sci",
             start_date="20240104",
         )
+
+
+def test_get_jobs_repoint(session):
+    """Test that jobs with the correct repoint are returned as dependencies."""
+    # Add two identical glows l0 raw files except for repointing number
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path="/path/to/imap_glows_l0_raw_20240101-repoint00047_v001.pkts",
+                instrument="glows",
+                data_level="l0",
+                descriptor="raw",
+                start_date=datetime(2024, 1, 1),
+                version="v001",
+                extension="pkts",
+                repointing=47,
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+            ScienceFiles(
+                file_path="/path/to/imap_glows_l0_raw_20240101-repoint00048_v001.pkts",
+                instrument="glows",
+                data_level="l0",
+                descriptor="raw",
+                start_date=datetime(2024, 1, 1),
+                version="v001",
+                extension="pkts",
+                repointing=48,
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+        ]
+    )
+    session.commit()
+    # Get upstream files for glows l1a all. This should return both glows l0 raw files
+    dependency_response = dependency.get_jobs(
+        data_source="glows",
+        data_type="l1a",
+        descriptor="all",
+        start_date="20240101",
+        end_date="20240101",
+        relationship="ALL",
+        dependency_type="UPSTREAM",
+        get_spice=False,
+    )
+    # Without specifying repointing, both files are returned
+    assert len(dependency_response.get_file_paths("glows", descriptor="raw")) == 2
+    dependency_response = dependency.get_jobs(
+        data_source="glows",
+        data_type="l1a",
+        descriptor="all",
+        start_date="20240101",
+        end_date="20240101",
+        repoint=48,
+        relationship="ALL",
+        dependency_type="UPSTREAM",
+        get_spice=False,
+    )
+    # With specifying repointing, only one file is returned
+    glows_l0_files = dependency_response.get_file_paths("glows", descriptor="raw")
+    assert len(glows_l0_files) == 1
+    assert (
+        basename(glows_l0_files[0])
+        == "imap_glows_l0_raw_20240101-repoint00048_v001.pkts"
+    )
 
 
 def test_get_jobs_spice(session):

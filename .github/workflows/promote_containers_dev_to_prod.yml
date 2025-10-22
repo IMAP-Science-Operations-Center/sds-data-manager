@@ -1,0 +1,214 @@
+name: Promote Container Images from Dev to Prod
+on:
+  workflow_dispatch:
+    inputs:
+      instruments:
+        description: 'Instruments to promote'
+        required: true
+        type: choice
+        options:
+          - all
+          - codice
+          - glows
+          - hit
+          - hi
+          - ialirt
+          - idex
+          - lo
+          - mag
+          - spacecraft
+          - swapi
+          - swe
+          - ultra
+        default: all
+      dev_tag:
+        description: 'Source image tag from dev'
+        required: false
+        type: string
+        default: 'latest'
+      prod_tag:
+        description: 'Target image tag for prod'
+        required: false
+        type: string
+        default: 'latest'
+
+# Prevent multiple promotions running concurrently
+concurrency:
+  group: container-promote-${{ github.repository }}
+  cancel-in-progress: false
+
+env:
+  # IMAP instruments - keep in sync with imap_data_access.VALID_INSTRUMENTS
+  VALID_INSTRUMENTS: "codice,glows,hit,hi,ialirt,idex,lo,mag,spacecraft,swapi,swe,ultra"
+  DEV_ACCOUNT: "449431850278"
+  PROD_ACCOUNT: "593025701104"
+  AWS_REGION: "us-west-2"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      instruments: ${{ steps.setup.outputs.instruments }}
+      matrix: ${{ steps.setup.outputs.matrix }}
+    steps:
+      - name: Setup promotion parameters
+        id: setup
+        run: |
+          # Determine which instruments to promote
+          if [ "${{ inputs.instruments }}" = "all" ]; then
+            instruments="${{ env.VALID_INSTRUMENTS }}"
+          else
+            instruments="${{ inputs.instruments }}"
+          fi
+
+          # Clean up whitespace and convert to JSON array
+          instruments_json=$(echo "$instruments" | tr ',' '\n' | tr -d ' ' | grep -v '^$' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "instruments=$instruments_json" >> $GITHUB_OUTPUT
+          echo "matrix={\"instrument\": $instruments_json}" >> $GITHUB_OUTPUT
+
+          echo "Promoting instruments: $instruments_json"
+          echo "From dev tag: ${{ inputs.dev_tag }}"
+          echo "To prod tag: ${{ inputs.prod_tag }}"
+
+  promote_images:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+      fail-fast: false  # Continue promoting other instruments if one fails
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials for DEV account
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.DEV_ACCOUNT }}:role/GitHubDeploy
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Dev-${{ matrix.instrument }}-promote
+
+      - name: Login to Amazon ECR (DEV)
+        id: login-ecr-dev
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: "true"
+
+      - name: Pull image from DEV
+        env:
+          DEV_REGISTRY: ${{ steps.login-ecr-dev.outputs.registry }}
+          REPOSITORY: ${{ matrix.instrument }}-repo
+          DEV_TAG: ${{ inputs.dev_tag }}
+        run: |
+          echo "Pulling image from DEV: $DEV_REGISTRY/$REPOSITORY:$DEV_TAG"
+
+          # Check if source image exists
+          if ! aws ecr describe-images --repository-name $REPOSITORY --image-ids imageTag=$DEV_TAG --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "❌ Source image $DEV_REGISTRY/$REPOSITORY:$DEV_TAG does not exist in DEV account"
+            exit 1
+          fi
+
+          docker pull $DEV_REGISTRY/$REPOSITORY:$DEV_TAG
+          echo "✅ Successfully pulled image from DEV"
+
+      - name: Configure AWS credentials for PROD account
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.PROD_ACCOUNT }}:role/GitHubDeploy
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Prod-${{ matrix.instrument }}-promote
+
+      - name: Login to Amazon ECR (PROD)
+        id: login-ecr-prod
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: "true"
+
+      - name: Tag and push image to PROD
+        env:
+          DEV_REGISTRY: ${{ steps.login-ecr-dev.outputs.registry }}
+          PROD_REGISTRY: ${{ steps.login-ecr-prod.outputs.registry }}
+          REPOSITORY: ${{ matrix.instrument }}-repo
+          DEV_TAG: ${{ inputs.dev_tag }}
+          PROD_TAG: ${{ inputs.prod_tag }}
+        run: |
+          echo "Promoting image: $DEV_REGISTRY/$REPOSITORY:$DEV_TAG -> $PROD_REGISTRY/$REPOSITORY:$PROD_TAG"
+
+          # Tag image for PROD
+          docker tag $DEV_REGISTRY/$REPOSITORY:$DEV_TAG $PROD_REGISTRY/$REPOSITORY:$PROD_TAG
+
+          # Push to PROD
+          docker push $PROD_REGISTRY/$REPOSITORY:$PROD_TAG
+
+          echo "✅ Successfully promoted ${{ matrix.instrument }} to PROD"
+
+          # Clean up local images to save space
+          docker rmi $DEV_REGISTRY/$REPOSITORY:$DEV_TAG || true
+          docker rmi $PROD_REGISTRY/$REPOSITORY:$PROD_TAG || true
+
+  verify_promotion:
+    needs: [prepare, promote_images]
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+      fail-fast: false
+    steps:
+      - name: Configure AWS credentials for PROD account
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.PROD_ACCOUNT }}:role/GitHubDeploy
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Verify-${{ matrix.instrument }}
+
+      - name: Verify image in PROD
+        env:
+          REPOSITORY: ${{ matrix.instrument }}-repo
+          PROD_TAG: ${{ inputs.prod_tag }}
+        run: |
+          echo "Verifying image $REPOSITORY:$PROD_TAG in PROD account..."
+
+          if aws ecr describe-images --repository-name $REPOSITORY --image-ids imageTag=$PROD_TAG --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "✅ Image $REPOSITORY:$PROD_TAG verified in PROD account"
+
+            # Get image details
+            image_details=$(aws ecr describe-images --repository-name $REPOSITORY --image-ids imageTag=$PROD_TAG --region ${{ env.AWS_REGION }} --query 'imageDetails[0].{pushed: imagePushedAt, digest: imageDigest}' --output table)
+            echo "Image details:"
+            echo "$image_details"
+          else
+            echo "❌ Image $REPOSITORY:$PROD_TAG NOT found in PROD account"
+            exit 1
+          fi
+
+  summary:
+    needs: [prepare, promote_images, verify_promotion]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Promotion Summary
+        run: |
+          echo "## Container Promotion Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Source:** DEV account (${{ env.DEV_ACCOUNT }}) - tag: ${{ inputs.dev_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** PROD account (${{ env.PROD_ACCOUNT }}) - tag: ${{ inputs.prod_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Instruments:** $(echo '${{ needs.prepare.outputs.instruments }}' | jq -r 'join(", ")')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.promote_images.result }}" = "success" ] && [ "${{ needs.verify_promotion.result }}" = "success" ]; then
+            echo "✅ All promotions completed successfully and verified" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.promote_images.result }}" = "failure" ]; then
+            echo "❌ Some promotions failed" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.verify_promotion.result }}" = "failure" ]; then
+            echo "⚠️ Promotions completed but verification failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Promotion status: promote=${{ needs.promote_images.result }}, verify=${{ needs.verify_promotion.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "- Verify that the promoted images work correctly in PROD" >> $GITHUB_STEP_SUMMARY
+          echo "- Update any deployment configurations if needed" >> $GITHUB_STEP_SUMMARY
+          echo "- Consider running integration tests against the promoted images" >> $GITHUB_STEP_SUMMARY

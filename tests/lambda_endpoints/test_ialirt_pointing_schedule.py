@@ -1,9 +1,19 @@
 """Test the I-Alirt pointing schedule lambda function."""
 
+# ruff: noqa: E402
+import sys
+import types
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from imap_processing.ialirt.constants import StationProperties
+
+# Patch a dummy ialirt_coverage module before import so tests can run locally.
+ialirt_coverage = types.SimpleNamespace(
+    get_latest_spice_kernels=MagicMock(name="get_latest_spice_kernels"),
+    setup_spice_file=MagicMock(name="setup_spice_file"),
+)
+sys.modules["ialirt_coverage"] = ialirt_coverage
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule import (
     generate_and_upload_schedule,

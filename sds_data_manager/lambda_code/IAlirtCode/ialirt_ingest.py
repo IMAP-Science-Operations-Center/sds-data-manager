@@ -35,7 +35,14 @@ from imap_processing.spice.geometry import (
     SpiceFrame,
     imap_state,
 )
-from imap_processing.spice.time import met_to_sclkticks, met_to_utc, sct_to_et
+from imap_processing.spice.time import (
+    et_to_met,
+    met_to_sclkticks,
+    met_to_ttj2000ns,
+    met_to_utc,
+    sct_to_et,
+    str_to_et,
+)
 from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
@@ -414,6 +421,40 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         logger.info(f"Inserted {instrument.upper()}.")
 
 
+def insert_kernels(dependency_inputs, algorithm_table):
+    """Insert SPICE kernel metadata into the database.
+
+    Parameters
+    ----------
+    dependency_inputs : ProcessingInputCollection
+        SPICE kernel dependencies.
+    algorithm_table : dynamodb.Table
+        The DynamoDB table to insert or update the data.
+    """
+    last_modified = datetime.now(timezone.utc)
+    last_modified_for_spice = last_modified.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    met = et_to_met(str_to_et(last_modified_for_spice))
+    last_modified_utc = last_modified.isoformat()
+    spice_input = dependency_inputs.processing_input[0]
+    spice_kernels = dict(zip(spice_input.source, spice_input.filename_list))
+
+    kernel_item = {
+        "apid": 478,
+        "met": int(met),
+        "met_in_utc": met_to_utc(met).split(".")[0],
+        "ttj2000ns": int(met_to_ttj2000ns(met)),
+        "last_modified": last_modified_utc,
+        "spice_kernels": spice_kernels,
+    }
+
+    algorithm_table.put_item(Item=kernel_item)
+
+    logger.info(
+        f"Stored SPICE kernel mapping in "
+        f"DynamoDB: {json.dumps(spice_kernels, indent=2)}"
+    )
+
+
 def lambda_handler(event, context):
     """Create metadata and add it to the database.
 
@@ -445,6 +486,7 @@ def lambda_handler(event, context):
     filename = os.path.basename(s3_filepath)
     logger.info("Retrieved filename: %s", filename)
     dependency_inputs = get_latest_spice_kernels(url)
+
     logger.info("dependency_inputs: %s", dependency_inputs)
     download_spice_file(dependency_inputs)
 
@@ -465,6 +507,8 @@ def lambda_handler(event, context):
         logger.info("Packets parsed. Processing algorithms.")
         # Process algorithms and insert new data.
         process_algorithms(combined, algorithm_table)
+        # Insert kernel metadata every minute.
+        insert_kernels(dependency_inputs, algorithm_table)
 
         logger.info("Successfully wrote all new items to DynamoDB")
     else:

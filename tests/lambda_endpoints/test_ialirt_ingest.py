@@ -21,6 +21,7 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     get_ancillary,
     get_latest_spice_kernels,
     insert_data,
+    insert_kernels,
     lambda_handler,
     parse_packets,
     process_algorithms,
@@ -434,3 +435,54 @@ def test_get_ancillary(mock_query, mock_ancillaryfilepath, mock_download):
         path = get_ancillary("swe", "l1b-in-flight-cal")
 
     assert path == mock_path
+
+
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_ttj2000ns",
+    return_value=813665124895612928,
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_utc",
+    return_value="2025-10-13T22:04:15.000",
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.et_to_met",
+    return_value=498089058,
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.str_to_et",
+    return_value=123456.0,
+)
+def test_insert_kernels(
+    mock_str_to_et,
+    mock_et_to_met,
+    mock_met_to_utc,
+    mock_met_to_ttj2000ns,
+    setup_dynamodb,
+):
+    "Test insert_kernels function."
+    algorithm_table = setup_dynamodb["algorithm_table"]
+
+    spice_input = MagicMock()
+    spice_input.source = ["leapseconds", "planetary_constants", "imap_frames"]
+    spice_input.filename_list = ["naif0012.tls", "pck00011.tpc", "imap_100.tf"]
+
+    dependency_inputs = MagicMock()
+    dependency_inputs.processing_input = [spice_input]
+
+    insert_kernels(dependency_inputs, algorithm_table)
+
+    response = algorithm_table.query(
+        KeyConditionExpression="apid = :a", ExpressionAttributeValues={":a": 478}
+    )
+    items = response["Items"]
+
+    assert items[0]["apid"] == 478
+    assert items[0]["met"] == 498089058
+    assert items[0]["met_in_utc"] == "2025-10-13T22:04:15"
+    assert int(items[0]["ttj2000ns"]) == 813665124895612928
+    assert items[0]["spice_kernels"] == {
+        "leapseconds": "naif0012.tls",
+        "planetary_constants": "pck00011.tpc",
+        "imap_frames": "imap_100.tf",
+    }

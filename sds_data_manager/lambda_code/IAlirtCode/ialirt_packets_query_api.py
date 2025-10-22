@@ -1,4 +1,4 @@
-"""Tests for the I-ALiRT Packets API."""
+"""I-ALiRT Packets API."""
 
 import json
 import logging

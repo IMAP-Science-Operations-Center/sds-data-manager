@@ -6,7 +6,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pytest
+import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy import select
 
@@ -17,7 +19,11 @@ from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import spice_indexer
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer import (
+    MAXIMUM_J2000_INTERVAL,
+    MAXIMUM_SCLK_INTERVAL,
+    get_coverage_dictionary,
     index_pointing_data,
+    parse_datetime,
 )
 
 
@@ -78,6 +84,76 @@ def _insert_test_file(session, filename, s3_path, intervals, upload_time=0):
     } | _irrelevant_data()
     session.add(models.SPICEFiles(**metadata_params))
     session.commit()
+
+
+@pytest.mark.parametrize(
+    "coverage_file, expected_coverage",  # noqa: PT006
+    [
+        (
+            "imap_2025_118_2025_120_001.ah.bc",
+            np.array(
+                [
+                    [799244416.073258, 799244763.0732579],
+                ]
+            ),
+        ),
+        (
+            "imap_dps_2025_284_2025_285_001.ah.bc",
+            np.array(
+                [
+                    [784909316.4208736, 784995503.4208926],
+                ]
+            ),
+        ),
+    ],
+)
+def test_get_coverage_dictionary(coverage_file, expected_coverage):
+    """Test get_coverage_dictionary for various files."""
+    tests_path = Path(os.path.abspath(__file__)).parent.parent
+    test_spice_data_dir = tests_path / "test-data" / "test_spice_files"
+    with spiceypy.KernelPool(
+        [
+            str(test_spice_data_dir / "naif0012.tls"),
+            str(test_spice_data_dir / "imap_sclk_0012.tsc"),
+        ]
+    ):
+        results_j2000, _results_datetime, _results_sclk = get_coverage_dictionary(
+            test_spice_data_dir / coverage_file
+        )
+        np.testing.assert_array_equal(results_j2000, expected_coverage)
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.wnfetd"
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.wncard"
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.pckcov"
+)
+def test_get_coverage_dictionary_left_out_of_range(
+    mock_pckcov, mock_wncard, mock_wnfetd
+):
+    """Test get_coverage_dictionary when the left boundary is out of range."""
+    tests_path = Path(os.path.abspath(__file__)).parent.parent
+    test_spice_data_dir = tests_path / "test-data" / "test_spice_files"
+    with spiceypy.KernelPool(
+        [
+            str(test_spice_data_dir / "naif0012.tls"),
+            str(test_spice_data_dir / "imap_sclk_0012.tsc"),
+        ]
+    ):
+        mock_wncard.return_value = 1
+        mock_wnfetd.return_value = (
+            spiceypy.utc2et("2000-01-01T00:00:00"),
+            spiceypy.utc2et("2025-12-26T00:00:00"),
+        )
+        results_j2000, _results_datetime, results_sclk = get_coverage_dictionary(
+            Path("/foo/bar/earth_000101_251226_250929.bpc")
+        )
+        assert results_j2000[0][0] == MAXIMUM_J2000_INTERVAL[0][0]
+        assert results_sclk[0][0] == MAXIMUM_SCLK_INTERVAL[0][0]
 
 
 @patch(
@@ -261,6 +337,30 @@ def test_s3_repoint_files(mock_download, session, s3_client, events_client):
     pointing_ids = session.query(models.PointingTable.pointing_id).all()
     assert len(pointing_ids) == 49
 
+    # Query RepointFiles table to verify it was populated
+    repoint_file_entry = (
+        session.query(models.RepointFiles)
+        .filter_by(file_path="imap/spice/repoint/imap_2000_056_03.repoint.csv")
+        .first()
+    )
+    assert repoint_file_entry is not None
+    assert repoint_file_entry.version == "03"
+    assert (
+        repoint_file_entry.file_path
+        == "imap/spice/repoint/imap_2000_056_03.repoint.csv"
+    )
+    # The end_date should be from the last pointing entry
+    last_pointing = (
+        session.query(models.PointingTable)
+        .order_by(models.PointingTable.pointing_id.desc())
+        .first()
+    )
+    expected_end_date = (
+        last_pointing.pointing_end_utc or last_pointing.pointing_start_utc
+    )
+    assert repoint_file_entry.end_date == expected_end_date
+    assert repoint_file_entry.ingestion_date is not None
+
 
 def test_send_spice_event(session, events_client, s3_client):
     """Test the ``send_spice_event`` function."""
@@ -365,3 +465,125 @@ def test_index_pointing_data_updates_null_values(mock_download, session, tmpdir)
     assert first_pointing_entry.repoint_start_utc == datetime(2025, 7, 2, 10, 0, 0)
     # # i_pointing + 1 repoint_end_utc
     assert first_pointing_entry.repoint_end_utc == datetime(2025, 7, 2, 10, 10, 0)
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.get_file_ingestion_date",
+    return_value=datetime(2025, 1, 1, 10, 0, 0),
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download_from_s3"
+)
+def test_index_repoint_file_with_null_pointing_end_utc(
+    mock_download, mock_get_ingestion_date, session, tmp_path
+):
+    """Test index_repoint_file when repoint_end_utc is a NaN."""
+    new_repoint_file = tmp_path / "imap_2025_100_01.repoint.csv"
+    mock_download.return_value = new_repoint_file
+
+    # Create a test CSV file with repoint data
+    test_csv_content = """repoint_id,repoint_start_utc,repoint_end_utc
+1,2025-04-10T10:00:00.000000,2025-04-10T10:10:00.000000
+2,2025-04-11T10:00:00.000000,NaN
+"""
+    with open(new_repoint_file, "w") as f:
+        f.write(test_csv_content)
+
+    # First index the pointing data
+    index_pointing_data("imap/spice/repoint/imap_2025_100_01.repoint.csv")
+
+    # Get the last pointing entry and verify it has None for pointing_end_utc
+    last_pointing = (
+        session.query(models.PointingTable)
+        .order_by(models.PointingTable.pointing_id.desc())
+        .first()
+    )
+    assert last_pointing.pointing_start_utc is None
+
+    # Now call index_repoint_file directly
+    from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer import (
+        index_repoint_file,
+    )
+
+    index_repoint_file("imap/spice/repoint/imap_2025_100_01.repoint.csv")
+
+    # Verify the repoint file was indexed with the pointing_start_utc as end_date
+    repoint_entry = (
+        session.query(models.RepointFiles)
+        .filter_by(file_path="imap/spice/repoint/imap_2025_100_01.repoint.csv")
+        .first()
+    )
+    assert repoint_entry is not None
+    assert repoint_entry.version == "01"
+    # Since pointing_end_utc is None, it should use pointing_start_utc
+    assert repoint_entry.end_date == parse_datetime("2025-04-11T10:00:00.000000")
+    assert repoint_entry.ingestion_date is not None
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.get_file_ingestion_date",
+    return_value=datetime(2025, 1, 1, 10, 0, 0),
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download_from_s3"
+)
+def test_index_repoint_file_multiple_versions(
+    mock_download, mock_get_ingestion_date, session, tmpdir
+):
+    """Test indexing multiple repoint files with different versions."""
+    # Create first repoint file (version 01)
+    repoint_file_v01 = os.path.join(tmpdir, "imap_2025_200_01.repoint.csv")
+    test_csv_v01 = """repoint_id,repoint_start_utc,repoint_end_utc
+1,2025-07-19T10:00:00.000000,2025-07-19T10:10:00.000000
+2,2025-07-20T10:00:00.000000,2025-07-20T10:10:00.000000
+"""
+    with open(repoint_file_v01, "w") as f:
+        f.write(test_csv_v01)
+
+    mock_download.return_value = repoint_file_v01
+
+    # Index first version
+    index_pointing_data("imap/spice/repoint/imap_2025_200_01.repoint.csv")
+    from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer import (
+        index_repoint_file,
+    )
+
+    index_repoint_file("imap/spice/repoint/imap_2025_200_01.repoint.csv")
+
+    # Verify first version was indexed
+    repoint_v01 = (
+        session.query(models.RepointFiles)
+        .filter_by(file_path="imap/spice/repoint/imap_2025_200_01.repoint.csv")
+        .first()
+    )
+    assert repoint_v01 is not None
+    assert repoint_v01.version == "01"
+
+    # Create second repoint file (version 02) with more data
+    repoint_file_v02 = os.path.join(tmpdir, "imap_2025_200_02.repoint.csv")
+    test_csv_v02 = """repoint_id,repoint_start_utc,repoint_end_utc
+1,2025-07-19T10:00:00.000000,2025-07-19T10:10:00.000000
+2,2025-07-20T10:00:00.000000,2025-07-20T10:10:00.000000
+3,2025-07-21T10:00:00.000000,2025-07-21T10:10:00.000000
+"""
+    with open(repoint_file_v02, "w") as f:
+        f.write(test_csv_v02)
+
+    mock_download.return_value = repoint_file_v02
+
+    # Index second version
+    index_pointing_data("imap/spice/repoint/imap_2025_200_02.repoint.csv")
+    index_repoint_file("imap/spice/repoint/imap_2025_200_02.repoint.csv")
+
+    # Verify second version was indexed
+    repoint_v02 = (
+        session.query(models.RepointFiles)
+        .filter_by(file_path="imap/spice/repoint/imap_2025_200_02.repoint.csv")
+        .first()
+    )
+    assert repoint_v02 is not None
+    assert repoint_v02.version == "02"
+
+    # Verify both versions exist in the database
+    all_repoint_files = session.query(models.RepointFiles).all()
+    assert len(all_repoint_files) == 2

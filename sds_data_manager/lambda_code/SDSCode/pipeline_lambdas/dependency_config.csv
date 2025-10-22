@@ -465,13 +465,6 @@ hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER,
 hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Hi-90 L3
-hi, l2, h90-ena-h-sf-nsp-ram-hae-4deg-6mo, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
-hi, l2, h90-ena-h-sf-nsp-anti-hae-4deg-6mo, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
-science_frames, spice, historical, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
-pointing_attitude, spice, historical, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
-leapseconds, spice, historical, hi, l3, h90-ena-h-sf-sp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
-
 hi, l3, h90-ena-h-hf-sp-full-hae-4deg-6mo, hi, l3, h90-spx-h-hf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
 
 
@@ -513,20 +506,20 @@ hit, l1b, standard-rates, hit, l2, standard-intensity, HARD, DOWNSTREAM
 hit, l1b, summed-rates, hit, l2, summed-intensity, HARD, DOWNSTREAM
 hit, l1b, sectored-rates, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
 
-hit, ancillary, sectored-dt0-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
-hit, ancillary, sectored-dt1-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
-hit, ancillary, sectored-dt2-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
-hit, ancillary, sectored-dt3-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-macropixel-dt0-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-macropixel-dt1-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-macropixel-dt2-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-macropixel-dt3-factors, hit, l2, macropixel-intensity, HARD, DOWNSTREAM
 
-hit, ancillary, standard-dt0-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
-hit, ancillary, standard-dt1-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
-hit, ancillary, standard-dt2-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
-hit, ancillary, standard-dt3-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-standard-dt0-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-standard-dt1-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-standard-dt2-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-standard-dt3-factors, hit, l2, standard-intensity, HARD, DOWNSTREAM
 
-hit, ancillary, summed-dt0-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
-hit, ancillary, summed-dt1-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
-hit, ancillary, summed-dt2-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
-hit, ancillary, summed-dt3-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-summed-dt0-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-summed-dt1-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-summed-dt2-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
+hit, ancillary, l1b-to-l2-summed-dt3-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
 
 hit, l2, macropixel-intensity, hit, l3, macropixel, HARD, DOWNSTREAM
 mag, l1d, norm-mago, hit, l3, macropixel, HARD, DOWNSTREAM
@@ -607,10 +600,15 @@ lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, good-times, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, hydrogen-background, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, oxygen-background, lo, l1c, pset, HARD, DOWNSTREAM
-spin, spin, historical, lo, l1b, de, HARD, DOWNSTREAM
-repoint, repoint, historical, lo, l1b, de, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1c, pset, HARD, DOWNSTREAM
+repoint, repoint, historical, lo, l1c, pset, HARD, DOWNSTREAM
 leapseconds, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 
 # TODO: Maps for 5-7 days need to be defined. deg resolution for those maps are currently N/A in Lo mapping product sheet.
 
@@ -702,20 +700,17 @@ planetary_ephemeris, spice, historical, lo, l2, t090-isn-o-sf-nsp-ram-hae-6deg-1
 pointing_attitude, spice, historical, lo, l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, lo, l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 
-lo, l2, l090-ena-h-sf-nsp-ram-hae-4deg-6mo, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
-science_frames, spice, historical, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
-pointing_attitude, spice, historical, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
-leapseconds, spice, historical, lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, lo, l3, l090-spx-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
 
 # <---- MAG Dependencies ---->
 
+# L0 -> L1A
 mag, l0, raw, mag, l1a, all, HARD, DOWNSTREAM
 leapseconds, spice, historical, mag, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, mag, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
+# L1A -> L1B
 mag, l1a, norm-mago, mag, l1b, norm-mago, HARD, DOWNSTREAM
 mag, ancillary, l1b-calibration, mag, l1b, norm-mago, HARD, DOWNSTREAM
 mag, l1a, norm-magi, mag, l1b, norm-magi, HARD, DOWNSTREAM
@@ -725,27 +720,44 @@ mag, ancillary, l1b-calibration, mag, l1b, burst-mago, HARD, DOWNSTREAM
 mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
 mag, ancillary, l1b-calibration, mag, l1b, burst-magi, HARD, DOWNSTREAM
 
+leapseconds, spice, historical, mag, l1b, norm-mago, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1b, norm-mago, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l1b, norm-magi, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1b, norm-magi, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l1b, burst-mago, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1b, burst-mago, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l1b, burst-magi, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1b, burst-magi, HARD_NO_TRIGGER, DOWNSTREAM
+
+
+# L1B -> L1C
 # For L1C, we want to trigger on either burst or norm or both.
 mag, l1b, norm-mago, mag, l1c, norm-mago, SOFT_TRIGGER, DOWNSTREAM
 mag, l1b, burst-mago, mag, l1c, norm-mago, SOFT_TRIGGER, DOWNSTREAM
 mag, l1b, norm-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
 mag, l1b, burst-magi, mag, l1c, norm-magi, SOFT_TRIGGER, DOWNSTREAM
 
+leapseconds, spice, historical, mag, l1c, norm-mago, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1c, norm-mago, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, mag, l1c, norm-magi, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, mag, l1c, norm-magi, HARD_NO_TRIGGER, DOWNSTREAM
+
+# L1C/L1B -> L1D
 # all L1D processing occurs in one step
 mag, ancillary, l1d-calibration, mag, l1d, norm-srf, HARD, DOWNSTREAM
 mag, l1c, norm-mago, mag, l1d, norm-srf, HARD, DOWNSTREAM
 mag, l1c, norm-magi, mag, l1d, norm-srf, HARD, DOWNSTREAM
 mag, l1b, burst-mago, mag, l1d, norm-srf, SOFT_TRIGGER, DOWNSTREAM
 mag, l1b, burst-magi, mag, l1d, norm-srf, SOFT_TRIGGER, DOWNSTREAM
-mag, ancillary, l1d-calibration, mag, l1d, norm-srf, HARD, DOWNSTREAM
 
 imap_frames, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
+spin, spin, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 leapseconds, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
-spin, spin, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 
+# L1C/L1B -> L2
 # MAG L2 and L1D look pretty similar.
 mag, l1c, norm-mago, mag, l2, norm-srf, HARD, DOWNSTREAM
 mag, l1b, burst-mago, mag, l2, burst-srf, HARD, DOWNSTREAM
@@ -765,7 +777,6 @@ science_frames, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTRE
 pointing_attitude, spice, historical, mag, l2, burst-srf, HARD, DOWNSTREAM
 leapseconds, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
-
 
 # <---- Spacecraft Dependencies ---->
 # Quaternions
@@ -916,6 +927,7 @@ imap_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNST
 science_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 
 spin, spin, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
@@ -1013,6 +1025,7 @@ imap_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNST
 science_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 
 spin, spin, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
@@ -1310,13 +1323,6 @@ imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr, H
 imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, ultra, l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
 
-# Ultra L3 survival probability corrected ENA map dependencies:
-glows, l3e, survival-probability-ul, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
-ultra, l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM
-science_frames, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
-pointing_attitude, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
-leapseconds, spice, historical, ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 
 # Ultra L3 spectral index map dependencies:
 ultra, l3, u90-ena-h-sf-sp-full-hae-4deg-3mo, ultra, l3, u90-spx-h-sf-sp-full-hae-4deg-3mo, HARD, DOWNSTREAM

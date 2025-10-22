@@ -821,259 +821,12 @@ def test_bulk_reprocessing_all_swe(session, caplog):
     assert mock_submit.call_count == 0
 
 
-###### SPECIAL CASE TESTS #######
-def test_ultra_l3_map(session, caplog):
-    """Tests ``lambda_handler` for unique ultra l3 map case."""
-    _static_spice_files(session)
-    records = [
-        ScienceFiles(
-            file_path="/path/to/imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-4deg-3mo_20240201_v001.cdf",
-            instrument="ultra",
-            data_level="l2",
-            descriptor="u90-ena-h-sf-nsp-full-hae-4deg-3mo",
-            start_date=datetime(2024, 2, 1),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        ),
-        # Pointing attitude kernel
-        SPICEFiles(
-            file_path="path/to/imap_dps_2024_001_2026_001_01.ah.bc",
-            file_name="imap_dps_2024_001_2026_001_01.ah.bc",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-            file_root="imap_dps_2024_001_2026_.ah.bc",
-            kernel_type="pointing_attitude",
-            min_date_j2000=0,
-            max_date_j2000=4575787269.183866,
-            file_intervals_j2000=[[0, 4575787269.183866]],
-            min_date_datetime=datetime.strptime(
-                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-            max_date_datetime=datetime.strptime(
-                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
-            min_date_sclk="1/0000000000:00000",
-            max_date_sclk="1/4285909749:39444",
-            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
-            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
-            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
-            version=1,
-        ),
-    ]
-    records.extend(
-        [
-            ScienceFiles(
-                file_path=f"/path/to/imap_glows_l3e_survival-probability-ul_2024{month:02}01_v001.cdf",
-                instrument="glows",
-                data_level="l3e",
-                descriptor="survival-probability-ul",
-                start_date=datetime(2024, month, 1),
-                version="v001",
-                extension="cdf",
-                ingestion_date=datetime.strptime(
-                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-            )
-            for month in range(2, 9)
-        ]
-    )
-    session.add_all(records)
-    session.commit()
-
-    events = {
-        # This event is for the ultra l3 map job. The glows l3e files may come in
-        # groupings. We want to test that only one job is submitted.
-        "Records": [
-            {
-                "body": '{"detail": {"object": {"key": '
-                '"imap_glows_l3e_survival-probability-ul_20240201_v001.cdf"}}'
-                "}"
-            },
-            {
-                "body": '{"detail": {"object": {"key": '
-                '"imap_glows_l3e_survival-probability-ul_20240301_v001.cdf"}}'
-                "}"
-            },
-        ]
-    }
-    context = {"context": "sample_context"}
-    expected_processing_input = ProcessingInputCollection()
-
-    spice_files = [
-        "naif0012.tls",
-        "imap_science_000.tf",
-        "imap_sclk_0000.tsc",
-        "imap_dps_2024_001_2026_001_01.ah.bc",
-    ]
-    expected_processing_input.add(SPICEInput(*spice_files))
-
-    # There will be 3 glows l3e files (representing 3 months) that are used as
-    # dependencies for the job.
-    # NOTE: in reality, there will be more than 3 glows l3e files.
-    glows_files = [
-        f"imap_glows_l3e_survival-probability-ul_20240{month}01_v001.cdf"
-        for month in range(2, 6)
-    ]
-    expected_processing_input.add(ScienceInput(*glows_files))
-    expected_processing_input.add(
-        ScienceInput(
-            "imap_ultra_l2_u90-ena-h-sf-nsp-full-hae-4deg-3mo_20240201_v001.cdf"
-        )
-    )
-    with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
-        patch.object(batch_starter, "generate_queue_url", return_value=False),
-    ):
-        lambda_handler(events, context)
-        # Verify the function was called
-        mock_batch_client.submit_job.assert_called_with(
-            jobName="ultra-l3-u90-ena-h-sf-sp-full-hae-4deg-3mo-job-1",
-            jobQueue="ProcessingJobQueue",
-            jobDefinition="ProcessingJob-ultra-l3",
-            containerOverrides={
-                "command": [
-                    "--instrument",
-                    "ultra",
-                    "--data-level",
-                    "l3",
-                    "--descriptor",
-                    "u90-ena-h-sf-sp-full-hae-4deg-3mo",
-                    "--start-date",
-                    "20240201",
-                    "--version",
-                    "v001",
-                    "--dependency",
-                    "imap_ultra_l3_u90-ena-h-sf-sp-full-hae-4deg-3mo-27005a05_20240201_v001.json",
-                    "--upload-to-sdc",
-                ]
-            },
-            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
-        )
-        # Assert that only one job is submitted.
-        assert mock_batch_client.submit_job.call_count == 1
-        assert "Already tried to submit job from a GLOWS l3e file." in caplog.text
-
-        # Assert that the try_to_submit_job function was called with the correct
-        # upstream dependencies
-        with (
-            patch.object(batch_starter, "try_to_submit_job") as mock_submit,
-            patch.object(batch_starter, "generate_queue_url", return_value=False),
-        ):
-            lambda_handler(events, context)
-            mock_submit.assert_called_with(
-                session,
-                {
-                    "data_source": "ultra",
-                    "data_type": "l3",
-                    "descriptor": "u90-ena-h-sf-sp-full-hae-4deg-3mo",
-                },
-                "20240201",
-                "v001",
-                expected_processing_input.serialize(),
-                repoint=None,
-            )
-
-
-def test_bulk_reprocessing_special_case(session, auth_event):
-    """Tests ``lambda_handler`` for a special case in bulk reprocessing."""
-    # Add test data to the database for the special case
-    # Add hi l2 files. Some of these will be used as dependencies for the job.
-    _static_spice_files(session)
-    records = [
-        ScienceFiles(
-            file_path=f"/path/to/imap_hi_l2_h90-ena-h-sf-nsp-ram-hae-4deg-6mo_{date}_v001.cdf",
-            instrument="hi",
-            data_level="l2",
-            descriptor="h90-ena-h-sf-nsp-ram-hae-4deg-6mo",
-            start_date=datetime.strptime(date, "%Y%m%d"),
-            version="v001",
-            extension="cdf",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-        )
-        for date in ["20240202", "20240803"]
-    ]
-    records.extend(
-        [
-            ScienceFiles(
-                file_path=f"/path/to/imap_hi_l2_h90-ena-h-sf-nsp-anti-hae-4deg-6mo_{date}_v001.cdf",
-                instrument="hi",
-                data_level="l2",
-                descriptor="h90-ena-h-sf-nsp-anti-hae-4deg-6mo",
-                start_date=datetime.strptime(date, "%Y%m%d"),
-                version="v001",
-                extension="cdf",
-                ingestion_date=datetime.strptime(
-                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-                ),
-            )
-            for date in ["20240202", "20240803"]
-        ]
-    )
-    # Add pointing attitude kernel
-    records.append(
-        SPICEFiles(
-            file_path="path/to/imap_dps_2024_001_2026_001_01.ah.bc",
-            file_name="imap_dps_2024_001_2026_001_01.ah.bc",
-            ingestion_date=datetime.strptime(
-                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-            file_root="imap_dps_2024_001_2026_.ah.bc",
-            kernel_type="pointing_attitude",
-            min_date_j2000=0,
-            max_date_j2000=4575787269.183866,
-            file_intervals_j2000=[[0, 4575787269.183866]],
-            min_date_datetime=datetime.strptime(
-                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-            max_date_datetime=datetime.strptime(
-                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
-            ),
-            file_intervals_datetime="[[2000-01-01T00:00:00, 2145-01-01T00:00:00]]",
-            min_date_sclk="1/0000000000:00000",
-            max_date_sclk="1/4285909749:39444",
-            file_intervals_sclk="[[1/00000000000:00000, 1/4285909749:39444]]",
-            sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
-            lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
-            version=1,
-        )
-    )
-    session.add_all(records)
-    session.commit()
-
-    # Bulk reprocessing event for the special case
-    query_params = {
-        "reprocessing": "True",
-        "start_date": "20240101",
-        "end_date": "20250210",
-        "instrument": "hi",
-        "data_level": "l3",
-        "descriptor": "h90-ena-h-sf-sp-full-hae-4deg-6mo",
-    }
-    # Create an authenticated event
-    events = auth_event({"queryStringParameters": query_params})
-    context = {"context": "None"}
-
-    with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
-        patch.object(batch_starter, "generate_queue_url", return_value=False),
-    ):
-        lambda_handler(events, context)
-        # Verify that the hi l3 jobs were reprocessed
-        assert mock_batch_client.submit_job.call_count == 2
-
-
 def test_lambda_handler_mag_l1c_case(session):
     """Tests ``lambda_handler` for unique mac l1c case."""
     # Mock the situation where mag l1b files trigger batch starter back to back.
     # We should expect the second job mag l1c to be submitted with a version bump and
     # both mag l1b files.
+    _static_spice_files(session)
     session.add(
         ScienceFiles(
             file_path="/path/to/imap_mag_l1b_norm-mago_20240101_v001.cdf",
@@ -1100,6 +853,7 @@ def test_lambda_handler_mag_l1c_case(session):
     }
     context = {"context": "sample_context"}
     expected_processing_input = ProcessingInputCollection(
+        SPICEInput("naif0012.tls", "imap_sclk_0000.tsc"),
         ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
     )
     with (
@@ -1125,7 +879,7 @@ def test_lambda_handler_mag_l1c_case(session):
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_mag_l1c_norm-mago-7f101966_20240101_v001.json",
+                    "imap_mag_l1c_norm-mago-34e68524_20240101_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -1193,7 +947,7 @@ def test_lambda_handler_mag_l1c_case(session):
                     "--version",
                     "v002",
                     "--dependency",
-                    "imap_mag_l1c_norm-mago-2ae6d6fe_20240101_v002.json",
+                    "imap_mag_l1c_norm-mago-78046f35_20240101_v002.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -1221,6 +975,7 @@ def test_lambda_handler_duplicate_mag_l1c_job(session, caplog):
     # Mock the situation where mag l1b files trigger batch starter back to back but
     # with the same exact dependencies.
     # We should expect the duplicate job to be skipped.
+    _static_spice_files(session)
     session.add_all(
         [
             ScienceFiles(
@@ -1887,6 +1642,7 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
                 start_date=datetime(2000, 2, 24),
                 version="v001",
                 extension="pkts",
+                repointing=47,
                 ingestion_date=datetime.strptime(
                     "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
                 ),
@@ -1955,6 +1711,12 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
                 version="03",
                 ingestion_date=datetime.now(),
             ),
+            RepointFiles(
+                file_path="/path/to/imap_2000_060_01.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="03",
+                ingestion_date=datetime.now(),
+            ),
             PointingTable(
                 pointing_id=47,
                 pointing_start_utc=datetime(2000, 2, 24, 0, 0, 0),
@@ -1996,6 +1758,26 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
     file_obj = imap_data_access.ScienceFilePath(filename)
     non_repoint_date_range = determine_date_range(session, file_obj)
     assert non_repoint_date_range == ("20260926", "20260926")
+
+    # Check that with no previous repoint file, start date is
+    # end_date - 1 day
+    filename = "imap_2000_055_01.repoint.csv"
+    file_obj = imap_data_access.SPICEFilePath(filename)
+    repoint_date_range = determine_date_range(session, file_obj)
+    assert repoint_date_range == ("20000223", "20000224")
+
+    # Check that correct start date is returned when there is a previous
+    # repoint file.
+    # Last repoint file the same day as end date
+    filename = "imap_2000_056_03.repoint.csv"
+    file_obj = imap_data_access.SPICEFilePath(filename)
+    repoint_date_range = determine_date_range(session, file_obj)
+    assert repoint_date_range == ("20000225", "20000225")
+    # Last repoint several days before end date
+    filename = "imap_2000_060_01.repoint.csv"
+    file_obj = imap_data_access.SPICEFilePath(filename)
+    repoint_date_range = determine_date_range(session, file_obj)
+    assert repoint_date_range == ("20000225", "20000229")
 
     # Add files other needed for the pointing attitude job
     session.add_all(
@@ -2093,11 +1875,11 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
                     "--descriptor",
                     "pointing-attitude",
                     "--start-date",
-                    "20000224",
+                    "20000225",
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_spacecraft_l1a_pointing-attitude-60996159_20000224_v001.json",
+                    "imap_spacecraft_l1a_pointing-attitude-12ca6ae0_20000225_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -2329,3 +2111,73 @@ def test_lambda_skip_processing_due_to_crid_check(session, caplog):
     # Verify the job was skipped
     assert log in caplog.text
     assert mock_submit.call_count == 0
+
+
+# Add tests to verify that the correct version is calculated.
+def test_determine_job_version_science(session):
+    """Tests ``determine_job_version`` for science jobs."""
+    # For science files, the job version should be determined from the science files
+    # table. Although there is a successful job with v003, the latest science file is
+    # v001, so the next version should be v002. It is possible for a job to have
+    # Status = SUCCEEDED, but no files were produced for the job, which is why we check
+    # the science files table for the version.
+    records = [
+        ScienceFiles(
+            file_path="/path/to/imap_lo_l1a_de_20240101_v002.cdf",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="de",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ProcessingJob(
+            status=models.Status.SUCCEEDED,
+            instrument="lo",
+            data_level="l1a",
+            descriptor="de",
+            start_date=datetime(2024, 1, 1),
+            version="v003",
+        ),
+    ]
+    session.add_all(records)
+    session.add_all(records)
+    version = determine_job_version(
+        session, "lo", "l1a", "de", datetime(2024, 1, 1), "test_dependency"
+    )
+    # The version should be v002
+    assert version == "v002"
+
+
+def test_determine_job_version_spacecraft(session):
+    """Tests ``determine_job_version`` for spacecraft jobs."""
+    # the function determine_job_version uses the processing job table to determine
+    # the correct version for a spacecraft pointing-attitude job, since there is no way
+    # to determine the filename and therefore the version from the spice table using the
+    # information given. Assert that the version is calculated from the processing
+    # job table.
+    records = [
+        # Add a processing job with version 1
+        ProcessingJob(
+            status=models.Status.SUCCEEDED,
+            instrument="spacecraft",
+            data_level="l1a",
+            descriptor="pointing-attitude",
+            start_date=datetime(2024, 1, 1),
+            version="v002",
+        )
+    ]
+    session.add_all(records)
+    version = determine_job_version(
+        session,
+        "spacecraft",
+        "l1a",
+        "pointing-attitude",
+        datetime(2024, 1, 1),
+        "test_dependency",
+    )
+    # The version should be v003 since there was a successful job with v002
+    assert version == "v003"

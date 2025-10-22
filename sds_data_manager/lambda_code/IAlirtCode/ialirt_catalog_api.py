@@ -55,9 +55,8 @@ def lambda_handler(event, context) -> dict:
                 'Content-Type': 'application/json'
             },
             'body': '{
-                "2025-02-06":
-                    {"file_names":
-                        ["20250206_station1_01.txt", "20250206_station1_02.txt"],
+                    "file_names":
+                        ["2025-02-06_station1_01.txt", "2025-02-06_station1_02.txt"],
                      "dates_modified":
                         ["2025-02-12 18:37", "2025-02-12 18:37"]}
             }'
@@ -96,28 +95,28 @@ def lambda_handler(event, context) -> dict:
         config=botocore.client.Config(signature_version="s3v4"),
     )
 
-    response_body = {}
+    response_body = {"file_names": [], "dates_modified": []}
     while day < end_date:
-        day_path = f"pointing_schedules/{station}/{day.strftime('%Y%m%d')}/"
+        day_path = f"pointing_schedules/{station}/{day.strftime('%Y-%m-%d')}"
         files = s3_client.list_objects_v2(Bucket=bucket, Prefix=day_path)
+        # Return all existing files.
         if "Contents" not in files.keys():
-            return {
-                "statusCode": 404,
-                "headers": {"Content-Type": "application/json"},
-                "body": "There are not files associated with the provided date {day}. "
-                "Please supply a valid time range that is covered by existing "
-                "files.",
-            }
-        file_names = []
-        dates_modified = []
+            logger.info(f"No files found for {day.strftime('%Y-%m-%d')}")
+            day += timedelta(days=1)
+            continue
         for file in files["Contents"]:
-            file_names.append(file["Key"].rsplit("/", 1)[1])
-            dates_modified.append(file["LastModified"].strftime("%Y-%m-%d %H:%M"))
-        response_body[f"{day}"] = {
-            "file_names": file_names,
-            "dates_modified": dates_modified,
-        }
+            response_body["file_names"].append(file["Key"].rsplit("/", 1)[1])
+            response_body["dates_modified"].append(
+                file["LastModified"].strftime("%Y-%m-%d %H:%M")
+            )
         day += timedelta(days=1)
+
+    if not response_body["file_names"]:
+        return {
+            "statusCode": 404,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"message": "No files found for the requested range."}),
+        }
 
     return {
         "statusCode": 200,

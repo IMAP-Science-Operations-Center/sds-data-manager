@@ -20,7 +20,7 @@ from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
 from ..database import models
 from ..database.models import AncillaryFiles
-from . import VALID_CADENCE_STRS
+from . import REPOINT_DEPENDENT_INSTRUMENTS, VALID_CADENCE_STRS
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -839,7 +839,8 @@ def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
     end_date: datetime,
-    calculate_crids: bool,
+    repoint: Optional[int] = None,
+    calculate_crids: bool = False,
     get_spice: bool = True,
 ):
     """Construct a ProcessingInputCollection of dependency files.
@@ -856,6 +857,8 @@ def get_upstream_dependency_inputs(
         Start date to find dependent files with.
     end_date : datetime
         End date to find dependent files with.
+    repoint : int, optional
+        If provided, will be used to filter files by repoint number.
     calculate_crids : bool
         If True, we will check if the expected CRIDs exist for the upstream
         dependencies. If so, processing will continue. If not, it will return None.
@@ -989,7 +992,7 @@ def get_upstream_dependency_inputs(
                 f"Searching for upstream dependencies with dependency string: {dep}"
             )
 
-            records = get_files(session, dep, start_date, end_date)
+            records = get_files(session, dep, start_date, end_date, repoint)
             if not records and relationship in [
                 Relationship.HARD,
                 Relationship.HARD_NO_TRIGGER,
@@ -1029,6 +1032,7 @@ def get_files(
     dependency: dict,
     start_date: datetime,
     end_date: datetime,
+    repoint: Optional[int] = None,
 ):
     """Query to database to get ScienceFile or AncillaryFile records.
 
@@ -1048,6 +1052,8 @@ def get_files(
         Start date of the event data.
     end_date: datetime
         End date of the event data.
+    repoint : int, optional
+        Repoint number of the event data.
 
     Returns
     -------
@@ -1078,6 +1084,13 @@ def get_files(
                 models.ScienceFiles.start_date <= end_date,
             )
         )
+        # If repoint is provided, filter by repointing number
+        if (
+            repoint is not None
+            and dependency["data_source"] in REPOINT_DEPENDENT_INSTRUMENTS
+        ):
+            type_specific_conditions.append(table.repointing == repoint)
+
     filter_conditions = [
         table.instrument == dependency["data_source"],
         table.descriptor == dependency["descriptor"],
@@ -1127,6 +1140,7 @@ def get_jobs(
     descriptor: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    repoint: Optional[int] = None,
     calculate_crids: bool = False,
     get_spice: bool = True,
 ) -> list | ProcessingInputCollection | None:
@@ -1151,6 +1165,8 @@ def get_jobs(
     end_date : str, optional
         End date to find dependent files with, in YYYYMMDD format. Required if
         start_date is provided.
+    repoint : int, optional
+        Repoint number associated with the job.
     calculate_crids : bool, optional
         If True, we will check if the expected CRIDs exist for the upstream
         dependencies. If so, processing will continue. If not, it will return None.
@@ -1243,6 +1259,7 @@ def get_jobs(
         dependencies=dependencies,
         start_date=start_date,
         end_date=end_date,
+        repoint=repoint,
         calculate_crids=calculate_crids,
         get_spice=get_spice,
     )
