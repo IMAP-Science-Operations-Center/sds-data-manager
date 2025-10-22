@@ -1,9 +1,8 @@
 """Cron job to create ialirt alarm."""
 
-from typing import Optional
-
 from aws_cdk import (
     Duration,
+    RemovalPolicy,
     aws_s3,
 )
 from aws_cdk import (
@@ -11,6 +10,14 @@ from aws_cdk import (
 )
 from aws_cdk import (
     aws_cloudwatch_actions as cloudwatch_actions,
+)
+from aws_cdk import aws_events as events
+from aws_cdk import aws_events_targets as targets
+from aws_cdk import (
+    aws_iam as iam,
+)
+from aws_cdk import (
+    aws_lambda as lambda_,
 )
 from aws_cdk import (
     aws_sns as sns,
@@ -29,10 +36,11 @@ class IalirtAlarmConstruct(Construct):
         self,
         scope: Construct,
         construct_id: str,
+        code: lambda_.Code,
         ialirt_bucket: aws_s3.Bucket,
         **kwargs,
     ) -> None:
-        """Create ialirt alarm.
+        """Create ialirt alarms and rsync failure notifications.
 
         Parameters
         ----------
@@ -40,6 +48,8 @@ class IalirtAlarmConstruct(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
+        code : lambda_.Code
+            Lambda code bundle.
         ialirt_bucket : aws_s3.Bucket
             The data bucket to monitor.
         kwargs : dict
@@ -55,16 +65,93 @@ class IalirtAlarmConstruct(Construct):
         ialirt_alarm_email = ssm.StringParameter.value_for_string_parameter(
             self, "/imap/ialirt/alarm_email"
         )
-        self.setup_monitoring(ialirt_bucket, ialirt_alarm_email)
 
-    def setup_monitoring(self, ialirt_bucket, ialirt_alarm_email: Optional[str]):
-        """Create SNS topic for CloudWatch alarm."""
         alarm_topic = sns.Topic(
             self, "IalirtAlarmTopics", display_name="I-ALiRT Alarm Notifications"
         )
         if ialirt_alarm_email:
             alarm_topic.add_subscription(subs.EmailSubscription(ialirt_alarm_email))
 
+        # Create rsync Lambda + event trigger
+        self.create_rsync_lambda(ialirt_bucket, code, alarm_topic)
+
+        # Create CloudWatch monitoring for 'no packets arrived' condition.
+        self.setup_monitoring(ialirt_bucket, alarm_topic)
+
+    def create_rsync_lambda(
+        self,
+        ialirt_bucket: aws_s3.Bucket,
+        code: lambda_.Code,
+        alarm_topic: sns.Topic,
+    ) -> lambda_.Function:
+        """Create and return the Lambda function for rsync failure detection."""
+        lambda_role = iam.Role(
+            self,
+            "IalirtRsyncAlarmConstructRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaBasicExecutionRole"
+                ),
+            ],
+        )
+
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["sns:Publish"],
+                resources=[alarm_topic.topic_arn],
+            )
+        )
+
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["s3:ListBucket", "s3:GetObject"],
+                resources=[
+                    ialirt_bucket.bucket_arn,
+                    f"{ialirt_bucket.bucket_arn}/*",
+                ],
+            )
+        )
+
+        ialirt_rsync_lambda = lambda_.Function(
+            self,
+            id="IalirtRsyncAlarmLambda",
+            function_name="ialirt-rsync-alarm",
+            code=code,
+            handler="IAlirtCode.ialirt_rsync_alarm.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=Duration.minutes(1),
+            memory_size=1000,
+            role=lambda_role,
+            environment={
+                "S3_BUCKET": ialirt_bucket.bucket_name,
+                "SNS_TOPIC_ARN": alarm_topic.topic_arn,
+            },
+        )
+
+        ialirt_rsync_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
+
+        # Event rule to trigger Lambda on S3 object creation (logs)
+        ialirt_log_arrival_rule = events.Rule(
+            self,
+            "IalirtLogArrival",
+            rule_name="ialirt-log-arrival",
+            event_pattern=events.EventPattern(
+                source=["aws.s3"],
+                detail_type=["Object Created"],
+                detail={
+                    "bucket": {"name": [ialirt_bucket.bucket_name]},
+                    "object": {"key": [{"prefix": "logs/"}]},
+                },
+            ),
+        )
+
+        ialirt_log_arrival_rule.add_target(targets.LambdaFunction(ialirt_rsync_lambda))
+
+        return ialirt_rsync_lambda
+
+    def setup_monitoring(self, ialirt_bucket, alarm_topic: sns.Topic):
+        """Create SNS topic for CloudWatch alarm."""
         # CloudWatch metric for PutRequests with dimensions
         put_metric = cloudwatch.Metric(
             namespace="AWS/S3",

@@ -24,7 +24,6 @@ from sds_data_manager.constructs import (
     ialirt_pointing_schedule_construct,
     ialirt_processing_construct,
     ialirt_realtime_construct,
-    ialirt_rsync_alarm_construct,
     indexer_lambda_construct,
     instrument_lambdas,
     lambda_layer_construct,
@@ -387,12 +386,6 @@ def build_sds(
     ialirt_alarm_construct.IalirtAlarmConstruct(
         scope=ialirt_stack,
         construct_id="IalirtAlarm",
-        ialirt_bucket=ialirt_bucket.ialirt_bucket,
-    )
-
-    ialirt_rsync_alarm_construct.IalirtRsyncAlarmConstruct(
-        scope=ialirt_stack,
-        construct_id="IalirtRsyncAlarm",
         code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
     )
