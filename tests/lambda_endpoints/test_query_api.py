@@ -44,9 +44,7 @@ def _populate_test_data(session):
 def mock_head_object(monkeypatch):
     """Patch boto3's S3 client head_object to always return success."""
     # Create a mock that always returns a success response
-    mock_head_object = MagicMock(
-        return_value={"ResponseMetadata": {"HTTPStatusCode": 200}}
-    )
+    mock_head = MagicMock(return_value={"ResponseMetadata": {"HTTPStatusCode": 200}})
 
     # Also patch the boto3.resource to handle the bucket name issue
     mock_bucket = MagicMock()
@@ -55,7 +53,7 @@ def mock_head_object(monkeypatch):
     # Patch both s3_client.head_object and the bucket name access
     def mock_client(*args, **kwargs):
         mock = MagicMock()
-        mock.head_object = mock_head_object
+        mock.head_object = mock_head
         return mock
 
     def mock_resource(*args, **kwargs):

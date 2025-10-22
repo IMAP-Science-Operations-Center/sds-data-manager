@@ -34,6 +34,7 @@ def _set_env(monkeypatch, tmpdir):
     # This is used in batch_starter.py
     monkeypatch.setenv("IMAP_DATA_ACCESS_URL", "https://test.url")
     monkeypatch.setenv("DATA_DIR", str(tmpdir))
+    monkeypatch.setenv("REGION", "testing")
 
 
 @pytest.fixture(autouse=True)
