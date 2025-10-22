@@ -35,11 +35,10 @@ def check_for_rsync_failure(s3_client: BaseClient, key: str, bucket: str) -> boo
         False otherwise.
     """
     obj = s3_client.get_object(Bucket=bucket, Key=key)
-    body = obj["Body"]
-    for line in body.iter_lines():
-        if b"command failed: rsync" in line:
-            logger.warning(f"Found rsync failure in {key}")
-            return True
+    content = obj["Body"].read()
+    if b"command failed: rsync" in content:
+        logger.warning(f"Found rsync failure in {key}")
+        return True
     return False
 
 
