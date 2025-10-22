@@ -150,8 +150,10 @@ def lambda_handler(event, context):  # noqa: PLR0912 PLR0915
         try:
             s3_client.head_object(Bucket=bucket, Key=s3_key)
             existing_files.append(result)
-        except Exception:
-            logger.error(f"File not found in S3: {s3_key} but exists in DB")
+        except Exception as e:
+            logger.error(
+                f"File not found in S3: {s3_key} but exists in DB - error: {e}"
+            )
 
     search_results = existing_files
     # Convert datetimes to string values of format 'YYYYMMDD'
