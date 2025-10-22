@@ -1,14 +1,6 @@
 """Cron job to alarm on rsync failure."""
 
 from aws_cdk import Duration, RemovalPolicy, aws_s3
-from aws_cdk import (
-    aws_cloudwatch as cloudwatch,
-)
-from aws_cdk import (
-    aws_cloudwatch_actions as cloudwatch_actions,
-)
-from aws_cdk import aws_events as events
-from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_sns as sns
@@ -46,10 +38,6 @@ class IalirtRsyncAlarmConstruct(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
-        # Create Lambda Function
-        ialirt_rsync_lambda = self.create_rsync_lambda(ialirt_bucket, code)
-        # Create Event Rule
-        self.create_event_rule(ialirt_bucket, ialirt_rsync_lambda)
         # Parameter store lookup.
         # Note: this must be run once for each account:
         # aws ssm put-parameter --name /imap/ialirt/alarm_email
@@ -57,12 +45,24 @@ class IalirtRsyncAlarmConstruct(Construct):
         alarm_email = ssm.StringParameter.value_for_string_parameter(
             self, "/imap/ialirt/alarm_email"
         )
-        self.setup_monitoring(alarm_email)
+
+        # SNS topic for direct notifications
+        alarm_topic = sns.Topic(
+            self,
+            "IalirtRsyncAlarmTopic",
+            display_name="I-ALiRT Rsync Failure Notifications",
+        )
+        alarm_topic.add_subscription(subs.EmailSubscription(alarm_email))
+
+        ialirt_rsync_lambda = self.create_rsync_lambda(ialirt_bucket, code, alarm_topic)
+
+        self.create_event_rule(ialirt_bucket, ialirt_rsync_lambda)
 
     def create_rsync_lambda(
         self,
         ialirt_bucket: aws_s3.Bucket,
         code: lambda_.Code,
+        alarm_topic: sns.Topic,
     ) -> lambda_.Function:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -78,18 +78,19 @@ class IalirtRsyncAlarmConstruct(Construct):
 
         lambda_role.add_to_policy(
             iam.PolicyStatement(
-                actions=["cloudwatch:PutMetricData"],
-                resources=["*"],
+                actions=["sns:Publish"],
+                resources=[alarm_topic.topic_arn],
             )
         )
 
-        s3_read_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
-            actions=["s3:ListBucket", "s3:GetObject"],
-            resources=[
-                ialirt_bucket.bucket_arn,
-                f"{ialirt_bucket.bucket_arn}/*",
-            ],
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["s3:ListBucket", "s3:GetObject"],
+                resources=[
+                    ialirt_bucket.bucket_arn,
+                    f"{ialirt_bucket.bucket_arn}/*",
+                ],
+            )
         )
 
         # Lambda function
@@ -105,73 +106,10 @@ class IalirtRsyncAlarmConstruct(Construct):
             role=lambda_role,
             environment={
                 "S3_BUCKET": ialirt_bucket.bucket_name,
+                "SNS_TOPIC_ARN": alarm_topic.topic_arn,
             },
         )
 
-        ialirt_rsync_lambda.add_to_role_policy(s3_read_policy)
-
-        # The resource is deleted when the stack is deleted.
         ialirt_rsync_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
 
         return ialirt_rsync_lambda
-
-    def create_event_rule(
-        self,
-        ialirt_bucket: aws_s3.Bucket,
-        ialirt_rsync_lambda: lambda_.Function,
-    ) -> None:
-        """Create the event rule to trigger Lambda on S3 object creation."""
-        ialirt_log_arrival_rule = events.Rule(
-            self,
-            "IalirtLogArrival",
-            rule_name="ialirt-log-arrival",
-            event_pattern=events.EventPattern(
-                source=["aws.s3"],
-                detail_type=["Object Created"],
-                detail={
-                    "bucket": {"name": [ialirt_bucket.bucket_name]},
-                    "object": {"key": [{"prefix": "logs/"}]},
-                },
-            ),
-        )
-
-        # Add the Lambda function as the target for the rules
-        ialirt_log_arrival_rule.add_target(targets.LambdaFunction(ialirt_rsync_lambda))
-
-    def setup_monitoring(self, alarm_email: str):
-        """Create CloudWatch alarm and notify via SNS if rsync failures occur."""
-        alarm_topic = sns.Topic(
-            self,
-            "IalirtRsyncAlarmTopic",
-            display_name="I-ALiRT Rsync Failure Alarm Notifications",
-        )
-        alarm_topic.add_subscription(subs.EmailSubscription(alarm_email))
-
-        # Metric for rsync failures (emitted from Lambda)
-        rsync_metric = cloudwatch.Metric(
-            namespace="IMAP/Ialirt",
-            metric_name="IalirtRsyncFailures",
-            period=Duration.hours(1),  # logs arrive every hour
-            statistic="Sum",
-            dimensions_map={"Function": "ialirt-rsync-alarm"},
-        )
-
-        alarm = cloudwatch.Alarm(
-            self,
-            "IalirtRsyncFailureAlarm",
-            metric=rsync_metric,
-            # Alarm when at least one rsync failure
-            threshold=1,
-            # Evaluate the latest 1-hour metric window
-            evaluation_periods=1,
-            # Enter ALARM state if a single data point breaches threshold
-            datapoints_to_alarm=1,
-            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-            # If no data don't trigger
-            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
-            alarm_description="Alarm if rsync failure is detected in Lambda output.",
-        )
-
-        alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
-
-        return alarm

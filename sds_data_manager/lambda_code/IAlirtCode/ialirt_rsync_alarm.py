@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 
 import boto3
 import botocore
@@ -42,29 +43,26 @@ def check_for_rsync_failure(s3_client: BaseClient, key: str, bucket: str) -> boo
     return False
 
 
-def publish_failure_metric(found: bool):
-    """Publish a custom CloudWatch metric for rsync failure.
+def notify_failure(topic_arn: str, key: str, bucket: str):
+    """Publish SNS message directly if rsync failure detected.
 
-    This metric is used to trigger alarms when a failure is detected.
+    Parameters
+    ----------
+    topic_arn : str
+        The ARN of the SNS topic to publish the alert to.
+    key : str
+        The filename to scan for the failure message.
+    bucket : str
+        Name of the S3 bucket containing the log files.
     """
-    cloudwatch = boto3.client("cloudwatch")
-    value = 1 if found else 0
-    cloudwatch.put_metric_data(
-        Namespace="IMAP/Ialirt",
-        MetricData=[
-            {
-                "MetricName": "IalirtRsyncFailures",
-                "Dimensions": [
-                    {"Name": "Function", "Value": "ialirt-rsync-alarm"},
-                ],
-                "Unit": "Count",
-                "Value": value,
-            },
-        ],
+    sns = boto3.client("sns")
+    message = f"Rsync failure detected in log file: s3://{bucket}/{key}"
+    sns.publish(
+        TopicArn=topic_arn,
+        Subject="I-ALiRT Rsync Failure Detected",
+        Message=message,
     )
-    logger.info(
-        f"Published CloudWatch metric: IMAP/Ialirt::IalirtRsyncFailures = {value}"
-    )
+    logger.info(f"Published SNS alert to {topic_arn}")
 
 
 def lambda_handler(event, context):
@@ -95,6 +93,7 @@ def lambda_handler(event, context):
 
     found = check_for_rsync_failure(s3_client, key, bucket)
 
-    publish_failure_metric(found)
+    if found:
+        notify_failure(os.environ["SNS_TOPIC_ARN"], key, bucket)
 
     return {"found_rsync_failure": found}
