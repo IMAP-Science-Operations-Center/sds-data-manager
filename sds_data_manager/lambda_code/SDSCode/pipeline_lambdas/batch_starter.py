@@ -616,7 +616,7 @@ def calculate_repoint_table_date_range(session, file_obj):
     tuple
         A tuple containing the start date and end date in the format YYYYMMDD.
     """
-    # Query the pointing table to find the pointing information.
+    # Query the repoint table to get the exact date/time.
     end_date = file_obj.spice_metadata["end_date"]
     previous_entries = (
         session.query(models.RepointFiles)

@@ -408,16 +408,33 @@ def index_repoint_file(s3_key):
     """
     logger.info(f"Indexing {s3_key} to RepointFiles table")
     with db.Session() as session:
-        spin_obj = SPICEFilePath(os.path.basename(s3_key))
-        spin_metadata = spin_obj.spice_metadata
+        repoint_obj = SPICEFilePath(os.path.basename(s3_key))
+        metadata = repoint_obj.spice_metadata
+
+        # Query Pointing Table to get the exact date/time of the latest data
+        # in the repoint file. This requires that `index_pointing_data` is run
+        # before indexing the repoint file.
+        final_pointings = (
+            session.query(models.PointingTable)
+            .order_by(models.PointingTable.pointing_id.desc())
+            .limit(2)
+            .all()
+        )
+        # The repoint end time should be the last Pointing start time if it is not
+        # null. Otherwise, it should be the second-to-last repoint start time.
+        end_date = (
+            final_pointings[0].pointing_start_utc
+            or final_pointings[1].repoint_start_utc
+        )
+
         params = {
             "file_path": s3_key,
-            "end_date": spin_metadata["end_date"],
-            "version": spin_metadata["version"],
+            "end_date": end_date,
+            "version": metadata["version"],
             "ingestion_date": get_file_ingestion_date(s3_key),
         }
-        spin_table = models.RepointFiles(**params)
-        session.add(spin_table)
+        repoint_table = models.RepointFiles(**params)
+        session.add(repoint_table)
         session.commit()
 
     logger.info(f"Indexed {s3_key} to SPICEFiles table")
