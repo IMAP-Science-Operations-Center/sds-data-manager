@@ -117,7 +117,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** dev" >> $GITHUB_STEP_SUMMARY
           echo "**Account:** ${{ env.DEV_ACCOUNT }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Instruments:** ${{ join(fromJson(needs.prepare.outputs.instruments), ', ') }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Instruments:** $(echo '${{ needs.prepare.outputs.instruments }}' | jq -r 'join(", ")')" >> $GITHUB_STEP_SUMMARY
           echo "**Git URL:** ${{ inputs.git_url }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 

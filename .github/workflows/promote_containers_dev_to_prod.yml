@@ -194,7 +194,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Source:** DEV account (${{ env.DEV_ACCOUNT }}) - tag: ${{ inputs.dev_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** PROD account (${{ env.PROD_ACCOUNT }}) - tag: ${{ inputs.prod_tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Instruments:** ${{ join(fromJson(needs.prepare.outputs.instruments), ', ') }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Instruments:** $(echo '${{ needs.prepare.outputs.instruments }}' | jq -r 'join(", ")')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.promote_images.result }}" = "success" ] && [ "${{ needs.verify_promotion.result }}" = "success" ]; then
