@@ -138,7 +138,7 @@ def lambda_handler(event, context):  # noqa: PLR0912 PLR0915
     data_bucket = boto3.resource("s3").Bucket(os.environ["S3_BUCKET"])
     existing_files = []
     for result in search_results:
-        s3_key = f"{result['file_path']}/{result['file_name']}"
+        s3_key = result["file_path"]
         if s3_client.head_object(Bucket=data_bucket.bucket_name, Key=s3_key):
             existing_files.append(result)
 
