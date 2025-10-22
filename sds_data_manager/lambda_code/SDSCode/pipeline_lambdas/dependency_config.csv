@@ -927,6 +927,7 @@ imap_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNST
 science_frames, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 
 spin, spin, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
@@ -1024,6 +1025,7 @@ imap_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNST
 science_frames, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 
 spin, spin, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
