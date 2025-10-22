@@ -47,19 +47,19 @@ class IalirtRsyncAlarmConstruct(Construct):
         super().__init__(scope, construct_id, **kwargs)
 
         # Create Lambda Function
-        ialirt_rsync_lambda = self.create_realtime_lambda(ialirt_bucket, code)
+        ialirt_rsync_lambda = self.create_rsync_lambda(ialirt_bucket, code)
         # Create Event Rule
         self.create_event_rule(ialirt_bucket, ialirt_rsync_lambda)
         # Parameter store lookup.
         # Note: this must be run once for each account:
-        # aws ssm put-parameter --name /imap/ialirt/rsync_alarm_email
+        # aws ssm put-parameter --name /imap/ialirt/alarm_email
         # --value ialirt@example.com --type String --overwrite
-        rsync_alarm_email = ssm.StringParameter.value_for_string_parameter(
-            self, "/imap/ialirt/rsync_alarm_email"
+        alarm_email = ssm.StringParameter.value_for_string_parameter(
+            self, "/imap/ialirt/alarm_email"
         )
-        self.setup_monitoring(rsync_alarm_email)
+        self.setup_monitoring(alarm_email)
 
-    def create_realtime_lambda(
+    def create_rsync_lambda(
         self,
         ialirt_bucket: aws_s3.Bucket,
         code: lambda_.Code,
@@ -83,7 +83,7 @@ class IalirtRsyncAlarmConstruct(Construct):
             )
         )
 
-        s3_read_write_policy = iam.PolicyStatement(
+        s3_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:ListBucket", "s3:GetObject"],
             resources=[
@@ -108,7 +108,7 @@ class IalirtRsyncAlarmConstruct(Construct):
             },
         )
 
-        ialirt_rsync_lambda.add_to_role_policy(s3_read_write_policy)
+        ialirt_rsync_lambda.add_to_role_policy(s3_read_policy)
 
         # The resource is deleted when the stack is deleted.
         ialirt_rsync_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
