@@ -1642,6 +1642,7 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
                 start_date=datetime(2000, 2, 24),
                 version="v001",
                 extension="pkts",
+                repointing=47,
                 ingestion_date=datetime.strptime(
                     "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
                 ),

@@ -381,6 +381,7 @@ def submit_all_jobs(
     job_node,
     trigger_start_date,
     trigger_end_date,
+    repoint: Optional[int] = None,
     calculate_crids=False,
     filter_dependencies=True,
 ):
@@ -398,6 +399,8 @@ def submit_all_jobs(
         determines the range of potential jobs.
     trigger_end_date : str
         The end date of the file that triggered the job in the format 'YYYYMMDD'.
+    repoint : int, optional
+        The repointing number for the job. Default is None.
     calculate_crids : bool
         True if the file that triggered the job is a science file, False if it is SPICE
         or ancillary.
@@ -429,6 +432,7 @@ def submit_all_jobs(
         relationship="ALL",
         start_date=trigger_start_date,
         end_date=trigger_end_date,
+        repoint=repoint,
         calculate_crids=calculate_crids,
         get_spice=get_spice,
     )
@@ -792,11 +796,16 @@ def s3_processing_event(session, events):
             if isinstance(file_obj, AncillaryFilePath):
                 filter_dependencies = True
 
+            # Pass along the repointing number if the file is a science file.
+            repoint = (
+                file_obj.repointing if isinstance(file_obj, ScienceFilePath) else None
+            )
             submit_all_jobs(
                 session,
                 job,
                 trigger_start_time,
                 trigger_end_time,
+                repoint,
                 calculate_crids,
                 filter_dependencies,
             )
