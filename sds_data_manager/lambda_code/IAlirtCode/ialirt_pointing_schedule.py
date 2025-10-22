@@ -35,7 +35,7 @@ def generate_and_upload_schedule(bucket: str, region: str, station: str, day: st
         Ex: "2025-08-11".
     """
     file_name = f"{day}_{station}.txt"
-    s3_path = f"pointing_schedules/{station}/{day}/{file_name}"
+    s3_path = f"pointing_schedules/{station}/{file_name}"
 
     output = generate_text_files(station, day)
 
@@ -48,10 +48,7 @@ def generate_and_upload_schedule(bucket: str, region: str, station: str, day: st
             Key=s3_path,
             Body="".join(output),
         )
-        logger.info(
-            f"Pointing schedule '{day}_{station}.txt' uploaded to "
-            f"s3://{bucket}/{s3_path}"
-        )
+        logger.info(f"Pointing schedule uploaded to s3://{bucket}/{s3_path}")
     except Exception as e:
         logger.error(f"Error uploading file: {e}")
 
