@@ -1,18 +1,17 @@
 """Test the I-ALiRT rsync failure checker lambda."""
 
+import os
 from unittest.mock import patch
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_rsync_alarm import (
     check_for_rsync_failure,
     lambda_handler,
-    publish_failure_metric,
+    notify_failure,
 )
 
 
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_rsync_alarm.publish_failure_metric"
-)
-def test_lambda_handler_detects_rsync_failure(mock_metric, s3_client):
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_rsync_alarm.notify_failure")
+def test_lambda_handler_detects_rsync_failure(mock_notify, s3_client):
     """Test lambda_handler returns True when rsync failure is found."""
     bucket = "test-data-bucket"
     key = "logs/flight_iois_1.log.2025-253T19_26_00"
@@ -37,16 +36,16 @@ def test_lambda_handler_detects_rsync_failure(mock_metric, s3_client):
         "now": "2025-09-10T19:30:00Z",
     }
 
+    os.environ["SNS_TOPIC_ARN"] = "arn:aws:sns:us-west-2:123456789012:TestTopic"
+
     response = lambda_handler(event, context={})
 
     assert response == {"found_rsync_failure": True}
-    mock_metric.assert_called_once()
+    mock_notify.assert_called_once()
 
 
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_rsync_alarm.publish_failure_metric"
-)
-def test_lambda_handler_returns_false_when_no_failure(mock_metric, s3_client):
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_rsync_alarm.notify_failure")
+def test_lambda_handler_returns_false_when_no_failure(mock_notify, s3_client):
     """Test lambda_handler returns False when no rsync failure is found."""
     bucket = "test-data-bucket"
     key = "logs/flight_iois_1.log.2025-253T19_26_00"
@@ -105,21 +104,18 @@ def test_check_for_rsync_failure_returns_false(s3_client):
 
 
 @patch("boto3.client")
-def test_publish_failure_metric(mock_boto3_client):
-    """Test that publish_failure_metric sends the correct metric to CloudWatch."""
-    mock_cloudwatch = mock_boto3_client.return_value
+def test_notify_failure(mock_boto3_client):
+    """Test that notify_failure sends the correct SNS message."""
+    mock_sns = mock_boto3_client.return_value
 
-    found = True
-    publish_failure_metric(found)
+    topic_arn = "arn:aws:sns:us-west-2:123456789012:TestTopic"
+    key = "logs/test.log"
+    bucket = "test-bucket"
 
-    mock_cloudwatch.put_metric_data.assert_called_once_with(
-        Namespace="IMAP/Ialirt",
-        MetricData=[
-            {
-                "MetricName": "IalirtRsyncFailures",
-                "Dimensions": [{"Name": "Function", "Value": "ialirt-rsync-alarm"}],
-                "Unit": "Count",
-                "Value": 1,
-            }
-        ],
+    notify_failure(topic_arn, key, bucket)
+
+    mock_sns.publish.assert_called_once_with(
+        TopicArn=topic_arn,
+        Subject="I-ALiRT Rsync Failure Detected",
+        Message=f"Rsync failure detected in log file: s3://{bucket}/{key}",
     )
