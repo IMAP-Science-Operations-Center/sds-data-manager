@@ -56,12 +56,12 @@ jobs:
           fi
 
           # Clean up whitespace and convert to JSON array
-          instruments=$(echo "$instruments" | tr ',' '\n' | tr -d ' ' | grep -v '^$' | jq -R . | jq -s .)
+          instruments_json=$(echo "$instruments" | tr ',' '\n' | tr -d ' ' | grep -v '^$' | jq -R -s -c 'split("\n") | map(select(length > 0))')
 
-          echo "instruments=$instruments" >> $GITHUB_OUTPUT
-          echo "matrix={\"instrument\": $instruments}" >> $GITHUB_OUTPUT
+          echo "instruments=$instruments_json" >> $GITHUB_OUTPUT
+          echo "matrix={\"instrument\": $instruments_json}" >> $GITHUB_OUTPUT
 
-          echo "Building instruments: $instruments"
+          echo "Building instruments: $instruments_json"
           echo "Git URL: ${{ inputs.git_url }}"
 
   build_and_push:
