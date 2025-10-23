@@ -839,6 +839,7 @@ def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
     end_date: datetime,
+    data_source: str,
     repoint: Optional[int] = None,
     calculate_crids: bool = False,
     get_spice: bool = True,
@@ -857,6 +858,8 @@ def get_upstream_dependency_inputs(
         Start date to find dependent files with.
     end_date : datetime
         End date to find dependent files with.
+    data_source : str
+        Data source of the current processing job.
     repoint : int, optional
         If provided, will be used to filter files by repoint number.
     calculate_crids : bool
@@ -939,7 +942,12 @@ def get_upstream_dependency_inputs(
                     start_date.strftime("%Y%m%d")
                 )
                 # TODO revisit setting end_time after SIT-4. Should be handled upstream
-                add_24_hrs = True if end_date == start_date else False
+                if end_date == start_date or (
+                    data_source in REPOINT_DEPENDENT_INSTRUMENTS and repoint is not None
+                ):
+                    add_24_hrs = True
+                else:
+                    add_24_hrs = False
                 end_time = yyyymmdd_to_seconds_since_j2000(
                     end_date.strftime("%Y%m%d"), add_24_hrs
                 )
@@ -1260,6 +1268,7 @@ def get_jobs(
         start_date=start_date,
         end_date=end_date,
         repoint=repoint,
+        data_source=data_source,
         calculate_crids=calculate_crids,
         get_spice=get_spice,
     )
