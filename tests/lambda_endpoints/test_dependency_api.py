@@ -1396,7 +1396,6 @@ def test_get_spice_for_ena(session):
         [dependencies],
         start_date=start_date,
         end_date=end_date,
-        data_source="ultra",
         repoint=1,
         calculate_crids=False,
         get_spice=True,
