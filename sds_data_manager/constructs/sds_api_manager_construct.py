@@ -187,12 +187,14 @@ class SdsApiManager(Construct):
             environment={
                 "REGION": env.region,
                 "SECRET_NAME": db_secret_name,
+                "S3_BUCKET": data_bucket.bucket_name,
             },
             layers=layers,
         )
 
         # {proxy+} is used to allow for any pathParams after /query/
         add_stable_route(api, "/query", "GET", query_api_lambda, auth_route_prefixes)
+        query_api_lambda.add_to_role_policy(s3_read_policy)
 
         # SPICE query API lambda
         spice_query_api_lambda = lambda_.Function(
