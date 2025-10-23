@@ -588,7 +588,6 @@ def calculate_pointing_date_range(session, pointing_id):
 
     start_date = pointing_record.pointing_start_utc.strftime("%Y%m%d")
     end_date = pointing_record.pointing_end_utc.strftime("%Y%m%d")
-
     logger.debug(f"pointing date range, start_date: {start_date}, end_date: {end_date}")
 
     return start_date, end_date
