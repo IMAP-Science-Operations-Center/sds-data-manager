@@ -427,7 +427,13 @@ def test_get_ancillary(mock_query, mock_ancillaryfilepath, mock_download):
     """Test get_ancillary function."""
     mock_path = Path("/mock/efs/swe/l1b-in-flight-cal/calibration.cdf")
     mock_download.return_value = mock_path
-    mock_query.return_value = [{"file_path": "swe/l1b-in-flight-cal/calibration.cdf"}]
+    mock_query.return_value = [
+        {
+            "file_path": "swe/l1b-in-flight-cal/calibration_2.cdf",
+            "version": 2,
+            "start_date": "2025-01-02",
+        }
+    ]
     mock_construct_path = MagicMock(return_value=mock_path)
     mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
 
