@@ -18,6 +18,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
     RepointFiles,
     ScienceFiles,
+    SPICEFiles,
     SpinFiles,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
@@ -25,6 +26,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
     DependencyConfig,
     calculate_crid,
     get_files,
+    get_upstream_dependency_inputs,
     matching_crids_exist,
 )
 from tests.lambda_endpoints.conftest import (
@@ -1313,3 +1315,90 @@ def test_new_crid(session):
     )
     # Assert that the record now has a CRID associated with it.
     assert record.crid
+
+
+def test_get_spice_for_ena(session):
+    """Tests that the correct spice data is returned for an ena instrument."""
+    records = [
+        SPICEFiles(
+            file_path="path/to/imap_2025_289_2025_290_001.ah.bc",
+            file_name="imap_2025_289_2025_290_001.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2025-10-17 21:05:14.000000 +00:00", "%Y-%m-%d %H:%M:%S.%f %z"
+            ),
+            file_root="imap_2025_289_2025_290_.ah.bc",
+            kernel_type="attitude_history",
+            min_date_j2000=813869293.1500088,
+            max_date_j2000=813959293.0681704,
+            file_intervals_j2000=[[813869293.1500088, 813959293.0681704]],
+            min_date_datetime=datetime.strptime(
+                "2025-10-16 06:47:03.967637 +00:00", "%Y-%m-%d %H:%M:%S.%f %z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2025-10-17 07:47:03.885793 +00:00", "%Y-%m-%d %H:%M:%S.%f %z"
+            ),
+            file_intervals_datetime=[
+                ["2025-10-16T06:47:03.967637+00:00", "2025-10-17T07:47:03.885793+00:00"]
+            ],
+            min_date_sclk="1/0498293225:00000",
+            max_date_sclk="1/0498383225:00000",
+            file_intervals_sclk=[["1/0498293225:00000", "1/0498383225:00000"]],
+            lsk_kernel="",
+            sclk_kernel="",
+            version=1,
+        ),
+        SPICEFiles(
+            file_path="path/to/imap_2025_290_2025_290_001.ah.bc",
+            file_name="imap_2025_290_2025_290_001.ah.bc",
+            ingestion_date=datetime.strptime(
+                "2025-10-17 21:05:14.000000 +00:00", "%Y-%m-%d %H:%M:%S.%f %z"
+            ),
+            file_root="imap_2025_290_2025_290_.ah.bc",
+            kernel_type="attitude_history",
+            min_date_j2000=813955694.071443,
+            max_date_j2000=813998895.0321598,
+            file_intervals_j2000=[[813955694.071443, 813998895.0321598]],
+            min_date_datetime=datetime.strptime(
+                "2025-10-17 06:47:04.889065 +00:00", "%Y-%m-%d %H:%M:%S.%f %z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2025-10-17 18:47:05.849779 +00:00", "%Y-%m-%d %H:%M:%S.%f %z"
+            ),
+            file_intervals_datetime=[
+                ["2025-10-17T06:47:04.889065+00:00", "2025-10-17T18:47:05.849779+00:00"]
+            ],
+            min_date_sclk="1/0498379626:00000",
+            max_date_sclk="1/0498422827:00000",
+            file_intervals_sclk=[["1/0498379626:00000", "1/0498422827:00000"]],
+            lsk_kernel="",
+            sclk_kernel="",
+            version=1,
+        ),
+    ]
+    session.add_all(records)
+
+    session.commit()
+    # For ENA instruments, the start and end dates are set from the pointing start
+    # and end times and are floored in batch_starter.py. This means the pointing end
+    # may get "cut off." Therefore, in get_upstream_dependency_inputs in dependency.py
+    # for ENA instruments that have a repointing number, we add one day to the end date
+    # to ensure all necessary SPICE files are retrieved.
+    dependencies = {
+        "data_source": "attitude_history",
+        "data_type": "spice",
+        "descriptor": "historical",
+    }
+    # For ENA instruments, the start date is not always equal to the end date because
+    # a pointing may happen over multiple days.
+    start_date = datetime(2025, 10, 16)
+    end_date = datetime(2025, 10, 17)
+    processing_inputs = get_upstream_dependency_inputs(
+        [dependencies],
+        start_date=start_date,
+        end_date=end_date,
+        repoint=1,
+        calculate_crids=False,
+        get_spice=True,
+    )
+    # We should expect 2 SPICE files for the date range above.
+    assert len(processing_inputs.get_file_paths()) == 2

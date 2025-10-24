@@ -939,7 +939,10 @@ def get_upstream_dependency_inputs(
                     start_date.strftime("%Y%m%d")
                 )
                 # TODO revisit setting end_time after SIT-4. Should be handled upstream
-                add_24_hrs = True if end_date == start_date else False
+                if end_date == start_date or repoint is not None:
+                    add_24_hrs = True
+                else:
+                    add_24_hrs = False
                 end_time = yyyymmdd_to_seconds_since_j2000(
                     end_date.strftime("%Y%m%d"), add_24_hrs
                 )
