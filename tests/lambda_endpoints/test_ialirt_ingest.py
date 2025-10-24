@@ -304,10 +304,22 @@ def test_reformat_data_no_hk():
 
     science_data, hk_data = reformat_data(test_data)
 
-    assert all("apid" not in d for d in science_data)
-    assert all("met" not in d for d in science_data)
-    assert science_data[0]["time_utc"] == "2021-01-01T00:00:00"
+    expected_science_data = [
+        {
+            "instrument": "hit",
+            "time_utc": "2021-01-01T00:00:00",
+            "ttj2000ns": 759175836184000000,
+            "hit_data": Decimal("1.0"),
+        },
+        {
+            "instrument": "hit",
+            "time_utc": "2021-01-01T00:00:01",
+            "ttj2000ns": 759175836184000001,
+            "hit_data": Decimal("2.0"),
+        },
+    ]
 
+    assert science_data == expected_science_data
     assert hk_data == []
 
 
@@ -356,7 +368,7 @@ def test_insert_formatted_data(
 
     # Create data for all three cases
     test_data = [
-        # Will skip.
+        # Will insert.
         {
             "instrument": "mag",
             "met_in_utc": "2021-01-01T00:00:00",
@@ -364,7 +376,7 @@ def test_insert_formatted_data(
             "mag_data": Decimal("2.0"),
             "mag_hk_status": {"hk1v5_warn": False, "hk1v5_danger": True},
         },
-        # Will skip.
+        # Will insert.
         {
             "instrument": "mag",
             "met_in_utc": "2021-02-01T00:00:00",
@@ -397,12 +409,12 @@ def test_insert_formatted_data(
         Key={"instrument": "mag_hk", "time_utc": "2021-02-01T00:00:00"}
     )["Item"]
     item5 = data_table.get_item(
-        Key={"instrument": "geolocation", "time_utc": "2021-01-01T00:00:00"}
+        Key={"instrument": "spacecraft", "time_utc": "2021-01-01T00:00:00"}
     )["Item"]
 
-    # Not updated
-    assert item1["mag_data"] == Decimal("0.0")
-    assert item2["mag_data"] == Decimal("0.0")
+    # Existing
+    assert item1["mag_data"] == Decimal("2.0")
+    assert item2["mag_data"] == Decimal("3.0")
 
     # New item should be inserted
     assert item3["mag_data"] == Decimal("5.0")

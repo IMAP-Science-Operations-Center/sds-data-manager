@@ -491,39 +491,16 @@ def insert_formatted_data(
 
     science_data, hk_data = reformat_data(data)
 
-    # Query existing items.
-    response = data_table.query(
-        KeyConditionExpression=Key("instrument").eq(instrument)
-        & Key("time_utc").between(min_time, max_time)
-    )
-    hk_response = data_table.query(
-        KeyConditionExpression=Key("instrument").eq(f"{instrument}_hk")
-        & Key("time_utc").between(min_time, max_time)
-    )
-
-    existing_items = {item["time_utc"]: item for item in response.get("Items", [])}
-    existing_hk_items = {
-        item["time_utc"]: item for item in hk_response.get("Items", [])
-    }
-
     # Insert science data
-    for raw in science_data:
-        time = raw["time_utc"]
-        existing = existing_items.get(time)
-
-        if not existing:
-            data_table.put_item(Item=raw)
-        logger.info(f"Inserted {instrument.upper()}.")
+    for record in science_data:
+        data_table.put_item(Item=record)
+    logger.info(f"Inserted {instrument.upper()}.")
 
     # Insert hk data
     if hk_data:
-        for raw in hk_data:
-            time = raw["time_utc"]
-            existing = existing_hk_items.get(time)
-
-            if not existing:
-                data_table.put_item(Item=raw)
-            logger.info(f"Inserted Housekeeping for {instrument.upper()}.")
+        for record in hk_data:
+            data_table.put_item(Item=record)
+    logger.info(f"Inserted Housekeeping for {instrument.upper()}.")
 
     # Calculate the spacecraft position and velocity in GSE/GSM coordinates.
     et = str_to_et(min_time)
@@ -533,8 +510,8 @@ def insert_formatted_data(
     gse_state = imap_state(
         [et], ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
     )
-    geolocation = {
-        "instrument": "geolocation",
+    spacecraft = {
+        "instrument": "spacecraft",
         "time_utc": min_time,
         "sc_position_GSM": [Decimal(str(val)) for val in gsm_state[0, :3]],
         "sc_velocity_GSM": [Decimal(str(val)) for val in gsm_state[0, 3:]],
@@ -543,7 +520,7 @@ def insert_formatted_data(
     }
 
     # Insert geolocation data
-    data_table.put_item(Item=geolocation)
+    data_table.put_item(Item=spacecraft)
 
 
 def insert_kernels(dependency_inputs, algorithm_table):
