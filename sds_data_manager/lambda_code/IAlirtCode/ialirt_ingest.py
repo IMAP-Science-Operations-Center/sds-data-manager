@@ -89,7 +89,9 @@ def get_ancillary(instrument, descriptor):
             f"No calibration file found for {instrument=}, {descriptor=}"
         )
 
-    calibration_file = calibration_files[0]
+    calibration_file = sorted(
+        calibration_files, key=lambda x: (x["version"], x["start_date"]), reverse=True
+    )[0]
 
     download_path = imap_data_access.download(calibration_file["file_path"])
     logger.info(f"Adding to {download_path} to calibration files.")

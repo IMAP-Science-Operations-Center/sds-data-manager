@@ -59,7 +59,9 @@ def get_dsn(download_dir: Path):
         logger.info("No DSN files found for IALiRT. Returning empty dict.")
         return None, {}
 
-    dsn_path = dsn_files[0]
+    dsn_path = sorted(
+        dsn_files, key=lambda x: (x["version"], x["start_date"]), reverse=True
+    )[0]
     download_path = imap_data_access.download(dsn_path["file_path"])
     logger.info(f"Downloading to {download_path}.")
 
@@ -190,7 +192,9 @@ def get_latest_outage_file(download_dir: Path) -> Path | None:
     if not outages:
         return None
 
-    latest_outage_file = outages[0]
+    latest_outage_file = sorted(
+        outages, key=lambda x: (x["version"], x["start_date"]), reverse=True
+    )[0]
 
     download_path = imap_data_access.download(latest_outage_file["file_path"])
     logger.info(f"Downloading to {download_path}.")
