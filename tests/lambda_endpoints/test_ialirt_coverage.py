@@ -92,7 +92,13 @@ def test_get_latest_outage_file(
     """Test the get_latest_outage_file function."""
     mock_path = Path("/imap_ialirt_outages_20260922_v001.json")
     mock_download.return_value = mock_path
-    mock_query.return_value = [{"file_path": "/imap_ialirt_outages_20260922_v001.json"}]
+    mock_query.return_value = [
+        {
+            "file_path": "/imap_ialirt_outages_20260922_v001.json",
+            "version": 2,
+            "start_date": "2025-01-02",
+        }
+    ]
     mock_construct_path = MagicMock(return_value=mock_path)
     mock_ancillaryfilepath.return_value.construct_path = mock_construct_path
 
@@ -237,7 +243,11 @@ def test_get_dsn(mock_query, mock_ancillaryfilepath, mock_download, tmp_path):
     )
     mock_download.return_value = dsn_file
     mock_query.return_value = [
-        {"file_path": "imap_ialirt_contact-schedule_20260922_v001.tsv"}
+        {
+            "file_path": "imap_ialirt_contact-schedule_20260922_v001.tsv",
+            "version": 2,
+            "start_date": "2025-01-02",
+        }
     ]
     mock_ancillaryfilepath.return_value.construct_path = MagicMock(
         return_value=dsn_file
