@@ -108,6 +108,13 @@ class ProcessingConstruct(Construct):
             empty_on_delete=True,
             removal_policy=cdk.RemovalPolicy.DESTROY,
         )
+        # Ultra jobs need more resources than others. Specifically, ULTRA l1a
+        # TODO : optimize ULTRA l1a to use less resources
+        cpu = 4
+        memory = cdk.Size.gibibytes(16)
+        if "ultra" in job_name:
+            cpu = 8
+            memory = cdk.Size.gibibytes(48)
         # Create the job definition
         container_definition = batch.EcsFargateContainerDefinition(
             self,
@@ -116,8 +123,8 @@ class ProcessingConstruct(Construct):
             image=ecs.ContainerImage.from_ecr_repository(
                 repository=container_repo, tag="latest"
             ),
-            memory=cdk.Size.gibibytes(16),
-            cpu=4,
+            memory=memory,
+            cpu=cpu,
             environment={
                 # Useful for switching APIs between dev / prod endpoints
                 "IMAP_DATA_ACCESS_URL": data_access_url,
