@@ -464,10 +464,25 @@ hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-ram-4deg-1yr, HARD_NO_TRIGGER, 
 hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-sf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 hi, l1c, 45sensor-pset, hi, l2, h45-ena-h-hf-nsp-anti-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 
-# Hi-90 L3
+# L3
+# Spectral Index
 hi, l3, h90-ena-h-hf-sp-full-hae-4deg-6mo, hi, l3, h90-spx-h-hf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+hi, l3, h90-ena-h-hf-sp-ram-hae-4deg-1yr, hi, l3, h90-spx-h-hf-sp-ram-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l3, h90-ena-h-hf-sp-anti-hae-4deg-1yr, hi, l3, h90-spx-h-hf-sp-anti-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-full-hae-4deg-6mo, hi, l3, h45-spx-h-hf-sp-full-hae-4deg-6mo, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-ram-hae-4deg-1yr, hi, l3, h45-spx-h-hf-sp-ram-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-anti-hae-4deg-1yr, hi, l3, h45-spx-h-hf-sp-anti-hae-4deg-1yr, HARD, DOWNSTREAM
+hi, l3, hic-ena-h-hf-sp-full-hae-4deg-1yr, hi, l3, hic-spx-h-hf-sp-full-hae-4deg-1yr, HARD, DOWNSTREAM
 
+hi, l3, h90-ena-h-hf-sp-full-hae-6deg-6mo, hi, l3, h90-spx-h-hf-sp-full-hae-6deg-6mo, HARD, DOWNSTREAM
+hi, l3, h90-ena-h-hf-sp-ram-hae-6deg-1yr, hi, l3, h90-spx-h-hf-sp-ram-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l3, h90-ena-h-hf-sp-anti-hae-6deg-1yr, hi, l3, h90-spx-h-hf-sp-anti-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-full-hae-6deg-6mo, hi, l3, h45-spx-h-hf-sp-full-hae-6deg-6mo, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-ram-hae-6deg-1yr, hi, l3, h45-spx-h-hf-sp-ram-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l3, h45-ena-h-hf-sp-anti-hae-6deg-1yr, hi, l3, h45-spx-h-hf-sp-anti-hae-6deg-1yr, HARD, DOWNSTREAM
+hi, l3, hic-ena-h-hf-sp-full-hae-6deg-1yr, hi, l3, hic-spx-h-hf-sp-full-hae-6deg-1yr, HARD, DOWNSTREAM
 
+# Combined full spin NSP
 hi, l2, h90-ena-h-hf-nsp-anti-hae-4deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
 hi, l2, h90-ena-h-hf-nsp-ram-hae-4deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
 hi, l2, h45-ena-h-hf-nsp-anti-hae-4deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-4deg-1yr, HARD, DOWNSTREAM
@@ -478,6 +493,7 @@ hi, l2, h90-ena-h-hf-nsp-ram-hae-6deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-6de
 hi, l2, h45-ena-h-hf-nsp-anti-hae-6deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
 hi, l2, h45-ena-h-hf-nsp-ram-hae-6deg-1yr, hi, l3, hic-ena-h-hf-nsp-full-hae-6deg-1yr, HARD, DOWNSTREAM
 
+# Combined full spin SP
 hi, l3, h90-ena-h-hf-sp-anti-hae-4deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-4deg-1yr, HARD, DOWNSTREAM
 hi, l3, h90-ena-h-hf-sp-ram-hae-4deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-4deg-1yr, HARD, DOWNSTREAM
 hi, l3, h45-ena-h-hf-sp-anti-hae-4deg-1yr, hi, l3, hic-ena-h-hf-sp-full-hae-4deg-1yr, HARD, DOWNSTREAM
