@@ -187,7 +187,6 @@ class SdsApiManager(Construct):
             environment={
                 "REGION": env.region,
                 "SECRET_NAME": db_secret_name,
-                "S3_BUCKET": data_bucket.bucket_name,
             },
             layers=layers,
         )
