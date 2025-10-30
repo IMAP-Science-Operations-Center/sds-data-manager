@@ -17,9 +17,10 @@ from . import database as db
 from . import models
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context):  # noqa: PLR0915
     """Entry point to the database synchronizer lambda.
 
     Parameters
@@ -45,7 +46,8 @@ def lambda_handler(event, context):
     paginator = client.get_paginator("list_objects_v2")
     prefix = "imap/"
     s3_files_dict = {}
-    # TODO search spice/ folder
+    # TODO search spice, dependency, and quicklook folders
+    ignore_keys = ["spice/", "dependency/", "quicklook/"]
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         if "Contents" in page:
             # Add keys that do not have spice/ in them. This code does not have
@@ -54,7 +56,7 @@ def lambda_handler(event, context):
                 {
                     obj["Key"]: obj["LastModified"]
                     for obj in page["Contents"]
-                    if "spice/" not in obj["Key"]
+                    if not any(ignore_key in obj["Key"] for ignore_key in ignore_keys)
                 }
             )
 
@@ -92,6 +94,10 @@ def lambda_handler(event, context):
         records_to_add = []
         for filepath in s3_only_files:
             filename = filepath.split("/")[-1]
+            if len(filename) < 2:
+                # There are some directories as files I think? Ignore them for now.
+                logger.warning("Ignoring invalid filename: %s", filename)
+                continue
             imap_file = imap_data_access.file_validation.generate_imap_file_path(
                 filename
             )
