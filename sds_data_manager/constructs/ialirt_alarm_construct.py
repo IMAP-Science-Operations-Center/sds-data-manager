@@ -134,8 +134,8 @@ class IalirtAlarmConstruct(Construct):
         # Event rule to trigger Lambda on S3 object creation (logs)
         ialirt_log_arrival_rule = events.Rule(
             self,
-            "IalirtLogArrival",
-            rule_name="ialirt-log-arrival",
+            "IalirtLogTrigger",
+            rule_name="ialirt-log-trigger",
             event_pattern=events.EventPattern(
                 source=["aws.s3"],
                 detail_type=["Object Created"],
