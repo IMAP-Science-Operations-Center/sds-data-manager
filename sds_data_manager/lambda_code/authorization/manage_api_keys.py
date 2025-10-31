@@ -129,6 +129,35 @@ def remove_key(key):
     print(f"Removed key: {key}")
 
 
+def update_permission(owner: str, email: str, scope: str):
+    """Update permissions for API key."""
+    table = get_table()
+    keys = get_keys()
+
+    matches = [
+        key
+        for key, value in keys.items()
+        if value["owner"] == owner and value["email"] == email
+    ]
+    key = keys[matches[0]]
+
+    if matches:
+        table.put_item(
+            Item={
+                "api_key": matches[0],
+                "owner": key["owner"],
+                "email": key["email"],
+                "scope": scope,
+                "created": key["created"],
+            }
+        )
+        print(f"Updated key permission for: {owner}, {email}")
+    else:
+        print(
+            f"Update not performed since no api key match found for: {owner}, {email}."
+        )
+
+
 def main():
     """CLI entry point."""
     if len(sys.argv) < 2:
@@ -144,6 +173,8 @@ def main():
         add_key(sys.argv[2], sys.argv[3], sys.argv[4])
     elif cmd == "remove" and len(sys.argv) == 3:
         remove_key(sys.argv[2])
+    elif cmd == "update_permission":
+        update_permission(sys.argv[2], sys.argv[3], sys.argv[4])
     else:
         print(
             "Usage: python manage_api_keys.py [list|add|remove] "

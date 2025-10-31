@@ -43,6 +43,7 @@ def test_api_key_management(dynamodb_table):
         add_key_to_db,
         get_keys,
         remove_key_from_db,
+        update_permission,
     )
 
     # Test adding a key
@@ -79,6 +80,11 @@ def test_api_key_management(dynamodb_table):
     event["rawPath"] = "/ialirt-db-query/test"
     result = lambda_handler(event, {})
     assert result["isAuthorized"] is True  # "full" scope should allow access
+
+    # Test that permissions were updated.
+    update_permission("Test User", "test@example.com", "ialirt_external_partner")
+    metadata = dynamodb_table.get_item(Key={"api_key": test_key}).get("Item")
+    assert metadata["scope"] == "ialirt_external_partner"
 
     # Test removing a key
     remove_key_from_db(test_key)
