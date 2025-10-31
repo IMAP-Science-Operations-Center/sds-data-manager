@@ -2,9 +2,7 @@
 
 import datetime
 import json
-from unittest.mock import MagicMock
 
-import boto3
 import pytest
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import query_api
@@ -38,31 +36,6 @@ def _populate_test_data(session):
     # Add data to the ScienceFiles table and return the session
     session.add(models.ScienceFiles(**metadata_params))
     session.commit()
-
-
-@pytest.fixture(autouse=True)
-def mock_head_object(monkeypatch):
-    """Patch boto3's S3 client head_object to always return success."""
-    # Create a mock that always returns a success response
-    mock_head = MagicMock(return_value={"ResponseMetadata": {"HTTPStatusCode": 200}})
-
-    # Also patch the boto3.resource to handle the bucket name issue
-    mock_bucket = MagicMock()
-    mock_bucket.name = "mock-bucket-name"  # Add a name attribute that can be used
-
-    # Patch both s3_client.head_object and the bucket name access
-    def mock_client(*args, **kwargs):
-        mock = MagicMock()
-        mock.head_object = mock_head
-        return mock
-
-    def mock_resource(*args, **kwargs):
-        mock = MagicMock()
-        mock.Bucket.return_value = mock_bucket
-        return mock
-
-    monkeypatch.setattr(boto3, "client", mock_client)
-    monkeypatch.setattr(boto3, "resource", mock_resource)
 
 
 @pytest.fixture
