@@ -28,7 +28,18 @@ def lambda_handler(event, context):
     path = event.get("rawPath") or event.get("path", "")
 
     # Check scope-based authorization for specific endpoints
-    if path.startswith("/ialirt-db-query") and scope not in ("ialirt_db", "full"):
+    if path.startswith("/ialirt-db-query") and scope not in (
+        "ialirt_db",
+        "full",
+        "ialirt_external_partner",
+        "ialirt_scientist",
+    ):
+        return {"isAuthorized": False}
+    if path.startswith("/ialirt-download") and scope not in (
+        "full",
+        "ialirt_external_partner",
+        "ialirt_scientist",
+    ):
         return {"isAuthorized": False}
 
     return {"isAuthorized": True, "context": {"apiKey": api_key}}
