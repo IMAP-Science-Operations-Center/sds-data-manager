@@ -975,6 +975,9 @@ planetary_ephemeris, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HAR
 pointing_attitude, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 science_frames, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 spin, spin, historical, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 repoint, repoint, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1071,6 +1074,9 @@ planetary_ephemeris, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HAR
 pointing_attitude, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 science_frames, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 spin, spin, historical, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 repoint, repoint, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
