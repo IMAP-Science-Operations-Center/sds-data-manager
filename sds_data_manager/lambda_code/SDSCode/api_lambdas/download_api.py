@@ -38,7 +38,10 @@ def is_released(s3_key):
 
         # Determine which table to use based on file type using isinstance
         if isinstance(file_obj, imap_data_access.file_validation.SPICEFilePath):
-            table = models.SPICEFiles
+            # NOTE: the spin and repoint files are not in the SPICE table, they
+            #       are in separate tables, so there would have to be other
+            #       logic here to separate out those file types if we wanted that.
+            return True  # SPICE files are always released
         elif isinstance(file_obj, imap_data_access.file_validation.AncillaryFilePath):
             table = models.AncillaryFiles
         elif isinstance(file_obj, imap_data_access.file_validation.ScienceFilePath):

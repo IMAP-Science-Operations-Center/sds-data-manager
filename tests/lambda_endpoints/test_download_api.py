@@ -133,3 +133,48 @@ def test_auth_path_unreleased_file_access(session, s3_client):
     assert "Location" in response_auth["headers"]
     assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in response_auth["headers"]["Location"]
     assert "download_url" in response_auth["body"]
+
+
+def test_released_file_access(session, s3_client):
+    """Test that released files can be accessed without authentication."""
+    # Use the requested file path
+    filepath = "imap/spice/spin/imap_2025_274_2025_274_01.spin"
+    s3_path = filepath  # For simplicity, use the same path for S3 and database
+
+    # Add the file to S3
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=s3_path,
+        Body=b"test content",
+    )
+
+    # Create file entry in the spin_files table with released=True
+    metadata_params = {
+        "file_path": filepath,
+        "start_date": datetime.datetime.strptime("2025-10-01", "%Y-%m-%d"),
+        "end_date": datetime.datetime.strptime("2025-10-01", "%Y-%m-%d"),
+        "version": "01",
+        "ingestion_date": datetime.datetime.strptime(
+            "2025-10-01 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+        ),
+        "released": True,  # Mark as released
+    }
+
+    # Add data to the SpinFiles table
+    session.add(models.SpinFiles(**metadata_params))
+    session.commit()
+
+    # Test with public path (no api-key or auth in path)
+    event_public = {
+        "version": "2.0",
+        "routeKey": "GET /download",
+        "rawPath": "/download",
+        "pathParameters": {"proxy": filepath},
+    }
+    response_public = download_api.lambda_handler(event=event_public, context=None)
+
+    # Public path should get access to released file
+    assert response_public["statusCode"] == 302
+    assert "Location" in response_public["headers"]
+    assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in response_public["headers"]["Location"]
+    assert "download_url" in response_public["body"]
