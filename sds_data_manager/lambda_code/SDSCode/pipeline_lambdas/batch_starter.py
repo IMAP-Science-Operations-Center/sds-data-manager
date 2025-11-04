@@ -38,7 +38,7 @@ DEPENDENCY_CONFIG = DependencyConfig()
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 # Define the retry strategy for batch jobs
 BATCH_JOB_RETRY_STRATEGY = {
-    "attempts": 2,
+    "attempts": 10,
     "evaluateOnExit": [
         {
             "onStatusReason": "Your Spot Task was interrupted.",
