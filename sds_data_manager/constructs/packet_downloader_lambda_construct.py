@@ -5,9 +5,11 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_events
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_s3 as s3
+from aws_cdk import aws_s3_notifications as s3n
 from aws_cdk import aws_secretsmanager as secretsmanager
 from aws_cdk import aws_ssm as ssm
 from constructs import Construct
+from imap_data_access import SPICEFilePath
 
 
 class PacketDownloaderLambda(Construct):
@@ -96,7 +98,7 @@ class PacketDownloaderLambda(Construct):
         )
         api_key_parameter.grant_read(packet_lambda)
 
-        # Trigger the lambda on a schedule (every 6 hours)
+        # Trigger the lambda on a schedule (every 6 hours) for in-situ instruments
         rule = aws_events.Rule(
             self,
             "PacketDownloaderScheduleRule",
@@ -105,3 +107,13 @@ class PacketDownloaderLambda(Construct):
             schedule=cdk.aws_events.Schedule.cron(minute="20", hour="*/6"),
         )
         rule.add_target(cdk.aws_events_targets.LambdaFunction(packet_lambda))
+
+        # Trigger the lambda on new repoint files for ENA instruments
+        # Notify the lambda whenever a new file matching our repoint filename is added
+        data_bucket.add_event_notification(
+            s3.EventType.OBJECT_CREATED,
+            s3n.LambdaDestination(packet_lambda),  # Lambda notification
+            s3.NotificationKeyFilter(
+                prefix=f"{SPICEFilePath._dir_prefix}/repoint/imap_",
+            ),
+        )
