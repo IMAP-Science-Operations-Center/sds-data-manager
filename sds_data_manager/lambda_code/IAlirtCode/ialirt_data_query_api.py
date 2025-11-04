@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 from datetime import datetime, timezone, timedelta
 
 import boto3
@@ -85,6 +86,8 @@ def lambda_handler(event, context):
     )
 
     items = []
+    last_evaluated = []
+    query_time_total = 0
 
     for instrument in instruments:
         key_expr = Key("instrument").eq(instrument)
@@ -104,14 +107,28 @@ def lambda_handler(event, context):
             query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
                 one_minute_ago.isoformat(), now.isoformat()
             )
+        t1 = time.perf_counter()
         response = table.query(**query_kwargs)
+        t2 = time.perf_counter()
         items.extend(response.get("Items", []))
+        query_time_total += (t2 - t1)
+        last_evaluated_key = response.get("LastEvaluatedKey")
+
+    t3 = time.perf_counter()
+    json_body = json.dumps({
+            "meta": {"count": len(items)},
+            "data": items,
+        })
+    t4 = time.perf_counter()
+
+    logger.info(
+        f"Query total: {query_time_total:.3f}s | "
+        f"JSON build: {t4 - t3:.3f}s | "
+        f"Items: {len(items)}"
+    )
 
     return {
         "statusCode": 200,
         "headers": {"Content-Type": "application/json"},
-        "body": json.dumps({
-            "meta": {"count": len(items)},
-            "data": items,
-        })
+        "body": json_body
     }
