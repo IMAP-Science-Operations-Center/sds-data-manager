@@ -119,35 +119,6 @@ def get_latest_repoint_file_and_query_times():
     )
 
 
-def lambda_handler(event, context):
-    """Lambda handler to download raw packet data and create L0 files.
-
-    The lambda function is triggered based upon a cron job indicating new
-    data is available and should be fetched. Currently, this is downloading
-    6-hours of data on a cron-based schedule. In the future, this should be
-    updated to be triggered based upon the arrival of files or notifications
-    about the end of contacts and a database tracking what data has been
-    downloaded.
-
-    Parameters
-    ----------
-    event : dict
-        The JSON formatted document with the source s3 event.
-    context : obj
-        The context object for the lambda function
-    """
-    setup_environment()
-
-    # If we were triggered by an s3 repointing event, download ENA data
-    if "Records" in event:
-        event_repoint_key = event["Records"][0]["s3"]["object"]["key"]
-        download_ena_data(event_repoint_key)
-    else:
-        download_insitu_data()
-
-    return {"statusCode": 200, "body": "Packet downloader finished."}
-
-
 def download_ena_data(event_repoint_key):
     """Download data for ENA instruments based upon repointing files."""
     repointing_key, start_time, end_time = get_latest_repoint_file_and_query_times()
@@ -201,3 +172,32 @@ def download_insitu_data():
             end_time=end_time,
             upload_to_server=True,
         )
+
+
+def lambda_handler(event, context):
+    """Lambda handler to download raw packet data and create L0 files.
+
+    The lambda function is triggered based upon a cron job indicating new
+    data is available and should be fetched, or repointing files arriving.
+    Currently, this is downloading 6-hours of data on a cron-based schedule.
+    In the future, this could be based on notifications
+    about the end of contacts and a database tracking what data has been
+    downloaded.
+
+    Parameters
+    ----------
+    event : dict
+        The JSON formatted document with the source s3 event.
+    context : obj
+        The context object for the lambda function
+    """
+    setup_environment()
+
+    # If we were triggered by an s3 repointing event, download ENA data
+    if "Records" in event:
+        event_repoint_key = event["Records"][0]["s3"]["object"]["key"]
+        download_ena_data(event_repoint_key)
+    else:
+        download_insitu_data()
+
+    return {"statusCode": 200, "body": "Packet downloader finished."}
