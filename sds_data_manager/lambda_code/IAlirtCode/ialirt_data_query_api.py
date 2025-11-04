@@ -16,8 +16,8 @@ region = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
 dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
-def query_times(params, key_expr, query_kwargs):
-    time_prefixes = {"met", "met_in_utc", "last_modified"}
+def apply_time_filters(params, key_expr, query_kwargs):
+    time_prefixes = {"met_in_utc", "time_utc"}
     used_time_prefixes = {
         param.split("_start")[0].split("_end")[0]
         for param in params
@@ -25,79 +25,30 @@ def query_times(params, key_expr, query_kwargs):
     }
 
     if len(used_time_prefixes) > 1:
-        return {
-            "statusCode": 400,
-            "body": json.dumps(
-                {
-                    "message": "Cannot query multiple time keys "
-                               "(met, met_in_utc, last_modified)"
-                }
-            ),
-        }
+        return _error(400, "Cannot query multiple time keys (met_in_utc, time_utc)")
 
-    if (
-            ("met_start" in params and "met_end" in params)
-            or ("met_in_utc_start" in params and "met_in_utc_end" in params)
-            or ("last_modified_start" in params and "last_modified_end" in params)
-    ):
-        if "met_start" in params:
-            time_key = "met"
-        elif "met_in_utc_start" in params:
-            time_key = "met_in_utc"
-        else:
-            time_key = "last_modified"
+    time_key = used_time_prefixes.pop()
+    start = params.get(f"{time_key}_start")
+    end = params.get(f"{time_key}_end")
 
-        start_value = (
-            int(params[f"{time_key}_start"])
-            if time_key == "met"
-            else params[f"{time_key}_start"]
-        )
-        end_value = (
-            int(params[f"{time_key}_end"])
-            if time_key == "met"
-            else params[f"{time_key}_end"]
-        )
+    if start and end:
+        key_expr &= Key(time_key).between(start, end)
+    elif start:
+        key_expr &= Key(time_key).gte(start)
+    else:
+        return _error(400, "End time provided without start time")
 
-        key_expr &= Key(time_key).between(start_value, end_value)
+    query_kwargs["KeyConditionExpression"] = key_expr
 
-        if time_key in {"met_in_utc", "last_modified"}:
-            query_kwargs["IndexName"] = time_key
+    return
 
-    elif (
-            "met_start" in params
-            or "met_in_utc_start" in params
-            or "last_modified_start" in params
-    ):
-        if "met_start" in params:
-            time_key = "met"
-        elif "met_in_utc_start" in params:
-            time_key = "met_in_utc"
-        else:
-            time_key = "last_modified"
 
-        start_value = (
-            int(params[f"{time_key}_start"])
-            if time_key == "met"
-            else params[f"{time_key}_start"]
-        )
-        key_expr &= Key(time_key).gte(start_value)
-
-        if time_key in {"met_in_utc", "last_modified"}:
-            query_kwargs["IndexName"] = time_key
-
-    elif (
-            "met_end" in params
-            or "met_in_utc_end" in params
-            or "last_modified_end" in params
-    ):
-        return {
-            "statusCode": 400,
-            "body": json.dumps(
-                {"message": "Cannot query by end time without start time"}
-            ),
-        }
-
-    return key_expr
+def _error(code, message):
+    return {
+        "statusCode": code,
+        "body": json.dumps({"message": message}),
+        "headers": {"Content-Type": "application/json"},
+    }
 
 
 def lambda_handler(event, context):
@@ -117,48 +68,56 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
-
-    # --- Parse event ---
     params = event.get("queryStringParameters", {})
-
-    if not params:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"message": "No query parameters provided."}),
-        }
 
     # --- Determine key condition ---
     allowed_params = {
         "instrument",
         "time_utc_start",
         "time_utc_end",
-        "met_in_utc_start", # To keep continuity with other API.
-        "met_in_utc_end", # To keep continuity with other API.
+        "met_in_utc_start", # for backward compatibility
+        "met_in_utc_end", # for backward compatibility
     }
 
-    unexpected_params = set(params.keys()) - allowed_params
-    if unexpected_params:
-        return {
-            "statusCode": 400,
-            "body": json.dumps(
-                {"message": f"Unexpected parameters: {', '.join(unexpected_params)}"}
-            ),
-        }
+    # Ensure allowed parameters
+    unexpected = set(params) - allowed_params
+    if unexpected:
+        return _error(400, f"Unexpected parameters: {', '.join(unexpected)}")
 
     if not params.get("instrument"):
-        instruments = ["hit", "mag", "codice_lo", "codice_hi", "swapi", "swe"]
-    else:
-        instruments = [params["instrument"]]
+        logger.info("No instrument specified, defaulting to all instruments")
+
+    # Get instrument or default to all.
+    instruments = (
+        [params["instrument"]] if params.get("instrument")
+        else ["hit", "mag", "codice_lo", "codice_hi", "swapi", "swe"]
+    )
+
+    items = []
 
     for instrument in instruments:
         key_expr = Key("instrument").eq(instrument)
         query_kwargs = {"KeyConditionExpression": key_expr}
 
-        if params:
-            key_expr = query_times(params, key_expr, query_kwargs)
-            response = table.query(**query_kwargs)
+        if any(param.endswith("_start") or param.endswith("_end") for param in params):
+            apply_time_filters(params, key_expr, query_kwargs)
         else:
+            # Get latest 1 minute if not specified.
+            logger.info("No time range specified, defaulting to last 1 minute for instrument: %s", instrument)
             now = datetime.now(timezone.utc)
             one_minute_ago = now - timedelta(minutes=1)
             key_expr &= Key("met_in_utc").between(one_minute_ago, now)
+            query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
+                one_minute_ago.isoformat(), now.isoformat()
+            )
+        response = table.query(**query_kwargs)
+        items.extend(response.get("Items", []))
 
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps({
+            "meta": {"count": len(items)},
+            "data": items,
+        })
+    }
