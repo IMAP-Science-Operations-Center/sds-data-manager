@@ -16,31 +16,22 @@ region = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
 dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
-def apply_time_filters(params, key_expr, query_kwargs):
-    time_prefixes = {"met_in_utc", "time_utc"}
-    used_time_prefixes = {
-        param.split("_start")[0].split("_end")[0]
-        for param in params
-        if any(param.startswith(prefix) for prefix in time_prefixes)
-    }
+def apply_time_filters(params, query_kwargs):
+    key_expr = query_kwargs["KeyConditionExpression"]
 
-    if len(used_time_prefixes) > 1:
-        return _error(400, "Cannot query multiple time keys (met_in_utc, time_utc)")
-
-    time_key = used_time_prefixes.pop()
-    start = params.get(f"{time_key}_start")
-    end = params.get(f"{time_key}_end")
+    start = params.get("time_utc_start") or params.get("met_in_utc_start")
+    end = params.get("time_utc_end") or params.get("met_in_utc_end")
 
     if start and end:
-        key_expr &= Key(time_key).between(start, end)
+        key_expr &= Key("time_utc").between(start, end)
     elif start:
-        key_expr &= Key(time_key).gte(start)
+        key_expr &= Key("time_utc").gte(start)
     else:
         return _error(400, "End time provided without start time")
 
     query_kwargs["KeyConditionExpression"] = key_expr
 
-    return
+    return key_expr
 
 
 def _error(code, message):
@@ -99,14 +90,17 @@ def lambda_handler(event, context):
         key_expr = Key("instrument").eq(instrument)
         query_kwargs = {"KeyConditionExpression": key_expr}
 
-        if any(param.endswith("_start") or param.endswith("_end") for param in params):
-            apply_time_filters(params, key_expr, query_kwargs)
+        if any(param in params for param in ("time_utc_start", "time_utc_end",
+                                     "met_in_utc_start", "met_in_utc_end")):
+            result = apply_time_filters(params, query_kwargs)
+            # Checks if there was an error.
+            if isinstance(result, dict):
+                return result
         else:
             # Get latest 1 minute if not specified.
             logger.info("No time range specified, defaulting to last 1 minute for instrument: %s", instrument)
             now = datetime.now(timezone.utc)
             one_minute_ago = now - timedelta(minutes=1)
-            key_expr &= Key("met_in_utc").between(one_minute_ago, now)
             query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
                 one_minute_ago.isoformat(), now.isoformat()
             )
