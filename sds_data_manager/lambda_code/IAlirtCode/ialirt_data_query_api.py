@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -16,6 +16,7 @@ table_name = os.environ.get("ALGORITHM_TABLE")
 region = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
 dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
+
 
 def apply_time_filters(params, query_kwargs):
     key_expr = query_kwargs["KeyConditionExpression"]
@@ -67,9 +68,8 @@ def lambda_handler(event, context):
         "instrument",
         "time_utc_start",
         "time_utc_end",
-        "met_in_utc_start", # for backward compatibility
-        "met_in_utc_end", # for backward compatibility
-        "last_evaluated_key"
+        "met_in_utc_start",  # for backward compatibility
+        "met_in_utc_end",  # for backward compatibility
     }
 
     # Ensure allowed parameters
@@ -79,33 +79,49 @@ def lambda_handler(event, context):
 
     if not params.get("instrument"):
         logger.info("No instrument specified, defaulting to all instruments")
+        instrument = "all"
+        type = "science"
+    elif params["instrument"] == "spice" or "hk" in params["instrument"]:
+        instrument = "none"
+        type = params["instrument"]
+    else:
+        instrument = params["instrument"]
+        type = "science"
 
     # Get instrument or default to all.
     instruments = (
-        [params["instrument"]] if params.get("instrument")
+        [params["instrument"]]
+        if params.get("instrument")
         else ["hit", "mag", "codice_lo", "codice_hi", "swapi", "swe"]
     )
 
-    if len(instruments) > 1 and params.get("last_evaluated_key"):
-        return _error(400, "Pagination is only supported when querying one instrument")
-
     items = []
     query_time_total = 0
-    last_evaluated_key = None
 
     for instrument in instruments:
         key_expr = Key("instrument").eq(instrument)
         query_kwargs = {"KeyConditionExpression": key_expr}
 
-        if any(param in params for param in ("time_utc_start", "time_utc_end",
-                                     "met_in_utc_start", "met_in_utc_end")):
+        if any(
+            param in params
+            for param in (
+                "time_utc_start",
+                "time_utc_end",
+                "met_in_utc_start",
+                "met_in_utc_end",
+            )
+        ):
             result = apply_time_filters(params, query_kwargs)
             # Checks if there was an error.
             if isinstance(result, dict):
                 return result
         else:
             # Get latest 1 minute if not specified.
-            logger.info("No time range specified, defaulting to last 1 minute for instrument: %s", instrument)
+            logger.info(
+                "No time range specified, defaulting to last "
+                "1 minute for instrument: %s",
+                instrument,
+            )
             now = datetime.now(timezone.utc)
             one_minute_ago = now - timedelta(minutes=1)
             query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
@@ -115,16 +131,23 @@ def lambda_handler(event, context):
         response = table.query(**query_kwargs)
         t2 = time.perf_counter()
         items.extend(response.get("Items", []))
-        query_time_total += (t2 - t1)
+        query_time_total += t2 - t1
 
     last_evaluated_key = response.get("LastEvaluatedKey")
 
     t3 = time.perf_counter()
-    json_body = json.dumps({
-            "meta": {"count": len(items),
-                     "last_evaluated_key": last_evaluated_key},
+    json_body = json.dumps(
+        {
+            "meta": {
+                "count": len(items),
+                "type": type,
+                "instrument": instrument,
+                "last_evaluated_key": last_evaluated_key,
+            },
             "data": items,
-        })
+        },
+        default=str,
+    )
     t4 = time.perf_counter()
 
     logger.info(
@@ -136,5 +159,5 @@ def lambda_handler(event, context):
     return {
         "statusCode": 200,
         "headers": {"Content-Type": "application/json"},
-        "body": json_body
+        "body": json_body,
     }
