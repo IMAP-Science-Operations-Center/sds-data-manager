@@ -70,6 +70,7 @@ def lambda_handler(event, context):
         "time_utc_end",
         "met_in_utc_start",  # for backward compatibility
         "met_in_utc_end",  # for backward compatibility
+        "last_evaluated_key",
     }
 
     # Ensure allowed parameters
@@ -79,21 +80,26 @@ def lambda_handler(event, context):
 
     if not params.get("instrument"):
         logger.info("No instrument specified, defaulting to all instruments")
-        instrument = "all"
-        type = "science"
-    elif params["instrument"] == "spice" or "hk" in params["instrument"]:
-        instrument = "none"
-        type = params["instrument"]
+        meta_instrument = "all"
+        meta_type = "science"
+    elif params["instrument"] == "spice" or params["instrument"].endswith("hk"):
+        meta_instrument = "none"
+        meta_type = params["instrument"]
     else:
-        instrument = params["instrument"]
-        type = "science"
+        meta_instrument = params["instrument"]
+        meta_type = "science"
 
     # Get instrument or default to all.
+    requested_instrument = params.get("instrument")
     instruments = (
-        [params["instrument"]]
-        if params.get("instrument")
+        [requested_instrument]
+        if requested_instrument
         else ["hit", "mag", "codice_lo", "codice_hi", "swapi", "swe"]
     )
+
+    # Pagination only allowed for one instrument
+    if len(instruments) > 1 and params.get("last_evaluated_key"):
+        return _error(400, "Pagination is only supported when querying one instrument")
 
     items = []
     query_time_total = 0
@@ -101,6 +107,9 @@ def lambda_handler(event, context):
     for instrument in instruments:
         key_expr = Key("instrument").eq(instrument)
         query_kwargs = {"KeyConditionExpression": key_expr}
+
+        if params.get("last_evaluated_key"):
+            query_kwargs["ExclusiveStartKey"] = json.loads(params["last_evaluated_key"])
 
         if any(
             param in params
@@ -140,8 +149,8 @@ def lambda_handler(event, context):
         {
             "meta": {
                 "count": len(items),
-                "type": type,
-                "instrument": instrument,
+                "type": meta_type,
+                "instrument": meta_instrument,
                 "last_evaluated_key": last_evaluated_key,
             },
             "data": items,
