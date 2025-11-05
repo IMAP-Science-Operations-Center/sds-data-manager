@@ -233,7 +233,7 @@ def test_query_with_utc_end(data_table, ialirt_data_query_api_module):
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
     assert response["statusCode"] == 400
-    expected_message = {"message": "Cannot query by end time without start time"}
+    expected_message = {"message": "End time provided without start time"}
     assert json.loads(response["body"]) == expected_message
 
 
