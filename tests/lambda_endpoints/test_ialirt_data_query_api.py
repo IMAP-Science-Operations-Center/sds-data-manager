@@ -242,13 +242,12 @@ def test_query_no_results(data_table, ialirt_data_query_api_module):
     # GET <invoke url>/query?met_start=<met_start>&met_end=<met_end>
     event = {
         "queryStringParameters": {
-            "met_start": "200",
-            "met_end": "300",
+            "met_in_utc_start": "2021-01-05T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
     assert response["statusCode"] == 200
-    assert json.loads(response["body"]) == []
+    assert json.loads(response["body"])["meta"]["count"] == 0
 
 
 def test_query_with_multiple_filters(data_table, ialirt_data_query_api_module):
