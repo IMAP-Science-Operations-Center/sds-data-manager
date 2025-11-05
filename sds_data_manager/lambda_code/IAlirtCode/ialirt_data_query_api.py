@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode, quote_plus
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -44,6 +45,36 @@ def _error(code, message):
     }
 
 
+def build_next_url(event, last_evaluated_key, query_params):
+    """Build the next URL for pagination.
+
+    Parameters
+    ----------
+    event : dict
+        The Lambda event object.
+    last_evaluated_key : dict
+        The last evaluated key from DynamoDB query.
+
+    Returns
+    -------
+    next_url : str
+        The URL for the next page of results.
+    """
+    query_params = event.get("queryStringParameters", {})
+    if last_evaluated_key:
+        query_params["last_evaluated_key"] = quote_plus(json.dumps(last_evaluated_key))
+
+    query_string = urlencode(query_params)
+
+    headers = event.get("headers", {})
+    host = headers.get("host", "")
+    path = event.get("requestContext", {}).get("path", "")
+
+    next_url = f"https://{host}{path}?{query_string}"
+
+    return next_url
+
+
 def lambda_handler(event, context):
     """Create metadata and add it to the database.
 
@@ -79,12 +110,14 @@ def lambda_handler(event, context):
         return _error(400, f"Unexpected parameters: {', '.join(unexpected)}")
 
     if not params.get("instrument"):
-        logger.info("No instrument specified, defaulting to all instruments")
         meta_instrument = "all"
         meta_type = "science"
-    elif params["instrument"] == "spice" or params["instrument"].endswith("hk"):
-        meta_instrument = "none"
-        meta_type = params["instrument"]
+    elif params["instrument"] == "spice":
+        meta_instrument = "spice"
+        meta_type = "spice"
+    elif params["instrument"].endswith("hk"):
+        meta_instrument = params["instrument"]
+        meta_type = "hk"
     else:
         meta_instrument = params["instrument"]
         meta_type = "science"
@@ -107,9 +140,6 @@ def lambda_handler(event, context):
     for instrument in instruments:
         key_expr = Key("instrument").eq(instrument)
         query_kwargs = {"KeyConditionExpression": key_expr}
-
-        if params.get("last_evaluated_key"):
-            query_kwargs["ExclusiveStartKey"] = json.loads(params["last_evaluated_key"])
 
         if any(
             param in params
@@ -136,6 +166,10 @@ def lambda_handler(event, context):
             query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
                 one_minute_ago.isoformat(), now.isoformat()
             )
+
+        if params.get("last_evaluated_key") and len(instruments) == 1:
+            query_kwargs["ExclusiveStartKey"] = json.loads(params["last_evaluated_key"])
+
         t1 = time.perf_counter()
         response = table.query(**query_kwargs)
         t2 = time.perf_counter()
@@ -145,18 +179,29 @@ def lambda_handler(event, context):
     last_evaluated_key = response.get("LastEvaluatedKey")
 
     t3 = time.perf_counter()
+
+    encoded_lek = json.dumps(last_evaluated_key) if last_evaluated_key else None
+    has_more = last_evaluated_key is not None
+
+    next_url = build_next_url(event, last_evaluated_key, params)
+
     json_body = json.dumps(
         {
             "meta": {
                 "count": len(items),
                 "type": meta_type,
                 "instrument": meta_instrument,
-                "last_evaluated_key": last_evaluated_key,
+                "has_more": has_more,
+                "last_evaluated_key": encoded_lek,
             },
+            "links": {
+                "next": next_url
+            } if has_more else {},
             "data": items,
         },
         default=str,
     )
+
     t4 = time.perf_counter()
 
     logger.info(
