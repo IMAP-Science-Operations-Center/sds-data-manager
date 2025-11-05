@@ -4,9 +4,9 @@ import importlib
 import json
 import os
 from decimal import Decimal
+from urllib.parse import parse_qs, urlparse
 
 import pytest
-from urllib.parse import urlparse, parse_qs, unquote
 
 
 @pytest.fixture
@@ -58,17 +58,14 @@ def event():
         "queryStringParameters": {
             "met_start": "497372400",
             "met_end": "497376000",
-            "last_evaluated_key": '{"instrument": "hit", "time_utc": "2025-10-01T15:10:01.123456Z"}'
+            "last_evaluated_key": '{"instrument": "hit",'
+            ' "time_utc": "2025-10-01T15:10:01.123456Z"}',
         },
         "headers": {
             "host": "ialirt.imap-mission.com",
             "x-forwarded-proto": "https",
         },
-        "requestContext": {
-            "http": {
-                "path": "/api-key/space-weather"
-            }
-        }
+        "requestContext": {"http": {"path": "/api-key/space-weather"}},
     }
 
 
@@ -88,7 +85,7 @@ def test_build_next_url(event, ialirt_data_query_api_module):
     "Test build_next_url function."
     last_evaluated_key = {
         "instrument": "hit",
-        "time_utc": "2025-10-02T00:00:00.000000Z"
+        "time_utc": "2025-10-02T00:00:00.000000Z",
     }
 
     next_url = ialirt_data_query_api_module.build_next_url(event, last_evaluated_key)
@@ -96,10 +93,21 @@ def test_build_next_url(event, ialirt_data_query_api_module):
     query = parse_qs(parsed.query)
 
     assert next_url.startswith("https://ialirt.imap-mission.com")
-    assert query.get("met_start") == ['497372400']
-    assert query.get("met_end") == ['497376000']
+    assert query.get("met_start") == ["497372400"]
+    assert query.get("met_end") == ["497376000"]
     assert "2025-10-02" in query.get("last_evaluated_key")[0]
 
+
+def test_error_response(ialirt_data_query_api_module):
+    """Test that _error() returns the correct structure."""
+    response = ialirt_data_query_api_module._error(404, "Not Found")
+
+    assert isinstance(response, dict)
+    assert response["statusCode"] == 404
+    assert response["headers"] == {"Content-Type": "application/json"}
+
+    body = json.loads(response["body"])
+    assert body == {"message": "Not Found"}
 
 
 def test_query_with_met_range(algorithm_table, ialirt_db_query_api_module):
