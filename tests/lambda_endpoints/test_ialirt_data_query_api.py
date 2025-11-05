@@ -7,6 +7,7 @@ from decimal import Decimal
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from boto3.dynamodb.conditions import Key
 
 
 @pytest.fixture
@@ -108,6 +109,84 @@ def test_error_response(ialirt_data_query_api_module):
 
     body = json.loads(response["body"])
     assert body == {"message": "Not Found"}
+
+
+def test_apply_time_filters_between(ialirt_data_query_api_module):
+    params = {
+        "time_utc_start": "2025-10-01T10:00:00Z",
+        "time_utc_end": "2025-10-01T11:00:00Z",
+    }
+    query_kwargs = {"KeyConditionExpression": Key("instrument").eq("hit")}
+
+    # Call the function
+    ialirt_data_query_api_module.apply_time_filters(params, query_kwargs)
+
+    # Get internal structure
+    expr = query_kwargs["KeyConditionExpression"]
+    parts = expr.get_expression()
+
+    # Check top-level structure (must be AND)
+    assert parts["operator"] == "AND"
+
+    equals_expr, between_expr = parts["values"]
+
+    # Check instrument = "hit"
+    eq = equals_expr.get_expression()
+    assert eq["operator"] == "="
+    # Key object is in values[0], actual value is values[1]
+    assert eq["values"][1] == "hit"
+
+    # Check time_utc BETWEEN start AND end
+    bt = between_expr.get_expression()
+    assert bt["operator"] == "BETWEEN"
+    assert bt["values"][1] == "2025-10-01T10:00:00Z"
+    assert bt["values"][2] == "2025-10-01T11:00:00Z"
+
+
+def test_apply_time_filters_gte(ialirt_data_query_api_module):
+    """Test when only start time is provided → gte(time_utc_start)"""
+    # Only start time is given → should use Key("time_utc").gte(start)
+    params = {"time_utc_start": "2025-10-01T10:00:00Z"}
+    query_kwargs = {"KeyConditionExpression": Key("instrument").eq("hit")}
+
+    result = ialirt_data_query_api_module.apply_time_filters(params, query_kwargs)
+
+    # Should not return an error dict
+    assert not isinstance(result, dict)
+
+    # Inspect the internal structure of the KeyConditionExpression
+    expr = query_kwargs["KeyConditionExpression"]
+    parts = expr.get_expression()
+
+    # Must be an AND between instrument == 'hit' and time_utc >= start_time
+    assert parts["operator"] == "AND"
+
+    equals_expr, gte_expr = parts["values"]
+
+    # --- Check instrument == 'hit'
+    eq = equals_expr.get_expression()
+    assert eq["operator"] == "="
+    assert eq["values"][1] == "hit"
+
+    # --- Check time_utc >= start_time
+    gte = gte_expr.get_expression()
+    assert gte["operator"] == ">="
+    assert gte["values"][1] == "2025-10-01T10:00:00Z"
+
+
+def test_apply_time_filters_error(ialirt_data_query_api_module):
+    """Test when only end time is provided → return error"""
+    params = {"time_utc_end": "2025-10-01T11:00:00Z"}
+    query_kwargs = {"KeyConditionExpression": Key("instrument").eq("hit")}
+
+    result = ialirt_data_query_api_module.apply_time_filters(params, query_kwargs)
+
+    # This should be an error dict
+    assert isinstance(result, dict)
+    assert result["statusCode"] == 400
+    assert json.loads(result["body"]) == {
+        "message": "End time provided without start time"
+    }
 
 
 def test_query_with_met_range(algorithm_table, ialirt_db_query_api_module):
