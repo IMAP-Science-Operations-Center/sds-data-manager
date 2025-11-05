@@ -6,18 +6,7 @@ import os
 from decimal import Decimal
 
 import pytest
-
-
-@pytest.fixture
-def ialirt_db_query_api_module(setup_dynamodb):
-    """Mock the import."""
-    os.environ["ALGORITHM_TABLE"] = setup_dynamodb["algorithm_table"].name
-    os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
-
-    from sds_data_manager.lambda_code.IAlirtCode import ialirt_db_query_api
-
-    importlib.reload(ialirt_db_query_api)
-    return ialirt_db_query_api
+from urllib.parse import urlparse, parse_qs, unquote
 
 
 @pytest.fixture
@@ -60,6 +49,57 @@ def algorithm_table(setup_dynamodb):
         table.put_item(Item=item)
 
     return table
+
+
+@pytest.fixture
+def event():
+    """Minimal API Gateway event for testing."""
+    return {
+        "queryStringParameters": {
+            "met_start": "497372400",
+            "met_end": "497376000",
+            "last_evaluated_key": '{"instrument": "hit", "time_utc": "2025-10-01T15:10:01.123456Z"}'
+        },
+        "headers": {
+            "host": "ialirt.imap-mission.com",
+            "x-forwarded-proto": "https",
+        },
+        "requestContext": {
+            "http": {
+                "path": "/api-key/space-weather"
+            }
+        }
+    }
+
+
+@pytest.fixture
+def ialirt_data_query_api_module(setup_data_table):
+    """Mock the import."""
+    os.environ["DATA_TABLE"] = setup_data_table["data_table"].name
+    os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+
+    from sds_data_manager.lambda_code.IAlirtCode import ialirt_data_query_api
+
+    importlib.reload(ialirt_data_query_api)
+    return ialirt_data_query_api
+
+
+def test_build_next_url(event, ialirt_data_query_api_module):
+    "Test build_next_url function."
+    last_evaluated_key = {
+        "instrument": "hit",
+        "time_utc": "2025-10-02T00:00:00.000000Z"
+    }
+
+    next_url = ialirt_data_query_api_module.build_next_url(event, last_evaluated_key)
+    parsed = urlparse(next_url)
+    query = parse_qs(parsed.query)
+
+    assert next_url.startswith("https://ialirt.imap-mission.com")
+    assert query.get("met_start") == ['497372400']
+    assert query.get("met_end") == ['497376000']
+    assert "2025-10-02" in query.get("last_evaluated_key")[0]
+
 
 
 def test_query_with_met_range(algorithm_table, ialirt_db_query_api_module):

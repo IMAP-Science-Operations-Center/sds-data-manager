@@ -13,7 +13,7 @@ from boto3.dynamodb.conditions import Key
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-table_name = os.environ.get("ALGORITHM_TABLE")
+table_name = os.environ.get("DATA_TABLE")
 region = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
 dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
@@ -45,7 +45,7 @@ def _error(code, message):
     }
 
 
-def build_next_url(event, last_evaluated_key, query_params):
+def build_next_url(event, last_evaluated_key):
     """Build the next URL for pagination.
 
     Parameters
@@ -183,7 +183,7 @@ def lambda_handler(event, context):
     encoded_lek = json.dumps(last_evaluated_key) if last_evaluated_key else None
     has_more = last_evaluated_key is not None
 
-    next_url = build_next_url(event, last_evaluated_key, params)
+    next_url = build_next_url(event, last_evaluated_key)
 
     json_body = json.dumps(
         {
