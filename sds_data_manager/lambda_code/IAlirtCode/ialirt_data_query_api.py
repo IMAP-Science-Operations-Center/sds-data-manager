@@ -69,6 +69,7 @@ def lambda_handler(event, context):
         "time_utc_end",
         "met_in_utc_start", # for backward compatibility
         "met_in_utc_end", # for backward compatibility
+        "last_evaluated_key"
     }
 
     # Ensure allowed parameters
@@ -85,9 +86,12 @@ def lambda_handler(event, context):
         else ["hit", "mag", "codice_lo", "codice_hi", "swapi", "swe"]
     )
 
+    if len(instruments) > 1 and params.get("last_evaluated_key"):
+        return _error(400, "Pagination is only supported when querying one instrument")
+
     items = []
-    last_evaluated = []
     query_time_total = 0
+    last_evaluated_key = None
 
     for instrument in instruments:
         key_expr = Key("instrument").eq(instrument)
@@ -112,11 +116,13 @@ def lambda_handler(event, context):
         t2 = time.perf_counter()
         items.extend(response.get("Items", []))
         query_time_total += (t2 - t1)
-        last_evaluated_key = response.get("LastEvaluatedKey")
+
+    last_evaluated_key = response.get("LastEvaluatedKey")
 
     t3 = time.perf_counter()
     json_body = json.dumps({
-            "meta": {"count": len(items)},
+            "meta": {"count": len(items),
+                     "last_evaluated_key": last_evaluated_key},
             "data": items,
         })
     t4 = time.perf_counter()
