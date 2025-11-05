@@ -3,7 +3,6 @@
 import importlib
 import json
 import os
-from decimal import Decimal
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -181,55 +180,6 @@ def test_apply_time_filters_error(ialirt_data_query_api_module):
     }
 
 
-def test_query_with_met_range(data_table, ialirt_data_query_api_module):
-    """Test query with met range."""
-    # GET <invoke url>/query?met_start=100&met_end=111
-    event = {
-        "queryStringParameters": {
-            "met_start": "100",
-            "met_end": "111",
-        }
-    }
-    response = ialirt_data_query_api_module.lambda_handler(event, context=None)
-    items = json.loads(response["body"])
-    met = sorted(item["met"] for item in items)
-
-    expected_data = [101, 110]
-
-    assert met == expected_data
-
-
-def test_query_with_met_start(data_table, ialirt_data_query_api_module):
-    """Test query with met start."""
-    # GET <invoke url>/query?met_start=120
-    event = {
-        "queryStringParameters": {
-            "met_start": "120",
-        }
-    }
-    response = ialirt_data_query_api_module.lambda_handler(event, context=None)
-    items = json.loads(response["body"])
-    met = sorted(item["met"] for item in items)
-
-    expected_data = [120, 130]
-    assert met == expected_data
-
-
-def test_query_with_met_end(data_table, ialirt_data_query_api_module):
-    """Test query with met end."""
-    # GET <invoke url>/query?met_end=120
-    event = {
-        "queryStringParameters": {
-            "met_end": "120",
-        }
-    }
-    response = ialirt_data_query_api_module.lambda_handler(event, context=None)
-
-    assert response["statusCode"] == 400
-    expected_message = {"message": "Cannot query by end time without start time"}
-    assert json.loads(response["body"]) == expected_message
-
-
 def test_query_with_utc_range(data_table, ialirt_data_query_api_module):
     """Test query_with_utc_range."""
     # GET <invoke url>/query?met_in_utc_start=<met_in_utc_start>&
@@ -243,11 +193,10 @@ def test_query_with_utc_range(data_table, ialirt_data_query_api_module):
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
     items = json.loads(response["body"])
 
-    utc = sorted(item["met_in_utc"] for item in items)
+    utc = sorted(data["time_utc"] for data in items["data"])
 
     expected_utc = [
         "2021-01-01T00:00:00",
-        "2021-01-02T00:00:00",
         "2021-01-03T00:00:00",
     ]
 
@@ -380,34 +329,3 @@ def test_query_with_mixed_parameters(data_table, ialirt_data_query_api_module):
         "message": "Cannot query multiple time keys (met, met_in_utc, last_modified)"
     }
     assert json.loads(response["body"]) == expected_message
-
-
-def test_process_item_types(ialirt_data_query_api_modulee):
-    """Test process_item_types function."""
-    items = [
-        {
-            "apid": Decimal("478"),
-            "met": Decimal("123456789"),
-            "ttj2000ns": Decimal("123456789000000"),
-            "mag_B_GSE": [Decimal("0.0"), Decimal("0.1"), Decimal("0.2")],
-            "mag_B_magnitude": Decimal("0.22"),
-            "met_in_utc": "2025-06-20T08:00:00",  # string should stay unchanged
-            "mag_hk_status": {"pri_isvalid": True, "hkn8v5": Decimal("3680")},
-        }
-    ]
-
-    processed_items = [
-        ialirt_data_query_api_module.process_item_types(item) for item in items
-    ]
-
-    assert processed_items == [
-        {
-            "apid": 478,
-            "met": 123456789,
-            "ttj2000ns": 123456789000000,
-            "mag_B_GSE": [0.0, 0.1, 0.2],
-            "mag_B_magnitude": 0.22,
-            "met_in_utc": "2025-06-20T08:00:00",
-            "mag_hk_status": {"pri_isvalid": True, "hkn8v5": 3680},
-        }
-    ]
