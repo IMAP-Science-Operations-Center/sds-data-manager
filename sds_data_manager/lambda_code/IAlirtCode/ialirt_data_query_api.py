@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlencode, quote_plus
+from urllib.parse import quote_plus, urlencode
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -60,7 +60,7 @@ def build_next_url(event, last_evaluated_key):
     next_url : str
         The URL for the next page of results.
     """
-    query_params = event.get("queryStringParameters", {})
+    query_params = event.get("queryStringParameters") or {}
     if last_evaluated_key:
         query_params["last_evaluated_key"] = quote_plus(json.dumps(last_evaluated_key))
 
@@ -92,7 +92,7 @@ def lambda_handler(event, context):
         and runtime environment.
 
     """
-    params = event.get("queryStringParameters", {})
+    params = event.get("queryStringParameters") or {}
 
     # --- Determine key condition ---
     allowed_params = {
@@ -194,9 +194,7 @@ def lambda_handler(event, context):
                 "has_more": has_more,
                 "last_evaluated_key": encoded_lek,
             },
-            "links": {
-                "next": next_url
-            } if has_more else {},
+            "links": {"next": next_url} if has_more else {},
             "data": items,
         },
         default=str,

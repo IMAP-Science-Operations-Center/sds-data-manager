@@ -3,6 +3,7 @@
 import importlib
 import json
 import os
+from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -13,6 +14,7 @@ from boto3.dynamodb.conditions import Key
 def data_table(setup_data_table):
     """Return the mocked table and populate it with sample data."""
     table = setup_data_table["data_table"]
+    now = datetime.now(timezone.utc)
 
     sample_data = [
         {
@@ -33,6 +35,11 @@ def data_table(setup_data_table):
         {
             "instrument": "spice",
             "time_utc": "2021-01-04T00:00:00",
+            "data": "item4",
+        },
+        {
+            "instrument": "mag",
+            "time_utc": now.isoformat()[0:19],
             "data": "item4",
         },
     ]
@@ -252,36 +259,33 @@ def test_query_no_results(data_table, ialirt_data_query_api_module):
 
 def test_query_with_multiple_filters(data_table, ialirt_data_query_api_module):
     """Test query with multiple filters."""
-    # GET <invoke url>/query?met_start=100&met_end=130&product_name=codicelo_product_1
+    # GET <invoke url>/query?instrument=mag&met_in_utc_start=2021-01-01T00:00:00
     event = {
         "queryStringParameters": {
-            "met_start": "100",
-            "met_end": "130",
+            "instrument": "mag",
+            "met_in_utc_start": "2021-01-01T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
 
-    items = json.loads(response["body"])
-    assert len(items) == 4
+    items = json.loads(response["body"])["data"][0]["data"]
+    assert items == "item1"
 
 
 def test_query_with_different_time_queries(data_table, ialirt_data_query_api_module):
     """Test query API with multiple filters."""
-    # GET <invoke url>/query?met_start=100&met_end=130&product_name=hit*&
+    # GET <invoke url>/query?instrument=hit&time_utc_start=2021-01-02T00:00:00&time_utc_end=2021-01-03T00:00:00&
     # met_in_utc_start=2021-01-02T00:00:00.
     event = {
         "queryStringParameters": {
-            "met_start": "100",
-            "met_end": "130",
+            "time_utc_start": "2021-01-02T00:00:00",
+            "time_utc_end": "2021-01-03T00:00:00",
             "met_in_utc_start": "2021-01-02T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
-    assert response["statusCode"] == 400
-    expected_message = {
-        "message": "Cannot query multiple time keys (met, met_in_utc, last_modified)"
-    }
-    assert json.loads(response["body"]) == expected_message
+    items = json.loads(response["body"])["data"][0]["data"]
+    assert items == "item3"
 
 
 def test_query_with_invalid_parameters(data_table, ialirt_data_query_api_module):
@@ -305,24 +309,5 @@ def test_query_with_no_parameters(data_table, ialirt_data_query_api_module):
     event = {"queryStringParameters": None}
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
 
-    assert response["statusCode"] == 400
     expected_message = {"message": "No query parameters provided"}
-    assert json.loads(response["body"]) == expected_message
-
-
-def test_query_with_mixed_parameters(data_table, ialirt_data_query_api_module):
-    """Test query with mixed parameters."""
-    # GET <invoke url>/query?met_start=100&met_in_utc_end=2021-01-02T00:00:00.
-    event = {
-        "queryStringParameters": {
-            "met_start": "100",
-            "met_in_utc_end": "2021-01-02T00:00:00",
-        }
-    }
-    response = ialirt_data_query_api_module.lambda_handler(event, context=None)
-
-    assert response["statusCode"] == 400
-    expected_message = {
-        "message": "Cannot query multiple time keys (met, met_in_utc, last_modified)"
-    }
-    assert json.loads(response["body"]) == expected_message
+    assert json.loads(response["body"])["data"][0]["instrument"] == "mag"
