@@ -229,7 +229,7 @@ def test_insert_data(
         },
     ]
 
-    insert_data(test_data, algorithm_table, "hit")
+    insert_data(test_data, algorithm_table, "hit", "test-kernel-set-id")
 
     item1 = algorithm_table.get_item(Key={"apid": 478, "met": 123456})["Item"]
     item2 = algorithm_table.get_item(Key={"apid": 478, "met": 123457})["Item"]
@@ -394,7 +394,7 @@ def test_insert_formatted_data(
         },
     ]
 
-    insert_formatted_data(test_data, data_table, "mag")
+    insert_formatted_data(test_data, data_table, "mag", "test-kernel-set-id")
 
     item1 = data_table.get_item(
         Key={"instrument": "mag", "time_utc": "2021-01-01T00:00:00"}
@@ -531,6 +531,7 @@ def test_process_algorithms(
         combined=None,
         algorithm_table=algorithm_table,
         table_name="ialirt-algorithm-table",
+        kernel_set_id="test-kernel-set-id",
     )
 
     response = algorithm_table.query(KeyConditionExpression=Key("apid").eq(478))[
@@ -660,7 +661,7 @@ def test_insert_kernels(
     dependency_inputs = MagicMock()
     dependency_inputs.processing_input = [spice_input]
 
-    insert_kernels(dependency_inputs, algorithm_table)
+    insert_kernels(dependency_inputs, algorithm_table, "ialirt-algorithm-table")
 
     response = algorithm_table.query(
         KeyConditionExpression="apid = :a", ExpressionAttributeValues={":a": 478}
