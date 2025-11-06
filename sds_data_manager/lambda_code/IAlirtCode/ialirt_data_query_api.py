@@ -1,11 +1,11 @@
-"""I-ALiRT Database Query lambda."""
+"""I-ALiRT Data Query lambda."""
 
 import json
 import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from urllib.parse import quote_plus, urlencode, unquote_plus
+from urllib.parse import quote_plus, unquote_plus, urlencode
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -19,7 +19,21 @@ dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
 
-def apply_time_filters(params, query_kwargs):
+def apply_time_filters(params: dict, query_kwargs: dict) -> Key:
+    """Apply the filters for time.
+
+    Parameters
+    ----------
+    params : dict
+        Event parameters.
+    query_kwargs : dict
+        Query keyword arguments.
+
+    Returns
+    -------
+    key_expr : Key
+        The updated key expression with time filters applied.
+    """
     key_expr = query_kwargs["KeyConditionExpression"]
 
     start = params.get("time_utc_start") or params.get("met_in_utc_start")
@@ -37,7 +51,21 @@ def apply_time_filters(params, query_kwargs):
     return key_expr
 
 
-def _error(code, message):
+def _error(code: int, message: str) -> dict:
+    """Create error dictionary.
+
+    Parameters
+    ----------
+    code : int
+        Error code.
+    message : str
+        The error message.
+
+    Returns
+    -------
+    error : dict
+        The error dictionary.
+    """
     return {
         "statusCode": code,
         "body": json.dumps({"message": message}),
@@ -45,7 +73,7 @@ def _error(code, message):
     }
 
 
-def build_next_url(event, last_evaluated_key):
+def build_next_url(event: dict, last_evaluated_key: dict) -> str:
     """Build the next URL for pagination.
 
     Parameters
@@ -75,7 +103,7 @@ def build_next_url(event, last_evaluated_key):
     return next_url
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context):  # noqa: PLR0915
     """Create metadata and add it to the database.
 
     This function is an event handler for s3 ingest bucket.
@@ -93,6 +121,7 @@ def lambda_handler(event, context):
 
     """
     params = event.get("queryStringParameters") or {}
+    self_url = build_next_url(event, None)
 
     # --- Determine key condition ---
     allowed_params = {
@@ -169,7 +198,9 @@ def lambda_handler(event, context):
 
         if params.get("last_evaluated_key"):
             raw_last_evaluated_key = params["last_evaluated_key"]
-            query_kwargs["ExclusiveStartKey"] = json.loads(unquote_plus(raw_last_evaluated_key))
+            query_kwargs["ExclusiveStartKey"] = json.loads(
+                unquote_plus(raw_last_evaluated_key)
+            )
 
         t1 = time.perf_counter()
         response = table.query(**query_kwargs)
@@ -184,7 +215,9 @@ def lambda_handler(event, context):
     encoded_lek = json.dumps(last_evaluated_key) if last_evaluated_key else None
     has_more = last_evaluated_key is not None
 
-    next_url = build_next_url(event, last_evaluated_key)
+    links = {"self": self_url}
+    if has_more and last_evaluated_key:
+        links["next"] = build_next_url(event, last_evaluated_key)
 
     json_body = json.dumps(
         {
@@ -195,7 +228,7 @@ def lambda_handler(event, context):
                 "has_more": has_more,
                 "last_evaluated_key": encoded_lek,
             },
-            "links": {"next": next_url} if has_more else {},
+            "links": links,
             "data": items,
         },
         default=str,

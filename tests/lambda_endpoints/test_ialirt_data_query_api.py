@@ -1,11 +1,11 @@
-"""Tests for the I-ALiRT DB Query API Lambda function."""
+"""Tests for the I-ALiRT Data Query API Lambda function."""
 
 import importlib
 import json
 import os
 from datetime import datetime, timezone
-from urllib.parse import parse_qs, urlparse
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from boto3.dynamodb.conditions import Key
@@ -111,6 +111,7 @@ def test_error_response(ialirt_data_query_api_module):
 
 
 def test_apply_time_filters_between(ialirt_data_query_api_module):
+    """Test when both start and end times are provided."""
     params = {
         "time_utc_start": "2025-10-01T10:00:00Z",
         "time_utc_end": "2025-10-01T11:00:00Z",
@@ -143,7 +144,7 @@ def test_apply_time_filters_between(ialirt_data_query_api_module):
 
 
 def test_apply_time_filters_gte(ialirt_data_query_api_module):
-    """Test when only start time is provided → gte(time_utc_start)"""
+    """Test when only start time is provided → gte(time_utc_start)."""
     # Only start time is given → should use Key("time_utc").gte(start)
     params = {"time_utc_start": "2025-10-01T10:00:00Z"}
     query_kwargs = {"KeyConditionExpression": Key("instrument").eq("hit")}
@@ -174,7 +175,7 @@ def test_apply_time_filters_gte(ialirt_data_query_api_module):
 
 
 def test_apply_time_filters_error(ialirt_data_query_api_module):
-    """Test when only end time is provided → return error"""
+    """Test when only end time is provided → return error."""
     params = {"time_utc_end": "2025-10-01T11:00:00Z"}
     query_kwargs = {"KeyConditionExpression": Key("instrument").eq("hit")}
 
@@ -275,7 +276,8 @@ def test_query_with_multiple_filters(data_table, ialirt_data_query_api_module):
 
 def test_query_with_different_time_queries(data_table, ialirt_data_query_api_module):
     """Test query API with multiple filters."""
-    # GET <invoke url>/query?instrument=hit&time_utc_start=2021-01-02T00:00:00&time_utc_end=2021-01-03T00:00:00&
+    # GET <invoke url>/query?instrument=hit&time_utc_start=2021-01-02T00:00:00&
+    # time_utc_end=2021-01-03T00:00:00&
     # met_in_utc_start=2021-01-02T00:00:00.
     event = {
         "queryStringParameters": {
@@ -316,13 +318,20 @@ def test_query_with_no_parameters(data_table, ialirt_data_query_api_module):
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_data_query_api.table.query")
 def test_pagination_with_next_url(mock_query, data_table, ialirt_data_query_api_module):
     """Test pagination flow."""
-
     # Mock DynamoDB returning paginated responses
     mock_query.side_effect = [
         {
             "Items": [
-                {"instrument": "mag", "time_utc": "2025-11-06T16:20:00", "data": "item0"},
-                {"instrument": "mag", "time_utc": "2025-11-06T16:20:01", "data": "item1"},
+                {
+                    "instrument": "mag",
+                    "time_utc": "2025-11-06T16:20:00",
+                    "data": "item0",
+                },
+                {
+                    "instrument": "mag",
+                    "time_utc": "2025-11-06T16:20:01",
+                    "data": "item1",
+                },
             ],
             "LastEvaluatedKey": {
                 "instrument": "mag",
@@ -331,8 +340,16 @@ def test_pagination_with_next_url(mock_query, data_table, ialirt_data_query_api_
         },
         {
             "Items": [
-                {"instrument": "mag", "time_utc": "2025-11-06T16:20:02", "data": "item2"},
-                {"instrument": "mag", "time_utc": "2025-11-06T16:20:03", "data": "item3"},
+                {
+                    "instrument": "mag",
+                    "time_utc": "2025-11-06T16:20:02",
+                    "data": "item2",
+                },
+                {
+                    "instrument": "mag",
+                    "time_utc": "2025-11-06T16:20:03",
+                    "data": "item3",
+                },
             ],
             "LastEvaluatedKey": None,
         },
@@ -357,8 +374,10 @@ def test_pagination_with_next_url(mock_query, data_table, ialirt_data_query_api_
     query_params = parse_qs(parsed.query)
 
     next_event = {
-        "queryStringParameters": {"instrument": query_params["instrument"][0],
-                                   "last_evaluated_key": query_params["last_evaluated_key"][0]},
+        "queryStringParameters": {
+            "instrument": query_params["instrument"][0],
+            "last_evaluated_key": query_params["last_evaluated_key"][0],
+        },
         "headers": {"host": parsed.hostname},
         "requestContext": {"path": parsed.path},
     }
@@ -368,6 +387,5 @@ def test_pagination_with_next_url(mock_query, data_table, ialirt_data_query_api_
     body2 = json.loads(response2["body"])
 
     assert body2["meta"]["has_more"] is False
-    assert len(body2["data"]) == 2      # Page 2 has 2 items
-    assert mock_query.call_count == 2   # DynamoDB called twice
-
+    assert len(body2["data"]) == 2  # Page 2 has 2 items
+    assert mock_query.call_count == 2  # DynamoDB called twice
