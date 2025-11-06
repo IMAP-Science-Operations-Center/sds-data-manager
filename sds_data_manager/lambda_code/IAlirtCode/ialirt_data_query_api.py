@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import quote_plus, urlencode, unquote_plus
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -167,8 +167,9 @@ def lambda_handler(event, context):
                 one_minute_ago.isoformat(), now.isoformat()
             )
 
-        if params.get("last_evaluated_key") and len(instruments) == 1:
-            query_kwargs["ExclusiveStartKey"] = json.loads(params["last_evaluated_key"])
+        if params.get("last_evaluated_key"):
+            raw_last_evaluated_key = params["last_evaluated_key"]
+            query_kwargs["ExclusiveStartKey"] = json.loads(unquote_plus(raw_last_evaluated_key))
 
         t1 = time.perf_counter()
         response = table.query(**query_kwargs)

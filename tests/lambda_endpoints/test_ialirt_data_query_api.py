@@ -5,6 +5,7 @@ import json
 import os
 from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlparse
+from unittest.mock import patch
 
 import pytest
 from boto3.dynamodb.conditions import Key
@@ -309,5 +310,64 @@ def test_query_with_no_parameters(data_table, ialirt_data_query_api_module):
     event = {"queryStringParameters": None}
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
 
-    expected_message = {"message": "No query parameters provided"}
     assert json.loads(response["body"])["data"][0]["instrument"] == "mag"
+
+
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_data_query_api.table.query")
+def test_pagination_with_next_url(mock_query, data_table, ialirt_data_query_api_module):
+    """Test pagination flow."""
+
+    # Mock DynamoDB returning paginated responses
+    mock_query.side_effect = [
+        {
+            "Items": [
+                {"instrument": "mag", "time_utc": "2025-11-06T16:20:00", "data": "item0"},
+                {"instrument": "mag", "time_utc": "2025-11-06T16:20:01", "data": "item1"},
+            ],
+            "LastEvaluatedKey": {
+                "instrument": "mag",
+                "time_utc": "2025-11-06T16:20:01",
+            },
+        },
+        {
+            "Items": [
+                {"instrument": "mag", "time_utc": "2025-11-06T16:20:02", "data": "item2"},
+                {"instrument": "mag", "time_utc": "2025-11-06T16:20:03", "data": "item3"},
+            ],
+            "LastEvaluatedKey": None,
+        },
+    ]
+
+    # First event: GET <invoke url>/query?instrument=mag
+    event1 = {
+        "queryStringParameters": {"instrument": "mag"},
+        "headers": {"host": "ialirt.imap-mission.com"},
+        "requestContext": {"path": "/api-key/ialirt-db-query"},
+    }
+
+    response1 = ialirt_data_query_api_module.lambda_handler(event1, None)
+    body1 = json.loads(response1["body"])
+
+    assert body1["meta"]["has_more"] is True
+    assert len(body1["data"]) == 2  # Page 1 has 2 items
+    assert mock_query.call_count == 1  # DynamoDB called once
+
+    # Second event: GET <invoke url>/query?instrument=mag&last_evaluated_key=...
+    parsed = urlparse(body1["links"]["next"])
+    query_params = parse_qs(parsed.query)
+
+    next_event = {
+        "queryStringParameters": {"instrument": query_params["instrument"][0],
+                                   "last_evaluated_key": query_params["last_evaluated_key"][0]},
+        "headers": {"host": parsed.hostname},
+        "requestContext": {"path": parsed.path},
+    }
+
+    # Call handler again → second page of data
+    response2 = ialirt_data_query_api_module.lambda_handler(next_event, None)
+    body2 = json.loads(response2["body"])
+
+    assert body2["meta"]["has_more"] is False
+    assert len(body2["data"]) == 2      # Page 2 has 2 items
+    assert mock_query.call_count == 2   # DynamoDB called twice
+
