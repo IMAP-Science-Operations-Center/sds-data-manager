@@ -785,6 +785,9 @@ pointing_attitude, spice, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 spin, spin, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 leapseconds, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 
 # L1C/L1B -> L2
 # MAG L2 and L1D look pretty similar.
@@ -800,12 +803,20 @@ science_frames, spice, historical, mag, l2, norm-srf, HARD_NO_TRIGGER, DOWNSTREA
 pointing_attitude, spice, historical, mag, l2, norm-srf, HARD, DOWNSTREAM
 leapseconds, spice, historical, mag, l2, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, mag, l2, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+spin, spin, historical, mag, l2, norm-srf, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, mag, l2, norm-srf, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, mag, l2, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, mag, l2, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 
 imap_frames, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, mag, l2, burst-srf, HARD, DOWNSTREAM
 leapseconds, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
+spin, spin, historical, mag, l2, burst-srf, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, mag, l2, burst-srf, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, mag, l2, burst-srf, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- Spacecraft Dependencies ---->
 # Quaternions
