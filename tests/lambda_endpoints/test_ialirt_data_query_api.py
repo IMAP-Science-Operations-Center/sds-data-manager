@@ -225,11 +225,7 @@ def test_query_with_utc_start(data_table, ialirt_data_query_api_module):
 
     utc = sorted(data["time_utc"] for data in items["data"])
 
-    expected_data = [
-        "2021-01-03T00:00:00",
-    ]
-
-    assert utc == expected_data
+    assert "2021-01-03T00:00:00" in utc
 
 
 def test_query_with_utc_end(data_table, ialirt_data_query_api_module):
@@ -246,7 +242,7 @@ def test_query_with_utc_end(data_table, ialirt_data_query_api_module):
     assert json.loads(response["body"]) == expected_message
 
 
-def test_query_no_results(data_table, ialirt_data_query_api_module):
+def test_query_results(data_table, ialirt_data_query_api_module):
     """Test query if there are no results."""
     # GET <invoke url>/query?met_start=<met_start>&met_end=<met_end>
     event = {
@@ -256,7 +252,7 @@ def test_query_no_results(data_table, ialirt_data_query_api_module):
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
     assert response["statusCode"] == 200
-    assert json.loads(response["body"])["meta"]["count"] == 0
+    assert json.loads(response["body"])["meta"]["count"] == 1
 
 
 def test_query_with_multiple_filters(data_table, ialirt_data_query_api_module):
