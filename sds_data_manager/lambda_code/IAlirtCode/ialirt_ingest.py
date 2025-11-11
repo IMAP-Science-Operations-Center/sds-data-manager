@@ -267,7 +267,7 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     return combined
 
 
-def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):
+def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):  # noqa: PLR0915
     """Process the algorithms and insert data, as needed.
 
     Parameters
@@ -317,10 +317,14 @@ def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):
                 )
             elif instrument == "codicelo":
                 logger.info("Processing CoDICE-Lo.")
-                result, _ = process_func(combined)
+                download_path = get_ancillary(instrument, "l1a-sci-lut")
+                logger.info("codice sci-lut: %s", download_path)
+                result, _ = process_func(combined, download_path)
             elif instrument == "codicehi":
                 logger.info("Processing CoDICE-Hi.")
-                _, result = process_func(combined)
+                download_path = get_ancillary(instrument, "l1a-sci-lut")
+                logger.info("codice sci-lut: %s", download_path)
+                _, result = process_func(combined, download_path)
             elif instrument == "swapi":
                 logger.info("Processing SWAPI.")
                 download_path = get_ancillary(instrument, "esa-unit-conversion")
