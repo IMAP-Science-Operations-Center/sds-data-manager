@@ -267,7 +267,7 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     return combined
 
 
-def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):  # noqa: PLR0915
+def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):
     """Process the algorithms and insert data, as needed.
 
     Parameters
@@ -348,15 +348,6 @@ def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):  # no
             logger.error(error_msg, exc_info=True)
             processing_errors.append((instrument, e))
             # Continue to next instrument
-
-    # If there were any processing errors, log error at the end.
-    if processing_errors:
-        error_summary = "; ".join(
-            [f"{instr}: {err!s}" for instr, err in processing_errors]
-        )
-        logger.error(
-            f"Completed with {len(processing_errors)} error(s): {error_summary}"
-        )
 
 
 def insert_data(data: list[dict], algorithm_table, instrument: str):
