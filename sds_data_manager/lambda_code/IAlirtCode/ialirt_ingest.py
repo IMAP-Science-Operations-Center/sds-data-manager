@@ -349,13 +349,13 @@ def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):  # no
             processing_errors.append((instrument, e))
             # Continue to next instrument
 
-    # If there were any processing errors, raise them at the end
+    # If there were any processing errors, log error at the end.
     if processing_errors:
         error_summary = "; ".join(
             [f"{instr}: {err!s}" for instr, err in processing_errors]
         )
-        raise RuntimeError(
-            f"Failed to process {len(processing_errors)} instrument(s): {error_summary}"
+        logger.error(
+            f"Completed with {len(processing_errors)} error(s): {error_summary}"
         )
 
 
@@ -512,7 +512,7 @@ def insert_formatted_data(
     times = [item["met_in_utc"] for item in data]
     min_time = min(times)
     max_time = max(times)
-    logger.info(f"Processing {min_time} to {max_time}.")
+    logger.info(f"Processing {min_time} to {max_time} for {instrument}.")
 
     science_data, hk_data = reformat_data(data)
 
