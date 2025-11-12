@@ -317,12 +317,12 @@ def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):  # no
                 )
             elif instrument == "codicelo":
                 logger.info("Processing CoDICE-Lo.")
-                download_path = get_ancillary(instrument, "l1a-sci-lut")
+                download_path = get_ancillary("codice", "l1a-sci-lut")
                 logger.info("codice sci-lut: %s", download_path)
                 result, _ = process_func(combined, download_path)
             elif instrument == "codicehi":
                 logger.info("Processing CoDICE-Hi.")
-                download_path = get_ancillary(instrument, "l1a-sci-lut")
+                download_path = get_ancillary("codice", "l1a-sci-lut")
                 logger.info("codice sci-lut: %s", download_path)
                 _, result = process_func(combined, download_path)
             elif instrument == "swapi":
