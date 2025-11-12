@@ -108,8 +108,9 @@ class ProcessingConstruct(Construct):
             empty_on_delete=True,
             removal_policy=cdk.RemovalPolicy.DESTROY,
         )
-        # Ultra jobs need more resources than others. Specifically, ULTRA l1a
-        # TODO : optimize ULTRA l1a to use less resources
+        # Ultra and Lo jobs need more resources than others. Specifically, ULTRA and
+        # Lo l1a
+        # TODO : optimize ULTRA and Lo l1a to use less resources
         cpu = 4
         memory = cdk.Size.gibibytes(16)
         if "ultra" or "lo" in job_name:
