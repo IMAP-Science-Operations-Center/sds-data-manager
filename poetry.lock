@@ -559,6 +559,20 @@ files = [
 ]
 
 [[package]]
+name = "click"
+version = "8.3.0"
+description = "Composable command line interface toolkit"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "click-8.3.0-py3-none-any.whl", hash = "sha256:9b9f285302c6e3064f4330c05f05b81945b2a39544279343e6e7c5f27a9baddc"},
+    {file = "click-8.3.0.tar.gz", hash = "sha256:e7b8232224eba16f4ebe410c25ced9f7875cb5f3263ffc93cc3e8da705e229c4"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -908,13 +922,13 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "imap-processing"
-version = "1.0.4"
+version = "1.0.5"
 description = "IMAP Science Operations Center Processing"
 optional = false
 python-versions = "<4,>=3.10"
 files = [
-    {file = "imap_processing-1.0.4-py3-none-any.whl", hash = "sha256:6a822234e47f9e642a0a26746bde029f7e3a4db0741ae0e56bcc54351eacf161"},
-    {file = "imap_processing-1.0.4.tar.gz", hash = "sha256:bdf306535892c0a2832366abbad2f579fe9412e1803a35975dacc41eb424215c"},
+    {file = "imap_processing-1.0.5-py3-none-any.whl", hash = "sha256:ab7abe95b607f4d4c121fbbaf3618d3fb24644ac0237098b9db6740d1e1c9785"},
+    {file = "imap_processing-1.0.5.tar.gz", hash = "sha256:30f531b1b3625164aac02e3643ed97ef9c4fe44af2af054461b3182245153755"},
 ]
 
 [package.dependencies]
@@ -924,7 +938,7 @@ imap-data-access = ">=0.37.0"
 numpy = "<=3"
 sammi-cdf = ">=1.0,<2.0"
 scipy = ">=1.13,<2.0"
-space_packet_parser = ">=5.0.1,<6.0.0"
+space_packet_parser = ">=6.0.0"
 spiceypy = ">=6.0.0"
 xarray = ">=2024.10.0"
 
@@ -1165,7 +1179,7 @@ source = ["Cython (>=3.0.11,<3.1.0)"]
 name = "markdown-it-py"
 version = "3.0.0"
 description = "Python port of markdown-it. Markdown parsing, done right!"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "markdown-it-py-3.0.0.tar.gz", hash = "sha256:e3f60a94fa066dc52ec76661e37c851cb232d92f9886b15cb560aaada2df8feb"},
@@ -1278,7 +1292,7 @@ testing = ["coverage", "pytest", "pytest-cov", "pytest-regressions"]
 name = "mdurl"
 version = "0.1.2"
 description = "Markdown URL utilities"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
@@ -1766,7 +1780,7 @@ test = ["pytest", "pytest-doctestplus (>=0.7)"]
 name = "pygments"
 version = "2.19.1"
 description = "Pygments is a syntax highlighting package written in Python."
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "pygments-2.19.1-py3-none-any.whl", hash = "sha256:9ea1544ad55cecf4b8242fab6dd35a93bbce657034b0611ee383099054ab6d8c"},
@@ -1946,6 +1960,24 @@ urllib3 = ">=1.25.10,<3.0"
 tests = ["coverage (>=6.0.0)", "flake8", "mypy", "pytest (>=7.0.0)", "pytest-asyncio", "pytest-cov", "pytest-httpserver", "tomli", "tomli-w", "types-PyYAML", "types-requests"]
 
 [[package]]
+name = "rich"
+version = "14.2.0"
+description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
+optional = false
+python-versions = ">=3.8.0"
+files = [
+    {file = "rich-14.2.0-py3-none-any.whl", hash = "sha256:76bc51fe2e57d2b1be1f96c524b890b816e334ab4c1e45888799bfaab0021edd"},
+    {file = "rich-14.2.0.tar.gz", hash = "sha256:73ff50c7c0c1c77c8243079283f4edb376f0f6442433aecb8ce7e6d0b92d1fe4"},
+]
+
+[package.dependencies]
+markdown-it-py = ">=2.2.0"
+pygments = ">=2.13.0,<3.0.0"
+
+[package.extras]
+jupyter = ["ipywidgets (>=7.5.1,<9)"]
+
+[[package]]
 name = "ruff"
 version = "0.2.1"
 description = "An extremely fast Python linter and code formatter, written in Rust."
@@ -2105,17 +2137,25 @@ files = [
 
 [[package]]
 name = "space-packet-parser"
-version = "5.0.1"
+version = "6.0.1"
 description = "A CCSDS telemetry packet decoding library based on the XTCE packet format description standard."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "space_packet_parser-5.0.1-py3-none-any.whl", hash = "sha256:f3f10cbc83aa306cce5c0689109c8cdbccab4da2515525b5657e0d53c1b6f4cc"},
-    {file = "space_packet_parser-5.0.1.tar.gz", hash = "sha256:f72b937ec6d1bfb426124e8b2d4e500784f3963c4f88ce22339f24bb249cfad8"},
+    {file = "space_packet_parser-6.0.1-py3-none-any.whl", hash = "sha256:ae87465f71ee7f91081c136034113bc9ba1994f2e1de9e8ce26f48ef0d6d9900"},
+    {file = "space_packet_parser-6.0.1.tar.gz", hash = "sha256:eb21a857b8d73411bda2bd4f36f8dc27d362a0181753fca6470f76c46bfca979"},
 ]
 
 [package.dependencies]
+click = ">=8.0"
 lxml = ">=4.8.0"
+rich = ">=13.0"
+
+[package.extras]
+docs = ["myst-parser", "pyyaml", "sphinx", "sphinx-autoapi", "sphinx-rtd-theme"]
+examples = ["matplotlib (>=3.4)"]
+test = ["numpy", "pre-commit", "pytest", "pytest-benchmark", "pytest-cov", "pytest-randomly", "pyyaml", "ruff", "tomli", "xarray"]
+xarray = ["numpy (>=1.26.0)", "xarray (>2024.0.0)"]
 
 [[package]]
 name = "sphinx"
@@ -2548,4 +2588,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "c769610c5b7573724e3c492183894f3050f52cda5c3326067d4301704e5ab8fa"
+content-hash = "e8fafcc601b83d3430168a57b5d25e8621cafe9b59bd041acf378fd6b2891397"
