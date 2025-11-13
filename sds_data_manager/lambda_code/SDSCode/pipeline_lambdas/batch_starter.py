@@ -791,21 +791,21 @@ def s3_processing_event(session, events):
 
             job.pop("relationship")
 
-            # by default, we want to filter the upstream dependencies only if the
-            # trigger file is an ancillary file or SPICE file.
-            # Ancillary and SPICE files can trigger multiple jobs for the
-            # same instrument, data level, and descriptor but with different start
-            # dates. Once we know the start dates for the job, we "filter" the upstream
-            # dependencies to only include those valid for that date.
+            # Do not filter the upstream dependencies if the trigger file is
+            # ScienceFilePath. Ancillary, SPICE, spin, and repoint files can trigger
+            # multiple jobs for the same instrument, data level, and descriptor but
+            # with different start dates. Once we know the start dates for the job, we
+            # "filter" the upstream dependencies to only include those valid for that
+            # date.
 
             # If the job is spacecraft pointing-attitude job, do not filter
             # dependencies because there are no upstream science dependencies for this
             # job.
-            filter_dependencies = False
+            filter_dependencies = True
             if isinstance(
-                file_obj, (AncillaryFilePath, SPICEFilePath)
-            ) and not spacecraft_pointing_attitude_job(job):
-                filter_dependencies = True
+                file_obj, ScienceFilePath
+            ) or spacecraft_pointing_attitude_job(job):
+                filter_dependencies = False
 
             # Pass along the repointing number if the file is a science file.
             repoint = (
