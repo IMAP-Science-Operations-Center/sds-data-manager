@@ -556,10 +556,14 @@ def insert_kernels(dependency_inputs, algorithm_table):
     spice_input = dependency_inputs.processing_input[0]
     spice_kernels = dict(zip(spice_input.source, spice_input.filename_list))
 
+    if algorithm_table.table_name == "ialirt-algorithm-table":
+        time_key = "met_in_utc"
+    else:
+        time_key = "time_utc"
     kernel_item = {
         "apid": 478,
         "met": int(met),
-        "met_in_utc": met_to_utc(met).split(".")[0],
+        time_key: met_to_utc(met).split(".")[0],
         "ttj2000ns": int(met_to_ttj2000ns(met)),
         "instrument": "spice",
         "last_modified": last_modified_utc,

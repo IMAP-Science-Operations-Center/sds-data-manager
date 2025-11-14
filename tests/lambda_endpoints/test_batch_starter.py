@@ -11,6 +11,7 @@ from unittest.mock import Mock, call, patch
 
 import imap_data_access
 import pytest
+from imap_data_access import SpinInput
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
     ScienceInput,
@@ -331,6 +332,120 @@ def test_lambda_handler_multiple_events(session, s3_client):
     ):
         lambda_handler(multiple_events, context)
         assert mock_batch_client.submit_job.call_count == 2
+
+
+def test_lambda_handler_spice_event(session):
+    """Tests ``lambda_handler`` function when triggerd by an spice file."""
+    _static_spice_files(session)
+    # Test that the correct dependencies are gathered when a spice ingest
+    # triggers the lambda.
+    # Swe l2 needs l1b and spin files.
+    # Add db records to satisfy dependencies.
+    records = [
+        # Add two science files to ensure there are two jobs submitted
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1b_sci_20250429_v001.cdf",
+            instrument="swe",
+            data_level="l1b",
+            descriptor="sci",
+            start_date=datetime(2025, 4, 29),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1b_sci_20250430_v001.cdf",
+            instrument="swe",
+            data_level="l1b",
+            descriptor="sci",
+            start_date=datetime(2025, 4, 30),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        SpinFiles(
+            file_path="/imap/spice/spin/imap_2025_119_2025_121_01.spin.csv",
+            start_date=datetime(2025, 4, 29),
+            end_date=datetime(2025, 4, 30),
+            version="01",
+            ingestion_date=datetime.now(),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": '
+                '"imap_2025_119_2025_121_01.spin.csv"}}'
+                "}"
+            }
+        ]
+    }
+
+    context = {"context": "sample_context"}
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
+        lambda_handler(events, context)
+        # There should be 2 different jobs submitted for the two swe l1b files
+        assert mock_batch_client.submit_job.call_count == 2
+        # Assert_called_with only works on the last call
+        # Check that the last call is what we expect with the correct dependencies
+
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="swe-l2-sci-job-2",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-swe",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "swe",
+                    "--data-level",
+                    "l2",
+                    "--descriptor",
+                    "sci",
+                    "--start-date",
+                    "20250430",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    "imap_swe_l2_sci-d3646148_20250430_v001.json",
+                    "--upload-to-sdc",
+                ]
+            },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
+        )
+    # Assert that the try_to_submit_job function was called with the correct
+    # upstream dependencies
+    # There should be two calls to try_to_submit_job, one for each swe l1b file
+    # Each job should have the same spin file dependency, but different
+    # science file dependencies.
+    # We check the last call here.
+    expected_dependencies = ProcessingInputCollection(
+        SpinInput("imap_2025_119_2025_121_01.spin.csv"),
+        ScienceInput("imap_swe_l1b_sci_20250430_v001.cdf"),
+    )
+    with (
+        patch.object(batch_starter, "try_to_submit_job") as mock_submit,
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
+        lambda_handler(events, context)
+        mock_submit.assert_called_with(
+            session,
+            {"data_source": "swe", "data_type": "l2", "descriptor": "sci"},
+            "20250430",
+            "v001",
+            expected_dependencies.serialize(),
+            repoint=None,
+        )
 
 
 def test_lambda_handler_ancillary_event(session):

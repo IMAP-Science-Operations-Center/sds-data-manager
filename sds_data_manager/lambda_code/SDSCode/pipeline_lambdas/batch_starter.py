@@ -51,6 +51,14 @@ BATCH_JOB_RETRY_STRATEGY = {
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 
 
+def spacecraft_pointing_attitude_job(job_node: dict) -> bool:
+    """Determine if the job node is a spacecraft pointing-attitude job."""
+    return (
+        job_node["data_source"] == "spacecraft"
+        and job_node["descriptor"] == "pointing-attitude"
+    )
+
+
 def cadence_to_datetime_range(
     cadence: str,
     start_date: Optional[datetime.datetime] = None,
@@ -445,10 +453,7 @@ def submit_all_jobs(
 
     # Handle special case reprocessing jobs.
     logger.info(f"All required dependencies found for the dependency: {job_node}")
-    if (
-        job_node["data_source"] == "spacecraft"
-        and job_node["descriptor"] == "pointing-attitude"
-    ):
+    if spacecraft_pointing_attitude_job(job_node):
         serialized_deps = upstream_dependencies.serialize()
         job_version = determine_job_version(
             session=session,
@@ -786,15 +791,21 @@ def s3_processing_event(session, events):
 
             job.pop("relationship")
 
-            # by default, we want to filter the upstream dependencies only if the
-            # trigger file is an ancillary file.
-            # Ancillary files can trigger multiple jobs for the
-            # same instrument, data level, and descriptor but with different start
-            # dates. Once we know the start dates for the job, we "filter" the upstream
-            # dependencies to only include those valid for that date.
-            filter_dependencies = False
-            if isinstance(file_obj, AncillaryFilePath):
-                filter_dependencies = True
+            # Do not filter the upstream dependencies if the trigger file is
+            # ScienceFilePath. Ancillary, SPICE, spin, and repoint files can trigger
+            # multiple jobs for the same instrument, data level, and descriptor but
+            # with different start dates. Once we know the start dates for the job, we
+            # "filter" the upstream dependencies to only include those valid for that
+            # date.
+
+            # If the job is spacecraft pointing-attitude job, do not filter
+            # dependencies because there are no upstream science dependencies for this
+            # job.
+            filter_dependencies = True
+            if isinstance(
+                file_obj, ScienceFilePath
+            ) or spacecraft_pointing_attitude_job(job):
+                filter_dependencies = False
 
             # Pass along the repointing number if the file is a science file.
             repoint = (
@@ -893,10 +904,7 @@ def bulk_reprocessing_event(session, events):
             # dependencies, meaning there is only one pointing-attitude job per
             # reprocessing call. Therefore, dependencies should not be filtered
             # after the initial upstream dependency query in "submit_all_jobs".
-            if (
-                job["data_source"] == "spacecraft"
-                and job["descriptor"] == "pointing-attitude"
-            ):
+            if spacecraft_pointing_attitude_job(job):
                 filter_dependencies = False
             else:
                 filter_dependencies = True
