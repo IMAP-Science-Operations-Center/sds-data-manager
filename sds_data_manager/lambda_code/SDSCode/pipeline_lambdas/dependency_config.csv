@@ -790,6 +790,7 @@ ephemeris_reconstructed, spice, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 ephemeris_predicted, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_constants, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+spin, spin, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 
 # L1C/L1B -> L2
 # MAG L2 and L1D look pretty similar.
