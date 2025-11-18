@@ -18,7 +18,7 @@ dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
 
-def apply_time_filters(params: dict, query_kwargs: dict) -> tuple | None:
+def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
     """Apply the filters for time.
 
     Parameters
@@ -42,17 +42,12 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple | None:
     start = params.get("time_utc_start") or params.get("met_in_utc_start")
     end = params.get("time_utc_end") or params.get("met_in_utc_end")
 
-    if start and end:
-        start_dt = datetime.fromisoformat(start)
-        end_dt = datetime.fromisoformat(end)
-        if end_dt - start_dt > timedelta(days=1):
-            return None
-    elif start:
+    if start and not end:
         # Calculate end to be 1 hour later.
         start_dt = datetime.fromisoformat(start)
         end_dt = start_dt + timedelta(hours=1)
         end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
-    elif end:
+    elif end and not start:
         # Calculate start to be 1 hour earlier.
         end_dt = datetime.fromisoformat(end)
         start_dt = end_dt - timedelta(hours=1)
@@ -159,8 +154,10 @@ def lambda_handler(event, context):
             query_kwargs, range_start, range_end = apply_time_filters(
                 params, query_kwargs
             )
-            # Checks if there was an error.
-            if None:
+            # Checks if the max time range is exceeded.
+            if datetime.fromisoformat(range_end) - datetime.fromisoformat(
+                range_start
+            ) > timedelta(days=1):
                 return _error(400, "Start and end time cannot exceed 1 day apart.")
         else:
             # Get latest 1 hour if not specified.
