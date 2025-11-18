@@ -1,5 +1,6 @@
 """IALiRT ingest lambda."""
 
+import hashlib
 import json
 import logging
 import os
@@ -267,7 +268,9 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     return combined
 
 
-def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):
+def process_algorithms(
+    combined: xr.Dataset, algorithm_table, table_name, kernel_set_key
+):
     """Process the algorithms and insert data, as needed.
 
     Parameters
@@ -278,6 +281,8 @@ def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):
         The DynamoDB table to insert or update the data.
     table_name : str
         Name of the DynamoDB table
+    kernel_set_key : str, optional
+        The kernel set identifier.
     """
     processors = [
         ("mag", process_packet),
@@ -339,9 +344,11 @@ def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):
 
             if any(result) and all(result):
                 if table_name == "ialirt-algorithm-table":
-                    insert_data(result, algorithm_table, instrument)
+                    insert_data(result, algorithm_table, instrument, kernel_set_key)
                 else:
-                    insert_formatted_data(result, algorithm_table, instrument)
+                    insert_formatted_data(
+                        result, algorithm_table, instrument, kernel_set_key
+                    )
 
         except Exception as e:
             error_msg = f"Error processing {instrument}: {e!s}"
@@ -349,8 +356,9 @@ def process_algorithms(combined: xr.Dataset, algorithm_table, table_name):
             processing_errors.append((instrument, e))
             # Continue to next instrument
 
-
-def insert_data(data: list[dict], algorithm_table, instrument: str):
+def insert_data(
+    data: list[dict], algorithm_table, instrument: str, kernel_set_key: str
+):
     """Insert or update database row, depending on content of item.
 
     Parameters
@@ -361,6 +369,8 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         The DynamoDB table to insert or update the data.
     instrument : str
         The prefix for the product name.
+    kernel_set_key : str
+        The kernel set identifier.
     """
     apid = data[0]["apid"]
     mets = [item["met"] for item in data]
@@ -383,6 +393,7 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
         key = {"apid": apid, "met": met}
         existing = existing_items.get(met)
         raw["last_modified"] = datetime.now(timezone.utc).isoformat()
+        raw["kernel_set_key"] = kernel_set_key
 
         # Calculate the spacecraft position and velocity in GSM coordinates.
         et = sct_to_et(met_to_sclkticks(met))
@@ -416,6 +427,7 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
                     "sc_position_GSE",
                     "sc_velocity_GSE",
                     "instrument",
+                    "kernel_set_key",
                 }
             )
 
@@ -433,6 +445,7 @@ def insert_data(data: list[dict], algorithm_table, instrument: str):
                     "sc_position_GSE",
                     "sc_velocity_GSE",
                     "instrument",
+                    "kernel_set_key",
                 }
             }
 
@@ -487,6 +500,7 @@ def insert_formatted_data(
     data: list[dict],
     data_table,
     instrument: str,
+    kernel_set_key: str,
 ):
     """Insert database rows.
 
@@ -498,6 +512,8 @@ def insert_formatted_data(
         The DynamoDB table to insert or update the data.
     instrument : str
         The prefix for the product name.
+    kernel_set_key : str
+        The kernel set identifier.
     """
     # Get time range.
     times = [item["met_in_utc"] for item in data]
@@ -509,12 +525,14 @@ def insert_formatted_data(
 
     # Insert science data
     for record in science_data:
+        record["kernel_set_key"] = kernel_set_key
         data_table.put_item(Item=record)
     logger.info(f"Inserted {instrument.upper()}.")
 
     # Insert hk data
     if hk_data:
         for record in hk_data:
+            record["kernel_set_key"] = kernel_set_key
             data_table.put_item(Item=record)
     logger.info(f"Inserted Housekeeping for {instrument.upper()}.")
 
@@ -548,6 +566,11 @@ def insert_kernels(dependency_inputs, algorithm_table):
         SPICE kernel dependencies.
     algorithm_table : dynamodb.Table
         The DynamoDB table to insert or update the data.
+
+    Returns
+    -------
+    kernel_set_key : str
+        The kernel set identifier.
     """
     last_modified = datetime.now(timezone.utc)
     last_modified_for_spice = last_modified.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -555,6 +578,9 @@ def insert_kernels(dependency_inputs, algorithm_table):
     last_modified_utc = last_modified.isoformat()
     spice_input = dependency_inputs.processing_input[0]
     spice_kernels = dict(zip(spice_input.source, spice_input.filename_list))
+
+    # Will return the same kernel_set_key for the same set of kernels.
+    kernel_set_key = met_to_utc(met).split(".")[0]
 
     if algorithm_table.table_name == "ialirt-algorithm-table":
         kernel_item = {
@@ -580,6 +606,7 @@ def insert_kernels(dependency_inputs, algorithm_table):
         f"Stored SPICE kernel mapping in "
         f"DynamoDB: {json.dumps(spice_kernels, indent=2)}"
     )
+    return kernel_set_key
 
 
 def lambda_handler(event, context):
@@ -633,13 +660,15 @@ def lambda_handler(event, context):
         # Get packets into datasets and combine.
         combined = parse_packets(filenames, bucket, Path("/tmp"))  # noqa: S108
         logger.info("Packets parsed. Processing algorithms.")
-        # Process algorithms and insert new data.
-        process_algorithms(combined, algorithm_table, algorithm_table_name)
         # Insert kernel metadata every minute.
-        insert_kernels(dependency_inputs, algorithm_table)
+        kernel_set_key = insert_kernels(dependency_inputs, algorithm_table)
+        # Process algorithms and insert new data.
+        process_algorithms(
+            combined, algorithm_table, algorithm_table_name, kernel_set_key
+        )
 
-        process_algorithms(combined, data_table, data_table_name)
-        insert_kernels(dependency_inputs, data_table)
+        kernel_set_key = insert_kernels(dependency_inputs, data_table)
+        process_algorithms(combined, data_table, data_table_name, kernel_set_key)
 
         logger.info("Successfully wrote all new items to DynamoDB")
     else:
