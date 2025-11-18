@@ -18,7 +18,7 @@ dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
 
-def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
+def apply_time_filters(params: dict, query_kwargs: dict) -> tuple | None:
     """Apply the filters for time.
 
     Parameters
@@ -42,21 +42,53 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
     start = params.get("time_utc_start") or params.get("met_in_utc_start")
     end = params.get("time_utc_end") or params.get("met_in_utc_end")
 
-    if start and not end:
+    if start and end:
+        start_dt = validate_time(start)
+        end_dt = validate_time(end)
+        if start_dt is None or end_dt is None:
+            return None
+    elif start:
         # Calculate end to be 1 hour later.
-        start_dt = datetime.fromisoformat(start)
+        start_dt = validate_time(start)
+        if start_dt is None:
+            return None
         end_dt = start_dt + timedelta(hours=1)
-        end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
-    elif end and not start:
+    elif end:
         # Calculate start to be 1 hour earlier.
-        end_dt = datetime.fromisoformat(end)
+        end_dt = validate_time(end)
+        if end_dt is None:
+            return None
         start_dt = end_dt - timedelta(hours=1)
-        start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
+    else:
+        return None
+
+    start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
+    end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
 
     key_expr &= Key("time_utc").between(start, end)
     query_kwargs["KeyConditionExpression"] = key_expr
 
     return query_kwargs, start, end
+
+
+def validate_time(ts: str):
+    """Validate a timestamp string in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).
+
+    Parameters
+    ----------
+    ts : str
+        The timestamp string to validate.
+
+    Returns
+    -------
+    datetime | None
+        A `datetime` object if the timestamp is valid,
+        or `None` if the format is invalid.
+    """
+    try:
+        return datetime.fromisoformat(ts)
+    except Exception:
+        return None
 
 
 def _error(code: int, message: str) -> dict:
@@ -151,12 +183,13 @@ def lambda_handler(event, context):
                 "met_in_utc_end",
             )
         ):
-            query_kwargs, range_start, range_end = apply_time_filters(
-                params, query_kwargs
-            )
+            result = apply_time_filters(params, query_kwargs)
+            if result is None:
+                return _error(400, "Invalid time format: expected YYYY-MM-DDTHH:MM:SS")
+            query_kwargs, range_start, range_end = result
             # Checks if the max time range is exceeded.
-            if datetime.fromisoformat(range_end) - datetime.fromisoformat(
-                range_start
+            if abs(
+                datetime.fromisoformat(range_end) - datetime.fromisoformat(range_start)
             ) > timedelta(days=1):
                 return _error(400, "Start and end time cannot exceed 1 day apart.")
         else:
