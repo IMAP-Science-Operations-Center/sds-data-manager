@@ -45,14 +45,14 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> Key:
         if end_dt - start_dt > timedelta(days=1):
             return _error(400, "Start and end time cannot exceed 1 day apart.")
     elif start:
-        # Calculate end to be 1 day later.
+        # Calculate end to be 1 hour later.
         start_dt = datetime.fromisoformat(start)
-        end_dt = start_dt + timedelta(days=1)
+        end_dt = start_dt + timedelta(hours=1)
         end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
     elif end:
-        # Calculate start to be 1 day earlier.
+        # Calculate start to be 1 hour earlier.
         end_dt = datetime.fromisoformat(end)
-        start_dt = end_dt - timedelta(days=1)
+        start_dt = end_dt - timedelta(hours=1)
         start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
 
     key_expr &= Key("time_utc").between(start, end)
@@ -163,16 +163,15 @@ def lambda_handler(event, context):
             if isinstance(result, dict):
                 return result
         else:
-            # Get latest 1 minute if not specified.
+            # Get latest 1 hour if not specified.
             logger.info(
-                "No time range specified, defaulting to last "
-                "1 minute for instrument: %s",
+                "No time range specified, defaulting to last 1 hour for instrument: %s",
                 instrument,
             )
             now = datetime.now(timezone.utc)
-            one_minute_ago = now - timedelta(minutes=1)
+            one_hour_ago = now - timedelta(hours=1)
             query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
-                one_minute_ago.isoformat(), now.isoformat()
+                one_hour_ago.isoformat(), now.isoformat()
             )
 
         if params.get("last_evaluated_key"):
