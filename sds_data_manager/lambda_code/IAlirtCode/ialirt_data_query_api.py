@@ -18,7 +18,7 @@ dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
 
-def apply_time_filters(params: dict, query_kwargs: dict) -> None:
+def apply_time_filters(params: dict, query_kwargs: dict) -> tuple | None:
     """Apply the filters for time.
 
     Parameters
@@ -30,7 +30,12 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> None:
 
     Returns
     -------
-    None : None
+    query_kwargs : dict
+        The updated key expression with time filters applied.
+    start : str
+        Start time.
+    end : str
+        End time.
     """
     key_expr = query_kwargs["KeyConditionExpression"]
 
@@ -41,7 +46,7 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> None:
         start_dt = datetime.fromisoformat(start)
         end_dt = datetime.fromisoformat(end)
         if end_dt - start_dt > timedelta(days=1):
-            return _error(400, "Start and end time cannot exceed 1 day apart.")
+            return None
     elif start:
         # Calculate end to be 1 hour later.
         start_dt = datetime.fromisoformat(start)
@@ -56,7 +61,7 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> None:
     key_expr &= Key("time_utc").between(start, end)
     query_kwargs["KeyConditionExpression"] = key_expr
 
-    return None
+    return query_kwargs, start, end
 
 
 def _error(code: int, message: str) -> dict:
@@ -151,10 +156,12 @@ def lambda_handler(event, context):
                 "met_in_utc_end",
             )
         ):
-            err = apply_time_filters(params, query_kwargs)
+            query_kwargs, range_start, range_end = apply_time_filters(
+                params, query_kwargs
+            )
             # Checks if there was an error.
-            if err:
-                return err
+            if None:
+                return _error(400, "Start and end time cannot exceed 1 day apart.")
         else:
             # Get latest 1 hour if not specified.
             logger.info(
@@ -166,10 +173,16 @@ def lambda_handler(event, context):
             query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
                 one_hour_ago.isoformat(), now.isoformat()
             )
+            range_start = one_hour_ago.isoformat()
+            range_end = now.isoformat()
 
         t1 = time.perf_counter()
         response = table.query(**query_kwargs)
         t2 = time.perf_counter()
+        logger.info(
+            f"Querying {instrument} between {range_start} and "
+            f"{range_end} took {t2 - t1} s"
+        )
         items.extend(response.get("Items", []))
         query_time_total += t2 - t1
 
