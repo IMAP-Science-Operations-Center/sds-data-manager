@@ -174,12 +174,7 @@ def lambda_handler(event, context):
         items.extend(response.get("Items", []))
         query_time_total += t2 - t1
 
-    last_evaluated_key = response.get("LastEvaluatedKey")
-
     t3 = time.perf_counter()
-
-    encoded_lek = json.dumps(last_evaluated_key) if last_evaluated_key else None
-    has_more = last_evaluated_key is not None
 
     json_body = json.dumps(
         {
@@ -187,8 +182,6 @@ def lambda_handler(event, context):
                 "count": len(items),
                 "type": meta_type,
                 "instrument": meta_instrument,
-                "has_more": has_more,
-                "last_evaluated_key": encoded_lek,
             },
             "data": items,
         },
