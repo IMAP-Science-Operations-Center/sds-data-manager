@@ -18,7 +18,7 @@ dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
 
-def apply_time_filters(params: dict, query_kwargs: dict) -> Key:
+def apply_time_filters(params: dict, query_kwargs: dict) -> None:
     """Apply the filters for time.
 
     Parameters
@@ -30,8 +30,7 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> Key:
 
     Returns
     -------
-    key_expr : Key
-        The updated key expression with time filters applied.
+    None : None
     """
     key_expr = query_kwargs["KeyConditionExpression"]
 
@@ -57,7 +56,7 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> Key:
     key_expr &= Key("time_utc").between(start, end)
     query_kwargs["KeyConditionExpression"] = key_expr
 
-    return key_expr
+    return None
 
 
 def _error(code: int, message: str) -> dict:
@@ -152,10 +151,10 @@ def lambda_handler(event, context):
                 "met_in_utc_end",
             )
         ):
-            result = apply_time_filters(params, query_kwargs)
+            err = apply_time_filters(params, query_kwargs)
             # Checks if there was an error.
-            if isinstance(result, dict):
-                return result
+            if err:
+                return err
         else:
             # Get latest 1 hour if not specified.
             logger.info(
