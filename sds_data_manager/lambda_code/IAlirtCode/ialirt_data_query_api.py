@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from urllib.parse import quote_plus, unquote_plus, urlencode
+from urllib.parse import unquote_plus
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -40,12 +40,22 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> Key:
     end = params.get("time_utc_end") or params.get("met_in_utc_end")
 
     if start and end:
-        key_expr &= Key("time_utc").between(start, end)
+        start_dt = datetime.fromisoformat(start)
+        end_dt = datetime.fromisoformat(end)
+        if end_dt - start_dt > timedelta(days=1):
+            return _error(400, "Start and end time cannot exceed 1 day apart.")
     elif start:
-        key_expr &= Key("time_utc").gte(start)
-    else:
-        return _error(400, "End time provided without start time")
+        # Calculate end to be 1 day later.
+        start_dt = datetime.fromisoformat(start)
+        end_dt = start_dt + timedelta(days=1)
+        end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
+    elif end:
+        # Calculate start to be 1 day earlier.
+        end_dt = datetime.fromisoformat(end)
+        start_dt = end_dt - timedelta(days=1)
+        start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
 
+    key_expr &= Key("time_utc").between(start, end)
     query_kwargs["KeyConditionExpression"] = key_expr
 
     return key_expr
@@ -73,37 +83,7 @@ def _error(code: int, message: str) -> dict:
     }
 
 
-def build_next_url(event: dict, last_evaluated_key: dict) -> str:
-    """Build the next URL for pagination.
-
-    Parameters
-    ----------
-    event : dict
-        The Lambda event object.
-    last_evaluated_key : dict
-        The last evaluated key from DynamoDB query.
-
-    Returns
-    -------
-    next_url : str
-        The URL for the next page of results.
-    """
-    query_params = event.get("queryStringParameters") or {}
-    if last_evaluated_key:
-        query_params["last_evaluated_key"] = quote_plus(json.dumps(last_evaluated_key))
-
-    query_string = urlencode(query_params)
-
-    headers = event.get("headers", {})
-    host = headers.get("host", "")
-    path = event.get("requestContext", {}).get("path", "")
-
-    next_url = f"https://{host}{path}?{query_string}"
-
-    return next_url
-
-
-def lambda_handler(event, context):  # noqa: PLR0915
+def lambda_handler(event, context):
     """Create metadata and add it to the database.
 
     This function is an event handler for s3 ingest bucket.
@@ -121,7 +101,6 @@ def lambda_handler(event, context):  # noqa: PLR0915
 
     """
     params = event.get("queryStringParameters") or {}
-    self_url = build_next_url(event, None)
 
     # --- Determine key condition ---
     allowed_params = {
@@ -215,10 +194,6 @@ def lambda_handler(event, context):  # noqa: PLR0915
     encoded_lek = json.dumps(last_evaluated_key) if last_evaluated_key else None
     has_more = last_evaluated_key is not None
 
-    links = {"self": self_url}
-    if has_more and last_evaluated_key:
-        links["next"] = build_next_url(event, last_evaluated_key)
-
     json_body = json.dumps(
         {
             "meta": {
@@ -228,7 +203,6 @@ def lambda_handler(event, context):  # noqa: PLR0915
                 "has_more": has_more,
                 "last_evaluated_key": encoded_lek,
             },
-            "links": links,
             "data": items,
         },
         default=str,
