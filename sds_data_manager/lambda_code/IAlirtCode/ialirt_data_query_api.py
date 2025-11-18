@@ -5,7 +5,6 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from urllib.parse import unquote_plus
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -109,7 +108,6 @@ def lambda_handler(event, context):
         "time_utc_end",
         "met_in_utc_start",  # for backward compatibility
         "met_in_utc_end",  # for backward compatibility
-        "last_evaluated_key",
     }
 
     # Ensure allowed parameters
@@ -137,10 +135,6 @@ def lambda_handler(event, context):
         if requested_instrument
         else ["hit", "mag", "codice_lo", "codice_hi", "swapi", "swe"]
     )
-
-    # Pagination only allowed for one instrument
-    if len(instruments) > 1 and params.get("last_evaluated_key"):
-        return _error(400, "Pagination is only supported when querying one instrument")
 
     items = []
     query_time_total = 0
@@ -172,12 +166,6 @@ def lambda_handler(event, context):
             one_hour_ago = now - timedelta(hours=1)
             query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
                 one_hour_ago.isoformat(), now.isoformat()
-            )
-
-        if params.get("last_evaluated_key"):
-            raw_last_evaluated_key = params["last_evaluated_key"]
-            query_kwargs["ExclusiveStartKey"] = json.loads(
-                unquote_plus(raw_last_evaluated_key)
             )
 
         t1 = time.perf_counter()
