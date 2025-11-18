@@ -531,7 +531,7 @@ def test_process_algorithms(
         combined=None,
         algorithm_table=algorithm_table,
         table_name="ialirt-algorithm-table",
-        kernel_set_id="test-kernel-set-id",
+        kernel_set_key="test-kernel-set-id",
     )
 
     response = algorithm_table.query(KeyConditionExpression=Key("apid").eq(478))[
@@ -661,7 +661,7 @@ def test_insert_kernels(
     dependency_inputs = MagicMock()
     dependency_inputs.processing_input = [spice_input]
 
-    insert_kernels(dependency_inputs, algorithm_table, "ialirt-algorithm-table")
+    insert_kernels(dependency_inputs, algorithm_table)
 
     response = algorithm_table.query(
         KeyConditionExpression="apid = :a", ExpressionAttributeValues={":a": 478}

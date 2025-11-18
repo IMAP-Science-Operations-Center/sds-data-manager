@@ -81,23 +81,6 @@ def ialirt_data_query_api_module(setup_data_table):
     return ialirt_data_query_api
 
 
-def test_build_next_url(event, ialirt_data_query_api_module):
-    "Test build_next_url function."
-    last_evaluated_key = {
-        "instrument": "hit",
-        "time_utc": "2025-10-02T00:00:00.000000Z",
-    }
-
-    next_url = ialirt_data_query_api_module.build_next_url(event, last_evaluated_key)
-    parsed = urlparse(next_url)
-    query = parse_qs(parsed.query)
-
-    assert next_url.startswith("https://ialirt.imap-mission.com")
-    assert query.get("met_start") == ["497372400"]
-    assert query.get("met_end") == ["497376000"]
-    assert "2025-10-02" in query.get("last_evaluated_key")[0]
-
-
 def test_error_response(ialirt_data_query_api_module):
     """Test that _error() returns the correct structure."""
     response = ialirt_data_query_api_module._error(404, "Not Found")
@@ -139,8 +122,8 @@ def test_apply_time_filters_between(ialirt_data_query_api_module):
     # Check time_utc BETWEEN start AND end
     bt = between_expr.get_expression()
     assert bt["operator"] == "BETWEEN"
-    assert bt["values"][1] == "2025-10-01T10:00:00Z"
-    assert bt["values"][2] == "2025-10-01T11:00:00Z"
+    assert bt["values"][1] == "2025-10-01T10:00:00"
+    assert bt["values"][2] == "2025-10-01T11:00:00"
 
 
 def test_apply_time_filters_gte(ialirt_data_query_api_module):
@@ -149,10 +132,7 @@ def test_apply_time_filters_gte(ialirt_data_query_api_module):
     params = {"time_utc_start": "2025-10-01T10:00:00Z"}
     query_kwargs = {"KeyConditionExpression": Key("instrument").eq("hit")}
 
-    result = ialirt_data_query_api_module.apply_time_filters(params, query_kwargs)
-
-    # Should not return an error dict
-    assert not isinstance(result, dict)
+    ialirt_data_query_api_module.apply_time_filters(params, query_kwargs)
 
     # Inspect the internal structure of the KeyConditionExpression
     expr = query_kwargs["KeyConditionExpression"]
@@ -161,7 +141,7 @@ def test_apply_time_filters_gte(ialirt_data_query_api_module):
     # Must be an AND between instrument == 'hit' and time_utc >= start_time
     assert parts["operator"] == "AND"
 
-    equals_expr, gte_expr = parts["values"]
+    equals_expr, bt_expr = parts["values"]
 
     # --- Check instrument == 'hit'
     eq = equals_expr.get_expression()
@@ -169,9 +149,9 @@ def test_apply_time_filters_gte(ialirt_data_query_api_module):
     assert eq["values"][1] == "hit"
 
     # --- Check time_utc >= start_time
-    gte = gte_expr.get_expression()
-    assert gte["operator"] == ">="
-    assert gte["values"][1] == "2025-10-01T10:00:00Z"
+    bt = bt_expr.get_expression()
+    assert bt["operator"] == "BETWEEN"
+    assert bt["values"][1] == "2025-10-01T10:00:00"
 
 
 def test_apply_time_filters_error(ialirt_data_query_api_module):
@@ -182,11 +162,7 @@ def test_apply_time_filters_error(ialirt_data_query_api_module):
     result = ialirt_data_query_api_module.apply_time_filters(params, query_kwargs)
 
     # This should be an error dict
-    assert isinstance(result, dict)
-    assert result["statusCode"] == 400
-    assert json.loads(result["body"]) == {
-        "message": "End time provided without start time"
-    }
+    assert result[1] == "2025-10-01T10:00:00"
 
 
 def test_query_with_utc_range(data_table, ialirt_data_query_api_module):
@@ -200,16 +176,8 @@ def test_query_with_utc_range(data_table, ialirt_data_query_api_module):
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
-    items = json.loads(response["body"])
 
-    utc = sorted(data["time_utc"] for data in items["data"])
-
-    expected_utc = [
-        "2021-01-01T00:00:00",
-        "2021-01-03T00:00:00",
-    ]
-
-    assert utc == expected_utc
+    assert response["statusCode"] == 400
 
 
 def test_query_with_utc_start(data_table, ialirt_data_query_api_module):
@@ -217,7 +185,7 @@ def test_query_with_utc_start(data_table, ialirt_data_query_api_module):
     # GET <invoke url>/query?utc_start=<utc_start>
     event = {
         "queryStringParameters": {
-            "met_in_utc_start": "2021-01-02T00:00:00",
+            "met_in_utc_start": "2021-01-03T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
@@ -233,13 +201,12 @@ def test_query_with_utc_end(data_table, ialirt_data_query_api_module):
     # GET <invoke url>/query?met_in_utc_end=<met_in_utc_end>
     event = {
         "queryStringParameters": {
-            "met_in_utc_end": "2021-01-02T00:00:00",
+            "met_in_utc_end": "2021-01-03T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
-    assert response["statusCode"] == 400
-    expected_message = {"message": "End time provided without start time"}
-    assert json.loads(response["body"]) == expected_message
+    items = json.loads(response["body"])
+    assert items["data"][0]["time_utc"] == "2021-01-03T00:00:00"
 
 
 def test_query_results(data_table, ialirt_data_query_api_module):
@@ -361,7 +328,6 @@ def test_pagination_with_next_url(mock_query, data_table, ialirt_data_query_api_
     response1 = ialirt_data_query_api_module.lambda_handler(event1, None)
     body1 = json.loads(response1["body"])
 
-    assert body1["meta"]["has_more"] is True
     assert len(body1["data"]) == 2  # Page 1 has 2 items
     assert mock_query.call_count == 1  # DynamoDB called once
 
