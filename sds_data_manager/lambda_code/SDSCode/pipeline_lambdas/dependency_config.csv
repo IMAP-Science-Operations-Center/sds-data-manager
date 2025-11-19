@@ -730,8 +730,9 @@ pointing_attitude, spice, historical, lo, l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr
 science_frames, spice, historical, lo, l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 lo, ancillary, esa-eta-fit-factors, lo, l2, t090-ena-h-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 
-
-lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, lo, l3, l090-spx-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
+lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-12mo, lo, l3, l090-spx-h-sf-nsp-ram-hae-6deg-12mo, HARD, DOWNSTREAM
+lo, l3, l090-ena-h-sf-sp-ram-hae-6deg-12mo, lo, l3, l090-spx-h-sf-sp-ram-hae-6deg-12mo, HARD, DOWNSTREAM
+lo, l2, l090-enanbs-h-sf-nsp-ram-hae-6deg-12mo, lo, l3, l090-spxnbs-h-sf-nsp-ram-hae-6deg-12mo, HARD, DOWNSTREAM
 
 # <---- MAG Dependencies ---->
 
