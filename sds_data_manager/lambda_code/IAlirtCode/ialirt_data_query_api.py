@@ -58,7 +58,11 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
         end_dt = validate_time(end)
         start_dt = end_dt - timedelta(hours=1)
     else:
-        raise BadTimeError("Invalid or missing time filters")
+        # Get latest 1 hour if not specified.
+        logger.info("No time range specified, defaulting to last 1 hour.")
+        now = datetime.now(timezone.utc)
+        start_dt = now - timedelta(hours=1)
+        end_dt = now
 
     if abs(end_dt - start_dt) > timedelta(days=1):
         raise BadTimeError("Start and end time cannot exceed 1 day apart.")
@@ -176,33 +180,9 @@ def lambda_handler(event, context):
         query_kwargs = {"KeyConditionExpression": key_expr}
 
         try:
-            if any(
-                param in params
-                for param in (
-                    "time_utc_start",
-                    "time_utc_end",
-                    "met_in_utc_start",
-                    "met_in_utc_end",
-                )
-            ):
-                query_kwargs, range_start, range_end = apply_time_filters(
-                    params, query_kwargs
-                )
-            else:
-                # Get latest 1 hour if not specified.
-                logger.info(
-                    "No time range specified, "
-                    "defaulting to last 1 hour for instrument: %s",
-                    instrument,
-                )
-                now = datetime.now(timezone.utc)
-                one_hour_ago = now - timedelta(hours=1)
-                query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
-                    one_hour_ago.isoformat(), now.isoformat()
-                )
-                range_start = one_hour_ago.isoformat()
-                range_end = now.isoformat()
-
+            query_kwargs, range_start, range_end = apply_time_filters(
+                params, query_kwargs
+            )
         except BadTimeError as e:
             return _error(400, str(e))
 
