@@ -24,7 +24,7 @@ class BadTimeError(Exception):
     pass
 
 
-def apply_time_filters(params: dict, query_kwargs: dict) -> tuple | None:
+def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
     """Apply the filters for time.
 
     Parameters
@@ -59,6 +59,9 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple | None:
         start_dt = end_dt - timedelta(hours=1)
     else:
         raise BadTimeError("Invalid or missing time filters")
+
+    if abs(end_dt - start_dt) > timedelta(days=1):
+        raise BadTimeError("Start and end time cannot exceed 1 day apart.")
 
     start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
     end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
@@ -185,11 +188,6 @@ def lambda_handler(event, context):
                 query_kwargs, range_start, range_end = apply_time_filters(
                     params, query_kwargs
                 )
-                if abs(
-                    datetime.fromisoformat(range_end)
-                    - datetime.fromisoformat(range_start)
-                ) > timedelta(days=1):
-                    return _error(400, "Start and end time cannot exceed 1 day apart.")
             else:
                 # Get latest 1 hour if not specified.
                 logger.info(
