@@ -18,6 +18,12 @@ dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
 
+class BadTimeError(Exception):
+    """Raised when the time filters are invalid."""
+
+    pass
+
+
 def apply_time_filters(params: dict, query_kwargs: dict) -> tuple | None:
     """Apply the filters for time.
 
@@ -45,22 +51,14 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple | None:
     if start and end:
         start_dt = validate_time(start)
         end_dt = validate_time(end)
-        if start_dt is None or end_dt is None:
-            return None
     elif start:
-        # Calculate end to be 1 hour later.
         start_dt = validate_time(start)
-        if start_dt is None:
-            return None
         end_dt = start_dt + timedelta(hours=1)
     elif end:
-        # Calculate start to be 1 hour earlier.
         end_dt = validate_time(end)
-        if end_dt is None:
-            return None
         start_dt = end_dt - timedelta(hours=1)
     else:
-        return None
+        raise BadTimeError("Invalid or missing time filters")
 
     start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
     end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
@@ -87,8 +85,8 @@ def validate_time(ts: str):
     """
     try:
         return datetime.fromisoformat(ts)
-    except Exception:
-        return None
+    except Exception as e:
+        raise BadTimeError("Invalid time format") from e
 
 
 def _error(code: int, message: str) -> dict:
@@ -174,37 +172,41 @@ def lambda_handler(event, context):
         key_expr = Key("instrument").eq(instrument)
         query_kwargs = {"KeyConditionExpression": key_expr}
 
-        if any(
-            param in params
-            for param in (
-                "time_utc_start",
-                "time_utc_end",
-                "met_in_utc_start",
-                "met_in_utc_end",
-            )
-        ):
-            result = apply_time_filters(params, query_kwargs)
-            if result is None:
-                return _error(400, "Invalid time format: expected YYYY-MM-DDTHH:MM:SS")
-            query_kwargs, range_start, range_end = result
-            # Checks if the max time range is exceeded.
-            if abs(
-                datetime.fromisoformat(range_end) - datetime.fromisoformat(range_start)
-            ) > timedelta(days=1):
-                return _error(400, "Start and end time cannot exceed 1 day apart.")
-        else:
-            # Get latest 1 hour if not specified.
-            logger.info(
-                "No time range specified, defaulting to last 1 hour for instrument: %s",
-                instrument,
-            )
-            now = datetime.now(timezone.utc)
-            one_hour_ago = now - timedelta(hours=1)
-            query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
-                one_hour_ago.isoformat(), now.isoformat()
-            )
-            range_start = one_hour_ago.isoformat()
-            range_end = now.isoformat()
+        try:
+            if any(
+                param in params
+                for param in (
+                    "time_utc_start",
+                    "time_utc_end",
+                    "met_in_utc_start",
+                    "met_in_utc_end",
+                )
+            ):
+                query_kwargs, range_start, range_end = apply_time_filters(
+                    params, query_kwargs
+                )
+                if abs(
+                    datetime.fromisoformat(range_end)
+                    - datetime.fromisoformat(range_start)
+                ) > timedelta(days=1):
+                    return _error(400, "Start and end time cannot exceed 1 day apart.")
+            else:
+                # Get latest 1 hour if not specified.
+                logger.info(
+                    "No time range specified, "
+                    "defaulting to last 1 hour for instrument: %s",
+                    instrument,
+                )
+                now = datetime.now(timezone.utc)
+                one_hour_ago = now - timedelta(hours=1)
+                query_kwargs["KeyConditionExpression"] &= Key("time_utc").between(
+                    one_hour_ago.isoformat(), now.isoformat()
+                )
+                range_start = one_hour_ago.isoformat()
+                range_end = now.isoformat()
+
+        except BadTimeError as e:
+            return _error(400, str(e))
 
         t1 = time.perf_counter()
         response = table.query(**query_kwargs)
