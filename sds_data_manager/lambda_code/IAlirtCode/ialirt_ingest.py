@@ -17,7 +17,6 @@ import spiceypy
 import xarray as xr
 from boto3.dynamodb.conditions import Key
 from imap_data_access.processing_input import (
-    AncillaryInput,
     ProcessingInputCollection,
     SPICEInput,
     SPICESource,
@@ -29,7 +28,6 @@ from imap_processing.ialirt.l0.process_codice import process_codice
 from imap_processing.ialirt.l0.process_hit import process_hit
 from imap_processing.ialirt.l0.process_swapi import process_swapi_ialirt
 from imap_processing.ialirt.l0.process_swe import process_swe
-from imap_processing.mag.l1b.mag_l1b import MagAncillaryCombiner
 from imap_processing.spice.geometry import (
     SpiceBody,
     SpiceFrame,
@@ -305,10 +303,7 @@ def process_algorithms(
             elif instrument == "mag":
                 logger.info("Processing MAG.")
                 download_path = get_ancillary(instrument, "ialirt-calibration")
-                parts = download_path.stem.split("_")
-                date_str = parts[-2]
-                input_files = AncillaryInput(download_path.name)
-                ialirt_calibration_data = MagAncillaryCombiner(input_files, date_str)
+                ialirt_calibration_data = load_cdf(download_path)
 
                 logger.info("mag ialirt-calibration: %s", download_path)
                 download_path = get_ancillary(instrument, "l1b-calibration")
@@ -317,7 +312,7 @@ def process_algorithms(
                 result = process_func(
                     combined,
                     l1b_calibration_data,
-                    ialirt_calibration_data.combined_dataset,
+                    ialirt_calibration_data,
                 )
             elif instrument == "codicelo":
                 logger.info("Processing CoDICE-Lo.")
