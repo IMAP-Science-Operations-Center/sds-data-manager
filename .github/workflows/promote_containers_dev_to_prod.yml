@@ -31,6 +31,11 @@ on:
         required: false
         type: string
         default: 'latest'
+      l3_data:
+        description: 'Deploy L3 data containers (instrument-l3-repo) instead of standard containers (instrument-repo)'
+        required: false
+        type: boolean
+        default: false
 
 # Prevent multiple promotions running concurrently
 concurrency:
@@ -70,6 +75,7 @@ jobs:
           echo "Promoting instruments: $instruments_json"
           echo "From dev tag: ${{ inputs.dev_tag }}"
           echo "To prod tag: ${{ inputs.prod_tag }}"
+          echo "L3 data containers: ${{ inputs.l3_data }}"
 
   promote_images:
     needs: prepare
@@ -97,7 +103,7 @@ jobs:
       - name: Pull image from DEV
         env:
           DEV_REGISTRY: ${{ steps.login-ecr-dev.outputs.registry }}
-          REPOSITORY: ${{ matrix.instrument }}-repo
+          REPOSITORY: ${{ matrix.instrument }}${{ inputs.l3_data == true && '-l3' || '' }}-repo
           DEV_TAG: ${{ inputs.dev_tag }}
         run: |
           echo "Pulling image from DEV: $DEV_REGISTRY/$REPOSITORY:$DEV_TAG"
@@ -128,7 +134,7 @@ jobs:
         env:
           DEV_REGISTRY: ${{ steps.login-ecr-dev.outputs.registry }}
           PROD_REGISTRY: ${{ steps.login-ecr-prod.outputs.registry }}
-          REPOSITORY: ${{ matrix.instrument }}-repo
+          REPOSITORY: ${{ matrix.instrument }}${{ inputs.l3_data == true && '-l3' || '' }}-repo
           DEV_TAG: ${{ inputs.dev_tag }}
           PROD_TAG: ${{ inputs.prod_tag }}
         run: |
@@ -166,7 +172,7 @@ jobs:
 
       - name: Verify image in PROD
         env:
-          REPOSITORY: ${{ matrix.instrument }}-repo
+          REPOSITORY: ${{ matrix.instrument }}${{ inputs.l3_data == true && '-l3' || '' }}-repo
           PROD_TAG: ${{ inputs.prod_tag }}
         run: |
           echo "Verifying image $REPOSITORY:$PROD_TAG in PROD account..."
@@ -195,6 +201,7 @@ jobs:
           echo "**Source:** DEV account (${{ env.DEV_ACCOUNT }}) - tag: ${{ inputs.dev_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** PROD account (${{ env.PROD_ACCOUNT }}) - tag: ${{ inputs.prod_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "**Instruments:** $(echo '${{ needs.prepare.outputs.instruments }}' | jq -r 'join(", ")')" >> $GITHUB_STEP_SUMMARY
+          echo "**Container type:** ${{ inputs.l3_data == true && 'L3 data containers (instrument-l3-repo)' || 'Standard containers (instrument-repo)' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.promote_images.result }}" = "success" ] && [ "${{ needs.verify_promotion.result }}" = "success" ]; then

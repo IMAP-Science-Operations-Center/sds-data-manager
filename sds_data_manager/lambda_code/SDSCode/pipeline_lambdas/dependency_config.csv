@@ -36,12 +36,12 @@ codice, ancillary, lo-energy-per-charge, codice, l3a, lo-direct-events, HARD, DO
 codice, ancillary, mass-coefficient-lookup, codice, l3a, lo-direct-events, HARD, DOWNSTREAM
 
 codice, l3a, lo-partial-densities, codice, l3a, lo-sw-ratios, HARD, DOWNSTREAM
-codice, l3a, lo-partial-densities, codice, l3a, lo-sw-abundances, HARD, DOWNSTREAM
+codice, l3a, lo-partial-densities, codice, l3a, lo-sw-charge-state-distributions, HARD, DOWNSTREAM
 
 codice, l2, hi-direct-events, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
 codice, ancillary, tof-lookup, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
 
-mag, l1d, norm-mago, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
+mag, l1d, norm-dsrf, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 codice, l2, hi-sectored, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 
 codice, l3a, lo-direct-events, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
@@ -213,6 +213,56 @@ leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-hae-4deg-1yr, HARD_
 leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+# Science Frames
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+# Planetary ephemeris
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-sf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h90-ena-h-hf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 # ephemeris_reconstructed
 ephemeris_reconstructed, spice, historical, hi, l2, h90-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, hi, l2, h90-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
@@ -365,7 +415,57 @@ leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-hae-4deg-1yr, HARD_
 leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
-# ephemeris_reconstructed (Helio-frame only)
+# Science frames
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+# Planetary ephemeris
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-hae-4deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-hae-4deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-ram-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-sf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, hi, l2, h45-ena-h-hf-nsp-anti-hae-4deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
+# ephemeris_reconstructed
 ephemeris_reconstructed, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, hi, l2, h45-ena-h-hf-nsp-full-hae-6deg-3mo, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, hi, l2, h45-ena-h-sf-nsp-full-hae-6deg-6mo, HARD_NO_TRIGGER, DOWNSTREAM
@@ -543,7 +643,7 @@ hit, ancillary, l1b-to-l2-summed-dt2-factors, hit, l2, summed-intensity, HARD, D
 hit, ancillary, l1b-to-l2-summed-dt3-factors, hit, l2, summed-intensity, HARD, DOWNSTREAM
 
 hit, l2, macropixel-intensity, hit, l3, macropixel, HARD, DOWNSTREAM
-mag, l1d, norm-mago, hit, l3, macropixel, HARD, DOWNSTREAM
+mag, l1d, norm-dsrf, hit, l3, macropixel, HARD, DOWNSTREAM
 
 hit, l1a, direct-events, hit, l3, direct-events, HARD, DOWNSTREAM
 hit, ancillary, range-2A-cosine-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
@@ -791,6 +891,7 @@ ephemeris_reconstructed, spice, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 ephemeris_predicted, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_constants, spice, historical, mag, l1d, norm-srf, HARD_NO_TRIGGER, DOWNSTREAM
+spin, spin, historical, mag, l1d, norm-srf, HARD, DOWNSTREAM
 
 # L1C/L1B -> L2
 # MAG L2 and L1D look pretty similar.
@@ -919,7 +1020,7 @@ swe, l1b, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, l2, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, ancillary, config, swe, l3, sci, HARD, DOWNSTREAM
 swapi, l3a, proton-sw, swe, l3, sci, HARD, DOWNSTREAM
-mag, l1d, norm-mago, swe, l3, sci, HARD, DOWNSTREAM
+mag, l1d, norm-dsrf, swe, l3, sci, HARD, DOWNSTREAM
 imap_frames, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM

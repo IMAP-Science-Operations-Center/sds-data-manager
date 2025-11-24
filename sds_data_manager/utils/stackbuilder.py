@@ -415,6 +415,7 @@ def build_sds(
         vpc=networking.vpc,
         layers=[ialirt_spice_lambda_layer, ialirt_db_lambda_layer],
         algorithm_table=ingest.algorithm_data_table,
+        data_table=ingest.data_table,
         account_name=account_name,
     )
 

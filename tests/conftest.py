@@ -12,7 +12,7 @@ def setup_dynamodb():
     """Initialize DynamoDB resource and create table."""
     os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
     os.environ["INGEST_TABLE"] = "imap-ingest-table"
-    os.environ["ALGORITHM_TABLE"] = "imap-algorithm-table"
+    os.environ["ALGORITHM_TABLE"] = "ialirt-algorithm-table"
 
     with mock_dynamodb():
         # Initialize DynamoDB resource

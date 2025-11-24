@@ -4,7 +4,6 @@ import os
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -229,7 +228,7 @@ def test_insert_data(
         },
     ]
 
-    insert_data(test_data, algorithm_table, "hit")
+    insert_data(test_data, algorithm_table, "hit", "test-kernel-set-id")
 
     item1 = algorithm_table.get_item(Key={"apid": 478, "met": 123456})["Item"]
     item2 = algorithm_table.get_item(Key={"apid": 478, "met": 123457})["Item"]
@@ -394,7 +393,7 @@ def test_insert_formatted_data(
         },
     ]
 
-    insert_formatted_data(test_data, data_table, "mag")
+    insert_formatted_data(test_data, data_table, "mag", "test-kernel-set-id")
 
     item1 = data_table.get_item(
         Key={"instrument": "mag", "time_utc": "2021-01-01T00:00:00"}
@@ -438,21 +437,15 @@ def test_insert_formatted_data(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_utc",
     side_effect=lambda met: "2025-05-21T00:00:00",
 )
-@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.load_cdf")
-@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.pd.read_csv")
-@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.get_ancillary")
-@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_hit")
-@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_packet")
-@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swe")
-@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_codice")
-@mock.patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swapi_ialirt"
-)
-@mock.patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.MagAncillaryCombiner"
-)
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.load_cdf")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.pd.read_csv")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.get_ancillary")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_hit")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_packet")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swe")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_codice")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.process_swapi_ialirt")
 def test_process_algorithms(
-    mock_magancillarycombiner,
     mock_swapi,
     mock_codice,
     mock_swe,
@@ -461,7 +454,7 @@ def test_process_algorithms(
     mock_get_ancillary,
     mock_load_cdf,
     mock_read_csv,
-    mock_sclkticks,
+    mock_met_to_sclkticks,
     mock_sct_to_et,
     mock_met_to_utc,
     mock_imap_state,
@@ -469,20 +462,19 @@ def test_process_algorithms(
 ):
     """Tests process_algorithms function."""
     algorithm_table = setup_dynamodb["algorithm_table"]
+
+    # Mock calibration + lookup
     mock_load_cdf.return_value = {"mock": "calibration data"}
     mock_read_csv.return_value = pd.DataFrame({"mock": [1.23]})
+    mock_get_ancillary.return_value = Path(
+        "/mock/imap_mag_l1b-calibration_20250101_v002.cdf"
+    )
 
-    mock_combiner_instance = MagicMock()
-    mock_combiner_instance.combined_dataset = "mocked_combined_dataset"
-    mock_magancillarycombiner.return_value = mock_combiner_instance
-
+    # Mock algorithm outputs
     mock_hit.return_value = [
-        {
-            "apid": 478,
-            "met": 111,
-            "hit_e_a_side_low_en": Decimal("1.0"),
-        }
+        {"apid": 478, "met": 111, "hit_e_a_side_low_en": Decimal("1.0")}
     ]
+
     mock_swe.return_value = [
         {
             "apid": 478,
@@ -490,61 +482,37 @@ def test_process_algorithms(
             "swe_normalized_counts_quarter_1_esa_0": Decimal("0.123"),
         }
     ]
+
     mock_packet.return_value = [
-        {
-            "apid": 478,
-            "met": 333,
-            "mag_phi_4s_b_gsm": Decimal("0.456"),
-        }
+        {"apid": 478, "met": 333, "mag_phi_4s_b_gsm": Decimal("0.456")}
     ]
 
     mock_codice.return_value = (
-        [
-            {
-                "apid": 478,
-                "met": 333,
-                "codice": Decimal("0.456"),
-            }
-        ],
-        [
-            {
-                "apid": 478,
-                "met": 333,
-                "codice": Decimal("0.456"),
-            }
-        ],
+        [{"apid": 478, "met": 444, "codice": Decimal("0.789")}],
+        [{"apid": 478, "met": 445, "codice": Decimal("0.111")}],
     )
 
-    mock_swapi.return_value = [
-        {
-            "apid": 478,
-            "met": 335,
-            "swapi": Decimal("0.123"),
-        }
-    ]
+    mock_swapi.return_value = [{"apid": 478, "met": 555, "swapi": Decimal("0.123")}]
 
-    mock_get_ancillary.return_value = Path(
-        "/mock/imap_mag_l1b-calibration_20250101_v002.cdf"
-    )
-
+    # --- Call function ---
     process_algorithms(
         combined=None,
         algorithm_table=algorithm_table,
         table_name="ialirt-algorithm-table",
+        kernel_set_key="test-kernel-set-id",
     )
 
-    response = algorithm_table.query(KeyConditionExpression=Key("apid").eq(478))[
-        "Items"
-    ]
+    # --- Verify DynamoDB inserts ---
+    items = algorithm_table.query(KeyConditionExpression=Key("apid").eq(478))["Items"]
 
-    assert any(
-        item["met"] == 111 and "hit_e_a_side_low_en" in item for item in response
-    )
+    assert any(item["met"] == 111 and "hit_e_a_side_low_en" in item for item in items)
     assert any(
         item["met"] == 222 and "swe_normalized_counts_quarter_1_esa_0" in item
-        for item in response
+        for item in items
     )
-    assert any(item["met"] == 333 and "mag_phi_4s_b_gsm" in item for item in response)
+    assert any(item["met"] == 333 and "mag_phi_4s_b_gsm" in item for item in items)
+    assert any(item["met"] == 444 and "codice" in item for item in items)
+    assert any(item["met"] == 555 and "swapi" in item for item in items)
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")

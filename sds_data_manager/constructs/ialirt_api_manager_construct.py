@@ -24,6 +24,7 @@ class IalirtApiManager(Construct):
         vpc,
         layers: list,
         algorithm_table: ddb.Table,
+        data_table: ddb.Table,
         account_name: str = "dev",
         **kwargs,
     ) -> None:
@@ -49,6 +50,8 @@ class IalirtApiManager(Construct):
             List of Lambda layers arns
         algorithm_table : obj
             The algorithm DynamoDB table
+        data_table : object
+            The data DynamoDB Table
         account_name : str
             The account name. Eg. 'prod' or 'dev'
         kwargs : dict
@@ -249,7 +252,7 @@ class IalirtApiManager(Construct):
             "IAlirtDbQueryApiFormattedHandler",
             function_name="ialirt-db-query-formatted-handler",
             code=code,
-            handler="IAlirtCode.ialirt_db_query_api_formatted.lambda_handler",
+            handler="IAlirtCode.ialirt_data_query_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             # Lambda allocates CPU proportionally to memory,
@@ -257,13 +260,13 @@ class IalirtApiManager(Construct):
             # JSON parsing and network serialization.
             memory_size=2048,
             environment={
-                "ALGORITHM_TABLE": algorithm_table.table_name,
+                "DATA_TABLE": data_table.table_name,
                 "REGION": env.region,
             },
         )
 
         # Grant the lambda function read/write permissions on the DynamoDB table.
-        algorithm_table.grant_read_data(ialirt_db_query_formatted_handler)
+        data_table.grant_read_data(ialirt_db_query_formatted_handler)
 
         add_stable_route(
             api,

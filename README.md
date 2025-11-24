@@ -133,5 +133,5 @@ python sds_data_manager/lambda_code/authorization/manage_api_keys.py remove <key
 python sds_data_manager/lambda_code/authorization/manage_api_keys.py update_permission <owner> <email> <scope>
 AWS_PROFILE=imap-sdc-dev AWS_DEFAULT_REGION=us-west-2 \
   python sds_data_manager/lambda_code/authorization/manage_api_keys.py \
-      add "First Last" "user@example.com"
+      add "First Last" "user@example.com" "full"
 ```
