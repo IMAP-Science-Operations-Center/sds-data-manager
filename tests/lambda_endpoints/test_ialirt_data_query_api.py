@@ -4,6 +4,7 @@ import importlib
 import json
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 
 import pytest
 from boto3.dynamodb.conditions import Key
@@ -274,3 +275,32 @@ def test_query_with_no_parameters(data_table, ialirt_data_query_api_module):
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
 
     assert json.loads(response["body"])["data"][0]["instrument"] == "mag"
+
+
+def test_process_item_types(ialirt_data_query_api_module):
+    """Test process_item_types function."""
+    items = [
+        {
+            "instrument": "mag",
+            "time_utc": "2025-06-20T08:00:00",
+            "ttj2000ns": Decimal("123456789000000"),
+            "mag_B_GSE": [Decimal("0.0"), Decimal("0.1"), Decimal("0.2")],
+            "mag_B_magnitude": Decimal("0.22"),
+            "mag_hk_status": {"pri_isvalid": True, "hkn8v5": Decimal("3680")},
+        }
+    ]
+
+    processed_items = [
+        ialirt_data_query_api_module.process_item_types(item) for item in items
+    ]
+
+    assert processed_items == [
+        {
+            "instrument": "mag",
+            "time_utc": "2025-06-20T08:00:00",
+            "ttj2000ns": 123456789000000,
+            "mag_B_GSE": [0.0, 0.1, 0.2],
+            "mag_B_magnitude": 0.22,
+            "mag_hk_status": {"pri_isvalid": True, "hkn8v5": 3680},
+        }
+    ]

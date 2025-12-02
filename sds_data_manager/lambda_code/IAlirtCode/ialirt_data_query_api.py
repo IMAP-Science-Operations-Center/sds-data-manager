@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -22,6 +23,44 @@ class BadTimeError(Exception):
     """Raised when the time filters are invalid."""
 
     pass
+
+
+def process_item_types(item: dict) -> dict:
+    """Convert Decimal values to int/float for known fields.
+
+    Parameters
+    ----------
+    item : dict
+        The item in the dictionary.
+
+    Returns
+    -------
+    result : dict
+        Properly formatted parameters.
+    """
+    result = {}
+
+    for key, value in item.items():
+        # Vectors fields
+        if isinstance(value, list):
+            result[key] = [int(v) if v % 1 == 0 else round(float(v), 3) for v in value]
+        # Dictionary fields
+        elif isinstance(value, dict):
+            nested = {}
+            for k, v in value.items():
+                if isinstance(v, Decimal):
+                    nested[k] = int(v) if v % 1 == 0 else round(float(v), 3)
+                else:
+                    nested[k] = v
+            result[key] = nested
+        # Scalar fields
+        elif isinstance(value, Decimal):
+            result[key] = int(value) if value % 1 == 0 else round(float(value), 3)
+
+        else:
+            result[key] = value
+
+    return result
 
 
 def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
@@ -63,9 +102,6 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
         now = datetime.now(timezone.utc)
         start_dt = now - timedelta(hours=1)
         end_dt = now
-
-    if abs(end_dt - start_dt) > timedelta(days=1):
-        raise BadTimeError("Start and end time cannot exceed 1 day apart.")
 
     start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
     end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
@@ -193,7 +229,8 @@ def lambda_handler(event, context):
             f"Querying {instrument} between {range_start} and "
             f"{range_end} took {t2 - t1} s"
         )
-        items.extend(response.get("Items", []))
+        raw_items = response.get("Items", [])
+        items.extend(process_item_types(item) for item in raw_items)  # accumulate
         query_time_total += t2 - t1
 
     t3 = time.perf_counter()
@@ -207,7 +244,6 @@ def lambda_handler(event, context):
             },
             "data": items,
         },
-        default=str,
     )
 
     t4 = time.perf_counter()
