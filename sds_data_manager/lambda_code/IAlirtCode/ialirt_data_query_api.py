@@ -25,42 +25,20 @@ class BadTimeError(Exception):
     pass
 
 
-def process_item_types(item: dict) -> dict:
-    """Convert Decimal values to int/float for known fields.
+class DecimalEncoder(json.JSONEncoder):
+    """Convert Decimals to floats."""
 
-    Parameters
-    ----------
-    item : dict
-        The item in the dictionary.
+    def default(self, obj):
+        """Override JSON encoding for Decimal values."""
+        if isinstance(obj, Decimal):
+            # - If the Decimal is an integer, return int
+            # - Otherwise, float rounded to 3 decimal places
+            if obj % 1 == 0:
+                return int(obj)
+            return round(float(obj), 3)
 
-    Returns
-    -------
-    result : dict
-        Properly formatted parameters.
-    """
-    result = {}
-
-    for key, value in item.items():
-        # Vectors fields
-        if isinstance(value, list):
-            result[key] = [int(v) if v % 1 == 0 else round(float(v), 3) for v in value]
-        # Dictionary fields
-        elif isinstance(value, dict):
-            nested = {}
-            for k, v in value.items():
-                if isinstance(v, Decimal):
-                    nested[k] = int(v) if v % 1 == 0 else round(float(v), 3)
-                else:
-                    nested[k] = v
-            result[key] = nested
-        # Scalar fields
-        elif isinstance(value, Decimal):
-            result[key] = int(value) if value % 1 == 0 else round(float(value), 3)
-
-        else:
-            result[key] = value
-
-    return result
+        # Let the base class raise for other unsupported types
+        return super().default(obj)
 
 
 def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
@@ -196,6 +174,9 @@ def lambda_handler(event, context):
     elif params["instrument"].endswith("hk"):
         meta_instrument = params["instrument"]
         meta_type = "hk"
+    elif params["instrument"] == "spacecraft":
+        meta_instrument = params["instrument"]
+        meta_type = "spacecraft"
     else:
         meta_instrument = params["instrument"]
         meta_type = "science"
@@ -241,7 +222,7 @@ def lambda_handler(event, context):
             f"{range_end} took {t2 - t1} s"
         )
         raw_items = response.get("Items", [])
-        items.extend(process_item_types(item) for item in raw_items)  # accumulate
+        items.extend(raw_items)
         query_time_total += t2 - t1
 
     t3 = time.perf_counter()
@@ -255,6 +236,7 @@ def lambda_handler(event, context):
             },
             "data": items,
         },
+        cls=DecimalEncoder,
     )
 
     t4 = time.perf_counter()

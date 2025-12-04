@@ -176,7 +176,7 @@ def test_query_with_utc_range(data_table, ialirt_data_query_api_module):
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
 
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 200
 
 
 def test_query_with_utc_start(data_table, ialirt_data_query_api_module):
@@ -278,7 +278,7 @@ def test_query_with_no_parameters(data_table, ialirt_data_query_api_module):
 
 
 def test_process_item_types(ialirt_data_query_api_module):
-    """Test process_item_types function."""
+    """Test Decimal handling via JSON encoder."""
     items = [
         {
             "instrument": "mag",
@@ -290,9 +290,12 @@ def test_process_item_types(ialirt_data_query_api_module):
         }
     ]
 
-    processed_items = [
-        ialirt_data_query_api_module.process_item_types(item) for item in items
-    ]
+    # Use JSON encoder to process Decimals instead of process_item_types
+    json_output = json.dumps(
+        items,
+        cls=ialirt_data_query_api_module.DecimalEncoder,
+    )
+    processed_items = json.loads(json_output)
 
     assert processed_items == [
         {
