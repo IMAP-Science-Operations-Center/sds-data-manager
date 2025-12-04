@@ -265,7 +265,7 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     return combined
 
 
-def process_algorithms(
+def process_algorithms(  # noqa: PLR0915
     combined: xr.Dataset, algorithm_table, table_name, kernel_set_key
 ):
     """Process the algorithms and insert data, as needed.
@@ -285,8 +285,8 @@ def process_algorithms(
         ("mag", process_packet),
         ("hit", process_hit),
         ("swe", process_swe),
-        ("codicelo", process_codice),
-        ("codicehi", process_codice),
+        ("codice_lo", process_codice),
+        ("codice_hi", process_codice),
         ("swapi", process_swapi_ialirt),
     ]
 
@@ -314,16 +314,24 @@ def process_algorithms(
                     l1b_calibration_data,
                     ialirt_calibration_data,
                 )
-            elif instrument == "codicelo":
+            elif instrument == "codice_lo":
                 logger.info("Processing CoDICE-Lo.")
-                download_path = get_ancillary("codice", "l1a-sci-lut")
-                logger.info("codice sci-lut: %s", download_path)
-                result, _ = process_func(combined, download_path)
-            elif instrument == "codicehi":
+                l1a_download_path = get_ancillary("codice", "l1a-sci-lut")
+                l2_download_path = get_ancillary("codice", "l2-hi-ialirt-efficiency")
+                logger.info("codice sci-lut: %s", l1a_download_path)
+                logger.info("codice sci-lut: %s", l2_download_path)
+                result, _ = process_func(
+                    combined, l1a_download_path, l2_download_path, "codice_lo"
+                )
+            elif instrument == "codice_hi":
                 logger.info("Processing CoDICE-Hi.")
-                download_path = get_ancillary("codice", "l1a-sci-lut")
-                logger.info("codice sci-lut: %s", download_path)
-                _, result = process_func(combined, download_path)
+                l1a_download_path = get_ancillary("codice", "l1a-sci-lut")
+                l2_download_path = get_ancillary("codice", "l2-hi-ialirt-efficiency")
+                logger.info("codice sci-lut: %s", l1a_download_path)
+                logger.info("codice sci-lut: %s", l2_download_path)
+                _, result = process_func(
+                    combined, l1a_download_path, l2_download_path, "codice_hi"
+                )
             elif instrument == "swapi":
                 logger.info("Processing SWAPI.")
                 download_path = get_ancillary(instrument, "esa-unit-conversion")
