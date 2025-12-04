@@ -224,6 +224,17 @@ def lambda_handler(event, context):
 
         t1 = time.perf_counter()
         response = table.query(**query_kwargs)
+
+        if "LastEvaluatedKey" in response:
+            return _error(
+                400,
+                (
+                    f"Your request for '{instrument}' returned more data than allowed "
+                    f"in a single query. Please reduce the time window "
+                    f"or filter further."
+                ),
+            )
+
         t2 = time.perf_counter()
         logger.info(
             f"Querying {instrument} between {range_start} and "
