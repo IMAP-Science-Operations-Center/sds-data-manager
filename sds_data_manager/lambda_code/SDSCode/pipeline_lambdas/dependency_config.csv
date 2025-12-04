@@ -91,6 +91,7 @@ glows, ancillary, map-of-excluded-regions, glows, l1b, hist, HARD, DOWNSTREAM
 glows, ancillary, map-of-uv-sources, glows, l1b, hist, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings, glows, l1b, hist, HARD, DOWNSTREAM
 glows, ancillary, suspected-transients, glows, l1b, hist, HARD, DOWNSTREAM
+imap_frames, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
