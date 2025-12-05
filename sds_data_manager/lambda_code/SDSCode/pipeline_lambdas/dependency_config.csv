@@ -91,7 +91,9 @@ glows, ancillary, map-of-excluded-regions, glows, l1b, hist, HARD, DOWNSTREAM
 glows, ancillary, map-of-uv-sources, glows, l1b, hist, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings, glows, l1b, hist, HARD, DOWNSTREAM
 glows, ancillary, suspected-transients, glows, l1b, hist, HARD, DOWNSTREAM
+imap_frames, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, glows, l1b, hist, HARD, DOWNSTREAM
 pointing_attitude, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
@@ -830,8 +832,9 @@ pointing_attitude, spice, historical, lo, l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr
 science_frames, spice, historical, lo, l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 lo, ancillary, esa-eta-fit-factors, lo, l2, t090-ena-h-sf-nsp-ram-hae-6deg-1yr, HARD_NO_TRIGGER, DOWNSTREAM
 
-
-lo, l3, l090-ena-h-sf-sp-ram-hae-4deg-6mo, lo, l3, l090-spx-h-sf-sp-ram-hae-4deg-6mo, HARD, DOWNSTREAM
+lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-1yr, lo, l3, l090-spx-h-sf-nsp-ram-hae-6deg-1yr, HARD, DOWNSTREAM
+lo, l3, l090-ena-h-sf-sp-ram-hae-6deg-1yr, lo, l3, l090-spx-h-sf-sp-ram-hae-6deg-1yr, HARD, DOWNSTREAM
+lo, l2, l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr, lo, l3, l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr, HARD, DOWNSTREAM
 
 # <---- MAG Dependencies ---->
 
@@ -970,13 +973,13 @@ swapi, ancillary, energy-gf-pui-lut, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOW
 swapi, ancillary, instrument-response-lut, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, efficiency-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
-ephemeris_reconstructed, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+attitude_history, spice, historical, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
-pointing_attitude, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
@@ -986,14 +989,14 @@ swapi, ancillary, energy-gf-pui-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, efficiency-lut, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
-ephemeris_reconstructed, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swapi, l3a, pui-he, HARD, DOWNSTREAM
 planetary_ephemeris, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, swapi, l3a, pui-he, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
-pointing_attitude, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, swapi, l3a, pui-he, HARD, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3b, combined, HARD, DOWNSTREAM
 swapi, ancillary, efficiency-lut, swapi, l3b, combined, HARD, DOWNSTREAM

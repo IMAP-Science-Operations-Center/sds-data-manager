@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -22,6 +23,22 @@ class BadTimeError(Exception):
     """Raised when the time filters are invalid."""
 
     pass
+
+
+class DecimalEncoder(json.JSONEncoder):
+    """Convert Decimals to floats."""
+
+    def default(self, obj):
+        """Override JSON encoding for Decimal values."""
+        if isinstance(obj, Decimal):
+            # - If the Decimal is an integer, return int
+            # - Otherwise, float rounded to 3 decimal places
+            if obj % 1 == 0:
+                return int(obj)
+            return round(float(obj), 3)
+
+        # Let the base class raise for other unsupported types
+        return super().default(obj)
 
 
 def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
@@ -63,9 +80,6 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
         now = datetime.now(timezone.utc)
         start_dt = now - timedelta(hours=1)
         end_dt = now
-
-    if abs(end_dt - start_dt) > timedelta(days=1):
-        raise BadTimeError("Start and end time cannot exceed 1 day apart.")
 
     start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
     end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
@@ -160,6 +174,9 @@ def lambda_handler(event, context):
     elif params["instrument"].endswith("hk"):
         meta_instrument = params["instrument"]
         meta_type = "hk"
+    elif params["instrument"] == "spacecraft":
+        meta_instrument = params["instrument"]
+        meta_type = "spacecraft"
     else:
         meta_instrument = params["instrument"]
         meta_type = "science"
@@ -188,12 +205,24 @@ def lambda_handler(event, context):
 
         t1 = time.perf_counter()
         response = table.query(**query_kwargs)
+
+        if "LastEvaluatedKey" in response:
+            return _error(
+                400,
+                (
+                    f"Your request for '{instrument}' returned more data than allowed "
+                    f"in a single query. Please reduce the time window "
+                    f"or filter further."
+                ),
+            )
+
         t2 = time.perf_counter()
         logger.info(
             f"Querying {instrument} between {range_start} and "
             f"{range_end} took {t2 - t1} s"
         )
-        items.extend(response.get("Items", []))
+        raw_items = response.get("Items", [])
+        items.extend(raw_items)
         query_time_total += t2 - t1
 
     t3 = time.perf_counter()
@@ -207,7 +236,7 @@ def lambda_handler(event, context):
             },
             "data": items,
         },
-        default=str,
+        cls=DecimalEncoder,
     )
 
     t4 = time.perf_counter()
