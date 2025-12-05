@@ -18,22 +18,6 @@ def lambda_handler(event, context):
     """Lambda function to query batch processing job information."""
     logger.info("Received event: " + json.dumps(event, indent=2))
 
-    # If query parameters are not provided, return last n records
-    if not event.get("queryStringParameters"):
-        with db.Session() as session:
-            query = select(ProcessingJob).order_by(ProcessingJob.id.desc()).limit(100)
-            result = session.scalars(query).all()
-            logger.info(
-                f"No input parameters provided. Returning latest 100 records: {result}"
-            )
-
-            result_list = [job.to_dict() for job in result] if result else []
-
-        return {
-            "statusCode": 200,
-            "body": json.dumps(result_list),
-        }
-
     processing_table = ProcessingJob
     filters = []
 
@@ -44,7 +28,7 @@ def lambda_handler(event, context):
         if column.key not in ["id"]
     ]
 
-    for param, value in event["queryStringParameters"].items():
+    for param, value in event.get("queryStringParameters", {}).items():
         if param not in valid_parameters:
             logger.info(f"Invalid parameter: {param}")
             return {
@@ -74,7 +58,12 @@ def lambda_handler(event, context):
 
     # Construct query using filters list
     with db.Session() as session:
-        query = select(processing_table).where(and_(*filters))
+        query = (
+            select(processing_table)
+            .where(and_(*filters))
+            .order_by(ProcessingJob.id.desc())
+            .limit(100)
+        )
         result = session.scalars(query).all()
         logger.info(f"Query result: {result}")
 
