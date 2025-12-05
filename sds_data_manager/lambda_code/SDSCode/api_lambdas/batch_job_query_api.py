@@ -78,9 +78,24 @@ def lambda_handler(event, context):
         result = session.scalars(query).all()
         logger.info(f"Query result: {result}")
 
-        result_list = [job.to_dict() for job in result] if result else []
+        result_list = [_format_processing_job(job) for job in result]
 
     return {
         "statusCode": 200,
         "body": json.dumps(result_list),
     }
+
+
+def _format_processing_job(processing_job: ProcessingJob) -> dict:
+    """Format processing job information for output."""
+    # Turn it into a dictionary and add a local command for
+    # re-running the job locally
+    job_dict = processing_job.to_dict()
+    # container_command can be None, so we also need to set that case
+    # to the empty string
+    container_command = job_dict.pop("container_command", "") or ""
+    local_command = (
+        "imap_cli " + container_command.replace("--upload-to-sdc", "").strip()
+    )
+    # Put command at the start of the dict so it displays first
+    return {"job_command": local_command, **job_dict}

@@ -114,3 +114,27 @@ def test_batch_job_query_api(session):
     response = batch_job_query_api.lambda_handler(event, None)
     assert response["statusCode"] == 200
     assert json.loads(response["body"]) == []
+
+
+def test_batch_job_query_api_local_command():
+    """Test that local command is correctly formatted in the output."""
+    processing_job = ProcessingJob(
+        status=models.Status.SUCCEEDED,
+        instrument="lo",
+        data_level="l1b",
+        descriptor="de",
+        start_date=datetime(2010, 1, 1),
+        version="v001",
+        job_definition="lo-definition",
+        job_log_stream_id="lo-log-stream-id",
+        container_image="lo-container-image",
+        container_command="--abc --123 --upload-to-sdc",
+        started_at=datetime(2010, 1, 1, 20, 21, 9, 388000),
+        stopped_at=datetime(2010, 1, 1, 20, 21, 34, 388000),
+    )
+
+    formatted_job = batch_job_query_api._format_processing_job(processing_job)
+
+    # The job_command should be the first entry
+    assert "job_command" == next(iter(formatted_job))
+    assert formatted_job["job_command"] == "imap_cli --abc --123"
