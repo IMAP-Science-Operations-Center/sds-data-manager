@@ -32,6 +32,8 @@ def is_released(s3_key):
     if "test_data" in s3_key:
         # Default to released for any test data files for our CI testing
         return True
+    if s3_key.startswith(("packets/", "archive/")):
+        return True
     try:
         filename = os.path.basename(s3_key)
         file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
