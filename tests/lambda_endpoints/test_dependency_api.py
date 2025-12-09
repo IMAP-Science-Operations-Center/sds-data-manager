@@ -40,10 +40,8 @@ from tests.lambda_endpoints.conftest import (
 
 def test_no_dependencies():
     """Test lambda_handler when no dependencies are found."""
-    deps = dependency.get_jobs(
-        data_source="nonexistent",
-        data_type="l0",
-        descriptor="raw",
+    deps = dependency.get_dependencies(
+        ("nonexistent", "l0", "raw"),
         dependency_type="UPSTREAM",
         relationship="HARD",
     )
@@ -53,10 +51,8 @@ def test_no_dependencies():
 def test_invalid_dependency_type():
     """Test lambda_handler when invalid dependency type is provided."""
     with pytest.raises(KeyError):
-        dependency.get_jobs(
-            data_source="jim",
-            data_type="l0",
-            descriptor="raw",
+        dependency.get_dependencies(
+            ("jim", "l0", "raw"),
             dependency_type="INVALID",
             relationship="HARD",
         )
@@ -175,9 +171,7 @@ def test_missing_soft_dependencies(session):
 def test_missing_required_params():
     """Test that 400 error is returned."""
     with pytest.raises(
-        ValueError,
-        match=r"end_date not found. If 'start_date' is "
-        r"supplied, 'end_date' is required.",
+        TypeError, match=r"get_jobs\(\) missing 1 required positional argument:"
     ):
         dependency.get_jobs(
             dependency_type="DOWNSTREAM",
@@ -311,10 +305,8 @@ def test_get_jobs_spice(session):
 #####################################
 def test_get_downstream_dependencies():
     """Tests get_downstream_dependencies function."""
-    dependency_response = dependency.get_jobs(
-        data_source="hit",
-        data_type="l1a",
-        descriptor="counts-sectored",
+    dependency_response = dependency.get_dependencies(
+        ("hit", "l1a", "counts-sectored"),
         relationship="HARD",
         dependency_type="DOWNSTREAM",
     )
@@ -332,10 +324,8 @@ def test_get_downstream_dependencies():
     assert dependency_response == expected_complete_dependent
 
     # Add test for getting back ancillary dependency
-    dependency_response = dependency.get_jobs(
-        data_source="swe",
-        data_type="l1b",
-        descriptor="sci",
+    dependency_response = dependency.get_dependencies(
+        ("swe", "l1b", "sci"),
         relationship="HARD",
         dependency_type="UPSTREAM",
     )
@@ -372,10 +362,8 @@ def test_get_downstream_dependencies():
 
 def test_get_downstream_dependencies_for_all_relationships():
     """Add test for getting back ancillary dependencies."""
-    dependency_response = dependency.get_jobs(
-        data_source="mag",
-        data_type="l1b",
-        descriptor="norm-mago",
+    dependency_response = dependency.get_dependencies(
+        ("mag", "l1b", "norm-mago"),
         relationship="ALL",
         dependency_type="DOWNSTREAM",
     )

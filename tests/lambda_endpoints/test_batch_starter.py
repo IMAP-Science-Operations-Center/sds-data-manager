@@ -1659,10 +1659,8 @@ def test_duplicate_job(session, first_status, second_status):
 
 def test_dependency_success():
     """Test the handler returns the expected dependency result."""
-    dependencies = dependency.get_jobs(
-        data_source="swe",
-        data_type="l1a",
-        descriptor="sci",
+    dependencies = dependency.get_dependencies(
+        ("swe", "l1a", "sci"),
         dependency_type="UPSTREAM",
         relationship="HARD",
     )
@@ -1676,10 +1674,8 @@ def test_dependency_success():
     ]
 
     # Check for SPICE upstream dependencies
-    dependencies = dependency.get_jobs(
-        data_source="idex",
-        data_type="l1b",
-        descriptor="sci-1week",
+    dependencies = dependency.get_dependencies(
+        ("idex", "l1b", "sci-1week"),
         relationship="HARD",
         dependency_type="UPSTREAM",
     )
