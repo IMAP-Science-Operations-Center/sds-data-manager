@@ -751,29 +751,25 @@ def s3_processing_event(session, events):
         if input_obj.data_type == "spice":
             input_obj.source = input_obj.source[0]
 
-        potential_jobs = dependency.get_jobs(
-            data_source=input_obj.source,
-            descriptor=input_obj.descriptor,
-            data_type=input_obj.data_type,
+        potential_jobs = dependency.get_dependencies(
+            node=(input_obj.source, input_obj.data_type, input_obj.descriptor),
             dependency_type="DOWNSTREAM",
             relationship="HARD",
         )
 
         # SOFT_TRIGGER dependencies will try to set off processing
-        potential_soft_jobs = dependency.get_jobs(
-            data_source=input_obj.source,
-            descriptor=input_obj.descriptor,
-            data_type=input_obj.data_type,
+        potential_soft_jobs = dependency.get_dependencies(
+            node=(input_obj.source, input_obj.data_type, input_obj.descriptor),
             dependency_type="DOWNSTREAM",
             relationship="SOFT_TRIGGER",
-        )
-        logger.info(
-            f"Potential jobs: {potential_jobs} and potential soft jobs: "
-            f"{potential_soft_jobs}"
         )
         if not potential_jobs and not potential_soft_jobs:
             logger.info(f"No downstream dependencies found for the file: {filename}")
             continue
+        logger.info(
+            f"Potential jobs: {potential_jobs} and potential soft jobs: "
+            f"{potential_soft_jobs}"
+        )
 
         # Boolean to determine if the file that triggered the job is a science file.
         # If True, we will check if the expected CRIDs exist for the upstream

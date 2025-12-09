@@ -422,7 +422,17 @@ def get_dependencies(node, dependency_type, relationship):
     -------
     dependencies : list
         List of dictionary containing the dependency information.
+
+    Raises
+    ------
+    ValueError
+        If dependencies cannot be loaded or is None.
     """
+    logger.info(
+        f"Dependency Event: node={node}, dependency_type={dependency_type}, "
+        f"relationship={relationship}"
+    )
+
     # Load the dependencies
     dependency_config = DependencyConfig()
 
@@ -445,6 +455,12 @@ def get_dependencies(node, dependency_type, relationship):
                 for dep in deps
             ]
         )
+
+    logger.info(f"{relationship} dependency nodes found: {dependencies}")
+    if dependencies is None:
+        logger.warning("Failed to load dependencies")
+        raise ValueError("Failed to load dependencies")
+
     return dependencies
 
 
@@ -1141,13 +1157,17 @@ def get_jobs(
     data_source: str,
     data_type: str,
     descriptor: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: str,
+    end_date: str,
     repoint: Optional[int] = None,
     calculate_crids: bool = False,
     get_spice: bool = True,
-) -> list | ProcessingInputCollection | None:
-    """Get dependencies for the given inputs.
+) -> ProcessingInputCollection | None:
+    """Query for upstream dependency files that exist in S3.
+
+    This function retrieves the dependency graph for a given data product and queries
+    the database for actual files that satisfy those dependencies within the specified
+    date range.
 
     Parameters
     ----------
@@ -1163,11 +1183,10 @@ def get_jobs(
         Data type of the data product.
     descriptor : str
         Descriptor of the data product.
-    start_date : str, optional
-        Start date to find dependent files with, in YYYYMMDD format.
-    end_date : str, optional
-        End date to find dependent files with, in YYYYMMDD format. Required if
-        start_date is provided.
+    start_date : str
+        Start date to find dependent files with, in YYYYMMDD format. Required.
+    end_date : str
+        End date to find dependent files with, in YYYYMMDD format. Required.
     repoint : int, optional
         Repoint number associated with the job.
     calculate_crids : bool, optional
@@ -1182,31 +1201,9 @@ def get_jobs(
 
     Returns
     -------
-    dependencies : list or ProcessingInputCollection or None
-        If "start_date" is not supplied return list of dictionaries containing
-        the dependencies information like this:
-            [
-                {
-                    "data_source": "hit",
-                    "data_type": "l1a",
-                    "descriptor": "all",
-                    "relationship": "HARD",
-                },
-                {
-                    "data_source": "hit",
-                    "data_type": "l1b",
-                    "descriptor": "hk",
-                    "relationship": "HARD",
-                },
-                {
-                    "data_source": "sc_attitude",
-                    "data_type": "spice",
-                    "descriptor": "historical",
-                    "relationship": "HARD",
-                },
-            ]
-        If "start_date" is supplied, "end_date" is required. Return a
-        ProcessingInputCollection of files that exist on s3.
+    ProcessingInputCollection or None
+        A ProcessingInputCollection of files that exist on s3, or None if required
+        dependencies are missing. Example structure:
             [
                 {
                     "type": "ancillary",
@@ -1229,33 +1226,14 @@ def get_jobs(
                     ]
                 }
             ]
-
-
     """
-    logger.info(
-        f"Dependency Event: {data_source=}, {data_type=}, {descriptor=},"
-        f" {dependency_type=}, {relationship=}"
-    )
-
     dependencies = get_dependencies(
         (data_source, data_type, descriptor),
         dependency_type,
         relationship,
     )
-    logger.info(f"{relationship} dependency nodes found: {dependencies}")
-    if dependencies is None:
-        logger.warning("Failed to load dependencies")
-        raise ValueError("Failed to load dependencies")
 
-    # If start_date is supplied, check for the version and end_date.
-    start_date = datetime.strptime(start_date, "%Y%m%d") if start_date else None
-    if start_date is None:
-        return dependencies
-
-    if not end_date:
-        raise ValueError(
-            "end_date not found. If 'start_date' is supplied, 'end_date' is required."
-        )
+    start_date = datetime.strptime(start_date, "%Y%m%d")
     end_date = datetime.strptime(end_date, "%Y%m%d")
 
     upstream_dependencies_output = get_upstream_dependency_inputs(
