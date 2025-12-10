@@ -316,14 +316,14 @@ def process_algorithms(  # noqa: PLR0915
                 )
             elif instrument == "codice_lo":
                 logger.info("Processing CoDICE-Lo.")
-                l1a_download_path = get_ancillary("codice", "l1a-sci-lut")
+                l1a_download_path = get_ancillary("codice", "l1a-ialirt-lut")
                 # I-ALiRT Lo uses the same efficiency table as regular processing.
                 l2_efficiency_download_path = get_ancillary(
                     "codice", "l2-lo-efficiency"
                 )
                 l2_geometric_download_path = get_ancillary("codice", "l2-lo-gfactor")
                 # I-ALiRT Lo uses the same geometric factor table as regular processing.
-                logger.info("codice l1a-sci-lut: %s", l1a_download_path)
+                logger.info("codice l1a-ialirt-lut: %s", l1a_download_path)
                 logger.info("codice l2-lo-efficiency: %s", l2_efficiency_download_path)
                 logger.info("codice l2-lo-gfactor: %s", l2_geometric_download_path)
                 result, _ = process_func(
@@ -335,12 +335,12 @@ def process_algorithms(  # noqa: PLR0915
                 )
             elif instrument == "codice_hi":
                 logger.info("Processing CoDICE-Hi.")
-                l1a_download_path = get_ancillary("codice", "l1a-sci-lut")
+                l1a_download_path = get_ancillary("codice", "l1a-ialirt-lut")
                 # I-ALiRT Hi uses its own efficiency table.
                 l2_efficiency_download_path = get_ancillary(
                     "codice", "l2-hi-ialirt-efficiency"
                 )
-                logger.info("codice l1a-sci-lut: %s", l1a_download_path)
+                logger.info("codice l1a-ialirt-lut: %s", l1a_download_path)
                 logger.info(
                     "codice l2-hi-ialirt-efficiency: %s", l2_efficiency_download_path
                 )
