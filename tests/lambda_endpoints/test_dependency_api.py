@@ -783,6 +783,219 @@ def test_get_files_max_version(session):
     assert science_files[1].version == "v001"
 
 
+def test_get_files_with_single_repoint(session):
+    """Test get_files with a single repoint parameter."""
+    _static_spice_files(session)
+    dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+
+    # Add files for multiple repoints
+    records = [
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_45sensor-de_20240101-repoint00001_v001.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="45sensor-de",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            repointing=1,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_45sensor-de_20240102-repoint00002_v001.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="45sensor-de",
+            start_date=datetime(2024, 1, 2),
+            version="v001",
+            extension="cdf",
+            repointing=2,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_45sensor-de_20240103-repoint00003_v001.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="45sensor-de",
+            start_date=datetime(2024, 1, 3),
+            version="v001",
+            extension="cdf",
+            repointing=3,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
+    # Test with single repoint (int)
+    science_files = get_files(
+        session,
+        dependency=dep,
+        start_date=datetime(2024, 1, 1),
+        end_date=datetime(2024, 1, 3),
+        repoint=2,
+    )
+
+    assert len(science_files) == 1
+    assert science_files[0].repointing == 2
+    assert science_files[0].start_date == datetime(2024, 1, 2)
+
+
+def test_get_files_with_list_of_repoints(session):
+    """Test get_files with a list of repoints parameter."""
+    _static_spice_files(session)
+    dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+
+    # Add files for multiple repoints
+    records = [
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_45sensor-de_20240101-repoint00001_v001.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="45sensor-de",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            repointing=1,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_45sensor-de_20240102-repoint00002_v001.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="45sensor-de",
+            start_date=datetime(2024, 1, 2),
+            version="v001",
+            extension="cdf",
+            repointing=2,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_45sensor-de_20240103-repoint00003_v001.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="45sensor-de",
+            start_date=datetime(2024, 1, 3),
+            version="v001",
+            extension="cdf",
+            repointing=3,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_45sensor-de_20240104-repoint00004_v001.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="45sensor-de",
+            start_date=datetime(2024, 1, 4),
+            version="v001",
+            extension="cdf",
+            repointing=4,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
+    # Test with list of repoints
+    science_files = get_files(
+        session,
+        dependency=dep,
+        start_date=datetime(2024, 1, 1),
+        end_date=datetime(2024, 1, 4),
+        repoint=[1, 2, 3],
+    )
+
+    # Should return 3 files with repoints 1, 2, 3
+    assert len(science_files) == 3
+    repoints_found = {f.repointing for f in science_files}
+    assert repoints_found == {1, 2, 3}
+
+
+def test_get_files_with_list_of_repoints_max_version(session):
+    """Test get_files with list of repoints returns max version per repoint."""
+    _static_spice_files(session)
+    dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "90sensor-de"}
+
+    # Add multiple versions for the same repoint
+    records = [
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_90sensor-de_20240101-repoint00001_v001.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="90sensor-de",
+            start_date=datetime(2024, 1, 1),
+            version="v001",
+            extension="cdf",
+            repointing=1,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_90sensor-de_20240101-repoint00001_v002.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="90sensor-de",
+            start_date=datetime(2024, 1, 1),
+            version="v002",
+            extension="cdf",
+            repointing=1,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        ScienceFiles(
+            file_path="path/to/imap_hi_l1b_90sensor-de_20240102-repoint00002_v001.cdf",
+            instrument="hi",
+            data_level="l1b",
+            descriptor="90sensor-de",
+            start_date=datetime(2024, 1, 2),
+            version="v001",
+            extension="cdf",
+            repointing=2,
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
+
+    # Test with list of repoints - should return max version for each repoint
+    science_files = get_files(
+        session,
+        dependency=dep,
+        start_date=datetime(2024, 1, 1),
+        end_date=datetime(2024, 1, 2),
+        repoint=[1, 2],
+    )
+
+    # Should return 2 files: repoint 1 with v002 and repoint 2 with v001
+    assert len(science_files) == 2
+
+    # Find the file for repoint 1 and check it's the max version
+    repoint1_file = next(f for f in science_files if f.repointing == 1)
+    assert repoint1_file.version == "v002"
+
+    # Find the file for repoint 2
+    repoint2_file = next(f for f in science_files if f.repointing == 2)
+    assert repoint2_file.version == "v001"
+
+
 # #####################################
 # TESTS SPICE logics
 # #####################################

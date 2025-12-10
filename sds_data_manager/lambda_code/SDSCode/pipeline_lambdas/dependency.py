@@ -1260,7 +1260,7 @@ def get_files(
     dependency: dict,
     start_date: datetime,
     end_date: datetime,
-    repoint: Optional[int] = None,
+    repoint: Optional[int | list[int]] = None,
 ):
     """Query to database to get ScienceFile or AncillaryFile records.
 
@@ -1280,8 +1280,8 @@ def get_files(
         Start date of the event data.
     end_date: datetime
         End date of the event data.
-    repoint : int, optional
-        Repoint number of the event data.
+    repoint : int or list[int], optional
+        Repoint number(s) of the event data. Can be a single int or a list of ints.
 
     Returns
     -------
@@ -1312,12 +1312,15 @@ def get_files(
                 models.ScienceFiles.start_date <= end_date,
             )
         )
-        # If repoint is provided, filter by repointing number
+        # If repoint is provided, filter by repointing number(s)
         if (
             repoint is not None
             and dependency["data_source"] in REPOINT_DEPENDENT_INSTRUMENTS
         ):
-            type_specific_conditions.append(table.repointing == repoint)
+            if isinstance(repoint, list):
+                type_specific_conditions.append(table.repointing.in_(repoint))
+            else:
+                type_specific_conditions.append(table.repointing == repoint)
 
     filter_conditions = [
         table.instrument == dependency["data_source"],
