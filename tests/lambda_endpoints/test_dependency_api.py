@@ -941,7 +941,20 @@ def test_get_files_with_list_of_repoints_max_version(hi_l1b_de_repoint_files, se
     assert repoint2_file.version == "v001"
 
 
-def test_get_jobs_hi_goodtimes_multi_repoint(hi_l1b_de_repoint_files, monkeypatch):
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency.get_dependencies",
+    return_value=[
+        {
+            "data_source": "hi",
+            "data_type": "l1b",
+            "descriptor": "45sensor-de",
+            "relationship": "HARD",
+        }
+    ],
+)
+def test_get_jobs_hi_goodtimes_multi_repoint(
+    mock_get_dependencies, hi_l1b_de_repoint_files, monkeypatch
+):
     """Test get_jobs handling for Hi Goodtimes with multi-repoint dependencies."""
     # Monkeypatch the configuration values to test uneven values
     monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_PAST_REPOINTS", 1)
