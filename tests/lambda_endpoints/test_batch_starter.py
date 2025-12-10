@@ -2304,7 +2304,6 @@ def test_hi_goodtimes_multi_repoint_trigger(
     mock_submit_all_jobs,
     mock_get_dependencies,
     session,
-    hi_l1b_de_repoint_files,
     s3_client,
     monkeypatch,
 ):
@@ -2314,8 +2313,8 @@ def test_hi_goodtimes_multi_repoint_trigger(
     jobs for repoints [N-M, N+M] where M is determined by the configuration.
     """
     # Monkeypatch configuration values for testing
-    monkeypatch.setattr(batch_starter, "HI_GOODTIMES_NUM_PAST_REPOINTS", 1)
-    monkeypatch.setattr(batch_starter, "HI_GOODTIMES_NUM_FUTURE_REPOINTS", 2)
+    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_PAST_REPOINTS", 1)
+    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_FUTURE_REPOINTS", 2)
 
     mock_get_dependencies.side_effect = [
         [

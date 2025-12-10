@@ -947,8 +947,6 @@ def test_get_jobs_hi_goodtimes_multi_repoint(hi_l1b_de_repoint_files, monkeypatc
     monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_PAST_REPOINTS", 1)
     monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_FUTURE_REPOINTS", 2)
 
-    # Use the fixture which sets up files for repoints 1-5
-
     # Call get_jobs for Hi Goodtimes with repoint 3
     # With NUM_PAST=1 and NUM_FUTURE=2, this should query for files from
     # repoints [2, 3, 4, 5]
