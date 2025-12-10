@@ -26,6 +26,12 @@ from . import REPOINT_DEPENDENT_INSTRUMENTS, VALID_CADENCE_STRS
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Configuration for Hi Goodtimes multi-repoint dependencies
+# Number of past repoints to include when processing goodtimes
+HI_GOODTIMES_NUM_PAST_REPOINTS = 1
+# Number of future repoints to include when processing goodtimes
+HI_GOODTIMES_NUM_FUTURE_REPOINTS = 1
+
 
 @dataclass
 class DataSource:
@@ -1043,7 +1049,7 @@ def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
     end_date: datetime,
-    repoint: Optional[int] = None,
+    repoint: Optional[int | list[int]] = None,
     calculate_crids: bool = False,
     get_spice: bool = True,
     require_coverage: bool = False,
@@ -1062,8 +1068,9 @@ def get_upstream_dependency_inputs(
         Start date to find dependent files with.
     end_date : datetime
         End date to find dependent files with.
-    repoint : int, optional
-        If provided, will be used to filter files by repoint number.
+    repoint : int or list[int], optional
+        If provided, will be used to filter files by repoint number(s). Can be a
+        single int or a list of ints.
     calculate_crids : bool
         If True, we will check if the expected CRIDs exist for the upstream
         dependencies. If so, processing will continue. If not, it will return None.
@@ -1451,11 +1458,30 @@ def get_jobs(
     start_date = datetime.strptime(start_date, "%Y%m%d")
     end_date = datetime.strptime(end_date, "%Y%m%d")
 
+    # Special handling for Hi Goodtimes - needs L1B DE from multiple repoints
+    # Pass a list of repoints instead of a single repoint
+    repoint_param = repoint
+    if (
+        data_type == DataType.ANCILLARY
+        and data_source == "hi"
+        and "goodtimes" in descriptor
+        and repoint is not None
+    ):
+        repoint_param = list(
+            range(
+                repoint - HI_GOODTIMES_NUM_PAST_REPOINTS,
+                repoint + HI_GOODTIMES_NUM_FUTURE_REPOINTS + 1,
+            )
+        )
+        logger.info(
+            f"Hi Goodtimes job detected. Querying for repoints: {repoint_param}"
+        )
+
     upstream_dependencies_output = get_upstream_dependency_inputs(
         dependencies=dependencies,
         start_date=start_date,
         end_date=end_date,
-        repoint=repoint,
+        repoint=repoint_param,
         calculate_crids=calculate_crids,
         get_spice=get_spice,
         require_coverage=require_coverage,
