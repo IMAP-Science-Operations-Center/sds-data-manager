@@ -2292,3 +2292,135 @@ def test_determine_job_version_spacecraft(session):
     )
     # The version should be v003 since there was a successful job with v002
     assert version == "v003"
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.dependency.get_dependencies"
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.submit_all_jobs"
+)
+def test_hi_goodtimes_multi_repoint_trigger(
+    mock_submit_all_jobs,
+    mock_get_dependencies,
+    session,
+    hi_l1b_de_repoint_files,
+    s3_client,
+    monkeypatch,
+):
+    """Test Hi Goodtimes multi-repoint trigger logic in s3_processing_event.
+
+    When a Hi L1B DE file with repoint N arrives, it should trigger goodtimes
+    jobs for repoints [N-M, N+M] where M is determined by the configuration.
+    """
+    # Monkeypatch configuration values for testing
+    monkeypatch.setattr(batch_starter, "HI_GOODTIMES_NUM_PAST_REPOINTS", 1)
+    monkeypatch.setattr(batch_starter, "HI_GOODTIMES_NUM_FUTURE_REPOINTS", 2)
+
+    mock_get_dependencies.side_effect = [
+        [
+            {
+                "data_source": "hi",
+                "data_type": "ancillary",
+                "descriptor": "45sensor-goodtimes",
+                "relationship": "UPSTREAM",
+            }
+        ],
+        [],
+    ]
+
+    # L1B DE and spice files are added to the DB table by the
+    # hi_l1b_de_repoint_files fixture
+
+    # Add pointing table entries
+    session.add_all(
+        [
+            PointingTable(
+                pointing_id=1,
+                pointing_start_utc=datetime(2024, 1, 1, 0, 0, 0),
+                pointing_end_utc=datetime(2024, 1, 1, 23, 59, 0),
+                repoint_start_utc=datetime(2024, 1, 1, 0, 0, 0),
+                repoint_end_utc=datetime(2024, 1, 1, 1, 0, 0),
+            ),
+            PointingTable(
+                pointing_id=2,
+                pointing_start_utc=datetime(2024, 1, 2, 0, 0, 0),
+                pointing_end_utc=datetime(2024, 1, 2, 23, 59, 0),
+                repoint_start_utc=datetime(2024, 1, 2, 0, 0, 0),
+                repoint_end_utc=datetime(2024, 1, 2, 1, 0, 0),
+            ),
+            PointingTable(
+                pointing_id=3,
+                pointing_start_utc=datetime(2024, 1, 3, 0, 0, 0),
+                pointing_end_utc=datetime(2024, 1, 3, 23, 59, 0),
+                repoint_start_utc=datetime(2024, 1, 3, 0, 0, 0),
+                repoint_end_utc=datetime(2024, 1, 3, 1, 0, 0),
+            ),
+            PointingTable(
+                pointing_id=4,
+                pointing_start_utc=datetime(2024, 1, 4, 0, 0, 0),
+                pointing_end_utc=datetime(2024, 1, 4, 23, 59, 0),
+                repoint_start_utc=datetime(2024, 1, 4, 0, 0, 0),
+                repoint_end_utc=datetime(2024, 1, 4, 1, 0, 0),
+            ),
+            PointingTable(
+                pointing_id=5,
+                pointing_start_utc=datetime(2024, 1, 5, 0, 0, 0),
+                pointing_end_utc=datetime(2024, 1, 5, 23, 59, 0),
+                repoint_start_utc=datetime(2024, 1, 5, 0, 0, 0),
+                repoint_end_utc=datetime(2024, 1, 5, 1, 0, 0),
+            ),
+        ]
+    )
+    session.commit()
+
+    # Create an S3 event for the L1B DE file arrival
+    events = {
+        "Records": [
+            {
+                "eventSourceARN": (
+                    "arn:aws:sqs:us-east-1:123456789012:test-queue.fifo"
+                ),
+                "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+                "body": '{"detail": '
+                '{"object": {"key": '
+                '"imap_hi_l1b_45sensor-de_20240103-repoint00003_v001.cdf"}}'
+                "}",
+            }
+        ]
+    }
+    context = {"context": "sample_context"}
+
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()),
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
+        lambda_handler(events, context)
+
+    # Process the event
+    # lambda_handler(events, {})
+
+    # Verify that submit_all_jobs was called for multiple goodtimes jobs
+    # With NUM_PAST=1 and NUM_FUTURE=2, repoint 3 should trigger goodtimes
+    # jobs for repoints [1, 2, 3, 4] (3-2, 3-1, 3+0, 3+1)
+    # The "backwards" calculation: range(3-2, 3+1+1) = range(1, 5) = [1, 2, 3, 4]
+
+    # Find all calls to submit_all_jobs for goodtimes
+    goodtimes_calls = [
+        call_args
+        for call_args in mock_submit_all_jobs.call_args_list
+        if call_args[0][1]["descriptor"] == "45sensor-goodtimes"
+    ]
+
+    # Should have 3 calls for repoints 1, 2, 3
+    assert len(goodtimes_calls) == 4
+
+    # Verify the repoints for each call
+    repoints_submitted = set()
+    for call_args in goodtimes_calls:
+        # The repoint is the 5th positional argument (index 4)
+        target_repoint = call_args.args[4]
+        repoints_submitted.add(target_repoint)
+
+    # Verify we submitted for repoints 1, 2, 3
+    assert repoints_submitted == {1, 2, 3, 4}

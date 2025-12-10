@@ -27,13 +27,12 @@ from ..api_lambdas import upload_api
 from ..database import database as db
 from ..database import models
 from . import REPOINT_DEPENDENT_INSTRUMENTS, VALID_CADENCE_STRS, dependency
-from .dependency import DependencyConfig
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-DEPENDENCY_CONFIG = DependencyConfig()
+DEPENDENCY_CONFIG = dependency.DependencyConfig()
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 # Define the retry strategy for batch jobs
@@ -714,6 +713,7 @@ def determine_date_range(session, file_obj):
     return start_date, end_date
 
 
+# ruff: noqa: PLR0912
 def s3_processing_event(session, events):
     """Process SQS events that were triggered by S3 file arrivals.
 
@@ -819,15 +819,46 @@ def s3_processing_event(session, events):
             repoint = (
                 file_obj.repointing if isinstance(file_obj, ScienceFilePath) else None
             )
-            submit_all_jobs(
-                session,
-                job,
-                trigger_start_time,
-                trigger_end_time,
-                repoint,
-                calculate_crids,
-                filter_dependencies,
-            )
+
+            # Special handling: When downstream job is Hi Goodtimes and triggering
+            # file has a repoint, submit jobs for multiple repoints
+            if (
+                repoint is not None
+                and job["data_source"] == "hi"
+                and job["data_type"] == "ancillary"
+                and "goodtimes" in job["descriptor"]
+            ):
+                # Submit goodtimes jobs for multiple repoints
+                # The use of HI_GOODTIMES_NUM* seems backwards here. But this is
+                # the correct way to calculate the repoint affected by the new file
+                # that triggered here.
+                for target_repoint in range(
+                    repoint - dependency.HI_GOODTIMES_NUM_FUTURE_REPOINTS,
+                    repoint + dependency.HI_GOODTIMES_NUM_PAST_REPOINTS + 1,
+                ):
+                    logger.info(
+                        f"Submitting Hi Goodtimes job for repoint {target_repoint} "
+                        f"(triggered by repoint {repoint} file)"
+                    )
+                    submit_all_jobs(
+                        session,
+                        job,
+                        trigger_start_time,
+                        trigger_end_time,
+                        target_repoint,
+                        calculate_crids,
+                        filter_dependencies,
+                    )
+            else:
+                submit_all_jobs(
+                    session,
+                    job,
+                    trigger_start_time,
+                    trigger_end_time,
+                    repoint,
+                    calculate_crids,
+                    filter_dependencies,
+                )
 
         if sqs_queue_url:
             # When the record from the sqs event has been processed, it can safely be
@@ -890,7 +921,7 @@ def bulk_reprocessing_event(session, events):
         # If data_level is not provided, we need to reprocess all levels.
         # Get the jobs that kick of each pipeline, to trigger processing
         # for all levels.
-        potential_jobs = DependencyConfig().kickoff_pipeline_jobs()
+        potential_jobs = dependency.DependencyConfig().kickoff_pipeline_jobs()
         # filter the jobs by instrument and descriptor if provided
         potential_jobs = [
             job
