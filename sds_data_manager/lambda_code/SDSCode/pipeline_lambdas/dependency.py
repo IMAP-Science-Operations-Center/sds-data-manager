@@ -422,11 +422,6 @@ def get_dependencies(node, dependency_type, relationship):
     -------
     dependencies : list
         List of dictionary containing the dependency information.
-
-    Raises
-    ------
-    ValueError
-        If dependencies cannot be loaded or is None.
     """
     logger.info(
         f"Dependency Event: node={node}, dependency_type={dependency_type}, "
@@ -457,9 +452,11 @@ def get_dependencies(node, dependency_type, relationship):
         )
 
     logger.info(f"{relationship} dependency nodes found: {dependencies}")
-    if dependencies is None:
-        logger.warning("Failed to load dependencies")
-        raise ValueError("Failed to load dependencies")
+    if not dependencies:
+        logger.warning(
+            f"Failed to load dependencies for {node=}, {dependency_type=}, "
+            f"{relationship=}"
+        )
 
     return dependencies
 
