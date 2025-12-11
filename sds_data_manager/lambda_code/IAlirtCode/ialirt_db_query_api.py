@@ -18,42 +18,20 @@ dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
 
-def process_item_types(item: dict) -> dict:
-    """Convert Decimal values to int/float for known fields.
+class DecimalEncoder(json.JSONEncoder):
+    """Convert Decimals to floats."""
 
-    Parameters
-    ----------
-    item : dict
-        The item in the dictionary.
+    def default(self, obj):
+        """Override JSON encoding for Decimal values."""
+        if isinstance(obj, Decimal):
+            # - If the Decimal is an integer, return int
+            # - Otherwise, float rounded to 3 decimal places
+            if obj % 1 == 0:
+                return int(obj)
+            return round(float(obj), 3)
 
-    Returns
-    -------
-    result : dict
-        Properly formatted parameters.
-    """
-    result = {}
-
-    for key, value in item.items():
-        # Vectors fields
-        if isinstance(value, list):
-            result[key] = [int(v) if v % 1 == 0 else round(float(v), 3) for v in value]
-        # Dictionary fields
-        elif isinstance(value, dict):
-            nested = {}
-            for k, v in value.items():
-                if isinstance(v, Decimal):
-                    nested[k] = int(v) if v % 1 == 0 else round(float(v), 3)
-                else:
-                    nested[k] = v
-            result[key] = nested
-        # Scalar fields
-        elif isinstance(value, Decimal):
-            result[key] = int(value) if value % 1 == 0 else round(float(value), 3)
-
-        else:
-            result[key] = value
-
-    return result
+        # Let the base class raise for other unsupported types
+        return super().default(obj)
 
 
 def lambda_handler(event, context):  # noqa: PLR0912
@@ -198,14 +176,13 @@ def lambda_handler(event, context):  # noqa: PLR0912
 
     # --- Process items ---
     items = response.get("Items", [])
-    processed_items = [process_item_types(item) for item in items]
     t5 = time.perf_counter()
 
     # --- Serialize to JSON ---
-    json_body = json.dumps(processed_items)
+    json_body = json.dumps(items, cls=DecimalEncoder)
     t6 = time.perf_counter()
 
-    num_items = len(processed_items)
+    num_items = len(items)
 
     text = (
         f"Param parse: {t2 - t1:.3f}s | KeyCondition setup: {t3 - t2:.3f}s | "
