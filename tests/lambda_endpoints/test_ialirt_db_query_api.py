@@ -274,12 +274,23 @@ def test_process_item_types(ialirt_db_query_api_module):
             "mag_B_magnitude": Decimal("0.22"),
             "met_in_utc": "2025-06-20T08:00:00",  # string should stay unchanged
             "mag_hk_status": {"pri_isvalid": True, "hkn8v5": Decimal("3680")},
+            "codice_hi_h": [
+                [
+                    [
+                        [Decimal("10"), Decimal("12")],
+                        [Decimal("11"), Decimal("14")],
+                    ],
+                ]
+            ],
         }
     ]
 
-    processed_items = [
-        ialirt_db_query_api_module.process_item_types(item) for item in items
-    ]
+    # Use JSON encoder to process Decimals instead of process_item_types
+    json_output = json.dumps(
+        items,
+        cls=ialirt_db_query_api_module.DecimalEncoder,
+    )
+    processed_items = json.loads(json_output)
 
     assert processed_items == [
         {
@@ -290,5 +301,6 @@ def test_process_item_types(ialirt_db_query_api_module):
             "mag_B_magnitude": 0.22,
             "met_in_utc": "2025-06-20T08:00:00",
             "mag_hk_status": {"pri_isvalid": True, "hkn8v5": 3680},
+            "codice_hi_h": [[[[10, 12], [11, 14]]]],
         }
     ]
