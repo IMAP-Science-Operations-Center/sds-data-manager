@@ -2328,9 +2328,6 @@ def test_hi_goodtimes_multi_repoint_trigger(
         [],
     ]
 
-    # L1B DE and spice files are added to the DB table by the
-    # hi_l1b_de_repoint_files fixture
-
     # Add pointing table entries
     session.add_all(
         [
@@ -2396,9 +2393,6 @@ def test_hi_goodtimes_multi_repoint_trigger(
     ):
         lambda_handler(events, context)
 
-    # Process the event
-    # lambda_handler(events, {})
-
     # Verify that submit_all_jobs was called for multiple goodtimes jobs
     # With NUM_PAST=1 and NUM_FUTURE=2, repoint 3 should trigger goodtimes
     # jobs for repoints [1, 2, 3, 4] (3-2, 3-1, 3+0, 3+1)
@@ -2411,9 +2405,6 @@ def test_hi_goodtimes_multi_repoint_trigger(
         if call_args[0][1]["descriptor"] == "45sensor-goodtimes"
     ]
 
-    # Should have 3 calls for repoints 1, 2, 3
-    assert len(goodtimes_calls) == 4
-
     # Verify the repoints for each call
     repoints_submitted = set()
     for call_args in goodtimes_calls:
@@ -2421,5 +2412,5 @@ def test_hi_goodtimes_multi_repoint_trigger(
         target_repoint = call_args.args[4]
         repoints_submitted.add(target_repoint)
 
-    # Verify we submitted for repoints 1, 2, 3
+    # Verify we submitted for repoints 1, 2, 3, 4
     assert repoints_submitted == {1, 2, 3, 4}

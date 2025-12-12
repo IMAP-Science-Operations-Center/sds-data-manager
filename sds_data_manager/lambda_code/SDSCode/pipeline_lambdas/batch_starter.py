@@ -713,6 +713,7 @@ def determine_date_range(session, file_obj):
     return start_date, end_date
 
 
+# TODO: Refactor function to have fewer branches. For now, just ignore ruff.
 # ruff: noqa: PLR0912
 def s3_processing_event(session, events):
     """Process SQS events that were triggered by S3 file arrivals.
@@ -832,8 +833,13 @@ def s3_processing_event(session, events):
                 # The use of HI_GOODTIMES_NUM* seems backwards here. But this is
                 # the correct way to calculate the repoint affected by the new file
                 # that triggered here.
+                # When a file with repoint N arrives, it can be used by goodtimes
+                # jobs for repoints [N-NUM_FUTURE_REPOINTS, N+NUM_PAST_REPOINTS],
+                # because a goodtimes job for repoint X needs files from
+                # [X-NUM_PAST_REPOINTS, X+NUM_FUTURE_REPOINTS].
+                # Therefore we use the constants in the inverse direction here.
                 for target_repoint in range(
-                    repoint - dependency.HI_GOODTIMES_NUM_FUTURE_REPOINTS,
+                    max(1, repoint - dependency.HI_GOODTIMES_NUM_FUTURE_REPOINTS),
                     repoint + dependency.HI_GOODTIMES_NUM_PAST_REPOINTS + 1,
                 ):
                     logger.info(

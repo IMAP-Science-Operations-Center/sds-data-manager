@@ -1469,7 +1469,7 @@ def get_jobs(
     ):
         repoint_param = list(
             range(
-                repoint - HI_GOODTIMES_NUM_PAST_REPOINTS,
+                max(1, repoint - HI_GOODTIMES_NUM_PAST_REPOINTS),
                 repoint + HI_GOODTIMES_NUM_FUTURE_REPOINTS + 1,
             )
         )
