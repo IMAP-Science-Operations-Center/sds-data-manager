@@ -18,6 +18,18 @@ region = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
 dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
+FULL_SCOPES = {
+    "full",
+    "ialirt_scientist",
+}
+
+RESTRICTED_FIELDS = {
+    "hit_h_a_side_low_en",
+    "hit_h_a_side_med_en",
+    "hit_h_b_side_low_en",
+    "hit_h_b_side_med_en",
+}
+
 
 class BadTimeError(Exception):
     """Raised when the time filters are invalid."""
@@ -132,6 +144,35 @@ def _error(code: int, message: str) -> dict:
     }
 
 
+def filter_items_by_scope(items: list[dict], scope: str) -> list[dict]:
+    """Hide selected HIT fields for scopes that are not full HIT.
+
+    Parameters
+    ----------
+    items : list[dict]
+        Items returned from DynamoDB.
+    scope : str
+        Scope string from the API key authorizer.
+
+    Returns
+    -------
+    filtered_items: list[dict]
+        Items list.
+    """
+    # If caller has full HIT access, do nothing
+    if scope in FULL_SCOPES:
+        return items
+
+    filtered_items = [
+        {k: v for k, v in item.items() if k not in RESTRICTED_FIELDS}
+        if item.get("instrument") == "hit"
+        else item
+        for item in items
+    ]
+
+    return filtered_items
+
+
 def lambda_handler(event, context):
     """Create metadata and add it to the database.
 
@@ -150,6 +191,12 @@ def lambda_handler(event, context):
 
     """
     params = event.get("queryStringParameters") or {}
+
+    # If there is an api-key used, retrieve the scope.
+    request_ctx = event.get("requestContext", {})
+    auth = request_ctx.get("authorizer", {})
+    auth_ctx = auth.get("lambda", {})
+    scope = auth_ctx.get("scope", "")
 
     # --- Determine key condition ---
     allowed_params = {
@@ -226,6 +273,8 @@ def lambda_handler(event, context):
         query_time_total += t2 - t1
 
     t3 = time.perf_counter()
+
+    items = filter_items_by_scope(items, scope)
 
     json_body = json.dumps(
         {

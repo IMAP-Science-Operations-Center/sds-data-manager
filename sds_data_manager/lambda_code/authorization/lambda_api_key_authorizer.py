@@ -49,4 +49,10 @@ def lambda_handler(event, context):  # noqa: PLR0911
     ):
         return {"isAuthorized": False}
 
-    return {"isAuthorized": True, "context": {"apiKey": api_key}}
+    return {
+        "isAuthorized": True,
+        "context": {
+            "apiKey": api_key,
+            "scope": scope,
+        },
+    }

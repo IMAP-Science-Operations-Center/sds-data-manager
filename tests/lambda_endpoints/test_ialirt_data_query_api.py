@@ -307,3 +307,35 @@ def test_process_item_types(ialirt_data_query_api_module):
             "mag_hk_status": {"pri_isvalid": True, "hkn8v5": 3680},
         }
     ]
+
+
+def test_filter_items_by_scope_restricted(ialirt_data_query_api_module):
+    """Test filter_items_by_scope_restricted."""
+    filter_items = ialirt_data_query_api_module.filter_items_by_scope
+
+    # Input items
+    items = [
+        {
+            "instrument": "hit",
+            "hit_h_a_side_low_en": 10,
+            "hit_h_a_side_med_en": 20,
+            "hit_e_a_side_med_en": 30,  # should remain
+            "time_utc": "2025-11-22T05:30:00",
+        },
+        {
+            "instrument": "mag",
+            "Bx": 1.0,
+            "By": 2.0,
+        },
+    ]
+
+    filtered_items = filter_items(items, scope="")  # restricted user
+
+    expected_hit_items = {
+        "instrument": "hit",
+        "hit_e_a_side_med_en": 30,
+        "time_utc": "2025-11-22T05:30:00",
+    }
+
+    assert filtered_items[1] == items[1]
+    assert filtered_items[0] == expected_hit_items

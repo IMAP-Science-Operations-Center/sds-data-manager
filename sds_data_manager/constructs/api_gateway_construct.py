@@ -3,8 +3,8 @@
 Sets up api gateway, creates routes, and creates methods that are linked to the
 lambda function.
 
-An example of the format of the url: https://api.prod.imap-mission.com/query
-https://ialirt.prod.imap-mission.com/ialirt-log-query
+An example of the format of the url: https://api.imap-mission.com/query
+https://ialirt.imap-mission.com/ialirt-log-query
 """
 
 from typing import Optional
