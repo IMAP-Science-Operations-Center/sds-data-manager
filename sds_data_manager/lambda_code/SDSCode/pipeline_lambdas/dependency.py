@@ -28,9 +28,9 @@ logger.setLevel(logging.INFO)
 
 # Configuration for Hi Goodtimes multi-repoint dependencies
 # Number of past repoints to include when processing goodtimes
-HI_GOODTIMES_NUM_PAST_REPOINTS = 1
+HI_GOODTIMES_NUM_PAST_REPOINTS = 3
 # Number of future repoints to include when processing goodtimes
-HI_GOODTIMES_NUM_FUTURE_REPOINTS = 1
+HI_GOODTIMES_NUM_FUTURE_REPOINTS = 3
 
 
 @dataclass
