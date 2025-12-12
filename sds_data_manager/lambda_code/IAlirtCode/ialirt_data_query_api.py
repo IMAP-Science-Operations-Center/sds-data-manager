@@ -30,6 +30,8 @@ RESTRICTED_FIELDS = {
     "hit_h_b_side_med_en",
 }
 
+PUBLIC_CUTOFF_UTC = "2026-02-01T00:00:00"
+
 
 class BadTimeError(Exception):
     """Raised when the time filters are invalid."""
@@ -53,7 +55,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
+def apply_time_filters(params: dict, query_kwargs: dict, has_api_key: bool) -> tuple:
     """Apply the filters for time.
 
     Parameters
@@ -62,6 +64,8 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
         Event parameters.
     query_kwargs : dict
         Query keyword arguments.
+    has_api_key : bool
+        Whether or not user used api key.
 
     Returns
     -------
@@ -95,6 +99,9 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
 
     start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
     end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
+
+    if not has_api_key and start < PUBLIC_CUTOFF_UTC:
+        raise BadTimeError("API key required for data prior to 2026-02-01T00:00:00")
 
     key_expr &= Key("time_utc").between(start, end)
     query_kwargs["KeyConditionExpression"] = key_expr
@@ -197,6 +204,7 @@ def lambda_handler(event, context):
     auth = request_ctx.get("authorizer", {})
     auth_ctx = auth.get("lambda", {})
     scope = auth_ctx.get("scope", "")
+    has_api_key = bool(auth)
 
     # --- Determine key condition ---
     allowed_params = {
@@ -245,7 +253,7 @@ def lambda_handler(event, context):
 
         try:
             query_kwargs, range_start, range_end = apply_time_filters(
-                params, query_kwargs
+                params, query_kwargs, has_api_key
             )
         except BadTimeError as e:
             return _error(400, str(e))
