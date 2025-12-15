@@ -1037,6 +1037,7 @@ spacecraft_clock, spice, historical, ultra, l1a, all, HARD_NO_TRIGGER, DOWNSTREA
 
 # Ultra-45 products
 ultra, l1a, 45sensor-de, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-params, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
@@ -1137,6 +1138,7 @@ spin, spin, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTR
 
 # Ultra-90 products
 ultra, l1a, 90sensor-de, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-aux, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-params, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
