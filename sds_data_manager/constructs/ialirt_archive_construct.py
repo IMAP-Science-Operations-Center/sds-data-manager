@@ -16,7 +16,7 @@ class IalirtArchiveConstruct(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        algorithm_data_table: ddb.Table,
+        data_table: ddb.Table,
         ialirt_bucket: aws_s3.Bucket,
         docker_path: str = "sds_data_manager/lambda_code",
         **kwargs,
@@ -29,7 +29,7 @@ class IalirtArchiveConstruct(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        algorithm_data_table : ddb.Table
+        data_table : ddb.Table
             Algorithm database table.
         ialirt_bucket : aws_s3.Bucket
             The data bucket.
@@ -43,14 +43,14 @@ class IalirtArchiveConstruct(Construct):
 
         # Create Lambda Function
         ialirt_archive_lambda = self.create_archive_lambda(
-            ialirt_bucket, algorithm_data_table, docker_path
+            ialirt_bucket, data_table, docker_path
         )
         self.create_event_rule(ialirt_archive_lambda)
 
     def create_archive_lambda(
         self,
         ialirt_bucket: aws_s3.Bucket,
-        algorithm_data_table: ddb.Table,
+        data_table: ddb.Table,
         docker_path: str,
     ) -> lambda_.DockerImageFunction:
         """Create and return the Lambda function."""
@@ -81,12 +81,12 @@ class IalirtArchiveConstruct(Construct):
             memory_size=1000,
             role=lambda_role,
             environment={
-                "ALGORITHM_TABLE": algorithm_data_table.table_name,
+                "DATA_TABLE": data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
             },
         )
 
-        algorithm_data_table.grant_read_data(ialirt_archive_lambda)
+        data_table.grant_read_data(ialirt_archive_lambda)
         ialirt_bucket.grant_put(ialirt_archive_lambda)
 
         # The resource is deleted when the stack is deleted.

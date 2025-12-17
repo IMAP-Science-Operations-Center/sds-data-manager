@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 
 import boto3
@@ -14,6 +14,52 @@ from imap_processing.ialirt.utils.create_xarray import create_xarray_from_record
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+INSTRUMENTS = ["mag", "codice_lo", "codice_hi", "hit", "swe", "swapi", "spacecraft"]
+
+
+def query_instrument(
+    data_table, instrument: str, start_iso: str, end_iso: str
+) -> list[dict]:
+    """Query database and handles pagination.
+
+    Parameters
+    ----------
+    data_table : ddb.Table
+        Algorithm database table.
+    instrument : str
+        Instrument name.
+    start_iso : str
+        Start date of query.
+    end_iso : str
+        End date of query.
+
+    Returns
+    -------
+    items : list
+        Items queried for the instrument.
+    """
+    items: list[dict] = []
+    last_key = None
+
+    while True:
+        kwargs = dict(
+            KeyConditionExpression=(
+                Key("instrument").eq(instrument)
+                & Key("time_utc").between(start_iso, end_iso)
+            ),
+        )
+        if last_key:
+            kwargs["ExclusiveStartKey"] = last_key
+
+        resp = data_table.query(**kwargs)
+        items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+
+    return items
 
 
 def lambda_handler(event, context):
@@ -32,43 +78,38 @@ def lambda_handler(event, context):
         This object provides methods and properties that provide
         information about the invocation, function,
         and runtime environment.
-
-    Returns
-    -------
-    response : dict
-        The response from the DynamoDB query.
     """
     logger.info("Received event: %s", json.dumps(event))
 
     imap_data_access.config["DATA_DIR"] = Path("/tmp")  # noqa: S108
 
-    algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
+    algorithm_table_name = os.environ.get("DATA_TABLE")
     dynamodb = boto3.resource("dynamodb")
-    algorithm_table = dynamodb.Table(algorithm_table_name)
+    data_table = dynamodb.Table(algorithm_table_name)
     bucket = os.environ.get("S3_BUCKET")
     region = os.environ.get("AWS_REGION")
 
+    # Query 1 day's worth of data a week ago.
     now = datetime.now(timezone.utc)
-    yesterday = now - timedelta(days=1)
+    target_date = (now - timedelta(days=7)).date()
 
-    start_iso = yesterday.isoformat()
-    end_iso = now.isoformat()
+    prior_day = datetime.combine(
+        target_date, time.min, tzinfo=timezone.utc
+    )  # 00:00 UTC
+    one_week = prior_day + timedelta(days=1)  # next midnight
 
-    # Query using utc GSI
-    response = algorithm_table.query(
-        IndexName="last_modified",
-        KeyConditionExpression=(
-            Key("apid").eq(478) & Key("last_modified").between(start_iso, end_iso)
-        ),
-    )
+    start_iso = prior_day.isoformat()
+    end_iso = one_week.isoformat()
 
-    if not response["Items"]:
-        logger.info("No new data to process.")
-        return response
+    all_items = []
+    for inst in INSTRUMENTS:
+        inst_items = query_instrument(data_table, inst, start_iso, end_iso)
+        logger.info("%s: %d items", inst, len(inst_items))
+        all_items.extend(inst_items)
 
-    dataset = create_xarray_from_records(response["Items"])
+    dataset = create_xarray_from_records(all_items)
     dataset.attrs["Data_version"] = "000"
-    dataset.attrs["Start_date"] = yesterday.strftime("%Y%m%d")
+    dataset.attrs["Start_date"] = prior_day.strftime("%Y%m%d")
     test_data_path = write_cdf(dataset, istp=True)
 
     output_key = f"archive/{test_data_path.name}"
@@ -81,5 +122,3 @@ def lambda_handler(event, context):
         ExtraArgs={"ContentType": "application/x-cdf"},
     )
     logger.info(f"Uploaded coverage table to s3://{bucket}/{output_key}")
-
-    return response
