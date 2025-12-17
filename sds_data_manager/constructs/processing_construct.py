@@ -145,5 +145,5 @@ class ProcessingConstruct(Construct):
             f"ProcessingJob-{job_name}",
             job_definition_name=f"ProcessingJob-{job_name}",
             container=container_definition,
-            timeout=cdk.Duration.hours(2),
+            timeout=cdk.Duration.minutes(150),
         )
