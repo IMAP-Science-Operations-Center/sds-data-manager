@@ -14,11 +14,11 @@ from sds_data_manager.constructs.ialirt_archive_construct import IalirtArchiveCo
 def template(stack):
     """Create a template with the IalirtArchiveConstruct."""
     ialirt_bucket = s3.Bucket(stack, "MockIalirtBucket")
-    algorithm_table = ddb.Table(
+    data_table = ddb.Table(
         stack,
         "MockAlgorithmTable",
-        partition_key=ddb.Attribute(name="apid", type=ddb.AttributeType.NUMBER),
-        sort_key=ddb.Attribute(name="met", type=ddb.AttributeType.NUMBER),
+        partition_key=ddb.Attribute(name="instrument", type=ddb.AttributeType.NUMBER),
+        sort_key=ddb.Attribute(name="time_utc", type=ddb.AttributeType.NUMBER),
     )
 
     docker_dir = (
@@ -28,7 +28,7 @@ def template(stack):
     IalirtArchiveConstruct(
         stack,
         "IalirtArchiveConstruct",
-        algorithm_data_table=algorithm_table,
+        data_table=data_table,
         ialirt_bucket=ialirt_bucket,
         docker_path=str(docker_dir),
     )
@@ -54,7 +54,7 @@ def test_lambda_has_env_variables(template):
             "FunctionName": "ialirt-archive",
             "Environment": {
                 "Variables": {
-                    "ALGORITHM_TABLE": Match.any_value(),
+                    "DATA_TABLE": Match.any_value(),
                     "S3_BUCKET": Match.any_value(),
                 }
             },
