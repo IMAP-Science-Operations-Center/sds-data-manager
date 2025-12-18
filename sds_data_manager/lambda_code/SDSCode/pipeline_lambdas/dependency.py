@@ -729,7 +729,7 @@ def get_spin_files(
     Returns
     -------
     list
-        List of spin files.
+        List of SpinFiles records with file_path, start_date, end_date, version.
     """
     spin = aliased(models.SpinFiles)
 
@@ -768,8 +768,7 @@ def get_spin_files(
         .all()
     )
 
-    spin_files = [basename(record.file_path) for record in records]
-    return spin_files
+    return records
 
 
 def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
@@ -1088,11 +1087,12 @@ def get_upstream_dependency_inputs(
             # If spin is a dependency, query spin table for given date range
             has_spin_dep = any(dep["data_source"] == "spin" for dep in dependencies)
             if has_spin_dep:
-                spin_files = get_spin_files(session, start_date, end_date)
-                if not spin_files:
-                    logger.info(f"No spin files found for {start_date} to {end_date}")
+                spin_records = get_spin_files(session, start_date, end_date)
+                # Verify spin coverage
+                if not verify_spin_coverage(spin_records, start_date, end_date):
                     return None
-                logger.info(f"Found spin files: {spin_files}. Adding to collection.")
+
+                spin_files = [basename(record.file_path) for record in spin_records]
                 dependency_inputs.add(processing_input.SpinInput(*spin_files))
 
             # If repoint is a dependency, query s3 for latest repoint file
@@ -1201,12 +1201,20 @@ def get_upstream_dependency_inputs(
             )
 
             records = get_files(session, dep, start_date, end_date, repoint)
-            if not records and relationship in [
+            if relationship in [
                 Relationship.HARD,
                 Relationship.HARD_NO_TRIGGER,
             ]:
-                logger.info(f"No records found for dependency: {dep_string}")
-                return None
+                if not records:
+                    logger.info(f"No records found for dependency: {dep_string}")
+                    return None
+                    # Verify coverage for HARD science dependencies
+                if dep["data_type"] not in [DataType.ANCILLARY]:
+                    # Verify science file coverage (daily discrete)
+                    if not verify_science_coverage(
+                        records, start_date, end_date, dep, repoint
+                    ):
+                        return None
 
             elif not records:
                 continue
