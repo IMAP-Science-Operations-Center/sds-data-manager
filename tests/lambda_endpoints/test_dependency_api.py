@@ -895,7 +895,8 @@ def test_get_spin_files(session):
     # Test with overlapping date range
     start_date = datetime(2025, 4, 29)
     end_date = datetime(2025, 4, 30)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    spin_files = [basename(record.file_path) for record in spin_records]
     assert spin_files == [
         "imap_2025_119_2025_120_01.spin.csv",
         "imap_2025_120_2025_121_01.spin.csv",
@@ -904,26 +905,29 @@ def test_get_spin_files(session):
     # Test with a date range that does not overlap
     start_date = datetime(2025, 5, 2)
     end_date = datetime(2025, 5, 3)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
-    assert spin_files == []
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    assert spin_records == []
 
     # Test with one day date range
     start_date = datetime(2025, 4, 29)
     end_date = datetime(2025, 4, 29)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    spin_files = [basename(record.file_path) for record in spin_records]
     assert spin_files == [
         "imap_2025_119_2025_120_01.spin.csv",
     ]
 
     start_date = datetime(2026, 9, 25)
     end_date = datetime(2026, 9, 25)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    spin_files = [basename(record.file_path) for record in spin_records]
     assert spin_files == ["imap_2026_268_2026_269_01.spin.csv"]
 
     # Test with overlapping date range and latest version
     start_date = datetime(2026, 9, 24)
     end_date = datetime(2026, 9, 24)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    spin_files = [basename(record.file_path) for record in spin_records]
     assert spin_files == [
         "imap_2026_267_2026_268_02.spin.csv",
         "imap_2026_268_2026_268_02.spin.csv",
