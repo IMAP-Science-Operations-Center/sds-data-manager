@@ -528,7 +528,7 @@ def verify_spin_coverage(
     2. No gaps exist between consecutive record ranges
     3. Last record covers up to or past the input end_date
 
-    If gaps are found, they are logged at WARNING level.
+    If gaps are found, they are logged at INFO level.
 
     Parameters
     ----------
@@ -581,7 +581,7 @@ def verify_spin_coverage(
     if sorted_records[-1].end_date < end_date:
         gap_start = sorted_records[-1].end_date + timedelta(days=1)
         gap_end = end_date
-        logger.warning(
+        logger.info(
             f"Spin coverage gap at end: Gap from {gap_start.strftime('%Y%m%d')} "
             f"to {gap_end.strftime('%Y%m%d')}"
         )
@@ -607,7 +607,7 @@ def verify_science_coverage(
     repoints are present in the records. Otherwise, verifies that every single
     date in the input range has a corresponding file.
 
-    If gaps are found, they are logged at WARNING level.
+    If gaps are found, they are logged at INFO level.
 
     Parameters
     ----------
@@ -654,14 +654,14 @@ def verify_science_coverage(
         if missing_repoints:
             sorted_missing = sorted(missing_repoints)
             missing_str = ", ".join(str(rp) for rp in sorted_missing)
-            error_msg = f"Missing coverage for repoints: {missing_str}"
+            missing_msg = f"Missing coverage for repoints: {missing_str}"
 
-            logger.info(f"Incomplete science coverage for {dep_str}: {error_msg}")
+            logger.info(f"Incomplete science coverage for {dep_str}: {missing_msg}")
             return False
 
         logger.info(
             f"Science coverage verified for "
-            f"{dep_str}: {len(records)} file(s) provide daily coverage"
+            f"{dep_str}: {len(records)} file(s) provide needed repoint coverage"
         )
         return True
 
@@ -687,23 +687,23 @@ def verify_science_coverage(
         if len(sorted_missing) <= 5:
             # List all missing dates
             missing_str = ", ".join([d.strftime("%Y%m%d") for d in sorted_missing])
-            error_msg = f"Missing coverage for dates: {missing_str}"
+            missing_msg = f"Missing coverage for dates: {missing_str}"
         else:
             # Summarize: show count and range
             missing_str = (
                 f"{sorted_missing[0].strftime('%Y%m%d')} to "
                 f"{sorted_missing[-1].strftime('%Y%m%d')}"
             )
-            error_msg = (
+            missing_msg = (
                 f"Missing coverage for {len(sorted_missing)} dates ({missing_str})"
             )
 
-        logger.info(f"Incomplete science coverage for {dep_str}: {error_msg}")
+        logger.info(f"Incomplete science coverage for {dep_str}: {missing_msg}")
         return False
 
     logger.info(
         f"Science coverage verified for "
-        f"{dep_str}: {len(records)} file(s) provide daily coverage"
+        f"{dep_str}: {len(records)} file(s) provide needed daily coverage"
     )
     return True
 
@@ -1102,6 +1102,7 @@ def get_upstream_dependency_inputs(
                     return None
 
                 spin_files = [basename(record.file_path) for record in spin_records]
+                logger.info(f"Found spin files: {spin_files}. Adding to collection.")
                 dependency_inputs.add(processing_input.SpinInput(*spin_files))
 
             # If repoint is a dependency, query s3 for latest repoint file
@@ -1217,10 +1218,10 @@ def get_upstream_dependency_inputs(
                 if not records:
                     logger.info(f"No records found for dependency: {dep_string}")
                     return None
-                    # Verify coverage for HARD science dependencies
                 if (
                     require_coverage
                     and dep["data_type"] not in [DataType.ANCILLARY]
+                    # Verify coverage for HARD science dependencies
                     and not verify_science_coverage(
                         records, start_date, end_date, dep, repoint
                     )
