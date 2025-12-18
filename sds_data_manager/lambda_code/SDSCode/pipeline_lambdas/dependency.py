@@ -516,6 +516,198 @@ def combine_kernel_sources(dependency: dict) -> str:
     return ",".join(file_types)
 
 
+def verify_spin_coverage(
+    records: list,
+    start_date: datetime,
+    end_date: datetime,
+) -> bool:
+    """Verify that spin files cover the entire date range without gaps.
+
+    Spin files have start_date and end_date ranges. This function verifies:
+    1. First record covers or starts before the input start_date
+    2. No gaps exist between consecutive record ranges
+    3. Last record covers up to or past the input end_date
+
+    If gaps are found, they are logged at WARNING level.
+
+    Parameters
+    ----------
+    records : list
+        List of SpinFiles records with file_path, start_date, end_date.
+    start_date : datetime
+        Expected coverage start date.
+    end_date : datetime
+        Expected coverage end date.
+
+    Returns
+    -------
+    bool
+        True if coverage is complete, False if gaps exist.
+    """
+    if not records:
+        logger.info(f"No spin files found for {start_date} to {end_date}")
+        return False
+
+    # Sort records by start_date
+    sorted_records = sorted(records, key=lambda r: r.start_date)
+
+    # Check if first record covers or starts before input start_date
+    if sorted_records[0].start_date > start_date:
+        gap_start = start_date
+        gap_end = sorted_records[0].start_date - timedelta(days=1)
+        logger.info(
+            f"Spin coverage gap at start: Gap from {gap_start.strftime('%Y%m%d')} "
+            f"to {gap_end.strftime('%Y%m%d')}"
+        )
+        return False
+
+    # Check for gaps between consecutive records
+    for i in range(len(sorted_records) - 1):
+        current_end = sorted_records[i].end_date
+        next_start = sorted_records[i + 1].start_date
+
+        # Gap exists if next_start is after current_end
+        # (next_start must be on the same day as current_end or overlap)
+        if next_start > current_end:
+            gap_start = current_end + timedelta(days=1)
+            gap_end = next_start - timedelta(days=1)
+            logger.info(
+                f"Spin coverage gap between records: Gap from "
+                f"{gap_start.strftime('%Y%m%d')} to {gap_end.strftime('%Y%m%d')}"
+            )
+            return False
+
+    # Check if last record covers up to or past input end_date
+    if sorted_records[-1].end_date < end_date:
+        gap_start = sorted_records[-1].end_date + timedelta(days=1)
+        gap_end = end_date
+        logger.warning(
+            f"Spin coverage gap at end: Gap from {gap_start.strftime('%Y%m%d')} "
+            f"to {gap_end.strftime('%Y%m%d')}"
+        )
+        return False
+
+    logger.info(
+        f"Spin coverage verified for {start_date.strftime('%Y%m%d')} to "
+        f"{end_date.strftime('%Y%m%d')}: {len(records)} file(s) cover range"
+    )
+    return True
+
+
+def verify_science_coverage(
+    records: list,
+    start_date: datetime,
+    end_date: datetime,
+    dependency: dict,
+    repoint: Optional[int | list[int]] = None,
+) -> bool:
+    """Verify that science files provide continuous daily coverage.
+
+    If repoint is provided (as int or list of ints), verifies that all requested
+    repoints are present in the records. Otherwise, verifies that every single
+    date in the input range has a corresponding file.
+
+    If gaps are found, they are logged at WARNING level.
+
+    Parameters
+    ----------
+    records : list
+        List of ScienceFiles records with file_path, start_date, version.
+    start_date : datetime
+        Expected coverage start date.
+    end_date : datetime
+        Expected coverage end date.
+    dependency : dict
+        Dependency information (data_source, data_type, descriptor).
+    repoint : int or list of int, optional
+        Repoint number(s) to verify. If provided, checks repoint coverage instead
+        of date coverage.
+
+    Returns
+    -------
+    bool
+        True if coverage is complete, False if gaps exist.
+    """
+    if not records:
+        return False
+
+    dep_str = (
+        f"{dependency['data_source']}/{dependency['data_type']}/"
+        f"{dependency['descriptor']}"
+    )
+
+    # If repoint is provided, check repoint coverage instead of date coverage
+    if repoint is not None:
+        # Convert single int to list for uniform handling
+        requested_repoints = [repoint] if isinstance(repoint, int) else repoint
+
+        # Extract repoints from records (only if record has repointing attribute)
+        repoints_in_records = {
+            record.repointing
+            for record in records
+            if hasattr(record, "repointing") and record.repointing is not None
+        }
+
+        # Find missing repoints
+        missing_repoints = set(requested_repoints) - repoints_in_records
+
+        if missing_repoints:
+            sorted_missing = sorted(missing_repoints)
+            missing_str = ", ".join(str(rp) for rp in sorted_missing)
+            error_msg = f"Missing coverage for repoints: {missing_str}"
+
+            logger.info(f"Incomplete science coverage for {dep_str}: {error_msg}")
+            return False
+
+        logger.info(
+            f"Science coverage verified for "
+            f"{dep_str}: {len(records)} file(s) provide daily coverage"
+        )
+        return True
+
+    # Otherwise, check date coverage as normal
+    # Build set of dates that have files
+    dates_with_files = {record.start_date.date() for record in records}
+
+    # Generate expected dates (inclusive range)
+    expected_dates = set()
+    current = start_date
+    while current <= end_date:
+        expected_dates.add(current.date())
+        current += timedelta(days=1)
+
+    # Find missing dates
+    missing_dates = expected_dates - dates_with_files
+
+    if missing_dates:
+        # Sort for readable error message
+        sorted_missing = sorted(missing_dates)
+
+        # Format error message based on number of gaps
+        if len(sorted_missing) <= 5:
+            # List all missing dates
+            missing_str = ", ".join([d.strftime("%Y%m%d") for d in sorted_missing])
+            error_msg = f"Missing coverage for dates: {missing_str}"
+        else:
+            # Summarize: show count and range
+            missing_str = (
+                f"{sorted_missing[0].strftime('%Y%m%d')} to "
+                f"{sorted_missing[-1].strftime('%Y%m%d')}"
+            )
+            error_msg = (
+                f"Missing coverage for {len(sorted_missing)} dates ({missing_str})"
+            )
+
+        logger.info(f"Incomplete science coverage for {dep_str}: {error_msg}")
+        return False
+
+    logger.info(
+        f"Science coverage verified for "
+        f"{dep_str}: {len(records)} file(s) provide daily coverage"
+    )
+    return True
+
+
 def get_spin_files(
     session,
     start_date: datetime,
