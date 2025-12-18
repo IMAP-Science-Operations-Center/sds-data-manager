@@ -577,7 +577,7 @@ def verify_spin_coverage(
             )
             return False
 
-    # Check if last record covers up to or past input end_date
+    # Check if last record covers past input end_date
     if sorted_records[-1].end_date < end_date:
         gap_start = sorted_records[-1].end_date + timedelta(days=1)
         gap_end = end_date
@@ -1046,6 +1046,7 @@ def get_upstream_dependency_inputs(
     repoint: Optional[int] = None,
     calculate_crids: bool = False,
     get_spice: bool = True,
+    require_coverage: bool = False,
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
@@ -1072,6 +1073,9 @@ def get_upstream_dependency_inputs(
     get_spice : bool, optional
         If True, we will include SPICE dependencies in the ProcessingInputCollection.
         Default is True.
+    require_coverage : bool, optional
+        If True gathered dependencies will be checked for complete coverage of
+        start_date to end_date or repoint coverage.
 
     Returns
     -------
@@ -1088,8 +1092,13 @@ def get_upstream_dependency_inputs(
             has_spin_dep = any(dep["data_source"] == "spin" for dep in dependencies)
             if has_spin_dep:
                 spin_records = get_spin_files(session, start_date, end_date)
+                if not spin_records:
+                    logger.info(f"No spin files found for {start_date} to {end_date}")
+                    return None
                 # Verify spin coverage
-                if not verify_spin_coverage(spin_records, start_date, end_date):
+                if require_coverage and not verify_spin_coverage(
+                    spin_records, start_date, end_date
+                ):
                     return None
 
                 spin_files = [basename(record.file_path) for record in spin_records]
@@ -1209,12 +1218,14 @@ def get_upstream_dependency_inputs(
                     logger.info(f"No records found for dependency: {dep_string}")
                     return None
                     # Verify coverage for HARD science dependencies
-                if dep["data_type"] not in [DataType.ANCILLARY]:
-                    # Verify science file coverage (daily discrete)
-                    if not verify_science_coverage(
+                if (
+                    require_coverage
+                    and dep["data_type"] not in [DataType.ANCILLARY]
+                    and not verify_science_coverage(
                         records, start_date, end_date, dep, repoint
-                    ):
-                        return None
+                    )
+                ):
+                    return None
 
             elif not records:
                 continue
@@ -1359,6 +1370,7 @@ def get_jobs(
     repoint: Optional[int] = None,
     calculate_crids: bool = False,
     get_spice: bool = True,
+    require_coverage: bool = False,
 ) -> ProcessingInputCollection | None:
     """Query for upstream dependency files that exist in S3.
 
@@ -1395,6 +1407,8 @@ def get_jobs(
     get_spice: bool, optional
         If True, will include SPICE dependencies in the returned
         ProcessingInputCollection. Default is True.
+    require_coverage: bool, optional
+        Check that dependencies fully cover date range or repoint(s).
 
     Returns
     -------
@@ -1440,6 +1454,7 @@ def get_jobs(
         repoint=repoint,
         calculate_crids=calculate_crids,
         get_spice=get_spice,
+        require_coverage=require_coverage,
     )
     if upstream_dependencies_output is None:
         logger.info(

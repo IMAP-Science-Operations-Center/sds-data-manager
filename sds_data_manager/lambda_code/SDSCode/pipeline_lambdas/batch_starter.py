@@ -432,6 +432,8 @@ def submit_all_jobs(
     else:
         get_spice = True
 
+    # We are just getting potential jobs here so we don't require that
+    # dependencies cover the date range.
     upstream_dependencies = dependency.get_jobs(
         data_source=job_node["data_source"],
         data_type=job_node["data_type"],
@@ -443,6 +445,7 @@ def submit_all_jobs(
         repoint=repoint,
         calculate_crids=calculate_crids,
         get_spice=get_spice,
+        require_coverage=False,
     )
     if not upstream_dependencies:
         logger.info(
@@ -511,6 +514,7 @@ def submit_all_jobs(
                 repoint=job_repointing,
                 calculate_crids=False,
                 get_spice=True,
+                require_coverage=True,
             )
             if not upstream_deps_for_job:
                 logger.info(
