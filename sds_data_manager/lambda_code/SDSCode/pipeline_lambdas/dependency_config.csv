@@ -1084,12 +1084,10 @@ spin, spin, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, l1a, 45sensor-params, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, l1a, 45sensor-params, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
@@ -1104,10 +1102,6 @@ ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-spa
 ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-static-dead-times, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-45sensor-sc-pointing-theta, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-45sensor-sc-pointing-phi, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-45sensor-sc-pointing-index, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-45sensor-sc-pointing-bsf, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
@@ -1186,12 +1180,10 @@ spin, spin, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, l1a, 90sensor-params, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, l1a, 90sensor-params, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
@@ -1206,10 +1198,6 @@ ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-spa
 ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-static-dead-times, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-90sensor-sc-pointing-theta, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-90sensor-sc-pointing-phi, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-90sensor-sc-pointing-index, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-90sensor-sc-pointing-bsf, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
