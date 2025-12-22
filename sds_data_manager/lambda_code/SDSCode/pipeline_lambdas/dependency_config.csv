@@ -1028,6 +1028,9 @@ science_frames, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_constants, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- ULTRA Dependencies ---->
 
