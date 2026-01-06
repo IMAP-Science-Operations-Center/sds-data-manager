@@ -171,10 +171,7 @@ def filter_items_by_scope(items: list[dict], scope: str) -> list[dict]:
         return items
 
     filtered_items = [
-        {k: v for k, v in item.items() if k not in RESTRICTED_FIELDS}
-        if item.get("instrument") == "hit"
-        else item
-        for item in items
+        {k: v for k, v in item.items() if k not in RESTRICTED_FIELDS} for item in items
     ]
 
     return filtered_items
@@ -277,12 +274,12 @@ def lambda_handler(event, context):
             f"{range_end} took {t2 - t1} s"
         )
         raw_items = response.get("Items", [])
+        if instrument == "hit":
+            raw_items = filter_items_by_scope(raw_items, scope)
         items.extend(raw_items)
         query_time_total += t2 - t1
 
     t3 = time.perf_counter()
-
-    items = filter_items_by_scope(items, scope)
 
     json_body = json.dumps(
         {
