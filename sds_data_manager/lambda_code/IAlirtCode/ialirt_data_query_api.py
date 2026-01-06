@@ -24,10 +24,9 @@ FULL_SCOPES = {
 }
 
 RESTRICTED_FIELDS = {
-    "hit_h_a_side_low_en",
-    "hit_h_a_side_med_en",
-    "hit_h_b_side_low_en",
-    "hit_h_b_side_med_en",
+    "hit_e_a_side_high_en",
+    "hit_e_b_side_high_en",
+    "hit_h_a_side_high_enhit_h_b_side_high_en",
 }
 
 PUBLIC_CUTOFF_UTC = "2026-02-01T00:00:00"
