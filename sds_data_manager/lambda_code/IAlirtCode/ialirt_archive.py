@@ -83,9 +83,9 @@ def lambda_handler(event, context):
 
     imap_data_access.config["DATA_DIR"] = Path("/tmp")  # noqa: S108
 
-    algorithm_table_name = os.environ.get("DATA_TABLE")
+    data_table_name = os.environ.get("DATA_TABLE")
     dynamodb = boto3.resource("dynamodb")
-    data_table = dynamodb.Table(algorithm_table_name)
+    data_table = dynamodb.Table(data_table_name)
     bucket = os.environ.get("S3_BUCKET")
     region = os.environ.get("AWS_REGION")
 
@@ -93,12 +93,12 @@ def lambda_handler(event, context):
     now = datetime.now(timezone.utc)
     target_date = (now - timedelta(days=7)).date()
 
-    prior_day = datetime.combine(
+    seven_days_ago = datetime.combine(
         target_date, time.min, tzinfo=timezone.utc
     )  # 00:00 UTC
-    one_week = prior_day + timedelta(days=1)  # next midnight
+    one_week = seven_days_ago + timedelta(days=1)  # next midnight
 
-    start_iso = prior_day.isoformat()
+    start_iso = seven_days_ago.isoformat()
     end_iso = one_week.isoformat()
 
     all_items = []
@@ -107,9 +107,16 @@ def lambda_handler(event, context):
         logger.info("%s: %d items", inst, len(inst_items))
         all_items.extend(inst_items)
 
+    if not all_items:
+        logger.info(
+            "No I-ALiRT items found between %s and %s; skipping CDF write.",
+            start_iso,
+            end_iso,
+        )
+        return
     dataset = create_xarray_from_records(all_items)
     dataset.attrs["Data_version"] = "000"
-    dataset.attrs["Start_date"] = prior_day.strftime("%Y%m%d")
+    dataset.attrs["Start_date"] = seven_days_ago.strftime("%Y%m%d")
     test_data_path = write_cdf(dataset, istp=True)
 
     output_key = f"archive/{test_data_path.name}"
@@ -121,4 +128,4 @@ def lambda_handler(event, context):
         Key=output_key,
         ExtraArgs={"ContentType": "application/x-cdf"},
     )
-    logger.info(f"Uploaded coverage table to s3://{bucket}/{output_key}")
+    logger.info(f"Uploaded archive file to s3://{bucket}/{output_key}")
