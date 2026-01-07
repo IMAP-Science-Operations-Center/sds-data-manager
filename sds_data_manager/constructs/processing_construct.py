@@ -111,9 +111,10 @@ class ProcessingConstruct(Construct):
         # Ultra and Lo jobs need more resources than others. Specifically, ULTRA and
         # Lo l1a
         # TODO : optimize ULTRA and Lo l1a to use less resources
+        # MAG L1D jobs need more resources for intensive SPICE transformations
         cpu = 4
         memory = cdk.Size.gibibytes(16)
-        if "ultra" in job_name or "lo" in job_name:
+        if "ultra" in job_name or "lo" in job_name or "mag" in job_name:
             cpu = 8
             memory = cdk.Size.gibibytes(48)
         # Create the job definition
