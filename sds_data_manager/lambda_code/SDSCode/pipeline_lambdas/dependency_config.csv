@@ -51,7 +51,9 @@ codice, l1b, hi-omni, codice, l2, hi-omni, HARD, DOWNSTREAM
 codice, ancillary, l2-hi-omni-efficiency, codice, l2, hi-omni, HARD, DOWNSTREAM
 
 codice, l1b, hi-sectored, codice, l2, hi-sectored, HARD, DOWNSTREAM
+codice, ancillary, l2-hi-sectored-efficiency, codice, l2, hi-sectored, HARD, DOWNSTREAM
 
+# CoDICe L3 dependencies
 codice, l2, lo-sw-species, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
 codice, ancillary, mass-per-charge, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
 
