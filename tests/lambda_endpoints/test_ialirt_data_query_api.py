@@ -327,8 +327,8 @@ def test_filter_items_by_scope_restricted(ialirt_data_query_api_module):
     items = [
         {
             "instrument": "hit",
-            "hit_h_a_side_low_en": 10,
-            "hit_h_a_side_med_en": 20,
+            "hit_e_a_side_high_en": 10,
+            "hit_e_b_side_high_en": 20,
             "hit_e_a_side_med_en": 30,  # should remain
             "time_utc": "2025-11-22T05:30:00",
         },
