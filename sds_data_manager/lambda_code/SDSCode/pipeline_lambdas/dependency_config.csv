@@ -21,8 +21,36 @@ codice, l1a, hi-omni, codice, l1b, hi-omni, HARD, DOWNSTREAM
 codice, l1a, hi-priority, codice, l1b, hi-priority, HARD, DOWNSTREAM
 codice, l1a, hi-sectored, codice, l1b, hi-sectored, HARD, DOWNSTREAM
 
+# CoDICe L2 dependencies
 codice, l1a, lo-direct-events, codice, l2, lo-direct-events, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-onboard-energy-table, codice, l2, lo-direct-events, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-onbaord-energy-bins, codice, l2, lo-direct-events, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-onboard-mpq-cal, codice, l2, lo-direct-events, HARD, DOWNSTREAM
+
 codice, l1a, hi-direct-events, codice, l2, hi-direct-events, HARD, DOWNSTREAM
+codice, ancillary, l2-hi-energy-table, codice, l2, hi-direct-events, HARD, DOWNSTREAM
+codice, ancillary, l2-hi-tof-table, codice, l2, hi-direct-events, HARD, DOWNSTREAM
+
+codice, l1b, lo-sw-species, codice, l2, lo-sw-species, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-gfactor, codice, l2, lo-sw-species, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-efficiency, codice, l2, lo-sw-species, HARD, DOWNSTREAM
+
+codice, l1b, lo-nsw-species, codice, l2, lo-nsw-species, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-gfactor, codice, l2, lo-nsw-species, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-efficiency, codice, l2, lo-nsw-species, HARD, DOWNSTREAM
+
+codice, l1b, lo-sw-angular, codice, l2, lo-sw-angular, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-gfactor, codice, l2, lo-sw-angular, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-efficiency, codice, l2, lo-sw-angular, HARD, DOWNSTREAM
+
+codice, l1b, lo-nsw-angular, codice, l2, lo-nsw-angular, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-gfactor, codice, l2, lo-nsw-angular, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-efficiency, codice, l2, lo-nsw-angular, HARD, DOWNSTREAM
+
+codice, l1b, hi-omni, codice, l2, hi-omni, HARD, DOWNSTREAM
+codice, ancillary, l2-hi-omni-efficiency, codice, l2, hi-omni, HARD, DOWNSTREAM
+
+codice, l1b, hi-sectored, codice, l2, hi-sectored, HARD, DOWNSTREAM
 
 codice, l2, lo-sw-species, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
 codice, ancillary, mass-per-charge, codice, l3a, lo-partial-densities, HARD, DOWNSTREAM
