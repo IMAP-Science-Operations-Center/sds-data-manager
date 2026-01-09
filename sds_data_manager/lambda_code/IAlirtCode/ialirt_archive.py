@@ -93,6 +93,10 @@ def lambda_handler(event, context):
     now = datetime.now(timezone.utc)
     target_date = (now - timedelta(days=7)).date()
 
+    # This is in case the solid state recorder is setup to save
+    # I-ALiRT data onboard in which case DSN will deliver the data in batches
+    # approximately 3 times per week (instead of having all data be
+    # in near-realtime).
     seven_days_ago = datetime.combine(
         target_date, time.min, tzinfo=timezone.utc
     )  # 00:00 UTC
