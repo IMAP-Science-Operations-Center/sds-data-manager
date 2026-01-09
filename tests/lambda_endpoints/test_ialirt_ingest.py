@@ -330,7 +330,12 @@ def test_reformat_data_no_hk():
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.str_to_et",
     return_value=12345.0,
 )
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.et_to_ttj2000ns",
+    return_value=759175836184000000,
+)
 def test_insert_formatted_data(
+    mock_et_to_ttj2000ns,
     mock_str_to_et,
     mock_imap_state,
     setup_data_table,
