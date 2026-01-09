@@ -18,6 +18,20 @@ region = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
 dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
+FULL_SCOPES = {
+    "full",
+    "ialirt_scientist",
+}
+
+RESTRICTED_FIELDS = {
+    "hit_e_a_side_high_en",
+    "hit_e_b_side_high_en",
+    "hit_h_a_side_high_en",
+    "hit_h_b_side_high_en",
+}
+
+PUBLIC_CUTOFF_UTC = "2026-02-01T00:00:00"
+
 
 class BadTimeError(Exception):
     """Raised when the time filters are invalid."""
@@ -41,7 +55,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
+def apply_time_filters(params: dict, query_kwargs: dict, has_api_key: bool) -> tuple:
     """Apply the filters for time.
 
     Parameters
@@ -50,6 +64,8 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
         Event parameters.
     query_kwargs : dict
         Query keyword arguments.
+    has_api_key : bool
+        Whether or not user used api key.
 
     Returns
     -------
@@ -83,6 +99,9 @@ def apply_time_filters(params: dict, query_kwargs: dict) -> tuple:
 
     start = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
     end = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
+
+    if not has_api_key and start < PUBLIC_CUTOFF_UTC:
+        raise BadTimeError("API key required for data prior to 2026-02-01T00:00:00")
 
     key_expr &= Key("time_utc").between(start, end)
     query_kwargs["KeyConditionExpression"] = key_expr
@@ -132,6 +151,32 @@ def _error(code: int, message: str) -> dict:
     }
 
 
+def filter_items_by_scope(items: list[dict], scope: str) -> list[dict]:
+    """Hide selected HIT fields for scopes that are not full HIT.
+
+    Parameters
+    ----------
+    items : list[dict]
+        Items returned from DynamoDB.
+    scope : str
+        Scope string from the API key authorizer.
+
+    Returns
+    -------
+    filtered_items: list[dict]
+        Items list.
+    """
+    # If caller has full HIT access, do nothing
+    if scope in FULL_SCOPES:
+        return items
+
+    filtered_items = [
+        {k: v for k, v in item.items() if k not in RESTRICTED_FIELDS} for item in items
+    ]
+
+    return filtered_items
+
+
 def lambda_handler(event, context):
     """Create metadata and add it to the database.
 
@@ -150,6 +195,13 @@ def lambda_handler(event, context):
 
     """
     params = event.get("queryStringParameters") or {}
+
+    # If there is an api-key used, retrieve the scope.
+    request_ctx = event.get("requestContext", {})
+    auth = request_ctx.get("authorizer", {})
+    auth_ctx = auth.get("lambda", {})
+    scope = auth_ctx.get("scope", "")
+    has_api_key = bool(auth)
 
     # --- Determine key condition ---
     allowed_params = {
@@ -198,7 +250,7 @@ def lambda_handler(event, context):
 
         try:
             query_kwargs, range_start, range_end = apply_time_filters(
-                params, query_kwargs
+                params, query_kwargs, has_api_key
             )
         except BadTimeError as e:
             return _error(400, str(e))
@@ -222,6 +274,8 @@ def lambda_handler(event, context):
             f"{range_end} took {t2 - t1} s"
         )
         raw_items = response.get("Items", [])
+        if instrument == "hit":
+            raw_items = filter_items_by_scope(raw_items, scope)
         items.extend(raw_items)
         query_time_total += t2 - t1
 

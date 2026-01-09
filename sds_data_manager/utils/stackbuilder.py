@@ -357,7 +357,7 @@ def build_sds(
         scope=ialirt_stack,
         construct_id="IalirtArchive",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
-        algorithm_data_table=ingest.algorithm_data_table,
+        data_table=ingest.data_table,
     )
 
     # I-ALiRT IOIS pointing schedule lambda

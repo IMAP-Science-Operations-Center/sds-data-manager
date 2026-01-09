@@ -68,6 +68,9 @@ class PacketDownloaderLambda(Construct):
             # We are downloading data, so make sure we have a longer timeout here
             timeout=cdk.Duration.minutes(15),
             memory_size=2048,
+            # Some packet files can be large depending on how long it has been since
+            # the last downlink. Increase the ephemeral /tmp size to accomodate this.
+            ephemeral_storage_size=cdk.Size.gibibytes(2),
             # Environment variables - API key will be retrieved from SSM at runtime
             environment={
                 "IMAP_DATA_ACCESS_URL": data_access_url,

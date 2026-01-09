@@ -5,6 +5,7 @@ import json
 import os
 from datetime import datetime, timezone
 from decimal import Decimal
+from unittest import mock
 
 import pytest
 from boto3.dynamodb.conditions import Key
@@ -19,22 +20,22 @@ def data_table(setup_data_table):
     sample_data = [
         {
             "instrument": "mag",
-            "time_utc": "2021-01-01T00:00:00",
+            "time_utc": "2027-01-01T00:00:00",
             "data": "item1",
         },
         {
             "instrument": "mag_hk",
-            "time_utc": "2021-01-02T00:00:00",
+            "time_utc": "2027-01-02T00:00:00",
             "data": "item2",
         },
         {
             "instrument": "hit",
-            "time_utc": "2021-01-03T00:00:00",
+            "time_utc": "2027-01-03T00:00:00",
             "data": "item3",
         },
         {
             "instrument": "spice",
-            "time_utc": "2021-01-04T00:00:00",
+            "time_utc": "2027-01-04T00:00:00",
             "data": "item4",
         },
         {
@@ -101,7 +102,7 @@ def test_apply_time_filters_between(ialirt_data_query_api_module):
     query_kwargs = {"KeyConditionExpression": Key("instrument").eq("hit")}
 
     # Call the function
-    ialirt_data_query_api_module.apply_time_filters(params, query_kwargs)
+    ialirt_data_query_api_module.apply_time_filters(params, query_kwargs, True)
 
     # Get internal structure
     expr = query_kwargs["KeyConditionExpression"]
@@ -131,7 +132,7 @@ def test_apply_time_filters_gte(ialirt_data_query_api_module):
     params = {"time_utc_start": "2025-10-01T10:00:00Z"}
     query_kwargs = {"KeyConditionExpression": Key("instrument").eq("hit")}
 
-    ialirt_data_query_api_module.apply_time_filters(params, query_kwargs)
+    ialirt_data_query_api_module.apply_time_filters(params, query_kwargs, True)
 
     # Inspect the internal structure of the KeyConditionExpression
     expr = query_kwargs["KeyConditionExpression"]
@@ -158,7 +159,7 @@ def test_apply_time_filters_error(ialirt_data_query_api_module):
     params = {"time_utc_end": "2025-10-01T11:00:00Z"}
     query_kwargs = {"KeyConditionExpression": Key("instrument").eq("hit")}
 
-    result = ialirt_data_query_api_module.apply_time_filters(params, query_kwargs)
+    result = ialirt_data_query_api_module.apply_time_filters(params, query_kwargs, True)
 
     # This should be an error dict
     assert result[1] == "2025-10-01T10:00:00"
@@ -170,8 +171,8 @@ def test_query_with_utc_range(data_table, ialirt_data_query_api_module):
     # met_in_utc_end=<met_in_utc_end>
     event = {
         "queryStringParameters": {
-            "met_in_utc_start": "2021-01-01T00:00:00",
-            "met_in_utc_end": "2021-01-03T00:00:00",
+            "met_in_utc_start": "2027-01-01T00:00:00",
+            "met_in_utc_end": "2027-01-03T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
@@ -184,7 +185,7 @@ def test_query_with_utc_start(data_table, ialirt_data_query_api_module):
     # GET <invoke url>/query?utc_start=<utc_start>
     event = {
         "queryStringParameters": {
-            "met_in_utc_start": "2021-01-03T00:00:00",
+            "met_in_utc_start": "2027-01-03T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
@@ -192,7 +193,7 @@ def test_query_with_utc_start(data_table, ialirt_data_query_api_module):
 
     utc = sorted(data["time_utc"] for data in items["data"])
 
-    assert "2021-01-03T00:00:00" in utc
+    assert "2027-01-03T00:00:00" in utc
 
 
 def test_query_with_utc_end(data_table, ialirt_data_query_api_module):
@@ -200,12 +201,12 @@ def test_query_with_utc_end(data_table, ialirt_data_query_api_module):
     # GET <invoke url>/query?met_in_utc_end=<met_in_utc_end>
     event = {
         "queryStringParameters": {
-            "met_in_utc_end": "2021-01-03T00:00:00",
+            "met_in_utc_end": "2027-01-03T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
     items = json.loads(response["body"])
-    assert items["data"][0]["time_utc"] == "2021-01-03T00:00:00"
+    assert items["data"][0]["time_utc"] == "2027-01-03T00:00:00"
 
 
 def test_query_results(data_table, ialirt_data_query_api_module):
@@ -213,7 +214,7 @@ def test_query_results(data_table, ialirt_data_query_api_module):
     # GET <invoke url>/query?met_start=<met_start>&met_end=<met_end>
     event = {
         "queryStringParameters": {
-            "met_in_utc_start": "2021-01-05T00:00:00",
+            "met_in_utc_start": "2027-01-05T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
@@ -223,11 +224,11 @@ def test_query_results(data_table, ialirt_data_query_api_module):
 
 def test_query_with_multiple_filters(data_table, ialirt_data_query_api_module):
     """Test query with multiple filters."""
-    # GET <invoke url>/query?instrument=mag&met_in_utc_start=2021-01-01T00:00:00
+    # GET <invoke url>/query?instrument=mag&met_in_utc_start=2027-01-01T00:00:00
     event = {
         "queryStringParameters": {
             "instrument": "mag",
-            "met_in_utc_start": "2021-01-01T00:00:00",
+            "met_in_utc_start": "2027-01-01T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
@@ -238,14 +239,14 @@ def test_query_with_multiple_filters(data_table, ialirt_data_query_api_module):
 
 def test_query_with_different_time_queries(data_table, ialirt_data_query_api_module):
     """Test query API with multiple filters."""
-    # GET <invoke url>/query?instrument=hit&time_utc_start=2021-01-02T00:00:00&
-    # time_utc_end=2021-01-03T00:00:00&
-    # met_in_utc_start=2021-01-02T00:00:00.
+    # GET <invoke url>/query?instrument=hit&time_utc_start=2027-01-02T00:00:00&
+    # time_utc_end=2027-01-03T00:00:00&
+    # met_in_utc_start=2027-01-02T00:00:00.
     event = {
         "queryStringParameters": {
-            "time_utc_start": "2021-01-02T00:00:00",
-            "time_utc_end": "2021-01-03T00:00:00",
-            "met_in_utc_start": "2021-01-02T00:00:00",
+            "time_utc_start": "2027-01-02T00:00:00",
+            "time_utc_end": "2027-01-03T00:00:00",
+            "met_in_utc_start": "2027-01-02T00:00:00",
         }
     }
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
@@ -268,13 +269,22 @@ def test_query_with_invalid_parameters(data_table, ialirt_data_query_api_module)
     assert json.loads(response["body"]) == expected_message
 
 
-def test_query_with_no_parameters(data_table, ialirt_data_query_api_module):
+@mock.patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_data_query_api.datetime")
+def test_query_with_no_parameters(
+    mock_datetime, data_table, ialirt_data_query_api_module
+):
     """Test query with no parameters."""
     # GET <invoke url>/query.
+    mock_datetime.now.return_value = datetime(2026, 1, 15, 0, 0, 0, tzinfo=timezone.utc)
+
     event = {"queryStringParameters": None}
     response = ialirt_data_query_api_module.lambda_handler(event, context=None)
 
-    assert json.loads(response["body"])["data"][0]["instrument"] == "mag"
+    assert response == {
+        "statusCode": 400,
+        "body": '{"message": "API key required for data prior to 2026-02-01T00:00:00"}',
+        "headers": {"Content-Type": "application/json"},
+    }
 
 
 def test_process_item_types(ialirt_data_query_api_module):
@@ -307,3 +317,35 @@ def test_process_item_types(ialirt_data_query_api_module):
             "mag_hk_status": {"pri_isvalid": True, "hkn8v5": 3680},
         }
     ]
+
+
+def test_filter_items_by_scope_restricted(ialirt_data_query_api_module):
+    """Test filter_items_by_scope_restricted."""
+    filter_items = ialirt_data_query_api_module.filter_items_by_scope
+
+    # Input items
+    items = [
+        {
+            "instrument": "hit",
+            "hit_e_a_side_high_en": 10,
+            "hit_e_b_side_high_en": 20,
+            "hit_e_a_side_med_en": 30,  # should remain
+            "time_utc": "2025-11-22T05:30:00",
+        },
+        {
+            "instrument": "mag",
+            "Bx": 1.0,
+            "By": 2.0,
+        },
+    ]
+
+    filtered_items = filter_items(items, scope="")  # restricted user
+
+    expected_hit_items = {
+        "instrument": "hit",
+        "hit_e_a_side_med_en": 30,
+        "time_utc": "2025-11-22T05:30:00",
+    }
+
+    assert filtered_items[1] == items[1]
+    assert filtered_items[0] == expected_hit_items

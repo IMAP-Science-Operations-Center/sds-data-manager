@@ -8,7 +8,7 @@ dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("imap-sdc-api-keys")
 
 
-def lambda_handler(event, context):  # noqa: PLR0911
+def lambda_handler(event, context):
     """Get the API Key from the request header and check if it is valid."""
     api_key = event.get("headers", {}).get("x-api-key", None)
 
@@ -35,13 +35,7 @@ def lambda_handler(event, context):  # noqa: PLR0911
         "ialirt_scientist",
     ):
         return {"isAuthorized": False}
-    if path.startswith("/space-weather") and scope not in (
-        "ialirt_db",
-        "full",
-        "ialirt_external_partner",
-        "ialirt_scientist",
-    ):
-        return {"isAuthorized": False}
+
     if path.startswith("/ialirt-download") and scope not in (
         "full",
         "ialirt_external_partner",
@@ -49,4 +43,10 @@ def lambda_handler(event, context):  # noqa: PLR0911
     ):
         return {"isAuthorized": False}
 
-    return {"isAuthorized": True, "context": {"apiKey": api_key}}
+    return {
+        "isAuthorized": True,
+        "context": {
+            "apiKey": api_key,
+            "scope": scope,
+        },
+    }

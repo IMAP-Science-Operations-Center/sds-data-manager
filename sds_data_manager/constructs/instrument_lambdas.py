@@ -157,8 +157,9 @@ class BatchStarterLambda(Construct):
         #    - 1 year map jobs (every 365.25 days)
         # Note: each map job trigger will have its own eventBridge rule, because we need
         # them to run every x days starting from the same date (t0).
-        # TODO what would be a good start date?
-        first_job = datetime.datetime(2026, 1, 1)
+        # TODO First job date should be 3 months after phase e start date.
+        #   TODO determine exact phase e start date.
+        first_job = datetime.datetime(2026, 5, 1)
         t0_date = first_job - datetime.timedelta(days=CadenceDays.THREE_MONTHS)
         today = datetime.datetime.now()
         # Create rules for 15 years (far beyond what we expect as a precaution)
