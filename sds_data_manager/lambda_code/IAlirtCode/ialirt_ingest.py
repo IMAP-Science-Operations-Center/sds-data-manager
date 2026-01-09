@@ -35,6 +35,7 @@ from imap_processing.spice.geometry import (
 )
 from imap_processing.spice.time import (
     et_to_met,
+    et_to_ttj2000ns,
     met_to_sclkticks,
     met_to_ttj2000ns,
     met_to_utc,
@@ -569,6 +570,7 @@ def insert_formatted_data(
     spacecraft = {
         "instrument": "spacecraft",
         "time_utc": min_time,
+        "ttj2000ns": int(et_to_ttj2000ns(et)),
         "sc_position_GSM": [Decimal(str(val)) for val in gsm_state[0, :3]],
         "sc_velocity_GSM": [Decimal(str(val)) for val in gsm_state[0, 3:]],
         "sc_position_GSE": [Decimal(str(val)) for val in gse_state[0, :3]],
