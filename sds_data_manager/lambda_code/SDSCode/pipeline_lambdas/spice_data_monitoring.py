@@ -26,17 +26,17 @@ METRIC_NAMESPACE = os.environ.get("METRIC_NAMESPACE", "IMAP/SpiceDataFreshness")
 # Monitored prefixes configuration
 # Format: {prefix: {name: display_name, threshold_days: N}}
 MONITORED_PREFIXES = {
-    "spice/ck/": {
+    "imap/spice/ck/": {
         "name": "CK_Kernels",
         "threshold_days": int(os.environ.get("CK_THRESHOLD_DAYS", "7")),
         "description": "Attitude history and pointing attitude kernels",
     },
-    "imap/spin/": {
+    "imap/spice/spin/": {
         "name": "Spin_Files",
         "threshold_days": int(os.environ.get("SPIN_THRESHOLD_DAYS", "7")),
         "description": "Spacecraft spin files",
     },
-    "imap/sclk/": {
+    "imap/spice/sclk/": {
         "name": "SCLK_Kernels",
         "threshold_days": int(os.environ.get("SCLK_THRESHOLD_DAYS", "7")),
         "description": "Spacecraft clock kernels",
