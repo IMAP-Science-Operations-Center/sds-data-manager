@@ -167,14 +167,17 @@ class BatchStarterLambda(Construct):
         # expression. E.g., we cannot specify "rate(91.2 days)" for 3 months.
         # TODO First job date should be 3 months after phase e start date.
         #   TODO determine exact phase e start date.
-        first_job = datetime.datetime(2026, 5, 1)
+        first_map_jobs = datetime.datetime(2026, 5, 1)
+        # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
+        # a 1 month cadence job.
+        first_1mo_jobs = datetime.datetime(2026, 1, 1)
         today = datetime.datetime.now()
         cadence_strs = ["1mo", "3mo", "6mo", "1yr"]
         for cadence_str in cadence_strs:
             cadence = CadenceDays.str_lookup(cadence_str)
             # Calculate interval in minutes
             interval_minutes = int(cadence.value * 24 * 60)
-
+            first_job = first_1mo_jobs if cadence_str == "1mo" else first_map_jobs
             # Calculate the next run time based on the first job date and the cadence
             next_run = calculate_next_run(first_job, today, interval_minutes)
             scheduler.CfnSchedule(
