@@ -1,7 +1,7 @@
 """Lambda function to monitor SPICE data freshness.
 
-This Lambda checks for missing SPICE data by monitoring specific S3
-prefixes and publishing CloudWatch metrics when data is stale.
+This Lambda checks for missing SPICE data by querying the database
+and publishing CloudWatch metrics when data is stale.
 """
 
 import json
@@ -10,9 +10,12 @@ import os
 from datetime import datetime, timezone
 
 import boto3
+from sqlalchemy import func
+
+from ..database import database as db
+from ..database import models
 
 # AWS Clients
-S3_CLIENT = boto3.client("s3")
 CLOUDWATCH_CLIENT = boto3.client("cloudwatch")
 
 # Logger setup
@@ -20,83 +23,105 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Configuration from environment variables
-BUCKET_NAME = os.environ.get("S3_BUCKET")
 METRIC_NAMESPACE = os.environ.get("METRIC_NAMESPACE", "IMAP/SpiceDataFreshness")
 
-# Monitored prefixes configuration
-# Format: {prefix: {name: display_name, threshold_days: N}}
-MONITORED_PREFIXES = {
-    "imap/spice/ck/": {
+# Monitored data sources configuration
+# Format: {category: {name: display_name, threshold_days: N, query_info}}
+MONITORED_DATA = {
+    "ck_kernels": {
         "name": "CK_Kernels",
         "threshold_days": int(os.environ.get("CK_THRESHOLD_DAYS", "7")),
         "description": "Attitude history and pointing attitude kernels",
+        "table": "spice",
+        "kernel_types": ["attitude_history", "pointing_attitude"],
     },
-    "imap/spice/spin/": {
+    "spin_files": {
         "name": "Spin_Files",
         "threshold_days": int(os.environ.get("SPIN_THRESHOLD_DAYS", "7")),
         "description": "Spacecraft spin files",
+        "table": "spin",
+        "kernel_types": None,
     },
-    "imap/spice/sclk/": {
+    "sclk_kernels": {
         "name": "SCLK_Kernels",
         "threshold_days": int(os.environ.get("SCLK_THRESHOLD_DAYS", "7")),
         "description": "Spacecraft clock kernels",
+        "table": "spice",
+        "kernel_types": ["spacecraft_clock"],
     },
 }
 
 
-def get_most_recent_file_age(bucket: str, prefix: str) -> int | None:
-    """Get the age in days of the most recent file in an S3 prefix.
+def get_most_recent_ingestion_age(
+    table: str, kernel_types: list[str] | None = None
+) -> int | None:
+    """Get the age in days of the most recently ingested file from database.
 
     Parameters
     ----------
-    bucket : str
-        S3 bucket name
-    prefix : str
-        S3 prefix to check
+    table : str
+        Which table to query: 'spice' or 'spin'
+    kernel_types : list[str] | None
+        For SPICEFiles table, filter by kernel types.
+        For SpinFiles table, this is ignored.
 
     Returns
     -------
     int | None
-        Number of days since the most recent file was modified,
+        Number of days since the most recent file was ingested,
         or None if no files exist
     """
     try:
-        # List objects in the prefix, sorted by LastModified descending
-        response = S3_CLIENT.list_objects_v2(
-            Bucket=bucket,
-            Prefix=prefix,
-            MaxKeys=1000,  # Get enough files to find the most recent
-        )
+        with db.Session() as session:
+            if table == "spice":
+                # Query SPICEFiles table
+                query = session.query(func.max(models.SPICEFiles.ingestion_date))
+                if kernel_types:
+                    query = query.filter(
+                        models.SPICEFiles.kernel_type.in_(kernel_types)
+                    )
+                most_recent = query.scalar()
 
-        if "Contents" not in response or not response["Contents"]:
-            logger.warning(f"No files found in prefix: {prefix}")
-            return None
+            elif table == "spin":
+                # Query SpinFiles table
+                most_recent = session.query(
+                    func.max(models.SpinFiles.ingestion_date)
+                ).scalar()
 
-        # Find the most recent file
-        most_recent = max(response["Contents"], key=lambda x: x["LastModified"])
-        last_modified = most_recent["LastModified"]
+            else:
+                logger.error(f"Unknown table type: {table}")
+                return None
 
-        # Calculate age in days
-        age = (datetime.now(timezone.utc) - last_modified).days
-        logger.info(
-            f"Prefix {prefix}: Most recent file is {age} days old "
-            f"(modified: {last_modified})"
-        )
+            if most_recent is None:
+                logger.warning(
+                    f"No files found in {table} table (kernel_types: {kernel_types})"
+                )
+                return None
 
-        return age
+            # Calculate age in days
+            age = (datetime.now(timezone.utc) - most_recent).days
+            logger.info(
+                f"Table {table} (kernel_types: {kernel_types}): "
+                f"Most recent file is {age} days old "
+                f"(ingested: {most_recent})"
+            )
+
+            return age
 
     except Exception as e:
-        logger.error(f"Error checking prefix {prefix}: {e!s}")
+        logger.error(
+            f"Error checking {table} table (kernel_types: {kernel_types}): {e!s}"
+        )
         return None
 
 
-def publish_metric(prefix_name: str, days_old: int):
+def publish_metric(data_name: str, days_old: int):
     """Publish a CloudWatch metric for SPICE data freshness.
 
     Parameters
     ----------
-    prefix_name : str
-        Name of the prefix being monitored
+    data_name : str
+        Name of the data source being monitored
     days_old : int
         Number of days since the most recent file
     """
@@ -105,25 +130,25 @@ def publish_metric(prefix_name: str, days_old: int):
             Namespace=METRIC_NAMESPACE,
             MetricData=[
                 {
-                    "MetricName": "DaysSinceLastSPICEFile",
+                    "MetricName": "DaysSinceLastFile",
                     "Value": days_old,
                     "Unit": "None",
-                    "Dimensions": [{"Name": "Prefix", "Value": prefix_name}],
+                    "Dimensions": [{"Name": "Prefix", "Value": data_name}],
                     "Timestamp": datetime.now(timezone.utc),
                 }
             ],
         )
-        logger.info(f"Published metric for {prefix_name}: {days_old} days old")
+        logger.info(f"Published metric for {data_name}: {days_old} days old")
     except Exception as e:
-        logger.error(f"Error publishing metric for {prefix_name}: {e!s}")
+        logger.error(f"Error publishing metric for {data_name}: {e!s}")
 
 
 def lambda_handler(event, context):
     """Lambda handler to check SPICE data freshness.
 
-    This function runs on a schedule (daily) and checks each monitored
-    SPICE prefix for the most recent file. It publishes CloudWatch
-    metrics that can be used to trigger alarms.
+    This function runs on a schedule (daily) and queries the database
+    for the most recently ingested files in each monitored category.
+    It publishes CloudWatch metrics that can be used to trigger alarms.
 
     Parameters
     ----------
@@ -139,42 +164,47 @@ def lambda_handler(event, context):
         Response with status code and summary of results
     """
     logger.info(f"Received event: {event}")
-    logger.info(f"Checking SPICE data freshness in bucket: {BUCKET_NAME}")
+    logger.info("Checking SPICE data freshness from database")
 
     results = {}
 
-    for prefix, config in MONITORED_PREFIXES.items():
-        prefix_name = config["name"]
+    for _category, config in MONITORED_DATA.items():
+        data_name = config["name"]
         threshold = config["threshold_days"]
         description = config["description"]
+        table = config["table"]
+        kernel_types = config["kernel_types"]
 
         logger.info(
-            f"Checking {prefix_name} ({description}) with threshold {threshold} days"
+            f"Checking {data_name} ({description}) with threshold {threshold} days"
         )
 
-        days_old = get_most_recent_file_age(BUCKET_NAME, prefix)
+        days_old = get_most_recent_ingestion_age(table, kernel_types)
 
         if days_old is None:
             # No files found - use a sentinel value
             days_old = 999
-            logger.warning(f"{prefix_name}: No files found in prefix {prefix}")
+            logger.warning(
+                f"{data_name}: No files found in database "
+                f"(table: {table}, kernel_types: {kernel_types})"
+            )
 
         # Publish the metric regardless of threshold
-        publish_metric(prefix_name, days_old)
+        publish_metric(data_name, days_old)
 
         # Store result
-        results[prefix_name] = {
+        results[data_name] = {
             "days_old": days_old,
             "threshold": threshold,
             "stale": days_old > threshold,
         }
 
     # Log summary
-    stale_prefixes = [name for name, result in results.items() if result["stale"]]
-    if stale_prefixes:
-        logger.warning(f"Stale data detected in: {', '.join(stale_prefixes)}")
+    stale_sources = [name for name, result in results.items() if result["stale"]]
+    if stale_sources:
+        logger.warning(f"Stale data detected in: {', '.join(stale_sources)}")
     else:
-        logger.info("All monitored prefixes are up to date")
+        logger.info("All monitored data sources are up to date")
 
     return {
         "statusCode": 200,

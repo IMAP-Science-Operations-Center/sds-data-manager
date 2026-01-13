@@ -8,11 +8,12 @@ and creates alarms that trigger SNS notifications when data is missing.
 from aws_cdk import Duration
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_cloudwatch_actions as cloudwatch_actions
+from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_s3 as s3
+from aws_cdk import aws_secretsmanager as secrets
 from aws_cdk import aws_sns as sns
 from aws_cdk import aws_sns_subscriptions as subs
 from constructs import Construct
@@ -26,7 +27,10 @@ class SpiceMonitoringConstruct(Construct):
         scope: Construct,
         construct_id: str,
         code: lambda_.Code,
-        data_bucket: s3.Bucket,
+        db_secret_name: str,
+        vpc: ec2.Vpc,
+        rds_security_group: ec2.SecurityGroup,
+        layers: list,
         alarm_email: str,
         ck_threshold_days: int = 7,
         spin_threshold_days: int = 7,
@@ -43,8 +47,14 @@ class SpiceMonitoringConstruct(Construct):
             A unique string identifier for this construct.
         code : lambda_.Code
             Lambda code bundle.
-        data_bucket : s3.Bucket
-            The data bucket containing SPICE files.
+        db_secret_name : str
+            Name of the secret containing database credentials.
+        vpc : ec2.Vpc
+            VPC for Lambda function.
+        rds_security_group : ec2.SecurityGroup
+            Security group for RDS access.
+        layers : list
+            Lambda layers for database access.
         alarm_email : str
             Email address to receive alarm notifications.
         ck_threshold_days : int, optional
@@ -81,7 +91,10 @@ class SpiceMonitoringConstruct(Construct):
         # Create the monitoring Lambda function
         self.monitoring_lambda = self._create_lambda(
             code=code,
-            data_bucket=data_bucket,
+            db_secret_name=db_secret_name,
+            vpc=vpc,
+            rds_security_group=rds_security_group,
+            layers=layers,
             ck_threshold_days=ck_threshold_days,
             spin_threshold_days=spin_threshold_days,
             sclk_threshold_days=sclk_threshold_days,
@@ -100,7 +113,10 @@ class SpiceMonitoringConstruct(Construct):
     def _create_lambda(
         self,
         code: lambda_.Code,
-        data_bucket: s3.Bucket,
+        db_secret_name: str,
+        vpc: ec2.Vpc,
+        rds_security_group: ec2.SecurityGroup,
+        layers: list,
         ck_threshold_days: int,
         spin_threshold_days: int,
         sclk_threshold_days: int,
@@ -111,8 +127,14 @@ class SpiceMonitoringConstruct(Construct):
         ----------
         code : lambda_.Code
             Lambda code bundle.
-        data_bucket : s3.Bucket
-            The data bucket containing SPICE files.
+        db_secret_name : str
+            Name of the secret containing database credentials.
+        vpc : ec2.Vpc
+            VPC for Lambda function.
+        rds_security_group : ec2.SecurityGroup
+            Security group for RDS access.
+        layers : list
+            Lambda layers for database access.
         ck_threshold_days : int
             Threshold for CK kernels.
         spin_threshold_days : int
@@ -135,17 +157,27 @@ class SpiceMonitoringConstruct(Construct):
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=Duration.minutes(5),
             memory_size=512,
+            allow_public_subnet=True,
+            vpc=vpc,
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            ),
+            security_groups=[rds_security_group],
             environment={
-                "S3_BUCKET": data_bucket.bucket_name,
+                "SECRET_NAME": db_secret_name,
                 "METRIC_NAMESPACE": "IMAP/SpiceDataFreshness",
                 "CK_THRESHOLD_DAYS": str(ck_threshold_days),
                 "SPIN_THRESHOLD_DAYS": str(spin_threshold_days),
                 "SCLK_THRESHOLD_DAYS": str(sclk_threshold_days),
             },
+            layers=layers,
         )
 
-        # Grant permissions to list and read S3 objects
-        data_bucket.grant_read(monitoring_lambda)
+        # Grant access to read the database secret
+        rds_secret = secrets.Secret.from_secret_name_v2(
+            self, "rds_secret", db_secret_name
+        )
+        rds_secret.grant_read(grantee=monitoring_lambda)
 
         # Grant permissions to publish CloudWatch metrics
         monitoring_lambda.add_to_role_policy(
