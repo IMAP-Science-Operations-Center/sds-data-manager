@@ -2,12 +2,16 @@
 
 import datetime
 
-import aws_cdk as cdk
-from aws_cdk import Duration, Environment, aws_events
+from aws_cdk import Duration, Environment
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_iam as iam
+from aws_cdk import (
+    aws_iam as iam,
+)
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_s3 as s3
+from aws_cdk import (
+    aws_scheduler as scheduler,
+)
 from aws_cdk import aws_secretsmanager as secrets
 from aws_cdk import aws_sqs as sqs
 from aws_cdk.aws_lambda_event_sources import SqsEventSource
@@ -137,103 +141,95 @@ class BatchStarterLambda(Construct):
         )
 
         # Set up eventBridge rules to trigger batch starter lambda.
-        # create one permission for Cadence rules and one for Scheduled rules
-        self.instrument_lambda.add_permission(
-            "AllowEventBridgeInvokeCadence",
-            principal=iam.ServicePrincipal("events.amazonaws.com"),
-            action="lambda:InvokeFunction",
-            source_arn=f"arn:aws:events:{env.region}:{env.account}:rule/ProcessingCadenceJob*",
-        )
+        # create a permission for Scheduled rules
         self.instrument_lambda.add_permission(
             "AllowEventBridgeInvokeScheduled",
             principal=iam.ServicePrincipal("events.amazonaws.com"),
             action="lambda:InvokeFunction",
             source_arn=f"arn:aws:events:{env.region}:{env.account}:rule/ProcessingScheduledJob*",
         )
+        # Create IAM role for EventBridge Scheduler
+        scheduler_role = iam.Role(
+            scope=scope,
+            id="SchedulerExecutionRole",
+            assumed_by=iam.ServicePrincipal("scheduler.amazonaws.com"),
+        )
+
+        self.instrument_lambda.grant_invoke(scheduler_role)
+
         # Many l2 jobs create maps and need 3-12 months worth of data to run.
         # Create eventBridge rules to trigger:
         #    - 3 month map jobs (every 365.25 / 4 days)
         #    - 6 month map jobs (every 365.25 / 2 days)
         #    - 1 year map jobs (every 365.25 days)
-        # Note: each map job trigger will have its own eventBridge rule, because we need
-        # them to run every x days starting from the same date (t0).
+        # Note: We are defining the schedules to run at minute-level intervals because
+        # AWS EventBridge Scheduler does not allow for decimal values in the rate
+        # expression. E.g., we cannot specify "rate(91.2 days)" for 3 months.
         # TODO First job date should be 3 months after phase e start date.
         #   TODO determine exact phase e start date.
         first_job = datetime.datetime(2026, 5, 1)
-        t0_date = first_job - datetime.timedelta(days=CadenceDays.THREE_MONTHS)
         today = datetime.datetime.now()
-        # Create rules for 15 years (far beyond what we expect as a precaution)
-        # AWS event bridge supports up to 500 rules, so this is well within the limit.
-        total_days = CadenceDays.ONE_YEAR * 15
-        for i in range(1, int(total_days // CadenceDays.THREE_MONTHS.value)):
-            date = t0_date + datetime.timedelta(days=CadenceDays.THREE_MONTHS.value * i)
-            if date < today:
-                # Skip dates that are in the past. This might be the case if we are
-                # deploying this construct after the t0_date.
-                continue
-            string_date = date.strftime("%Y%m%d")
-            cron_exp = (
-                f"cron({date.minute} {date.hour} {date.day} {date.month} ? {date.year})"
-            )
-            # TODO retry count is set to 185???
-            aws_events.CfnRule(
+        cadence_strs = ["1mo", "3mo", "6mo", "1yr"]
+        for cadence_str in cadence_strs:
+            cadence = CadenceDays.str_lookup(cadence_str)
+            # Calculate interval in minutes
+            interval_minutes = int(cadence.value * 24 * 60)
+
+            # Calculate the next run time based on the first job date and the cadence
+            next_run = calculate_next_run(first_job, today, interval_minutes)
+            scheduler.CfnSchedule(
                 scope=scope,
-                id=f"ProcessingCadenceJob3month_{string_date}",
-                name=f"ProcessingCadenceJob3month_{string_date}",
-                description=f"Trigger 'batch starter' processing job on {string_date}",
-                schedule_expression=cron_exp,
+                id=f"ProcessingCadenceJob_{cadence.name}",
+                name=f"ProcessingCadenceJob_{cadence.name}",
+                schedule_expression=f"rate({interval_minutes} minutes)",
+                # Start the schedule at the next calculated occurrence
+                start_date=next_run.strftime("%Y-%m-%dT%H:%M:%S"),
+                flexible_time_window=scheduler.CfnSchedule.FlexibleTimeWindowProperty(
+                    mode="OFF"
+                ),
+                target=scheduler.CfnSchedule.TargetProperty(
+                    arn=self.instrument_lambda.function_arn,
+                    role_arn=scheduler_role.role_arn,
+                    input=f'{{"cadence": "{cadence_str}"}}',
+                    retry_policy=scheduler.CfnSchedule.RetryPolicyProperty(
+                        maximum_retry_attempts=185
+                    ),
+                ),
                 state="ENABLED",
-                targets=[
-                    aws_events.CfnRule.TargetProperty(
-                        arn=self.instrument_lambda.function_arn,
-                        id=f"Target{string_date}",
-                        input=cdk.Fn.sub('{"cadence": "3mo"}'),
-                    )
-                ],
             )
-        for i in range(1, int(total_days // CadenceDays.SIX_MONTHS.value)):
-            date = t0_date + datetime.timedelta(days=CadenceDays.SIX_MONTHS.value * i)
-            string_date = date.strftime("%Y%m%d")
-            if date < today:
-                continue
-            cron_exp = (
-                f"cron({date.minute} {date.hour} {date.day} {date.month} ? {date.year})"
-            )
-            aws_events.CfnRule(
-                scope=scope,
-                id=f"ProcessingCadenceJob6month_{string_date}",
-                name=f"ProcessingCadenceJob6month_{string_date}",
-                description=f"Trigger 'batch starter' processing job on {string_date}",
-                schedule_expression=cron_exp,
-                state="ENABLED",
-                targets=[
-                    aws_events.CfnRule.TargetProperty(
-                        arn=self.instrument_lambda.function_arn,
-                        id=f"Target{string_date}",
-                        input=cdk.Fn.sub('{"cadence": "6mo"}'),
-                    )
-                ],
-            )
-        for i in range(1, int(total_days // CadenceDays.ONE_YEAR.value)):
-            date = t0_date + datetime.timedelta(days=CadenceDays.ONE_YEAR.value * i)
-            string_date = date.strftime("%Y%m%d")
-            if date < today:
-                continue
-            cron_exp = (
-                f"cron({date.minute} {date.hour} {date.day} {date.month} ? {date.year})"
-            )
-            aws_events.CfnRule(
-                scope=scope,
-                id=f"ProcessingCadenceJob1year_{string_date}",
-                name=f"ProcessingCadenceJob1year_{string_date}",
-                description=f"Trigger 'batch starter' processing job on {string_date}",
-                schedule_expression=cron_exp,
-                state="ENABLED",
-                targets=[
-                    aws_events.CfnRule.TargetProperty(
-                        arn=self.instrument_lambda.function_arn,
-                        id=f"Target{string_date}",
-                        input=cdk.Fn.sub('{"cadence": "1yr"}'),
-                    )
-                ],
-            )
+
+
+def calculate_next_run(first_job, today, interval_minutes):
+    """Calculate the next run time for a scheduled job.
+
+    This function is necessary because AWS EventBridge Scheduler does not support
+    starting a schedule at a date in the past. Therefore, we need to calculate
+    the next occurrence of the schedule if we are already past the "first job" date.
+
+    Parameters
+    ----------
+    first_job : datetime.datetime
+        The date of the first job.
+    today : datetime.datetime
+        The current date.
+    interval_minutes : int
+        The interval in minutes for the cadence.
+
+    Returns
+    -------
+    datetime.datetime
+        The next run date.
+    """
+    # If today is before the first job, return the first job date as the next run date
+    if today < first_job:
+        return first_job
+    else:
+        # Calculate how many minutes have passed since the first job
+        delta = (today - first_job).total_seconds() / 60
+        # Calculate how many cadence events have passed since the first job
+        events_passed = int(delta // interval_minutes)
+        # Calculate the next run date
+        next_run = first_job + datetime.timedelta(
+            minutes=(events_passed + 1) * interval_minutes
+        )
+        return next_run
