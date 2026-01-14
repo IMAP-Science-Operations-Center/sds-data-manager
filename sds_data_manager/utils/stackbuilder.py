@@ -212,9 +212,7 @@ def build_sds(
 
     # Set SPICE monitoring email based on environment
     spice_alarm_email = (
-        "maxine.hartnett@lasp.colorado.edu"
-        # if account_name == "prod"
-        # else "maxine.hartnett@lasp.colorado.edu"
+        "imap-sdc@lists.lasp.colorado.edu" if account_name == "prod" else ""
     )
     spice_monitoring_construct.SpiceMonitoringConstruct(
         scope=sdc_stack,
