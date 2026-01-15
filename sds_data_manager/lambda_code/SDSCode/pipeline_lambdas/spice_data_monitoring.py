@@ -30,24 +30,40 @@ METRIC_NAMESPACE = os.environ.get("METRIC_NAMESPACE", "IMAP/SpiceDataFreshness")
 MONITORED_DATA = {
     "ck_kernels": {
         "name": "CK_Kernels",
-        "threshold_days": int(os.environ.get("CK_THRESHOLD_DAYS", "7")),
+        "threshold_days": int(os.environ.get("CK_THRESHOLD_DAYS", "4")),
         "description": "Attitude history and pointing attitude kernels",
         "table": "spice",
         "kernel_types": ["attitude_history", "pointing_attitude"],
     },
     "spin_files": {
         "name": "Spin_Files",
-        "threshold_days": int(os.environ.get("SPIN_THRESHOLD_DAYS", "7")),
+        "threshold_days": int(os.environ.get("SPIN_THRESHOLD_DAYS", "4")),
         "description": "Spacecraft spin files",
         "table": "spin",
         "kernel_types": None,
     },
     "sclk_kernels": {
         "name": "SCLK_Kernels",
-        "threshold_days": int(os.environ.get("SCLK_THRESHOLD_DAYS", "7")),
+        "threshold_days": int(os.environ.get("SCLK_THRESHOLD_DAYS", "4")),
         "description": "Spacecraft clock kernels",
         "table": "spice",
         "kernel_types": ["spacecraft_clock"],
+    },
+    "repoint_files": {
+        "name": "Repoint_Files",
+        "threshold_days": int(os.environ.get("REPOINT_THRESHOLD_DAYS", "4")),
+        "description": "Spacecraft repoint files",
+        "table": "repoint",
+        "kernel_types": None,
+    },
+    "predicted_ephemeris": {
+        "name": "Predicted_Ephemeris",
+        "threshold_days": int(
+            os.environ.get("PREDICTED_EPHEMERIS_THRESHOLD_DAYS", "4")
+        ),
+        "description": "Predicted ephemeris kernels",
+        "table": "spice",
+        "kernel_types": ["ephemeris_predicted"],
     },
 }
 
@@ -60,10 +76,10 @@ def get_most_recent_ingestion_age(
     Parameters
     ----------
     table : str
-        Which table to query: 'spice' or 'spin'
+        Which table to query: 'spice', 'spin', or 'repoint'
     kernel_types : list[str] | None
         For SPICEFiles table, filter by kernel types.
-        For SpinFiles table, this is ignored.
+        For SpinFiles and RepointFiles tables, this is ignored.
 
     Returns
     -------
@@ -86,6 +102,12 @@ def get_most_recent_ingestion_age(
                 # Query SpinFiles table
                 most_recent = session.query(
                     func.max(models.SpinFiles.ingestion_date)
+                ).scalar()
+
+            elif table == "repoint":
+                # Query RepointFiles table
+                most_recent = session.query(
+                    func.max(models.RepointFiles.ingestion_date)
                 ).scalar()
 
             else:

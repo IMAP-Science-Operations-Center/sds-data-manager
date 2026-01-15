@@ -223,9 +223,11 @@ def build_sds(
         rds_security_group=rds_construct.rds_security_group,
         layers=[db_lambda_layer, spice_lambda_layer],
         alarm_email=spice_alarm_email,
-        ck_threshold_days=7,
-        spin_threshold_days=7,
-        sclk_threshold_days=7,
+        ck_threshold_days=4,
+        spin_threshold_days=4,
+        sclk_threshold_days=4,
+        repoint_threshold_days=4,
+        predicted_ephemeris_threshold_days=4,
     )
 
     sds_api_manager_construct.SdsApiManager(

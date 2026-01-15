@@ -32,9 +32,11 @@ class SpiceMonitoringConstruct(Construct):
         rds_security_group: ec2.SecurityGroup,
         layers: list,
         alarm_email: str,
-        ck_threshold_days: int = 7,
-        spin_threshold_days: int = 7,
-        sclk_threshold_days: int = 7,
+        ck_threshold_days: int = 4,
+        spin_threshold_days: int = 4,
+        sclk_threshold_days: int = 4,
+        repoint_threshold_days: int = 4,
+        predicted_ephemeris_threshold_days: int = 4,
         **kwargs,
     ) -> None:
         """Create SPICE data monitoring Lambda and CloudWatch alarms.
@@ -59,13 +61,19 @@ class SpiceMonitoringConstruct(Construct):
             Email address to receive alarm notifications.
         ck_threshold_days : int, optional
             Number of days before CK kernel data is considered stale.
-            Default is 7.
+            Default is 4.
         spin_threshold_days : int, optional
             Number of days before spin file data is considered stale.
-            Default is 7.
+            Default is 4.
         sclk_threshold_days : int, optional
             Number of days before SCLK kernel data is considered stale.
-            Default is 7.
+            Default is 4.
+        repoint_threshold_days : int, optional
+            Number of days before repoint file data is considered stale.
+            Default is 4.
+        predicted_ephemeris_threshold_days : int, optional
+            Number of days before predicted ephemeris data is considered
+            stale. Default is 4.
         kwargs : dict
             Keyword arguments.
 
@@ -98,6 +106,8 @@ class SpiceMonitoringConstruct(Construct):
             ck_threshold_days=ck_threshold_days,
             spin_threshold_days=spin_threshold_days,
             sclk_threshold_days=sclk_threshold_days,
+            repoint_threshold_days=repoint_threshold_days,
+            predicted_ephemeris_threshold_days=predicted_ephemeris_threshold_days,
         )
 
         # Create EventBridge rule to trigger Lambda daily
@@ -108,6 +118,8 @@ class SpiceMonitoringConstruct(Construct):
             ck_threshold_days=ck_threshold_days,
             spin_threshold_days=spin_threshold_days,
             sclk_threshold_days=sclk_threshold_days,
+            repoint_threshold_days=repoint_threshold_days,
+            predicted_ephemeris_threshold_days=predicted_ephemeris_threshold_days,
         )
 
     def _create_lambda(
@@ -120,6 +132,8 @@ class SpiceMonitoringConstruct(Construct):
         ck_threshold_days: int,
         spin_threshold_days: int,
         sclk_threshold_days: int,
+        repoint_threshold_days: int,
+        predicted_ephemeris_threshold_days: int,
     ) -> lambda_.Function:
         """Create the SPICE monitoring Lambda function.
 
@@ -141,6 +155,10 @@ class SpiceMonitoringConstruct(Construct):
             Threshold for spin files.
         sclk_threshold_days : int
             Threshold for SCLK kernels.
+        repoint_threshold_days : int
+            Threshold for repoint files.
+        predicted_ephemeris_threshold_days : int
+            Threshold for predicted ephemeris files.
 
         Returns
         -------
@@ -169,6 +187,10 @@ class SpiceMonitoringConstruct(Construct):
                 "CK_THRESHOLD_DAYS": str(ck_threshold_days),
                 "SPIN_THRESHOLD_DAYS": str(spin_threshold_days),
                 "SCLK_THRESHOLD_DAYS": str(sclk_threshold_days),
+                "REPOINT_THRESHOLD_DAYS": str(repoint_threshold_days),
+                "PREDICTED_EPHEMERIS_THRESHOLD_DAYS": str(
+                    predicted_ephemeris_threshold_days
+                ),
             },
             layers=layers,
         )
@@ -213,6 +235,8 @@ class SpiceMonitoringConstruct(Construct):
         ck_threshold_days: int,
         spin_threshold_days: int,
         sclk_threshold_days: int,
+        repoint_threshold_days: int,
+        predicted_ephemeris_threshold_days: int,
     ):
         """Create CloudWatch alarms for each monitored prefix.
 
@@ -224,6 +248,10 @@ class SpiceMonitoringConstruct(Construct):
             Threshold for spin files.
         sclk_threshold_days : int
             Threshold for SCLK kernels.
+        repoint_threshold_days : int
+            Threshold for repoint files.
+        predicted_ephemeris_threshold_days : int
+            Threshold for predicted ephemeris files.
 
         """
         # Configuration for each alarm
@@ -242,6 +270,16 @@ class SpiceMonitoringConstruct(Construct):
                 "name": "SCLK_Kernels",
                 "description": "Spacecraft clock kernels",
                 "threshold": sclk_threshold_days,
+            },
+            {
+                "name": "Repoint_Files",
+                "description": "Spacecraft repoint files",
+                "threshold": repoint_threshold_days,
+            },
+            {
+                "name": "Predicted_Ephemeris",
+                "description": "Predicted ephemeris kernels",
+                "threshold": predicted_ephemeris_threshold_days,
             },
         ]
 
