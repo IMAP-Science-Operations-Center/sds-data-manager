@@ -440,6 +440,33 @@ def index_repoint_file(s3_key):
     logger.info(f"Indexed {s3_key} to SPICEFiles table")
 
 
+def index_thruster_file(s3_key):
+    """Insert thruster file metadata into thruster database table.
+
+    Parameters
+    ----------
+    s3_key: str
+        S3 path of the thruster file.
+    """
+    logger.info(f"Indexing {s3_key} to ThrusterFiles table")
+    with db.Session() as session:
+        thruster_obj = SPICEFilePath(os.path.basename(s3_key))
+        metadata = thruster_obj.spice_metadata
+
+        params = {
+            "file_path": s3_key,
+            "start_date": metadata["start_date"],
+            "end_date": metadata["end_date"],
+            "version": metadata["version"],
+            "ingestion_date": get_file_ingestion_date(s3_key),
+        }
+        thruster_table = models.ThrusterFiles(**params)
+        session.add(thruster_table)
+        session.commit()
+
+    logger.info(f"Indexed {s3_key} to ThrusterFiles table")
+
+
 def parse_datetime(val):
     """Parse a datetime string safely, returning None for invalid inputs.
 
@@ -672,6 +699,9 @@ def lambda_handler(event, context):
     elif spice_obj.spice_metadata["type"] == "spin":
         logger.info(f"Indexing {s3_key} spin table")
         index_spin_file(s3_key)
+    elif spice_obj.spice_metadata["type"] == "thruster":
+        logger.info(f"Indexing {s3_key} thruster table")
+        index_thruster_file(s3_key)
     else:
         # Index the SPICE kernels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
