@@ -9,8 +9,12 @@ import pytest
 
 # Add the project root to the path to allow imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import spin_repoint_table_api
-from sds_data_manager.lambda_code.SDSCode.database.models import RepointFiles, SpinFiles
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import non_spice_table_api
+from sds_data_manager.lambda_code.SDSCode.database.models import (
+    RepointFiles,
+    SpinFiles,
+    ThrusterFiles,
+)
 
 
 @pytest.fixture
@@ -68,6 +72,31 @@ def repoint_db(session):
     session.commit()
 
 
+@pytest.fixture
+def thruster_db(session):
+    """Create a session with test data for thruster files."""
+    # Create sample thruster file records
+    thruster_files = [
+        ThrusterFiles(
+            file_path="imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff",
+            start_date=datetime.datetime(2025, 4, 10, 0, 0, 0),
+            end_date=datetime.datetime(2025, 4, 20, 0, 0, 0),
+            version="01",
+            ingestion_date=datetime.datetime(2025, 4, 5, 10, 0, 0),
+        ),
+        ThrusterFiles(
+            file_path="imap/spice/thruster/imap_2025_100_2025_110_hist_02.sff",
+            start_date=datetime.datetime(2025, 4, 10, 0, 0, 0),
+            end_date=datetime.datetime(2025, 4, 20, 0, 0, 0),
+            version="02",
+            ingestion_date=datetime.datetime(2025, 4, 6, 10, 0, 0),
+        ),
+    ]
+
+    session.add_all(thruster_files)
+    session.commit()
+
+
 def test_spin_table_api_date_filters(spin_db):
     """Test query with date filters similar to the API example."""
     event = {
@@ -79,7 +108,7 @@ def test_spin_table_api_date_filters(spin_db):
     }
     context = {}
 
-    response = spin_repoint_table_api.lambda_handler(event, context)
+    response = non_spice_table_api.lambda_handler(event, context)
 
     assert response["statusCode"] == 200
     results = json.loads(response["body"])
@@ -132,7 +161,7 @@ def test_spin_table_api_invalid_parameter(spin_db):
         "rawPath": "/spin-table",
     }
 
-    response = spin_repoint_table_api.lambda_handler(event, {})
+    response = non_spice_table_api.lambda_handler(event, {})
 
     # Check that we get the proper error response
     assert response["statusCode"] == 400
@@ -146,7 +175,7 @@ def test_spin_table_api_invalid_date_format(spin_db):
         "rawPath": "/spin-table",
     }
 
-    response = spin_repoint_table_api.lambda_handler(event, {})
+    response = non_spice_table_api.lambda_handler(event, {})
 
     # Check that we get the proper error response
     assert response["statusCode"] == 400
@@ -160,7 +189,7 @@ def test_ingestion_date(spin_db):
         "rawPath": "/spin-table",
     }
 
-    response = spin_repoint_table_api.lambda_handler(event, {})
+    response = non_spice_table_api.lambda_handler(event, {})
 
     # Check successful response
     assert response["statusCode"] == 200
@@ -182,7 +211,7 @@ def test_ingestion_date(spin_db):
         "rawPath": "/spin-table",
     }
 
-    response = spin_repoint_table_api.lambda_handler(event, {})
+    response = non_spice_table_api.lambda_handler(event, {})
     assert response["statusCode"] == 200
     results = json.loads(response["body"])
 
@@ -205,7 +234,7 @@ def test_repoint_table(repoint_db):
     }
     context = {}
 
-    response = spin_repoint_table_api.lambda_handler(event, context)
+    response = non_spice_table_api.lambda_handler(event, context)
 
     assert response["statusCode"] == 200
     results = json.loads(response["body"])
@@ -225,3 +254,41 @@ def test_repoint_table(repoint_db):
         == "imap/spice/repoint/imap_2026_267_2026_268_02.repoint"
     )
     assert results[0]["end_date"].startswith("2026-09-25")
+
+def test_thruster_table(thruster_db):
+    """Test querying the thruster table."""
+    event = {
+        "queryStringParameters": {
+            "start_date": "20250410",
+            "end_date": "20250420",
+        },
+        "rawPath": "/thruster-table",
+    }
+    context = {}
+
+    response = non_spice_table_api.lambda_handler(event, context)
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert isinstance(results, list)
+
+    # Validate the result format
+    for result in results:
+        assert "file_path" in result
+        assert "start_date" in result
+        assert "end_date" in result
+        assert "version" in result
+        assert "ingestion_date" in result
+    
+    # Both files should be returned since they overlap the date range
+    assert len(results) == 2
+
+    # Check results contain expected values
+    file_paths = [result["file_path"] for result in results]
+    assert "imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff" in file_paths
+    assert "imap/spice/thruster/imap_2025_100_2025_110_hist_02.sff" in file_paths
+    
+    # Verify dates are correct
+    for result in results:
+        assert result["start_date"].startswith("2025-04-10")
+        assert result["end_date"].startswith("2025-04-20")

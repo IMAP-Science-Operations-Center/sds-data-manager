@@ -7,21 +7,23 @@ import logging
 from sqlalchemy import desc, func, select
 
 from ..database import database as db
-from ..database.models import RepointFiles, SpinFiles
+from ..database.models import RepointFiles, SpinFiles, ThrusterFiles
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):  # noqa: PLR0912
-    """Handle API requests for the spin-data endpoint."""
-    logger.debug("Spin/Repoint Query Event: " + json.dumps(event, indent=2))
+    """Handle API requests for the non-SPICE data such as spin, repoint and thruster."""
+    logger.debug("Spin/Repoint/thruster Query Event: " + json.dumps(event, indent=2))
 
     raw_path = event.get("rawPath", "")
     if "spin" in raw_path:
         table = SpinFiles
     elif "repoint" in raw_path:
         table = RepointFiles
+    elif "thruster" in raw_path:
+        table = ThrusterFiles
     else:
         response = {
             "statusCode": 400,
@@ -65,8 +67,8 @@ def lambda_handler(event, context):  # noqa: PLR0912
                 )
                 return response
             try:
-                if param == "start_date" and table == SpinFiles:
-                    # Only the SpinFiles table has a start_date field
+                if param == "start_date" and table != RepointFiles:
+                    # Besides repoint table, others have a start_date field
                     # This parameter can be ignore for the repointing table
                     # because those files have all start dates in every file.
                     parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
@@ -97,7 +99,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
                         table.version,
                         table.ingestion_date,
                         row_number,
-                    ).alias("latest_spin_files")
+                    ).alias("latest_files")
                     query = select(subquery).where(subquery.c.row_num == 1)
                 elif param == "start_ingest_date":
                     parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
@@ -128,7 +130,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
         ]
         return {"statusCode": 200, "body": json.dumps(search_results)}
 
-    # Spin files have a start_date field
+    # Spin or thruster files have a start_date field
     search_results = [
         {
             "file_path": result.file_path,
