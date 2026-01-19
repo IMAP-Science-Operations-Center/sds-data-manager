@@ -266,7 +266,7 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     return combined
 
 
-def process_algorithms(  # noqa: PLR0912, PLR0915
+def process_algorithms(  # noqa: PLR0915
     combined: xr.Dataset, algorithm_table, table_name, kernel_set_key
 ):
     """Process the algorithms and insert data, as needed.
