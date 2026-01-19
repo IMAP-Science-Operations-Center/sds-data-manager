@@ -680,7 +680,7 @@ def lambda_handler(event, context):
 
     if filenames:
         logger.info("Found %d files to process", len(filenames))
-        logger.info(f"Parsing packets: {filenames}")
+        logger.info(f"Parsing packet files: {filenames}")
         # Get packets into datasets and combine.
         combined = parse_packets(filenames, bucket, Path("/tmp"))  # noqa: S108
         logger.info("Packets parsed. Processing algorithms.")
