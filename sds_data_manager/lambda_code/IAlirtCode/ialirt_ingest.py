@@ -362,10 +362,7 @@ def process_algorithms(  # noqa: PLR0912, PLR0915
                 logger.info("Processing HIT.")
                 result = process_func(combined)
 
-            if not result:
-                logger.info("Empty result for: %s", instrument)
-            else:
-                logger.info("Data populated for: %s", instrument)
+            logger.info("[%s] results populated for [%s]", len(result), instrument)
 
             if any(result) and all(result):
                 if table_name == "ialirt-algorithm-table":
