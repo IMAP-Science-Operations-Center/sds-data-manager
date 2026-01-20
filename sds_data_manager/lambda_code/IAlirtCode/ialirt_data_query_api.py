@@ -224,8 +224,11 @@ def lambda_handler(event, context):
         meta_instrument = "spice"
         meta_type = "spice"
     elif params["instrument"].endswith("hk"):
-        meta_instrument = params["instrument"]
-        meta_type = "hk"
+        if scope in FULL_SCOPES:
+            meta_instrument = params["instrument"]
+            meta_type = "hk"
+        else:
+            return _error(403, "Unauthorized for HK access.")
     elif params["instrument"] == "spacecraft":
         meta_instrument = params["instrument"]
         meta_type = "spacecraft"
