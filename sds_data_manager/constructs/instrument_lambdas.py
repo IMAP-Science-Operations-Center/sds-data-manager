@@ -167,11 +167,11 @@ class BatchStarterLambda(Construct):
         # expression. E.g., we cannot specify "rate(91.2 days)" for 3 months.
         # TODO First job date should be 3 months after phase e start date.
         #   TODO determine exact phase e start date.
-        first_map_jobs = datetime.datetime(2026, 5, 1)
+        first_map_jobs = datetime.datetime(2026, 5, 1, tzinfo=datetime.timezone.utc)
         # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
         # a 1 month cadence job.
-        first_1mo_jobs = datetime.datetime(2026, 1, 1)
-        today = datetime.datetime.now()
+        first_1mo_jobs = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+        today = datetime.datetime.now(tz=datetime.timezone.utc)
         cadence_strs = ["1mo", "3mo", "6mo", "1yr"]
         for cadence_str in cadence_strs:
             cadence = CadenceDays.str_lookup(cadence_str)
@@ -180,13 +180,15 @@ class BatchStarterLambda(Construct):
             first_job = first_1mo_jobs if cadence_str == "1mo" else first_map_jobs
             # Calculate the next run time based on the first job date and the cadence
             next_run = calculate_next_run(first_job, today, interval_minutes)
+            # Format date as yyyy-MM-ddTHH:mm:ss.SSSZ (with milliseconds)
+            start_date_str = next_run.strftime("%Y-%m-%dT%H:%M:%S.000Z")
             scheduler.CfnSchedule(
                 scope=scope,
-                id=f"ProcessingCadenceJob_{cadence.name}",
-                name=f"ProcessingCadenceJob_{cadence.name}",
+                id=f"ProcessingCadenceJob_{cadence.name.lower()}",
+                name=f"ProcessingCadenceJob_{cadence.name.lower()}",
                 schedule_expression=f"rate({interval_minutes} minutes)",
                 # Start the schedule at the next calculated occurrence
-                start_date=next_run.strftime("%Y-%m-%dT%H:%M:%S"),
+                start_date=start_date_str,
                 flexible_time_window=scheduler.CfnSchedule.FlexibleTimeWindowProperty(
                     mode="OFF"
                 ),
