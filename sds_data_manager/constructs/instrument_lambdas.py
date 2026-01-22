@@ -172,7 +172,7 @@ class BatchStarterLambda(Construct):
         # a 1 month cadence job.
         first_1mo_jobs = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
         today = datetime.datetime.now(tz=datetime.timezone.utc)
-        cadence_strs = ["1mo", "3mo", "6mo", "1yr"]
+        cadence_strs = CadenceDays.str_lookup()
         for cadence_str in cadence_strs:
             cadence = CadenceDays.str_lookup(cadence_str)
             # Calculate interval in minutes
