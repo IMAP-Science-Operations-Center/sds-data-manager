@@ -285,9 +285,8 @@ def test_thruster_table(thruster_db):
 
     # Check results contain expected values
     file_paths = [result["file_path"] for result in results]
-    assert "imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff" in file_paths
-    assert "imap/spice/thruster/imap_2025_100_2025_110_hist_02.sff" in file_paths
-    
+    assert ["imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff", "imap/spice/thruster/imap_2025_100_2025_110_hist_02.sff"] == file_paths
+
     # Verify dates are correct
     for result in results:
         assert result["start_date"].startswith("2025-04-10")

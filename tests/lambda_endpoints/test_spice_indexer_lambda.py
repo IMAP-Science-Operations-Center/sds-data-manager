@@ -610,7 +610,6 @@ def test_index_repoint_file_multiple_versions(
         .filter_by(file_path="imap/spice/repoint/imap_2025_200_02.repoint.csv")
         .first()
     )
-    assert repoint_v02 is not None
     assert repoint_v02.version == "02"
 
     # Verify both versions exist in the database

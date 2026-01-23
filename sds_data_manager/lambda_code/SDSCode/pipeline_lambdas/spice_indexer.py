@@ -406,7 +406,6 @@ def index_repoint_file(s3_key):
     s3_key: str
         S3 path of the repoint file.
     """
-    logger.info(f"Indexing {s3_key} to RepointFiles table")
     with db.Session() as session:
         repoint_obj = SPICEFilePath(os.path.basename(s3_key))
         metadata = repoint_obj.spice_metadata
@@ -448,7 +447,6 @@ def index_thruster_file(s3_key):
     s3_key: str
         S3 path of the thruster file.
     """
-    logger.info(f"Indexing {s3_key} to ThrusterFiles table")
     with db.Session() as session:
         thruster_obj = SPICEFilePath(os.path.basename(s3_key))
         metadata = thruster_obj.spice_metadata

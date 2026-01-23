@@ -99,7 +99,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
                         table.version,
                         table.ingestion_date,
                         row_number,
-                    ).alias("latest_files")
+                    )
                     query = select(subquery).where(subquery.c.row_num == 1)
                 elif param == "start_ingest_date":
                     parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
