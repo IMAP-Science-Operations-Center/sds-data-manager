@@ -73,19 +73,19 @@ def repoint_db(session):
 
 
 @pytest.fixture
-def thruster_db(session):
-    """Create a session with test data for thruster files."""
-    # Create sample thruster file records
-    thruster_files = [
+def small_forces_db(session):
+    """Create a session with test data for small forces files."""
+    # Create sample small forces file records
+    small_forces_files = [
         SmallForcesFile(
-            file_path="imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff",
+            file_path="imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff",
             start_date=datetime.datetime(2025, 4, 10, 0, 0, 0),
             end_date=datetime.datetime(2025, 4, 20, 0, 0, 0),
             version="01",
             ingestion_date=datetime.datetime(2025, 4, 5, 10, 0, 0),
         ),
         SmallForcesFile(
-            file_path="imap/spice/thruster/imap_2025_100_2025_110_hist_02.sff",
+            file_path="imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff",
             start_date=datetime.datetime(2025, 4, 10, 0, 0, 0),
             end_date=datetime.datetime(2025, 4, 20, 0, 0, 0),
             version="02",
@@ -93,7 +93,7 @@ def thruster_db(session):
         ),
     ]
 
-    session.add_all(thruster_files)
+    session.add_all(small_forces_files)
     session.commit()
 
 
@@ -255,14 +255,14 @@ def test_repoint_table(repoint_db):
     )
     assert results[0]["end_date"].startswith("2026-09-25")
 
-def test_thruster_table(thruster_db):
-    """Test querying the thruster table."""
+def test_small_forces_table(small_forces_db):
+    """Test querying the small forces table."""
     event = {
         "queryStringParameters": {
             "start_date": "20250410",
             "end_date": "20250420",
         },
-        "rawPath": "/thruster-table",
+        "rawPath": "/small-forces-table",
     }
     context = {}
 
@@ -285,7 +285,7 @@ def test_thruster_table(thruster_db):
 
     # Check results contain expected values
     file_paths = [result["file_path"] for result in results]
-    assert ["imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff", "imap/spice/thruster/imap_2025_100_2025_110_hist_02.sff"] == file_paths
+    assert ["imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff", "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff"] == file_paths
 
     # Verify dates are correct
     for result in results:

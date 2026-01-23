@@ -380,9 +380,9 @@ class SdsApiManager(Construct):
                 http_method="GET",
                 lambda_function=non_spice_query_api_lambda,
             )
-            # Same handler, but add a route to the thruster table
+            # Same handler, but add a route to the small-forces table
             api.add_route(
-                route=f"{prefix}/thruster-table",
+                route=f"{prefix}/small-forces-table",
                 http_method="GET",
                 lambda_function=non_spice_query_api_lambda,
             )

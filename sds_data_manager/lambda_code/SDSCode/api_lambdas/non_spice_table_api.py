@@ -14,15 +14,15 @@ logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):  # noqa: PLR0912
-    """Handle API requests for the non-SPICE data such as spin, repoint and thruster."""
-    logger.debug("Spin/Repoint/thruster Query Event: " + json.dumps(event, indent=2))
+    """Handle API requests for the non-SPICE data such as spin, repoint and small-forces."""
+    logger.debug("Spin/Repoint/small-forces Query Event: " + json.dumps(event, indent=2))
 
     raw_path = event.get("rawPath", "")
     if "spin" in raw_path:
         table = SpinFiles
     elif "repoint" in raw_path:
         table = RepointFiles
-    elif "thruster" in raw_path:
+    elif "small-forces" in raw_path:
         table = SmallForcesFile
     else:
         response = {
@@ -130,7 +130,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
         ]
         return {"statusCode": 200, "body": json.dumps(search_results)}
 
-    # Spin or thruster files have a start_date field
+    # Spin or small-forces files have a start_date field
     search_results = [
         {
             "file_path": result.file_path,

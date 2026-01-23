@@ -439,17 +439,17 @@ def index_repoint_file(s3_key):
     logger.info(f"Indexed {s3_key} to SPICEFiles table")
 
 
-def index_thruster_file(s3_key):
-    """Insert thruster file metadata into thruster database table.
+def index_small_forces_file(s3_key):
+    """Insert small-forces file metadata into small-forces database table.
 
     Parameters
     ----------
     s3_key: str
-        S3 path of the thruster file.
+        S3 path of the small forces file.
     """
     with db.Session() as session:
-        thruster_obj = SPICEFilePath(os.path.basename(s3_key))
-        metadata = thruster_obj.spice_metadata
+        small_forces_obj = SPICEFilePath(os.path.basename(s3_key))
+        metadata = small_forces_obj.spice_metadata
 
         params = {
             "file_path": s3_key,
@@ -458,8 +458,8 @@ def index_thruster_file(s3_key):
             "version": metadata["version"],
             "ingestion_date": get_file_ingestion_date(s3_key),
         }
-        thruster_table = models.SmallForcesFile(**params)
-        session.add(thruster_table)
+        small_forces_table = models.SmallForcesFile(**params)
+        session.add(small_forces_table)
         session.commit()
 
     logger.info(f"Indexed {s3_key} to SmallForcesFile table")
@@ -698,8 +698,8 @@ def lambda_handler(event, context):
         logger.info(f"Indexing {s3_key} spin table")
         index_spin_file(s3_key)
     elif spice_obj.spice_metadata["type"] == "thruster":
-        logger.info(f"Indexing {s3_key} thruster table")
-        index_thruster_file(s3_key)
+        logger.info(f"Indexing {s3_key} small-forces table")
+        index_small_forces_file(s3_key)
     else:
         # Index the SPICE kernels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
