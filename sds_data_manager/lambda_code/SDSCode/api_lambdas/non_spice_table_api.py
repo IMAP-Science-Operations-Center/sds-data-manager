@@ -14,7 +14,10 @@ logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):  # noqa: PLR0912
-    """Handle API requests for the non-SPICE data such as spin, repoint and small-forces."""
+    """Handle API requests for the non-SPICE data.
+
+    Non-SPICE data such as spin, repoint and small-forces.
+    """
     logger.debug(
         "Spin/Repoint/small-forces Query Event: " + json.dumps(event, indent=2)
     )
