@@ -245,6 +245,7 @@ class RepointFiles(Base):
     ingestion_date = Column(DateTime(timezone=True))
     released = Column(Boolean, nullable=False, default=True)
 
+
 class SmallForcesFile(Base):
     """Small forces files table. This file contains thruster data."""
 
@@ -255,6 +256,7 @@ class SmallForcesFile(Base):
     version = Column(String(2), nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
     released = Column(Boolean, nullable=False, default=True)
+
 
 class Version(Base):
     """Version table."""

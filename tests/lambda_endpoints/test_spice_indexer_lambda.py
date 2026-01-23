@@ -23,8 +23,8 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer import 
     MAXIMUM_SCLK_INTERVAL,
     get_coverage_dictionary,
     index_pointing_data,
-    parse_datetime,
     index_small_forces_file,
+    parse_datetime,
 )
 
 
@@ -322,11 +322,10 @@ def test_s3_spin_files(session, s3_client, events_client):
 )
 def test_s3_small_forces_files(mock_get_ingestion_date, session):
     """Test indexing small-forces files."""
-
     # Index first small_forces file
     s3_key_1 = "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff"
     index_small_forces_file(s3_key_1)
-    
+
     query = select(models.SmallForcesFile.__table__)
     small_forces_table_rows = session.execute(query).all()
     assert len(small_forces_table_rows) == 1
@@ -336,7 +335,7 @@ def test_s3_small_forces_files(mock_get_ingestion_date, session):
     # Index second small_forces file
     s3_key_2 = "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff"
     index_small_forces_file(s3_key_2)
-    
+
     query = select(models.SmallForcesFile.__table__)
     small_forces_table_rows = session.execute(query).all()
     assert len(small_forces_table_rows) == 2
@@ -623,9 +622,10 @@ def test_index_repoint_file_multiple_versions(
 )
 def test_index_small_forces_file(mock_get_ingestion_date, session):
     """Test index_small_forces_file function."""
-
     # Call index_small_forces_file
-    index_small_forces_file("imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff")
+    index_small_forces_file(
+        "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff"
+    )
 
     # Verify the small-forces file was indexed
     small_forces_entry = (
@@ -648,9 +648,10 @@ def test_index_small_forces_file(mock_get_ingestion_date, session):
 )
 def test_index_small_forces_file_multiple_versions(mock_get_ingestion_date, session):
     """Test indexing multiple small-forces files with different versions."""
-
     # Index first version
-    index_small_forces_file("imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff")
+    index_small_forces_file(
+        "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff"
+    )
 
     # Verify first version was indexed
     small_forces_v01 = (
@@ -664,7 +665,9 @@ def test_index_small_forces_file_multiple_versions(mock_get_ingestion_date, sess
     assert small_forces_v01.version == "01"
 
     # Index second version
-    index_small_forces_file("imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff")
+    index_small_forces_file(
+        "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff"
+    )
 
     # Verify second version was indexed
     small_forces_v02 = (

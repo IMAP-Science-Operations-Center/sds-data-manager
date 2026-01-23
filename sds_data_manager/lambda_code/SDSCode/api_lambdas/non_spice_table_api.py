@@ -7,7 +7,7 @@ import logging
 from sqlalchemy import desc, func, select
 
 from ..database import database as db
-from ..database.models import RepointFiles, SpinFiles, SmallForcesFile
+from ..database.models import RepointFiles, SmallForcesFile, SpinFiles
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -15,7 +15,9 @@ logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):  # noqa: PLR0912
     """Handle API requests for the non-SPICE data such as spin, repoint and small-forces."""
-    logger.debug("Spin/Repoint/small-forces Query Event: " + json.dumps(event, indent=2))
+    logger.debug(
+        "Spin/Repoint/small-forces Query Event: " + json.dumps(event, indent=2)
+    )
 
     raw_path = event.get("rawPath", "")
     if "spin" in raw_path:

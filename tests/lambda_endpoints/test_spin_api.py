@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import non_spice_table_api
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     RepointFiles,
-    SpinFiles,
     SmallForcesFile,
+    SpinFiles,
 )
 
 
@@ -255,6 +255,7 @@ def test_repoint_table(repoint_db):
     )
     assert results[0]["end_date"].startswith("2026-09-25")
 
+
 def test_small_forces_table(small_forces_db):
     """Test querying the small forces table."""
     event = {
@@ -279,13 +280,16 @@ def test_small_forces_table(small_forces_db):
         assert "end_date" in result
         assert "version" in result
         assert "ingestion_date" in result
-    
+
     # Both files should be returned since they overlap the date range
     assert len(results) == 2
 
     # Check results contain expected values
     file_paths = [result["file_path"] for result in results]
-    assert ["imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff", "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff"] == file_paths
+    assert [
+        "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff",
+        "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff",
+    ] == file_paths
 
     # Verify dates are correct
     for result in results:
