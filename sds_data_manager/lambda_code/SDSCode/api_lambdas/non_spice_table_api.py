@@ -7,7 +7,7 @@ import logging
 from sqlalchemy import desc, func, select
 
 from ..database import database as db
-from ..database.models import RepointFiles, SpinFiles, ThrusterFiles
+from ..database.models import RepointFiles, SpinFiles, SmallForcesFile
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -23,7 +23,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
     elif "repoint" in raw_path:
         table = RepointFiles
     elif "thruster" in raw_path:
-        table = ThrusterFiles
+        table = SmallForcesFile
     else:
         response = {
             "statusCode": 400,

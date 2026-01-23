@@ -327,7 +327,7 @@ def test_s3_thruster_files(mock_get_ingestion_date, session):
     s3_key_1 = "imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff"
     index_thruster_file(s3_key_1)
     
-    query = select(models.ThrusterFiles.__table__)
+    query = select(models.SmallForcesFile.__table__)
     thruster_table_rows = session.execute(query).all()
     assert len(thruster_table_rows) == 1
     assert thruster_table_rows[0].file_path == s3_key_1
@@ -337,7 +337,7 @@ def test_s3_thruster_files(mock_get_ingestion_date, session):
     s3_key_2 = "imap/spice/thruster/imap_2025_100_2025_110_hist_02.sff"
     index_thruster_file(s3_key_2)
     
-    query = select(models.ThrusterFiles.__table__)
+    query = select(models.SmallForcesFile.__table__)
     thruster_table_rows = session.execute(query).all()
     assert len(thruster_table_rows) == 2
     assert thruster_table_rows[1].file_path == s3_key_2
@@ -629,7 +629,7 @@ def test_index_thruster_file(mock_get_ingestion_date, session):
 
     # Verify the thruster file was indexed
     thruster_entry = (
-        session.query(models.ThrusterFiles)
+        session.query(models.SmallForcesFile)
         .filter_by(
             file_path="imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff"
         )
@@ -654,7 +654,7 @@ def test_index_thruster_file_multiple_versions(mock_get_ingestion_date, session)
 
     # Verify first version was indexed
     thruster_v01 = (
-        session.query(models.ThrusterFiles)
+        session.query(models.SmallForcesFile)
         .filter_by(
             file_path="imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff"
         )
@@ -668,7 +668,7 @@ def test_index_thruster_file_multiple_versions(mock_get_ingestion_date, session)
 
     # Verify second version was indexed
     thruster_v02 = (
-        session.query(models.ThrusterFiles)
+        session.query(models.SmallForcesFile)
         .filter_by(
             file_path="imap/spice/thruster/imap_2025_100_2025_110_hist_02.sff"
         )
@@ -678,5 +678,5 @@ def test_index_thruster_file_multiple_versions(mock_get_ingestion_date, session)
     assert thruster_v02.version == "02"
 
     # Verify both versions exist in the database
-    all_thruster_files = session.query(models.ThrusterFiles).all()
+    all_thruster_files = session.query(models.SmallForcesFile).all()
     assert len(all_thruster_files) == 2

@@ -13,7 +13,7 @@ from sds_data_manager.lambda_code.SDSCode.api_lambdas import non_spice_table_api
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     RepointFiles,
     SpinFiles,
-    ThrusterFiles,
+    SmallForcesFile,
 )
 
 
@@ -77,14 +77,14 @@ def thruster_db(session):
     """Create a session with test data for thruster files."""
     # Create sample thruster file records
     thruster_files = [
-        ThrusterFiles(
+        SmallForcesFile(
             file_path="imap/spice/thruster/imap_2025_100_2025_110_hist_01.sff",
             start_date=datetime.datetime(2025, 4, 10, 0, 0, 0),
             end_date=datetime.datetime(2025, 4, 20, 0, 0, 0),
             version="01",
             ingestion_date=datetime.datetime(2025, 4, 5, 10, 0, 0),
         ),
-        ThrusterFiles(
+        SmallForcesFile(
             file_path="imap/spice/thruster/imap_2025_100_2025_110_hist_02.sff",
             start_date=datetime.datetime(2025, 4, 10, 0, 0, 0),
             end_date=datetime.datetime(2025, 4, 20, 0, 0, 0),

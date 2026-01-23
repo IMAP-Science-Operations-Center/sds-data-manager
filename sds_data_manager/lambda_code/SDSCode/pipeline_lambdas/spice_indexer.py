@@ -458,11 +458,11 @@ def index_thruster_file(s3_key):
             "version": metadata["version"],
             "ingestion_date": get_file_ingestion_date(s3_key),
         }
-        thruster_table = models.ThrusterFiles(**params)
+        thruster_table = models.SmallForcesFile(**params)
         session.add(thruster_table)
         session.commit()
 
-    logger.info(f"Indexed {s3_key} to ThrusterFiles table")
+    logger.info(f"Indexed {s3_key} to SmallForcesFile table")
 
 
 def parse_datetime(val):
