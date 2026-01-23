@@ -744,6 +744,7 @@ lo, l1a, histogram, lo, l1b, histogramrates, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, histogramrates, HARD, DOWNSTREAM
 lo, l1a, histogram, lo, l1b, derates, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, derates, HARD, DOWNSTREAM
+lo, l1b, nhk, lo, l1b, derates, HARD, DOWNSTREAM
 lo, l1a, star, lo, l1b, prostar, HARD, DOWNSTREAM
 lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 
