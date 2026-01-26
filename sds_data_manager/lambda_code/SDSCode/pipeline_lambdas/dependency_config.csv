@@ -724,6 +724,7 @@ spacecraft_clock, spice, historical, lo, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1a, de, lo, l1b, de, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, de, HARD, DOWNSTREAM
+lo, l1b, nhk, lo, l1b, de, HARD, DOWNSTREAM
 lo, ancillary, bad-times, lo, l1b, de, HARD, DOWNSTREAM
 lo, ancillary, sweep-table, lo, l1b, de, HARD, DOWNSTREAM
 spin, spin, historical, lo, l1b, de, HARD, DOWNSTREAM
@@ -749,7 +750,6 @@ lo, ancillary, sweep-table, lo, l1b, derates, HARD, DOWNSTREAM
 lo, ancillary, esa-mode-lut, lo, l1b, derates, HARD, DOWNSTREAM
 lo, l1b, de, lo, l1b, derates, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, derates, HARD, DOWNSTREAM
-lo, l1b, nhk, lo, l1b, derates, HARD, DOWNSTREAM
 lo, l1a, star, lo, l1b, prostar, HARD, DOWNSTREAM
 lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 
