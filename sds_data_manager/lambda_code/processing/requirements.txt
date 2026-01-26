@@ -179,9 +179,9 @@ idna==3.11 ; python_version >= "3.10" and python_version < "4" \
 imap-data-access==0.37.1 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:25743a180993f740cfcfc6805275feba9590324dd3fd6b88ab9cdb8d0731d13c \
     --hash=sha256:aebd68f8f20e85535ae651a7145468596e975dd194e661b1b1dc212326cbb88e
-imap-processing==1.0.11 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:0438875e4784d26399be4c5837095b1a376afdf81b450376624bd0cf92176144 \
-    --hash=sha256:363791bb8da5e70a2c7c84870c05f06b2e214bca5634fe530f042a314ef16907
+imap-processing==1.0.12 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:a93e56b8c755cb3834c73da30b325c44765a371f40134d4ee91b7500ac9079e4 \
+    --hash=sha256:cad60434b66b536afc0fb2ec9d0493034ce28b7e312ec2782708966047bbb716
 lxml==6.0.2 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:058027e261afed589eddcfe530fcc6f3402d7fd7e89bfd0532df82ebc1563dba \
     --hash=sha256:063eccf89df5b24e361b123e257e437f9e9878f425ee9aae3144c77faf6da6d8 \
