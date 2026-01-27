@@ -111,6 +111,7 @@ leapseconds, spice, historical, glows, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, glows, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 glows, l1a, de, glows, l1b, de, HARD, DOWNSTREAM
+glows, ancillary, conversion-table-for-anc-data, glows, l1b, de, HARD, DOWNSTREAM
 
 glows, l1a, hist, glows, l1b, hist, HARD, DOWNSTREAM
 spin, spin, historical, glows, l1b, hist, HARD, DOWNSTREAM
@@ -119,6 +120,7 @@ glows, ancillary, map-of-excluded-regions, glows, l1b, hist, HARD, DOWNSTREAM
 glows, ancillary, map-of-uv-sources, glows, l1b, hist, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings, glows, l1b, hist, HARD, DOWNSTREAM
 glows, ancillary, suspected-transients, glows, l1b, hist, HARD, DOWNSTREAM
+glows, ancillary, conversion-table-for-anc-data, glows, l1b, hist, HARD, DOWNSTREAM
 imap_frames, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, glows, l1b, hist, HARD, DOWNSTREAM
