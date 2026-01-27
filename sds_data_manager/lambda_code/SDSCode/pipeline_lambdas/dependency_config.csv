@@ -849,6 +849,9 @@ lo, l3, l090-ena-h-hf-sp-ram-hae-6deg-1yr, lo, l3, l090-spx-h-hf-sp-ram-hae-6deg
 lo, l2, l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr, lo, l3, l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr, HARD, DOWNSTREAM
 lo, l2, l090-enanbs-h-hk-nsp-ram-hae-6deg-1yr, lo, l3, l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr, HARD, DOWNSTREAM
 
+lo, l2, l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr, lo, l3, l090-isn-h-sf-nsp-ram-hae-6deg-1yr, HARD, DOWNSTREAM
+lo, l2, l090-enanbs-o-sf-nsp-ram-hae-6deg-1yr, lo, l3, l090-isn-o-sf-nsp-ram-hae-6deg-1yr, HARD, DOWNSTREAM
+
 # <---- MAG Dependencies ---->
 
 # L0 -> L1A
