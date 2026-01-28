@@ -738,22 +738,45 @@ imap_frames, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, lo, l1b, de, HARD, DOWNSTREAM
 science_frames, spice, historical, lo, l1b, de, HARD_NO_TRIGGER, DOWNSTREAM
-lo, l1a, TODO, lo, l1b, badtimes, HARD, DOWNSTREAM
+
+lo, l1b, nhk, lo, l1b, badtimes, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1b, badtimes, HARD, DOWNSTREAM
+repoint, repoint, historical, lo, l1b, badtimes, HARD, DOWNSTREAM
+
 lo, l1a, histogram, lo, l1b, monitorrates, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, monitorrates, HARD, DOWNSTREAM
-lo, l1a, histogram, lo, l1b, histogramrates, HARD, DOWNSTREAM
-lo, l1a, spin, lo, l1b, histogramrates, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1b, monitorrates, HARD, DOWNSTREAM
+repoint, repoint, historical, lo, l1b, monitorrates, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, monitorrates, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, monitorrates, HARD_NO_TRIGGER, DOWNSTREAM
+lo, ancillary, sweep-table, lo, l1b, monitorrates, HARD, DOWNSTREAM
+lo, ancillary, esa-mode-lut, lo, l1b, monitorrates, HARD, DOWNSTREAM
+
+lo, l1a, histogram, lo, l1b, histrates, HARD, DOWNSTREAM
+lo, l1a, spin, lo, l1b, histrates, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1b, histrates, HARD, DOWNSTREAM
+repoint, repoint, historical, lo, l1b, histrates, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, histrates, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, histrates, HARD_NO_TRIGGER, DOWNSTREAM
+lo, ancillary, sweep-table, lo, l1b, histrates, HARD, DOWNSTREAM
+lo, ancillary, esa-mode-lut, lo, l1b, histrates, HARD, DOWNSTREAM
+
+lo, l1b, de, lo, l1b, derates, HARD, DOWNSTREAM
+lo, l1a, spin, lo, l1b, derates, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1b, derates, HARD, DOWNSTREAM
 repoint, repoint, historical, lo, l1b, derates, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, derates, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, lo, l1b, derates, HARD_NO_TRIGGER, DOWNSTREAM
 lo, ancillary, sweep-table, lo, l1b, derates, HARD, DOWNSTREAM
 lo, ancillary, esa-mode-lut, lo, l1b, derates, HARD, DOWNSTREAM
-lo, l1b, de, lo, l1b, derates, HARD, DOWNSTREAM
-lo, l1a, spin, lo, l1b, derates, HARD, DOWNSTREAM
-lo, l1a, star, lo, l1b, prostar, HARD, DOWNSTREAM
-lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 
-# TODO: add more dependencies for pset
+lo, l1a, star, lo, l1b, prostar, HARD, DOWNSTREAM
+lo, l1b, nhk, lo, l1b, prostar, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1b, prostar, HARD, DOWNSTREAM
+repoint, repoint, historical, lo, l1b, prostar, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, derates, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, derates, HARD_NO_TRIGGER, DOWNSTREAM
+
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, good-times, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, hydrogen-background, lo, l1c, pset, HARD, DOWNSTREAM
