@@ -47,7 +47,7 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(obj, Decimal):
             # - If the Decimal is an integer, return int
             # - Otherwise, float rounded to 3 decimal places
-            if obj % 1 == 0:
+            if obj == obj.to_integral_value():
                 return int(obj)
             return round(float(obj), 3)
 

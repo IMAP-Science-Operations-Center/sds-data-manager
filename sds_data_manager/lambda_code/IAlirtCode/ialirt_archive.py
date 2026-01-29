@@ -90,7 +90,11 @@ def lambda_handler(event, context):
     region = os.environ.get("AWS_REGION")
 
     # Query 1 day's worth of data a week ago.
-    now = datetime.now(timezone.utc)
+    now_override = event.get("now_utc")
+    if now_override:
+        now = datetime.fromisoformat(now_override).astimezone(timezone.utc)
+    else:
+        now = datetime.now(timezone.utc)
     target_date = (now - timedelta(days=7)).date()
 
     # This is in case the solid state recorder is setup to save
