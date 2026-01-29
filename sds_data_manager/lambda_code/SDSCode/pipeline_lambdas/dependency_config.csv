@@ -763,8 +763,8 @@ lo, ancillary, sweep-table, lo, l1b, derates, HARD, DOWNSTREAM
 lo, ancillary, esa-mode-lut, lo, l1b, derates, HARD, DOWNSTREAM
 
 lo, l1a, star, lo, l1b, prostar, HARD, DOWNSTREAM
-lo, l1b, nhk, lo, l1b, prostar, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, prostar, HARD, DOWNSTREAM
+lo, l1b, nhk, lo, l1b, prostar, HARD, DOWNSTREAM
 repoint, repoint, historical, lo, l1b, prostar, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, derates, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, lo, l1b, derates, HARD_NO_TRIGGER, DOWNSTREAM
