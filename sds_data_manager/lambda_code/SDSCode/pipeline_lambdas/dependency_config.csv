@@ -782,6 +782,9 @@ imap_frames, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, lo, l1c, pset, HARD, DOWNSTREAM
 science_frames, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, best, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, best, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
 
 # TODO: Maps for 5-7 days need to be defined. deg resolution for those maps are currently N/A in Lo mapping product sheet.
 
