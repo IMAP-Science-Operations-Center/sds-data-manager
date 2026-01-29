@@ -745,23 +745,14 @@ lo, l1b, nhk, lo, l1b, badtimes, HARD, DOWNSTREAM
 spin, spin, historical, lo, l1b, badtimes, HARD, DOWNSTREAM
 repoint, repoint, historical, lo, l1b, badtimes, HARD, DOWNSTREAM
 
-lo, l1a, histogram, lo, l1b, monitorrates, HARD, DOWNSTREAM
-lo, l1a, spin, lo, l1b, monitorrates, HARD, DOWNSTREAM
-spin, spin, historical, lo, l1b, monitorrates, HARD, DOWNSTREAM
-repoint, repoint, historical, lo, l1b, monitorrates, HARD, DOWNSTREAM
-spacecraft_clock, spice, historical, lo, l1b, monitorrates, HARD_NO_TRIGGER, DOWNSTREAM
-leapseconds, spice, historical, lo, l1b, monitorrates, HARD_NO_TRIGGER, DOWNSTREAM
-lo, ancillary, sweep-table, lo, l1b, monitorrates, HARD, DOWNSTREAM
-lo, ancillary, esa-mode-lut, lo, l1b, monitorrates, HARD, DOWNSTREAM
-
-lo, l1a, histogram, lo, l1b, histrates, HARD, DOWNSTREAM
-lo, l1a, spin, lo, l1b, histrates, HARD, DOWNSTREAM
-spin, spin, historical, lo, l1b, histrates, HARD, DOWNSTREAM
-repoint, repoint, historical, lo, l1b, histrates, HARD, DOWNSTREAM
-spacecraft_clock, spice, historical, lo, l1b, histrates, HARD_NO_TRIGGER, DOWNSTREAM
-leapseconds, spice, historical, lo, l1b, histrates, HARD_NO_TRIGGER, DOWNSTREAM
-lo, ancillary, sweep-table, lo, l1b, histrates, HARD, DOWNSTREAM
-lo, ancillary, esa-mode-lut, lo, l1b, histrates, HARD, DOWNSTREAM
+lo, l1a, histogram, lo, l1b, all-rates, HARD, DOWNSTREAM
+lo, l1a, spin, lo, l1b, all-rates, HARD, DOWNSTREAM
+spin, spin, historical, lo, l1b, all-rates, HARD, DOWNSTREAM
+repoint, repoint, historical, lo, l1b, all-rates, HARD, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, all-rates, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, all-rates, HARD_NO_TRIGGER, DOWNSTREAM
+lo, ancillary, sweep-table, lo, l1b, all-rates, HARD, DOWNSTREAM
+lo, ancillary, esa-mode-lut, lo, l1b, all-rates, HARD, DOWNSTREAM
 
 lo, l1b, de, lo, l1b, derates, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, derates, HARD, DOWNSTREAM
