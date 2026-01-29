@@ -110,10 +110,17 @@ def lambda_handler(event, context) -> dict:
             response_body["dates_modified"].append(
                 file["LastModified"].strftime("%Y-%m-%d %H:%M")
             )
+            # Documentation described here:
+            # https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
             response_body["download_urls"].append(
                 s3_client.generate_presigned_url(
                     ClientMethod="get_object",
-                    Params={"Bucket": bucket, "Key": key},
+                    Params={
+                        "Bucket": bucket,
+                        "Key": key,
+                        "ResponseContentType": "text/plain; charset=utf-8",
+                        "ResponseContentDisposition": "inline",
+                    },
                     ExpiresIn=900,  # 15 minutes
                 )
             )
