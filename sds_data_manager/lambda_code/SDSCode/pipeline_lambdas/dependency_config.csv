@@ -67,7 +67,6 @@ codice, l3a, lo-partial-densities, codice, l3a, lo-sw-ratios, HARD, DOWNSTREAM
 codice, l3a, lo-partial-densities, codice, l3a, lo-sw-charge-state-distributions, HARD, DOWNSTREAM
 
 codice, l2, hi-direct-events, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
-codice, ancillary, tof-lookup, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
 
 mag, l1d, norm-dsrf, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 codice, l2, hi-sectored, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
