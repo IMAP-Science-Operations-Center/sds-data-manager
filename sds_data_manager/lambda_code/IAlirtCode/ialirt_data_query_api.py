@@ -28,6 +28,8 @@ RESTRICTED_FIELDS = {
     "hit_e_b_side_high_en",
     "hit_h_a_side_high_en",
     "hit_h_b_side_high_en",
+    "hit_e_a_side_low_en",
+    "hit_e_b_side_low_en",
 }
 
 PUBLIC_CUTOFF_UTC = "2026-02-01T00:00:00"
