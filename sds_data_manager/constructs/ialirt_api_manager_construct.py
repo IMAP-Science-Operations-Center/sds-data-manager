@@ -187,10 +187,18 @@ class IalirtApiManager(Construct):
         )
 
         add_stable_route(
-            api, "/ialirt-download", "GET", download_api, restricted_route_prefixes
+            api,
+            "/ialirt-download",
+            "GET",
+            download_api,
+            ["", "/authorized", "/api-key"],
         )
         add_stable_route(
-            api, "/ialirt-download", "HEAD", download_api, restricted_route_prefixes
+            api,
+            "/ialirt-download",
+            "HEAD",
+            download_api,
+            ["", "/authorized", "/api-key"],
         )
 
         # catalog API lambda

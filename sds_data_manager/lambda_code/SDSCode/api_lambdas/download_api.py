@@ -132,6 +132,14 @@ def lambda_handler(event, context):
     region = os.getenv("REGION")
     filepath = path_params
 
+    if not is_authenticated_user(event) and (
+        filepath.startswith("logs/") or filepath.startswith("packets/")
+    ):
+        return http_response(
+            status_code=403,
+            body="I-ALiRT logs and packet data are not publicly downloadable.",
+        )
+
     # The default presigned url signature does not include the region information
     # within the signature and we should be hitting the actual s3 region endpoint
     # to avoid any 307 redirects. (Generally only an issue on newly created buckets
