@@ -281,5 +281,5 @@ class IalirtApiManager(Construct):
             "/space-weather",
             "GET",
             ialirt_db_query_formatted_handler,
-            restricted_route_prefixes,
+            auth_route_prefixes,
         )
