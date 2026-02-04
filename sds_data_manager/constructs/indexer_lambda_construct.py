@@ -231,7 +231,9 @@ class SPICEIndexerLambda(Construct):
             timeout=cdk.Duration.minutes(1),
             architecture=lambda_.Architecture.X86_64,
             layers=layers,
-            memory_size=1000,
+            # some kernels were larger than 512MB and need more space
+            memory_size=2000,
+            ephemeral_storage_size=cdk.Size.gibibytes(2),
             security_groups=[rds_security_group],
             environment={
                 "IMAP_DATA_DIR": "/tmp",  # noqa: S108
