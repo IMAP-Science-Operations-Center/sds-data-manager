@@ -62,23 +62,22 @@ def lambda_handler(event, context):  # noqa: PLR0915, PLR0912
 
     s3_files = set(s3_files_dict.keys())
 
+    tables_to_sync = [
+        models.ScienceFiles,
+        models.AncillaryFiles,
+        models.SPICEFiles,
+        models.SmallForcesFile,
+        models.SpinFiles,
+        models.RepointFiles,
+    ]
+
     # Fetch database entries
     with db.Session() as session:
         with session.begin():
             search_results = []
-            query_science = select(models.ScienceFiles.file_path)
-            query_ancillary = select(models.AncillaryFiles.file_path)
-            # Add SPICE related entries
-            query_spice = select(models.SPICEFiles.file_path)
-            query_sff = select(models.SmallForcesFile.file_path)
-            query_spin = select(models.SpinFiles.file_path)
-            query_repoint = select(models.RepointFiles.file_path)
-            search_results.extend(session.execute(query_science).all())
-            search_results.extend(session.execute(query_ancillary).all())
-            search_results.extend(session.execute(query_spice).all())
-            search_results.extend(session.execute(query_sff).all())
-            search_results.extend(session.execute(query_spin).all())
-            search_results.extend(session.execute(query_repoint).all())
+            for table in tables_to_sync:
+                query = select(table.file_path)
+                search_results.extend(session.execute(query).all())
 
         # result is a one-element tuple, so we need to extract the filepath
         db_files = set([result[0] for result in search_results])
@@ -167,32 +166,8 @@ def lambda_handler(event, context):  # noqa: PLR0915, PLR0912
         session.add_all(records_to_add)
 
         # Remove database entries for files that were deleted from s3
-        delete_science_files = delete(models.ScienceFiles).where(
-            models.ScienceFiles.file_path.in_(db_only_files)
-        )
-
-        delete_ancillary_files = delete(models.AncillaryFiles).where(
-            models.AncillaryFiles.file_path.in_(db_only_files)
-        )
-
-        delete_spice_files = delete(models.SPICEFiles).where(
-            models.SPICEFiles.file_path.in_(db_only_files)
-        )
-        delete_small_forces_files = delete(models.SmallForcesFile).where(
-            models.SmallForcesFile.file_path.in_(db_only_files)
-        )
-        delete_spin_files = delete(models.SpinFiles).where(
-            models.SpinFiles.file_path.in_(db_only_files)
-        )
-        delete_repoint_files = delete(models.RepointFiles).where(
-            models.RepointFiles.file_path.in_(db_only_files)
-        )
-
-        session.execute(delete_science_files)
-        session.execute(delete_ancillary_files)
-        session.execute(delete_spice_files)
-        session.execute(delete_small_forces_files)
-        session.execute(delete_spin_files)
-        session.execute(delete_repoint_files)
+        for table in tables_to_sync:
+            records_to_delete = delete(table).where(table.file_path.in_(db_only_files))
+            session.execute(records_to_delete)
 
         session.commit()
