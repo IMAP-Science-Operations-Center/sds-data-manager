@@ -281,12 +281,12 @@ class SdsApiManager(Construct):
             api, "/download", "HEAD", download_api_lambda, auth_route_prefixes
         )
 
-        spin_repoint_query_api_lambda = lambda_.Function(
+        non_spice_query_api_lambda = lambda_.Function(
             self,
-            id="spin-repoint-query-api",
-            function_name="spin-repoint-query-api",
+            id="non-spice-query-api",
+            function_name="non-spice-query-api",
             code=code,
-            handler="SDSCode.api_lambdas.spin_repoint_table_api.lambda_handler",
+            handler="SDSCode.api_lambdas.non_spice_table_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
@@ -359,7 +359,7 @@ class SdsApiManager(Construct):
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
         )
-        rds_secret.grant_read(grantee=spin_repoint_query_api_lambda)
+        rds_secret.grant_read(grantee=non_spice_query_api_lambda)
         rds_secret.grant_read(grantee=query_api_lambda)
         rds_secret.grant_read(grantee=download_api_lambda)
         rds_secret.grant_read(grantee=spice_query_api_lambda)
@@ -372,11 +372,17 @@ class SdsApiManager(Construct):
             api.add_route(
                 route=f"{prefix}/spin-table",
                 http_method="GET",
-                lambda_function=spin_repoint_query_api_lambda,
+                lambda_function=non_spice_query_api_lambda,
             )
             # Same handler, but add a route to the repointing table
             api.add_route(
                 route=f"{prefix}/repoint-table",
                 http_method="GET",
-                lambda_function=spin_repoint_query_api_lambda,
+                lambda_function=non_spice_query_api_lambda,
+            )
+            # Same handler, but add a route to the small-forces table
+            api.add_route(
+                route=f"{prefix}/small-forces-table",
+                http_method="GET",
+                lambda_function=non_spice_query_api_lambda,
             )

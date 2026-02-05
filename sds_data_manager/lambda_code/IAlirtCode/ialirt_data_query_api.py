@@ -28,6 +28,8 @@ RESTRICTED_FIELDS = {
     "hit_e_b_side_high_en",
     "hit_h_a_side_high_en",
     "hit_h_b_side_high_en",
+    "hit_e_a_side_low_en",
+    "hit_e_b_side_low_en",
 }
 
 PUBLIC_CUTOFF_UTC = "2026-02-01T00:00:00"
@@ -47,7 +49,7 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(obj, Decimal):
             # - If the Decimal is an integer, return int
             # - Otherwise, float rounded to 3 decimal places
-            if obj % 1 == 0:
+            if obj == obj.to_integral_value():
                 return int(obj)
             return round(float(obj), 3)
 
@@ -224,6 +226,8 @@ def lambda_handler(event, context):
         meta_instrument = "spice"
         meta_type = "spice"
     elif params["instrument"].endswith("hk"):
+        if scope not in FULL_SCOPES:
+            return _error(403, "Unauthorized for HK access.")
         meta_instrument = params["instrument"]
         meta_type = "hk"
     elif params["instrument"] == "spacecraft":

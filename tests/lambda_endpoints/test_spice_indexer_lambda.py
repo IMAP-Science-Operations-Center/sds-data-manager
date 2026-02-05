@@ -23,6 +23,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer import 
     MAXIMUM_SCLK_INTERVAL,
     get_coverage_dictionary,
     index_pointing_data,
+    index_small_forces_file,
     parse_datetime,
 )
 
@@ -316,6 +317,33 @@ def test_s3_spin_files(session, s3_client, events_client):
 
 
 @patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.get_file_ingestion_date",
+    return_value=datetime(2025, 1, 1, 10, 0, 0),
+)
+def test_s3_small_forces_files(mock_get_ingestion_date, session):
+    """Test indexing small-forces files."""
+    # Index first small_forces file
+    s3_key_1 = "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff"
+    index_small_forces_file(s3_key_1)
+
+    query = select(models.SmallForcesFile.__table__)
+    small_forces_table_rows = session.execute(query).all()
+    assert len(small_forces_table_rows) == 1
+    assert small_forces_table_rows[0].file_path == s3_key_1
+    assert small_forces_table_rows[0].version == "01"
+
+    # Index second small_forces file
+    s3_key_2 = "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff"
+    index_small_forces_file(s3_key_2)
+
+    query = select(models.SmallForcesFile.__table__)
+    small_forces_table_rows = session.execute(query).all()
+    assert len(small_forces_table_rows) == 2
+    assert small_forces_table_rows[1].file_path == s3_key_2
+    assert small_forces_table_rows[1].version == "02"
+
+
+@patch(
     "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download_from_s3"
 )
 def test_s3_repoint_files(mock_download, session, s3_client, events_client):
@@ -581,9 +609,77 @@ def test_index_repoint_file_multiple_versions(
         .filter_by(file_path="imap/spice/repoint/imap_2025_200_02.repoint.csv")
         .first()
     )
-    assert repoint_v02 is not None
     assert repoint_v02.version == "02"
 
     # Verify both versions exist in the database
     all_repoint_files = session.query(models.RepointFiles).all()
     assert len(all_repoint_files) == 2
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.get_file_ingestion_date",
+    return_value=datetime(2025, 1, 1, 10, 0, 0),
+)
+def test_index_small_forces_file(mock_get_ingestion_date, session):
+    """Test index_small_forces_file function."""
+    # Call index_small_forces_file
+    index_small_forces_file(
+        "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff"
+    )
+
+    # Verify the small-forces file was indexed
+    small_forces_entry = (
+        session.query(models.SmallForcesFile)
+        .filter_by(
+            file_path="imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff"
+        )
+        .first()
+    )
+    assert small_forces_entry is not None
+    assert small_forces_entry.version == "01"
+    assert small_forces_entry.start_date == datetime(2025, 4, 10, 0, 0, 0)
+    assert small_forces_entry.end_date == datetime(2025, 4, 20, 0, 0, 0)
+    assert small_forces_entry.ingestion_date is not None
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.get_file_ingestion_date",
+    return_value=datetime(2025, 1, 1, 10, 0, 0),
+)
+def test_index_small_forces_file_multiple_versions(mock_get_ingestion_date, session):
+    """Test indexing multiple small-forces files with different versions."""
+    # Index first version
+    index_small_forces_file(
+        "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff"
+    )
+
+    # Verify first version was indexed
+    small_forces_v01 = (
+        session.query(models.SmallForcesFile)
+        .filter_by(
+            file_path="imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff"
+        )
+        .first()
+    )
+    assert small_forces_v01 is not None
+    assert small_forces_v01.version == "01"
+
+    # Index second version
+    index_small_forces_file(
+        "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff"
+    )
+
+    # Verify second version was indexed
+    small_forces_v02 = (
+        session.query(models.SmallForcesFile)
+        .filter_by(
+            file_path="imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff"
+        )
+        .first()
+    )
+    assert small_forces_v02 is not None
+    assert small_forces_v02.version == "02"
+
+    # Verify both versions exist in the database
+    all_small_forces_files = session.query(models.SmallForcesFile).all()
+    assert len(all_small_forces_files) == 2

@@ -131,6 +131,17 @@ def lambda_handler(event, context):
     bucket = os.getenv("S3_BUCKET")
     region = os.getenv("REGION")
     filepath = path_params
+    raw_path = event.get("rawPath")
+
+    if (
+        not is_authenticated_user(event)
+        and raw_path.startswith("/ialirt-download/")
+        and (filepath.startswith("logs/") or filepath.startswith("packets/"))
+    ):
+        return http_response(
+            status_code=403,
+            body="I-ALiRT logs and packet data are not publicly downloadable.",
+        )
 
     # The default presigned url signature does not include the region information
     # within the signature and we should be hitting the actual s3 region endpoint
@@ -161,7 +172,11 @@ def lambda_handler(event, context):
             ),
         )
 
-    if not is_authenticated_user(event) and not is_released(filepath):
+    if (
+        not is_authenticated_user(event)
+        and not is_released(filepath)
+        and not raw_path.startswith("/ialirt-download/")
+    ):
         return http_response(
             status_code=403,
             body=f"The file {filepath} is not a part of a public release yet.",

@@ -246,6 +246,18 @@ class RepointFiles(Base):
     released = Column(Boolean, nullable=False, default=True)
 
 
+class SmallForcesFile(Base):
+    """Small forces files table. This file contains thruster data."""
+
+    __tablename__ = "small_forces_files"
+    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
+    version = Column(String(2), nullable=False)
+    ingestion_date = Column(DateTime(timezone=True))
+    released = Column(Boolean, nullable=False, default=True)
+
+
 class Version(Base):
     """Version table."""
 

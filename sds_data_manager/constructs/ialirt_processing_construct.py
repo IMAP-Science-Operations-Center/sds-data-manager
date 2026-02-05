@@ -89,6 +89,7 @@ class IalirtProcessing(Construct):
             "128.138.131.0/24": [7526, 7564],  # LASP (used for testing only)
             "198.118.1.14/32": [7526],  # BlueNet (tlm relay)
             "193.174.22.3/32": [7564],  # Kiel
+            "185.83.168.248/32": [7566],  # UKSA
         }
 
         for ip_range, ports in partner_access.items():

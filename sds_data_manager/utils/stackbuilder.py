@@ -35,6 +35,7 @@ from sds_data_manager.constructs import (
     route53_hosted_zone,
     scheduled_job_lambda,
     sds_api_manager_construct,
+    spice_monitoring_construct,
     sqs_construct,
     website_hosting,
 )
@@ -207,6 +208,26 @@ def build_sds(
         construct_id="MonitoringLambda",
         code=lambda_code,
         sns_topic=monitoring.sns_topic_notifications,
+    )
+
+    # Set SPICE monitoring email based on environment
+    spice_alarm_email = (
+        "imap-sdc@lists.lasp.colorado.edu" if account_name == "prod" else ""
+    )
+    spice_monitoring_construct.SpiceMonitoringConstruct(
+        scope=sdc_stack,
+        construct_id="SpiceMonitoringConstruct",
+        code=lambda_code,
+        db_secret_name=db_secret_name,
+        vpc=networking.vpc,
+        rds_security_group=rds_construct.rds_security_group,
+        layers=[db_lambda_layer, spice_lambda_layer],
+        alarm_email=spice_alarm_email,
+        ck_threshold_days=4,
+        spin_threshold_days=4,
+        sclk_threshold_days=4,
+        repoint_threshold_days=4,
+        predicted_ephemeris_threshold_days=4,
     )
 
     sds_api_manager_construct.SdsApiManager(

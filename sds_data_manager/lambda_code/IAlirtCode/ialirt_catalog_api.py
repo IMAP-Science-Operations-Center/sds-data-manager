@@ -95,7 +95,7 @@ def lambda_handler(event, context) -> dict:
         config=botocore.client.Config(signature_version="s3v4"),
     )
 
-    response_body = {"file_names": [], "dates_modified": []}
+    response_body = {"file_names": [], "dates_modified": [], "download_urls": []}
     while day < end_date:
         day_path = f"pointing_schedules/{station}/{day.strftime('%Y-%m-%d')}"
         files = s3_client.list_objects_v2(Bucket=bucket, Prefix=day_path)
@@ -105,9 +105,24 @@ def lambda_handler(event, context) -> dict:
             day += timedelta(days=1)
             continue
         for file in files["Contents"]:
+            key = file["Key"]
             response_body["file_names"].append(file["Key"].rsplit("/", 1)[1])
             response_body["dates_modified"].append(
                 file["LastModified"].strftime("%Y-%m-%d %H:%M")
+            )
+            # Documentation described here:
+            # https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
+            response_body["download_urls"].append(
+                s3_client.generate_presigned_url(
+                    ClientMethod="get_object",
+                    Params={
+                        "Bucket": bucket,
+                        "Key": key,
+                        "ResponseContentType": "text/plain; charset=utf-8",
+                        "ResponseContentDisposition": "inline",
+                    },
+                    ExpiresIn=900,  # 15 minutes
+                )
             )
         day += timedelta(days=1)
 

@@ -36,7 +36,11 @@ def lambda_handler(event, context):
     ):
         return {"isAuthorized": False}
 
-    if path.startswith("/ialirt-download") and scope not in (
+    # Public download except for logs and packets.
+    if (
+        path.startswith("/ialirt-download/logs")
+        or path.startswith("/ialirt-download/packets/")
+    ) and scope not in (
         "full",
         "ialirt_external_partner",
         "ialirt_scientist",
