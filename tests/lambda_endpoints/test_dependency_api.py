@@ -1,6 +1,7 @@
 """Test data dependency functions."""
 
 import base64
+from collections import namedtuple
 from datetime import datetime
 from os.path import basename
 from unittest.mock import patch
@@ -28,6 +29,8 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
     get_files,
     get_upstream_dependency_inputs,
     matching_crids_exist,
+    verify_science_coverage,
+    verify_spin_coverage,
 )
 from tests.lambda_endpoints.conftest import (
     _static_spice_files,
@@ -892,7 +895,8 @@ def test_get_spin_files(session):
     # Test with overlapping date range
     start_date = datetime(2025, 4, 29)
     end_date = datetime(2025, 4, 30)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    spin_files = [basename(record.file_path) for record in spin_records]
     assert spin_files == [
         "imap_2025_119_2025_120_01.spin.csv",
         "imap_2025_120_2025_121_01.spin.csv",
@@ -901,26 +905,29 @@ def test_get_spin_files(session):
     # Test with a date range that does not overlap
     start_date = datetime(2025, 5, 2)
     end_date = datetime(2025, 5, 3)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
-    assert spin_files == []
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    assert spin_records == []
 
     # Test with one day date range
     start_date = datetime(2025, 4, 29)
     end_date = datetime(2025, 4, 29)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    spin_files = [basename(record.file_path) for record in spin_records]
     assert spin_files == [
         "imap_2025_119_2025_120_01.spin.csv",
     ]
 
     start_date = datetime(2026, 9, 25)
     end_date = datetime(2026, 9, 25)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    spin_files = [basename(record.file_path) for record in spin_records]
     assert spin_files == ["imap_2026_268_2026_269_01.spin.csv"]
 
     # Test with overlapping date range and latest version
     start_date = datetime(2026, 9, 24)
     end_date = datetime(2026, 9, 24)
-    spin_files = dependency.get_spin_files(session, start_date, end_date)
+    spin_records = dependency.get_spin_files(session, start_date, end_date)
+    spin_files = [basename(record.file_path) for record in spin_records]
     assert spin_files == [
         "imap_2026_267_2026_268_02.spin.csv",
         "imap_2026_268_2026_268_02.spin.csv",
@@ -1390,3 +1397,662 @@ def test_get_spice_for_ena(session):
     )
     # We should expect 2 SPICE files for the date range above.
     assert len(processing_inputs.get_file_paths()) == 2
+
+
+#####################################
+# COVERAGE VERIFICATION TESTS
+#####################################
+SpinRecord = namedtuple("SpinRecord", ["file_path", "start_date", "end_date"])
+
+
+class TestVerifySpinCoverage:
+    """Test coverage for verify_spin_coverage."""
+
+    def test_verify_spin_coverage_complete(self):
+        """Test verify_spin_coverage with complete coverage."""
+        # Create mock spin records with complete coverage (overlapping on May 12)
+        records = [
+            SpinRecord(
+                "spin_file1.txt",
+                datetime(2024, 5, 10),
+                datetime(2024, 5, 12),
+            ),
+            SpinRecord(
+                "spin_file2.txt",
+                datetime(2024, 5, 12),
+                datetime(2024, 5, 15),
+            ),
+        ]
+
+        coverage_ok = verify_spin_coverage(
+            records, datetime(2024, 5, 10), datetime(2024, 5, 15)
+        )
+
+        assert coverage_ok is True
+
+    def test_verify_spin_coverage_gap_at_start(self):
+        """Test verify_spin_coverage with gap at the beginning."""
+        # First record starts after the requested start_date
+        records = [
+            SpinRecord(
+                "spin_file1.txt",
+                datetime(2024, 5, 12),
+                datetime(2024, 5, 15),
+            ),
+        ]
+
+        coverage_ok = verify_spin_coverage(
+            records, datetime(2024, 5, 10), datetime(2024, 5, 15)
+        )
+
+        assert coverage_ok is False
+
+    def test_verify_spin_coverage_gap_in_middle(self):
+        """Test verify_spin_coverage with gap between records."""
+        # Gap between records (12th to 14th is missing)
+        records = [
+            SpinRecord(
+                "spin_file1.txt",
+                datetime(2024, 5, 10),
+                datetime(2024, 5, 11),
+            ),
+            SpinRecord(
+                "spin_file2.txt",
+                datetime(2024, 5, 15),
+                datetime(2024, 5, 17),
+            ),
+        ]
+
+        coverage_ok = verify_spin_coverage(
+            records, datetime(2024, 5, 10), datetime(2024, 5, 17)
+        )
+
+        assert coverage_ok is False
+
+    def test_verify_spin_coverage_gap_at_end(self):
+        """Test verify_spin_coverage with gap at the end."""
+        # Last record ends before the requested end_date
+        records = [
+            SpinRecord(
+                "spin_file1.txt",
+                datetime(2024, 5, 10),
+                datetime(2024, 5, 13),
+            ),
+        ]
+
+        coverage_ok = verify_spin_coverage(
+            records, datetime(2024, 5, 10), datetime(2024, 5, 15)
+        )
+
+        assert coverage_ok is False
+
+    def test_verify_spin_coverage_overlapping_ranges(self):
+        """Test verify_spin_coverage with overlapping ranges (should pass)."""
+        # Records with overlapping coverage
+        records = [
+            SpinRecord(
+                "spin_file1.txt",
+                datetime(2024, 5, 10),
+                datetime(2024, 5, 13),
+            ),
+            SpinRecord(
+                "spin_file2.txt",
+                datetime(2024, 5, 12),
+                datetime(2024, 5, 15),
+            ),
+        ]
+
+        coverage_ok = verify_spin_coverage(
+            records, datetime(2024, 5, 10), datetime(2024, 5, 15)
+        )
+
+        assert coverage_ok is True
+
+
+ScienceRecord = namedtuple("ScienceRecord", ["file_path", "start_date", "repointing"])
+
+
+class TestVerifyScienceCoverage:
+    """Test coverage for verify_science_coverage."""
+
+    def test_verify_science_coverage_complete(self):
+        """Test verify_science_coverage with all dates covered."""
+        # All dates from 10th to 13th are covered
+        records = [
+            ScienceRecord("file1.cdf", datetime(2024, 5, 10), None),
+            ScienceRecord("file2.cdf", datetime(2024, 5, 11), None),
+            ScienceRecord("file3.cdf", datetime(2024, 5, 12), None),
+            ScienceRecord("file4.cdf", datetime(2024, 5, 13), None),
+        ]
+
+        dependency = {
+            "data_source": "swe",
+            "data_type": "l1a",
+            "descriptor": "sci",
+        }
+
+        coverage_ok = verify_science_coverage(
+            records, datetime(2024, 5, 10), datetime(2024, 5, 13), dependency
+        )
+
+        assert coverage_ok is True
+
+    def test_verify_science_coverage_missing_dates(self):
+        """Test verify_science_coverage with missing dates."""
+        # Missing dates: 11th and 13th
+        records = [
+            ScienceRecord("file1.cdf", datetime(2024, 5, 10), None),
+            ScienceRecord("file2.cdf", datetime(2024, 5, 12), None),
+        ]
+
+        dependency = {
+            "data_source": "mag",
+            "data_type": "l1b",
+            "descriptor": "burst-mago",
+        }
+
+        coverage_ok = verify_science_coverage(
+            records, datetime(2024, 5, 10), datetime(2024, 5, 13), dependency
+        )
+
+        assert coverage_ok is False
+
+    def test_verify_science_coverage_single_date(self):
+        """Test verify_science_coverage when start_date equals end_date."""
+        records = [
+            ScienceRecord("file1.cdf", datetime(2024, 5, 10), None),
+        ]
+
+        dependency = {
+            "data_source": "hit",
+            "data_type": "l1a",
+            "descriptor": "sci",
+        }
+
+        coverage_ok = verify_science_coverage(
+            records, datetime(2024, 5, 10), datetime(2024, 5, 10), dependency
+        )
+
+        assert coverage_ok is True
+
+    def test_verify_science_coverage_with_repoint(self):
+        """Test verify_science_coverage with single repoint (complete coverage)."""
+        # Records with repoint 42
+        records = [
+            ScienceRecord("file1.cdf", datetime(2024, 5, 10), 42),
+        ]
+
+        dependency = {
+            "data_source": "hi",
+            "data_type": "l1a",
+            "descriptor": "sci",
+        }
+
+        # When repoint is provided, only check that repoint exists (not dates)
+        coverage_ok = verify_science_coverage(
+            records,
+            datetime(2024, 5, 10),
+            datetime(2024, 5, 12),
+            dependency,
+            repoint=42,
+        )
+
+        assert coverage_ok is True
+
+    def test_verify_science_coverage_with_repoint_missing(self):
+        """Test verify_science_coverage with single repoint (missing)."""
+        # Records with repoint 40, but we're looking for 42
+        records = [
+            ScienceRecord("file1.cdf", datetime(2024, 5, 10), 40),
+        ]
+
+        dependency = {
+            "data_source": "hi",
+            "data_type": "l1a",
+            "descriptor": "sci",
+        }
+
+        coverage_ok = verify_science_coverage(
+            records,
+            datetime(2024, 5, 10),
+            datetime(2024, 5, 12),
+            dependency,
+            repoint=42,
+        )
+
+        assert coverage_ok is False
+
+    def test_verify_science_coverage_with_repoint_list(self):
+        """Test verify_science_coverage with list of repoints (complete coverage)."""
+        # Records with repoints 40, 41, 42
+        records = [
+            ScienceRecord("file1.cdf", datetime(2024, 5, 10), 40),
+            ScienceRecord("file2.cdf", datetime(2024, 5, 11), 41),
+            ScienceRecord("file3.cdf", datetime(2024, 5, 12), 42),
+        ]
+
+        dependency = {
+            "data_source": "hi",
+            "data_type": "l1a",
+            "descriptor": "sci",
+        }
+
+        # When repoint list is provided, check that all repoints exist
+        coverage_ok = verify_science_coverage(
+            records,
+            datetime(2024, 5, 10),
+            datetime(2024, 5, 12),
+            dependency,
+            repoint=[40, 41, 42],
+        )
+
+        assert coverage_ok is True
+
+    def test_verify_science_coverage_with_repoint_list_missing(self):
+        """Test verify_science_coverage with list of repoints (missing some)."""
+        # Records with repoints 40 and 42 (missing 41)
+        records = [
+            ScienceRecord("file1.cdf", datetime(2024, 5, 10), 40),
+            ScienceRecord("file2.cdf", datetime(2024, 5, 12), 42),
+        ]
+
+        dependency = {
+            "data_source": "hi",
+            "data_type": "l1a",
+            "descriptor": "sci",
+        }
+
+        coverage_ok = verify_science_coverage(
+            records,
+            datetime(2024, 5, 10),
+            datetime(2024, 5, 12),
+            dependency,
+            repoint=[40, 41, 42],
+        )
+
+        assert coverage_ok is False
+
+    def test_verify_science_coverage_many_missing_dates(self):
+        """Test verify_science_coverage with many missing dates (summary format)."""
+        # Only 2 dates out of 10
+        records = [
+            ScienceRecord("file1.cdf", datetime(2024, 5, 10), None),
+            ScienceRecord("file2.cdf", datetime(2024, 5, 19), None),
+        ]
+
+        dependency = {
+            "data_source": "swe",
+            "data_type": "l1a",
+            "descriptor": "sci",
+        }
+
+        coverage_ok = verify_science_coverage(
+            records, datetime(2024, 5, 10), datetime(2024, 5, 19), dependency
+        )
+
+        assert coverage_ok is False
+
+
+#####################################
+# REQUIRE_COVERAGE INTEGRATION TESTS
+#####################################
+
+
+def test_require_coverage_spin_incomplete(session):
+    """Test that incomplete spin coverage blocks processing if coverage required."""
+    # Create spin records with a gap in coverage
+    # May 10 = day 131, May 11 = day 132, May 13 = day 134, May 15 = day 136
+    spin_records = [
+        SpinFiles(
+            file_path="/path/to/imap_2024_131_2024_132_01.spin.csv",
+            start_date=datetime(2024, 5, 10),
+            end_date=datetime(2024, 5, 11),
+            version="01",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+        SpinFiles(
+            file_path="/path/to/imap_2024_134_2024_136_01.spin.csv",
+            start_date=datetime(2024, 5, 13),  # Gap: missing May 12
+            end_date=datetime(2024, 5, 15),
+            version="01",
+            ingestion_date=datetime(2024, 5, 16),
+        ),
+    ]
+    session.add_all(spin_records)
+    session.commit()
+
+    dependencies = [{"data_source": "spin", "data_type": "spice", "descriptor": ""}]
+
+    # With require_coverage=True, should return None due to gap
+    result = get_upstream_dependency_inputs(
+        dependencies,
+        start_date=datetime(2024, 5, 10),
+        end_date=datetime(2024, 5, 15),
+        require_coverage=True,
+    )
+
+    assert result is None
+
+
+def test_require_coverage_spin_complete(session):
+    """Test that complete spin coverage succeeds when require_coverage=True."""
+    # Create spin records with complete coverage (no gaps)
+    # May 10 = day 131, May 12 = day 133, May 15 = day 136
+    spin_records = [
+        SpinFiles(
+            file_path="/path/to/imap_2024_131_2024_133_01.spin.csv",
+            start_date=datetime(2024, 5, 10),
+            end_date=datetime(2024, 5, 12),
+            version="01",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+        SpinFiles(
+            file_path="/path/to/imap_2024_133_2024_136_01.spin.csv",
+            start_date=datetime(2024, 5, 12),  # Continuous coverage
+            end_date=datetime(2024, 5, 15),
+            version="01",
+            ingestion_date=datetime(2024, 5, 16),
+        ),
+    ]
+    session.add_all(spin_records)
+    session.commit()
+
+    dependencies = [{"data_source": "spin", "data_type": "spice", "descriptor": ""}]
+
+    # With require_coverage=True and complete coverage, should succeed
+    result = get_upstream_dependency_inputs(
+        dependencies,
+        start_date=datetime(2024, 5, 10),
+        end_date=datetime(2024, 5, 15),
+        require_coverage=True,
+    )
+
+    assert result is not None
+    assert len(result.get_file_paths()) == 2
+
+
+def test_require_coverage_science_incomplete(session):
+    """Test incomplete science coverage blocks processing if coverage required."""
+    _static_spice_files(session)
+
+    # Create science files with missing dates (gap in coverage)
+    science_records = [
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240510_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 10),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240512_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 12),  # Missing May 11
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 13),
+        ),
+    ]
+    session.add_all(science_records)
+    session.commit()
+
+    dependencies = [
+        {
+            "data_source": "swe",
+            "data_type": "l1a",
+            "descriptor": "sci",
+            "relationship": "HARD",
+        }
+    ]
+
+    # With require_coverage=True, should return None due to missing date
+    result = get_upstream_dependency_inputs(
+        dependencies,
+        start_date=datetime(2024, 5, 10),
+        end_date=datetime(2024, 5, 12),
+        require_coverage=True,
+        get_spice=False,
+    )
+
+    assert result is None
+
+
+def test_require_coverage_science_complete(session):
+    """Test that complete science coverage succeeds when require_coverage=True."""
+    _static_spice_files(session)
+
+    # Create science files with complete daily coverage
+    science_records = [
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240510_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 10),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240511_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 11),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240512_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 12),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 13),
+        ),
+    ]
+    session.add_all(science_records)
+    session.commit()
+
+    dependencies = [
+        {
+            "data_source": "swe",
+            "data_type": "l1a",
+            "descriptor": "sci",
+            "relationship": "HARD",
+        }
+    ]
+
+    # With require_coverage=True and complete coverage, should succeed
+    result = get_upstream_dependency_inputs(
+        dependencies,
+        start_date=datetime(2024, 5, 10),
+        end_date=datetime(2024, 5, 12),
+        require_coverage=True,
+        get_spice=False,
+    )
+
+    assert result is not None
+    assert len(result.get_file_paths()) == 3
+
+
+def test_require_coverage_repoint_incomplete(session):
+    """Test incomplete repoint coverage blocks processing if coverage required."""
+    _static_spice_files(session)
+
+    # Create science files with repoint 40, but we'll request repoint 41 (missing)
+    science_records = [
+        ScienceFiles(
+            file_path="/path/to/imap_hi_l1a_sci_20240510-repoint00040_v001.cdf",
+            instrument="hi",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 10),
+            repointing=40,
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_hi_l1a_sci_20240511-repoint00040_v001.cdf",
+            instrument="hi",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 11),
+            repointing=40,
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+    ]
+    session.add_all(science_records)
+    session.commit()
+
+    dependencies = [
+        {
+            "data_source": "hi",
+            "data_type": "l1a",
+            "descriptor": "sci",
+            "relationship": "HARD",
+        }
+    ]
+
+    # With require_coverage=True and repoint=41,
+    # should return None (no records for repoint 41)
+    result = get_upstream_dependency_inputs(
+        dependencies,
+        start_date=datetime(2024, 5, 10),
+        end_date=datetime(2024, 5, 12),
+        repoint=41,
+        require_coverage=True,
+        get_spice=False,
+    )
+
+    assert result is None
+
+
+def test_require_coverage_repoint_complete(session):
+    """Test that complete repoint coverage succeeds when require_coverage=True."""
+    _static_spice_files(session)
+
+    # Create science files with repoint 40
+    # (at least one file with the requested repoint)
+    science_records = [
+        ScienceFiles(
+            file_path="/path/to/imap_hi_l1a_sci_20240510-repoint00040_v001.cdf",
+            instrument="hi",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 10),
+            repointing=40,
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_hi_l1a_sci_20240511-repoint00040_v001.cdf",
+            instrument="hi",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 11),
+            repointing=40,
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_hi_l1a_sci_20240512-repoint00040_v001.cdf",
+            instrument="hi",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 12),
+            repointing=40,
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 13),
+        ),
+    ]
+    session.add_all(science_records)
+    session.commit()
+
+    dependencies = [
+        {
+            "data_source": "hi",
+            "data_type": "l1a",
+            "descriptor": "sci",
+            "relationship": "HARD",
+        }
+    ]
+
+    # With require_coverage=True and repoint=40 existing in records, should succeed
+    result = get_upstream_dependency_inputs(
+        dependencies,
+        start_date=datetime(2024, 5, 10),
+        end_date=datetime(2024, 5, 12),
+        repoint=40,
+        require_coverage=True,
+        get_spice=False,
+    )
+
+    assert result is not None
+    assert len(result.get_file_paths()) == 3
+
+
+def test_require_coverage_false_allows_gaps(session):
+    """Test that gaps are allowed when require_coverage=False (default behavior)."""
+    _static_spice_files(session)
+
+    # Create science files with gap (missing May 11)
+    science_records = [
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240510_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 10),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 12),
+        ),
+        ScienceFiles(
+            file_path="/path/to/imap_swe_l1a_sci_20240512_v001.cdf",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 5, 12),  # Missing May 11
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime(2024, 5, 13),
+        ),
+    ]
+    session.add_all(science_records)
+    session.commit()
+
+    dependencies = [
+        {
+            "data_source": "swe",
+            "data_type": "l1a",
+            "descriptor": "sci",
+            "relationship": "HARD",
+        }
+    ]
+
+    # With require_coverage=False (default), gaps should be allowed
+    result = get_upstream_dependency_inputs(
+        dependencies,
+        start_date=datetime(2024, 5, 10),
+        end_date=datetime(2024, 5, 12),
+        require_coverage=False,
+        get_spice=False,
+    )
+
+    assert result is not None
+    assert len(result.get_file_paths()) == 2
