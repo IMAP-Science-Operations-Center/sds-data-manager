@@ -196,9 +196,12 @@ class SdpDatabase(Construct):
             layers=layers,
         )
 
+        # Added get permission for indexing SPICE files data since
+        # synchronizer lambda will need to download kernels to extract
+        # metadata and update the database accordingly.
         s3_list_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["s3:ListBucket"],
+            actions=["s3:ListBucket", "s3:GetObject"],
             resources=[f"{data_bucket.bucket_arn}/*", f"{data_bucket.bucket_arn}"],
         )
 
