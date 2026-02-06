@@ -92,6 +92,22 @@ COVERAGE_TOLERANCE = 0.0  # Tolerance value expressed in ticks of the spacecraft
 COVERAGE_TIME_SYSTEM = "TDB"  # Whether to use J2000 (TDB) or spacecraft clock (SCLK)
 
 
+def clear_ephemeral_storage(downloaded_path: Path):
+    """Delete downloaded temporary file from ephemeral storage.
+
+    Parameters
+    ----------
+    downloaded_path : Path
+        Path where file from s3 was downloaded.
+    """
+    try:
+        if downloaded_path.exists():
+            downloaded_path.unlink()
+            logger.info(f"Deleted temporary file: {downloaded_path}")
+    except Exception as e:
+        logger.warning(f"Failed to delete temporary file {downloaded_path}: {e}")
+
+
 def furnish_best_spice_file(kernel_type: str):
     """Furnish the best kernel for given type.
 
@@ -373,6 +389,12 @@ def index_spice_file(s3_key: str):
         latest_lsk,
         latest_sclk,
     )
+    # NOTE: Only clear the current SPICE file from ephemeral storage.
+    # Time kernels (leapseconds and spacecraft clock) are kept in ephemeral
+    # storage for potential reuse by other operations. Since all downloaded
+    # files are stored in '/tmp' (ephemeral storage), they will be
+    # automatically cleaned up when the Lambda execution ends.
+    clear_ephemeral_storage(spice_file)
 
 
 def index_spin_file(s3_key: Path):

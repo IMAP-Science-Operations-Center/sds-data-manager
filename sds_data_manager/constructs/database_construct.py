@@ -185,6 +185,7 @@ class SdpDatabase(Construct):
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.seconds(180),
             memory_size=2048,
+            ephemeral_storage_size=cdk.Size.gibibytes(3),
             allow_public_subnet=True,
             vpc=vpc,
             vpc_subnets=self.rds_subnet_selection,
