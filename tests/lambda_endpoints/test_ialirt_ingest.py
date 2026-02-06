@@ -493,8 +493,8 @@ def test_process_algorithms(
     ]
 
     mock_codice.return_value = (
-        [{"apid": 478, "met": 444, "codice": Decimal("0.789")}],
-        [{"apid": 478, "met": 445, "codice": Decimal("0.111")}],
+        [],
+        [{"apid": 478, "met": 444, "codice": Decimal("0.111")}],  # codice_hi_data
     )
 
     mock_swapi.return_value = [{"apid": 478, "met": 555, "swapi": Decimal("0.123")}]

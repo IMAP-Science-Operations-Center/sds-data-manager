@@ -286,7 +286,7 @@ def process_algorithms(  # noqa: PLR0915
         ("mag", process_packet),
         ("hit", process_hit),
         ("swe", process_swe),
-        ("codice_lo", process_codice),
+        # ("codice_lo", process_codice), Removed until FSW is fixed.
         ("codice_hi", process_codice),
         ("swapi", process_swapi_ialirt),
     ]
