@@ -115,7 +115,7 @@ class CadenceDays(float, Enum):
         return VALID_CADENCE_STRS
 
     @classmethod
-    def str_lookup(cls, cadence_str: Optional[str]):
+    def str_lookup(cls, cadence_str: Optional[str] = None):
         """Get a CadenceDays value from a string.
 
         Parameters
@@ -126,8 +126,11 @@ class CadenceDays(float, Enum):
 
         Returns
         -------
-        CadenceDays, list[CadenceDays]
-            The corresponding CadenceDays enum value.
+        CadenceDays, dict[str, CadenceDays]
+            The corresponding CadenceDays enum value. If cadence_str is None,
+            then a dictionary of valid cadence strings and their corresponding
+            CadenceDays enum values is returned.
+
         """
         lookup = {
             "1mo": cls.ONE_MONTH,
@@ -136,7 +139,7 @@ class CadenceDays(float, Enum):
             "1yr": cls.ONE_YEAR,
         }
         if not cadence_str:
-            return list(lookup.values())
+            return lookup
 
         if cadence_str not in cls.valid_cadence_str():
             raise ValueError(

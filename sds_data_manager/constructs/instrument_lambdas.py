@@ -172,20 +172,20 @@ class BatchStarterLambda(Construct):
         # a 1 month cadence job.
         first_1mo_jobs = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
         today = datetime.datetime.now(tz=datetime.timezone.utc)
-        cadence_strs = CadenceDays.str_lookup()
-        for cadence_str in cadence_strs:
-            cadence = CadenceDays.str_lookup(cadence_str)
+        # loop through dictionary of cadence labels and their corresponding CadenceDays
+        # enum objects
+        for label, cadence_obj in CadenceDays.str_lookup().items():
             # Calculate interval in minutes
-            interval_minutes = int(cadence.value * 24 * 60)
-            first_job = first_1mo_jobs if cadence_str == "1mo" else first_map_jobs
+            interval_minutes = int(cadence_obj.value * 24 * 60)
+            first_job = first_1mo_jobs if label == "1mo" else first_map_jobs
             # Calculate the next run time based on the first job date and the cadence
             next_run = calculate_next_run(first_job, today, interval_minutes)
             # Format date as yyyy-MM-ddTHH:mm:ss.SSSZ (with milliseconds)
             start_date_str = next_run.strftime("%Y-%m-%dT%H:%M:%S.000Z")
             scheduler.CfnSchedule(
                 scope=scope,
-                id=f"ProcessingCadenceJob_{cadence.name.lower()}",
-                name=f"ProcessingCadenceJob_{cadence.name.lower()}",
+                id=f"ProcessingCadenceJob_{cadence_obj.name.lower()}",
+                name=f"ProcessingCadenceJob_{cadence_obj.name.lower()}",
                 schedule_expression=f"rate({interval_minutes} minutes)",
                 # Start the schedule at the next calculated occurrence
                 start_date=start_date_str,
@@ -195,7 +195,7 @@ class BatchStarterLambda(Construct):
                 target=scheduler.CfnSchedule.TargetProperty(
                     arn=self.instrument_lambda.function_arn,
                     role_arn=scheduler_role.role_arn,
-                    input=f'{{"cadence": "{cadence_str}"}}',
+                    input=f'{{"cadence": "{label}"}}',
                     retry_policy=scheduler.CfnSchedule.RetryPolicyProperty(
                         maximum_retry_attempts=185
                     ),
