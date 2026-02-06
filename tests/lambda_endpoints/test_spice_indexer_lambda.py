@@ -158,10 +158,16 @@ def test_get_coverage_dictionary_left_out_of_range(
         assert results_sclk[0][0] == MAXIMUM_SCLK_INTERVAL[0][0]
 
 
+# NOTE: We patch clear_ephemeral_storage to prevent it from deleting test files
+# that are checked into git and needed for other unit tests. In production,
+# Lambda ephemeral storage (/tmp) is automatically cleaned up after execution.
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.clear_ephemeral_storage"
+)
 @patch(
     "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download_from_s3"
 )
-def test_s3_spice_files(mock_download, session, events_client, s3_client):
+def test_s3_spice_files(mock_download, mock_clear, session, events_client, s3_client):
     """Test s3 event.
 
     The following test mimics a leapsecond kernel being placed on the SDS,
