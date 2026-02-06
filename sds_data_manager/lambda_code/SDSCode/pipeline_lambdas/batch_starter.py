@@ -144,7 +144,7 @@ class CadenceDays(float, Enum):
         if cadence_str not in cls.valid_cadence_str():
             raise ValueError(
                 f"Invalid cadence: {cadence_str}. Valid cadences are:"
-                f" {cls.valid_cadence_str}"
+                f" {cls.valid_cadence_str()}"
             )
         return lookup[cadence_str]
 
