@@ -123,9 +123,11 @@ def lambda_handler(event, context):
         )
         return
     dataset = create_xarray_from_records(all_items)
-    dataset.attrs["Data_version"] = "000"
+    dataset.attrs["Data_version"] = "001"
     dataset.attrs["Start_date"] = seven_days_ago.strftime("%Y%m%d")
-    test_data_path = write_cdf(dataset, istp=True)
+    test_data_path = write_cdf(
+        dataset, istp=True, compression=None, auto_fix_depends=False
+    )
 
     output_key = f"archive/{test_data_path.name}"
 
