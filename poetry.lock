@@ -990,13 +990,13 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "imap-processing"
-version = "1.0.15"
+version = "1.0.17"
 description = "IMAP Science Operations Center Processing"
 optional = false
 python-versions = "<4,>=3.10"
 files = [
-    {file = "imap_processing-1.0.15-py3-none-any.whl", hash = "sha256:7dcba90945e08ab735fd081d8504cf5a33e37341105ff2a42f37d13a5bc8cf41"},
-    {file = "imap_processing-1.0.15.tar.gz", hash = "sha256:1a7b3e18c320320277576542c7f9f7d6ae90fff8991f4376ff5b509ef5539552"},
+    {file = "imap_processing-1.0.17-py3-none-any.whl", hash = "sha256:7c95ee06d8fc5124c4f6b5d3116952070af67e5976491830094005ec5a75781a"},
+    {file = "imap_processing-1.0.17.tar.gz", hash = "sha256:066c6aeb1214a74f40837f18b59ae9df893aaaa3c3b602cdd94dd94502812a04"},
 ]
 
 [package.dependencies]
@@ -2744,4 +2744,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "71cb4a57df824509bbed706fc98a7fdeb38f509df3ea29d76d5e941b8b78980a"
+content-hash = "d027442b0653e08d5c368b0b82be307dc9d7eab796ace7cc6747f0b999216bbd"
