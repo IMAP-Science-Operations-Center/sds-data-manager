@@ -162,12 +162,13 @@ class BatchStarterLambda(Construct):
         #    - 3 month map jobs (every 365.25 / 4 days)
         #    - 6 month map jobs (every 365.25 / 2 days)
         #    - 1 year map jobs (every 365.25 days)
-        # Note: We are defining the schedules to run at minute-level intervals because
+        # Note: We are defining the schedules to run at minute level intervals because
         # AWS EventBridge Scheduler does not allow for decimal values in the rate
         # expression. E.g., we cannot specify "rate(91.2 days)" for 3 months.
-        # TODO First job date should be 3 months after phase e start date.
-        #   TODO determine exact phase e start date.
-        first_map_jobs = datetime.datetime(2026, 5, 1, tzinfo=datetime.timezone.utc)
+        phase_e_start_date = datetime.datetime(2026, 2, 0, tzinfo=datetime.timezone.utc)
+        first_map_jobs = phase_e_start_date + datetime.timedelta(
+            days=CadenceDays.THREE_MONTHS.value
+        )
         # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
         # a 1 month cadence job.
         first_1mo_jobs = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
