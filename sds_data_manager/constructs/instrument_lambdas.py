@@ -165,7 +165,7 @@ class BatchStarterLambda(Construct):
         # Note: We are defining the schedules to run at minute level intervals because
         # AWS EventBridge Scheduler does not allow for decimal values in the rate
         # expression. E.g., we cannot specify "rate(91.2 days)" for 3 months.
-        phase_e_start_date = datetime.datetime(2026, 2, 0, tzinfo=datetime.timezone.utc)
+        phase_e_start_date = datetime.datetime(2026, 2, 1, tzinfo=datetime.timezone.utc)
         first_map_jobs = phase_e_start_date + datetime.timedelta(
             days=CadenceDays.THREE_MONTHS.value
         )
@@ -183,6 +183,17 @@ class BatchStarterLambda(Construct):
             next_run = calculate_next_run(first_job, today, interval_minutes)
             # Format date as yyyy-MM-ddTHH:mm:ss.SSSZ (with milliseconds)
             start_date_str = next_run.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+            # Create a dead letter queue for failed scheduled events
+            dlq = sqs.Queue(
+                self,
+                f"DLQ_{cadence_obj.name.lower()}",
+                queue_name=f"ProcessingCadenceJob_{cadence_obj.name.lower()}_failed_jobs_dlq",
+            )
+            # Grand permissions to allow scheduler to send messages to the DLQ
+            # TODO set up an alarm for the DLQ so that we are notified if there are
+            #  failed scheduled events
+            dlq.grant_send_messages(scheduler_role)
             scheduler.CfnSchedule(
                 scope=scope,
                 id=f"ProcessingCadenceJob_{cadence_obj.name.lower()}",
@@ -196,9 +207,12 @@ class BatchStarterLambda(Construct):
                 target=scheduler.CfnSchedule.TargetProperty(
                     arn=self.instrument_lambda.function_arn,
                     role_arn=scheduler_role.role_arn,
+                    dead_letter_config=scheduler.CfnSchedule.DeadLetterConfigProperty(
+                        dlq.queue_arn
+                    ),
                     input=f'{{"cadence": "{label}"}}',
                     retry_policy=scheduler.CfnSchedule.RetryPolicyProperty(
-                        maximum_retry_attempts=185
+                        maximum_retry_attempts=10
                     ),
                 ),
                 state="ENABLED",
