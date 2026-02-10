@@ -106,8 +106,10 @@ def lambda_handler(event, context):
     )  # 00:00 UTC
     one_week = seven_days_ago + timedelta(days=1)  # next midnight
 
-    start_iso = seven_days_ago.isoformat()
-    end_iso = one_week.isoformat()
+    buffer = timedelta(minutes=5)
+
+    start_iso = (seven_days_ago - buffer).isoformat()
+    end_iso = (one_week + buffer).isoformat()
 
     all_items = []
     for inst in INSTRUMENTS:
