@@ -137,12 +137,15 @@ def test_query_filenames(s3_client):
 
     # Files in the desired time range
     inside_range_keys = [
+        "packets/iois_1_packets_2025_118_15_58_00",
+        "packets/iois_1_packets_2025_118_15_59_00",
+        "packets/iois_1_packets_2025_118_16_00_00",
         "packets/iois_1_packets_2025_118_16_01_00",
         "packets/iois_1_packets_2025_118_16_03_00",
         "packets/iois_1_packets_2025_118_16_04_00",
     ]
 
-    outside_range_key = "packets/iois_1_packets_2025_118_15_59_00"
+    outside_range_key = "packets/iois_1_packets_2025_118_15_57_00"
 
     for key in [*inside_range_keys, outside_range_key]:
         s3_client.put_object(Bucket=bucket, Key=key, Body=b"dummy data")
