@@ -208,7 +208,7 @@ class BatchStarterLambda(Construct):
                     arn=self.instrument_lambda.function_arn,
                     role_arn=scheduler_role.role_arn,
                     dead_letter_config=scheduler.CfnSchedule.DeadLetterConfigProperty(
-                        dlq.queue_arn
+                        arn=dlq.queue_arn
                     ),
                     input=f'{{"cadence": "{label}"}}',
                     retry_policy=scheduler.CfnSchedule.RetryPolicyProperty(
