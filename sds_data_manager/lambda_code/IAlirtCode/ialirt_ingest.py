@@ -193,14 +193,14 @@ def query_filenames(bucket: str, region: str, now: datetime):
         config=botocore.client.Config(signature_version="s3v4"),
     )
 
-    five_minutes_ago = now - timedelta(minutes=5)
+    seven_minutes_ago = now - timedelta(minutes=7)
 
     # Account for any cases in which data spans a threshold since
     # s3 only uses prefixes for queries.
     # Example:
     # now = 2026-01-01T00:02:00Z
     # five_minutes_ago = 2025-12-31T23:57:00Z
-    first_prefix = five_minutes_ago.strftime("packets/iois_1_packets_%Y_%j_%H_")
+    first_prefix = seven_minutes_ago.strftime("packets/iois_1_packets_%Y_%j_%H_")
     second_prefix = now.strftime("packets/iois_1_packets_%Y_%j_%H_")
 
     first_response = s3_client.list_objects_v2(Bucket=bucket, Prefix=first_prefix)
@@ -218,7 +218,7 @@ def query_filenames(bucket: str, region: str, now: datetime):
         timestamp = datetime.strptime(timestamp_str, "%Y_%j_%H_%M_%S")
         timestamp = timestamp.replace(tzinfo=timezone.utc)
 
-        if five_minutes_ago <= timestamp <= now:
+        if seven_minutes_ago <= timestamp <= now:
             filenames.append(key)
 
     return filenames
@@ -669,7 +669,7 @@ def lambda_handler(event, context):
     logger.info("dependency_inputs: %s", dependency_inputs)
     download_spice_file(dependency_inputs)
 
-    # Query s3 for packet filenames from past 5 minutes.
+    # Query s3 for packet filenames from past 7 minutes.
     if "now" in event:
         now = datetime.fromisoformat(event["now"].replace("Z", "")).replace(
             tzinfo=timezone.utc
@@ -696,4 +696,4 @@ def lambda_handler(event, context):
 
         logger.info("Successfully wrote all new items to DynamoDB")
     else:
-        logger.info("No files found to process in the last 5 minutes.")
+        logger.info("No files found to process in the last 7 minutes.")
