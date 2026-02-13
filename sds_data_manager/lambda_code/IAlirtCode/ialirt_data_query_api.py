@@ -19,8 +19,8 @@ dynamodb = boto3.resource("dynamodb", region_name=region)
 table = dynamodb.Table(table_name)
 
 FULL_SCOPES = {
+    "read",
     "full",
-    "ialirt_scientist",
 }
 
 # Read-only scopes (can read but not write)

@@ -51,6 +51,7 @@ def _is_authorized(scope, path, http_method):
     if (
         path.startswith("/ialirt-download/logs")
         or path.startswith("/ialirt-download/packets/")
+        or path.startswith("/space-weather-priority")
     ) and scope not in (
         "full",
         "read",
