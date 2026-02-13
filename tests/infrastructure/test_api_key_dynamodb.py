@@ -112,10 +112,10 @@ def test_scope_restrictions(dynamodb_table):
         "2024-01-01T00:00:00",
     )
 
-    # Test access to ialirt-db-query with read scope (should be allowed)
+    # Test access to spaceweather-priority with read scope (should be allowed)
     event = {
         "headers": {"x-api-key": read_only_key},
-        "rawPath": "/ialirt-db-query/test",
+        "rawPath": "/space-weather-priority/test",
         "requestContext": {"http": {"method": "GET"}},
     }
     result = lambda_handler(event, {})
