@@ -259,7 +259,7 @@ seconds since J2000.
         return_gap_list: list[list[int, int]]
             A list of gaps that still remain uncovered
         """
-        trange = [int(trange[0]), int(trange[1])]
+        trange = [trange[0],trange[1]]
         if (trange[1] - trange[0]) < self.minimum_gap_time_to_ignore:
             # Don't even bother if the gap is too small
             return []
@@ -294,6 +294,7 @@ seconds since J2000.
             logger.debug(
                 "The file does not cover our time range and will not be loaded."
             )
+            subgap_list=gap_list
         else:
             logger.debug(
                 "The file start/end time is included in the time range we are "
@@ -312,7 +313,6 @@ seconds since J2000.
                 logger.debug(
                     "File did not cover time range, not adding to metakernal list."
                 )
-                gap_list.extend(subgap_list)
             elif not subgap_list:
                 logger.debug(
                     "File was valid, and no further gaps were found. "
@@ -325,7 +325,6 @@ seconds since J2000.
                     "Adding to metakernal list."
                 )
                 files_to_load.append(best_file)
-                gap_list.extend(subgap_list)
 
         # Now we've checked this file, remove from child function calls
         new_file_list = files_to_check.copy()
@@ -333,7 +332,7 @@ seconds since J2000.
         return_gap_list = []
         # If any more gaps remain, call this function again!
 
-        for g in gap_list:
+        for g in subgap_list:
             return_gap_list.extend(
                 self._find_best_files(
                     g, new_file_list, files_to_load, file_intervals_field
@@ -388,7 +387,7 @@ seconds since J2000.
 
             # Determine the search window
             if (
-                file_interval_start <= gap_start and file_interval_end >= gap_end
+                file_interval_start <= gap_start and file_interval_end >= gap_start
             ) or i == 0:
                 search_window_start = gap_start
             else:
