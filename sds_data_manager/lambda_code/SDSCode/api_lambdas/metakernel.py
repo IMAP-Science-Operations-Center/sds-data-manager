@@ -199,6 +199,9 @@ seconds since J2000.
     def _remove_duplicates_from_sorted_file_list(self, type: str):
         """Remove any duplicate found in self.spice_files[type].
 
+           Loops through the list, and determines which files to
+           keep.
+
         Parameter
         ---------
         type: str
@@ -213,7 +216,7 @@ seconds since J2000.
                 continue
             file_names_to_keep.append(old_file_list[i]["file_name"])
             new_file_list.append(old_file_list[i])
-        
+
         self.spice_files[type] = new_file_list
 
     def _limitstring(self, dirstring, limit, sym):
@@ -309,7 +312,7 @@ seconds since J2000.
                 logger.debug(
                     "File did not cover time range, not adding to metakernal list."
                 )
-                subgap_list=[trange]
+                subgap_list = [trange]
             elif not subgap_list:
                 logger.debug(
                     "File was valid, and no further gaps were found. "
