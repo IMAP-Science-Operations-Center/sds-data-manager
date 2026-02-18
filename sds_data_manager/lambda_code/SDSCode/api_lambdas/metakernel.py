@@ -205,20 +205,16 @@ seconds since J2000.
             The type of SPICE file to search search and remove duplicate
             files from
         """
-        indicies_to_delete = []
-        file_list = self.spice_files[type].copy()
-        for i in range(0, len(file_list)):
-            if i in indicies_to_delete:
+        old_file_list = self.spice_files[type].copy()
+        file_names_to_keep = []
+        new_file_list = []
+        for i in range(0, len(old_file_list)):
+            if old_file_list[i]["file_name"] in file_names_to_keep:
                 continue
-            logger.debug(
-                f"Searching for duplicates for file {file_list[i]['file_name']}"
-            )
-            for j in range(i + 1, len(file_list)):
-                if file_list[i]["file_name"] == file_list[j]["file_name"]:
-                    indicies_to_delete.append(j)
-        for i in sorted(set(indicies_to_delete), reverse=True):
-            del file_list[i]
-        self.spice_files[type] = file_list
+            file_names_to_keep.append(old_file_list[i]["file_name"])
+            new_file_list.append(old_file_list[i])
+        
+        self.spice_files[type] = new_file_list
 
     def _limitstring(self, dirstring, limit, sym):
         """Limit a list of strings and add a '+' symbol."""
@@ -259,7 +255,7 @@ seconds since J2000.
         return_gap_list: list[list[int, int]]
             A list of gaps that still remain uncovered
         """
-        trange = [trange[0],trange[1]]
+        trange = [trange[0], trange[1]]
         if (trange[1] - trange[0]) < self.minimum_gap_time_to_ignore:
             # Don't even bother if the gap is too small
             return []
@@ -294,7 +290,7 @@ seconds since J2000.
             logger.debug(
                 "The file does not cover our time range and will not be loaded."
             )
-            subgap_list=gap_list
+            subgap_list = gap_list
         else:
             logger.debug(
                 "The file start/end time is included in the time range we are "
@@ -313,6 +309,7 @@ seconds since J2000.
                 logger.debug(
                     "File did not cover time range, not adding to metakernal list."
                 )
+                subgap_list=[trange]
             elif not subgap_list:
                 logger.debug(
                     "File was valid, and no further gaps were found. "
