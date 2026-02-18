@@ -341,7 +341,7 @@ seconds since J2000.
         return return_gap_list
 
     @staticmethod
-    def _calculate_gaps(file_intervals, gap_start, gap_end): # noqa: C901, PLR0912, PLR0915
+    def _calculate_gaps(file_intervals, gap_start, gap_end):  # noqa: PLR0912
         """Caclulate the gaps based on file_intervals.
 
         Slide a "window" across the file to determine the intervals
