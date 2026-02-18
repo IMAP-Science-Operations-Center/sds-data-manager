@@ -416,14 +416,22 @@ seconds since J2000.
             if file_interval_start > search_window_start:
                 # <----------- search window --------....
                 #       <----- file coverage --------....
+                if search_window_start < gap_start:
+                    start = gap_start
+                else:
+                    start = search_window_start
                 sub_gaps.extend(
-                    [[search_window_start, file_interval_start]]
+                    [[start, file_interval_start]]
                 )  # Gaps before interval
             if file_interval_end < search_window_end:
                 # ....--- search window --------------->
                 # ....-- file coverage -------->
+                if search_window_end > gap_end:
+                    end = gap_end
+                else:
+                    end = search_window_end
                 sub_gaps.extend(
-                    [[file_interval_end, search_window_end]]
+                    [[file_interval_end, end]]
                 )  # Gaps after interval
 
         return sub_gaps
