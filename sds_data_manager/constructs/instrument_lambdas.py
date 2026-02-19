@@ -170,8 +170,9 @@ class BatchStarterLambda(Construct):
             days=CadenceDays.THREE_MONTHS.value
         )
         # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
-        # a 1 month cadence job.
-        first_1mo_jobs = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+        # a 1 month cadence job and the first job should be a month after launch
+        launch_date = datetime.datetime(2025, 9, 24, tzinfo=datetime.timezone.utc)
+        first_1mo_jobs = launch_date + datetime.timedelta(days=CadenceDays.ONE_MONTH)
         today = datetime.datetime.now(tz=datetime.timezone.utc)
         # loop through dictionary of cadence labels and their corresponding CadenceDays
         # enum objects
