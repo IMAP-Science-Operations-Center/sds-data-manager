@@ -62,21 +62,39 @@ class IalirtAlarmConstruct(Construct):
         # Note: this must be run once for each account:
         # aws ssm put-parameter --name /imap/ialirt/alarm_email
         # --value ialirt@example.com --type String --overwrite
+        # Setup a notification for no packets arriving.
         ialirt_alarm_email = ssm.StringParameter.value_for_string_parameter(
             self, "/imap/ialirt/alarm_email"
         )
-
-        alarm_topic = sns.Topic(
+        # Phone number to text in the case of no packets.
+        ialirt_sms = ssm.StringParameter.value_for_string_parameter(
+            self, "/imap/ialirt/alarm_sms_number"
+        )
+        no_packets_topic = sns.Topic(
             self, "IalirtAlarmTopics", display_name="I-ALiRT Alarm Notifications"
         )
         if ialirt_alarm_email:
-            alarm_topic.add_subscription(subs.EmailSubscription(ialirt_alarm_email))
-
-        # Create rsync Lambda + event trigger
-        self.create_rsync_lambda(ialirt_bucket, code, alarm_topic)
+            no_packets_topic.add_subscription(
+                subs.EmailSubscription(ialirt_alarm_email)
+            )
+        if ialirt_sms:
+            no_packets_topic.add_subscription(subs.SmsSubscription(ialirt_sms))
 
         # Create CloudWatch monitoring for 'no packets arrived' condition.
-        self.setup_monitoring(ialirt_bucket, alarm_topic)
+        self.setup_monitoring(ialirt_bucket, no_packets_topic)
+
+        # Setup a notification for rsync failures.
+        ops_alarm_email = ssm.StringParameter.value_for_string_parameter(
+            self, "/imap/ialirt/ops_alarm_email"
+        )
+        rsync_topic = sns.Topic(
+            self, "IalirtRsyncAlarmTopic", display_name="I-ALiRT Rsync Failure Alarm"
+        )
+        if ops_alarm_email:
+            rsync_topic.add_subscription(subs.EmailSubscription(ops_alarm_email))
+
+        # Create rsync Lambda + event trigger
+        self.create_rsync_lambda(ialirt_bucket, code, rsync_topic)
 
     def create_rsync_lambda(
         self,
