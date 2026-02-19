@@ -199,26 +199,25 @@ seconds since J2000.
     def _remove_duplicates_from_sorted_file_list(self, type: str):
         """Remove any duplicate found in self.spice_files[type].
 
+           Loops through the list, and determines which files to
+           keep.
+
         Parameter
         ---------
         type: str
             The type of SPICE file to search search and remove duplicate
             files from
         """
-        indicies_to_delete = []
-        file_list = self.spice_files[type].copy()
-        for i in range(0, len(file_list)):
-            if i in indicies_to_delete:
+        old_file_list = self.spice_files[type].copy()
+        file_names_to_keep = []
+        new_file_list = []
+        for i in range(0, len(old_file_list)):
+            if old_file_list[i]["file_name"] in file_names_to_keep:
                 continue
-            logger.debug(
-                f"Searching for duplicates for file {file_list[i]['file_name']}"
-            )
-            for j in range(i + 1, len(file_list)):
-                if file_list[i]["file_name"] == file_list[j]["file_name"]:
-                    indicies_to_delete.append(j)
-        for i in sorted(set(indicies_to_delete), reverse=True):
-            del file_list[i]
-        self.spice_files[type] = file_list
+            file_names_to_keep.append(old_file_list[i]["file_name"])
+            new_file_list.append(old_file_list[i])
+
+        self.spice_files[type] = new_file_list
 
     def _limitstring(self, dirstring, limit, sym):
         """Limit a list of strings and add a '+' symbol."""
@@ -259,7 +258,7 @@ seconds since J2000.
         return_gap_list: list[list[int, int]]
             A list of gaps that still remain uncovered
         """
-        trange = [int(trange[0]), int(trange[1])]
+        trange = [trange[0], trange[1]]
         if (trange[1] - trange[0]) < self.minimum_gap_time_to_ignore:
             # Don't even bother if the gap is too small
             return []
@@ -294,6 +293,7 @@ seconds since J2000.
             logger.debug(
                 "The file does not cover our time range and will not be loaded."
             )
+            subgap_list = gap_list
         else:
             logger.debug(
                 "The file start/end time is included in the time range we are "
@@ -312,7 +312,7 @@ seconds since J2000.
                 logger.debug(
                     "File did not cover time range, not adding to metakernal list."
                 )
-                gap_list.extend(subgap_list)
+                subgap_list = [trange]
             elif not subgap_list:
                 logger.debug(
                     "File was valid, and no further gaps were found. "
@@ -325,7 +325,6 @@ seconds since J2000.
                     "Adding to metakernal list."
                 )
                 files_to_load.append(best_file)
-                gap_list.extend(subgap_list)
 
         # Now we've checked this file, remove from child function calls
         new_file_list = files_to_check.copy()
@@ -333,7 +332,7 @@ seconds since J2000.
         return_gap_list = []
         # If any more gaps remain, call this function again!
 
-        for g in gap_list:
+        for g in subgap_list:
             return_gap_list.extend(
                 self._find_best_files(
                     g, new_file_list, files_to_load, file_intervals_field
@@ -342,7 +341,7 @@ seconds since J2000.
         return return_gap_list
 
     @staticmethod
-    def _calculate_gaps(file_intervals, gap_start, gap_end):
+    def _calculate_gaps(file_intervals, gap_start, gap_end):  # noqa: PLR0912
         """Caclulate the gaps based on file_intervals.
 
         Slide a "window" across the file to determine the intervals
@@ -388,7 +387,7 @@ seconds since J2000.
 
             # Determine the search window
             if (
-                file_interval_start <= gap_start and file_interval_end >= gap_end
+                file_interval_start <= gap_start and file_interval_end >= gap_start
             ) or i == 0:
                 search_window_start = gap_start
             else:
@@ -417,15 +416,19 @@ seconds since J2000.
             if file_interval_start > search_window_start:
                 # <----------- search window --------....
                 #       <----- file coverage --------....
-                sub_gaps.extend(
-                    [[search_window_start, file_interval_start]]
-                )  # Gaps before interval
+                if search_window_start < gap_start:
+                    start = gap_start
+                else:
+                    start = search_window_start
+                sub_gaps.extend([[start, file_interval_start]])  # Gaps before interval
             if file_interval_end < search_window_end:
                 # ....--- search window --------------->
                 # ....-- file coverage -------->
-                sub_gaps.extend(
-                    [[file_interval_end, search_window_end]]
-                )  # Gaps after interval
+                if search_window_end > gap_end:
+                    end = gap_end
+                else:
+                    end = search_window_end
+                sub_gaps.extend([[file_interval_end, end]])  # Gaps after interval
 
         return sub_gaps
 

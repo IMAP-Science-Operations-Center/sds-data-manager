@@ -108,7 +108,7 @@ def lambda_handler(event, context):
 
     buffer = timedelta(minutes=5)
 
-    start_iso = (seven_days_ago - buffer).isoformat()
+    start_iso = seven_days_ago.isoformat()
     end_iso = (one_week + buffer).isoformat()
 
     all_items = []

@@ -10,7 +10,8 @@
 		"ghcr.io/devcontainers/features/desktop-lite:1": {
 			"version": "latest"
 		}, "ghcr.io/devcontainers/features/docker-in-docker:2": {
-			"version": "latest"
+			"version": "latest",
+			"moby": false
 		}
 	},
 	"forwardPorts": [6080],
