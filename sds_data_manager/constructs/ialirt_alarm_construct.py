@@ -71,7 +71,9 @@ class IalirtAlarmConstruct(Construct):
             self, "/imap/ialirt/alarm_ssm_number"
         )
         no_packets_topic = sns.Topic(
-            self, "IalirtAlarmTopics", display_name="I-ALiRT Alarm Notifications"
+            self,
+            "IalirtAlarmTopics",
+            display_name="I-ALiRT No Packet Alarm Notifications",
         )
         if ialirt_alarm_email:
             no_packets_topic.add_subscription(
