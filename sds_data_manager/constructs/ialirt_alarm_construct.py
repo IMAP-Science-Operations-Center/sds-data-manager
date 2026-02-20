@@ -67,8 +67,8 @@ class IalirtAlarmConstruct(Construct):
             self, "/imap/ialirt/alarm_email"
         )
         # Phone number to text in the case of no packets.
-        ialirt_sms = ssm.StringParameter.value_for_string_parameter(
-            self, "/imap/ialirt/alarm_sms_number"
+        ialirt_ssm = ssm.StringParameter.value_for_string_parameter(
+            self, "/imap/ialirt/alarm_ssm_number"
         )
         no_packets_topic = sns.Topic(
             self, "IalirtAlarmTopics", display_name="I-ALiRT Alarm Notifications"
@@ -77,8 +77,8 @@ class IalirtAlarmConstruct(Construct):
             no_packets_topic.add_subscription(
                 subs.EmailSubscription(ialirt_alarm_email)
             )
-        if ialirt_sms:
-            no_packets_topic.add_subscription(subs.SmsSubscription(ialirt_sms))
+        if ialirt_ssm:
+            no_packets_topic.add_subscription(subs.SmsSubscription(ialirt_ssm))
 
         # Create CloudWatch monitoring for 'no packets arrived' condition.
         self.setup_monitoring(ialirt_bucket, no_packets_topic)
