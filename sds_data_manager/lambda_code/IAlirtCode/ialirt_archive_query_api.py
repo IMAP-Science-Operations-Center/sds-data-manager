@@ -53,17 +53,13 @@ def lambda_handler(event, context):
     day = query_params.get("day")
     version = query_params.get("version", "1")
 
-    if day and not month:
+    if (day and not month) or (month and not year):
         return {
             "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Cannot specify 'day' without 'month'."}),
-        }
-    if month and not year:
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Cannot specify 'month' without 'year'."}),
+            "body": json.dumps(
+                {"error": "Date parts must be specified in order: year, month, day."}
+            ),
         }
 
     try:
