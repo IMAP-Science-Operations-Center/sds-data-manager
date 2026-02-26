@@ -21,9 +21,9 @@ class IMAPJobHandler:
         """Get the dependencies for the job using the DependencyResolver."""
         response = DependencyResolver(self.dependency_node).resolve_upstream()
         if response["status"] == 200:
-            self.dependencies = response["data"]
+            return response["data"]
         else:
-            self.dependencies = None
+            return None
 
     def _determine_job_version(self):
         """Determining job version will be same for all event types.
@@ -65,10 +65,11 @@ class IMAPJobHandler:
 
 def lambda_handler(event, context):
     # Determine what event source type
+    # Get (source, data_type, product_name) to query for downstream
     # Get downstream nodes
     # For each downstream node
     #   calculate date range based combination of event source type and
-    #   downstream processing job type. Eg. 
+    #   the current downstream's processing job type. Eg. 
     #       1. if ancillary event and daily
     #           science file job, then calculate list of (start_date, end_date)
     #           for each day in the ancillary date range.
