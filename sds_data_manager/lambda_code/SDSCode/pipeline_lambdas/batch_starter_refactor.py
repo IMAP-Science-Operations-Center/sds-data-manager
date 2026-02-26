@@ -3,12 +3,13 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactor i
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.abstractions import (
     DependencyNode,
+    UpstreamDependencyNode,
 )
 
 
 class IMAPJobHandler:
 
-    def __init__(self, dependency_node: DependencyNode):
+    def __init__(self, dependency_node: UpstreamDependencyNode):
         """Base class for handling managing dependencies call and job kickoff."""
         self.dependency_node = dependency_node
         self.dependencies = self.get_dependencies()

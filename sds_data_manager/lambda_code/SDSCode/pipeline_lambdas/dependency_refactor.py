@@ -12,6 +12,10 @@ Responsibilities:
     Determine downstream dependencies
     Find all relavant files for upstream dependencies
     Determining if it's a complete list.
+        Scenarios causing imcompleteness:
+            1. Missing files in the database.
+            2. Due to event of anamoly. Eg. LOI or TCM or solar wind
+            3. Due to repoint data delay or downlink delay.
 
 Functionality:
 Look for all dependencies for given inputs and return all the available

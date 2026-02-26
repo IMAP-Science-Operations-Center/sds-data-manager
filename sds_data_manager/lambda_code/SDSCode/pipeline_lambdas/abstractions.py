@@ -42,7 +42,7 @@ class ProcesingJobType:
     DAILY = "daily"
     POINTING = "pointing"
     CADENCE = "cadence"
-    SPACECRAFT = "spacecraft"
+    POINTING_ATTITUDE = "pointing_attitude"
 
 
 class DateRange:
