@@ -34,9 +34,10 @@ Containing all available data for all identified upstream dependents within inpu
 """
 
 from sds_data_manager.lambda_code.SDSCode.database import db
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.utils import (
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.abstractions import (
     DependencyConfig,
     DependencyNode,
+    UpstreamDependencyNode,
 )
 
 
@@ -45,17 +46,29 @@ class DependencyResolver:
         # DependencyConfig will need to handle reading in all the instrument specific files
         self.config = DependencyConfig()
 
-    def resolve_downstream(self):
+    def resolve_downstream(self, parent_node: DependencyNode):
         # look for all downstream dependency node
         pass
 
     def resolve_upstream(
-        self,
-        query: DependencyNode,
-    ) -> dict[DependencyNode, list[str]]:
+        self, query: UpstreamDependencyNode
+    ) -> dict:
         """Returns all available upstream dependency files.
         Does NOT enforce coverage or completeness.
         """
+        # If any of the required parameter in the upstream dependency is missing, return error message with status
+        if not all([
+            query.source,
+            query.data_type,
+            query.product_name,
+            query.start_date,
+            query.end_date,
+        ]):
+            return {
+                "status": 400,
+                "message": "Missing required parameters in dependency node"
+            }
+
         upstream_nodes = self.config.get_dependencies(
             (query.source, query.data_type, query.product_name),
         )
@@ -75,7 +88,7 @@ class DependencyResolver:
                 if dep["data_type"] == "science":
                     # this self.get_science_files() and other functions break down current
                     # get_files() into more specific functions for each data type.
-                    records = self.get_science_files()
+                    records = self.get_science_files(query)
                 # so on with other cases.
 
                 # By this step if we would know if we have all dependencies.

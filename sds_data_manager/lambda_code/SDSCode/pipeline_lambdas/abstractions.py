@@ -10,10 +10,28 @@ class DependencyNode:
     source: str
     data_type: str
     product_name: str
-    start_date: datetime
-    end_date: datetime
     reprocessing: bool = False
     repoint: Optional[int] = None
+
+    def serialize(self):
+        return {
+            "source": self.source,
+            "data_type": self.data_type,
+            "product_name": self.product_name,
+            "reprocessing": self.reprocessing,
+            "repoint": self.repoint,
+        }
+    
+    def deserialize(cls, json_object):
+        return cls(
+            source=json_object["source"],
+            data_type=json_object["data_type"],
+            product_name=json_object["product_name"],
+            reprocessing=json_object.get("reprocessing", False),
+            repoint=json_object.get("repoint", None),
+        )
+
+class UpstreamDependencyNode(DependencyNode):
 
     def __init__(
         self,
@@ -52,24 +70,33 @@ class DependencyNode:
             product_name=json_object["product_name"],
             start_date=json_object["start_date"],
             end_date=json_object["end_date"],
-            reprocessing=json_object["reprocessing"],
+            reprocessing=json_object.get("reprocessing", False),
             repoint=json_object.get("repoint", None),
         )
 
-class EventType:
+
+class EventSourceType:
     """Enum for different event types."""
     SCIENCE_INGESTION = "science_ingestion"
     ANCILLARY_INGESTION = "ancillary_ingestion"
     SPICE_INGESTION = "spice_ingestion"
     CADENCE = "cadence"
+    REPROCESSING = "reprocessing"
+
+
+class ProcesingJobType:
+    """Enum for different type of processing jobs passed to batch job."""
+    DAILY = "daily"
+    POINTING = "pointing"
+    CADENCE = "cadence"
+    SPACECRAFT = "spacecraft"
+
 
 class DateRange:
     """Calculate date range for different event types."""
-    start_date: datetime
-    end_date: datetime
 
     @staticmethod
-    def calculate_date_range(event: dict) -> list[list[datetime, datetime]]:
+    def calculate_date_range(EventSourceType: str) -> list[list[datetime, datetime]]:
         """Calculate the date range for the job based on the event type.
         
         It can be multiple list of start and end dates depending on the event_type.
@@ -116,3 +143,4 @@ class DateRange:
         pass
     def calculate_reprocessing_date_range(repointing: int):
         pass
+
