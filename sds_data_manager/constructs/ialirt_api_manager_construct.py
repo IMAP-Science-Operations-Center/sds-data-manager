@@ -201,6 +201,33 @@ class IalirtApiManager(Construct):
             auth_route_prefixes,
         )
 
+        # archive query API lambda
+        archive_query_api_lambda = lambda_.Function(
+            self,
+            id="IAlirtCodeArchiveQueryAPILambda",
+            function_name="ialirt-archive-query-api-handler",
+            code=code,
+            handler="IAlirtCode.ialirt_archive_query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            environment={
+                "S3_BUCKET": data_bucket.bucket_name,
+                "REGION": env.region,
+            },
+            layers=layers,
+        )
+
+        archive_query_api_lambda.add_to_role_policy(s3_read_policy)
+
+        api.add_route(
+            route="/ialirt-archive-query",
+            http_method="GET",
+            lambda_function=archive_query_api_lambda,
+        )
+
         # catalog API lambda
         catalog_api = lambda_.Function(
             self,
