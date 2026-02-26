@@ -9,9 +9,9 @@ Inputs:
 
 Responsibilities:
     Determine upstream dependencies
-    Determine upstream dependencies
+    Determine downstream dependencies
     Find all relavant files for upstream dependencies
-    determining if it's a complete list.
+    Determining if it's a complete list.
 
 Functionality:
 Look for all dependencies for given inputs and return all the available

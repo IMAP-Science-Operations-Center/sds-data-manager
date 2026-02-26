@@ -7,38 +7,67 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.utils import (
 
 
 class IMAPJobHandler:
+    source: str
+    data_type: str
+    product_name: str
+    start_date: str
+    end_date: str
+
     def __init__(self, event: dict, reprocessing: bool = False):
-        # dependency on event type, extract
-        # parameters from event and assign to the node.
-        self.node = DependencyNode(
-            source=event.get("source", ""),
-            data_type=event.get("data_type", ""),
-            product_name=event.get("product_name", ""),
-            start_date=event.get("start_date", None),
-            end_date=event.get("end_date", None),
-        )
-        self.node.reprocessing = reprocessing
-        self.get_dependencies = DependencyResolver()
+        """Base class for handling IMAP events and managing dependencies and job kickoff.
+
+        Parameters:
+        event (dict): The input event containing necessary information to process the job.
+        reprocessing (bool): Flag indicating if this is a reprocessing job. Defaults to False
+        """
+        
+        self.dependency_node.reprocessing = reprocessing
 
     def calculate_date_range(self):
+        """Calculate the date range for the job based on the event type.
+        
+        Overwritten by the inheriting class."""
         pass
 
-    def determine_job_version(self):
+    def get_dependencies(self):
+        """Get the dependencies for the job using the DependencyResolver.
+
+        This function will be same for all event types but the input to
+        dependency resolver will be derived differently based on event type.
+        """
+        pass
+
+    def _determine_job_version(self):
+        """Determining job version will be same for all event types.
+        
+        Types of job kicked off are science or spacecraft products.
+        All the event types are only used for how we determine the date
+        range and dependencies. Once we have those, the rest of the steps are same.
+        """
         # determine the version of the job to run based information available
         # in the database.
-        # version is for all science files that we want produce.
         # keep what we have in determine_job_version but refactor little bit but
         # keep same logic.
         pass
 
-    def calculate_crid(self):
+    def _create_dependencies_file(self):
+        """Calculate the CRID and create dependencies file for the job to submit.
+        
+        This is done same for all job types.
+        """
         # calculate the CRID for this job from serialized output and write to
         # dependency file.
         pass
 
     def submit_job(self):
-        # submit the job to the job queue with the calculated parameters and CRID
-        # TODO: figure out where filter dependencies should go.
+        """Submit job with input parameters and dependency information.
+        
+        This is done same for all job types.
+        """
+        self._determine_job_version()
+        self._create_dependencies_file()
+        # Finally, in this function, submit job to batch job.
+        # TODO: figure out if filter dependencies is needed still.
         pass
 
     def clean_up(self):
