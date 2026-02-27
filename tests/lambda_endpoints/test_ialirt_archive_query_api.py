@@ -34,7 +34,7 @@ def test_archive_query_no_params(populated_bucket, monkeypatch):
     files = json.loads(response["body"])["files"]
 
     assert response["statusCode"] == 200
-    assert sorted(files) == [
+    assert files == [
         "imap_ialirt_l1_realtime_20240521_v001.cdf",
         "imap_ialirt_l1_realtime_20240522_v001.cdf",
         "imap_ialirt_l1_realtime_20240601_v001.cdf",
@@ -51,7 +51,7 @@ def test_archive_query_by_year(populated_bucket, monkeypatch):
     files = json.loads(response["body"])["files"]
 
     assert response["statusCode"] == 200
-    assert sorted(files) == [
+    assert files == [
         "imap_ialirt_l1_realtime_20240521_v001.cdf",
         "imap_ialirt_l1_realtime_20240522_v001.cdf",
         "imap_ialirt_l1_realtime_20240601_v001.cdf",
@@ -68,7 +68,7 @@ def test_archive_query_by_year_month(populated_bucket, monkeypatch):
     files = json.loads(response["body"])["files"]
 
     assert response["statusCode"] == 200
-    assert sorted(files) == [
+    assert files == [
         "imap_ialirt_l1_realtime_20240521_v001.cdf",
         "imap_ialirt_l1_realtime_20240522_v001.cdf",
     ]

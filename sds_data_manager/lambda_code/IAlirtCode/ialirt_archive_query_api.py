@@ -92,13 +92,16 @@ def lambda_handler(event, context):
         config=botocore.client.Config(signature_version="s3v4"),
     )
 
-    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    paginator = s3_client.get_paginator("list_objects_v2")
     files = []
 
-    for obj in response.get("Contents", []):
-        filename = obj["Key"].split("/")[-1]
-        if version_str in filename:
-            files.append(filename)
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            filename = obj["Key"].split("/")[-1]
+            if version_str in filename:
+                files.append(filename)
+
+    files.sort()
 
     return {
         "statusCode": 200,
