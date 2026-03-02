@@ -821,27 +821,30 @@ def s3_processing_event(session, events):
                 file_obj.repointing if isinstance(file_obj, ScienceFilePath) else None
             )
 
-            # Special handling: When downstream job is Hi Goodtimes and triggering
-            # file has a repoint, submit jobs for multiple repoints
+            # Check if trigger file is Hi L1B DE
+            trigger_is_hi_l1b_de = (
+                isinstance(file_obj, ScienceFilePath)
+                and file_obj.instrument == "hi"
+                and file_obj.data_level == "l1b"
+                and file_obj.descriptor.endswith("-de")
+            )
+
+            # Special handling: When Hi L1B DE triggers Hi Goodtimes,
+            # expand to multiple target repoints
             if (
-                repoint is not None
+                trigger_is_hi_l1b_de
+                and repoint is not None
                 and job["data_source"] == "hi"
-                and job["data_type"] == "ancillary"
+                and job["data_type"] == "l1c"
                 and "goodtimes" in job["descriptor"]
             ):
-                # Submit goodtimes jobs for multiple repoints
-                # The use of HI_GOODTIMES_NUM* seems backwards here. But this is
-                # the correct way to calculate the repoint affected by the new file
-                # that triggered here.
-                # When a file with repoint N arrives, it can be used by goodtimes
-                # jobs for repoints [N-NUM_FUTURE_REPOINTS, N+NUM_PAST_REPOINTS],
-                # because a goodtimes job for repoint X needs files from
-                # [X-NUM_PAST_REPOINTS, X+NUM_FUTURE_REPOINTS].
-                # Therefore we use the constants in the inverse direction here.
-                for target_repoint in range(
-                    max(1, repoint - dependency.HI_GOODTIMES_NUM_FUTURE_REPOINTS),
-                    repoint + dependency.HI_GOODTIMES_NUM_PAST_REPOINTS + 1,
-                ):
+                # Get target repoints in range [T-N+1, T+N-1]
+                # Normal dependency checking will handle missing L1B DE files
+                target_repoints = dependency.get_hi_goodtimes_target_repoints(
+                    trigger_repoint=repoint,
+                )
+
+                for target_repoint in target_repoints:
                     logger.info(
                         f"Submitting Hi Goodtimes job for repoint {target_repoint} "
                         f"(triggered by repoint {repoint} file)"

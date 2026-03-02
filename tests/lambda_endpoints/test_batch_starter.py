@@ -2309,68 +2309,38 @@ def test_hi_goodtimes_multi_repoint_trigger(
 ):
     """Test Hi Goodtimes multi-repoint trigger logic in s3_processing_event.
 
-    When a Hi L1B DE file with repoint N arrives, it should trigger goodtimes
-    jobs for repoints [N-M, N+M] where M is determined by the configuration.
+    When a Hi L1B DE file with repoint T arrives, it should trigger goodtimes
+    jobs for target repoints in range [T-N+1, T+N-1].
     """
-    # Monkeypatch configuration values for testing
-    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_PAST_REPOINTS", 1)
-    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_FUTURE_REPOINTS", 2)
+    # Monkeypatch configuration value for testing
+    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 2)
 
     mock_get_dependencies.side_effect = [
         [
             {
                 "data_source": "hi",
-                "data_type": "ancillary",
+                "data_type": "l1c",
                 "descriptor": "45sensor-goodtimes",
-                "relationship": "UPSTREAM",
+                "relationship": "HARD",
             }
         ],
         [],
     ]
 
-    # Add pointing table entries
-    session.add_all(
-        [
+    # Add pointing table entries (needed for determine_date_range)
+    for i in range(1, 8):
+        session.add(
             PointingTable(
-                pointing_id=1,
-                pointing_start_utc=datetime(2024, 1, 1, 0, 0, 0),
-                pointing_end_utc=datetime(2024, 1, 1, 23, 59, 0),
-                repoint_start_utc=datetime(2024, 1, 1, 0, 0, 0),
-                repoint_end_utc=datetime(2024, 1, 1, 1, 0, 0),
-            ),
-            PointingTable(
-                pointing_id=2,
-                pointing_start_utc=datetime(2024, 1, 2, 0, 0, 0),
-                pointing_end_utc=datetime(2024, 1, 2, 23, 59, 0),
-                repoint_start_utc=datetime(2024, 1, 2, 0, 0, 0),
-                repoint_end_utc=datetime(2024, 1, 2, 1, 0, 0),
-            ),
-            PointingTable(
-                pointing_id=3,
-                pointing_start_utc=datetime(2024, 1, 3, 0, 0, 0),
-                pointing_end_utc=datetime(2024, 1, 3, 23, 59, 0),
-                repoint_start_utc=datetime(2024, 1, 3, 0, 0, 0),
-                repoint_end_utc=datetime(2024, 1, 3, 1, 0, 0),
-            ),
-            PointingTable(
-                pointing_id=4,
-                pointing_start_utc=datetime(2024, 1, 4, 0, 0, 0),
-                pointing_end_utc=datetime(2024, 1, 4, 23, 59, 0),
-                repoint_start_utc=datetime(2024, 1, 4, 0, 0, 0),
-                repoint_end_utc=datetime(2024, 1, 4, 1, 0, 0),
-            ),
-            PointingTable(
-                pointing_id=5,
-                pointing_start_utc=datetime(2024, 1, 5, 0, 0, 0),
-                pointing_end_utc=datetime(2024, 1, 5, 23, 59, 0),
-                repoint_start_utc=datetime(2024, 1, 5, 0, 0, 0),
-                repoint_end_utc=datetime(2024, 1, 5, 1, 0, 0),
-            ),
-        ]
-    )
+                pointing_id=i,
+                pointing_start_utc=datetime(2024, 1, i, 0, 0, 0),
+                pointing_end_utc=datetime(2024, 1, i, 23, 59, 0),
+                repoint_start_utc=datetime(2024, 1, i, 0, 0, 0),
+                repoint_end_utc=datetime(2024, 1, i, 1, 0, 0),
+            )
+        )
     session.commit()
 
-    # Create an S3 event for the L1B DE file arrival
+    # Create an S3 event for the L1B DE file arrival (repoint 3)
     events = {
         "Records": [
             {
@@ -2393,10 +2363,8 @@ def test_hi_goodtimes_multi_repoint_trigger(
     ):
         lambda_handler(events, context)
 
-    # Verify that submit_all_jobs was called for multiple goodtimes jobs
-    # With NUM_PAST=1 and NUM_FUTURE=2, repoint 3 should trigger goodtimes
-    # jobs for repoints [1, 2, 3, 4] (3-2, 3-1, 3+0, 3+1)
-    # The "backwards" calculation: range(3-2, 3+1+1) = range(1, 5) = [1, 2, 3, 4]
+    # Verify that submit_all_jobs was called for goodtimes jobs
+    # With trigger repoint 3 and NUM_NEAREST=2, targets are [3-2+1, 3+2-1] = [2, 4]
 
     # Find all calls to submit_all_jobs for goodtimes
     goodtimes_calls = [
@@ -2412,5 +2380,5 @@ def test_hi_goodtimes_multi_repoint_trigger(
         target_repoint = call_args.args[4]
         repoints_submitted.add(target_repoint)
 
-    # Verify we submitted for repoints 1, 2, 3, 4
-    assert repoints_submitted == {1, 2, 3, 4}
+    # With trigger repoint 3 and N=2, targets are [2, 3, 4]
+    assert repoints_submitted == {2, 3, 4}

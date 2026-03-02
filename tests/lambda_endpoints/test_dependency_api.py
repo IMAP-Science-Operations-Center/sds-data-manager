@@ -17,6 +17,7 @@ from imap_data_access.processing_input import (
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
+    ProcessingJob,
     RepointFiles,
     ScienceFiles,
     SPICEFiles,
@@ -953,21 +954,28 @@ def test_get_files_with_list_of_repoints_max_version(hi_l1b_de_repoint_files, se
     ],
 )
 def test_get_jobs_hi_goodtimes_multi_repoint(
-    mock_get_dependencies, hi_l1b_de_repoint_files, monkeypatch
+    mock_get_dependencies, hi_l1b_de_repoint_files, pointing_table_entries, monkeypatch
 ):
-    """Test get_jobs handling for Hi Goodtimes with multi-repoint dependencies."""
-    # Monkeypatch the configuration values to test uneven values
-    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_PAST_REPOINTS", 1)
-    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_FUTURE_REPOINTS", 2)
+    """Test get_jobs handling for Hi Goodtimes with multi-repoint dependencies.
 
-    # Call get_jobs for Hi Goodtimes with repoint 3
-    # With NUM_PAST=1 and NUM_FUTURE=2, this should query for files from
-    # repoints [2, 3, 4, 5]
+    Tests that when requesting upstream dependencies for a Hi L1C Goodtimes job,
+    the function returns L1B DE files from N repoints total (target + N-1 nearest).
+    Also requires that pointing T+N-1 exists.
+    """
+    # Monkeypatch to use a smaller number for testing
+    # With N=3, we get target + 2 nearest = 3 total repoints
+    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 3)
+
+    # Call get_jobs for Hi L1C Goodtimes with repoint 3
+    # With NUM_NEAREST=3, this should query for 3 total repoints (target + 2 nearest)
+    # Available repoints from fixture: 1, 2, 3, 4, 5
+    # Target is 3, nearest 2 are: 2 and 4 (distance 1 each)
+    # So result should include repoints 2, 3, 4
     result = get_jobs(
         dependency_type="UPSTREAM",
         relationship="HARD",
         data_source="hi",
-        data_type="ancillary",
+        data_type="l1c",
         descriptor="45sensor-goodtimes",
         start_date="20240101",
         end_date="20240105",
@@ -976,21 +984,145 @@ def test_get_jobs_hi_goodtimes_multi_repoint(
         get_spice=False,
     )
 
-    # Verify that the result contains files from all four repoints
+    # Verify that the result contains files from multiple repoints
     assert result is not None
     assert isinstance(result, ProcessingInputCollection)
 
-    # Check that we have L1B DE files from repoints 2, 3, 4, 5
+    # Check that we have L1B DE files from N repoints total
     hi_l1b_files = result.get_file_paths("hi", descriptor="45sensor-de")
 
-    # Should have all 4 files from repoints 2, 3, 4, 5
-    assert len(hi_l1b_files) == 4
+    # Should have 3 files: target (3) plus 2 nearest (2 and 4)
+    assert len(hi_l1b_files) == 3
 
-    # Verify the files are from the expected repoints
+    # Verify the files include the target repoint
     result_repoints = set(
         [fp.repointing for fp in result.processing_input[0].imap_file_paths]
     )
-    assert result_repoints == {2, 3, 4, 5}
+    assert 3 in result_repoints  # Target repoint must be included
+    # And we should have 3 repoints total (target + 2 nearest)
+    assert len(result_repoints) == 3
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency.get_dependencies",
+    return_value=[
+        {
+            "data_source": "hi",
+            "data_type": "l1b",
+            "descriptor": "45sensor-de",
+            "relationship": "HARD",
+        }
+    ],
+)
+def test_get_jobs_hi_goodtimes_skips_when_inprogress_nearby(
+    mock_get_dependencies,
+    hi_l1b_de_repoint_files,
+    pointing_table_entries,
+    session,
+    monkeypatch,
+):
+    """Test get_jobs skips Hi Goodtimes when N nearest have INPROGRESS L1B DE jobs.
+
+    When finding the N nearest repoints for a Hi Goodtimes job, if any of those
+    nearest repoints have INPROGRESS L1B DE jobs (not actual data), the job
+    should be skipped because when those jobs complete they will re-trigger.
+    """
+    # Monkeypatch to use a smaller number for testing
+    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 3)
+
+    # Create an INPROGRESS L1B DE job for repoint 2
+    # With existing files at repoints 1, 2, 3, 4, 5 and target repoint 3,
+    # repoint 2 would be one of the 3 nearest (2, 4, 1 or 2, 4, 5)
+    inprogress_job = ProcessingJob(
+        status=models.Status.INPROGRESS,
+        instrument="hi",
+        data_level="l1b",
+        descriptor="45sensor-de",
+        start_date=datetime(2024, 1, 2),
+        version="v001",
+        repointing=2,
+    )
+    session.add(inprogress_job)
+    session.commit()
+
+    # Call get_jobs for Hi L1C Goodtimes with repoint 3
+    # Since repoint 2 is among the N nearest and has an INPROGRESS job,
+    # this should return None
+    result = get_jobs(
+        dependency_type="UPSTREAM",
+        relationship="HARD",
+        data_source="hi",
+        data_type="l1c",
+        descriptor="45sensor-goodtimes",
+        start_date="20240101",
+        end_date="20240105",
+        repoint=3,
+        calculate_crids=False,
+        get_spice=False,
+    )
+
+    # Should return None because repoint 2 is INPROGRESS
+    assert result is None
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency.get_dependencies",
+    return_value=[
+        {
+            "data_source": "hi",
+            "data_type": "l1b",
+            "descriptor": "45sensor-de",
+            "relationship": "HARD",
+        }
+    ],
+)
+def test_get_jobs_hi_goodtimes_proceeds_when_inprogress_not_nearby(
+    mock_get_dependencies,
+    hi_l1b_de_repoint_files,
+    pointing_table_entries,
+    session,
+    monkeypatch,
+):
+    """Test get_jobs proceeds when INPROGRESS jobs are not among N nearest.
+
+    If INPROGRESS jobs exist but are not among the N nearest repoints,
+    the job should proceed normally.
+    """
+    # Monkeypatch to use a smaller number for testing
+    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 2)
+
+    # Create an INPROGRESS L1B DE job for repoint 10 (far from target)
+    # With NUM_NEAREST=2 and target=3, nearest are 2, 4 (or 4, 2)
+    # Repoint 10 is not among them
+    inprogress_job = ProcessingJob(
+        status=models.Status.INPROGRESS,
+        instrument="hi",
+        data_level="l1b",
+        descriptor="45sensor-de",
+        start_date=datetime(2024, 1, 10),
+        version="v001",
+        repointing=10,
+    )
+    session.add(inprogress_job)
+    session.commit()
+
+    # Call get_jobs for Hi L1C Goodtimes with repoint 3
+    result = get_jobs(
+        dependency_type="UPSTREAM",
+        relationship="HARD",
+        data_source="hi",
+        data_type="l1c",
+        descriptor="45sensor-goodtimes",
+        start_date="20240101",
+        end_date="20240105",
+        repoint=3,
+        calculate_crids=False,
+        get_spice=False,
+    )
+
+    # Should return results since INPROGRESS job is not among N nearest
+    assert result is not None
+    assert isinstance(result, ProcessingInputCollection)
 
 
 # #####################################
@@ -2528,3 +2660,95 @@ class TestGetNNearestFiles:
                 num_nearest=4,
                 # target_date is missing
             )
+
+
+#####################################
+# HI GOODTIMES HELPER FUNCTION TESTS
+#####################################
+
+
+@pytest.fixture
+def pointing_table_entries(session):
+    """Create pointing table entries for repoints 1-10."""
+    from sds_data_manager.lambda_code.SDSCode.database.models import PointingTable
+
+    records = []
+    for i in range(1, 11):
+        records.append(
+            PointingTable(
+                pointing_id=i,
+                pointing_start_utc=datetime(2024, 1, i, 0, 0, 0),
+                pointing_end_utc=datetime(2024, 1, i, 23, 59, 59),
+            )
+        )
+    session.add_all(records)
+    session.commit()
+    return records
+
+
+class TestHiGoodtimesHelpers:
+    """Test coverage for Hi Goodtimes helper functions."""
+
+    def test_check_pointing_exists_true(self, pointing_table_entries, session):
+        """Test _check_pointing_exists returns True when pointing exists."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            _check_pointing_exists,
+        )
+
+        assert _check_pointing_exists(session, 5) is True
+        assert _check_pointing_exists(session, 1) is True
+        assert _check_pointing_exists(session, 10) is True
+
+    def test_check_pointing_exists_false(self, pointing_table_entries, session):
+        """Test _check_pointing_exists returns False when pointing doesn't exist."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            _check_pointing_exists,
+        )
+
+        assert _check_pointing_exists(session, 11) is False
+        assert _check_pointing_exists(session, 100) is False
+        assert _check_pointing_exists(session, 0) is False
+
+    def test_get_hi_goodtimes_target_repoints_basic(self, monkeypatch):
+        """Test get_hi_goodtimes_target_repoints for correct [T-N+1, T+N-1]."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_hi_goodtimes_target_repoints,
+        )
+
+        # Use smaller number for testing
+        monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 2)
+
+        # Trigger repoint 5 with N=2 should return [5-2+1, 5+2-1] = [4, 6]
+        targets = get_hi_goodtimes_target_repoints(trigger_repoint=5)
+
+        assert targets == [4, 5, 6]
+
+    def test_get_hi_goodtimes_target_repoints_low_repoint(self, monkeypatch):
+        """Test that repoints don't go below 1."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_hi_goodtimes_target_repoints,
+        )
+
+        monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 3)
+
+        # Trigger repoint 2 with N=3 should return [max(1, 2-3+1), 2+3-1] = [1, 4]
+        targets = get_hi_goodtimes_target_repoints(trigger_repoint=2)
+
+        assert targets == [1, 2, 3, 4]
+        assert all(t >= 1 for t in targets)
+
+    def test_get_hi_goodtimes_target_repoints_includes_trigger(self, monkeypatch):
+        """Test that the trigger repoint is included in targets."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_hi_goodtimes_target_repoints,
+        )
+
+        monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 2)
+
+        targets = get_hi_goodtimes_target_repoints(trigger_repoint=10)
+
+        assert 10 in targets
+        assert targets == [9, 10, 11]

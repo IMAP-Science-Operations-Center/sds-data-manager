@@ -27,10 +27,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Configuration for Hi Goodtimes multi-repoint dependencies
-# Number of past repoints to include when processing goodtimes
-HI_GOODTIMES_NUM_PAST_REPOINTS = 3
-# Number of future repoints to include when processing goodtimes
-HI_GOODTIMES_NUM_FUTURE_REPOINTS = 3
+# Total number of repoints to include when processing goodtimes (including target).
+HI_GOODTIMES_NUM_NEAREST_REPOINTS = 7
 
 
 @dataclass
@@ -1262,11 +1260,68 @@ def get_upstream_dependency_inputs(
     return dependency_inputs
 
 
+def _check_pointing_exists(session: db.Session, repoint: int) -> bool:
+    """Check if a pointing exists in the pointing table.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    repoint : int
+        The repoint/pointing ID to check.
+
+    Returns
+    -------
+    bool
+        True if the pointing exists, False otherwise.
+    """
+    pointing_record = (
+        session.query(models.PointingTable)
+        .filter(models.PointingTable.pointing_id == repoint)
+        .first()
+    )
+    return pointing_record is not None
+
+
+def get_hi_goodtimes_target_repoints(
+    trigger_repoint: int,
+) -> list[int]:
+    """Get target repoints for Hi Goodtimes jobs.
+
+    When a Hi L1B DE file arrives with a given repoint T, this function returns
+    the range of target repoints [T-N+1, T+N-1] that should have Goodtimes jobs
+    triggered. The normal dependency checking will handle any missing L1B DE
+    files for specific repoints.
+
+    Parameters
+    ----------
+    trigger_repoint : int
+        The repoint of the triggering L1B DE file.
+
+    Returns
+    -------
+    list[int]
+        List of target repoints in range [T-N+1, T+N-1] where N is
+        HI_GOODTIMES_NUM_NEAREST_REPOINTS.
+    """
+    # Return range [T-N+1, T+N-1], ensuring we don't go below 1
+    start_repoint = max(1, trigger_repoint - HI_GOODTIMES_NUM_NEAREST_REPOINTS + 1)
+    end_repoint = trigger_repoint + HI_GOODTIMES_NUM_NEAREST_REPOINTS - 1
+
+    target_repoints = list(range(start_repoint, end_repoint + 1))
+
+    logger.info(
+        f"Hi Goodtimes: trigger repoint {trigger_repoint} -> "
+        f"target repoints: {target_repoints}"
+    )
+    return target_repoints
+
+
 def _get_available_repoints(
     session: db.Session,
     dependency: dict,
-    start_date: datetime,
-    end_date: datetime,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
 ) -> list[int]:
     """Query distinct repoint values that exist for a dependency.
 
@@ -1276,10 +1331,10 @@ def _get_available_repoints(
         Database session.
     dependency : dict
         Dictionary containing data_source, data_type, descriptor.
-    start_date : datetime
-        Start date of search range.
-    end_date : datetime
-        End date of search range.
+    start_date : datetime, optional
+        Start date of search range. If None, no lower bound.
+    end_date : datetime, optional
+        End date of search range. If None, no upper bound.
 
     Returns
     -------
@@ -1288,21 +1343,170 @@ def _get_available_repoints(
     """
     table = models.ScienceFiles
 
+    filters = [
+        table.instrument == dependency["data_source"],
+        table.data_level == dependency["data_type"],
+        table.descriptor == dependency["descriptor"],
+        table.repointing.isnot(None),
+    ]
+
+    if start_date is not None:
+        filters.append(table.start_date >= start_date)
+    if end_date is not None:
+        filters.append(table.start_date <= end_date)
+
     results = (
         session.query(table.repointing)
-        .filter(
-            table.instrument == dependency["data_source"],
-            table.data_level == dependency["data_type"],
-            table.descriptor == dependency["descriptor"],
-            table.repointing.isnot(None),
-            table.start_date >= start_date,
-            table.start_date <= end_date,
-        )
+        .filter(*filters)
         .distinct()
         .order_by(table.repointing)
         .all()
     )
     return [rp[0] for rp in results]
+
+
+def _get_inprogress_repoints(
+    session: db.Session,
+    dependency: dict,
+) -> list[int]:
+    """Query distinct repoint values that have INPROGRESS jobs.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    dependency : dict
+        Dictionary containing data_source, data_type, descriptor.
+
+    Returns
+    -------
+    list[int]
+        Sorted list of repoint numbers that have INPROGRESS jobs.
+    """
+    results = (
+        session.query(models.ProcessingJob.repointing)
+        .filter(
+            models.ProcessingJob.instrument == dependency["data_source"],
+            models.ProcessingJob.data_level == dependency["data_type"],
+            models.ProcessingJob.descriptor == dependency["descriptor"],
+            models.ProcessingJob.status == models.Status.INPROGRESS,
+            models.ProcessingJob.repointing.isnot(None),
+        )
+        .distinct()
+        .order_by(models.ProcessingJob.repointing)
+        .all()
+    )
+    return [rp[0] for rp in results]
+
+
+def _extend_hi_goodtimes_l1b_de_dependencies(
+    dependency_inputs: ProcessingInputCollection,
+    descriptor: str,
+    repoint: int,
+    start_date: datetime,
+    end_date: datetime,
+) -> Optional[ProcessingInputCollection]:
+    """Extend L1B DE dependencies to include N nearest repoints for Hi Goodtimes.
+
+    Hi Goodtimes jobs require L1B DE data from N repoints total (target plus
+    N-1 nearest). This function takes an existing ProcessingInputCollection
+    (from get_upstream_dependency_inputs) and replaces the L1B DE files with
+    files from the extended repoint range.
+
+    Parameters
+    ----------
+    dependency_inputs : ProcessingInputCollection
+        Existing dependencies from get_upstream_dependency_inputs.
+    descriptor : str
+        The descriptor of the Goodtimes job (e.g., "45sensor-goodtimes").
+    repoint : int
+        The target repoint for the Goodtimes job.
+    start_date : datetime
+        Start date of the search range.
+    end_date : datetime
+        End date of the search range.
+
+    Returns
+    -------
+    ProcessingInputCollection or None
+        Modified dependencies with extended L1B DE files, or None if job
+        should be skipped.
+    """
+    # Extract sensor from descriptor (e.g., "45sensor-goodtimes" -> "45sensor")
+    sensor = descriptor.split("-")[0]
+    l1b_de_descriptor = f"{sensor}-de"
+    l1b_de_dep = {
+        "data_source": "hi",
+        "data_type": "l1b",
+        "descriptor": l1b_de_descriptor,
+    }
+
+    # Number of nearest repoints to find. Target repoint is excluded because
+    # it will already have been added by get_upstream_dependency_inputs().
+    num_nearest = HI_GOODTIMES_NUM_NEAREST_REPOINTS - 1
+
+    with db.Session() as session:
+        # Check if pointing T+N-1 exists (ensures enough future data)
+        # The nearest N may all be in the future, so we check the furthest one
+        # to ensure we have enough data to proceed.
+        required_future_pointing = repoint + num_nearest
+        if not _check_pointing_exists(session, required_future_pointing):
+            logger.info(
+                f"Hi Goodtimes: skipping repoint {repoint} - pointing "
+                f"{required_future_pointing} does not exist yet"
+            )
+            return None
+
+        # Get available repoints (from existing files)
+        available_repoints = set(_get_available_repoints(session, l1b_de_dep))
+
+        # Verify target repoint has L1B DE data
+        if repoint not in available_repoints:
+            logger.info(f"Hi Goodtimes: target repoint {repoint} has no L1B DE data")
+            return None
+
+        # Get inprogress repoints (from running jobs - may not have files yet)
+        inprogress_repoints = set(_get_inprogress_repoints(session, l1b_de_dep))
+
+        # Combine both sets to find N nearest (some may be inprogress without files)
+        all_repoints = available_repoints | inprogress_repoints
+        other_repoints = [rp for rp in all_repoints if rp != repoint]
+        sorted_repoints = sorted(other_repoints, key=lambda rp: (abs(rp - repoint), rp))
+        nearest_repoints = sorted_repoints[:num_nearest]
+
+        # Check if any of the N nearest are from INPROGRESS jobs (not actual files)
+        # If so, skip - when those jobs complete they will re-trigger
+        inprogress_nearest = [
+            rp for rp in nearest_repoints if rp in inprogress_repoints
+        ]
+        if inprogress_nearest:
+            logger.info(
+                f"Hi Goodtimes: skipping repoint {repoint} - nearest repoints "
+                f"{inprogress_nearest} have INPROGRESS L1B DE jobs"
+            )
+            return None
+
+        # Get L1B DE files for nearest repoints (target already in dependency_inputs)
+        logger.info(f"Hi Goodtimes: querying L1B DE from repoints: {nearest_repoints}")
+        l1b_de_records = get_files(
+            session, l1b_de_dep, start_date, end_date, nearest_repoints
+        )
+        nearest_filenames = [basename(record.file_path) for record in l1b_de_records]
+        logger.info(f"Hi Goodtimes adding L1B DE files: {nearest_filenames}")
+
+    # Find the L1B DE ScienceInput and extend it with nearest repoints' files
+    l1b_de_input = dependency_inputs.get_processing_inputs(
+        input_type=processing_input.ProcessingInputType.SCIENCE_FILE,
+        source="hi",
+        data_type="l1b",
+        descriptor=l1b_de_descriptor,
+    )[0]
+
+    nearest_input = processing_input.ScienceInput(*nearest_filenames)
+    l1b_de_input.filename_list.extend(nearest_input.filename_list)
+    l1b_de_input.imap_file_paths.extend(nearest_input.imap_file_paths)
+
+    return dependency_inputs
 
 
 def _get_available_dates(
@@ -1647,30 +1851,12 @@ def get_jobs(
     start_date = datetime.strptime(start_date, "%Y%m%d")
     end_date = datetime.strptime(end_date, "%Y%m%d")
 
-    # Special handling for Hi Goodtimes - needs L1B DE from multiple repoints
-    # Pass a list of repoints instead of a single repoint
-    repoint_param = repoint
-    if (
-        data_type == DataType.ANCILLARY
-        and data_source == "hi"
-        and "goodtimes" in descriptor
-        and repoint is not None
-    ):
-        repoint_param = list(
-            range(
-                max(1, repoint - HI_GOODTIMES_NUM_PAST_REPOINTS),
-                repoint + HI_GOODTIMES_NUM_FUTURE_REPOINTS + 1,
-            )
-        )
-        logger.info(
-            f"Hi Goodtimes job detected. Querying for repoints: {repoint_param}"
-        )
-
+    # Get upstream dependencies (same for all jobs initially)
     upstream_dependencies_output = get_upstream_dependency_inputs(
         dependencies=dependencies,
         start_date=start_date,
         end_date=end_date,
-        repoint=repoint_param,
+        repoint=repoint,
         calculate_crids=calculate_crids,
         get_spice=get_spice,
         require_coverage=require_coverage,
@@ -1680,6 +1866,27 @@ def get_jobs(
             f"No dependencies found for {start_date=} - {end_date=}: {dependencies}"
         )
         return None
+
+    # Special handling for Hi Goodtimes - extend L1B DE to N nearest repoints
+    if (
+        data_type == "l1c"
+        and data_source == "hi"
+        and "goodtimes" in descriptor
+        and repoint is not None
+    ):
+        logger.info(f"Hi Goodtimes job detected for repoint {repoint}")
+        upstream_dependencies_output = _extend_hi_goodtimes_l1b_de_dependencies(
+            dependency_inputs=upstream_dependencies_output,
+            descriptor=descriptor,
+            repoint=repoint,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if upstream_dependencies_output is None:
+            logger.info(
+                f"Hi Goodtimes dependencies not ready for {start_date=} - {end_date=}"
+            )
+            return None
 
     logger.info(f"Dependencies found for {start_date=} - {end_date=}: {dependencies}")
     return upstream_dependencies_output
