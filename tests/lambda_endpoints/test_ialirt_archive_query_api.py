@@ -134,3 +134,43 @@ def test_archive_query_invalid_version(monkeypatch):
 
     assert response["statusCode"] == 400
     assert "version" in response["body"].lower()
+
+
+def test_archive_query_since(populated_bucket, monkeypatch):
+    """Since returns all v001 files with a date on or after the given date."""
+    monkeypatch.setenv("S3_BUCKET", BUCKET)
+    monkeypatch.setenv("REGION", "us-east-1")
+
+    event = {"queryStringParameters": {"since": "20240522"}}
+    response = ialirt_archive_query_api.lambda_handler(event=event, context=None)
+    files = json.loads(response["body"])["files"]
+
+    assert response["statusCode"] == 200
+    assert files == [
+        "imap_ialirt_l1_realtime_20240522_v001.cdf",
+        "imap_ialirt_l1_realtime_20240601_v001.cdf",
+    ]
+
+
+def test_archive_query_since_invalid_format(monkeypatch):
+    """A malformed since value returns a 400 error."""
+    monkeypatch.setenv("S3_BUCKET", BUCKET)
+    monkeypatch.setenv("REGION", "us-east-1")
+
+    event = {"queryStringParameters": {"since": "2024-05-21"}}
+    response = ialirt_archive_query_api.lambda_handler(event=event, context=None)
+
+    assert response["statusCode"] == 400
+    assert "since" in response["body"].lower()
+
+
+def test_archive_query_since_with_year_returns_400(monkeypatch):
+    """Combining since with year/month/day returns a 400 error."""
+    monkeypatch.setenv("S3_BUCKET", BUCKET)
+    monkeypatch.setenv("REGION", "us-east-1")
+
+    event = {"queryStringParameters": {"since": "20240521", "year": "2024"}}
+    response = ialirt_archive_query_api.lambda_handler(event=event, context=None)
+
+    assert response["statusCode"] == 400
+    assert "since" in response["body"].lower()
