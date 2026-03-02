@@ -2266,3 +2266,265 @@ def test_require_coverage_false_allows_gaps(session):
 
     assert result is not None
     assert len(result.get_file_paths()) == 2
+
+
+#####################################
+# GET_N_NEAREST_FILES TESTS
+#####################################
+
+
+@pytest.fixture
+def hi_l1b_de_files_with_gaps(session):
+    """Fixture that creates Hi L1B 45sensor-de files with gaps in repoints."""
+    _static_spice_files(session)
+    # Create files for repoints 10, 11, 12, 13, 14, 15, 20, 21, 22 (gap between 15-20)
+    records = []
+    for rp in [10, 11, 12, 13, 14, 15, 20, 21, 22]:
+        records.append(
+            ScienceFiles(
+                file_path=f"path/to/imap_hi_l1b_45sensor-de_20240101-repoint{rp:05d}_v001.cdf",
+                instrument="hi",
+                data_level="l1b",
+                descriptor="45sensor-de",
+                start_date=datetime(2024, 1, 1),
+                version="v001",
+                extension="cdf",
+                repointing=rp,
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+        )
+    session.add_all(records)
+    session.commit()
+    return records
+
+
+@pytest.fixture
+def swe_l1a_files_with_gaps(session):
+    """Fixture that creates SWE L1A sci files with gaps in dates."""
+    _static_spice_files(session)
+    # Create files for dates with a gap (Jan 1, 2, 3, 5, 6, 7 - missing Jan 4)
+    records = []
+    for day in [1, 2, 3, 5, 6, 7]:
+        records.append(
+            ScienceFiles(
+                file_path=f"path/to/imap_swe_l1a_sci_2024010{day}_v001.cdf",
+                instrument="swe",
+                data_level="l1a",
+                descriptor="sci",
+                start_date=datetime(2024, 1, day),
+                version="v001",
+                extension="cdf",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            )
+        )
+    session.add_all(records)
+    session.commit()
+    return records
+
+
+class TestGetNNearestFiles:
+    """Test coverage for get_n_nearest_files."""
+
+    def test_get_n_nearest_files_repoint_basic(
+        self, hi_l1b_de_files_with_gaps, session
+    ):
+        """Test basic repoint case - finding 4 nearest to repoint 15."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_n_nearest_files,
+        )
+
+        dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+
+        records = get_n_nearest_files(
+            session,
+            dependency=dep,
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 31),
+            num_nearest=4,
+            repoint=15,
+        )
+
+        # Should get 4 nearest: 14, 13, 12, 11 (closest to 15, excluding 15 itself)
+        assert len(records) == 4
+        repoints_found = sorted([r.repointing for r in records])
+        assert repoints_found == [11, 12, 13, 14]
+
+    def test_get_n_nearest_files_repoint_with_gaps(
+        self, hi_l1b_de_files_with_gaps, session
+    ):
+        """Test repoint case with gaps - finding nearest to repoint 14."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_n_nearest_files,
+        )
+
+        dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+
+        records = get_n_nearest_files(
+            session,
+            dependency=dep,
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 31),
+            num_nearest=4,
+            repoint=14,
+        )
+
+        # Nearest to 14: 15 (dist 1), 13 (dist 1), 12 (dist 2), 11 (dist 3)
+        # Ties broken by lower repoint first: 13, 15, 12, 11
+        assert len(records) == 4
+        repoints_found = sorted([r.repointing for r in records])
+        assert repoints_found == [11, 12, 13, 15]
+
+    def test_get_n_nearest_files_repoint_target_missing(
+        self, hi_l1b_de_files_with_gaps, session
+    ):
+        """Test that empty list is returned when target repoint doesn't exist."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_n_nearest_files,
+        )
+
+        dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+
+        records = get_n_nearest_files(
+            session,
+            dependency=dep,
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 31),
+            num_nearest=4,
+            repoint=17,  # Repoint 17 doesn't exist (gap between 15 and 20)
+        )
+
+        assert records == []
+
+    def test_get_n_nearest_files_date_basic(self, swe_l1a_files_with_gaps, session):
+        """Test basic date case - finding 3 nearest to Jan 3."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_n_nearest_files,
+        )
+
+        dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
+
+        records = get_n_nearest_files(
+            session,
+            dependency=dep,
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 31),
+            num_nearest=3,
+            target_date=datetime(2024, 1, 3),
+        )
+
+        # Nearest to Jan 3: Jan 2 (dist 1), Jan 1 (dist 2), Jan 5 (dist 2)
+        # Ties broken by earlier date
+        assert len(records) == 3
+        dates_found = sorted([r.start_date.day for r in records])
+        assert dates_found == [1, 2, 5]
+
+    def test_get_n_nearest_files_date_with_gaps(self, swe_l1a_files_with_gaps, session):
+        """Test date case with gaps - finding nearest to Jan 5."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_n_nearest_files,
+        )
+
+        dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
+
+        records = get_n_nearest_files(
+            session,
+            dependency=dep,
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 31),
+            num_nearest=3,
+            target_date=datetime(2024, 1, 5),
+        )
+
+        # Nearest to Jan 5: Jan 6 (dist 1), Jan 3 (dist 2), Jan 7 (dist 2)
+        # Ties broken by earlier date: Jan 3 before Jan 7
+        assert len(records) == 3
+        dates_found = sorted([r.start_date.day for r in records])
+        assert dates_found == [3, 6, 7]
+
+    def test_get_n_nearest_files_date_target_missing(
+        self, swe_l1a_files_with_gaps, session
+    ):
+        """Test that empty list is returned when target date doesn't exist."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_n_nearest_files,
+        )
+
+        dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
+
+        records = get_n_nearest_files(
+            session,
+            dependency=dep,
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 31),
+            num_nearest=3,
+            target_date=datetime(2024, 1, 4),  # Jan 4 doesn't exist (gap)
+        )
+
+        assert records == []
+
+    def test_get_n_nearest_files_insufficient(self, hi_l1b_de_files_with_gaps, session):
+        """Test when fewer than N files exist - returns all available."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_n_nearest_files,
+        )
+
+        dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+
+        # Ask for 100 nearest, but only 8 others exist (excluding target)
+        records = get_n_nearest_files(
+            session,
+            dependency=dep,
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 31),
+            num_nearest=100,
+            repoint=15,
+        )
+
+        # Should return all 8 (10, 11, 12, 13, 14, 20, 21, 22)
+        assert len(records) == 8
+        repoints_found = sorted([r.repointing for r in records])
+        assert repoints_found == [10, 11, 12, 13, 14, 20, 21, 22]
+
+    def test_get_n_nearest_files_validation_repoint_missing(self, session):
+        """Test validation error when repoint is missing for repoint instrument."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_n_nearest_files,
+        )
+
+        dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+
+        with pytest.raises(
+            ValueError, match="repoint required for repoint-dependent instruments"
+        ):
+            get_n_nearest_files(
+                session,
+                dependency=dep,
+                start_date=datetime(2024, 1, 1),
+                end_date=datetime(2024, 1, 31),
+                num_nearest=4,
+                # repoint is missing
+            )
+
+    def test_get_n_nearest_files_validation_target_date_missing(self, session):
+        """Test validation error when target_date missing for non-repoint inst."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
+            get_n_nearest_files,
+        )
+
+        dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
+
+        with pytest.raises(
+            ValueError, match="target_date required for non-repoint instruments"
+        ):
+            get_n_nearest_files(
+                session,
+                dependency=dep,
+                start_date=datetime(2024, 1, 1),
+                end_date=datetime(2024, 1, 31),
+                num_nearest=4,
+                # target_date is missing
+            )

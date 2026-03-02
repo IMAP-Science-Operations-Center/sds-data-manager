@@ -1262,6 +1262,91 @@ def get_upstream_dependency_inputs(
     return dependency_inputs
 
 
+def _get_available_repoints(
+    session: db.Session,
+    dependency: dict,
+    start_date: datetime,
+    end_date: datetime,
+) -> list[int]:
+    """Query distinct repoint values that exist for a dependency.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    dependency : dict
+        Dictionary containing data_source, data_type, descriptor.
+    start_date : datetime
+        Start date of search range.
+    end_date : datetime
+        End date of search range.
+
+    Returns
+    -------
+    list[int]
+        Sorted list of repoint numbers that have data.
+    """
+    table = models.ScienceFiles
+
+    results = (
+        session.query(table.repointing)
+        .filter(
+            table.instrument == dependency["data_source"],
+            table.data_level == dependency["data_type"],
+            table.descriptor == dependency["descriptor"],
+            table.repointing.isnot(None),
+            table.start_date >= start_date,
+            table.start_date <= end_date,
+        )
+        .distinct()
+        .order_by(table.repointing)
+        .all()
+    )
+    return [rp[0] for rp in results]
+
+
+def _get_available_dates(
+    session: db.Session,
+    dependency: dict,
+    start_date: datetime,
+    end_date: datetime,
+) -> list[datetime]:
+    """Query distinct start_dates that exist for a dependency.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    dependency : dict
+        Dictionary containing data_source, data_type, descriptor.
+    start_date : datetime
+        Start date of search range.
+    end_date : datetime
+        End date of search range.
+
+    Returns
+    -------
+    list[datetime]
+        Sorted list of start_dates that have data.
+    """
+    table = models.ScienceFiles
+
+    results = (
+        session.query(table.start_date)
+        .filter(
+            table.instrument == dependency["data_source"],
+            table.data_level == dependency["data_type"],
+            table.descriptor == dependency["descriptor"],
+            table.start_date >= start_date,
+            table.start_date <= end_date,
+        )
+        .distinct()
+        .order_by(table.start_date)
+        .all()
+    )
+    return [d[0] for d in results]
+
+
 def get_files(
     session: db.Session,
     dependency: dict,
@@ -1368,6 +1453,110 @@ def get_files(
         records = sorted(records, key=lambda x: x.start_date, reverse=True)[0:1]
 
     return records
+
+
+def get_n_nearest_files(
+    session: db.Session,
+    dependency: dict,
+    start_date: datetime,
+    end_date: datetime,
+    num_nearest: int,
+    repoint: Optional[int] = None,
+    target_date: Optional[datetime] = None,
+) -> list:
+    """Get N files nearest to a target repoint or date.
+
+    For repoint-dependent instruments, finds N files nearest by repoint number.
+    For non-repoint instruments, finds N files nearest by date. Does NOT
+    include the target file itself. Returns empty list if target doesn't exist.
+
+    Uses efficient hybrid approach: queries for available repoints/dates first,
+    then passes N nearest to get_files for actual records with version handling.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    dependency : dict
+        Dictionary containing data_source, data_type, descriptor.
+    start_date : datetime
+        Start date of search range.
+    end_date : datetime
+        End date of search range.
+    num_nearest : int
+        Number of nearest files to return.
+    repoint : int, optional
+        Target repoint. Required for repoint-dependent instruments.
+    target_date : datetime, optional
+        Target date. Required for non-repoint instruments.
+
+    Returns
+    -------
+    list
+        ScienceFiles records for N nearest files. Empty if target doesn't exist.
+    """
+    is_repoint_instrument = dependency["data_source"] in REPOINT_DEPENDENT_INSTRUMENTS
+
+    if is_repoint_instrument:
+        if repoint is None:
+            raise ValueError("repoint required for repoint-dependent instruments")
+
+        # Step 1: Get all available repoints
+        available_repoints = _get_available_repoints(
+            session, dependency, start_date, end_date
+        )
+
+        # Step 2: Verify target exists
+        if repoint not in available_repoints:
+            logger.info(f"Target repoint {repoint} not found for {dependency}")
+            return []
+
+        # Step 3: Remove target, sort by distance, take N nearest
+        other_repoints = [rp for rp in available_repoints if rp != repoint]
+        sorted_repoints = sorted(
+            other_repoints,
+            key=lambda rp: (abs(rp - repoint), rp),  # distance, then repoint for ties
+        )
+        nearest_repoints = sorted_repoints[:num_nearest]
+
+        if not nearest_repoints:
+            return []
+
+        # Step 4: Get actual records via get_files (handles versioning)
+        return get_files(session, dependency, start_date, end_date, nearest_repoints)
+
+    else:
+        if target_date is None:
+            raise ValueError("target_date required for non-repoint instruments")
+
+        # Step 1: Get all available dates
+        available_dates = _get_available_dates(
+            session, dependency, start_date, end_date
+        )
+        available_date_set = {d.date() for d in available_dates}
+
+        # Step 2: Verify target exists
+        target_date_only = target_date.date()
+        if target_date_only not in available_date_set:
+            logger.info(f"Target date {target_date} not found for {dependency}")
+            return []
+
+        # Step 3: Remove target, sort by distance, take N nearest
+        other_dates = [d for d in available_dates if d.date() != target_date_only]
+        sorted_dates = sorted(
+            other_dates, key=lambda d: (abs((d.date() - target_date_only).days), d)
+        )
+        nearest_dates = sorted_dates[:num_nearest]
+
+        if not nearest_dates:
+            return []
+
+        # Step 4: Get records for each date (handles versioning)
+        records = []
+        for date in nearest_dates:
+            date_records = get_files(session, dependency, date, date)
+            records.extend(date_records)
+        return records
 
 
 def get_jobs(
