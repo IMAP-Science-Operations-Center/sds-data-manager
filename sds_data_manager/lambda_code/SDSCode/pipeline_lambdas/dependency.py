@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 import imap_data_access
+import numpy as np
 from imap_data_access import processing_input
 from imap_data_access.processing_input import ProcessingInputCollection
 from sqlalchemy import and_, desc, func, or_
@@ -1399,6 +1400,39 @@ def _get_inprogress_repoints(
     return [rp[0] for rp in results]
 
 
+def _get_inprogress_dates(
+    session: db.Session,
+    dependency: dict,
+) -> list[datetime]:
+    """Query distinct start_date values that have INPROGRESS jobs.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    dependency : dict
+        Dictionary containing data_source, data_type, descriptor.
+
+    Returns
+    -------
+    list[datetime]
+        Sorted list of start_dates that have INPROGRESS jobs.
+    """
+    results = (
+        session.query(models.ProcessingJob.start_date)
+        .filter(
+            models.ProcessingJob.instrument == dependency["data_source"],
+            models.ProcessingJob.data_level == dependency["data_type"],
+            models.ProcessingJob.descriptor == dependency["descriptor"],
+            models.ProcessingJob.status == models.Status.INPROGRESS,
+        )
+        .distinct()
+        .order_by(models.ProcessingJob.start_date)
+        .all()
+    )
+    return [d[0] for d in results]
+
+
 def _extend_hi_goodtimes_l1b_de_dependencies(
     dependency_inputs: ProcessingInputCollection,
     descriptor: str,
@@ -1446,51 +1480,35 @@ def _extend_hi_goodtimes_l1b_de_dependencies(
     num_nearest = HI_GOODTIMES_NUM_NEAREST_REPOINTS - 1
 
     with db.Session() as session:
-        # Check if pointing T+N-1 exists (ensures enough future data)
-        # The nearest N may all be in the future, so we check the furthest one
-        # to ensure we have enough data to proceed.
-        required_future_pointing = repoint + num_nearest
-        if not _check_pointing_exists(session, required_future_pointing):
-            logger.info(
-                f"Hi Goodtimes: skipping repoint {repoint} - pointing "
-                f"{required_future_pointing} does not exist yet"
-            )
-            return None
-
-        # Get available repoints (from existing files)
-        available_repoints = set(_get_available_repoints(session, l1b_de_dep))
-
-        # Verify target repoint has L1B DE data
-        if repoint not in available_repoints:
-            logger.info(f"Hi Goodtimes: target repoint {repoint} has no L1B DE data")
-            return None
-
-        # Get inprogress repoints (from running jobs - may not have files yet)
-        inprogress_repoints = set(_get_inprogress_repoints(session, l1b_de_dep))
-
-        # Combine both sets to find N nearest (some may be inprogress without files)
-        all_repoints = available_repoints | inprogress_repoints
-        other_repoints = [rp for rp in all_repoints if rp != repoint]
-        sorted_repoints = sorted(other_repoints, key=lambda rp: (abs(rp - repoint), rp))
-        nearest_repoints = sorted_repoints[:num_nearest]
-
-        # Check if any of the N nearest are from INPROGRESS jobs (not actual files)
-        # If so, skip - when those jobs complete they will re-trigger
-        inprogress_nearest = [
-            rp for rp in nearest_repoints if rp in inprogress_repoints
-        ]
-        if inprogress_nearest:
-            logger.info(
-                f"Hi Goodtimes: skipping repoint {repoint} - nearest repoints "
-                f"{inprogress_nearest} have INPROGRESS L1B DE jobs"
-            )
-            return None
-
-        # Get L1B DE files for nearest repoints (target already in dependency_inputs)
-        logger.info(f"Hi Goodtimes: querying L1B DE from repoints: {nearest_repoints}")
-        l1b_de_records = get_files(
-            session, l1b_de_dep, start_date, end_date, nearest_repoints
+        # Get N nearest files, skipping if any have INPROGRESS jobs
+        l1b_de_records = get_n_nearest_files_by_repoint(
+            session,
+            l1b_de_dep,
+            start_date,
+            end_date,
+            num_nearest,
+            repoint,
+            skip_if_inprogress=True,
         )
+        if l1b_de_records is None:
+            logger.info(
+                f"Hi Goodtimes: skipping repoint {repoint} due to INPROGRESS jobs"
+            )
+            return None
+
+        # Check if we have enough future repoints. If not, verify pointing T+N-1 exists.
+        nearest_repoints = np.array([r.repointing for r in l1b_de_records])
+        num_future = np.sum(nearest_repoints > repoint)
+        min_future_repoints = HI_GOODTIMES_NUM_NEAREST_REPOINTS // 2
+        if num_future < min_future_repoints:
+            required_future_pointing = repoint + num_nearest
+            if not _check_pointing_exists(session, required_future_pointing):
+                logger.info(
+                    f"Hi Goodtimes: skipping repoint {repoint} - pointing "
+                    f"{required_future_pointing} does not exist yet"
+                )
+                return None
+
         nearest_filenames = [basename(record.file_path) for record in l1b_de_records]
         logger.info(f"Hi Goodtimes adding L1B DE files: {nearest_filenames}")
 
@@ -1659,23 +1677,19 @@ def get_files(
     return records
 
 
-def get_n_nearest_files(
+def get_n_nearest_files_by_repoint(
     session: db.Session,
     dependency: dict,
     start_date: datetime,
     end_date: datetime,
     num_nearest: int,
-    repoint: Optional[int] = None,
-    target_date: Optional[datetime] = None,
-) -> list:
-    """Get N files nearest to a target repoint or date.
+    repoint: int,
+    skip_if_inprogress: bool = False,
+) -> Optional[list]:
+    """Get N files nearest to a target repoint.
 
-    For repoint-dependent instruments, finds N files nearest by repoint number.
-    For non-repoint instruments, finds N files nearest by date. Does NOT
-    include the target file itself. Returns empty list if target doesn't exist.
-
-    Uses efficient hybrid approach: queries for available repoints/dates first,
-    then passes N nearest to get_files for actual records with version handling.
+    Finds N files nearest by repoint number. Does NOT include the target
+    repoint itself.
 
     Parameters
     ----------
@@ -1689,78 +1703,148 @@ def get_n_nearest_files(
         End date of search range.
     num_nearest : int
         Number of nearest files to return.
-    repoint : int, optional
-        Target repoint. Required for repoint-dependent instruments.
-    target_date : datetime, optional
-        Target date. Required for non-repoint instruments.
+    repoint : int
+        Target repoint number.
+    skip_if_inprogress : bool, optional
+        If True, considers INPROGRESS jobs when finding N nearest. Returns None
+        if any of the N nearest have INPROGRESS jobs (caller should skip
+        processing). Default False.
 
     Returns
     -------
-    list
-        ScienceFiles records for N nearest files. Empty if target doesn't exist.
+    list or None
+        ScienceFiles records for N nearest files. Empty list if no neighbors
+        exist. None if skip_if_inprogress=True and any of N nearest are
+        INPROGRESS.
     """
-    is_repoint_instrument = dependency["data_source"] in REPOINT_DEPENDENT_INSTRUMENTS
+    # Get available repoints from existing files
+    available_repoints = np.array(_get_available_repoints(session, dependency))
 
-    if is_repoint_instrument:
-        if repoint is None:
-            raise ValueError("repoint required for repoint-dependent instruments")
-
-        # Step 1: Get all available repoints
-        available_repoints = _get_available_repoints(
-            session, dependency, start_date, end_date
-        )
-
-        # Step 2: Verify target exists
-        if repoint not in available_repoints:
-            logger.info(f"Target repoint {repoint} not found for {dependency}")
-            return []
-
-        # Step 3: Remove target, sort by distance, take N nearest
-        other_repoints = [rp for rp in available_repoints if rp != repoint]
-        sorted_repoints = sorted(
-            other_repoints,
-            key=lambda rp: (abs(rp - repoint), rp),  # distance, then repoint for ties
-        )
-        nearest_repoints = sorted_repoints[:num_nearest]
-
-        if not nearest_repoints:
-            return []
-
-        # Step 4: Get actual records via get_files (handles versioning)
-        return get_files(session, dependency, start_date, end_date, nearest_repoints)
-
+    if skip_if_inprogress:
+        # Also get inprogress repoints from running jobs
+        inprogress_repoints = np.array(_get_inprogress_repoints(session, dependency))
+        all_repoints = np.union1d(available_repoints, inprogress_repoints)
     else:
-        if target_date is None:
-            raise ValueError("target_date required for non-repoint instruments")
+        all_repoints = available_repoints
+        inprogress_repoints = np.array([])
 
-        # Step 1: Get all available dates
-        available_dates = _get_available_dates(
-            session, dependency, start_date, end_date
-        )
-        available_date_set = {d.date() for d in available_dates}
+    # Verify target exists (in available files or inprogress jobs)
+    if repoint not in all_repoints:
+        logger.info(f"Target repoint {repoint} not found for {dependency}")
+        return []
 
-        # Step 2: Verify target exists
-        target_date_only = target_date.date()
-        if target_date_only not in available_date_set:
-            logger.info(f"Target date {target_date} not found for {dependency}")
-            return []
+    # Remove target, sort by distance then repoint, take N nearest
+    other_repoints = all_repoints[all_repoints != repoint]
+    if len(other_repoints) == 0:
+        return []
 
-        # Step 3: Remove target, sort by distance, take N nearest
-        other_dates = [d for d in available_dates if d.date() != target_date_only]
-        sorted_dates = sorted(
-            other_dates, key=lambda d: (abs((d.date() - target_date_only).days), d)
-        )
-        nearest_dates = sorted_dates[:num_nearest]
+    distances = np.abs(other_repoints - repoint)
+    sort_indices = np.lexsort((other_repoints, distances))
+    nearest_repoints = other_repoints[sort_indices][:num_nearest]
 
-        if not nearest_dates:
-            return []
+    # Check if any of N nearest are inprogress
+    if skip_if_inprogress and len(inprogress_repoints) > 0:
+        inprogress_nearest = nearest_repoints[
+            np.isin(nearest_repoints, inprogress_repoints)
+        ]
+        if len(inprogress_nearest) > 0:
+            logger.info(
+                f"Skipping: nearest repoints {inprogress_nearest.tolist()} "
+                f"have INPROGRESS jobs for {dependency}"
+            )
+            return None
 
-        # Step 4: Get records for each date (handles versioning)
-        records = []
-        for date in nearest_dates:
-            date_records = get_files(session, dependency, date, date)
-            records.extend(date_records)
-        return records
+    # Get actual records via get_files (handles versioning)
+    nearest_repoints_list = nearest_repoints.tolist()
+    return get_files(session, dependency, start_date, end_date, nearest_repoints_list)
+
+
+def get_n_nearest_files_by_date(
+    session: db.Session,
+    dependency: dict,
+    start_date: datetime,
+    end_date: datetime,
+    num_nearest: int,
+    target_date: datetime,
+    skip_if_inprogress: bool = False,
+) -> Optional[list]:
+    """Get N files nearest to a target date.
+
+    Finds N files nearest by date. Does NOT include the target date itself.
+
+    Parameters
+    ----------
+    session : db.Session
+        Database session.
+    dependency : dict
+        Dictionary containing data_source, data_type, descriptor.
+    start_date : datetime
+        Start date of search range.
+    end_date : datetime
+        End date of search range.
+    num_nearest : int
+        Number of nearest files to return.
+    target_date : datetime
+        Target date.
+    skip_if_inprogress : bool, optional
+        If True, considers INPROGRESS jobs when finding N nearest. Returns None
+        if any of the N nearest have INPROGRESS jobs (caller should skip
+        processing). Default False.
+
+    Returns
+    -------
+    list or None
+        ScienceFiles records for N nearest files. Empty list if no neighbors
+        exist. None if skip_if_inprogress=True and any of N nearest are
+        INPROGRESS.
+    """
+    # Get available dates from existing files
+    available_dates = np.array(
+        _get_available_dates(session, dependency, start_date, end_date)
+    )
+
+    if skip_if_inprogress:
+        # Also get inprogress dates from running jobs
+        inprogress_dates = np.array(_get_inprogress_dates(session, dependency))
+        all_dates = np.union1d(available_dates, inprogress_dates)
+    else:
+        all_dates = available_dates
+        inprogress_dates = np.array([])
+
+    # Verify target exists (in available files or inprogress jobs)
+    target_date_only = target_date.date()
+    all_dates_only = np.array([d.date() for d in all_dates])
+    if target_date_only not in all_dates_only:
+        logger.info(f"Target date {target_date} not found for {dependency}")
+        return []
+
+    # Remove target, sort by distance then date, take N nearest
+    other_dates = all_dates[all_dates_only != target_date_only]
+    if len(other_dates) == 0:
+        return []
+
+    other_dates_only = np.array([d.date() for d in other_dates])
+    distances = np.array([abs((d - target_date_only).days) for d in other_dates_only])
+    # Sort by distance, then by date for ties
+    sort_indices = np.lexsort((other_dates, distances))
+    nearest_dates = other_dates[sort_indices][:num_nearest]
+
+    # Check if any of N nearest are inprogress
+    if skip_if_inprogress and len(inprogress_dates) > 0:
+        inprogress_nearest = nearest_dates[np.isin(nearest_dates, inprogress_dates)]
+        if len(inprogress_nearest) > 0:
+            logger.info(
+                f"Skipping: nearest dates {inprogress_nearest.tolist()} "
+                f"have INPROGRESS jobs for {dependency}"
+            )
+            return None
+
+    # Get records for each date (handles versioning)
+    records = []
+    for date in nearest_dates:
+        date_records = get_files(session, dependency, date, date)
+        records.extend(date_records)
+    return records
 
 
 def get_jobs(

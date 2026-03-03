@@ -26,9 +26,13 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
     DependencyConfig,
+    _get_inprogress_dates,
+    _get_inprogress_repoints,
     calculate_crid,
     get_files,
     get_jobs,
+    get_n_nearest_files_by_date,
+    get_n_nearest_files_by_repoint,
     get_upstream_dependency_inputs,
     matching_crids_exist,
     verify_science_coverage,
@@ -1123,6 +1127,115 @@ def test_get_jobs_hi_goodtimes_proceeds_when_inprogress_not_nearby(
     # Should return results since INPROGRESS job is not among N nearest
     assert result is not None
     assert isinstance(result, ProcessingInputCollection)
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency.get_dependencies",
+    return_value=[
+        {
+            "data_source": "hi",
+            "data_type": "l1b",
+            "descriptor": "45sensor-de",
+            "relationship": "HARD",
+        }
+    ],
+)
+def test_get_jobs_hi_goodtimes_only_future_repoints(
+    mock_get_dependencies, hi_l1b_de_repoint_files, pointing_table_entries, monkeypatch
+):
+    """Test get_jobs for Hi Goodtimes when target is at start (only future repoints).
+
+    When the target repoint is at the beginning of available data, only future
+    repoints exist as neighbors. The function should still work correctly.
+    """
+    # Monkeypatch to use a smaller number for testing
+    # With N=3, we get target + 2 nearest = 3 total repoints
+    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 3)
+
+    # Call get_jobs for Hi L1C Goodtimes with repoint 1 (first available)
+    # Available repoints from fixture: 1, 2, 3, 4, 5
+    # Target is 1, nearest 2 are: 2 and 3 (only future repoints)
+    result = get_jobs(
+        dependency_type="UPSTREAM",
+        relationship="HARD",
+        data_source="hi",
+        data_type="l1c",
+        descriptor="45sensor-goodtimes",
+        start_date="20240101",
+        end_date="20240105",
+        repoint=1,
+        calculate_crids=False,
+        get_spice=False,
+    )
+
+    assert result is not None
+    assert isinstance(result, ProcessingInputCollection)
+
+    # Check that we have L1B DE files from N repoints total
+    hi_l1b_files = result.get_file_paths("hi", descriptor="45sensor-de")
+
+    # Should have 3 files: target (1) plus 2 nearest (2 and 3)
+    assert len(hi_l1b_files) == 3
+
+    # Verify the repoints included
+    result_repoints = {
+        fp.repointing for fp in result.processing_input[0].imap_file_paths
+    }
+    assert result_repoints == {1, 2, 3}
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency.get_dependencies",
+    return_value=[
+        {
+            "data_source": "hi",
+            "data_type": "l1b",
+            "descriptor": "45sensor-de",
+            "relationship": "HARD",
+        }
+    ],
+)
+def test_get_jobs_hi_goodtimes_only_past_repoints(
+    mock_get_dependencies, hi_l1b_de_repoint_files, pointing_table_entries, monkeypatch
+):
+    """Test get_jobs for Hi Goodtimes when target is at end (only past repoints).
+
+    When the target repoint is at the end of available data, only past
+    repoints exist as neighbors. The function should still work correctly.
+    """
+    # Monkeypatch to use a smaller number for testing
+    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 3)
+
+    # Call get_jobs for Hi L1C Goodtimes with repoint 5 (last available)
+    # Available repoints from fixture: 1, 2, 3, 4, 5
+    # Target is 5, nearest 2 are: 4 and 3 (only past repoints)
+    result = get_jobs(
+        dependency_type="UPSTREAM",
+        relationship="HARD",
+        data_source="hi",
+        data_type="l1c",
+        descriptor="45sensor-goodtimes",
+        start_date="20240101",
+        end_date="20240105",
+        repoint=5,
+        calculate_crids=False,
+        get_spice=False,
+    )
+
+    assert result is not None
+    assert isinstance(result, ProcessingInputCollection)
+
+    # Check that we have L1B DE files from N repoints total
+    hi_l1b_files = result.get_file_paths("hi", descriptor="45sensor-de")
+
+    # Should have 3 files: target (5) plus 2 nearest (4 and 3)
+    assert len(hi_l1b_files) == 3
+
+    # Verify the repoints included
+    result_repoints = {
+        fp.repointing for fp in result.processing_input[0].imap_file_paths
+    }
+    assert result_repoints == {3, 4, 5}
 
 
 # #####################################
@@ -2459,19 +2572,15 @@ def swe_l1a_files_with_gaps(session):
 
 
 class TestGetNNearestFiles:
-    """Test coverage for get_n_nearest_files."""
+    """Test coverage for get_n_nearest_files functions."""
 
     def test_get_n_nearest_files_repoint_basic(
         self, hi_l1b_de_files_with_gaps, session
     ):
         """Test basic repoint case - finding 4 nearest to repoint 15."""
-        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-            get_n_nearest_files,
-        )
-
         dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
 
-        records = get_n_nearest_files(
+        records = get_n_nearest_files_by_repoint(
             session,
             dependency=dep,
             start_date=datetime(2024, 1, 1),
@@ -2489,13 +2598,9 @@ class TestGetNNearestFiles:
         self, hi_l1b_de_files_with_gaps, session
     ):
         """Test repoint case with gaps - finding nearest to repoint 14."""
-        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-            get_n_nearest_files,
-        )
-
         dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
 
-        records = get_n_nearest_files(
+        records = get_n_nearest_files_by_repoint(
             session,
             dependency=dep,
             start_date=datetime(2024, 1, 1),
@@ -2514,13 +2619,9 @@ class TestGetNNearestFiles:
         self, hi_l1b_de_files_with_gaps, session
     ):
         """Test that empty list is returned when target repoint doesn't exist."""
-        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-            get_n_nearest_files,
-        )
-
         dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
 
-        records = get_n_nearest_files(
+        records = get_n_nearest_files_by_repoint(
             session,
             dependency=dep,
             start_date=datetime(2024, 1, 1),
@@ -2534,12 +2635,12 @@ class TestGetNNearestFiles:
     def test_get_n_nearest_files_date_basic(self, swe_l1a_files_with_gaps, session):
         """Test basic date case - finding 3 nearest to Jan 3."""
         from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-            get_n_nearest_files,
+            get_n_nearest_files_by_date,
         )
 
         dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
 
-        records = get_n_nearest_files(
+        records = get_n_nearest_files_by_date(
             session,
             dependency=dep,
             start_date=datetime(2024, 1, 1),
@@ -2556,13 +2657,9 @@ class TestGetNNearestFiles:
 
     def test_get_n_nearest_files_date_with_gaps(self, swe_l1a_files_with_gaps, session):
         """Test date case with gaps - finding nearest to Jan 5."""
-        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-            get_n_nearest_files,
-        )
-
         dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
 
-        records = get_n_nearest_files(
+        records = get_n_nearest_files_by_date(
             session,
             dependency=dep,
             start_date=datetime(2024, 1, 1),
@@ -2581,13 +2678,9 @@ class TestGetNNearestFiles:
         self, swe_l1a_files_with_gaps, session
     ):
         """Test that empty list is returned when target date doesn't exist."""
-        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-            get_n_nearest_files,
-        )
-
         dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
 
-        records = get_n_nearest_files(
+        records = get_n_nearest_files_by_date(
             session,
             dependency=dep,
             start_date=datetime(2024, 1, 1),
@@ -2600,14 +2693,10 @@ class TestGetNNearestFiles:
 
     def test_get_n_nearest_files_insufficient(self, hi_l1b_de_files_with_gaps, session):
         """Test when fewer than N files exist - returns all available."""
-        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-            get_n_nearest_files,
-        )
-
         dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
 
         # Ask for 100 nearest, but only 8 others exist (excluding target)
-        records = get_n_nearest_files(
+        records = get_n_nearest_files_by_repoint(
             session,
             dependency=dep,
             start_date=datetime(2024, 1, 1),
@@ -2621,45 +2710,205 @@ class TestGetNNearestFiles:
         repoints_found = sorted([r.repointing for r in records])
         assert repoints_found == [10, 11, 12, 13, 14, 20, 21, 22]
 
-    def test_get_n_nearest_files_validation_repoint_missing(self, session):
-        """Test validation error when repoint is missing for repoint instrument."""
+
+#####################################
+# INPROGRESS HELPER FUNCTION TESTS
+#####################################
+
+
+class TestGetInprogressHelpers:
+    """Test coverage for _get_inprogress_repoints and _get_inprogress_dates."""
+
+    def test_get_inprogress_repoints_returns_inprogress_only(self, session):
+        """Test that only INPROGRESS job repoints are returned."""
         from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-            get_n_nearest_files,
+            _get_inprogress_repoints,
         )
+
+        # Create jobs with different statuses
+        jobs = [
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="hi",
+                data_level="l1b",
+                descriptor="45sensor-de",
+                start_date=datetime(2024, 1, 1),
+                version="v001",
+                repointing=10,
+            ),
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="hi",
+                data_level="l1b",
+                descriptor="45sensor-de",
+                start_date=datetime(2024, 1, 2),
+                version="v001",
+                repointing=12,
+            ),
+            ProcessingJob(
+                status=models.Status.SUCCEEDED,
+                instrument="hi",
+                data_level="l1b",
+                descriptor="45sensor-de",
+                start_date=datetime(2024, 1, 3),
+                version="v001",
+                repointing=15,
+            ),
+            ProcessingJob(
+                status=models.Status.FAILED,
+                instrument="hi",
+                data_level="l1b",
+                descriptor="45sensor-de",
+                start_date=datetime(2024, 1, 4),
+                version="v001",
+                repointing=20,
+            ),
+        ]
+        session.add_all(jobs)
+        session.commit()
 
         dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+        result = _get_inprogress_repoints(session, dep)
 
-        with pytest.raises(
-            ValueError, match="repoint required for repoint-dependent instruments"
-        ):
-            get_n_nearest_files(
-                session,
-                dependency=dep,
+        # Only INPROGRESS repoints should be returned
+        assert result == [10, 12]
+
+    def test_get_inprogress_repoints_filters_by_dependency(self, session):
+        """Test that repoints are filtered by instrument/level/descriptor."""
+        # Create INPROGRESS jobs for different dependencies
+        jobs = [
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="hi",
+                data_level="l1b",
+                descriptor="45sensor-de",
                 start_date=datetime(2024, 1, 1),
-                end_date=datetime(2024, 1, 31),
-                num_nearest=4,
-                # repoint is missing
-            )
+                version="v001",
+                repointing=10,
+            ),
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="hi",
+                data_level="l1a",  # Different level
+                descriptor="45sensor-de",
+                start_date=datetime(2024, 1, 1),
+                version="v001",
+                repointing=20,
+            ),
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="lo",  # Different instrument
+                data_level="l1b",
+                descriptor="de",
+                start_date=datetime(2024, 1, 1),
+                version="v001",
+                repointing=30,
+            ),
+        ]
+        session.add_all(jobs)
+        session.commit()
 
-    def test_get_n_nearest_files_validation_target_date_missing(self, session):
-        """Test validation error when target_date missing for non-repoint inst."""
-        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-            get_n_nearest_files,
-        )
+        dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+        result = _get_inprogress_repoints(session, dep)
+
+        assert result == [10]
+
+    def test_get_inprogress_repoints_empty_when_none(self, session):
+        """Test that empty list is returned when no INPROGRESS jobs exist."""
+        dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+        result = _get_inprogress_repoints(session, dep)
+
+        assert result == []
+
+    def test_get_inprogress_dates_returns_inprogress_only(self, session):
+        """Test that only INPROGRESS job dates are returned."""
+        # Create jobs with different statuses
+        jobs = [
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="swe",
+                data_level="l1a",
+                descriptor="sci",
+                start_date=datetime(2024, 1, 5),
+                version="v001",
+            ),
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="swe",
+                data_level="l1a",
+                descriptor="sci",
+                start_date=datetime(2024, 1, 10),
+                version="v001",
+            ),
+            ProcessingJob(
+                status=models.Status.SUCCEEDED,
+                instrument="swe",
+                data_level="l1a",
+                descriptor="sci",
+                start_date=datetime(2024, 1, 15),
+                version="v001",
+            ),
+            ProcessingJob(
+                status=models.Status.FAILED,
+                instrument="swe",
+                data_level="l1a",
+                descriptor="sci",
+                start_date=datetime(2024, 1, 20),
+                version="v001",
+            ),
+        ]
+        session.add_all(jobs)
+        session.commit()
 
         dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
+        result = _get_inprogress_dates(session, dep)
 
-        with pytest.raises(
-            ValueError, match="target_date required for non-repoint instruments"
-        ):
-            get_n_nearest_files(
-                session,
-                dependency=dep,
-                start_date=datetime(2024, 1, 1),
-                end_date=datetime(2024, 1, 31),
-                num_nearest=4,
-                # target_date is missing
-            )
+        # Only INPROGRESS dates should be returned
+        assert result == [datetime(2024, 1, 5), datetime(2024, 1, 10)]
+
+    def test_get_inprogress_dates_filters_by_dependency(self, session):
+        """Test that dates are filtered by instrument/level/descriptor."""
+        # Create INPROGRESS jobs for different dependencies
+        jobs = [
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="swe",
+                data_level="l1a",
+                descriptor="sci",
+                start_date=datetime(2024, 1, 5),
+                version="v001",
+            ),
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="swe",
+                data_level="l1b",  # Different level
+                descriptor="sci",
+                start_date=datetime(2024, 1, 10),
+                version="v001",
+            ),
+            ProcessingJob(
+                status=models.Status.INPROGRESS,
+                instrument="idex",  # Different instrument
+                data_level="l1a",
+                descriptor="sci",
+                start_date=datetime(2024, 1, 15),
+                version="v001",
+            ),
+        ]
+        session.add_all(jobs)
+        session.commit()
+
+        dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
+        result = _get_inprogress_dates(session, dep)
+
+        assert result == [datetime(2024, 1, 5)]
+
+    def test_get_inprogress_dates_empty_when_none(self, session):
+        """Test that empty list is returned when no INPROGRESS jobs exist."""
+        dep = {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}
+        result = _get_inprogress_dates(session, dep)
+
+        assert result == []
 
 
 #####################################
