@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from datetime import datetime
 
 import boto3
 import botocore
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context):  # noqa: PLR0912
     """Entry point to the archive query API lambda.
 
     Parameters
@@ -32,12 +33,20 @@ def lambda_handler(event, context):
 
     Example
     -------
-    Below is an event example:
+    Below is an event example using year/month/day:
     {
         "queryStringParameters": {
             "year": "2024",
             "month": "05",
             "day": "21",
+            "version": "1"
+        }
+    }
+
+    Or using since to get all files on or after a date:
+    {
+        "queryStringParameters": {
+            "since": "20240521",
             "version": "1"
         }
     }
@@ -52,8 +61,18 @@ def lambda_handler(event, context):
     month = query_params.get("month")
     day = query_params.get("day")
     version = query_params.get("version", "1")
+    since = query_params.get("since")
 
-    if (day and not month) or (month and not year):
+    if since and (year or month or day):
+        return {
+            "statusCode": 400,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(
+                {"error": "since cannot be combined with year, month, or day."}
+            ),
+        }
+
+    if not since and ((day and not month) or (month and not year)):
         return {
             "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
@@ -73,13 +92,31 @@ def lambda_handler(event, context):
             ),
         }
 
+    since_date = None
+    if since:
+        try:
+            since_date = datetime.strptime(since, "%Y%m%d").date()
+        except ValueError:
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps(
+                    {
+                        "error": (
+                            "Invalid since format. Must be YYYYMMDD (e.g. 20240521)."
+                        )
+                    }
+                ),
+            }
+
     date_prefix = ""
-    if year:
-        date_prefix += year.zfill(4)
-    if month:
-        date_prefix += month.zfill(2)
-    if day:
-        date_prefix += day.zfill(2)
+    if not since:
+        if year:
+            date_prefix += year.zfill(4)
+        if month:
+            date_prefix += month.zfill(2)
+        if day:
+            date_prefix += day.zfill(2)
 
     prefix = f"archive/imap_ialirt_l1_realtime_{date_prefix}"
 
@@ -98,8 +135,14 @@ def lambda_handler(event, context):
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
             filename = obj["Key"].split("/")[-1]
-            if version_str in filename:
-                files.append(filename)
+            if version_str not in filename:
+                continue
+            if since_date is not None:
+                file_date_str = filename.split("_realtime_")[1][:8]
+                file_date = datetime.strptime(file_date_str, "%Y%m%d").date()
+                if file_date < since_date:
+                    continue
+            files.append(filename)
 
     files.sort()
 
