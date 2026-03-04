@@ -290,7 +290,7 @@ class IalirtProcessing(Construct):
             instance_type=ec2.InstanceType.of(
                 ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.LARGE
             ),
-            machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
+            machine_image=ecs.EcsOptimizedImage.amazon_linux2023(),
             vpc=self.vpc,
             desired_capacity=1,
             min_capacity=1,
