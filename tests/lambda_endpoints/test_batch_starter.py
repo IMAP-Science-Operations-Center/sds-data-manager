@@ -2319,7 +2319,7 @@ def test_hi_goodtimes_multi_repoint_trigger(
         [
             {
                 "data_source": "hi",
-                "data_type": "l1c",
+                "data_type": "l1b",
                 "descriptor": "45sensor-goodtimes",
                 "relationship": "HARD",
             }

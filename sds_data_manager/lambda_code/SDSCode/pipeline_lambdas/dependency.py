@@ -1953,7 +1953,7 @@ def get_jobs(
 
     # Special handling for Hi Goodtimes - extend L1B DE to N nearest repoints
     if (
-        data_type == "l1c"
+        data_type == "l1b"
         and data_source == "hi"
         and "goodtimes" in descriptor
         and repoint is not None

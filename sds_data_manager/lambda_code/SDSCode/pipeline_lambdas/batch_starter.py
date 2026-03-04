@@ -835,7 +835,7 @@ def s3_processing_event(session, events):
                 trigger_is_hi_l1b_de
                 and repoint is not None
                 and job["data_source"] == "hi"
-                and job["data_type"] == "l1c"
+                and job["data_type"] == "l1b"
                 and "goodtimes" in job["descriptor"]
             ):
                 # Get target repoints in range [T-N+1, T+N-1]
