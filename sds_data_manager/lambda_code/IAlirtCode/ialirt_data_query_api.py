@@ -23,6 +23,11 @@ FULL_SCOPES = {
     "ialirt_scientist",
 }
 
+# Read-only scopes (can read but not write)
+READ_ONLY_SCOPES = {
+    "read",
+}
+
 RESTRICTED_FIELDS = {
     "hit_e_a_side_high_en",
     "hit_e_b_side_high_en",
@@ -169,7 +174,7 @@ def filter_items_by_scope(items: list[dict], scope: str) -> list[dict]:
         Items list.
     """
     # If caller has full HIT access, do nothing
-    if scope in FULL_SCOPES:
+    if scope in FULL_SCOPES or scope in READ_ONLY_SCOPES:
         return items
 
     filtered_items = [

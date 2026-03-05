@@ -105,6 +105,21 @@ def lambda_handler(event, context):
         A pre-signed url where users can upload a data file to the SDS.
 
     """
+    # Check API key scope for upload restrictions
+    request_ctx = event.get("requestContext", {})
+    auth = request_ctx.get("authorizer", {})
+    auth_ctx = auth.get("lambda", {})
+    scope = auth_ctx.get("scope", "")
+
+    # Deny upload access for read-only scope
+    if scope == "read":
+        return {
+            "statusCode": 403,
+            "body": json.dumps(
+                "Upload access denied. Your API key has read-only permissions."
+            ),
+        }
+
     path_params = event.get("pathParameters", {}).get("proxy", None)
     logger.info("Parsing path parameters=[%s] from event=[%s]", path_params, event)
 

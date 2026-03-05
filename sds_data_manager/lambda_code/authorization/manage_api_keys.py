@@ -106,7 +106,33 @@ def list_keys():
 
 
 def add_key(owner, email, scope="full"):
-    """Generate and add a new API key with owner and email metadata."""
+    """Generate and add a new API key with owner and email metadata.
+
+    Parameters
+    ----------
+    owner : str
+        The owner name of the API key
+    email : str
+        The email associated with the API key
+    scope : str
+        The scope/permission level for the key. Valid values are:
+        - 'full': Full read and write access
+        - 'read': Read-only access
+        Default is 'full'
+    """
+    # Validate scope
+    valid_scopes = {
+        "full",
+        "read",
+        "ialirt_db",
+        "ialirt_external_partner",
+        "ialirt_scientist",
+    }
+    if scope not in valid_scopes:
+        valid_scopes_str = ", ".join(sorted(valid_scopes))
+        print(f"Error: Invalid scope '{scope}'. Valid scopes are: {valid_scopes_str}")
+        return
+
     keys = get_keys()
     # Generate a secure random 32-byte hex key
     new_key = secrets.token_hex(32)
@@ -116,6 +142,7 @@ def add_key(owner, email, scope="full"):
     created = datetime.now().isoformat()
     add_key_to_db(new_key, owner, email, scope, created)
     print(f"Added key: {new_key}")
+    print(f"Scope: {scope}")
     print("Share this key securely with the user.")
 
 
@@ -130,7 +157,34 @@ def remove_key(key):
 
 
 def update_permission(owner: str, email: str, scope: str):
-    """Update permissions for API key."""
+    """Update permissions for API key.
+
+    Parameters
+    ----------
+    owner : str
+        The owner name of the API key
+    email : str
+        The email associated with the API key
+    scope : str
+        The new scope/permission level. Valid values are:
+        - 'full': Full read and write access
+        - 'read': Read-only access
+        - Other specialized scopes (ialirt_db, ialirt_external_partner,
+          ialirt_scientist)
+    """
+    # Validate scope
+    valid_scopes = {
+        "full",
+        "read",
+        "ialirt_db",
+        "ialirt_external_partner",
+        "ialirt_scientist",
+    }
+    if scope not in valid_scopes:
+        valid_scopes_str = ", ".join(sorted(valid_scopes))
+        print(f"Error: Invalid scope '{scope}'. Valid scopes are: {valid_scopes_str}")
+        return
+
     table = get_table()
     keys = get_keys()
 
@@ -139,9 +193,9 @@ def update_permission(owner: str, email: str, scope: str):
         for key, value in keys.items()
         if value["owner"] == owner and value["email"] == email
     ]
-    key = keys[matches[0]]
 
     if matches:
+        key = keys[matches[0]]
         table.put_item(
             Item={
                 "api_key": matches[0],
@@ -152,6 +206,7 @@ def update_permission(owner: str, email: str, scope: str):
             }
         )
         print(f"Updated key permission for: {owner}, {email}")
+        print(f"New scope: {scope}")
     else:
         print(
             f"Update not performed since no api key match found for: {owner}, {email}."
