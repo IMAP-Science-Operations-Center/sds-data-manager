@@ -1065,7 +1065,7 @@ def get_upstream_dependency_inputs(
     calculate_crids: bool = False,
     get_spice: bool = True,
     require_coverage: bool = False,
-    existing_session: Optional[db.Session] = None,
+    open_session: Optional[db.Session] = None,
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
@@ -1096,7 +1096,7 @@ def get_upstream_dependency_inputs(
     require_coverage : bool, optional
         If True gathered dependencies will be checked for complete coverage of
         start_date to end_date or repoint coverage.
-    existing_session : db.Session, optional
+    open_session : db.Session, optional
         Database session. If not provided, a new session will be created.
 
     Returns
@@ -1106,9 +1106,7 @@ def get_upstream_dependency_inputs(
     """
     dependency_inputs = processing_input.ProcessingInputCollection()
     # Use provided session or create a new one
-    session_context = (
-        nullcontext(existing_session) if existing_session else db.Session()
-    )
+    session_context = nullcontext(open_session) if open_session else db.Session()
     with session_context as session:
         if get_spice:
             # -----------------------------
@@ -1971,7 +1969,7 @@ def get_jobs(
             calculate_crids=calculate_crids,
             get_spice=get_spice,
             require_coverage=require_coverage,
-            session=session,
+            open_session=session,
         )
         if upstream_dependencies_output is None:
             logger.info(
