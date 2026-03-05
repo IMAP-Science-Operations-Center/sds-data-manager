@@ -45,55 +45,135 @@ class ProcesingJobType:
     POINTING_ATTITUDE = "pointing_attitude"
 
 
-class DateRange:
-    """Calculate date range for different event types."""
+def calculate_date_range(event_source: EventSourceType, downstream_node: DependencyNode) -> list[list[datetime, datetime]]:
+    """Calculate the date range for the job based on the event type.
 
-    @staticmethod
-    def calculate_date_range(EventSourceType: str) -> list[list[datetime, datetime]]:
-        """Calculate the date range for the job based on the event type.
-        
-        It can be multiple list of start and end dates depending on the event_type.
-        """
-        # If key exists in the event, create file validator object to extract necessary
-        # information from the file name.
+    This function/class is triggered by different events.
+    1. Event of a new science or ancillary file arrival from indexer lambda.
+        Example event:
+            {
+                "Records": [
+                    {
+                        "body": '{"detail": '
+                        '{"object": {"key": '
+                            '"imap_swe_l1b-in-flight-cal_20240101_v001.cdf"}}'
+                        "}"
+                    }
+                ]
+            }
+    2. Event of a new science reprocessing.
+        {
+            "queryStringParameters": {
+                "reprocessing": True,
+                "start_date": <>,
+                "end_date": <>,
+                "instrument": None, optional,
+                "data_level": None, optional,
+                "data_descriptor": None, optional,
+            }
+        }
+    3. Event of a new spice file arrival from spice indexer lambda.
+            {
+            “Source”: “imap.lambda”,
+            “DetailType”: “Processed File”,
+            “Detail”: {
+                “object”: {
+                    “key”: “imap/spice/spin/imap_2025_122_2025_122_02.spin.csv”,
+                    }
+            }
+        }
+        or
+        {
+            “Source”: “imap.lambda”,
+            “DetailType”: “Processed File”,
+            “Detail”: {
+                “object”: {
+                    “key”: “imap/spice/repoint/imap_2025_122_02.repoint”,
+                    “instrument”: “spacecraft”,
+                    }
+            }
+        }
 
-        # If cadence event, derive date range from cadence input parameters.
+    4. Event of bulk reprocessing of science.
+        Example event:
+            {
+                "queryStringParameters": {
+                    "reprocessing": True,
+                    "start_date": <>,
+                    "end_date": <>,
+                    "instrument": None, optional,
+                    "data_level": None, optional,
+                    "data_descriptor": None, optional,
+                }
+            }
+    5. Event of cadence job.
+        Example event:
+            {
+                "cadence": 1mo, 3mo, 1yr, or 6mo,
+                "start_date": <>,
+            }
+    6. Event of reprocessing cadence job.
+        Example event:
+            {
+                "cadence": 1mo, 3mo, 1yr, or 6mo,
+                "start_date": <>,
+                "end_date": <>,
+                "reprocessing": True
+            }
+    
+    It can be multiple list of start and end dates depending on the event_type.
+    """
+    # Determine event source type and extract (source, data_type, product_name)
+    # For current downstream node, calculate date range based on:
+    #   - event_source type (science, ancillary, spice, cadence, reprocessing)
+    #   - downstream node's processing job type (daily, pointing, cadence, pointing_attitude, etc.)
+    # 
+    # Examples:
+    #   - ancillary event + daily downstream job → list of (start_date, end_date) for each day
+    #   - reprocessing event + daily downstream job → list of (start_date, end_date) for each day in range
+    #   - cadence event + cadence downstream job → single (start_date, end_date) for cadence range
+    #   - reprocessing event + cadence downstream job → one or more (start_date, end_date) ranges
+    #   - science (HI DE) event + L1B goodtimes downstream job → list for 7 nearest repoint files
+    #   - science (ENA/GLOWS) event + pointing downstream job → list for date ranges derived using repoint id of input file
+    #   - reprocessing event + pointing downstream job → list of date ranges derived for each pointing in date range
+    #
+    # For each calculated date range, let IMAPJobHandler do these steps in batch_starter_refactor.py:
+    #   - Query dependencies
+    #   - Determine job version
+    #   - Create dependency file
+    #   - Submit job
+    
+    if event_source == EventSourceType.SCIENCE_INGESTION:
+        if downstream_node.data_type in ["ENA", "GLOWS"]:
+            return calculate_repoint_date_range()
+        else:
+            return calculate_daily_date_range()
+    elif event_source == EventSourceType.ANCILLARY_INGESTION:
+        return calculate_ancillary_date_range()
+    elif event_source == EventSourceType.SPICE_INGESTION:
+        return calculate_spice_date_range()
+    elif event_source == EventSourceType.CADENCE:
+        return calculate_cadence_date_range()
+    elif event_source == EventSourceType.REPROCESSING:
+        return calculate_reprocessing_date_range(downstream_node.repoint)
+    pass
 
-        # If reprocessing event, derive date range from repointing parameter.
-
-        # For example, something like this:
-        #     If event from science or ancillary ingestion, will get s3 full path and instrument name.
-        #       if data_type is any instrument:
-        #         if ENA or glows:
-        #             calculate_repoint_date_range()
-        #         else:
-        #             calculate_daily_date_range()
-        #       if ancillary:
-        #         calculate_ancillary_date_range()
-        #     If event from reprocessing:
-        #       calculate_reprocessing_date_range()
-        #     If event from cadence:
-        #       calculate_cadence_date_range()
-        #     If event from spice indexer:
-        #       calculate_spice_date_range()
-        pass
-
-    def calculate_daily_date_range():
-        pass
-    def calculate_repoint_date_range():
-        pass
-    def calculate_ancillary_date_range():
-        pass
-    def calculate_cadence_date_range():
-        pass
-    def calculate_spice_date_range():
-        # This includes deriving date for all kernels, spin,
-        # repoint, thruster and etc.
-        pass
-    def calculate_past_n_days_date_range(n: int):
-        pass
-    def calculate_future_n_days_date_range(n: int):
-        pass
-    def calculate_reprocessing_date_range(repointing: int):
-        pass
+def calculate_daily_date_range():
+    pass
+def calculate_repoint_date_range():
+    pass
+def calculate_ancillary_date_range():
+    pass
+def calculate_cadence_date_range():
+    pass
+def calculate_spice_date_range():
+    # This includes deriving date for all kernels, spin,
+    # repoint, thruster and etc.
+    pass
+def calculate_past_n_days_date_range(n: int):
+    pass
+def calculate_future_n_days_date_range(n: int):
+    pass
+def calculate_reprocessing_date_range(repointing: int):
+    pass
 

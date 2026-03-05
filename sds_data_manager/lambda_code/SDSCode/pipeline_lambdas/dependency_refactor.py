@@ -103,6 +103,21 @@ class DependencyResolver:
 
         return results
 
+class DependencyResolver():
+
+    def downstream_resolver(DependencyNode):
+
+        return DependencyNode.serialize()
+
+    def upstream_resolver(UpstreamDependencyNode):
+
+	    # look up upstream dependency based on input parameters
+        # and through db queries
+        return {
+                "status": 200, # if found otherwise other status code
+                "message": "", # if found otherwise message of which upstream are missing
+                "data": ["list of files"] # or empty list or partial list of files found
+        }
     def get_science_files(self):
         pass
 
