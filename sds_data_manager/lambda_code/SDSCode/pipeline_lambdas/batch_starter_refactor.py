@@ -77,34 +77,20 @@ def lambda_handler(event, context):
     # Get (source, data_type, product_name) to query for downstream
     # Get downstream nodes
     # For each downstream node
-    #   calculate date range based combination of event source type and
+    #   calculate date range list based combination of event source type and
     #   the current downstream's processing job type. Eg. 
-    #       1. if ancillary event and daily science file 
-    #           downstream job, then calculate list of (start_date, end_date)
-    #           for each daily date from the ancillary date range.
-    #       2. if reprocessing event and daily science downstream job, then calculate list
-    #           of (start_date, end_date) for each day in the reprocessing date
-    #           range.
-    #       3. if cadence event and cadence science downstream job, then calculate one
-    #          (start_date, end_date) for the whole cadence range.
-    #       4. if reprocess and cadence science downstream job, then calculate one
-    #           or multiple (start_date, end_date) for given start and end dates input.
-    #       5. If Hi DE event and L1B goodtimes downstream job, then calculate list of
-    #          (start_date, end_date) for last 7 nearest repoint files to the HI L1B DE
-    #          event's repoint id.
-    #          NOTE: Then, call IMAPJobHandler and use that list to query for dependencies and
-    #          submit jobs using for all goodtimes jobs that fall into those date ranges.
-    #          Dependency lambda will query for (-3p, 3p) when looking up dependencies.
-    #       6. If ENA or GLOWS science file event and pointing science downstream job,
-    #          then calculate list of (start_date, end_date) for the repoint
-    #          id of the input file.
-    #       5. if reprocessing event and pointing science downstream job, then calculate list
-    #           of (start_date, end_date) for each pointing in the reprocessing date
-    #           range.
+    #       - ancillary event + daily downstream job → list of (start_date, end_date) for each day
+    #       - reprocessing event + daily downstream job → list of (start_date, end_date) for each day in range
+    #       - cadence event + cadence downstream job → single (start_date, end_date) for cadence range
+    #       - reprocessing event + cadence downstream job → one or more (start_date, end_date) ranges
+    #       - science (HI DE) event + L1B goodtimes downstream job → list for 7 nearest repoint files
+    #       - science (ENA/GLOWS) event + pointing downstream job → list for date ranges derived using repoint id of input file
+    #       - reprocessing event + pointing downstream job → list of date ranges derived for each pointing in date range
     #       etc.
-    #   call IMAPJobHandler to do rest of the work of getting dependencies,
-    #   determining job version, creating dependency file and submitting job.
-    #   This is same for all jobs being submitted, the only difference is the
-    #   input parameters we pass to IMAPJobHandler which is based on the event
-    #   source type and downstream job type.
+    #
+    #   For each calculated date range, let IMAPJobHandler do these steps in batch_starter_refactor.py:
+    #       - Query dependencies
+    #       - Determine job version
+    #       - Create dependency file
+    #       - Submit job
     pass
