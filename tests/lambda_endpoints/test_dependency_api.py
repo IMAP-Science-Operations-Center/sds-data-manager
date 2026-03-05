@@ -946,6 +946,58 @@ def test_get_files_with_list_of_repoints_max_version(hi_l1b_de_repoint_files, se
     assert repoint2_file.version == "v001"
 
 
+def test_get_files_repoint_overrides_date_filtering(hi_l1b_de_repoint_files, session):
+    """Test that repoint filter takes precedence over date range.
+
+    This test verifies the fix for Hi Goodtimes jobs where:
+    - A trigger file arrives with repoint T and dates from T's pointing period
+    - Jobs are submitted for target repoints T-N to T+N
+    - Each target repoint's file has a DIFFERENT start_date
+      (from its own pointing period)
+    - The file should still be found based on repoint alone, ignoring the date
+      mismatch
+
+    Fixture files:
+        repoint 1: start_date=2024-01-01
+        repoint 2: start_date=2024-01-02
+        repoint 3: start_date=2024-01-03
+        repoint 4: start_date=2024-01-04
+        repoint 5: start_date=2024-01-05
+    """
+    dep = {"data_source": "hi", "data_type": "l1b", "descriptor": "45sensor-de"}
+
+    # Query with date range from repoint 1's dates (2024-01-01),
+    # but request repoint 3 (which has start_date=2024-01-03).
+    # Before fix: would return empty because date filter excludes repoint 3.
+    # After fix: should return repoint 3's file (repoint overrides date filtering).
+    science_files = get_files(
+        session,
+        dependency=dep,
+        start_date=datetime(2024, 1, 1),
+        end_date=datetime(2024, 1, 1),  # Date range only covers repoint 1
+        repoint=3,  # But we want repoint 3's file
+    )
+
+    # Should find the file for repoint 3 despite date mismatch
+    assert len(science_files) == 1
+    assert science_files[0].repointing == 3
+    assert science_files[0].start_date == datetime(2024, 1, 3)
+
+    # Also test with a list of repoints outside the date range
+    science_files = get_files(
+        session,
+        dependency=dep,
+        start_date=datetime(2024, 1, 1),
+        end_date=datetime(2024, 1, 2),  # Only covers repoints 1-2
+        repoint=[3, 4, 5],  # Request repoints 3-5 (outside date range)
+    )
+
+    # Should find all 3 files despite date mismatch
+    assert len(science_files) == 3
+    repoints_found = {f.repointing for f in science_files}
+    assert repoints_found == {3, 4, 5}
+
+
 @patch(
     "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency.get_dependencies",
     return_value=[

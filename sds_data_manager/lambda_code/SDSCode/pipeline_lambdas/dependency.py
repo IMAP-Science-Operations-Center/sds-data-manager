@@ -4,6 +4,7 @@ import base64
 import json
 import logging
 from collections import defaultdict
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from os.path import basename
@@ -776,7 +777,10 @@ def get_spin_files(
     return records
 
 
-def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
+def get_latest_repoint_file(
+    end_date: datetime,
+    session: Optional[db.Session] = None,
+) -> Optional[str]:
     """Get latest repoint file.
 
     Query for the latest repoint file for given end_date.
@@ -785,18 +789,27 @@ def get_latest_repoint_file(end_date: datetime) -> Optional[str]:
     ----------
     end_date : datetime
         End date to find dependent files with.
+    session : db.Session, optional
+        Database session. If not provided, a new session will be created.
 
     Returns
     -------
     str
         Latest repoint file name.
     """
-    with db.Session() as session:
-        latest_repoint_file = (
-            session.query(models.RepointFiles)
+
+    def _query_latest_repoint(sess):
+        return (
+            sess.query(models.RepointFiles)
             .order_by(desc(models.RepointFiles.file_path))
             .first()
         )
+
+    if session is not None:
+        latest_repoint_file = _query_latest_repoint(session)
+    else:
+        with db.Session() as new_session:
+            latest_repoint_file = _query_latest_repoint(new_session)
 
     if not latest_repoint_file:
         raise ValueError("No Repoint file found in the database.")
@@ -1052,6 +1065,7 @@ def get_upstream_dependency_inputs(
     calculate_crids: bool = False,
     get_spice: bool = True,
     require_coverage: bool = False,
+    existing_session: Optional[db.Session] = None,
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
@@ -1082,6 +1096,8 @@ def get_upstream_dependency_inputs(
     require_coverage : bool, optional
         If True gathered dependencies will be checked for complete coverage of
         start_date to end_date or repoint coverage.
+    existing_session : db.Session, optional
+        Database session. If not provided, a new session will be created.
 
     Returns
     -------
@@ -1089,7 +1105,11 @@ def get_upstream_dependency_inputs(
         Dependency files that can include Ancillary, SPICE, or Science inputs.
     """
     dependency_inputs = processing_input.ProcessingInputCollection()
-    with db.Session() as session:
+    # Use provided session or create a new one
+    session_context = (
+        nullcontext(existing_session) if existing_session else db.Session()
+    )
+    with session_context as session:
         if get_spice:
             # -----------------------------
             # Check for SPICE dependencies
@@ -1116,7 +1136,7 @@ def get_upstream_dependency_inputs(
                 dep["data_source"] == "repoint" for dep in dependencies
             )
             if has_repoint_dep:
-                latest_repoint_file = get_latest_repoint_file(end_date)
+                latest_repoint_file = get_latest_repoint_file(end_date, session)
                 if latest_repoint_file is None:
                     logger.info(f"No repoint file found for {start_date} to {end_date}")
                     return None
@@ -1434,6 +1454,7 @@ def _get_inprogress_dates(
 
 
 def _extend_hi_goodtimes_l1b_de_dependencies(
+    session: db.Session,
     dependency_inputs: ProcessingInputCollection,
     descriptor: str,
     repoint: int,
@@ -1449,6 +1470,8 @@ def _extend_hi_goodtimes_l1b_de_dependencies(
 
     Parameters
     ----------
+    session : db.Session
+        Database session.
     dependency_inputs : ProcessingInputCollection
         Existing dependencies from get_upstream_dependency_inputs.
     descriptor : str
@@ -1479,38 +1502,35 @@ def _extend_hi_goodtimes_l1b_de_dependencies(
     # it will already have been added by get_upstream_dependency_inputs().
     num_nearest = HI_GOODTIMES_NUM_NEAREST_REPOINTS - 1
 
-    with db.Session() as session:
-        # Get N nearest files, skipping if any have INPROGRESS jobs
-        l1b_de_records = get_n_nearest_files_by_repoint(
-            session,
-            l1b_de_dep,
-            start_date,
-            end_date,
-            num_nearest,
-            repoint,
-            skip_if_inprogress=True,
-        )
-        if l1b_de_records is None:
+    # Get N nearest files, skipping if any have INPROGRESS jobs
+    l1b_de_records = get_n_nearest_files_by_repoint(
+        session,
+        l1b_de_dep,
+        start_date,
+        end_date,
+        num_nearest,
+        repoint,
+        skip_if_inprogress=True,
+    )
+    if l1b_de_records is None:
+        logger.info(f"Hi Goodtimes: skipping repoint {repoint} due to INPROGRESS jobs")
+        return None
+
+    # Check if we have enough future repoints. If not, verify pointing T+N-1 exists.
+    nearest_repoints = np.array([r.repointing for r in l1b_de_records])
+    num_future = np.sum(nearest_repoints > repoint)
+    min_future_repoints = HI_GOODTIMES_NUM_NEAREST_REPOINTS // 2
+    if num_future < min_future_repoints:
+        required_future_pointing = repoint + num_nearest
+        if not _check_pointing_exists(session, required_future_pointing):
             logger.info(
-                f"Hi Goodtimes: skipping repoint {repoint} due to INPROGRESS jobs"
+                f"Hi Goodtimes: skipping repoint {repoint} - pointing "
+                f"{required_future_pointing} does not exist yet"
             )
             return None
 
-        # Check if we have enough future repoints. If not, verify pointing T+N-1 exists.
-        nearest_repoints = np.array([r.repointing for r in l1b_de_records])
-        num_future = np.sum(nearest_repoints > repoint)
-        min_future_repoints = HI_GOODTIMES_NUM_NEAREST_REPOINTS // 2
-        if num_future < min_future_repoints:
-            required_future_pointing = repoint + num_nearest
-            if not _check_pointing_exists(session, required_future_pointing):
-                logger.info(
-                    f"Hi Goodtimes: skipping repoint {repoint} - pointing "
-                    f"{required_future_pointing} does not exist yet"
-                )
-                return None
-
-        nearest_filenames = [basename(record.file_path) for record in l1b_de_records]
-        logger.info(f"Hi Goodtimes adding L1B DE files: {nearest_filenames}")
+    nearest_filenames = [basename(record.file_path) for record in l1b_de_records]
+    logger.info(f"Hi Goodtimes adding L1B DE files: {nearest_filenames}")
 
     # Find the L1B DE ScienceInput and extend it with nearest repoints' files
     l1b_de_input = dependency_inputs.get_processing_inputs(
@@ -1619,14 +1639,11 @@ def get_files(
     else:
         table = models.ScienceFiles
         type_specific_conditions.append(table.data_level == dependency["data_type"])
-        # Find files with start dates in the start_date and end_date range
-        type_specific_conditions.append(
-            and_(
-                models.ScienceFiles.start_date >= start_date,
-                models.ScienceFiles.start_date <= end_date,
-            )
-        )
-        # If repoint is provided, filter by repointing number(s)
+
+        # For repoint-dependent instruments with repoint specified,
+        # filter by repoint only - the repoint IS the primary identifier.
+        # Date filtering would incorrectly exclude files when the caller's
+        # date range doesn't match the target repoint's pointing dates.
         if (
             repoint is not None
             and dependency["data_source"] in REPOINT_DEPENDENT_INSTRUMENTS
@@ -1635,6 +1652,14 @@ def get_files(
                 type_specific_conditions.append(table.repointing.in_(repoint))
             else:
                 type_specific_conditions.append(table.repointing == repoint)
+        else:
+            # Find files with start dates in the start_date and end_date range
+            type_specific_conditions.append(
+                and_(
+                    models.ScienceFiles.start_date >= start_date,
+                    models.ScienceFiles.start_date <= end_date,
+                )
+            )
 
     filter_conditions = [
         table.instrument == dependency["data_source"],
@@ -1935,42 +1960,49 @@ def get_jobs(
     start_date = datetime.strptime(start_date, "%Y%m%d")
     end_date = datetime.strptime(end_date, "%Y%m%d")
 
-    # Get upstream dependencies (same for all jobs initially)
-    upstream_dependencies_output = get_upstream_dependency_inputs(
-        dependencies=dependencies,
-        start_date=start_date,
-        end_date=end_date,
-        repoint=repoint,
-        calculate_crids=calculate_crids,
-        get_spice=get_spice,
-        require_coverage=require_coverage,
-    )
-    if upstream_dependencies_output is None:
-        logger.info(
-            f"No dependencies found for {start_date=} - {end_date=}: {dependencies}"
-        )
-        return None
-
-    # Special handling for Hi Goodtimes - extend L1B DE to N nearest repoints
-    if (
-        data_type == "l1b"
-        and data_source == "hi"
-        and "goodtimes" in descriptor
-        and repoint is not None
-    ):
-        logger.info(f"Hi Goodtimes job detected for repoint {repoint}")
-        upstream_dependencies_output = _extend_hi_goodtimes_l1b_de_dependencies(
-            dependency_inputs=upstream_dependencies_output,
-            descriptor=descriptor,
-            repoint=repoint,
+    # Use a single session for all database operations
+    with db.Session() as session:
+        # Get upstream dependencies (same for all jobs initially)
+        upstream_dependencies_output = get_upstream_dependency_inputs(
+            dependencies=dependencies,
             start_date=start_date,
             end_date=end_date,
+            repoint=repoint,
+            calculate_crids=calculate_crids,
+            get_spice=get_spice,
+            require_coverage=require_coverage,
+            session=session,
         )
         if upstream_dependencies_output is None:
             logger.info(
-                f"Hi Goodtimes dependencies not ready for {start_date=} - {end_date=}"
+                f"No dependencies found for {start_date=} - {end_date=}: {dependencies}"
             )
             return None
 
-    logger.info(f"Dependencies found for {start_date=} - {end_date=}: {dependencies}")
-    return upstream_dependencies_output
+        # Special handling for Hi Goodtimes - extend L1B DE to N nearest repoints
+        if (
+            data_type == "l1b"
+            and data_source == "hi"
+            and "goodtimes" in descriptor
+            and repoint is not None
+        ):
+            logger.info(f"Hi Goodtimes job detected for repoint {repoint}")
+            upstream_dependencies_output = _extend_hi_goodtimes_l1b_de_dependencies(
+                session=session,
+                dependency_inputs=upstream_dependencies_output,
+                descriptor=descriptor,
+                repoint=repoint,
+                start_date=start_date,
+                end_date=end_date,
+            )
+            if upstream_dependencies_output is None:
+                logger.info(
+                    f"Hi Goodtimes dependencies not ready "
+                    f"for {start_date=} - {end_date=}"
+                )
+                return None
+
+        logger.info(
+            f"Dependencies found for {start_date=} - {end_date=}: {dependencies}"
+        )
+        return upstream_dependencies_output
