@@ -1070,7 +1070,8 @@ swapi, l3a, proton-sw, swe, l3, sci, HARD, DOWNSTREAM
 mag, l1d, norm-dsrf, swe, l3, sci, HARD, DOWNSTREAM
 imap_frames, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
-ephemeris_reconstructed, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swe, l3, sci, SOFT_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
