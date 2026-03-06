@@ -110,13 +110,27 @@ def lambda_handler(event, context):
     auth = request_ctx.get("authorizer", {})
     auth_ctx = auth.get("lambda", {})
     scope = auth_ctx.get("scope", "")
+    api_key = auth_ctx.get("apiKey", "unknown")
 
-    # Deny upload access for read-only scope
+    logger.info(f"Upload request received with scope: {scope}, api_key: {api_key}")
+
+    # Deny upload access for read scope
     if scope == "read":
+        logger.warning("Upload denied: read scope user attempted upload")
         return {
             "statusCode": 403,
             "body": json.dumps(
-                "Upload access denied. Your API key has read-only permissions."
+                "Upload access denied. Your API key has read permissions."
+            ),
+        }
+
+    # Check if scope is missing (might be caught by authorizer first)
+    if not scope:
+        logger.warning("Upload denied: no scope found in authorizer context")
+        return {
+            "statusCode": 403,
+            "body": json.dumps(
+                "Upload access denied. Your API key has read permissions."
             ),
         }
 

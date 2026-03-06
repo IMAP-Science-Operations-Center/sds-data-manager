@@ -24,6 +24,15 @@ from botocore.exceptions import ClientError
 
 TABLE_NAME = "imap-sdc-api-keys"
 
+# Validate scope
+VALID_SCOPES = {
+    "full",
+    "ialirt_db",
+    "ialirt_external_partner",
+    "ialirt_scientist",
+    "read",
+}
+
 
 def get_table():
     """Get the DynamoDB table resource."""
@@ -120,16 +129,8 @@ def add_key(owner, email, scope="full"):
         - 'read': Read-only access
         Default is 'full'
     """
-    # Validate scope
-    valid_scopes = {
-        "full",
-        "read",
-        "ialirt_db",
-        "ialirt_external_partner",
-        "ialirt_scientist",
-    }
-    if scope not in valid_scopes:
-        valid_scopes_str = ", ".join(sorted(valid_scopes))
+    if scope not in VALID_SCOPES:
+        valid_scopes_str = ", ".join(sorted(VALID_SCOPES))
         print(f"Error: Invalid scope '{scope}'. Valid scopes are: {valid_scopes_str}")
         return
 
@@ -172,16 +173,8 @@ def update_permission(owner: str, email: str, scope: str):
         - Other specialized scopes (ialirt_db, ialirt_external_partner,
           ialirt_scientist)
     """
-    # Validate scope
-    valid_scopes = {
-        "full",
-        "read",
-        "ialirt_db",
-        "ialirt_external_partner",
-        "ialirt_scientist",
-    }
-    if scope not in valid_scopes:
-        valid_scopes_str = ", ".join(sorted(valid_scopes))
+    if scope not in VALID_SCOPES:
+        valid_scopes_str = ", ".join(sorted(VALID_SCOPES))
         print(f"Error: Invalid scope '{scope}'. Valid scopes are: {valid_scopes_str}")
         return
 
