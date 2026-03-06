@@ -24,7 +24,7 @@ codice, l1a, hi-sectored, codice, l1b, hi-sectored, HARD, DOWNSTREAM
 # CoDICe L2 dependencies
 codice, l1a, lo-direct-events, codice, l2, lo-direct-events, HARD, DOWNSTREAM
 codice, ancillary, l2-lo-onboard-energy-table, codice, l2, lo-direct-events, HARD, DOWNSTREAM
-codice, ancillary, l2-lo-onbaord-energy-bins, codice, l2, lo-direct-events, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-onboard-energy-bins, codice, l2, lo-direct-events, HARD, DOWNSTREAM
 codice, ancillary, l2-lo-onboard-mpq-cal, codice, l2, lo-direct-events, HARD, DOWNSTREAM
 
 codice, l1a, hi-direct-events, codice, l2, hi-direct-events, HARD, DOWNSTREAM
