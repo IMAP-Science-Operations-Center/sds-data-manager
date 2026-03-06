@@ -1014,7 +1014,8 @@ swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, proton-sw, HARD_NO_
 swapi, ancillary, efficiency-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 swapi, ancillary, helium-inflow-vector, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, hydrogen-inflow-vector, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
-ephemeris_reconstructed, spice, historical, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, swapi, l3a, proton-sw, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swapi, l3a, proton-sw, SOFT_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1032,7 +1033,8 @@ swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, pui-he, HARD, DOWNS
 swapi, ancillary, efficiency-lut, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, helium-inflow-vector, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, hydrogen-inflow-vector, swapi, l3a, pui-he, HARD, DOWNSTREAM
-ephemeris_reconstructed, spice, historical, swapi, l3a, pui-he, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, swapi, l3a, pui-he, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, swapi, l3a, pui-he, SOFT_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, swapi, l3a, pui-he, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
