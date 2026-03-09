@@ -205,7 +205,7 @@ def main():
     """CLI entry point."""
     if len(sys.argv) < 2:
         print(
-            "Usage: python manage_api_keys.py [list|add|remove] "
+            "Usage: python manage_api_keys.py [list|add|remove|update_permission] "
             "<key> [owner] [email] [scope]"
         )
         sys.exit(1)
@@ -213,16 +213,23 @@ def main():
     if cmd == "list":
         list_keys()
     elif cmd == "add" and len(sys.argv) == 5:
-        add_key(sys.argv[2], sys.argv[3], sys.argv[4])
+        owner = sys.argv[2]
+        email = sys.argv[3]
+        scope = sys.argv[4]
+        add_key(owner, email, scope)
     elif cmd == "remove" and len(sys.argv) == 3:
         remove_key(sys.argv[2])
     elif cmd == "update_permission":
-        update_permission(sys.argv[2], sys.argv[3], sys.argv[4])
+        owner = sys.argv[2]
+        email = sys.argv[3]
+        scope = sys.argv[4]
+        update_permission(owner, email, scope)
     else:
-        print(
-            "Usage: python manage_api_keys.py [list|add|remove] "
-            "<key> [owner] [email] [scope]"
-        )
+        print("Usage:")
+        print("  python manage_api_keys.py list")
+        print("  python manage_api_keys.py add <owner> <email> [scope]")
+        print("  python manage_api_keys.py remove <key>")
+        print("  python manage_api_keys.py update_permission <owner> <email> <scope>")
         sys.exit(1)
 
 

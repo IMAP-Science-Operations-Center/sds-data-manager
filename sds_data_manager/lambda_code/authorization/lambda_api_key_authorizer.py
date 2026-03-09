@@ -66,6 +66,7 @@ def _is_authorized(scope, path, http_method):
 
 def lambda_handler(event, context):
     """Get the API Key from the request header and check if it is valid."""
+    logger.info(f"Received authorization request with event: {event}")
     api_key = event.get("headers", {}).get("x-api-key", None)
 
     if not api_key:
@@ -93,6 +94,17 @@ def lambda_handler(event, context):
     logger.info(f"Request details - Path: {path}, Method: {http_method}")
 
     is_authorized = _is_authorized(scope, path, http_method)
+    if not is_authorized:
+        logger.warning(
+            f"DENIED: API key with scope '{scope}' is not authorized to upload file"
+        )
+        return {
+            "isAuthorized": False,
+            "context": {
+                "apiKey": api_key,
+                "scope": scope,
+            },
+        }
 
     logger.info(f"Authorization successful for scope '{scope}'")
     return {
