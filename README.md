@@ -130,9 +130,6 @@ When creating or updating API keys, you can specify different scopes to control 
 
 - `full`: Full read and write access to all endpoints and data
 - `read`: Read-only access. Can query and download data but cannot upload or modify files
-- `ialirt_db`: Access to I-ALiRT database query endpoints
-- `ialirt_external_partner`: External partner access to I-ALiRT data
-- `ialirt_scientist`: Scientist access to I-ALiRT data
 
 ##### Usage Examples
 

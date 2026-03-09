@@ -27,9 +27,6 @@ TABLE_NAME = "imap-sdc-api-keys"
 # Validate scope
 VALID_SCOPES = {
     "full",
-    "ialirt_db",
-    "ialirt_external_partner",
-    "ialirt_scientist",
     "read",
 }
 

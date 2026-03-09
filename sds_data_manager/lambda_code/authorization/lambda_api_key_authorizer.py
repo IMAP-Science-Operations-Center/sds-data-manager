@@ -4,8 +4,6 @@ import logging
 
 import boto3
 
-from sds_data_manager.lambda_code.authorization.manage_api_keys import VALID_SCOPES
-
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -49,21 +47,12 @@ def _is_authorized(scope, path, http_method):
         logger.warning(f"DENIED: read scope user attempted upload on {path}")
         return False
 
-    # Check scope-based authorization for specific endpoints
-    if path.startswith("/ialirt-db-query") and scope not in VALID_SCOPES:
-        logger.warning(
-            f"DENIED: scope '{scope}' not authorized for /ialirt-db-query endpoint"
-        )
-        return False
-
     # Public download except for logs and packets.
     if (
         path.startswith("/ialirt-download/logs")
         or path.startswith("/ialirt-download/packets/")
     ) and scope not in (
         "full",
-        "ialirt_external_partner",
-        "ialirt_scientist",
         "read",
     ):
         logger.warning(
