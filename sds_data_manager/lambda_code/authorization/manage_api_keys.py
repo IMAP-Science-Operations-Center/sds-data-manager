@@ -167,8 +167,6 @@ def update_permission(owner: str, email: str, scope: str):
         The new scope/permission level. Valid values are:
         - 'full': Full read and write access
         - 'read': Read-only access
-        - Other specialized scopes (ialirt_db, ialirt_external_partner,
-          ialirt_scientist)
     """
     if scope not in VALID_SCOPES:
         valid_scopes_str = ", ".join(sorted(VALID_SCOPES))

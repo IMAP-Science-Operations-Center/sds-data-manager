@@ -1,8 +1,9 @@
 """Setup testing environment to test lambda handler code."""
 
+import json
 import os
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import boto3
 import pytest
@@ -16,6 +17,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
     Base,
     SPICEFiles,
 )
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
 
 BUCKET_NAME = "test-data-bucket"
 
@@ -115,6 +117,25 @@ def events_client():
     """Mock EventBridge client."""
     with mock_events():
         yield boto3.client("events", region_name="us-west-2")
+
+
+@pytest.fixture
+def mock_upload_request_success():
+    """Fixture to mock upload_api and requests.put for successful uploads."""
+    with (
+        patch.object(batch_starter, "upload_api") as mock_upload_api,
+        patch(
+            "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.requests"
+        ) as mock_requests,
+    ):
+        mock_upload_api.lambda_handler.return_value = {
+            "statusCode": 200,
+            "body": json.dumps(
+                "https://s3.amazonaws.com/bucket/presigned-url?signature=test"
+            ),
+        }
+        mock_requests.put.return_value = Mock(status_code=200)
+        yield mock_upload_api, mock_requests
 
 
 # Check if `psycopg` and PostgreSQL are both available and compatible.

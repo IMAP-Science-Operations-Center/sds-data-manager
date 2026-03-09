@@ -82,9 +82,9 @@ def test_api_key_management(dynamodb_table):
     assert result["isAuthorized"] is True  # "full" scope should allow access
 
     # Test that permissions were updated.
-    update_permission("Test User", "test@example.com", "ialirt_external_partner")
+    update_permission("Test User", "test@example.com", "read")
     metadata = dynamodb_table.get_item(Key={"api_key": test_key}).get("Item")
-    assert metadata["scope"] == "ialirt_external_partner"
+    assert metadata["scope"] == "read"
 
     # Test removing a key
     remove_key_from_db(test_key)

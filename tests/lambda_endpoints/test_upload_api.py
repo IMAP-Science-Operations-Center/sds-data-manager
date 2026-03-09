@@ -1,5 +1,6 @@
 """Tests for the Upload API."""
 
+import json
 import os
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
@@ -12,6 +13,9 @@ def test_spice_file_upload(s3_client, spice_file):
         "routeKey": "$default",
         "rawPath": "/",
         "pathParameters": {"proxy": spice_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 200
@@ -30,6 +34,9 @@ def test_spice_file_upload(s3_client, spice_file):
         "routeKey": "$default",
         "rawPath": "/",
         "pathParameters": {"proxy": spice_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 409
@@ -42,6 +49,9 @@ def test_science_file_upload(s3_client, science_file):
         "routeKey": "$default",
         "rawPath": "/",
         "pathParameters": {"proxy": science_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 200
@@ -57,6 +67,9 @@ def test_science_file_upload(s3_client, science_file):
         "routeKey": "$default",
         "rawPath": "/",
         "pathParameters": {"proxy": science_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 409
@@ -69,6 +82,9 @@ def test_ancillary_file_upload(s3_client, ancillary_file):
         "routeKey": "$default",
         "rawPath": "/",
         "pathParameters": {"proxy": ancillary_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 200
@@ -84,6 +100,9 @@ def test_ancillary_file_upload(s3_client, ancillary_file):
         "routeKey": "$default",
         "rawPath": "/",
         "pathParameters": {"proxy": ancillary_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 409
@@ -96,6 +115,9 @@ def test_cadence_file_upload(s3_client, dependency_file):
         "routeKey": "$default",
         "rawPath": "/",
         "pathParameters": {"proxy": dependency_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 200
@@ -111,6 +133,9 @@ def test_cadence_file_upload(s3_client, dependency_file):
         "routeKey": "$default",
         "rawPath": "/",
         "pathParameters": {"proxy": dependency_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
     }
     response = upload_api.lambda_handler(event=event, context=None)
     assert response["statusCode"] == 409
@@ -122,6 +147,9 @@ def test_input_parameters_missing():
         "version": "2.0",
         "routeKey": "$default",
         "rawPath": "/",
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
         # No pathParameters
     }
 
@@ -136,7 +164,44 @@ def test_incorrect_file_type(s3_client, invalid_file):
         "routeKey": "$default",
         "rawPath": "/",
         "pathParameters": {"proxy": invalid_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
     }
     response = upload_api.lambda_handler(event=event, context=None)
     # It should now go into staging area instead of throwing an error
     assert response["statusCode"] == 400
+
+
+def test_upload_denied_for_read_scope(s3_client, science_file):
+    """Test that upload is denied for API keys with read scope."""
+    event = {
+        "version": "2.0",
+        "routeKey": "$default",
+        "rawPath": "/",
+        "pathParameters": {"proxy": science_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "read", "apiKey": "test-key"}}
+        },
+    }
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 403
+    assert response["body"] == json.dumps(
+        "Upload access denied. Your API key has read permissions."
+    )
+
+    # case when no scope is provided in the authorizer context
+    event = {
+        "version": "2.0",
+        "routeKey": "$default",
+        "rawPath": "/",
+        "pathParameters": {"proxy": science_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "", "apiKey": "test-key"}}
+        },
+    }
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 403
+    assert response["body"] == json.dumps(
+        "Upload access denied. Please provide a valid API key with upload permissions."
+    )

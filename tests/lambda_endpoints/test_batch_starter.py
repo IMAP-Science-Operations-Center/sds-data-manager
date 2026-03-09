@@ -91,7 +91,7 @@ def _populate_processing_table(session):
     session.commit()
 
 
-def test_lambda_handler(session, s3_client):
+def test_lambda_handler(session, s3_client, mock_upload_request_success):
     """Tests that SWE L0 file ingestion kicks off job."""
     _static_spice_files(session)
     events = {
@@ -243,7 +243,9 @@ def test_different_queues(session, s3_client):
         )
 
 
-def test_lambda_handler_multiple_events(session, s3_client):
+def test_lambda_handler_multiple_events(
+    session, s3_client, mock_upload_request_success
+):
     """Tests ``lambda_handler`` function with multiple events."""
     _static_spice_files(session)
     # Other db records needed for this test
@@ -334,7 +336,7 @@ def test_lambda_handler_multiple_events(session, s3_client):
         assert mock_batch_client.submit_job.call_count == 2
 
 
-def test_lambda_handler_spice_event(session):
+def test_lambda_handler_spice_event(session, mock_upload_request_success):
     """Tests ``lambda_handler`` function when triggerd by an spice file."""
     _static_spice_files(session)
     # Test that the correct dependencies are gathered when a spice ingest
@@ -448,7 +450,7 @@ def test_lambda_handler_spice_event(session):
         )
 
 
-def test_lambda_handler_ancillary_event(session):
+def test_lambda_handler_ancillary_event(session, mock_upload_request_success):
     """Tests ``lambda_handler`` function when triggerd by an ancillary file."""
     _static_spice_files(session)
     # Other db records needed to proccess l1a to l1b when ancillary file is ingested
@@ -936,7 +938,7 @@ def test_bulk_reprocessing_all_swe(session, caplog):
     assert mock_submit.call_count == 0
 
 
-def test_lambda_handler_mag_l1c_case(session):
+def test_lambda_handler_mag_l1c_case(session, mock_upload_request_success):
     """Tests ``lambda_handler` for unique mac l1c case."""
     # Mock the situation where mag l1b files trigger batch starter back to back.
     # We should expect the second job mag l1c to be submitted with a version bump and
@@ -1085,7 +1087,9 @@ def test_lambda_handler_mag_l1c_case(session):
         )
 
 
-def test_lambda_handler_duplicate_mag_l1c_job(session, caplog):
+def test_lambda_handler_duplicate_mag_l1c_job(
+    session, caplog, mock_upload_request_success
+):
     """Tests ``lambda_handler` skips processing for a duplicate job."""
     # Mock the situation where mag l1b files trigger batch starter back to back but
     # with the same exact dependencies.
@@ -1188,7 +1192,9 @@ def test_lambda_handler_duplicate_mag_l1c_job(session, caplog):
 
 
 ### TEST CADENCE EVENT
-def test_def_cadence_map_event(setup_s3, session, tmp_path):
+def test_def_cadence_map_event(
+    setup_s3, session, tmp_path, mock_upload_request_success
+):
     """Test that a cadence event kicks off the right processing job."""
     _static_spice_files(session)
     # Add 10 months of ultra l1c "45sensor" pset files to the database
@@ -1306,7 +1312,7 @@ def test_def_cadence_map_event(setup_s3, session, tmp_path):
         )
 
 
-def test_idex_l2b(session, auth_event):
+def test_idex_l2b(session, auth_event, mock_upload_request_success):
     """Tests ``lambda_handler` for unique idex l2b case."""
     _static_spice_files(session)
     # Add 2 idex l1b evt files. Although the second file is out of the month range,
@@ -1501,7 +1507,9 @@ def test_cadence_to_datetime_range():
         )
 
 
-def test_upload_dependency_file(s3_client, tmp_path, dependency_file, caplog):
+def test_upload_dependency_file(
+    s3_client, tmp_path, dependency_file, caplog, mock_upload_request_success
+):
     """Test uploading a cadence json file to S3."""
     caplog.set_level("INFO")
     dependencies = ProcessingInputCollection(
@@ -1729,7 +1737,9 @@ def test_dependency_success_empty(session):
 
 @patch.object(imap_data_access, "download")
 @patch.object(batch_starter, "SQS_CLIENT")
-def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_path):
+def test_repoint_date_range(
+    sqs_mock, mock_download, session, s3_client, tmp_path, mock_upload_request_success
+):
     """Test that the repoint date range is correct."""
     filepath = "imap/hi/l0/2000/02/imap_hi_l0_raw_20000224-repoint00047_v001.pkts"
     current_path = os.path.dirname(os.path.abspath(__file__))

@@ -17,7 +17,9 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.scheduled_job import 
 @patch(
     "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.scheduled_job.read_scheduled_job_config"
 )
-def test_scheduled_processing_event(mock_read_scheduled_job_config, session):
+def test_scheduled_processing_event(
+    mock_read_scheduled_job_config, session, mock_upload_request_success
+):
     """Tests ``lambda_handler`` when invoked with a scheduled job event."""
     context = {"context": "sample_context"}
 
@@ -137,7 +139,9 @@ def test_scheduled_processing_event(mock_read_scheduled_job_config, session):
 @patch(
     "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.scheduled_job.read_scheduled_job_config"
 )
-def test_scheduled_job_passes_repointing(mock_read_job_config, session):
+def test_scheduled_job_passes_repointing(
+    mock_read_job_config, session, mock_upload_request_success
+):
     """Tests ``lambda_handler`` when invoked with a scheduled job event."""
     context = {"context": "sample_context"}
 
