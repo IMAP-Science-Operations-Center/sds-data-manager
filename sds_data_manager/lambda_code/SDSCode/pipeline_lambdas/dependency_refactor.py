@@ -8,14 +8,15 @@ Inputs:
     End_time: yyyymmddhhmmss
 
 Responsibilities:
-    Determine upstream dependencies
-    Determine downstream dependencies
+    Lookup upstream dependencies
+    Lookup downstream dependencies
     Find all relavant files for upstream dependencies
     Determining if it's a complete list.
         Scenarios causing imcompleteness:
             1. Missing files in the database.
             2. Due to event of anamoly. Eg. LOI or TCM or solar wind
             3. Due to repoint data delay or downlink delay.
+            4. If required dependencies missing or job IN PROGRESS.
 
 Functionality:
 Look for all dependencies for given inputs and return all the available
@@ -44,72 +45,14 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.abstractions import (
     UpstreamDependencyNode,
 )
 
-
-class DependencyResolver:
-    def __init__(self):
-        # DependencyConfig will need to handle reading in all the instrument specific files
-        self.config = DependencyConfig()
-
-    def resolve_downstream(self, parent_node: DependencyNode):
-        # look for all downstream dependency node
-        pass
-
-    def resolve_upstream(
-        self, query: UpstreamDependencyNode
-    ) -> dict:
-        """Returns all available upstream dependency files.
-        Does NOT enforce coverage or completeness.
-        """
-        # If any of the required parameter in the upstream dependency is missing, return error message with status
-        if not all([
-            query.source,
-            query.data_type,
-            query.product_name,
-            query.start_date,
-            query.end_date,
-        ]):
-            return {
-                "status": 400,
-                "message": "Missing required parameters in dependency node"
-            }
-
-        upstream_nodes = self.config.get_dependencies(
-            (query.source, query.data_type, query.product_name),
-        )
-
-        results: dict[DependencyNode, list[str]] = {}
-
-        with db.Session() as session:
-            for dep in upstream_nodes:
-                node = DependencyNode(
-                    dep["data_source"],
-                    dep["data_type"],
-                    dep["descriptor"],
-                    query.start_date,
-                    query.end_date,
-                )
-
-                if dep["data_type"] == "science":
-                    # this self.get_science_files() and other functions break down current
-                    # get_files() into more specific functions for each data type.
-                    records = self.get_science_files(query)
-                # so on with other cases.
-
-                # By this step if we would know if we have all dependencies.
-                # Based on this, add information to return object.
-                filenames = [record.file_path for record in records] if records else []
-
-                results[node] = filenames
-
-        return results
-
 class DependencyResolver():
+    dependency_config = DependencyConfig()
 
-    def downstream_resolver(DependencyNode):
+    def downstream_discovery(self, downstream_inputs: DependencyNode):
 
         return DependencyNode.serialize()
 
-    def upstream_resolver(UpstreamDependencyNode):
+    def upstream_discovery(self, upstream_inputs: UpstreamDependencyNode):
 
 	    # look up upstream dependency based on input parameters
         # and through db queries
@@ -136,4 +79,4 @@ class DependencyResolver():
 
 def handler(dependency_node: DependencyNode):
     resolver = DependencyResolver()
-    return resolver.resolve_upstream(dependency_node)
+    return resolver.upstream_discovery(dependency_node)

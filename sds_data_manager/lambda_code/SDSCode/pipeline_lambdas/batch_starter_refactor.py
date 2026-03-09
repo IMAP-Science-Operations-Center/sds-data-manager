@@ -21,17 +21,17 @@ class IMAPJobHandler:
 
     def get_dependencies(self, dependency_node: UpstreamDependencyNode):
         """Get the dependencies for the job using the DependencyResolver."""
-        response = DependencyResolver().resolve_upstream(dependency_node)
+        response = DependencyResolver().upstream_discovery(dependency_node)
         if response["status"] == 200:
             return response["data"]
         else:
             return None
 
     def _determine_job_version(self):
-        """Determining job version will be same for all event types.
+        """Determining job version will be same for all trigger event types.
 
         Types of job kicked off are science or spacecraft products.
-        All the event types are only used for how we determine the date
+        All the trigger event types are only used for how we determine the date
         range and dependencies. Once we have those, the rest of the steps are same.
         """
         current_job_to_kickoff = self.dependency_node
@@ -73,11 +73,11 @@ class IMAPJobHandler:
 
 # Batch Starter Lambda
 def lambda_handler(event, context):
-    # Determine what event source type
+    # Determine what trigger event type
     # Get (source, data_type, product_name) to query for downstream
     # Get downstream nodes
     # For each downstream node
-    #   calculate date range list based combination of event source type and
+    #   calculate date range list based combination of trigger event type and
     #   the current downstream's processing job type. Eg. 
     #       - ancillary event + daily downstream job → list of (start_date, end_date) for each day
     #       - reprocessing event + daily downstream job → list of (start_date, end_date) for each day in range

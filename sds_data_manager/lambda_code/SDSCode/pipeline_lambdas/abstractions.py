@@ -28,8 +28,8 @@ class UpstreamDependencyNode(DependencyNode):
     end_date: datetime
 
 
-class EventSourceType:
-    """Enum for different event types."""
+class TriggerEventType:
+    """Enum for different trigger event types."""
     SCIENCE_INGESTION = "science_ingestion"
     ANCILLARY_INGESTION = "ancillary_ingestion"
     SPICE_INGESTION = "spice_ingestion"
@@ -37,7 +37,7 @@ class EventSourceType:
     REPROCESSING = "reprocessing"
 
 
-class ProcesingJobType:
+class ProcessingJobType:
     """Enum for different type of processing jobs passed to batch job."""
     DAILY = "daily"
     POINTING = "pointing"
@@ -45,8 +45,8 @@ class ProcesingJobType:
     POINTING_ATTITUDE = "pointing_attitude"
 
 
-def calculate_date_range(event_source: EventSourceType, downstream_node: DependencyNode) -> list[list[datetime, datetime]]:
-    """Calculate the date range for the job based on the event type.
+def calculate_date_range(event_source: TriggerEventType, downstream_node: DependencyNode) -> list[list[datetime, datetime]]:
+    """Calculate the date range for the job based on the trigger event type.
 
     This function/class is triggered by different events.
     1. Event of a new science or ancillary file arrival from indexer lambda.
@@ -143,18 +143,18 @@ def calculate_date_range(event_source: EventSourceType, downstream_node: Depende
     #   - Create dependency file
     #   - Submit job
     
-    if event_source == EventSourceType.SCIENCE_INGESTION:
+    if event_source == TriggerEventType.SCIENCE_INGESTION:
         if downstream_node.data_type in ["ENA", "GLOWS"]:
             return calculate_repoint_date_range()
         else:
             return calculate_daily_date_range()
-    elif event_source == EventSourceType.ANCILLARY_INGESTION:
+    elif event_source == TriggerEventType.ANCILLARY_INGESTION:
         return calculate_ancillary_date_range()
-    elif event_source == EventSourceType.SPICE_INGESTION:
+    elif event_source == TriggerEventType.SPICE_INGESTION:
         return calculate_spice_date_range()
-    elif event_source == EventSourceType.CADENCE:
+    elif event_source == TriggerEventType.CADENCE:
         return calculate_cadence_date_range()
-    elif event_source == EventSourceType.REPROCESSING:
+    elif event_source == TriggerEventType.REPROCESSING:
         return calculate_reprocessing_date_range(downstream_node.repoint)
     pass
 
