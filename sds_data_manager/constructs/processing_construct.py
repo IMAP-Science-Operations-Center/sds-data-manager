@@ -73,7 +73,7 @@ class ProcessingConstruct(Construct):
             compute_environment_name="ProcessingComputeEnvironment-spot",
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-            spot=True,
+            spot=False,
         )
 
         # Create job queue
