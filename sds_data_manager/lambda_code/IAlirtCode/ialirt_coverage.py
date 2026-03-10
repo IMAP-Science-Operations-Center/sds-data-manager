@@ -18,6 +18,7 @@ from imap_data_access.processing_input import (
 from imap_processing.ialirt.generate_coverage import (
     format_coverage_summary,
     generate_coverage,
+    parse_uksa_schedule_xlsx,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ def get_dsn(download_dir: Path):
         return None, {}
 
     dsn_path = sorted(
-        dsn_files, key=lambda x: (x["version"], x["start_date"]), reverse=True
+        dsn_files, key=lambda x: (x["start_date"], x["version"]), reverse=True
     )[0]
     download_path = imap_data_access.download(dsn_path["file_path"])
     logger.info(f"Downloading to {download_path}.")
@@ -95,6 +96,40 @@ def get_dsn(download_dir: Path):
             dsn_dict.setdefault(station, []).append((start, end))
 
     return download_path, dsn_dict
+
+
+def get_uksa(download_dir: Path) -> list[tuple[str, str]]:
+    """Query and download UKSA contact schedule data.
+
+    Parameters
+    ----------
+    download_dir : Path
+        The directory where the file will be downloaded.
+
+    Returns
+    -------
+    list[tuple[str, str]]
+        List of (start, end) contact windows from the UKSA schedule.
+    """
+    imap_data_access.config["DATA_DIR"] = download_dir
+    uksa_files = imap_data_access.query(
+        table="ancillary",
+        instrument="ialirt",
+        descriptor="uksa-contact-schedule",
+        version="latest",
+    )
+
+    if not uksa_files:
+        logger.info("No UKSA files found for IALiRT. Returning empty list.")
+        return []
+
+    latest = sorted(
+        uksa_files, key=lambda x: (x["start_date"], x["version"]), reverse=True
+    )[0]
+    download_path = imap_data_access.download(latest["file_path"])
+    logger.info(f"Downloading UKSA schedule to {download_path}.")
+
+    return parse_uksa_schedule_xlsx(download_path)
 
 
 def get_latest_spice_kernels(kernels: list[str], url: str) -> ProcessingInputCollection:
@@ -245,7 +280,13 @@ def parse_outage_file(file_path: Path) -> dict[str, list[tuple[str, str]]]:
     return outages
 
 
-def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: dict):
+def generate_and_upload_30_days(
+    bucket: str,
+    region: str,
+    outages: dict,
+    dsn: dict,
+    uksa: list | None = None,
+):
     """Upload new coverage json files to S3.
 
     Parameters
@@ -258,6 +299,8 @@ def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: di
         Dictionary containing outages data.
     dsn : dict
         Dictionary containing DSN data.
+    uksa : list, optional
+        List of UKSA contact windows as (start, end) tuples.
 
     Notes
     -----
@@ -271,7 +314,7 @@ def generate_and_upload_30_days(bucket: str, region: str, outages: dict, dsn: di
         day = today + timedelta(days=i)
         start_time = day.strftime("%Y-%m-%dT00:00:00Z")
 
-        coverage_dict, outage_dict = generate_coverage(start_time, outages, dsn)
+        coverage_dict, outage_dict = generate_coverage(start_time, outages, dsn, uksa)
         table_output = format_coverage_summary(coverage_dict, outage_dict, start_time)
 
         output_key = f"coverage/imap_ialirt_coverage_{day.strftime('%Y%m%d')}.json"
@@ -296,6 +339,9 @@ def lambda_handler(event, context):
 
     # Get dsn_schedule
     _, dsn = get_dsn(Path("/tmp"))  # noqa: S108
+
+    # Get UKSA schedule
+    uksa = get_uksa(Path("/tmp"))  # noqa: S108
 
     # Download latest SPICE kernels
     dependency_inputs = get_latest_spice_kernels(
@@ -323,4 +369,4 @@ def lambda_handler(event, context):
             "No outage files found in bucket %s. Using empty outages dict.", bucket
         )
 
-    generate_and_upload_30_days(bucket, region, outages, dsn)
+    generate_and_upload_30_days(bucket, region, outages, dsn, uksa)
