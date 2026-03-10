@@ -70,7 +70,9 @@ def read_ingest_logs(s3_client: BaseClient, filenames: list, bucket: str):
         obj = s3_client.get_object(Bucket=bucket, Key=f"logs/{key}")
         body = obj["Body"]
         for line in body.iter_lines():
-            all_lines.append(line.decode("utf-8"))
+            decoded = line.decode("utf-8")
+            if decoded:
+                all_lines.append(decoded)
 
     return all_lines
 
