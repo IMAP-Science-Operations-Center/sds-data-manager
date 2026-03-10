@@ -263,19 +263,15 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     return combined
 
 
-def process_algorithms(
-    combined: xr.Dataset, algorithm_table, table_name, kernel_set_key
-):
+def process_algorithms(combined: xr.Dataset, data_table, kernel_set_key):
     """Process the algorithms and insert data, as needed.
 
     Parameters
     ----------
     combined : xr.Dataset
         L0 parsed data.
-    algorithm_table : dynamodb.Table
+    data_table : dynamodb.Table
         The DynamoDB table to insert or update the data.
-    table_name : str
-        Name of the DynamoDB table
     kernel_set_key : str, optional
         The kernel set identifier.
     """
@@ -362,9 +358,7 @@ def process_algorithms(
             logger.info("[%s] results populated for [%s]", len(result), instrument)
 
             if any(result) and all(result):
-                insert_formatted_data(
-                    result, algorithm_table, instrument, kernel_set_key
-                )
+                insert_formatted_data(result, data_table, instrument, kernel_set_key)
 
         except Exception as e:
             error_msg = f"Error processing {instrument}: {e!s}"
@@ -564,7 +558,7 @@ def lambda_handler(event, context):
         # Insert kernel metadata every minute.
         kernel_set_key = insert_kernels(dependency_inputs, data_table)
         # Process algorithms and insert new data.
-        process_algorithms(combined, data_table, data_table_name, kernel_set_key)
+        process_algorithms(combined, data_table, kernel_set_key)
 
         logger.info("Successfully wrote all new items to DynamoDB")
     else:
