@@ -15,7 +15,6 @@ import pandas as pd
 import requests
 import spiceypy
 import xarray as xr
-from boto3.dynamodb.conditions import Key
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
     SPICEInput,
@@ -36,10 +35,8 @@ from imap_processing.spice.geometry import (
 from imap_processing.spice.time import (
     et_to_met,
     et_to_ttj2000ns,
-    met_to_sclkticks,
     met_to_ttj2000ns,
     met_to_utc,
-    sct_to_et,
     str_to_et,
 )
 from imap_processing.utils import packet_file_to_datasets
@@ -266,7 +263,7 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
     return combined
 
 
-def process_algorithms(  # noqa: PLR0915
+def process_algorithms(
     combined: xr.Dataset, algorithm_table, table_name, kernel_set_key
 ):
     """Process the algorithms and insert data, as needed.
@@ -365,121 +362,15 @@ def process_algorithms(  # noqa: PLR0915
             logger.info("[%s] results populated for [%s]", len(result), instrument)
 
             if any(result) and all(result):
-                if table_name == "ialirt-algorithm-table":
-                    insert_data(result, algorithm_table, instrument, kernel_set_key)
-                else:
-                    insert_formatted_data(
-                        result, algorithm_table, instrument, kernel_set_key
-                    )
+                insert_formatted_data(
+                    result, algorithm_table, instrument, kernel_set_key
+                )
 
         except Exception as e:
             error_msg = f"Error processing {instrument}: {e!s}"
             logger.error(error_msg, exc_info=True)
             processing_errors.append((instrument, e))
             # Continue to next instrument
-
-
-def insert_data(
-    data: list[dict], algorithm_table, instrument: str, kernel_set_key: str
-):
-    """Insert or update database row, depending on content of item.
-
-    Parameters
-    ----------
-    data : list[dict]
-        Data product produced from processing respectively instrument.
-    algorithm_table : dynamodb.Table
-        The DynamoDB table to insert or update the data.
-    instrument : str
-        The prefix for the product name.
-    kernel_set_key : str
-        The kernel set identifier.
-    """
-    apid = data[0]["apid"]
-    mets = [item["met"] for item in data]
-    min_met = min(mets)
-    max_met = max(mets)
-    logger.info(f"Processing mets {min_met} to {max_met}.")
-    logger.info(f"Processing utc {met_to_utc(min_met)} to {met_to_utc(max_met)}.")
-
-    # Query existing items.
-    response = algorithm_table.query(
-        KeyConditionExpression=Key("apid").eq(apid)
-        & Key("met").between(min_met, max_met)
-    )
-
-    existing_items = {item["met"]: item for item in response.get("Items", [])}
-
-    # Insert or update as needed
-    for raw in data:
-        met = raw["met"]
-        key = {"apid": apid, "met": met}
-        existing = existing_items.get(met)
-        raw["last_modified"] = datetime.now(timezone.utc).isoformat()
-        raw["kernel_set_key"] = kernel_set_key
-
-        # Calculate the spacecraft position and velocity in GSM coordinates.
-        et = sct_to_et(met_to_sclkticks(met))
-        gsm_state = imap_state(
-            [et], ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
-        )
-        gse_state = imap_state(
-            [et], ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
-        )
-
-        raw["sc_position_GSM"] = [Decimal(str(val)) for val in gsm_state[0, :3]]
-        raw["sc_velocity_GSM"] = [Decimal(str(val)) for val in gsm_state[0, 3:]]
-        raw["sc_position_GSE"] = [Decimal(str(val)) for val in gse_state[0, :3]]
-        raw["sc_velocity_GSE"] = [Decimal(str(val)) for val in gse_state[0, 3:]]
-
-        if existing:
-            if any(key.startswith(instrument) for key in existing.keys()):
-                continue
-
-            update_expr = "SET " + ", ".join(
-                f"{field} = :{field}"
-                for field in raw
-                if field
-                not in {
-                    "apid",
-                    "met",
-                    "met_in_utc",
-                    "ttj2000ns",
-                    "sc_position_GSM",
-                    "sc_velocity_GSM",
-                    "sc_position_GSE",
-                    "sc_velocity_GSE",
-                    "instrument",
-                    "kernel_set_key",
-                }
-            )
-
-            expression_values = {
-                f":{field}": value
-                for field, value in raw.items()
-                if field
-                not in {
-                    "apid",
-                    "met",
-                    "met_in_utc",
-                    "ttj2000ns",
-                    "sc_position_GSM",
-                    "sc_velocity_GSM",
-                    "sc_position_GSE",
-                    "sc_velocity_GSE",
-                    "instrument",
-                    "kernel_set_key",
-                }
-            }
-
-            algorithm_table.update_item(
-                Key=key,
-                UpdateExpression=update_expr,
-                ExpressionAttributeValues=expression_values,
-            )
-        else:
-            algorithm_table.put_item(Item=raw)
-        logger.info(f"Inserted {instrument.upper()}.")
 
 
 def reformat_data(data):
@@ -581,14 +472,14 @@ def insert_formatted_data(
     data_table.put_item(Item=spacecraft)
 
 
-def insert_kernels(dependency_inputs, algorithm_table):
+def insert_kernels(dependency_inputs, data_table):
     """Insert SPICE kernel metadata into the database.
 
     Parameters
     ----------
     dependency_inputs : ProcessingInputCollection
         SPICE kernel dependencies.
-    algorithm_table : dynamodb.Table
+    data_table : dynamodb.Table
         The DynamoDB table to insert or update the data.
 
     Returns
@@ -599,32 +490,20 @@ def insert_kernels(dependency_inputs, algorithm_table):
     last_modified = datetime.now(timezone.utc)
     last_modified_for_spice = last_modified.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     met = et_to_met(str_to_et(last_modified_for_spice))
-    last_modified_utc = last_modified.isoformat()
     spice_input = dependency_inputs.processing_input[0]
     spice_kernels = dict(zip(spice_input.source, spice_input.filename_list))
 
     # Will return the same kernel_set_key for the same set of kernels.
     kernel_set_key = met_to_utc(met).split(".")[0]
 
-    if algorithm_table.table_name == "ialirt-algorithm-table":
-        kernel_item = {
-            "apid": 478,
-            "met": int(met),
-            "met_in_utc": met_to_utc(met).split(".")[0],
-            "ttj2000ns": int(met_to_ttj2000ns(met)),
-            "instrument": "spice",
-            "last_modified": last_modified_utc,
-            "spice_kernels": spice_kernels,
-        }
-    else:
-        kernel_item = {
-            "instrument": "spice",
-            "time_utc": met_to_utc(met).split(".")[0],
-            "spice_kernels": spice_kernels,
-            "ttj2000ns": int(met_to_ttj2000ns(met)),
-        }
+    kernel_item = {
+        "instrument": "spice",
+        "time_utc": met_to_utc(met).split(".")[0],
+        "spice_kernels": spice_kernels,
+        "ttj2000ns": int(met_to_ttj2000ns(met)),
+    }
 
-    algorithm_table.put_item(Item=kernel_item)
+    data_table.put_item(Item=kernel_item)
 
     logger.info(
         f"Stored SPICE kernel mapping in "
@@ -652,10 +531,8 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event))
 
-    algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
     data_table_name = os.environ.get("DATA_TABLE")
     dynamodb = boto3.resource("dynamodb")
-    algorithm_table = dynamodb.Table(algorithm_table_name)
     data_table = dynamodb.Table(data_table_name)
     url = os.environ.get("IMAP_DATA_ACCESS_URL")
 
@@ -685,13 +562,8 @@ def lambda_handler(event, context):
         combined = parse_packets(filenames, bucket, Path("/tmp"))  # noqa: S108
         logger.info("Packets parsed. Processing algorithms.")
         # Insert kernel metadata every minute.
-        kernel_set_key = insert_kernels(dependency_inputs, algorithm_table)
-        # Process algorithms and insert new data.
-        process_algorithms(
-            combined, algorithm_table, algorithm_table_name, kernel_set_key
-        )
-
         kernel_set_key = insert_kernels(dependency_inputs, data_table)
+        # Process algorithms and insert new data.
         process_algorithms(combined, data_table, data_table_name, kernel_set_key)
 
         logger.info("Successfully wrote all new items to DynamoDB")
