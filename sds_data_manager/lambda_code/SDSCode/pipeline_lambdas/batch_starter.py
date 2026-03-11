@@ -942,7 +942,13 @@ def upload_dependency_file(dependency_file_path: Path, serialized_dependencies: 
         )
     # call the upload API handler directly
     signed_url = upload_api.lambda_handler(
-        {"pathParameters": {"proxy": dependency_file_path.as_posix()}}, None
+        {
+            "pathParameters": {"proxy": dependency_file_path.as_posix()},
+            "requestContext": {
+                "authorizer": {"lambda": {"scope": "write", "apiKey": "batch-starter"}}
+            },
+        },
+        None,
     )
     if signed_url["statusCode"] == 409:
         logger.info(
