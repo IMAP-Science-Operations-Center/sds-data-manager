@@ -230,17 +230,21 @@ class SdsApiManager(Construct):
             code=code,
             handler="SDSCode.api_lambdas.spice_metakernel_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
-            timeout=cdk.Duration.minutes(5),  # Reduce after issue #719 is done
-            memory_size=1000,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=5000,
             allow_public_subnet=True,
             vpc=vpc,
             security_groups=[rds_security_group],
             environment={
                 "REGION": env.region,
                 "SECRET_NAME": db_secret_name,
+                "IMAP_DATA_DIR": "/tmp",  # noqa: S108
+                "S3_BUCKET": data_bucket.bucket_name,
             },
             layers=layers,
         )
+
+        spice_metakernel_api_lambda.add_to_role_policy(s3_read_policy)
 
         for prefix in auth_route_prefixes:
             api.add_route(

@@ -10,6 +10,7 @@ from typing import Optional
 
 import spiceypy
 
+from ..spice_utilities import furnish_best_spice_file
 from . import spice_query_api
 from .metakernel import MetaKernel
 
@@ -173,8 +174,19 @@ class KernelCollection:
 def _convert_input_times_to_j2000(start_date_str, end_date_str):
     """Convert input to seconds since J2000."""
     try:
+        # Convert to datetime objects
         start_date_datetime = datetime.datetime.strptime(start_date_str, "%Y%m%d")
         end_date_datetime = datetime.datetime.strptime(end_date_str, "%Y%m%d")
+        # Use SPICE to convert to J2000
+        try:
+            logger.info(
+                "Attempting to load leapseconds kernel needed for time conversion."
+            )
+            furnish_best_spice_file("leapseconds")
+        except FileNotFoundError:
+            logger.info(
+                "Attempt failed, continuing in hopes that it is already loaded."
+            )
         start_date = spiceypy.datetime2et(start_date_datetime)
         end_date = spiceypy.datetime2et(end_date_datetime)
     except (TypeError, ValueError):
