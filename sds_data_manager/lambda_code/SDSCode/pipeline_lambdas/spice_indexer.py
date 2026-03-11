@@ -4,10 +4,8 @@ import csv
 import json
 import logging
 import os
-import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import boto3
 import spiceypy
@@ -17,7 +15,7 @@ from sqlalchemy.dialects.postgresql import insert
 from ..database import database as db
 from ..database import models
 from ..pipeline_lambdas.indexer import get_file_ingestion_date
-from ..spice_utilities import furnish_best_spice_file
+from ..spice_utilities import download_from_s3, furnish_best_spice_file
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 logger = logging.getLogger(__name__)

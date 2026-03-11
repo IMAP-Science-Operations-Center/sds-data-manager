@@ -1,3 +1,5 @@
+"""Shared functions for SPICE-related lambdas."""
+
 import json
 import logging
 import os
@@ -65,6 +67,7 @@ def download_from_s3(s3_key: str, bucket_name: Optional[str] = None) -> Path:
             f"Failed to download {s3_key} from bucket {bucket_name}: {e}"
         ) from e
 
+
 def furnish_best_spice_file(kernel_type: str):
     """Furnish the best kernel for given type.
 
@@ -81,8 +84,8 @@ def furnish_best_spice_file(kernel_type: str):
     Raises
     ------
     FileNotFoundError
-        If S3_BUCKET or DATA_DIR are not set, no files are found in the database, 
-        or the file is not in the S3 bucket, FileNotFoundError will raise. 
+        If S3_BUCKET or DATA_DIR are not set, no files are found in the database,
+        or the file is not in the S3 bucket, FileNotFoundError will raise.
     """
     # Check if S3_BUCKET and DATA_DIR are set
     if "S3_BUCKET" not in os.environ or "DATA_DIR" not in os.environ:
