@@ -69,12 +69,11 @@ class ProcessingConstruct(Construct):
         # Create compute environment
         compute_environment = batch.FargateComputeEnvironment(
             self,
-            "ProcessingComputeEnvironment-spot",
-            compute_environment_name="ProcessingComputeEnvironment-spot",
+            "ProcessingComputeEnvironment-ondemand",
+            compute_environment_name="ProcessingComputeEnvironment-ondemand",
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             spot=False,
-            replace_compute_environment=True,
         )
 
         # Create job queue
