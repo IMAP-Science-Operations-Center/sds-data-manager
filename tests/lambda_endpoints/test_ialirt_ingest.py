@@ -20,7 +20,6 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     download_spice_file,
     get_ancillary,
     get_latest_spice_kernels,
-    insert_data,
     insert_formatted_data,
     insert_kernels,
     lambda_handler,
@@ -172,80 +171,6 @@ def test_query_filenames_crossing_hour_boundary(s3_client):
     result = query_filenames(bucket, region, now)
 
     assert sorted(result) == sorted([first_prefix_key, second_prefix_key])
-
-
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_state",
-    return_value=np.array([[1, 2, 3, 4, 5, 6]]),
-)
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.sct_to_et",
-    return_value=12345.0,
-)
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_utc",
-    side_effect=lambda met: "2025-05-21T00:00:00",
-)
-def test_insert_data(
-    mock_met_to_utc,
-    mock_sct_to_et,
-    mock_imap_state,
-    setup_dynamodb,
-):
-    """Test insert_data function."""
-    algorithm_table = setup_dynamodb["algorithm_table"]
-
-    # Existing item with 'hit' keys
-    algorithm_table.put_item(
-        Item={"apid": 478, "met": 123456, "hit_e_a_side_low_en": Decimal("0.0")}
-    )
-
-    # Existing item with no 'hit' keys
-    algorithm_table.put_item(Item={"apid": 478, "met": 123457, "other_data": 42})
-
-    # Create data for all three cases
-    test_data = [
-        # Will skip.
-        {
-            "apid": 478,
-            "met": 123456,
-            "met_in_utc": "2025-05-21T14:00:00",
-            "ttj2000ns": 759175836184000000,
-            "hit_e_a_side_med_en": Decimal("2.0"),
-        },
-        # Will update.
-        {
-            "apid": 478,
-            "met": 123457,
-            "met_in_utc": "2025-05-21T14:00:01",
-            "ttj2000ns": 759175836184000001,
-            "hit_e_a_side_low_en": Decimal("3.0"),
-        },
-        # Will insert.
-        {
-            "apid": 478,
-            "met": 123458,
-            "met_in_utc": "2025-05-21T14:00:02",
-            "ttj2000ns": 759175836184000002,
-            "hit_e_a_side_low_en": Decimal("5.0"),
-        },
-    ]
-
-    insert_data(test_data, algorithm_table, "hit", "test-kernel-set-id")
-
-    item1 = algorithm_table.get_item(Key={"apid": 478, "met": 123456})["Item"]
-    item2 = algorithm_table.get_item(Key={"apid": 478, "met": 123457})["Item"]
-    item3 = algorithm_table.get_item(Key={"apid": 478, "met": 123458})["Item"]
-
-    # Not updated
-    assert item1["hit_e_a_side_low_en"] == Decimal("0.0")
-
-    # Existing item with no 'hit' data should be updated
-    assert item2["hit_e_a_side_low_en"] == Decimal("3.0")
-    assert item2["other_data"] == 42  # Original data still there
-
-    # New item should be inserted
-    assert item3["hit_e_a_side_low_en"] == Decimal("5.0")
 
 
 def test_reformat_data():
@@ -624,10 +549,10 @@ def test_insert_kernels(
     mock_et_to_met,
     mock_met_to_utc,
     mock_met_to_ttj2000ns,
-    setup_dynamodb,
+    setup_data_table,
 ):
     "Test insert_kernels function."
-    algorithm_table = setup_dynamodb["algorithm_table"]
+    data_table = setup_data_table["data_table"]
 
     spice_input = MagicMock()
     spice_input.source = ["leapseconds", "planetary_constants", "imap_frames"]
@@ -636,16 +561,15 @@ def test_insert_kernels(
     dependency_inputs = MagicMock()
     dependency_inputs.processing_input = [spice_input]
 
-    insert_kernels(dependency_inputs, algorithm_table)
+    insert_kernels(dependency_inputs, data_table)
 
-    response = algorithm_table.query(
-        KeyConditionExpression="apid = :a", ExpressionAttributeValues={":a": 478}
+    response = data_table.query(
+        KeyConditionExpression=Key("instrument").eq("spice"),
     )
     items = response["Items"]
 
-    assert items[0]["apid"] == 478
-    assert items[0]["met"] == 498089058
-    assert items[0]["met_in_utc"] == "2025-10-13T22:04:15"
+    assert items[0]["instrument"] == "spice"
+    assert items[0]["time_utc"] == "2025-10-13T22:04:15"
     assert int(items[0]["ttj2000ns"]) == 813665124895612928
     assert items[0]["spice_kernels"] == {
         "leapseconds": "naif0012.tls",
