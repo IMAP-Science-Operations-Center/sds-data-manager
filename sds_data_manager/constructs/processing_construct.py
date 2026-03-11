@@ -74,6 +74,7 @@ class ProcessingConstruct(Construct):
             vpc=vpc,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             spot=False,
+            replace_compute_environment=True,
         )
 
         # Create job queue
