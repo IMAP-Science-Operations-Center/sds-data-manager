@@ -127,7 +127,11 @@ def lambda_handler(event, context):
     s3_client.put_object(
         Bucket=bucket,
         Key=output_key,
-        Body=json.dumps(formatted, indent=2).encode("utf-8"),
+        Body=json.dumps(formatted, indent=2)
+        .replace("-Infinity", "null")
+        .replace("Infinity", "null")
+        .replace("NaN", "null")
+        .encode("utf-8"),
         ContentType="application/json",
     )
 
