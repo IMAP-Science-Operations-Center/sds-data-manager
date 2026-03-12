@@ -178,7 +178,25 @@ ephemeris_predicted, spice, best, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTR
 ephemeris_90days, spice, best, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 spin, spin, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 
-# L1C 45sensor-pset
+# hi l1b 45sensor-goodtimes
+leapseconds, spice, historical, hi, l1b, 45sensor-goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hi, l1b, 45sensor-goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+repoint, repoint, historical, hi, l1b, 45sensor-goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1a, 45sensor-diagfee, hi, l1b, 45sensor-goodtimes, HARD, DOWNSTREAM
+hi, l1b, 45sensor-hk, hi, l1b, 45sensor-goodtimes, HARD, DOWNSTREAM
+hi, l1b, 45sensor-de, hi, l1b, 45sensor-goodtimes, HARD, DOWNSTREAM
+hi, ancillary, 45sensor-cal-prod, hi, l1b, 45sensor-goodtimes, HARD, DOWNSTREAM
+
+# hi l1b 90sensor-goodtimes
+leapseconds, spice, historical, hi, l1b, 90sensor-goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hi, l1b, 90sensor-goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+repoint, repoint, historical, hi, l1b, 90sensor-goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+hi, l1a, 90sensor-diagfee, hi, l1b, 90sensor-goodtimes, HARD, DOWNSTREAM
+hi, l1b, 90sensor-hk, hi, l1b, 90sensor-goodtimes, HARD, DOWNSTREAM
+hi, l1b, 90sensor-de, hi, l1b, 90sensor-goodtimes, HARD, DOWNSTREAM
+hi, ancillary, 90sensor-cal-prod, hi, l1b, 90sensor-goodtimes, HARD, DOWNSTREAM
+
+# hi l1c 45sensor-pset
 leapseconds, spice, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
@@ -193,8 +211,9 @@ repoint, repoint, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREA
 spin, spin, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 hi, ancillary, 45sensor-cal-prod, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
+hi, l1b, 45sensor-goodtimes, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 
-# L1C 90sensor-pset
+# hi l1c 90sensor-pset
 leapseconds, spice, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
@@ -209,6 +228,7 @@ repoint, repoint, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREA
 spin, spin, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 hi, ancillary, 90sensor-cal-prod, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
+hi, l1b, 90sensor-goodtimes, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 
 # Hi L2 Map Dependencies:
 # Roughly 50 different Hi maps will be made - with the following parameters...
