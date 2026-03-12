@@ -42,9 +42,9 @@ class MetaKernel:
         self.spice_gaps = {}
         self.allowed_spice_types = allowed_spice_types
         # Holds all files
-        for type in allowed_spice_types:
-            self.spice_files[type] = []
-            self.spice_gaps[type] = [(start_time, end_time)]
+        for spice_type in allowed_spice_types:
+            self.spice_files[spice_type] = []
+            self.spice_gaps[spice_type] = [(start_time, end_time)]
 
         self.template_header = f"""
 \\begintext
@@ -61,7 +61,7 @@ seconds since J2000.
     def load_spice(
         self,
         files: list[dict],
-        type: str,
+        spice_type: str,
         file_intervals_field: str,
         priority_field: str = "",
     ):
@@ -97,7 +97,7 @@ seconds since J2000.
                              be sorted.
             Other items are allowed in the dictionary and will be returned by the
             other Metakernel function calls.
-        type: str
+        spice_type: str
             Tells that metakernel the type of files you are loading.
         file_intervals_field: str
             The field that contains the file intervals to sort on.
@@ -106,31 +106,83 @@ seconds since J2000.
             determine the best file to cover the gap, in case of multiple matches.
 
         """
-        if type not in self.allowed_spice_types:
+        if spice_type not in self.allowed_spice_types:
             raise ValueError(
-                f"Invalid type '{type}'. Allowed: {self.allowed_spice_types}"
+                f"Invalid type '{spice_type}'. Allowed: {self.allowed_spice_types}"
             )
 
-        spice_files_to_load = []
+        # Sort the files in reverse order of priority
+        # The "best" file to check will be at index 0, the "second best" at index 1, etc
         if priority_field:
             files.sort(key=lambda x: x[priority_field], reverse=True)
 
+        # Check each file individually to determine if it should be added to the MK
         for f in files:
-            self._check_file(type, f, spice_files_to_load, file_intervals_field)
+            self._check_file(f, spice_type, file_intervals_field)
 
-        self.spice_files[type].extend(spice_files_to_load)
+    def _check_file(
+        self, file_to_check: dict, spice_type: str, file_intervals_field: str
+    ):
+        """Determine if a given file should be added to the MK.
 
-    def _check_file(self, type, file_to_check, files_to_load, file_intervals_field):
-        new_gaps = []
+        This function takes in metadata about a file and checks the current
+        self.spice_gaps for the given SPICE type. If any of the data intervals
+        in the file cover any portion of the self.spice_gaps, then we add it to
+        self.spice_files[type]. Then we reset the spice_gaps,
+        given the data in this new file
 
-        # Return if all the gaps are filled in.
-        if len(self.spice_gaps[type]) == 0:
+        Parameter
+        ---------
+
+        file_to_check: dict
+            A dictionary object describing the SPICE file to examine
+        spice_type: str
+            The type of SPICE file we are checking.
+            For example, ephemeris, leapseconds, attitude, etc.
+        file_intervals_field:
+            The field in "file_to_check" that contains the time intervals in
+            which the file has valid data.
+
+        Return:
+        ------
+        None
+            However, it can modify "self.spice_gaps[spice_type]"
+            and "self.spice_files[spice_type]".
+
+
+        Example:
+        -------
+        Suppose that
+            >> self.spice_gaps[spice_type] = [(100,200)]
+        This means we are missing data between 100 and 200.
+
+        Now suppose we call this function with
+            >> file_to_check = {file_intervals_field: [(1,140), (150,160)]}
+        You can see that this file covers part of the gap, as it contains
+        data between 100-140 and 150-160.
+
+        So this function will now append "file_to_check" to self.spice_files[spice_type]
+
+        Additionally, it should set the gaps to now be
+            >> self.spice_gaps[spice_type] = [(140,150), (160,200)]
+        Since these are the remaining time ranges that this file could not fill in.
+        """
+        # Simplest case - return if no gaps exist.
+        if len(self.spice_gaps[spice_type]) == 0:
             return
 
-        # Loop through all missing data
-        for gap in self.spice_gaps[type]:
-            # Preliminary filter.
-            # Does this file even have the *potential* for matching?
+        # This variable will contain all gaps that exist after checking this file
+        new_gaps = []
+
+        # Loop through all gaps.
+        for gap in self.spice_gaps[spice_type]:
+            if gap[1] - gap[0] < self.minimum_gap_time_to_ignore:
+                # Ignore this gap if it is small enough
+                continue
+
+            # Before checking any further, do a preliminary check.
+            # Does the maximum and minimum time in this file cover any
+            # portion of this gap? If not, don't check each interval individually.
             gap_list = MetaKernel._calculate_gaps(
                 [
                     [
@@ -141,33 +193,44 @@ seconds since J2000.
                 gap[0],
                 gap[1],
             )
+
             if (
                 len(gap_list) == 1
                 and gap_list[0][0] == gap[0]
                 and gap_list[0][1] == gap[1]
             ):
-                logger.debug("The file does not cover the gap and will not be loaded.")
-                new_gaps.extend([tuple(gap)])
+                # Since the gaps we calculate are the same as the initial gap, this file
+                # *definitely* has no data that can span any of the remaining gaps.
+                logger.debug(f"The file does not cover {gap} and will not be loaded.")
+                new_gaps.extend([gap])  # Add the gap in; this file cannot fill it.
                 continue
 
-            # Secondary filter: Do the gaps within this file create additional gaps?
+            # Now we calculate all gaps in the file
             subgap_list = MetaKernel._calculate_gaps(
                 file_to_check[file_intervals_field], gap[0], gap[1]
             )
+
+            # Now we loop through all gaps we calculated for this file
+            # that are in the range (gap[0], gap[1]). We call them "subgaps".
             if (
                 len(subgap_list) == 1
                 and subgap_list[0][0] <= gap[0]
                 and subgap_list[0][1] >= gap[1]
             ):
+                # The initial gap still fully exists. We did not fill it in.
                 logger.debug(f"File did not cover {gap}.")
+                new_gaps.extend([gap])  # Add the gap in; this file cannot fill it.
             else:
                 logger.debug(f"File filled in {gap}, adding to MK list.")
-                if file_to_check not in files_to_load:
-                    files_to_load.append(file_to_check)
 
-            new_gaps.extend(subgap_list)
+                # Check if we've already added it. No need to add it again.
+                if file_to_check not in self.spice_files[spice_type]:
+                    self.spice_files[spice_type].append(file_to_check)
+                # Add any of these "subgaps" to the new list of gaps.
+                new_gaps.extend(subgap_list)
 
-        self.spice_gaps[type] = list(set(new_gaps))
+        # Ensure no duplicated gaps exist by called "set".
+        self.spice_gaps[spice_type] = list(set(new_gaps))
 
     def return_spice_files_in_order(self, detailed: bool = True) -> list[dict]:
         """Return all SPICE files and their details.
@@ -187,9 +250,9 @@ seconds since J2000.
             A list form of all the loaded files in order
         """
         metakernel_files = []
-        for type in self.allowed_spice_types:
-            if self.spice_files[type]:
-                metakernel_files.extend(reversed(self.spice_files[type]))
+        for spice_type in self.allowed_spice_types:
+            if self.spice_files[spice_type]:
+                metakernel_files.extend(reversed(self.spice_files[spice_type]))
         if detailed:
             return metakernel_files
         else:
@@ -233,8 +296,8 @@ seconds since J2000.
 
     def contains_gaps(self):
         """Determine if there are gaps that remain to be filled."""
-        for type in self.spice_gaps:
-            if len(self.spice_gaps[type]) > 0:
+        for spice_type in self.spice_gaps:
+            if len(self.spice_gaps[spice_type]) > 0:
                 return True
         return False
 
