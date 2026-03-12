@@ -44,7 +44,7 @@ class MetaKernel:
         # Holds all files
         for type in allowed_spice_types:
             self.spice_files[type] = []
-            self.spice_gaps[type] = [[start_time, end_time]]
+            self.spice_gaps[type] = [(start_time, end_time)]
 
         self.template_header = f"""
 \\begintext
@@ -110,22 +110,64 @@ seconds since J2000.
             raise ValueError(
                 f"Invalid type '{type}'. Allowed: {self.allowed_spice_types}"
             )
-        spice_files_to_load = []
-        gaps_remaining = []
-        if priority_field:
-            files.sort(key=lambda x: x[priority_field], reverse=False)
 
-        for gap in self.spice_gaps[type]:
-            gaps_remaining.extend(
-                self._find_best_files(
-                    gap, files, spice_files_to_load, file_intervals_field
-                )
-            )
+        spice_files_to_load = []
         if priority_field:
-            spice_files_to_load.sort(key=lambda x: x[priority_field], reverse=True)
+            files.sort(key=lambda x: x[priority_field], reverse=True)
+
+        for f in files:
+            self._check_file(type, f, spice_files_to_load, file_intervals_field)
+
         self.spice_files[type].extend(spice_files_to_load)
-        self._remove_duplicates_from_sorted_file_list(type)
-        self.spice_gaps[type] = gaps_remaining
+
+    def _check_file(self, type, file_to_check, files_to_load, file_intervals_field):
+        new_gaps = []
+
+        # Return if all the gaps are filled in.
+        if len(self.spice_gaps[type]) == 0:
+            return
+
+        # Loop through all missing data
+        for gap in self.spice_gaps[type]:
+            # Preliminary filter.
+            # Does this file even have the *potential* for matching?
+            gap_list = MetaKernel._calculate_gaps(
+                [
+                    [
+                        file_to_check[file_intervals_field][0][0],
+                        file_to_check[file_intervals_field][-1][1],
+                    ]
+                ],
+                gap[0],
+                gap[1],
+            )
+            if (
+                len(gap_list) == 1
+                and gap_list[0][0] == gap[0]
+                and gap_list[0][1] == gap[1]
+            ):
+                logger.debug("The file does not cover the gap and will not be loaded.")
+                new_gaps.extend([tuple(gap)])
+                continue
+
+            # Secondary filter: Do the gaps within this file create additional gaps?
+            subgap_list = MetaKernel._calculate_gaps(
+                file_to_check[file_intervals_field], gap[0], gap[1]
+            )
+            if (
+                len(subgap_list) == 1
+                and subgap_list[0][0] <= gap[0]
+                and subgap_list[0][1] >= gap[1]
+            ):
+                logger.debug(f"File did not cover {gap}.")
+            else:
+                logger.debug(f"File filled in {gap}, adding to MK list.")
+                if file_to_check not in files_to_load:
+                    files_to_load.append(file_to_check)
+
+            new_gaps.extend(subgap_list)
+
+        self.spice_gaps[type] = list(set(new_gaps))
 
     def return_spice_files_in_order(self, detailed: bool = True) -> list[dict]:
         """Return all SPICE files and their details.
@@ -196,29 +238,6 @@ seconds since J2000.
                 return True
         return False
 
-    def _remove_duplicates_from_sorted_file_list(self, type: str):
-        """Remove any duplicate found in self.spice_files[type].
-
-           Loops through the list, and determines which files to
-           keep.
-
-        Parameter
-        ---------
-        type: str
-            The type of SPICE file to search search and remove duplicate
-            files from
-        """
-        old_file_list = self.spice_files[type].copy()
-        file_names_to_keep = []
-        new_file_list = []
-        for i in range(0, len(old_file_list)):
-            if old_file_list[i]["file_name"] in file_names_to_keep:
-                continue
-            file_names_to_keep.append(old_file_list[i]["file_name"])
-            new_file_list.append(old_file_list[i])
-
-        self.spice_files[type] = new_file_list
-
     def _limitstring(self, dirstring, limit, sym):
         """Limit a list of strings and add a '+' symbol."""
         results = []
@@ -231,114 +250,6 @@ seconds since J2000.
             )
             results.append(string_segment)
         return results
-
-    def _find_best_files(
-        self, trange, files_to_check, files_to_load, file_intervals_field
-    ):
-        """Find the best file to cover a given "trange".
-
-        This function is recursive, it finds the "best" file to load in, then
-        calls itself again if there are still gaps identified.
-
-        Parameter
-        ---------
-        trange: list
-            A 2-element list of start/end time
-        files_to_check: list
-            The files to examine to potentially cover the gap in trange,
-            in order of priority
-        files_to_load: list
-            The files that have been previously confirmed as necessary to cover
-            other gaps in the file
-        file_intervals_field: str
-            The key of the dictionary that represents the file intervals
-
-        Return:
-        ------
-        return_gap_list: list[list[int, int]]
-            A list of gaps that still remain uncovered
-        """
-        trange = [trange[0], trange[1]]
-        if (trange[1] - trange[0]) < self.minimum_gap_time_to_ignore:
-            # Don't even bother if the gap is too small
-            return []
-
-        logger.debug(f"Attempting to find file to cover {trange[0]!s} to {trange[1]!s}")
-
-        if len(files_to_check) == 0:
-            logger.debug("No files left to check!")
-            return [trange]
-
-        best_file = files_to_check[-1]
-        logger.debug(f"Checking file {best_file['file_name']} as a possible inclusion")
-
-        # Preliminary filter.
-        # Does this file even have the *potential* for matching?
-        gap_list = MetaKernel._calculate_gaps(
-            [
-                [
-                    best_file[file_intervals_field][0][0],
-                    best_file[file_intervals_field][-1][1],
-                ]
-            ],
-            trange[0],
-            trange[1],
-        )
-
-        if (
-            len(gap_list) == 1
-            and gap_list[0][0] == trange[0]
-            and gap_list[0][1] == trange[1]
-        ):
-            logger.debug(
-                "The file does not cover our time range and will not be loaded."
-            )
-            subgap_list = gap_list
-        else:
-            logger.debug(
-                "The file start/end time is included in the time range we are "
-                "looking for. Examining sub-gaps."
-            )
-
-            # Secondary filter: Do the gaps within this file create additional gaps?
-            subgap_list = MetaKernel._calculate_gaps(
-                best_file[file_intervals_field], trange[0], trange[1]
-            )
-            if (
-                len(subgap_list) == 1
-                and subgap_list[0][0] <= trange[0]
-                and subgap_list[0][1] >= trange[1]
-            ):
-                logger.debug(
-                    "File did not cover time range, not adding to metakernal list."
-                )
-                subgap_list = [trange]
-            elif not subgap_list:
-                logger.debug(
-                    "File was valid, and no further gaps were found. "
-                    "Adding to metakernal list."
-                )
-                files_to_load.append(best_file)
-            else:
-                logger.debug(
-                    "File was valid, though more gaps were found. "
-                    "Adding to metakernal list."
-                )
-                files_to_load.append(best_file)
-
-        # Now we've checked this file, remove from child function calls
-        new_file_list = files_to_check.copy()
-        new_file_list.pop()
-        return_gap_list = []
-        # If any more gaps remain, call this function again!
-
-        for g in subgap_list:
-            return_gap_list.extend(
-                self._find_best_files(
-                    g, new_file_list, files_to_load, file_intervals_field
-                )
-            )
-        return return_gap_list
 
     @staticmethod
     def _calculate_gaps(file_intervals, gap_start, gap_end):  # noqa: PLR0912
@@ -377,7 +288,7 @@ seconds since J2000.
 
         Return
         ------
-        remaining_gaps: list[list[Any, Any]]
+        remaining_gaps: list[tuple[Any, Any]]
             The gaps definitely not covered by this file.
         """
         sub_gaps = []
@@ -420,7 +331,7 @@ seconds since J2000.
                     start = gap_start
                 else:
                     start = search_window_start
-                sub_gaps.extend([[start, file_interval_start]])  # Gaps before interval
+                sub_gaps.extend([(start, file_interval_start)])  # Gaps before interval
             if file_interval_end < search_window_end:
                 # ....--- search window --------------->
                 # ....-- file coverage -------->
@@ -428,7 +339,7 @@ seconds since J2000.
                     end = gap_end
                 else:
                     end = search_window_end
-                sub_gaps.extend([[file_interval_end, end]])  # Gaps after interval
+                sub_gaps.extend([(file_interval_end, end)])  # Gaps after interval
 
         return sub_gaps
 
