@@ -177,15 +177,17 @@ def _convert_input_times_to_j2000(start_date_str, end_date_str):
         # Convert to datetime objects
         start_date_datetime = datetime.datetime.strptime(start_date_str, "%Y%m%d")
         end_date_datetime = datetime.datetime.strptime(end_date_str, "%Y%m%d")
+        
         # Use SPICE to convert to J2000
 
         # First, check if LSK is loaded in yet
         count = spiceypy.ktotal("TEXT")
         lsk_loaded = False
         for i in range(count):
-            filename, _, _, _, _, _ = spiceypy.kdata(i, "TEXT", 100, 100, 100, 100)
+            filename, _, _, _ = spiceypy.kdata(i, "TEXT", 100, 100, 100)
+
             if ".tls" in filename:
-                logger.info("Leapsecond kernel is furnished")
+                logger.info("Leapsecond kernel is furnished.")
                 lsk_loaded = True
                 break
 
