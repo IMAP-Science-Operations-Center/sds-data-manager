@@ -177,7 +177,7 @@ def _convert_input_times_to_j2000(start_date_str, end_date_str):
         # Convert to datetime objects
         start_date_datetime = datetime.datetime.strptime(start_date_str, "%Y%m%d")
         end_date_datetime = datetime.datetime.strptime(end_date_str, "%Y%m%d")
-        
+
         # Use SPICE to convert to J2000
 
         # First, check if LSK is loaded in yet
