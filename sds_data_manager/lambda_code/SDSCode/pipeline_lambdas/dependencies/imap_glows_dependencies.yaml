@@ -1,0 +1,113 @@
+# <---- GLOWS Dependencies ---->
+# For latest configuration guidelines and requirements, refer to the project documentation.
+
+(l1a, all):
+  - upstream_source: glows
+    upstream_data_type: l0
+    upstream_descriptor: raw
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+(l1b, de):
+  - upstream_source: glows
+    upstream_data_type: l1a
+    upstream_descriptor: de
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: conversion-table-for-anc-data
+
+(l1b, hist):
+  - upstream_source: glows
+    upstream_data_type: l1a
+    upstream_descriptor: hist
+  - upstream_source: spin
+    upstream_data_type: spin
+    upstream_descriptor: historical
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: exclusions-by-instr-team
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: map-of-excluded-regions
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: map-of-uv-sources
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: pipeline-settings
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: suspected-transients
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: conversion-table-for-anc-data
+  - upstream_source: imap_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: attitude_history
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_reconstructed
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_ephemeris
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+(l2, hist):
+  - upstream_source: glows
+    upstream_data_type: l1b
+    upstream_descriptor: hist
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: pipeline-settings
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+(l3a, hist):
+  - upstream_source: glows
+    upstream_data_type: l2
+    upstream_descriptor: hist
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: calibration-data
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: time-dep-bckgrd
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: map-of-extra-helio-bckgrd
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: pipeline-settings
