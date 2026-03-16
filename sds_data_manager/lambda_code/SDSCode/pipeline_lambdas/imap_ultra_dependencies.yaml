@@ -3,10 +3,62 @@
 #   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job)
 #   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job, (past_days, future_days))
 
-(l1a, all):
-  - (ultra, l0, raw, true, true)
+# ========= Common Dependency Groups =========
+# Common spice dependencies shared by multiple products
+_spice_basic: &spice_basic
   - (leapseconds, spice, historical, true, false)
   - (spacecraft_clock, spice, historical, true, false)
+
+_spice_l1b_de: &spice_l1b_de
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, true)
+  - (ephemeris_predicted, spice, historical, true, false)
+  - (ephemeris_90days, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, true)
+  - (imap_frames, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (pointing_attitude, spice, historical, true, true)
+  - (repoint, repoint, historical, true, true)
+  - (spin, spin, historical, true, true)
+
+_spice_l1c_common: &spice_l1c_common
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, true)
+  - (ephemeris_predicted, spice, historical, true, false)
+  - (ephemeris_90days, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, true)
+  - (imap_frames, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (pointing_attitude, spice, historical, true, true)
+  - (spin, spin, historical, true, false)
+
+_spice_l1c_spacecraft: &spice_l1c_spacecraft
+  - (repoint, repoint, historical, true, true)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (pointing_attitude, spice, historical, true, true)
+  - (science_frames, spice, historical, true, false)
+  - (spin, spin, historical, true, false)
+  - (attitude_history, spice, historical, true, true)
+  - (ephemeris_reconstructed, spice, historical, true, true)
+  - (ephemeris_predicted, spice, historical, true, false)
+
+_spice_l2: &spice_l2
+  - (science_frames, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (pointing_attitude, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+
+# ======== Product-Specific Dependencies ========
+(l1a, all):
+  - (ultra, l0, raw, true, true)
+  - *spice_basic
 
 (l1b, 45sensor-badtimes):
   - (ultra, l1b, 45sensor-extendedspin, true, true)
@@ -33,18 +85,7 @@
   - (ultra, ancillary, l1b-45sensor-sptpphcorr, true, true)
   - (ultra, ancillary, l1b-scattering-thresholds-per-energy, true, true)
   - (ultra, ancillary, l1b-90sensor-scattering-calibration-data, true, true)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, true)
-  - (ephemeris_predicted, spice, historical, true, false)
-  - (ephemeris_90days, spice, historical, true, false)
-  - (attitude_history, spice, historical, true, true)
-  - (imap_frames, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, true)
-  - (repoint, repoint, historical, true, true)
-  - (spin, spin, historical, true, true)
+  - *spice_l1b_de
 
 (l1b, 45sensor-extendedspin):
   - (ultra, l1a, 45sensor-params, true, true)
@@ -81,18 +122,7 @@
   - (ultra, ancillary, l1b-90sensor-sptpphcorr, true, true)
   - (ultra, ancillary, l1b-scattering-thresholds-per-energy, true, true)
   - (ultra, ancillary, l1b-90sensor-scattering-calibration-data, true, true)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, true)
-  - (ephemeris_predicted, spice, historical, true, false)
-  - (ephemeris_90days, spice, historical, true, false)
-  - (attitude_history, spice, historical, true, true)
-  - (imap_frames, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, true)
-  - (repoint, repoint, historical, true, true)
-  - (spin, spin, historical, true, true)
+  - *spice_l1b_de
 
 (l1b, 90sensor-extendedspin):
   - (ultra, l1a, 90sensor-params, true, true)
@@ -117,17 +147,7 @@
   - (ultra, ancillary, l1b-45sensor-imgparams-lookup, true, true)
   - (ultra, ancillary, l1c-45sensor-static-dead-times, true, true)
   - (repoint, repoint, historical, true, true)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, true)
-  - (ephemeris_predicted, spice, historical, true, false)
-  - (ephemeris_90days, spice, historical, true, false)
-  - (attitude_history, spice, historical, true, true)
-  - (imap_frames, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, true)
-  - (spin, spin, historical, true, false)
+  - *spice_l1c_common
 
 (l1c, 45sensor-spacecraftpset):
   - (ultra, l1b, 45sensor-de, true, true)
@@ -145,16 +165,7 @@
   - (ultra, ancillary, l1b-scattering-thresholds-per-energy, true, true)
   - (ultra, ancillary, l1b-45sensor-imgparams-lookup, true, true)
   - (ultra, ancillary, l1c-45sensor-static-dead-times, true, true)
-  - (repoint, repoint, historical, true, true)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, true)
-  - (science_frames, spice, historical, true, false)
-  - (spin, spin, historical, true, false)
-  - (attitude_history, spice, historical, true, true)
-  - (ephemeris_reconstructed, spice, historical, true, true)
-  - (ephemeris_predicted, spice, historical, true, false)
+  - *spice_l1c_spacecraft
 
 (l1c, 90sensor-heliopset):
   - (ultra, l1b, 90sensor-de, true, true)
@@ -169,17 +180,7 @@
   - (ultra, ancillary, l1b-90sensor-imgparams-lookup, true, true)
   - (ultra, ancillary, l1c-90sensor-static-dead-times, true, true)
   - (repoint, repoint, historical, true, true)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, true)
-  - (ephemeris_predicted, spice, historical, true, false)
-  - (ephemeris_90days, spice, historical, true, false)
-  - (attitude_history, spice, historical, true, true)
-  - (imap_frames, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, true)
-  - (spin, spin, historical, true, false)
+  - *spice_l1c_common
 
 (l1c, 90sensor-spacecraftpset):
   - (ultra, l1b, 90sensor-de, true, true)
@@ -197,304 +198,151 @@
   - (ultra, ancillary, l1b-scattering-thresholds-per-energy, true, true)
   - (ultra, ancillary, l1b-90sensor-imgparams-lookup, true, true)
   - (ultra, ancillary, l1c-90sensor-static-dead-times, true, true)
-  - (repoint, repoint, historical, true, true)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, true)
-  - (science_frames, spice, historical, true, false)
-  - (spin, spin, historical, true, false)
-  - (attitude_history, spice, historical, true, true)
-  - (ephemeris_reconstructed, spice, historical, true, true)
-  - (ephemeris_predicted, spice, historical, true, false)
+  - *spice_l1c_spacecraft
 
 (l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr):
   - (ultra, l1c, 45sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo):
   - (ultra, l1c, 45sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo):
   - (ultra, l1c, 45sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr):
   - (ultra, l1c, 45sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo):
   - (ultra, l1c, 45sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo):
   - (ultra, l1c, 45sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr):
   - (ultra, l1c, 45sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo):
   - (ultra, l1c, 45sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo):
   - (ultra, l1c, 45sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr):
   - (ultra, l1c, 45sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo):
   - (ultra, l1c, 45sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo):
   - (ultra, l1c, 45sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr):
   - (ultra, l1c, 45sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo):
   - (ultra, l1c, 45sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo):
   - (ultra, l1c, 45sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr):
   - (ultra, l1c, 45sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo):
   - (ultra, l1c, 45sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo):
   - (ultra, l1c, 45sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr):
   - (ultra, l1c, 90sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo):
   - (ultra, l1c, 90sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo):
   - (ultra, l1c, 90sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr):
   - (ultra, l1c, 90sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo):
   - (ultra, l1c, 90sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo):
   - (ultra, l1c, 90sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr):
   - (ultra, l1c, 90sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo):
   - (ultra, l1c, 90sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo):
   - (ultra, l1c, 90sensor-heliopset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr):
   - (ultra, l1c, 90sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo):
   - (ultra, l1c, 90sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo):
   - (ultra, l1c, 90sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr):
   - (ultra, l1c, 90sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo):
   - (ultra, l1c, 90sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo):
   - (ultra, l1c, 90sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr):
   - (ultra, l1c, 90sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo):
   - (ultra, l1c, 90sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo):
   - (ultra, l1c, 90sensor-spacecraftpset, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (leapseconds, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
+  - *spice_l2
 
 (l3, u45-spx-h-hf-sp-full-hae-2deg-1yr):
   - (ultra, l3, u45-ena-h-hf-sp-full-hae-2deg-1yr, true, true)

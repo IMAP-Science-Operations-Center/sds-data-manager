@@ -3,554 +3,338 @@
 #   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job)
 #   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job, (past_days, future_days))
 
-(l1a, all):
-  - (hi, l0, raw, true, true)
+# ========= Common Dependency Groups =========
+# Common spice dependencies shared by multiple products
+_spice_basic: &spice_basic
   - (leapseconds, spice, historical, true, false)
   - (spacecraft_clock, spice, historical, true, false)
+
+_spice_45sensor_l1b: &spice_45sensor_l1b
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, true)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (ephemeris_predicted, spice, best, true, false)
+  - (ephemeris_90days, spice, best, true, false)
+  - (spin, spin, historical, true, false)
+
+_spice_90sensor_l1b: &spice_90sensor_l1b
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, true)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (ephemeris_predicted, spice, best, true, false)
+  - (ephemeris_90days, spice, best, true, false)
+  - (spin, spin, historical, true, false)
+
+_spice_l1c: &spice_l1c
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, false)
+  - (pointing_attitude, spice, historical, true, true)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (ephemeris_predicted, spice, best, true, false)
+  - (ephemeris_90days, spice, best, true, false)
+  - (repoint, repoint, historical, true, false)
+  - (spin, spin, historical, true, false)
+
+_spice_l2: &spice_l2
+  - (leapseconds, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+
+# 45sensor specific L2 ancillary dependencies
+_ancillary_45sensor_l2: &ancillary_45sensor_l2
+  - (hi, ancillary, 45sensor-cal-prod, true, true)
+  - (hi, ancillary, 45sensor-esa-energies, true, true)
+  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+
+# 90sensor specific L2 ancillary dependencies
+_ancillary_90sensor_l2: &ancillary_90sensor_l2
+  - (hi, ancillary, 90sensor-cal-prod, true, true)
+  - (hi, ancillary, 90sensor-esa-energies, true, true)
+  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+
+
+# ======== Product-Specific Dependencies ========
+(l1a, all):
+  - (hi, l0, raw, true, true)
+  - *spice_basic
 
 (l1b, 45sensor-de):
   - (hi, l1a, 45sensor-de, true, true)
   - (hi, l1b, 45sensor-hk, true, true)
   - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (leapseconds, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (attitude_history, spice, historical, true, true)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (ephemeris_predicted, spice, best, true, false)
-  - (ephemeris_90days, spice, best, true, false)
-  - (spin, spin, historical, true, false)
+  - *spice_45sensor_l1b
 
 (l1b, 90sensor-de):
   - (hi, l1a, 90sensor-de, true, true)
   - (hi, l1b, 90sensor-hk, true, true)
   - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (leapseconds, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (attitude_history, spice, historical, true, true)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (ephemeris_predicted, spice, best, true, false)
-  - (ephemeris_90days, spice, best, true, false)
-  - (spin, spin, historical, true, false)
+  - *spice_90sensor_l1b
 
 (l1b, hk):
   - (hi, l0, raw, true, true)
-  - (leapseconds, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
+  - *spice_basic
 
 (l1c, 45sensor-pset):
-  - (leapseconds, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (attitude_history, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, true)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (ephemeris_predicted, spice, best, true, false)
-  - (ephemeris_90days, spice, best, true, false)
-  - (repoint, repoint, historical, true, false)
-  - (spin, spin, historical, true, false)
+  - *spice_l1c
   - (hi, ancillary, 45sensor-cal-prod, true, true)
   - (hi, l1b, 45sensor-de, true, true)
 
 (l1c, 90sensor-pset):
-  - (leapseconds, spice, historical, true, false)
-  - (spacecraft_clock, spice, historical, true, false)
-  - (imap_frames, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (attitude_history, spice, historical, true, false)
-  - (pointing_attitude, spice, historical, true, true)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (ephemeris_predicted, spice, best, true, false)
-  - (ephemeris_90days, spice, best, true, false)
-  - (repoint, repoint, historical, true, false)
-  - (spin, spin, historical, true, false)
+  - *spice_l1c
   - (hi, ancillary, 90sensor-cal-prod, true, true)
   - (hi, l1b, 90sensor-de, true, true)
 
+# L2 Products - 45sensor variants
 (l2, h45-ena-h-hf-nsp-anti-hae-4deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-anti-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-anti-hae-6deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-anti-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-full-hae-4deg-3mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-full-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-full-hae-6deg-3mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-full-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-ram-hae-4deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-ram-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-ram-hae-6deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-hf-nsp-ram-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-anti-hae-4deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-anti-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-anti-hae-6deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-anti-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-full-hae-4deg-3mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-full-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-full-hae-6deg-3mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-full-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-ram-hae-4deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-ram-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-ram-hae-6deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
 (l2, h45-ena-h-sf-nsp-ram-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 45sensor-cal-prod, true, true)
-  - (hi, ancillary, 45sensor-esa-energies, true, true)
-  - (hi, ancillary, 45sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_45sensor_l2
   - (hi, l1c, 45sensor-pset, true, false)
 
+# L2 Products - 90sensor variants
 (l2, h90-ena-h-hf-nsp-anti-hae-4deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-anti-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-anti-hae-6deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-anti-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-full-hae-4deg-3mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-full-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-full-hae-6deg-3mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-full-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-ram-hae-4deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-ram-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-ram-hae-6deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-hf-nsp-ram-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-anti-hae-4deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-anti-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-anti-hae-6deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-anti-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-full-hae-4deg-3mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-full-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-full-hae-6deg-3mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-full-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-ram-hae-4deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-ram-hae-4deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-ram-hae-6deg-1yr):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l2, h90-ena-h-sf-nsp-ram-hae-6deg-6mo):
-  - (leapseconds, spice, historical, true, false)
-  - (science_frames, spice, historical, true, false)
-  - (planetary_ephemeris, spice, historical, true, false)
-  - (ephemeris_reconstructed, spice, historical, true, false)
-  - (hi, ancillary, 90sensor-cal-prod, true, true)
-  - (hi, ancillary, 90sensor-esa-energies, true, true)
-  - (hi, ancillary, 90sensor-esa-eta-fit-factors, true, true)
+  - *spice_l2
+  - *ancillary_90sensor_l2
   - (hi, l1c, 90sensor-pset, true, false)
 
 (l3, h45-spx-h-hf-sp-anti-hae-4deg-1yr):
@@ -594,4 +378,3 @@
 
 (l3, hic-spx-h-hf-sp-full-hae-6deg-1yr):
   - (hi, l3, hic-ena-h-hf-sp-full-hae-6deg-1yr, true, true)
-
