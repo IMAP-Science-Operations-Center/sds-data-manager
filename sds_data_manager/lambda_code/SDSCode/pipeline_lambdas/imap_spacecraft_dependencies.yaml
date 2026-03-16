@@ -1,0 +1,18 @@
+# <---- SPACECRAFT Dependencies ---->
+# (downstream_data_type, downstream_descriptor):
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job)
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job, (past_days, future_days))
+
+(l1a, pointing-attitude):
+  - (repoint, repoint, historical, true, true)
+  - (attitude_history, spice, historical, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+
+(l1a, quaternions):
+  - (spacecraft, l0, raw, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+

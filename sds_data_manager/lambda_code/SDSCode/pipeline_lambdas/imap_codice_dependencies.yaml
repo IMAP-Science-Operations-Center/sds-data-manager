@@ -1,0 +1,149 @@
+# <---- CODICE Dependencies ---->
+# (downstream_data_type, downstream_descriptor):
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job)
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job, (past_days, future_days))
+
+(l1a, all):
+  - (codice, l0, raw, true, true)
+  - (codice, ancillary, l1a-sci-lut, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l1b, hi-counters-aggregated):
+  - (codice, l1a, hi-counters-aggregated, true, true)
+
+(l1b, hi-counters-singles):
+  - (codice, l1a, hi-counters-singles, true, true)
+
+(l1b, hi-omni):
+  - (codice, l1a, hi-omni, true, true)
+
+(l1b, hi-priority):
+  - (codice, l1a, hi-priority, true, true)
+
+(l1b, hi-sectored):
+  - (codice, l1a, hi-sectored, true, true)
+
+(l1b, lo-counters-aggregated):
+  - (codice, l1a, lo-counters-aggregated, true, true)
+
+(l1b, lo-counters-singles):
+  - (codice, l1a, lo-counters-singles, true, true)
+
+(l1b, lo-nsw-angular):
+  - (codice, l1a, lo-nsw-angular, true, true)
+
+(l1b, lo-nsw-priority):
+  - (codice, l1a, lo-nsw-priority, true, true)
+
+(l1b, lo-nsw-species):
+  - (codice, l1a, lo-nsw-species, true, true)
+
+(l1b, lo-sw-angular):
+  - (codice, l1a, lo-sw-angular, true, true)
+
+(l1b, lo-sw-priority):
+  - (codice, l1a, lo-sw-priority, true, true)
+
+(l1b, lo-sw-species):
+  - (codice, l1a, lo-sw-species, true, true)
+
+(l2, hi-direct-events):
+  - (codice, l1a, hi-direct-events, true, true)
+  - (codice, ancillary, l2-hi-energy-table, true, true)
+  - (codice, ancillary, l2-hi-tof-table, true, true)
+
+(l2, hi-omni):
+  - (codice, l1b, hi-omni, true, true)
+  - (codice, ancillary, l2-hi-omni-efficiency, true, true)
+
+(l2, hi-sectored):
+  - (codice, l1b, hi-sectored, true, true)
+  - (codice, ancillary, l2-hi-sectored-efficiency, true, true)
+
+(l2, lo-direct-events):
+  - (codice, l1a, lo-direct-events, true, true)
+  - (codice, ancillary, l2-lo-onboard-energy-table, true, true)
+  - (codice, ancillary, l2-lo-onboard-energy-bins, true, true)
+  - (codice, ancillary, l2-lo-onboard-mpq-cal, true, true)
+
+(l2, lo-nsw-angular):
+  - (codice, l1b, lo-nsw-angular, true, true)
+  - (codice, ancillary, l2-lo-gfactor, true, true)
+  - (codice, ancillary, l2-lo-efficiency, true, true)
+
+(l2, lo-nsw-species):
+  - (codice, l1b, lo-nsw-species, true, true)
+  - (codice, ancillary, l2-lo-gfactor, true, true)
+  - (codice, ancillary, l2-lo-efficiency, true, true)
+
+(l2, lo-sw-angular):
+  - (codice, l1b, lo-sw-angular, true, true)
+  - (codice, ancillary, l2-lo-gfactor, true, true)
+  - (codice, ancillary, l2-lo-efficiency, true, true)
+
+(l2, lo-sw-species):
+  - (codice, l1b, lo-sw-species, true, true)
+  - (codice, ancillary, l2-lo-gfactor, true, true)
+  - (codice, ancillary, l2-lo-efficiency, true, true)
+
+(l3a, hi-direct-events):
+  - (codice, l2, hi-direct-events, true, true)
+
+(l3a, lo-direct-events):
+  - (codice, l1a, lo-sw-priority, true, true)
+  - (codice, l1a, lo-nsw-priority, true, true)
+  - (codice, l2, lo-direct-events, true, true)
+  - (codice, ancillary, lo-energy-per-charge, true, true)
+  - (codice, ancillary, mass-coefficient-lookup, true, true)
+
+(l3a, lo-heplus-3d-distribution):
+  - (codice, l3a, lo-direct-events, true, true)
+  - (codice, l1a, lo-sw-priority, true, false)
+  - (codice, l1a, lo-nsw-priority, true, false)
+  - (codice, ancillary, lo-mass-species-bin-lookup, true, true)
+  - (codice, ancillary, l2-lo-gfactor, true, true)
+  - (codice, ancillary, lo-energy-per-charge, true, true)
+  - (codice, ancillary, l2-lo-efficiency, true, true)
+
+(l3a, lo-heplus2-3d-distribution):
+  - (codice, l3a, lo-direct-events, true, true)
+  - (codice, l1a, lo-sw-priority, true, false)
+  - (codice, l1a, lo-nsw-priority, true, false)
+  - (codice, ancillary, lo-mass-species-bin-lookup, true, true)
+  - (codice, ancillary, l2-lo-gfactor, true, true)
+  - (codice, ancillary, lo-energy-per-charge, true, true)
+  - (codice, ancillary, l2-lo-efficiency, true, true)
+
+(l3a, lo-hplus-3d-distribution):
+  - (codice, l3a, lo-direct-events, true, true)
+  - (codice, l1a, lo-sw-priority, true, false)
+  - (codice, l1a, lo-nsw-priority, true, false)
+  - (codice, ancillary, lo-mass-species-bin-lookup, true, true)
+  - (codice, ancillary, l2-lo-gfactor, true, true)
+  - (codice, ancillary, lo-energy-per-charge, true, true)
+  - (codice, ancillary, l2-lo-efficiency, true, true)
+
+(l3a, lo-oplus6-3d-distribution):
+  - (codice, l3a, lo-direct-events, true, true)
+  - (codice, l1a, lo-sw-priority, true, false)
+  - (codice, l1a, lo-nsw-priority, true, false)
+  - (codice, ancillary, lo-mass-species-bin-lookup, true, true)
+  - (codice, ancillary, l2-lo-gfactor, true, true)
+  - (codice, ancillary, lo-energy-per-charge, true, true)
+  - (codice, ancillary, l2-lo-efficiency, true, true)
+
+(l3a, lo-partial-densities):
+  - (codice, l2, lo-sw-species, true, true)
+  - (codice, ancillary, mass-per-charge, true, true)
+
+(l3a, lo-sw-charge-state-distributions):
+  - (codice, l3a, lo-partial-densities, true, true)
+
+(l3a, lo-sw-ratios):
+  - (codice, l3a, lo-partial-densities, true, true)
+
+(l3b, hi-pitch-angle):
+  - (mag, l1d, norm-dsrf, true, true)
+  - (codice, l2, hi-sectored, true, true)
+

@@ -1,0 +1,67 @@
+# <---- HIT Dependencies ---->
+# (downstream_data_type, downstream_descriptor):
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job)
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job, (past_days, future_days))
+
+(l1a, all):
+  - (hit, l0, raw, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l1b, hk):
+  - (hit, l0, raw, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l1b, sectored-rates):
+  - (hit, l1a, counts-sectored, true, true)
+
+(l1b, standard-rates):
+  - (hit, l1a, counts-standard, true, true)
+
+(l1b, summed-rates):
+  - (hit, l1a, counts-standard, true, true)
+
+(l2, macropixel-intensity):
+  - (hit, l1b, sectored-rates, true, true)
+  - (hit, ancillary, l1b-to-l2-macropixel-dt0-factors, true, true)
+  - (hit, ancillary, l1b-to-l2-macropixel-dt1-factors, true, true)
+  - (hit, ancillary, l1b-to-l2-macropixel-dt2-factors, true, true)
+  - (hit, ancillary, l1b-to-l2-macropixel-dt3-factors, true, true)
+
+(l2, standard-intensity):
+  - (hit, l1b, standard-rates, true, true)
+  - (hit, ancillary, l1b-to-l2-standard-dt0-factors, true, true)
+  - (hit, ancillary, l1b-to-l2-standard-dt1-factors, true, true)
+  - (hit, ancillary, l1b-to-l2-standard-dt2-factors, true, true)
+  - (hit, ancillary, l1b-to-l2-standard-dt3-factors, true, true)
+
+(l2, summed-intensity):
+  - (hit, l1b, summed-rates, true, true)
+  - (hit, ancillary, l1b-to-l2-summed-dt0-factors, true, true)
+  - (hit, ancillary, l1b-to-l2-summed-dt1-factors, true, true)
+  - (hit, ancillary, l1b-to-l2-summed-dt2-factors, true, true)
+  - (hit, ancillary, l1b-to-l2-summed-dt3-factors, true, true)
+
+(l3, direct-events):
+  - (hit, l1a, direct-events, true, true)
+  - (hit, ancillary, range-2A-cosine-lookup, true, true)
+  - (hit, ancillary, range-3A-cosine-lookup, true, true)
+  - (hit, ancillary, range-4A-cosine-lookup, true, true)
+  - (hit, ancillary, range-2B-cosine-lookup, true, true)
+  - (hit, ancillary, range-3B-cosine-lookup, true, true)
+  - (hit, ancillary, range-4B-cosine-lookup, true, true)
+  - (hit, ancillary, lo-gain-lookup, true, true)
+  - (hit, ancillary, hi-gain-lookup, true, true)
+  - (hit, ancillary, range-2A-charge-fit-lookup, true, true)
+  - (hit, ancillary, range-3A-charge-fit-lookup, true, true)
+  - (hit, ancillary, range-4A-charge-fit-lookup, true, true)
+  - (hit, ancillary, range-2B-charge-fit-lookup, true, true)
+  - (hit, ancillary, range-3B-charge-fit-lookup, true, true)
+  - (hit, ancillary, range-4B-charge-fit-lookup, true, true)
+  - (hit, ancillary, hit-event-type-lookup, true, true)
+
+(l3, macropixel):
+  - (hit, l2, macropixel-intensity, true, true)
+  - (mag, l1d, norm-dsrf, true, true)
+

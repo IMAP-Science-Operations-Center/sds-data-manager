@@ -1,0 +1,187 @@
+# <---- LO Dependencies ---->
+# (downstream_data_type, downstream_descriptor):
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job)
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job, (past_days, future_days))
+
+(l1a, all):
+  - (lo, l0, raw, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l1b, all-rates):
+  - (lo, l1a, histogram, true, true)
+  - (lo, l1a, spin, true, true)
+  - (spin, spin, historical, true, true)
+  - (repoint, repoint, historical, true, true)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (lo, ancillary, sweep-table, true, true)
+  - (lo, ancillary, esa-mode-lut, true, true)
+
+(l1b, badtimes):
+  - (lo, l1b, nhk, true, true)
+  - (spin, spin, historical, true, true)
+  - (repoint, repoint, historical, true, true)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+
+(l1b, de):
+  - (lo, l1a, de, true, true)
+  - (lo, l1a, spin, true, true)
+  - (lo, l1b, nhk, true, true)
+  - (lo, ancillary, bad-times, true, true)
+  - (lo, ancillary, sweep-table, true, true)
+  - (spin, spin, historical, true, true)
+  - (repoint, repoint, historical, true, true)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (ephemeris_predicted, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (pointing_attitude, spice, historical, true, true)
+  - (science_frames, spice, historical, true, false)
+
+(l1b, derates):
+  - (lo, l1b, de, true, true)
+  - (lo, l1a, spin, true, true)
+  - (spin, spin, historical, true, true)
+  - (repoint, repoint, historical, true, true)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (lo, ancillary, sweep-table, true, true)
+  - (lo, ancillary, esa-mode-lut, true, true)
+
+(l1b, prostar):
+  - (lo, l1a, star, true, true)
+  - (lo, l1a, spin, true, true)
+  - (lo, l1b, nhk, true, true)
+  - (repoint, repoint, historical, true, true)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+
+(l1c, pset):
+  - (lo, l1b, de, true, true)
+  - (lo, ancillary, good-times, true, true)
+  - (lo, ancillary, hydrogen-background, true, true)
+  - (lo, ancillary, oxygen-background, true, true)
+  - (spin, spin, historical, true, true)
+  - (repoint, repoint, historical, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (pointing_attitude, spice, historical, true, true)
+  - (science_frames, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (ephemeris_predicted, spice, best, true, false)
+  - (ephemeris_90days, spice, best, true, false)
+
+(l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr):
+  - (lo, l1c, pset, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (lo, ancillary, esa-eta-fit-factors, true, false)
+
+(l2, l090-ena-h-hk-nsp-ram-hae-6deg-1yr):
+  - (lo, l1c, pset, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (lo, ancillary, esa-eta-fit-factors, true, false)
+
+(l2, l090-ena-h-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l1c, pset, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (lo, ancillary, esa-eta-fit-factors, true, false)
+
+(l2, l090-ena-o-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l1c, pset, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (lo, ancillary, esa-eta-fit-factors, true, false)
+
+(l2, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l1c, pset, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (lo, ancillary, esa-eta-fit-factors, true, false)
+
+(l2, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l1c, pset, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (lo, ancillary, esa-eta-fit-factors, true, false)
+
+(l2, t090-ena-h-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, ancillary, esa-eta-fit-factors, true, false)
+  - (lo, ancillary, esa-eta-fit-factors, true, false)
+
+(l2, t090-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l1c, pset, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+
+(l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l1c, pset, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+
+(l3, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l2, l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr, true, true)
+
+(l3, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l2, l090-enanbs-o-sf-nsp-ram-hae-6deg-1yr, true, true)
+
+(l3, l090-spx-h-hf-nsp-ram-hae-6deg-1yr):
+  - (lo, l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr, true, true)
+
+(l3, l090-spx-h-hf-sp-ram-hae-6deg-1yr):
+  - (lo, l3, l090-ena-h-hf-sp-ram-hae-6deg-1yr, true, true)
+
+(l3, l090-spx-h-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l2, l090-ena-h-sf-nsp-ram-hae-6deg-1yr, true, true)
+
+(l3, l090-spx-h-sf-sp-ram-hae-6deg-1yr):
+  - (lo, l3, l090-ena-h-sf-sp-ram-hae-6deg-1yr, true, true)
+
+(l3, l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr):
+  - (lo, l2, l090-enanbs-h-hk-nsp-ram-hae-6deg-1yr, true, true)
+
+(l3, l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr):
+  - (lo, l2, l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr, true, true)
+

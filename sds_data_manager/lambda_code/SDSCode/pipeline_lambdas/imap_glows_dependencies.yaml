@@ -1,0 +1,45 @@
+# <---- GLOWS Dependencies ---->
+# (downstream_data_type, downstream_descriptor):
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job)
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job, (past_days, future_days))
+
+(l1a, all):
+  - (glows, l0, raw, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l1b, de):
+  - (glows, l1a, de, true, true)
+  - (glows, ancillary, conversion-table-for-anc-data, true, true)
+
+(l1b, hist):
+  - (glows, l1a, hist, true, true)
+  - (spin, spin, historical, true, true)
+  - (glows, ancillary, exclusions-by-instr-team, true, true)
+  - (glows, ancillary, map-of-excluded-regions, true, true)
+  - (glows, ancillary, map-of-uv-sources, true, true)
+  - (glows, ancillary, pipeline-settings, true, true)
+  - (glows, ancillary, suspected-transients, true, true)
+  - (glows, ancillary, conversion-table-for-anc-data, true, true)
+  - (imap_frames, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, true)
+  - (pointing_attitude, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l2, hist):
+  - (glows, l1b, hist, true, true)
+  - (glows, ancillary, pipeline-settings, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l3a, hist):
+  - (glows, l2, hist, true, true)
+  - (glows, ancillary, calibration-data, true, true)
+  - (glows, ancillary, time-dep-bckgrd, true, true)
+  - (glows, ancillary, map-of-extra-helio-bckgrd, true, true)
+  - (glows, ancillary, pipeline-settings, true, true)
+

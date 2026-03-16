@@ -1,0 +1,32 @@
+# <---- IDEX Dependencies ---->
+# (downstream_data_type, downstream_descriptor):
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job)
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job, (past_days, future_days))
+
+(l1a, all):
+  - (idex, l0, raw, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l1b, sci-1week):
+  - (idex, l1a, sci-1week, true, true)
+  - (spin, spin, historical, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (ephemeris_reconstructed, spice, historical, true, true)
+  - (ephemeris_predicted, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, true)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+
+(l2a, sci-1week):
+  - (idex, l1b, sci-1week, true, true)
+  - (idex, ancillary, l2a-calibration-curve-yield-params, true, true)
+  - (idex, ancillary, l2a-calibration-curve-t-rise, true, true)
+
+(l2b, all-1mo):
+  - (idex, l2a, sci-1week, true, false)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (idex, l1b, evt, true, false)
+

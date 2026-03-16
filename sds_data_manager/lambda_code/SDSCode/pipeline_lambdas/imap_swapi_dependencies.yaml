@@ -1,0 +1,77 @@
+# <---- SWAPI Dependencies ---->
+# (downstream_data_type, downstream_descriptor):
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job)
+#   - (upstream_source, upstream_data_type, upstream_descriptor, required, kickoff_job, (past_days, future_days))
+
+(l1, hk):
+  - (swapi, l0, raw, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l1, sci):
+  - (swapi, l0, raw, true, true)
+  - (swapi, l1a, hk, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+
+(l2, sci):
+  - (swapi, l1, sci, true, true)
+  - (swapi, ancillary, esa-unit-conversion, true, true)
+  - (swapi, ancillary, lut-notes, true, true)
+
+(l3a, alpha-sw):
+  - (swapi, l2, sci, true, true)
+  - (swapi, ancillary, clock-angle-and-flow-deflection-lut, true, false)
+  - (swapi, ancillary, proton-density-temperature-lut, true, false)
+  - (swapi, ancillary, alpha-density-temperature-lut, true, true)
+  - (swapi, ancillary, energy-gf-pui-lut, true, false)
+  - (swapi, ancillary, instrument-response-lut, true, false)
+  - (swapi, ancillary, density-of-neutral-helium-lut, true, false)
+  - (swapi, ancillary, efficiency-lut, true, true)
+  - (swapi, ancillary, helium-inflow-vector, true, false)
+  - (swapi, ancillary, hydrogen-inflow-vector, true, false)
+
+(l3a, proton-sw):
+  - (swapi, l2, sci, true, true)
+  - (swapi, ancillary, clock-angle-and-flow-deflection-lut, true, true)
+  - (swapi, ancillary, proton-density-temperature-lut, true, true)
+  - (swapi, ancillary, alpha-density-temperature-lut, true, false)
+  - (swapi, ancillary, energy-gf-pui-lut, true, false)
+  - (swapi, ancillary, instrument-response-lut, true, false)
+  - (swapi, ancillary, density-of-neutral-helium-lut, true, false)
+  - (swapi, ancillary, efficiency-lut, true, true)
+  - (swapi, ancillary, helium-inflow-vector, true, false)
+  - (swapi, ancillary, hydrogen-inflow-vector, true, false)
+  - (attitude_history, spice, historical, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (pointing_attitude, spice, historical, true, true)
+
+(l3a, pui-he):
+  - (swapi, l2, sci, true, true)
+  - (swapi, ancillary, clock-angle-and-flow-deflection-lut, true, true)
+  - (swapi, ancillary, proton-density-temperature-lut, true, false)
+  - (swapi, ancillary, alpha-density-temperature-lut, true, false)
+  - (swapi, ancillary, energy-gf-pui-lut, true, true)
+  - (swapi, ancillary, instrument-response-lut, true, true)
+  - (swapi, ancillary, density-of-neutral-helium-lut, true, true)
+  - (swapi, ancillary, efficiency-lut, true, false)
+  - (swapi, ancillary, helium-inflow-vector, true, true)
+  - (swapi, ancillary, hydrogen-inflow-vector, true, true)
+  - (ephemeris_reconstructed, spice, historical, true, false)
+  - (ephemeris_predicted, spice, historical, true, true)
+  - (planetary_ephemeris, spice, historical, true, false)
+  - (attitude_history, spice, historical, true, true)
+  - (leapseconds, spice, historical, true, false)
+  - (spacecraft_clock, spice, historical, true, false)
+  - (imap_frames, spice, historical, true, false)
+  - (science_frames, spice, historical, true, false)
+  - (pointing_attitude, spice, historical, true, true)
+
+(l3b, combined):
+  - (swapi, l2, sci, true, true)
+  - (swapi, ancillary, efficiency-lut, true, true)
+  - (swapi, ancillary, energy-gf-sw-lut, true, true)
+
