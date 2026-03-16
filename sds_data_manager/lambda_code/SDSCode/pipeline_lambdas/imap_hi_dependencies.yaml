@@ -69,21 +69,27 @@ _ancillary_90sensor_l2: &ancillary_90sensor_l2
   - (hi, l0, raw, true, true)
   - *spice_basic
 
+(l1b, hk):
+  - (hi, l0, raw, true, true)
+  - *spice_basic
+
 (l1b, 45sensor-de):
   - (hi, l1a, 45sensor-de, true, true)
   - (hi, l1b, 45sensor-hk, true, true)
   - (hi, ancillary, 45sensor-esa-energies, true, true)
   - *spice_45sensor_l1b
 
+(l1b, 45sensor-goodtimes):
+  - (hi, l1b, 45sensor-de, true, true, (-3p, 3p))
+  - (hi, l1b, 45sensor-hk, true, true)
+  - (hi, l1a, 45sensor-diagfee, true, true)
+  - *spice_basic
+
 (l1b, 90sensor-de):
   - (hi, l1a, 90sensor-de, true, true)
   - (hi, l1b, 90sensor-hk, true, true)
   - (hi, ancillary, 90sensor-esa-energies, true, true)
   - *spice_90sensor_l1b
-
-(l1b, hk):
-  - (hi, l0, raw, true, true)
-  - *spice_basic
 
 (l1c, 45sensor-pset):
   - *spice_l1c
