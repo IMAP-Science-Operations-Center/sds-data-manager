@@ -1,21 +1,23 @@
 """Simple utilities for reading dependency configurations."""
 
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.utils import DependencyNode, UpstreamDependencyNode
-from .dependency import DataSource, DataType
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.utils import (
+    DependencyNode,
+)
+
 from . import VALID_CADENCE_STRS
+from .dependency import DataSource, DataType
 
 
 # TODO: rename to DependencyConfig once we have these new feature
 # is implemented for all use-cases and remove the old one code.
 class DependencyConfigNew:
     """Manages dependency configuration loading and querying.
-    
+
     This class encapsulates all operations for working with instrument dependency
     configurations, including loading from YAML files, validating nodes, and
     querying upstream/downstream dependencies.
@@ -33,11 +35,11 @@ class DependencyConfigNew:
         return self._config
 
     def _load_all_dependencies(self) -> dict:
-        """Load all instrument YAML dependency files and construct unified dependency graph.
+        """Load all instrument YAML dependency files and unified dependency.
 
-        Returns a dictionary where each key is a parent node (source, data_type, descriptor)
-        representing a downstream product, and each value is a list of upstream
-        dependencies as child nodes.
+        Returns a dictionary where each key is a parent node
+        (source, data_type, descriptor) representing a downstream product,
+        and each value is a list of upstream dependencies as child nodes.
 
         Returns
         -------
@@ -62,7 +64,9 @@ class DependencyConfigNew:
         yaml_dir = Path(__file__).parent
 
         for instrument in VALID_INSTRUMENTS:
-            yaml_file = yaml_dir / f"imap_{instrument}_dependencies.yaml"
+            yaml_file = (
+                yaml_dir / "dependencies" / f"imap_{instrument}_dependencies.yaml"
+            )
 
             if instrument == "ialirt":
                 continue
@@ -86,20 +90,35 @@ class DependencyConfigNew:
                 # Convert string key like "(l1a, all)" to tuple (l1a, all)
                 # and combine with instrument source to get full downstream node
                 if key_str.startswith("#") or key_str.startswith("_"):
-                    # print(f"Skipping comment or non-product key: {key_str}")
                     continue
+                print(key_str, yaml_file)
+
                 try:
                     # Extract data_type and descriptor from key string
-                    print(f"Parsing key: {key_str} for instrument: {instrument}")
                     key_parts = key_str.strip("()").split(",")
                     data_type = key_parts[0].strip()
                     descriptor = key_parts[1].strip()
                     downstream_node = (instrument, data_type, descriptor)
-                    # print(f"upstream_list: {upstream_list}")
-                    # for upstream in upstream_list:
-                        # self.validate_node(tuple(upstream))
-                    dependencies[downstream_node] = upstream_list
-                    
+
+                    # Flatten upstream dependencies from YAML aliases. Eg.
+                    #   (l1a, all):
+                    #         - (hi, l0, raw, true, true)
+                    #         - *spice_basic
+                    # It is read in as list of lists.
+                    flattened_upstream_deps = []
+                    for item in upstream_list:
+                        if isinstance(item, list):
+                            flattened_upstream_deps.extend(item)
+                        else:
+                            flattened_upstream_deps.append(item)
+
+                    # Validate each upstream node - they come as lists from YAML
+                    for upstream in flattened_upstream_deps:
+                        if isinstance(upstream, list):
+                            self.validate_node(list(upstream))
+
+                    dependencies[downstream_node] = flattened_upstream_deps
+
                 except (ValueError, IndexError) as e:
                     raise ValueError(
                         f"Non-product key error: '{key_str}' in {yaml_file}: {e}"
@@ -107,7 +126,7 @@ class DependencyConfigNew:
 
         return dependencies
 
-    def validate_node(self, node: tuple) -> bool:
+    def validate_node(self, node: list) -> bool:
         """Validate a dependency node.
 
         A valid node must have exactly 5 elements or 6 elements:
@@ -156,68 +175,93 @@ class DependencyConfigNew:
             ...
         ValueError: Invalid data source...
         """
+        self._validate_node_length(node)
+        source, data_type, descriptor, required, kickoff_job, date_range = (
+            self._unpack_node(node)
+        )
+        self._validate_boolean_fields(required, kickoff_job)
+        self._validate_date_range(date_range)
+        self._validate_source(source)
+        self._validate_data_type(data_type)
+        self._validate_descriptor(descriptor)
+        return True
+
+    def _validate_node_length(self, node: list) -> None:
+        """Validate node has correct length."""
         if not isinstance(node, tuple) or len(node) < 5 or len(node) > 6:
             raise ValueError(
-                f"Node must be a 5-element tuple (source, data_type, descriptor, required, kickoff_job), "
-                f"or a 6-element tuple (source, data_type, descriptor, required, kickoff_job, (past, future)), "
-                f"got {node}"
+                f"Node must be a 5-element tuple "
+                f"(source, data_type, descriptor, required, "
+                f"kickoff_job), or a 6-element tuple with "
+                f"(past, future) dates, got {node}"
             )
 
+    def _unpack_node(self, node):
+        """Unpack node into components."""
         print(f"Validating node: {node}")
         if len(node) == 5:
             source, data_type, descriptor, required, kickoff_job = node
-        elif len(node) == 6:
-            source, data_type, descriptor, required, kickoff_job, (past, future) = node
+            date_range = None
+        else:
+            source, data_type, descriptor, required, kickoff_job, date_range = node
+        return source, data_type, descriptor, required, kickoff_job, date_range
 
-        # check that required and kickoff_job are booleans
+    def _validate_boolean_fields(self, required: bool, kickoff_job: bool) -> None:
+        """Validate required and kickoff_job are booleans."""
         if not isinstance(required, bool) or not isinstance(kickoff_job, bool):
-            raise ValueError(
-                f"'required' and 'kickoff_job' must be boolean values"
-            )
+            raise ValueError("'required' and 'kickoff_job' must be boolean values")
 
-        # past and future should end with one of these options:
-        # p - pointing
-        # h - hourly
-        # d - days
-        # l - last_processed
+    def _validate_date_range(self, date_range) -> None:
+        """Validate date range format if provided."""
+        if not date_range:
+            return
+
+        past, future = date_range
         date_range_options = ["p", "h", "d", "l"]
-        # parse last element in the string to get the option character
         past_option = past[-1] if past else None
         future_option = future[-1] if future else None
-        # parse the integer part of past and future for further validation
         past_int = int(past[:-1]) if past else None
         future_int = int(future[:-1]) if future else None
 
-        # check past format
-        if past_option and past_option not in date_range_options or past_int > 0:
+        if (past_option and past_option not in date_range_options) or (
+            past_int and past_int > 0
+        ):
             raise ValueError(
-                f"Invalid past value '{past}'. Must end with one of {date_range_options} and have a negative integer."
+                f"Invalid past '{past}'. Must end with "
+                f"{date_range_options} and be negative."
             )
-        # check future format
-        if future_option and future_option not in date_range_options or future_int < 0:
+        if (future_option and future_option not in date_range_options) or (
+            future_int and future_int < 0
+        ):
             raise ValueError(
-                f"Invalid future value '{future}'. Must end with one of {date_range_options} and have a positive integer."
+                f"Invalid future '{future}'. Must end with "
+                f"{date_range_options} and be positive."
             )
 
-        # validate source
+    def _validate_source(self, source: str) -> None:
+        """Validate source is valid."""
         if source not in self._data_source_validator.valid_source:
             raise ValueError(
                 f"Invalid data source '{source}'. "
                 f"Valid sources: {self._data_source_validator.valid_source}"
             )
 
-        # validate data type
+    def _validate_data_type(self, data_type: str) -> None:
+        """Validate data type is valid."""
         if data_type not in self._data_type_validator.valid_type:
             raise ValueError(
                 f"Invalid data type '{data_type}'. "
                 f"Valid types: {self._data_type_validator.valid_type}"
             )
 
-        # Descriptor validation - just check it's a non-empty string
+    def _validate_descriptor(self, descriptor: str) -> None:
+        """Validate descriptor is a non-empty string."""
+        # TODO: validate descriptor once we finalize the descriptor list
+        # for each instrument and data type.
         if not isinstance(descriptor, str) or not descriptor.strip():
-            raise ValueError(f"Descriptor must be a non-empty string, got '{descriptor}'")
-
-        return True
+            raise ValueError(
+                f"Descriptor must be a non-empty string, got '{descriptor}'"
+            )
 
     def get_cadence_job(self, descriptor: str) -> str | None:
         """Get cadence information from a descriptor.
@@ -229,7 +273,7 @@ class DependencyConfigNew:
         ----------
         descriptor : str
             The descriptor to check for cadence indicators.
-        
+
         Returns
         -------
         str or None
@@ -249,9 +293,7 @@ class DependencyConfigNew:
 
         return None
 
-    def get_downstream_dependency_nodes(
-        self, dependency_node: DependencyNode
-    ) -> list:
+    def get_downstream_dependency_nodes(self, dependency_node: DependencyNode) -> list:
         """Get downstream dependencies for a given node.
 
         Parameters
@@ -275,7 +317,9 @@ class DependencyConfigNew:
         for downstream_node, upstream_nodes in self._config.items():
             # get node from upstream_nodes only since upstream_nodes has
             # extra info such as required, kickoff_job, etc.
-            upstream_deps = [tuple(upstream_node[:3]) for upstream_node in upstream_nodes]
+            upstream_deps = [
+                tuple(upstream_node[:3]) for upstream_node in upstream_nodes
+            ]
             if dependency_node in upstream_deps:
                 downstream_deps.append(downstream_node)
 
