@@ -1,0 +1,1079 @@
+# <---- ULTRA Dependencies ---->
+# For latest configuration guidelines and requirements, refer to the project documentation.
+
+# ========= Common Dependency Groups =========
+# Common spice dependencies shared by multiple products
+spice_basic: &spice_basic
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+spice_l1b_de: &spice_l1b_de
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_reconstructed
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_90days
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: attitude_history
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: imap_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_ephemeris
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: repoint
+    upstream_data_type: repoint
+    upstream_descriptor: historical
+  - upstream_source: spin
+    upstream_data_type: spin
+    upstream_descriptor: historical
+
+
+spice_l1c_common: &spice_l1c_common
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_reconstructed
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_90days
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: attitude_history
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: imap_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_ephemeris
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: spin
+    upstream_data_type: spin
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+spice_l1c_spacecraft: &spice_l1c_spacecraft
+  - upstream_source: repoint
+    upstream_data_type: repoint
+    upstream_descriptor: historical
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_ephemeris
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spin
+    upstream_data_type: spin
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: attitude_history
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: ephemeris_reconstructed
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+spice_l2: &spice_l2
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: imap_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+# ======== Product-Specific Dependencies ========
+(l1a, all):
+  - upstream_source: ultra
+    upstream_data_type: l0
+    upstream_descriptor: raw
+  - *spice_basic
+
+
+(l1b, 45sensor-badtimes):
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-extendedspin
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-goodtimes
+
+
+(l1b, 45sensor-de):
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-de
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-aux
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-logistic-interpolation
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-leftslit-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-rightslit-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-egynorm-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-imgparams-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-back-pos-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-tdc-norm-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-sensor-gf-blades
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-sensor-gf-noblades
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-yadjust-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-tofxeflat
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-tofxemedium
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-tofxesteep
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-tofxph
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-spbtphcorr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-sptpphcorr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-scattering-calibration-data
+  - *spice_l1b_de
+
+
+(l1b, 45sensor-extendedspin):
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-params
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-rates
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-aux
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-de
+  - upstream_source: spin
+    upstream_data_type: spin
+    upstream_descriptor: historical
+
+
+(l1b, 45sensor-goodtimes):
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-extendedspin
+
+
+(l1b, 90sensor-badtimes):
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-extendedspin
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-goodtimes
+
+
+(l1b, 90sensor-de):
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-de
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-aux
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-logistic-interpolation
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-leftslit-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-rightslit-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-egynorm-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-imgparams-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-back-pos-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-tdc-norm-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-sensor-gf-blades
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-sensor-gf-noblades
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-yadjust-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-tofxeflat
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-tofxemedium
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-tofxesteep
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-tofxph
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-spbtphcorr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-sptpphcorr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-scattering-calibration-data
+  - *spice_l1b_de
+
+
+(l1b, 90sensor-extendedspin):
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-params
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-rates
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-aux
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-de
+  - upstream_source: spin
+    upstream_data_type: spin
+    upstream_descriptor: historical
+
+
+(l1b, 90sensor-goodtimes):
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-extendedspin
+
+
+(l1c, 45sensor-heliopset):
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-de
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-rates
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-aux
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-goodtimes
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-scattering-calibration-data
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-sensor-gf-blades
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-logistic-interpolation
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-imgparams-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-45sensor-static-dead-times
+  - upstream_source: repoint
+    upstream_data_type: repoint
+    upstream_descriptor: historical
+  - *spice_l1c_common
+
+
+(l1c, 45sensor-spacecraftpset):
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-de
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-rates
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-aux
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-goodtimes
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-scattering-calibration-data
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-45sensor-sc-pointing-theta
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-45sensor-sc-pointing-phi
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-45sensor-sc-pointing-index
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-45sensor-sc-pointing-bsf
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-sensor-gf-blades
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-logistic-interpolation
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-imgparams-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-45sensor-static-dead-times
+  - *spice_l1c_spacecraft
+
+
+(l1c, 90sensor-heliopset):
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-de
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-rates
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-aux
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-goodtimes
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-scattering-calibration-data
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-sensor-gf-blades
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-logistic-interpolation
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-imgparams-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-90sensor-static-dead-times
+  - upstream_source: repoint
+    upstream_data_type: repoint
+    upstream_descriptor: historical
+  - *spice_l1c_common
+
+
+(l1c, 90sensor-spacecraftpset):
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-de
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-rates
+  - upstream_source: ultra
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-aux
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-goodtimes
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-scattering-calibration-data
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-90sensor-sc-pointing-theta
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-90sensor-sc-pointing-phi
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-90sensor-sc-pointing-index
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-90sensor-sc-pointing-bsf
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-sensor-gf-blades
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-45sensor-logistic-interpolation
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-scattering-thresholds-per-energy
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-90sensor-imgparams-lookup
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: l1c-90sensor-static-dead-times
+  - *spice_l1c_spacecraft
+
+
+(l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-heliopset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-spacecraftpset
+    kickoff_job: false
+  - *spice_l2
+
+
+(l3, u45-spx-h-hf-sp-full-hae-2deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u45-ena-h-hf-sp-full-hae-2deg-1yr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u45-spx-h-hf-sp-full-hae-2deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u45-ena-h-hf-sp-full-hae-2deg-3mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u45-spx-h-hf-sp-full-hae-2deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u45-ena-h-hf-sp-full-hae-2deg-6mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u45-spx-h-hf-sp-full-hae-4deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u45-ena-h-hf-sp-full-hae-4deg-1yr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u45-spx-h-hf-sp-full-hae-4deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u45-ena-h-hf-sp-full-hae-4deg-3mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u45-spx-h-hf-sp-full-hae-4deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u45-ena-h-hf-sp-full-hae-4deg-6mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u45-spx-h-hf-sp-full-hae-6deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u45-ena-h-hf-sp-full-hae-6deg-1yr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u45-spx-h-hf-sp-full-hae-6deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u45-ena-h-hf-sp-full-hae-6deg-3mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u45-spx-h-hf-sp-full-hae-6deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u45-ena-h-hf-sp-full-hae-6deg-6mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u90-spx-h-hf-sp-full-hae-2deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u90-ena-h-hf-sp-full-hae-2deg-1yr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u90-spx-h-hf-sp-full-hae-2deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u90-ena-h-hf-sp-full-hae-2deg-3mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u90-spx-h-hf-sp-full-hae-2deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u90-ena-h-hf-sp-full-hae-2deg-6mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u90-spx-h-hf-sp-full-hae-4deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u90-ena-h-hf-sp-full-hae-4deg-1yr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u90-spx-h-hf-sp-full-hae-4deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u90-ena-h-hf-sp-full-hae-4deg-3mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u90-spx-h-hf-sp-full-hae-4deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u90-ena-h-hf-sp-full-hae-4deg-6mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u90-spx-h-hf-sp-full-hae-6deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u90-ena-h-hf-sp-full-hae-6deg-1yr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u90-spx-h-hf-sp-full-hae-6deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u90-ena-h-hf-sp-full-hae-6deg-3mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, u90-spx-h-hf-sp-full-hae-6deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: u90-ena-h-hf-sp-full-hae-6deg-6mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, ulc-spx-h-hf-sp-full-hae-2deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: ulc-ena-h-hf-sp-full-hae-2deg-1yr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, ulc-spx-h-hf-sp-full-hae-2deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: ulc-ena-h-hf-sp-full-hae-2deg-3mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, ulc-spx-h-hf-sp-full-hae-2deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: ulc-ena-h-hf-sp-full-hae-2deg-6mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, ulc-spx-h-hf-sp-full-hae-4deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: ulc-ena-h-hf-sp-full-hae-4deg-1yr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, ulc-spx-h-hf-sp-full-hae-4deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: ulc-ena-h-hf-sp-full-hae-4deg-3mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, ulc-spx-h-hf-sp-full-hae-4deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: ulc-ena-h-hf-sp-full-hae-4deg-6mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, ulc-spx-h-hf-sp-full-hae-6deg-1yr):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: ulc-ena-h-hf-sp-full-hae-6deg-1yr
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, ulc-spx-h-hf-sp-full-hae-6deg-3mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: ulc-ena-h-hf-sp-full-hae-6deg-3mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
+(l3, ulc-spx-h-hf-sp-full-hae-6deg-6mo):
+  - upstream_source: ultra
+    upstream_data_type: l3
+    upstream_descriptor: ulc-ena-h-hf-sp-full-hae-6deg-6mo
+  - upstream_source: ultra
+    upstream_data_type: ancillary
+    upstream_descriptor: ulc-spx-energy-ranges
+
+
