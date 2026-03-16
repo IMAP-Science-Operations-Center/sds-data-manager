@@ -91,7 +91,6 @@ class DependencyConfigNew:
                 # and combine with instrument source to get full downstream node
                 if key_str.startswith("#") or key_str.startswith("_"):
                     continue
-                print(key_str, yaml_file)
 
                 try:
                     # Extract data_type and descriptor from key string
