@@ -1,4 +1,4 @@
-"""Tests for dependency_utils module.
+"""Tests for dependency_new module.
 
 This module provides unit tests for the DependencyConfigNew class used to
 read and retrieve upstream dependencies from instrument YAML configuration files.
@@ -8,9 +8,11 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_utils import (
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new import (
     DependencyConfigNew,
+    DependencyResolver,
 )
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.utils import DependencyNode
 
 # Use a short list of instruments that have valid YAML files for testing
 TEST_INSTRUMENTS = ["codice", "hi", "lo", "swe"]
@@ -20,7 +22,7 @@ TEST_INSTRUMENTS = ["codice", "hi", "lo", "swe"]
 def mock_valid_instruments():
     """Automatically mock VALID_INSTRUMENTS for all tests."""
     with patch(
-        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_utils.VALID_INSTRUMENTS",
+        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.VALID_INSTRUMENTS",
         TEST_INSTRUMENTS,
     ):
         yield
@@ -83,11 +85,11 @@ def test_validate_node_empty_descriptor():
 
 # Tests for load_all_dependencies (now part of __init__)
 @patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_utils.VALID_INSTRUMENTS",
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.VALID_INSTRUMENTS",
     ["codice"],
 )
 @patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_utils.yaml.safe_load"
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.yaml.safe_load"
 )
 @patch("builtins.open", new_callable=mock_open)
 def test_load_all_dependencies_success(mock_file, mock_yaml_load):
@@ -104,7 +106,7 @@ def test_load_all_dependencies_success(mock_file, mock_yaml_load):
     mock_yaml_load.return_value = mock_config
 
     with patch(
-        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_utils.Path"
+        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.Path"
     ) as mock_path:
         mock_yaml_file = MagicMock()
         mock_yaml_file.exists.return_value = True
@@ -119,7 +121,7 @@ def test_load_all_dependencies_success(mock_file, mock_yaml_load):
 
 
 @patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_utils.VALID_INSTRUMENTS",
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.VALID_INSTRUMENTS",
     ["test-instrument"],
 )
 def test_load_all_dependencies_missing_file():
@@ -132,11 +134,11 @@ def test_load_all_dependencies_missing_file():
 
 
 @patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_utils.VALID_INSTRUMENTS",
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.VALID_INSTRUMENTS",
     ["codice"],
 )
 @patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_utils.yaml.safe_load"
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.yaml.safe_load"
 )
 @patch("builtins.open", new_callable=mock_open)
 def test_load_all_dependencies_empty_yaml(mock_file, mock_yaml_load):
@@ -144,7 +146,7 @@ def test_load_all_dependencies_empty_yaml(mock_file, mock_yaml_load):
     mock_yaml_load.return_value = None
 
     with patch(
-        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_utils.Path"
+        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.Path"
     ) as mock_path:
         mock_yaml_file = MagicMock()
         mock_yaml_file.exists.return_value = True
@@ -204,80 +206,86 @@ def test_get_cadence_job_empty_descriptor():
 
 def test_get_downstream_dependency_nodes_single():
     """Test getting downstream dependencies for science file ingestions."""
-    config = DependencyConfigNew()
+    dependency_resolver = DependencyResolver()
     dependency_config = {
-        ("swe", "l1b", "swe-all"): [("swe", "l1a", "all")],
-        ("swe", "l2", "swe-sci-1mo"): [("swe", "l1b", "swe-all")],
-        ("mag", "l1b", "mag-all"): [("mag", "l1a", "all")],
+        ("swe", "l1b", "swe-all"): [("swe", "l1a", "all", True, True)],
+        ("swe", "l2", "swe-sci-1mo"): [("swe", "l1b", "swe-all", True, True)],
+        ("mag", "l1b", "mag-all"): [("mag", "l1a", "all", True, True)],
     }
-    config._config = dependency_config
+    dependency_resolver._config = dependency_config
 
-    result = config.get_downstream_dependency_nodes(("swe", "l1a", "all"))
+    result = dependency_resolver.get_downstream_dependency_nodes(
+        DependencyNode(source="swe", data_type="l1a", product_name="all")
+    )
 
     assert len(result) == 1
-    assert ("swe", "l1b", "swe-all") in result
+    assert DependencyNode(source="swe", data_type="l1b", product_name="swe-all") in result
 
 
 def test_get_downstream_dependency_nodes_multiple():
     """Test getting multiple downstream dependencies for a science file ingestion."""
-    config = DependencyConfigNew()
+    dependency_resolver = DependencyResolver()
     dependency_config = {
-        ("codice", "l1b", "lo-counters"): [("codice", "l1a", "all")],
-        ("codice", "l1b", "hi-counters"): [("codice", "l1a", "all")],
-        ("codice", "l2", "codice-sci"): [("codice", "l1a", "all")],
-        ("mag", "l1b", "mag-all"): [("mag", "l1a", "all")],
+        ("codice", "l1b", "lo-counters"): [("codice", "l1a", "all", True, True)],
+        ("codice", "l1b", "hi-counters"): [("codice", "l1a", "all", True, True)],
+        ("codice", "l2", "codice-sci"): [("codice", "l1a", "all", True, True)],
+        ("mag", "l1b", "mag-all"): [("mag", "l1a", "all", True, True)],
     }
-    config._config = dependency_config
+    dependency_resolver._config = dependency_config
 
-    result = config.get_downstream_dependency_nodes(("codice", "l1a", "all"))
+    result = dependency_resolver.get_downstream_dependency_nodes(
+        DependencyNode(source="codice", data_type="l1a", product_name="all")
+    )
 
     assert len(result) == 3
-    assert ("codice", "l1b", "lo-counters") in result
-    assert ("codice", "l1b", "hi-counters") in result
-    assert ("codice", "l2", "codice-sci") in result
+    assert DependencyNode(source="codice", data_type="l1b", product_name="lo-counters") in result
+    assert DependencyNode(source="codice", data_type="l1b", product_name="hi-counters") in result
+    assert DependencyNode(source="codice", data_type="l2", product_name="codice-sci") in result
 
 
 def test_get_downstream_dependency_nodes_no_dependents():
     """Test when a node has no downstream dependencies."""
-    config = DependencyConfigNew()
+    dependency_resolver = DependencyResolver()
     dependency_config = {
-        ("swe", "l1b", "swe-all"): [("swe", "l1a", "all")],
-        ("mag", "l1b", "mag-all"): [("mag", "l1a", "all")],
+        ("swe", "l1b", "swe-all"): [("swe", "l1a", "all", True, True)],
+        ("mag", "l1b", "mag-all"): [("mag", "l1a", "all", True, True)],
     }
-    config._config = dependency_config
+    dependency_resolver._config = dependency_config
 
-    result = config.get_downstream_dependency_nodes(("codice", "l2", "all"))
+    result = dependency_resolver.get_downstream_dependency_nodes(
+        DependencyNode(source="codice", data_type="l2", product_name="all")
+    )
 
     assert len(result) == 0
 
 
 def test_get_downstream_dependency_nodes_shared_dependency():
     """Test when multiple nodes depend on a shared upstream node such as SPICE data."""
-    config = DependencyConfigNew()
+    dependency_resolver = DependencyResolver()
     dependency_config = {
         ("swe", "l1b", "swe-sci"): [
-            ("leapseconds", "spice", "historical"),
-            ("swe", "l1a", "all"),
+            ("leapseconds", "spice", "historical", True, True),
+            ("swe", "l1a", "all", True, True),
         ],
         ("mag", "l1b", "mag-sci"): [
-            ("leapseconds", "spice", "historical"),
-            ("mag", "l1a", "all"),
+            ("leapseconds", "spice", "historical", True, True),
+            ("mag", "l1a", "all", True, True),
         ],
         ("hi", "l1b", "hi-sci"): [
-            ("leapseconds", "spice", "historical"),
-            ("hi", "l1a", "all"),
+            ("leapseconds", "spice", "historical", True, True),
+            ("hi", "l1a", "all", True, True),
         ],
     }
-    config._config = dependency_config
+    dependency_resolver._config = dependency_config
 
-    result = config.get_downstream_dependency_nodes(
-        ("leapseconds", "spice", "historical")
+    result = dependency_resolver.get_downstream_dependency_nodes(
+        DependencyNode(source="leapseconds", data_type="spice", product_name="historical")
     )
 
     assert len(result) == 3
-    assert ("swe", "l1b", "swe-sci") in result
-    assert ("mag", "l1b", "mag-sci") in result
-    assert ("hi", "l1b", "hi-sci") in result
+    assert DependencyNode(source="swe", data_type="l1b", product_name="swe-sci") in result
+    assert DependencyNode(source="mag", data_type="l1b", product_name="mag-sci") in result
+    assert DependencyNode(source="hi", data_type="l1b", product_name="hi-sci") in result
 
 
 def test_get_downstream_dependency_nodes_ancillary_files():
@@ -288,7 +296,7 @@ def test_get_downstream_dependency_nodes_ancillary_files():
     a calibration LUT ingested can trigger l1a processing, which then enables l1b
     and potentially l2 processing downstream.
     """
-    config = DependencyConfigNew()
+    dependency_resolver = DependencyResolver()
     dependency_config = {
         # Single ancillary LUT triggers only one l1a job
         ("codice", "l1a", "all"): [("codice", "ancillary", "l1a-lut", True, True)],
@@ -321,38 +329,38 @@ def test_get_downstream_dependency_nodes_ancillary_files():
             ("hi", "ancillary", "l1b-calibration", True, True),
         ],
     }
-    config._config = dependency_config
+    dependency_resolver._config = dependency_config
 
     # Single ancillary file kicking off single l1a job
-    codice_lut_jobs = config.get_downstream_dependency_nodes(
-        ("codice", "ancillary", "l1a-lut")
+    codice_lut_jobs = dependency_resolver.get_downstream_dependency_nodes(
+        DependencyNode(source="codice", data_type="ancillary", product_name="l1a-lut")
     )
     assert len(codice_lut_jobs) == 1
-    assert ("codice", "l1a", "all") in codice_lut_jobs
+    assert DependencyNode(source="codice", data_type="l1a", product_name="all") in codice_lut_jobs
 
     # Single ancillary calibration file triggering multiple l1b jobs
     # (different descriptor variants of same level)
-    codice_cal_jobs = config.get_downstream_dependency_nodes(
-        ("codice", "ancillary", "l1b-calibration")
+    codice_cal_jobs = dependency_resolver.get_downstream_dependency_nodes(
+        DependencyNode(source="codice", data_type="ancillary", product_name="l1b-calibration")
     )
     assert len(codice_cal_jobs) == 3
-    assert ("codice", "l1b", "lo-counters") in codice_cal_jobs
-    assert ("codice", "l1b", "hi-counters") in codice_cal_jobs
-    assert ("codice", "l1b", "hk") in codice_cal_jobs
+    assert DependencyNode(source="codice", data_type="l1b", product_name="lo-counters") in codice_cal_jobs
+    assert DependencyNode(source="codice", data_type="l1b", product_name="hi-counters") in codice_cal_jobs
+    assert DependencyNode(source="codice", data_type="l1b", product_name="hk") in codice_cal_jobs
 
     # Single ancillary background model triggering multiple l2 cadence jobs
-    bg_model_jobs = config.get_downstream_dependency_nodes(
-        ("ultra", "ancillary", "l2-background")
+    bg_model_jobs = dependency_resolver.get_downstream_dependency_nodes(
+        DependencyNode(source="ultra", data_type="ancillary", product_name="l2-background")
     )
     assert len(bg_model_jobs) == 2
-    assert ("ultra", "l2", "ultra-sci-1mo") in bg_model_jobs
-    assert ("ultra", "l2", "ultra-sci-3mo") in bg_model_jobs
+    assert DependencyNode(source="ultra", data_type="l2", product_name="ultra-sci-1mo") in bg_model_jobs
+    assert DependencyNode(source="ultra", data_type="l2", product_name="ultra-sci-3mo") in bg_model_jobs
     # Verify different instrument ancillary also works
-    hi_cal_jobs = config.get_downstream_dependency_nodes(
-        ("hi", "ancillary", "l1b-calibration")
+    hi_cal_jobs = dependency_resolver.get_downstream_dependency_nodes(
+        DependencyNode(source="hi", data_type="ancillary", product_name="l1b-calibration")
     )
     assert len(hi_cal_jobs) == 1
-    assert ("hi", "l1b", "hi-all") in hi_cal_jobs
+    assert DependencyNode(source="hi", data_type="l1b", product_name="hi-all") in hi_cal_jobs
 
 
 def test_get_downstream_dependency_nodes_with_date_ranges():
@@ -368,13 +376,13 @@ def test_get_downstream_dependency_nodes_with_date_ranges():
     A single downstream product can depend on multiple upstream products with
     varying tuple lengths and time range formats.
     """
-    config = DependencyConfigNew()
+    dependency_resolver = DependencyResolver()
     dependency_config = {
         # Downstream product with mixed upstream dependency types
         ("hi", "l1b", "45sensor-goodtimes"): [
             # Dependency with pointing-based time range:
             # 3 pointings past to 3 pointings future
-            ("hi", "l1b", "45sensor-de", True, True, ("3p", "3p")),
+            ("hi", "l1b", "45sensor-de", True, True, ("-3p", "3p")),
             # Dependency without time range
             ("hi", "l1b", "45sensor-hk", True, True),
             # Another dependency without time range
@@ -382,17 +390,19 @@ def test_get_downstream_dependency_nodes_with_date_ranges():
             # SPICE dependency (typically no time range)
             ("leapseconds", "spice", "historical", True, False),
         ],
+        ("hi", "l1b", "45sensor-de"): [
+            ("hi", "l1a", "45sensor-de", True, True),
+            ("hi", "l1b", "45sensor-goodtimes", True, True),
+            ("leapseconds", "spice", "historical", True, False),
+        ],
     }
-    config._config = dependency_config
+    dependency_resolver._config = dependency_config
 
     # Test downstream lookup for goodtimes product
-    goodtimes_upstream = dependency_config[("hi", "l1b", "45sensor-goodtimes")]
+    de_downstream = dependency_resolver.get_downstream_dependency_nodes(
+        DependencyNode(source="hi", data_type="l1b", product_name="45sensor-de")
+    )
 
-    # Verify it has 4 upstream dependencies
-    assert len(goodtimes_upstream) == 4
-
-    # Verify mixed tuple lengths and formats are present
-    assert ("hi", "l1b", "45sensor-de", True, True, ("3p", "3p")) in goodtimes_upstream
-    assert ("hi", "l1b", "45sensor-hk", True, True) in goodtimes_upstream
-    assert ("hi", "l1a", "45sensor-diagfee", True, True) in goodtimes_upstream
-    assert ("leapseconds", "spice", "historical", True, False) in goodtimes_upstream
+    # Verify it has 1 downstream dependency
+    assert len(de_downstream) == 1
+    assert DependencyNode(source="hi", data_type="l1b", product_name="45sensor-goodtimes") in de_downstream
