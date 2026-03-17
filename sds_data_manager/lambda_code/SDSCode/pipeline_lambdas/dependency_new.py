@@ -15,7 +15,6 @@ from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import aliased
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
-from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.utils import (
     DependencyNode,
@@ -358,9 +357,7 @@ class DependencyResolver:
 
         return downstream_dependency_nodes
 
-    def get_upstream_dependency(  # noqa: PLR0912
-        self, session, upstream_node: UpstreamDependencyNode
-    ):
+    def get_upstream_dependency(self, session, upstream_node: UpstreamDependencyNode):
         """Get upstream dependencies for a given downstream product.
 
         Parameters
@@ -391,41 +388,46 @@ class DependencyResolver:
             }
 
         # Status, message, data.
-        result_data = {}
+        result_data = {
+            "status": 200,
+            "message": "Found upstream dependencies",
+            "data": {},
+        }
         data_collection = ProcessingInputCollection()
-        # Check for SPICE dependencies first.
-        # -----------------------------
+
+        # ----------------------------
         # Check for SPICE dependencies
-        # -----------------------------
-        # If spin is a dependency, query spin table for given date range
+        # ----------------------------
+        # If spin in upstream dependency, query spin table for given date range
         has_spin_dep = any(dep["data_source"] == "spin" for dep in upstream_deps)
         if has_spin_dep:
             spin_records = self.get_spin_files(
                 session, upstream_node.start_date, upstream_node.end_date
             )
-            if not spin_records:
-                result_data[("spin", "spin", "historical")] = {
-                    "found_files": [],
-                }
-            else:
-                spin_files = [basename(record.file_path) for record in spin_records]
-                logger.info(f"Found spin files: {spin_files}. Adding to collection.")
-                data_collection.add(processing_input.SpinInput(*spin_files))
+            self._add_dependency_records(
+                spin_records,
+                ("spin", "spin", "historical"),
+                processing_input.SpinInput,
+                result_data,
+                data_collection,
+                "spin files",
+            )
 
-        # If repoint is a dependency, query s3 for latest repoint file
+        # If repoint in upstream dependency, query latest repoint file
         has_repoint_dep = any(dep["data_source"] == "repoint" for dep in upstream_deps)
         if has_repoint_dep:
             latest_repoint_file = self.get_latest_repoint_file(upstream_node.end_date)
-            if not latest_repoint_file:
-                result_data[("repoint", "repoint", "historical")] = {
-                    "found_files": [],
-                }
-            else:
-                logger.info(
-                    f"Found repoint file: {latest_repoint_file}. Adding to collection."
-                )
-                data_collection.add(processing_input.RepointInput(latest_repoint_file))
+            repoint_records = [latest_repoint_file] if latest_repoint_file else []
+            self._add_dependency_records(
+                repoint_records,
+                ("repoint", "repoint", "historical"),
+                processing_input.RepointInput,
+                result_data,
+                data_collection,
+                "repoint file",
+            )
 
+        # If kernels in upstream dependency, call metakernel API
         has_kernel_dep = any(
             dep["data_source"] != "spin"
             and dep["data_source"] != "repoint"
@@ -434,19 +436,19 @@ class DependencyResolver:
         )
         if has_kernel_dep:
             kernels_records = self.get_spice_files(upstream_node, upstream_deps)
-            if not kernels_records:
-                result_data[("all", "spice", "best")] = {
-                    "found_files": [],
-                }
+            kernel_list = kernels_records if kernels_records else []
+            self._add_dependency_records(
+                kernel_list,
+                ("all", "spice", "best"),
+                processing_input.SpiceKernelInput,
+                result_data,
+                data_collection,
+                "kernel files",
+            )
 
-            else:
-                kernel_files = [basename(record) for record in kernels_records]
-                logger.info(
-                    f"Found kernel files: {kernel_files}. Adding to collection."
-                )
-                data_collection.add(processing_input.SpiceKernelInput(*kernel_files))
-
+        # -----------------------------
         # Ancillary dependencies
+        # -----------------------------
         ancillary_deps = [
             dep
             for dep in upstream_deps
@@ -460,23 +462,22 @@ class DependencyResolver:
                 start_date=upstream_node.start_date,
                 end_date=upstream_node.end_date,
             )
-            if not ancillary_files:
-                result_data[
-                    (
-                        ancillary_dependency["data_source"],
-                        ancillary_dependency["data_type"],
-                        ancillary_dependency["descriptor"],
-                    )
-                ] = {
-                    "found_files": [],
-                }
-            else:
-                logger.info(
-                    f"Found ancillary files: {ancillary_files}. Adding to collection."
-                )
-                data_collection.add(processing_input.AncillaryInput(*ancillary_files))
+            self._add_dependency_records(
+                ancillary_files,
+                (
+                    ancillary_dependency["data_source"],
+                    ancillary_dependency["data_type"],
+                    ancillary_dependency["descriptor"],
+                ),
+                processing_input.AncillaryInput,
+                result_data,
+                data_collection,
+                "ancillary files",
+            )
 
+        # -----------------------------
         # Science dependencies
+        # -----------------------------
         science_deps = [
             dep
             for dep in upstream_deps
@@ -485,27 +486,72 @@ class DependencyResolver:
         ]
         for science_dependency in science_deps:
             science_files = self.get_science_files(upstream_node, science_dependency)
-            if not science_files:
-                result_data[
-                    (
-                        science_dependency["data_source"],
-                        science_dependency["data_type"],
-                        science_dependency["descriptor"],
-                    )
-                ] = {
-                    "found_files": [],
-                }
-            else:
-                logger.info(
-                    f"Found science files: {science_files}. Adding to collection."
-                )
-                data_collection.add(processing_input.ScienceInput(*science_files))
+            self._add_dependency_records(
+                science_files,
+                (
+                    science_dependency["data_source"],
+                    science_dependency["data_type"],
+                    science_dependency["descriptor"],
+                ),
+                processing_input.ScienceInput,
+                result_data,
+                data_collection,
+                "science files",
+            )
 
-        return {
-            "status": 200,
-            "message": "Upstream dependencies retrieved",
-            "data": result_data,
-        }
+        if result_data["status"] != 200:
+            result_data["message"] = (
+                "One or more required dependencies are missing. See data for details."
+            )
+
+        result_data["data"] = data_collection.serialize()
+        return result_data
+
+    def _add_dependency_records(
+        self,
+        records: list,
+        result_key: tuple,
+        input_class,
+        result_data: dict,
+        data_collection: ProcessingInputCollection,
+        record_type_name: str,
+    ) -> None:
+        """Add dependency records to result data and collection.
+
+        Helper method to reduce repetition when processing different dependency
+        types (spin, repoint, ancillary, science, SPICE kernels).
+
+        Parameters
+        ----------
+        records : list
+            List of records or file paths to process.
+        result_key : tuple
+            Key for result_data dictionary (source, data_type, descriptor).
+        input_class : type
+            ProcessingInput subclass (SpinInput, RepointInput, etc.).
+        result_data : dict
+            Dictionary to store results for each dependency.
+        data_collection : ProcessingInputCollection
+            Collection to add processed records to.
+        record_type_name : str
+            Human-readable name for logging (e.g., "spin files").
+        """
+        if not records:
+            logger.warning(f"No {record_type_name} found for {result_key}.")
+            data_collection.add(input_class([]))
+            result_data["status"] = 404
+        else:
+            # Extract file paths if records are objects with file_path attribute
+            if hasattr(records[0], "file_path"):
+                file_paths = [basename(record.file_path) for record in records]
+            else:
+                # Assume records are already file paths or basenames
+                file_paths = [basename(r) if "/" in r else r for r in records]
+
+            logger.info(
+                f"Found {record_type_name}: {file_paths}. Adding to collection."
+            )
+            data_collection.add(input_class(*file_paths))
 
     def get_science_files(
         self, upstream_node: UpstreamDependencyNode, upstream_dependency: tuple
@@ -620,13 +666,15 @@ class DependencyResolver:
 
         return records
 
-    def get_latest_repoint_file(self, end_date: datetime) -> Optional[str]:
+    def get_latest_repoint_file(self, session, end_date: datetime) -> Optional[str]:
         """Get latest repoint file.
 
         Query for the latest repoint file for given end_date.
 
         Parameters
         ----------
+        session : orm session
+            Database session.
         end_date : datetime
             End date to find dependent files with.
 
@@ -635,12 +683,11 @@ class DependencyResolver:
         str
             Latest repoint file name.
         """
-        with db.Session() as session:
-            latest_repoint_file = (
-                session.query(models.RepointFiles)
-                .order_by(desc(models.RepointFiles.file_path))
-                .first()
-            )
+        latest_repoint_file = (
+            session.query(models.RepointFiles)
+            .order_by(desc(models.RepointFiles.file_path))
+            .first()
+        )
 
         if not latest_repoint_file:
             raise ValueError("No Repoint file found in the database.")
