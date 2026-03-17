@@ -1,10 +1,11 @@
 """Common fuctions for pipeline lambdas."""
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Optional
 
 from . import VALID_CADENCE_STRS
+
 
 @dataclass
 class DependencyNode:
@@ -14,21 +15,26 @@ class DependencyNode:
     data_type: str
     descriptor: str
 
-    def serialize(self) -> Dict[str, Any]:
+    def serialize(self) -> dict[str, Any]:
+        """Serialize dependency node to dictionary."""
         return asdict(self)
 
     @classmethod
-    def deserialize(cls, json_object: Dict[str, Any]):
+    def deserialize(cls, json_object: dict[str, Any]):
+        """Deserialize dictionary to dependency node."""
         return cls(**json_object)
+
 
 @dataclass
 class UpstreamDependencyNode(DependencyNode):
-    # These fields are required and used in
-    # dependency resolver to query for upstream dependencies.
+    """Upstream dependency node with temporal and repoint fields.
+
+    Extends DependencyNode with fields required for querying upstream
+    dependencies from the database, including date range and repoint info.
+    """
+
     start_date: datetime
     end_date: datetime
-    trigger_event_type: str
-    processing_job_type: str
     # These optional needs to go after required fields
     # to line with dataclass rules.
     reprocessing: bool = False
@@ -37,6 +43,7 @@ class UpstreamDependencyNode(DependencyNode):
 
 class TriggerEventType:
     """Enum for different trigger event types."""
+
     SCIENCE_INGESTION = "science_ingestion"
     ANCILLARY_INGESTION = "ancillary_ingestion"
     SPICE_INGESTION = "spice_ingestion"
@@ -46,6 +53,7 @@ class TriggerEventType:
 
 class ProcessingJobType:
     """Enum for different type of processing jobs passed to batch job."""
+
     DAILY = "daily"
     POINTING = "pointing"
     CADENCE = "cadence"

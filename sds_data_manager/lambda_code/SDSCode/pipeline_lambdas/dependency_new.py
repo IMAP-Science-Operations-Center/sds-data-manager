@@ -28,14 +28,13 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# TODO: rename to DependencyConfig once we have these new feature
-# is implemented for all use-cases and remove the old one code.
+# TODO: rename to DependencyConfig once we have these new features
+# are implemented for all use-cases and remove the old code.
 class DependencyConfigNew:
     """Manages dependency configuration loading and querying.
 
     This class encapsulates all operations for working with instrument dependency
-    configurations, including loading from YAML files, validating nodes, and
-    querying upstream/downstream dependencies.
+    configurations, including loading from YAML files, validating nodes.
     """
 
     def __init__(self):
@@ -102,8 +101,9 @@ class DependencyConfigNew:
 
             # Parse YAML keys to construct (source, data_type, descriptor) tuples
             for key_str, upstream_list in instrument_config.items():
-                # Convert string key like "(l1a, all)" to tuple (l1a, all)
-                # and combine with instrument source to get full downstream node
+                # Skip any comments or common aliases
+                # used to combine multiple upstream dependencies in YAML
+                # (e.g., *spice_basic).
                 if key_str.startswith("#") or key_str.startswith("_"):
                     continue
 
@@ -112,9 +112,13 @@ class DependencyConfigNew:
                     key_parts = key_str.strip("()").split(",")
                     data_type = key_parts[0].strip()
                     descriptor = key_parts[1].strip()
+                    # Convert string key like "(l1a, all)" in the YAML to tuple
+                    # (<instrument>,l1a, all) by combining with instrument source
+                    # to get full downstream node.
                     downstream_node = (instrument, data_type, descriptor)
 
-                    # Flatten upstream dependencies from YAML aliases. Eg.
+                    # Flatten upstream dependencies because of how YAML aliases is
+                    # loaded in code. Eg.
                     #   (l1a, all):
                     #         - (hi, l0, raw, true, true)
                     #         - *spice_basic
@@ -126,7 +130,7 @@ class DependencyConfigNew:
                         else:
                             flattened_upstream_deps.append(item)
 
-                    # Validate each upstream node - they come as lists from YAML
+                    # Validate each upstream node
                     for upstream in flattened_upstream_deps:
                         if isinstance(upstream, list):
                             self.validate_node(list(upstream))
@@ -162,8 +166,9 @@ class DependencyConfigNew:
                 ("-3p", "3pm") means 3 pointing
                 ("-3d", "5d") means 5 days
                 ("-2h", "2h") means 2 hours
-                ("1l",) means last processed.
-        Validation is performed using DataSource and DataType validators.
+                ("1l",) means last processed
+
+        Validation is performed for each field.
 
         Parameters
         ----------
@@ -312,12 +317,12 @@ class DependencyResolver:
 
     _config = DependencyConfigNew()
 
-    def get_downstream_dependency_nodes(self, dependency_node: DependencyNode) -> list:
+    def get_downstream_dependency_nodes(self, input_node: DependencyNode) -> list:
         """Get downstream dependency nodes for a given node.
 
         Parameters
         ----------
-        dependency_node : DependencyNode
+        input_node : DependencyNode
             The node for which to retrieve downstream dependencies.
 
         Returns
@@ -332,9 +337,9 @@ class DependencyResolver:
         )
         [DependencyNode(source='swe', data_type='l1b', descriptor='all'), ...]
         """
-        if not isinstance(dependency_node, DependencyNode):
+        if not isinstance(input_node, DependencyNode):
             raise ValueError(
-                f"Input must be a DependencyNode instance, got {type(dependency_node)}"
+                f"Input must be a DependencyNode instance, got {type(input_node)}"
             )
 
         downstream_dependency_nodes = []
@@ -346,7 +351,7 @@ class DependencyResolver:
                 DependencyNode(*upstream_dependency[:3])
                 for upstream_dependency in upstream_dependencies
             ]
-            if dependency_node in upstream_nodes:
+            if input_node in upstream_nodes:
                 downstream_dependency_nodes.append(
                     DependencyNode(
                         source=downstream_node[0],
@@ -357,37 +362,40 @@ class DependencyResolver:
 
         return downstream_dependency_nodes
 
-    def get_upstream_dependency(self, session, upstream_node: UpstreamDependencyNode):
-        """Get upstream dependencies for a given downstream product.
+    def get_upstream_dependency(
+        self, session, input_upstream_node: UpstreamDependencyNode
+    ):
+        """Get upstream dependencies for a given input product.
 
         Parameters
         ----------
         session : db.Session
             Database session for file queries.
-        upstream_node : UpstreamDependencyNode
+        input_upstream_node : UpstreamDependencyNode
             The upstream node for which to retrieve dependencies.
 
         Returns
         -------
         dict
-            Result dictionary with status (200/404), message, and file data.
+            Result dictionary with status (200/404), message, and found
+            files for each dependency.
         """
         upstream_deps = self._config.config.get(
             (
-                upstream_node.source,
-                upstream_node.data_type,
-                upstream_node.descriptor,
+                input_upstream_node.source,
+                input_upstream_node.data_type,
+                input_upstream_node.descriptor,
             )
         )
 
         if not upstream_deps:
             return {
                 "status": 404,
-                "message": f"No upstream dependencies found for {upstream_node}",
+                "message": f"No upstream dependencies found for {input_upstream_node}",
                 "data": {},
             }
 
-        # Status, message, data.
+        # Initialize status, message, data.
         result_data = {
             "status": 200,
             "message": "Found upstream dependencies",
@@ -402,7 +410,7 @@ class DependencyResolver:
         has_spin_dep = any(dep["data_source"] == "spin" for dep in upstream_deps)
         if has_spin_dep:
             spin_records = self.get_spin_files(
-                session, upstream_node.start_date, upstream_node.end_date
+                session, input_upstream_node.start_date, input_upstream_node.end_date
             )
             self._add_dependency_records(
                 spin_records,
@@ -416,7 +424,9 @@ class DependencyResolver:
         # If repoint in upstream dependency, query latest repoint file
         has_repoint_dep = any(dep["data_source"] == "repoint" for dep in upstream_deps)
         if has_repoint_dep:
-            latest_repoint_file = self.get_latest_repoint_file(upstream_node.end_date)
+            latest_repoint_file = self.get_latest_repoint_file(
+                input_upstream_node.end_date
+            )
             repoint_records = [latest_repoint_file] if latest_repoint_file else []
             self._add_dependency_records(
                 repoint_records,
@@ -435,11 +445,11 @@ class DependencyResolver:
             for dep in upstream_deps
         )
         if has_kernel_dep:
-            kernels_records = self.get_spice_files(upstream_node, upstream_deps)
+            kernels_records = self.get_spice_files(input_upstream_node, upstream_deps)
             kernel_list = kernels_records if kernels_records else []
             self._add_dependency_records(
                 kernel_list,
-                ("all", "spice", "best"),
+                ("all", "spice", "metakernel"),
                 processing_input.SpiceKernelInput,
                 result_data,
                 data_collection,
@@ -459,8 +469,8 @@ class DependencyResolver:
             ancillary_files = self.get_ancillary_files(
                 source=ancillary_dependency["data_source"],
                 descriptor=ancillary_dependency["descriptor"],
-                start_date=upstream_node.start_date,
-                end_date=upstream_node.end_date,
+                start_date=input_upstream_node.start_date,
+                end_date=input_upstream_node.end_date,
             )
             self._add_dependency_records(
                 ancillary_files,
@@ -482,10 +492,12 @@ class DependencyResolver:
             dep
             for dep in upstream_deps
             if dep["data_source"] in VALID_INSTRUMENTS
-            and dep["data_type"] != "ancillary"
+            and (dep["data_type"] != "ancillary")
         ]
         for science_dependency in science_deps:
-            science_files = self.get_science_files(upstream_node, science_dependency)
+            science_files = self.get_science_files(
+                input_upstream_node, science_dependency
+            )
             self._add_dependency_records(
                 science_files,
                 (
@@ -554,13 +566,13 @@ class DependencyResolver:
             data_collection.add(input_class(*file_paths))
 
     def get_science_files(
-        self, upstream_node: UpstreamDependencyNode, upstream_dependency: tuple
+        self, input_upstream_node: UpstreamDependencyNode, upstream_dependency: tuple
     ) -> list:
         """Get science files for a given product.
 
         Parameters
         ----------
-        upstream_node : UpstreamDependencyNode
+        input_upstream_node : UpstreamDependencyNode
             Node containing source, data_type, descriptor, and actual date range,
             reprocesing flag or repoint id.
         upstream_dependency : tuple
@@ -702,7 +714,7 @@ class DependencyResolver:
         return basename(latest_repoint_file.file_path)
 
     def get_spice_files(
-        self, upstream_node: UpstreamDependencyNode, upstream_deps: list
+        self, input_upstream_node: UpstreamDependencyNode, upstream_deps: list
     ) -> list:
         """Retrieve SPICE kernel files for given time range and kernel types."""
         combined_kernel_sources = self.combine_kernel_sources(upstream_deps)
@@ -722,18 +734,18 @@ class DependencyResolver:
             return delta.total_seconds()
 
         start_time = yyyymmdd_to_seconds_since_j2000(
-            upstream_node.start_date.strftime("%Y%m%d")
+            input_upstream_node.start_date.strftime("%Y%m%d")
         )
         # TODO revisit setting end_time after SIT-4. Should be handled upstream
         if (
-            upstream_node.end_date == upstream_node.start_date
-            or upstream_node.repoint is not None
+            input_upstream_node.end_date == input_upstream_node.start_date
+            or input_upstream_node.repoint is not None
         ):
             add_24_hrs = True
         else:
             add_24_hrs = False
         end_time = yyyymmdd_to_seconds_since_j2000(
-            upstream_node.end_date.strftime("%Y%m%d"), add_24_hrs
+            input_upstream_node.end_date.strftime("%Y%m%d"), add_24_hrs
         )
         metakernel_response = spice_metakernel_api.lambda_handler(
             {
