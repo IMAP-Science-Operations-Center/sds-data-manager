@@ -706,12 +706,12 @@ def determine_date_range(session, file_obj):
         ):
             # For idex l1b sci-1week jobs, we want to use a date range of 12 days ending
             # at the start date in the filename. Although the file is named as
-            # 1week, it can actually contain a over a week of data, so we want to
+            # 1week, it can actually contain over a week of data, so we want to
             # add a buffer to make sure we are getting all the spice coverage we need.
-            start_date = file_obj.start_date
-            end_date = (
-                datetime.datetime.strptime(start_date, "%Y%m%d")
-                - datetime.timedelta(days=12)
+            end_date = file_obj.start_date
+            start_date = (
+                datetime.datetime.strptime(end_date, "%Y%m%d")
+                + datetime.timedelta(days=12)
             ).strftime("%Y%m%d")
         else:
             start_date = end_date = file_obj.start_date
