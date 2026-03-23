@@ -702,7 +702,7 @@ def determine_date_range(session, file_obj):
         elif (
             file_obj.instrument == "idex"
             and "sci-1week" in file_obj.descriptor
-            and file_obj.data_level == "l1b"
+            and file_obj.data_level == "l1a"
         ):
             # For idex l1b sci-1week jobs, we want to use a date range of 12 days ending
             # at the start date in the filename. Although the file is named as

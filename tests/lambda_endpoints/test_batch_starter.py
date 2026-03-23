@@ -2013,9 +2013,9 @@ def test_idex_l1b_date_range(session):
     _static_spice_files(session)
     session.add(
         ScienceFiles(
-            file_path="/path/to/imap_idex_l1b_sci-1week_20251020_v001.cdf",
+            file_path="/path/to/imap_idex_l1a_sci-1week_20251020_v001.cdf",
             instrument="idex",
-            data_level="l1b",
+            data_level="l1a",
             descriptor="sci-1week",
             start_date=datetime(2025, 10, 20),
             version="v001",
@@ -2027,7 +2027,7 @@ def test_idex_l1b_date_range(session):
     )
     session.commit()
 
-    filename = "imap_idex_l1b_sci-1week_20251020_v001.cdf"
+    filename = "imap_idex_l1a_sci-1week_20251020_v001.cdf"
     file_obj = imap_data_access.ScienceFilePath(filename)
     date_range = determine_date_range(session, file_obj)
     # Idex l1b jobs should have a date range of start date - 12 days - start date
