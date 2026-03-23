@@ -2008,6 +2008,32 @@ def test_repoint_date_range(
         )
 
 
+def test_idex_l1b_date_range(session):
+    """Test that the date range for IDEX l1b jobs is correct."""
+    _static_spice_files(session)
+    session.add(
+        ScienceFiles(
+            file_path="/path/to/imap_idex_l1b_sci-1week_20251020_v001.cdf",
+            instrument="idex",
+            data_level="l1b",
+            descriptor="sci-1week",
+            start_date=datetime(2025, 10, 20),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        )
+    )
+    session.commit()
+
+    filename = "imap_idex_l1b_sci-1week_20251020_v001.cdf"
+    file_obj = imap_data_access.ScienceFilePath(filename)
+    date_range = determine_date_range(session, file_obj)
+    # Idex l1b jobs should have a date range of start date - 12 days - start date
+    assert date_range == ("20251008", "20251020")
+
+
 def test_lambda_skip_processing_due_to_crid_check(session, caplog):
     """Test that processing stops when the calculated CRID is mismatched.
 
