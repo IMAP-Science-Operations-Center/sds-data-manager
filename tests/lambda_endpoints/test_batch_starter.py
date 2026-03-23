@@ -2008,8 +2008,8 @@ def test_repoint_date_range(
         )
 
 
-def test_idex_l1b_date_range(session):
-    """Test that the date range for IDEX l1b jobs is correct."""
+def test_idex_l1a_date_range(session):
+    """Test that the date range for IDEX l1a files is correct."""
     _static_spice_files(session)
     session.add(
         ScienceFiles(
