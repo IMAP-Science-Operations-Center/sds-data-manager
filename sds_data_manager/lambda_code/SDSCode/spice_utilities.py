@@ -88,7 +88,7 @@ def furnish_best_spice_file(kernel_type: str):
         or the file is not in the S3 bucket, FileNotFoundError will raise.
     """
     # Check if S3_BUCKET and DATA_DIR are set
-    if "S3_BUCKET" not in os.environ or "DATA_DIR" not in os.environ:
+    if "S3_BUCKET" not in os.environ or "DATA_DIR" not in imap_data_access.config:
         raise FileNotFoundError(
             f"Unable to find the latest {kernel_type} kernel. "
             "Please ensure S3_BUCKET and DATA_DIR are set in the environment variables."
