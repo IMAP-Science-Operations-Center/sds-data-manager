@@ -701,10 +701,10 @@ def determine_date_range(session, file_obj):
             )
         elif (
             file_obj.instrument == "idex"
-            and "1week" in file_obj.descriptor
+            and "sci-1week" in file_obj.descriptor
             and file_obj.data_level == "l1b"
         ):
-            # For idex l1b 1week files, we want to use a date range of 12 days ending
+            # For idex l1b sci-1week jobs, we want to use a date range of 12 days ending
             # at the start date in the filename. Although the file is named as
             # 1week, it can actually contain a over a week of data, so we want to
             # add a buffer to make sure we are getting all the spice coverage we need.
