@@ -711,7 +711,7 @@ def determine_date_range(session, file_obj):
             end_date = file_obj.start_date
             start_date = (
                 datetime.datetime.strptime(end_date, "%Y%m%d")
-                - datetime.timedelta(days=12)
+                + datetime.timedelta(days=12)
             ).strftime("%Y%m%d")
         else:
             start_date = end_date = file_obj.start_date
