@@ -511,7 +511,7 @@ def submit_all_jobs(
             # 1week, it can actually contain over a week of data, so we want to
             # add a buffer to make sure we are getting all the spice coverage we need.
             query_start_date = (
-                datetime.datetime.strptime(end_date, "%Y%m%d")
+                datetime.datetime.strptime(start_date, "%Y%m%d")
                 - datetime.timedelta(days=12)
             ).strftime("%Y%m%d")
         else:
@@ -541,7 +541,7 @@ def submit_all_jobs(
             if not upstream_deps_for_job:
                 logger.info(
                     f"Skipping job submission for {job_node} with start_date: "
-                    f"{start_date} because of a missing upstream dependency."
+                    f"{query_start_date} because of a missing upstream dependency."
                 )
                 continue
         else:

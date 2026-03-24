@@ -1314,7 +1314,7 @@ def test_def_cadence_map_event(
 
 
 def test_idex_l1b(session, auth_event, mock_upload_request_success, caplog):
-    """Tests ``submit_all_jobs` for unique idex job with buffered query start date."""
+    """Tests ``submit_all_jobs`` for unique idex job with buffered query start date."""
     _static_spice_files(session)
     # Add idex l1a sci-1week file for 20251018 and spin file covering the date range.
     session.add_all(
