@@ -1252,7 +1252,6 @@ def get_upstream_dependency_inputs(
                     require_coverage
                     and dep["data_type"] not in [DataType.ANCILLARY]
                     # Verify coverage for HARD science dependencies
-                    # TODO except idex!
                     and not verify_science_coverage(
                         records, start_date, end_date, dep, repoint
                     )
