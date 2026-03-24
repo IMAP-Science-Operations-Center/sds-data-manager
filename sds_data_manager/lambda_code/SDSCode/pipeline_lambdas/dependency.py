@@ -20,7 +20,7 @@ from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
 from ..database import models
 from ..database.models import AncillaryFiles
-from . import REPOINT_DEPENDENT_INSTRUMENTS, VALID_CADENCE_STRS
+from . import NON_DAILY_INSTRUMENTS, REPOINT_DEPENDENT_INSTRUMENTS, VALID_CADENCE_STRS
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -628,6 +628,12 @@ def verify_science_coverage(
     bool
         True if coverage is complete, False if gaps exist.
     """
+    if dependency["data_source"] in NON_DAILY_INSTRUMENTS:
+        logger.info(
+            f"Skipping daily coverage verification for {dependency['data_source']} "
+            f"as it is a non-daily instrument."
+        )
+        return True
     if not records:
         return False
 
@@ -1222,6 +1228,7 @@ def get_upstream_dependency_inputs(
                     require_coverage
                     and dep["data_type"] not in [DataType.ANCILLARY]
                     # Verify coverage for HARD science dependencies
+                    # TODO except idex!
                     and not verify_science_coverage(
                         records, start_date, end_date, dep, repoint
                     )

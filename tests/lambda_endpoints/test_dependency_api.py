@@ -1692,6 +1692,28 @@ class TestVerifyScienceCoverage:
 
         assert coverage_ok is False
 
+    def test_verify_science_coverage_non_daily_instrument(self, caplog):
+        """Test verify_science_coverage when start_date equals end_date."""
+        records = [
+            ScienceRecord("file1.cdf", datetime(2024, 5, 10), None),
+        ]
+
+        dependency = {
+            "data_source": "idex",
+            "data_type": "l1a",
+            "descriptor": "sci-1week",
+        }
+
+        coverage_ok = verify_science_coverage(
+            records, datetime(2024, 5, 1), datetime(2024, 5, 10), dependency
+        )
+
+        assert coverage_ok is True
+        assert (
+            "Skipping daily coverage verification for idex as it is a non-daily"
+            " instrument"
+        ) in caplog.text
+
 
 #####################################
 # REQUIRE_COVERAGE INTEGRATION TESTS
