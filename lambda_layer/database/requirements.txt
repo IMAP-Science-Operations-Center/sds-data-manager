@@ -167,9 +167,9 @@ greenlet==3.3.0 ; python_version >= "3.10" and python_version < "4" and (platfor
 idna==3.11 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea \
     --hash=sha256:795dafcc9c04ed0c1fb032c2aa73654d8e8c5023a7df64a53f39190ada629902
-imap-data-access==0.37.1 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:25743a180993f740cfcfc6805275feba9590324dd3fd6b88ab9cdb8d0731d13c \
-    --hash=sha256:aebd68f8f20e85535ae651a7145468596e975dd194e661b1b1dc212326cbb88e
+imap-data-access==0.37.3 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:1cec14883a08e49de26c3c4ee20f54f9746da53584c5d1eae22bd52d1c4b9457 \
+    --hash=sha256:26450684ef4e79f3e9ca45c29857e593487be75599db2cac5dc4a715e1eaf218
 psycopg2-binary==2.9.11 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:00ce1830d971f43b667abe4a56e42c1e2d594b32da4802e44a73bacacb25535f \
     --hash=sha256:04195548662fa544626c8ea0f06561eb6203f1984ba5b4562764fbeb4c3d14b1 \

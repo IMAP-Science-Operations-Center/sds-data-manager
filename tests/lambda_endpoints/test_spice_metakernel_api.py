@@ -1,13 +1,16 @@
 """Tests for the SPICE Query API."""
 
 import json
+import os
 from datetime import datetime, timedelta
 
 import imap_data_access
-import pytest
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
 from sds_data_manager.lambda_code.SDSCode.database import models
+from sds_data_manager.lambda_code.SDSCode.spice_utilities import (
+    MAXIMUM_MISSION_J2000_TIME,
+)
 
 
 def _irrelevant_data():
@@ -275,10 +278,23 @@ def test_metakernel_filtered_file_types(session):
     assert result["body"] == "No files found."
 
 
-@pytest.mark.skip(reason="Need to fix the spiceypy.datetime2et() call")
-def test_metakernel_string_input(session):
+def test_metakernel_string_input(session, s3_client):
     """Test that string input is allowed, and is converted to a datetime object."""
-    _insert_test_file(session, "naif0012.tls", [[1, 300]], upload_time=1)
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    one_level_up = os.path.abspath(os.path.join(current_path, ".."))
+    test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
+
+    # Insert leapsecond spice kernel into a mock S3 bucket
+    lsk_test_path = os.path.join(test_spice_data_dir, "naif0012.tls")
+    bucket_name = os.getenv("S3_BUCKET")
+    with open(lsk_test_path, "rb") as f:
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key="imap/spice/lsk/naif0012.tls",
+            Body=f,
+        )
+
+    _insert_test_file(session, "imap/spice/lsk/naif0012.tls", [[1, 300]], upload_time=1)
     _insert_test_file(session, "imap_sclk_0012.tsc", [[1, 300]], upload_time=1)
     _insert_test_data(session)
 
@@ -293,7 +309,7 @@ def test_metakernel_string_input(session):
         },
         None,
     )
-    assert len(json.loads(result["body"])) == 8
+    assert len(json.loads(result["body"])) == 6
 
 
 def test_metakernel_frames(session):
@@ -326,3 +342,62 @@ def test_metakernel_frames(session):
         None,
     )
     assert len(json.loads(result["body"])) == 2
+
+
+def test_metakernel_with_human_readable_dates(session, s3_client):
+    """Test metakernel with human readable dates as input."""
+    # Upload time kernel to S3 so furnish_best_spice_file can find it
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    one_level_up = os.path.abspath(os.path.join(current_path, ".."))
+    test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
+
+    lsk_test_path = os.path.join(test_spice_data_dir, "naif0012.tls")
+    bucket_name = os.getenv("S3_BUCKET")
+    with open(lsk_test_path, "rb") as f:
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key="imap/spice/lsk/naif0012.tls",
+            Body=f,
+        )
+
+    # Insert time kernel into db so furnish_best_spice_file can find it.
+    _insert_test_file(
+        session, "naif0012.tls", [[1, MAXIMUM_MISSION_J2000_TIME]], upload_time=1
+    )
+    # Insert attitude file for testing file_types parameter
+    _insert_test_file(
+        session, "imap_1000_001_1000_100_002.ah.bc", [[1, 300]], upload_time=1
+    )
+
+    # Attempt to query with human-readable date format without specifying file_types
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": "20260101",
+                "end_time": "20260401",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+    # Should find leapseconds kernel and return successfully
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"]) == ["naif0012.tls"]
+
+    # Now query with file_types specified - should succeed
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": "19000101",
+                "end_time": "20260101",
+                "spice_path": "",
+                "list_files": "True",
+                "file_types": "attitude_history",
+            }
+        },
+        None,
+    )
+    # Should return successfully with specific kernel available
+    assert result["statusCode"] == 200
+    # Should return the attitude file that was inserted
+    assert json.loads(result["body"]) == ["imap_1000_001_1000_100_002.ah.bc"]

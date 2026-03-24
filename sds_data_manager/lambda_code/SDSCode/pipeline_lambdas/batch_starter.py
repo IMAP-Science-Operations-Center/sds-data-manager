@@ -27,13 +27,12 @@ from ..api_lambdas import upload_api
 from ..database import database as db
 from ..database import models
 from . import REPOINT_DEPENDENT_INSTRUMENTS, VALID_CADENCE_STRS, dependency
-from .dependency import DependencyConfig
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-DEPENDENCY_CONFIG = DependencyConfig()
+DEPENDENCY_CONFIG = dependency.DependencyConfig()
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 # Define the retry strategy for batch jobs
@@ -502,6 +501,21 @@ def submit_all_jobs(
     for filename in primary_science.filename_list:
         science_file = ScienceFilePath(filename)
         start_date, end_date = determine_date_range(session, science_file)
+        if (
+            job_node["data_source"] == "idex"
+            and job_node["descriptor"] == "sci-1week"
+            and job_node["data_type"] == "l1b"
+        ):
+            # For idex l1b sci-1week jobs, we want to use a date range of 12 days ending
+            # at the start date in the filename. Although the file is named as
+            # 1week, it can actually contain over a week of data, so we want to
+            # add a buffer to make sure we are getting all the spice coverage we need.
+            query_start_date = (
+                datetime.datetime.strptime(start_date, "%Y%m%d")
+                - datetime.timedelta(days=12)
+            ).strftime("%Y%m%d")
+        else:
+            query_start_date = start_date
 
         # Get the repointing number from the science file object
         job_repointing = science_file.repointing
@@ -517,7 +531,7 @@ def submit_all_jobs(
                 descriptor=job_node["descriptor"],
                 dependency_type="UPSTREAM",
                 relationship="ALL",
-                start_date=start_date,
+                start_date=query_start_date,
                 end_date=end_date,
                 repoint=job_repointing,
                 calculate_crids=False,
@@ -527,7 +541,7 @@ def submit_all_jobs(
             if not upstream_deps_for_job:
                 logger.info(
                     f"Skipping job submission for {job_node} with start_date: "
-                    f"{start_date} because of a missing upstream dependency."
+                    f"{query_start_date} because of a missing upstream dependency."
                 )
                 continue
         else:
@@ -714,6 +728,8 @@ def determine_date_range(session, file_obj):
     return start_date, end_date
 
 
+# TODO: Refactor function to have fewer branches. For now, just ignore ruff.
+# ruff: noqa: PLR0912
 def s3_processing_event(session, events):
     """Process SQS events that were triggered by S3 file arrivals.
 
@@ -819,15 +835,54 @@ def s3_processing_event(session, events):
             repoint = (
                 file_obj.repointing if isinstance(file_obj, ScienceFilePath) else None
             )
-            submit_all_jobs(
-                session,
-                job,
-                trigger_start_time,
-                trigger_end_time,
-                repoint,
-                calculate_crids,
-                filter_dependencies,
+
+            # Check if trigger file is Hi L1B DE
+            trigger_is_hi_l1b_de = (
+                isinstance(file_obj, ScienceFilePath)
+                and file_obj.instrument == "hi"
+                and file_obj.data_level == "l1b"
+                and file_obj.descriptor.endswith("-de")
             )
+
+            # Special handling: When Hi L1B DE triggers Hi Goodtimes,
+            # expand to multiple target repoints
+            if (
+                trigger_is_hi_l1b_de
+                and repoint is not None
+                and job["data_source"] == "hi"
+                and job["data_type"] == "l1b"
+                and "goodtimes" in job["descriptor"]
+            ):
+                # Get target repoints in range [T-N+1, T+N-1]
+                # Normal dependency checking will handle missing L1B DE files
+                target_repoints = dependency.get_hi_goodtimes_target_repoints(
+                    trigger_repoint=repoint,
+                )
+
+                for target_repoint in target_repoints:
+                    logger.info(
+                        f"Submitting Hi Goodtimes job for repoint {target_repoint} "
+                        f"(triggered by repoint {repoint} file)"
+                    )
+                    submit_all_jobs(
+                        session,
+                        job,
+                        trigger_start_time,
+                        trigger_end_time,
+                        target_repoint,
+                        calculate_crids,
+                        filter_dependencies,
+                    )
+            else:
+                submit_all_jobs(
+                    session,
+                    job,
+                    trigger_start_time,
+                    trigger_end_time,
+                    repoint,
+                    calculate_crids,
+                    filter_dependencies,
+                )
 
         if sqs_queue_url:
             # When the record from the sqs event has been processed, it can safely be
@@ -890,7 +945,7 @@ def bulk_reprocessing_event(session, events):
         # If data_level is not provided, we need to reprocess all levels.
         # Get the jobs that kick of each pipeline, to trigger processing
         # for all levels.
-        potential_jobs = DependencyConfig().kickoff_pipeline_jobs()
+        potential_jobs = dependency.DependencyConfig().kickoff_pipeline_jobs()
         # filter the jobs by instrument and descriptor if provided
         potential_jobs = [
             job
