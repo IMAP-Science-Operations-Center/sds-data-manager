@@ -501,6 +501,21 @@ def submit_all_jobs(
     for filename in primary_science.filename_list:
         science_file = ScienceFilePath(filename)
         start_date, end_date = determine_date_range(session, science_file)
+        if (
+            job_node["data_source"] == "idex"
+            and job_node["descriptor"] == "sci-1week"
+            and job_node["data_type"] == "l1b"
+        ):
+            # For idex l1b sci-1week jobs, we want to use a date range of 12 days ending
+            # at the start date in the filename. Although the file is named as
+            # 1week, it can actually contain over a week of data, so we want to
+            # add a buffer to make sure we are getting all the spice coverage we need.
+            query_start_date = (
+                datetime.datetime.strptime(end_date, "%Y%m%d")
+                - datetime.timedelta(days=12)
+            ).strftime("%Y%m%d")
+        else:
+            query_start_date = start_date
 
         # Get the repointing number from the science file object
         job_repointing = science_file.repointing
@@ -516,7 +531,7 @@ def submit_all_jobs(
                 descriptor=job_node["descriptor"],
                 dependency_type="UPSTREAM",
                 relationship="ALL",
-                start_date=start_date,
+                start_date=query_start_date,
                 end_date=end_date,
                 repoint=job_repointing,
                 calculate_crids=False,
@@ -698,20 +713,6 @@ def determine_date_range(session, file_obj):
             start_date, end_date = calculate_pointing_date_range(
                 session, file_obj.repointing
             )
-        elif (
-            file_obj.instrument == "idex"
-            and "sci-1week" in file_obj.descriptor
-            and file_obj.data_level == "l1a"
-        ):
-            # For idex l1b sci-1week jobs, we want to use a date range of 12 days ending
-            # at the start date in the filename. Although the file is named as
-            # 1week, it can actually contain over a week of data, so we want to
-            # add a buffer to make sure we are getting all the spice coverage we need.
-            end_date = file_obj.start_date
-            start_date = (
-                datetime.datetime.strptime(end_date, "%Y%m%d")
-                - datetime.timedelta(days=12)
-            ).strftime("%Y%m%d")
         else:
             start_date = end_date = file_obj.start_date
     elif isinstance(file_obj, AncillaryFilePath):
