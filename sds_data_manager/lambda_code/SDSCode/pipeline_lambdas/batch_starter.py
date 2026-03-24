@@ -27,13 +27,12 @@ from ..api_lambdas import upload_api
 from ..database import database as db
 from ..database import models
 from . import REPOINT_DEPENDENT_INSTRUMENTS, VALID_CADENCE_STRS, dependency
-from .dependency import DependencyConfig
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-DEPENDENCY_CONFIG = DependencyConfig()
+DEPENDENCY_CONFIG = dependency.DependencyConfig()
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 # Define the retry strategy for batch jobs
@@ -728,6 +727,8 @@ def determine_date_range(session, file_obj):
     return start_date, end_date
 
 
+# TODO: Refactor function to have fewer branches. For now, just ignore ruff.
+# ruff: noqa: PLR0912
 def s3_processing_event(session, events):
     """Process SQS events that were triggered by S3 file arrivals.
 
@@ -833,15 +834,54 @@ def s3_processing_event(session, events):
             repoint = (
                 file_obj.repointing if isinstance(file_obj, ScienceFilePath) else None
             )
-            submit_all_jobs(
-                session,
-                job,
-                trigger_start_time,
-                trigger_end_time,
-                repoint,
-                calculate_crids,
-                filter_dependencies,
+
+            # Check if trigger file is Hi L1B DE
+            trigger_is_hi_l1b_de = (
+                isinstance(file_obj, ScienceFilePath)
+                and file_obj.instrument == "hi"
+                and file_obj.data_level == "l1b"
+                and file_obj.descriptor.endswith("-de")
             )
+
+            # Special handling: When Hi L1B DE triggers Hi Goodtimes,
+            # expand to multiple target repoints
+            if (
+                trigger_is_hi_l1b_de
+                and repoint is not None
+                and job["data_source"] == "hi"
+                and job["data_type"] == "l1b"
+                and "goodtimes" in job["descriptor"]
+            ):
+                # Get target repoints in range [T-N+1, T+N-1]
+                # Normal dependency checking will handle missing L1B DE files
+                target_repoints = dependency.get_hi_goodtimes_target_repoints(
+                    trigger_repoint=repoint,
+                )
+
+                for target_repoint in target_repoints:
+                    logger.info(
+                        f"Submitting Hi Goodtimes job for repoint {target_repoint} "
+                        f"(triggered by repoint {repoint} file)"
+                    )
+                    submit_all_jobs(
+                        session,
+                        job,
+                        trigger_start_time,
+                        trigger_end_time,
+                        target_repoint,
+                        calculate_crids,
+                        filter_dependencies,
+                    )
+            else:
+                submit_all_jobs(
+                    session,
+                    job,
+                    trigger_start_time,
+                    trigger_end_time,
+                    repoint,
+                    calculate_crids,
+                    filter_dependencies,
+                )
 
         if sqs_queue_url:
             # When the record from the sqs event has been processed, it can safely be
@@ -904,7 +944,7 @@ def bulk_reprocessing_event(session, events):
         # If data_level is not provided, we need to reprocess all levels.
         # Get the jobs that kick of each pipeline, to trigger processing
         # for all levels.
-        potential_jobs = DependencyConfig().kickoff_pipeline_jobs()
+        potential_jobs = dependency.DependencyConfig().kickoff_pipeline_jobs()
         # filter the jobs by instrument and descriptor if provided
         potential_jobs = [
             job

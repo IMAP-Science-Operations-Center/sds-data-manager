@@ -2328,3 +2328,93 @@ def test_determine_job_version_spacecraft(session):
     )
     # The version should be v003 since there was a successful job with v002
     assert version == "v003"
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.dependency.get_dependencies"
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.submit_all_jobs"
+)
+def test_hi_goodtimes_multi_repoint_trigger(
+    mock_submit_all_jobs,
+    mock_get_dependencies,
+    session,
+    s3_client,
+    monkeypatch,
+):
+    """Test Hi Goodtimes multi-repoint trigger logic in s3_processing_event.
+
+    When a Hi L1B DE file with repoint T arrives, it should trigger goodtimes
+    jobs for target repoints in range [T-N+1, T+N-1].
+    """
+    # Monkeypatch configuration value for testing
+    monkeypatch.setattr(dependency, "HI_GOODTIMES_NUM_NEAREST_REPOINTS", 2)
+
+    mock_get_dependencies.side_effect = [
+        [
+            {
+                "data_source": "hi",
+                "data_type": "l1b",
+                "descriptor": "45sensor-goodtimes",
+                "relationship": "HARD",
+            }
+        ],
+        [],
+    ]
+
+    # Add pointing table entries (needed for determine_date_range)
+    for i in range(1, 8):
+        session.add(
+            PointingTable(
+                pointing_id=i,
+                pointing_start_utc=datetime(2024, 1, i, 0, 0, 0),
+                pointing_end_utc=datetime(2024, 1, i, 23, 59, 0),
+                repoint_start_utc=datetime(2024, 1, i, 0, 0, 0),
+                repoint_end_utc=datetime(2024, 1, i, 1, 0, 0),
+            )
+        )
+    session.commit()
+
+    # Create an S3 event for the L1B DE file arrival (repoint 3)
+    events = {
+        "Records": [
+            {
+                "eventSourceARN": (
+                    "arn:aws:sqs:us-east-1:123456789012:test-queue.fifo"
+                ),
+                "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+                "body": '{"detail": '
+                '{"object": {"key": '
+                '"imap_hi_l1b_45sensor-de_20240103-repoint00003_v001.cdf"}}'
+                "}",
+            }
+        ]
+    }
+    context = {"context": "sample_context"}
+
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", Mock()),
+        patch.object(batch_starter, "generate_queue_url", return_value=False),
+    ):
+        lambda_handler(events, context)
+
+    # Verify that submit_all_jobs was called for goodtimes jobs
+    # With trigger repoint 3 and NUM_NEAREST=2, targets are [3-2+1, 3+2-1] = [2, 4]
+
+    # Find all calls to submit_all_jobs for goodtimes
+    goodtimes_calls = [
+        call_args
+        for call_args in mock_submit_all_jobs.call_args_list
+        if call_args[0][1]["descriptor"] == "45sensor-goodtimes"
+    ]
+
+    # Verify the repoints for each call
+    repoints_submitted = set()
+    for call_args in goodtimes_calls:
+        # The repoint is the 5th positional argument (index 4)
+        target_repoint = call_args.args[4]
+        repoints_submitted.add(target_repoint)
+
+    # With trigger repoint 3 and N=2, targets are [2, 3, 4]
+    assert repoints_submitted == {2, 3, 4}
