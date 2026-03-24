@@ -124,14 +124,24 @@ Management of these keys is done through a script located at `sds_data_manager/l
 That script can add, remove, and list the current keys. To add keys, add the name and e-mail of the associated
 user or account and get returned an API Key that you can then give to the external user for access.
 
-For example from the command line with the proper AWS credentials:
+##### Scope Options
+
+When creating or updating API keys, you can specify different scopes to control access:
+
+- `full`: Full read and write access to all endpoints and data
+- `read`: Read-only access. Can query and download data but cannot upload or modify files
+
+##### Usage Examples
 
 ```bash
 python sds_data_manager/lambda_code/authorization/manage_api_keys.py list
-python sds_data_manager/lambda_code/authorization/manage_api_keys.py add <owner> <email>
+python sds_data_manager/lambda_code/authorization/manage_api_keys.py add <owner> <email> <scope>
 python sds_data_manager/lambda_code/authorization/manage_api_keys.py remove <key>
 python sds_data_manager/lambda_code/authorization/manage_api_keys.py update_permission <owner> <email> <scope>
 AWS_PROFILE=imap-sdc-dev AWS_DEFAULT_REGION=us-west-2 \
   python sds_data_manager/lambda_code/authorization/manage_api_keys.py \
       add "First Last" "user@example.com" "full"
+AWS_PROFILE=imap-sdc-dev AWS_DEFAULT_REGION=us-west-2 \
+  python sds_data_manager/lambda_code/authorization/manage_api_keys.py \
+      add "Read User" "reader@example.com" "read"
 ```

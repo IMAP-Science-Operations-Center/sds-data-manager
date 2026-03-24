@@ -82,9 +82,9 @@ def test_api_key_management(dynamodb_table):
     assert result["isAuthorized"] is True  # "full" scope should allow access
 
     # Test that permissions were updated.
-    update_permission("Test User", "test@example.com", "ialirt_external_partner")
+    update_permission("Test User", "test@example.com", "read")
     metadata = dynamodb_table.get_item(Key={"api_key": test_key}).get("Item")
-    assert metadata["scope"] == "ialirt_external_partner"
+    assert metadata["scope"] == "read"
 
     # Test removing a key
     remove_key_from_db(test_key)
@@ -102,22 +102,37 @@ def test_scope_restrictions(dynamodb_table):
         add_key_to_db,
     )
 
-    # Add a key with limited scope
-    limited_key = "limited123456789abc"
+    # Add a key with read-only scope
+    read_only_key = "readonly123456789ab"
     add_key_to_db(
-        limited_key,
-        "Limited User",
-        "limited@example.com",
-        "read_only",
+        read_only_key,
+        "Read Only User",
+        "readonly@example.com",
+        "read",
         "2024-01-01T00:00:00",
     )
 
-    # Test access to ialirt-db-query with limited scope
-    event = {"headers": {"x-api-key": limited_key}, "rawPath": "/ialirt-db-query/test"}
+    # Test access to spaceweather-priority with read scope (should be allowed)
+    event = {
+        "headers": {"x-api-key": read_only_key},
+        "rawPath": "/space-weather-priority/test",
+        "requestContext": {"http": {"method": "GET"}},
+    }
     result = lambda_handler(event, {})
-    assert result["isAuthorized"] is False  # Should be denied
+    assert result["isAuthorized"] is True  # Read scope can access queries
 
-    # Test access to regular endpoint with limited scope
+    # Test access to regular endpoint with read scope
     event["rawPath"] = "/regular-endpoint"
     result = lambda_handler(event, {})
     assert result["isAuthorized"] is True  # Should be allowed
+
+    # Test write restriction for read-only scope
+    event["requestContext"] = {"http": {"method": "PUT"}}
+    result = lambda_handler(event, {})
+    assert result["isAuthorized"] is False  # Write operations should be denied
+
+    # Test upload restriction for read-only scope
+    event["rawPath"] = "/api-key/upload/test"
+    event["requestContext"] = {"http": {"method": "POST"}}
+    result = lambda_handler(event, {})
+    assert result["isAuthorized"] is False  # Upload should be denied

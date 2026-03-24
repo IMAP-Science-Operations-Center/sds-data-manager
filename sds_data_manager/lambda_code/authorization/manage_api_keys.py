@@ -24,6 +24,12 @@ from botocore.exceptions import ClientError
 
 TABLE_NAME = "imap-sdc-api-keys"
 
+# Validate scope
+VALID_SCOPES = {
+    "full",
+    "read",
+}
+
 
 def get_table():
     """Get the DynamoDB table resource."""
@@ -106,7 +112,25 @@ def list_keys():
 
 
 def add_key(owner, email, scope="full"):
-    """Generate and add a new API key with owner and email metadata."""
+    """Generate and add a new API key with owner and email metadata.
+
+    Parameters
+    ----------
+    owner : str
+        The owner name of the API key
+    email : str
+        The email associated with the API key
+    scope : str
+        The scope/permission level for the key. Valid values are:
+        - 'full': Full read and write access
+        - 'read': Read-only access
+        Default is 'full'
+    """
+    if scope not in VALID_SCOPES:
+        valid_scopes_str = ", ".join(sorted(VALID_SCOPES))
+        print(f"Error: Invalid scope '{scope}'. Valid scopes are: {valid_scopes_str}")
+        return
+
     keys = get_keys()
     # Generate a secure random 32-byte hex key
     new_key = secrets.token_hex(32)
@@ -116,6 +140,7 @@ def add_key(owner, email, scope="full"):
     created = datetime.now().isoformat()
     add_key_to_db(new_key, owner, email, scope, created)
     print(f"Added key: {new_key}")
+    print(f"Scope: {scope}")
     print("Share this key securely with the user.")
 
 
@@ -130,7 +155,24 @@ def remove_key(key):
 
 
 def update_permission(owner: str, email: str, scope: str):
-    """Update permissions for API key."""
+    """Update permissions for API key.
+
+    Parameters
+    ----------
+    owner : str
+        The owner name of the API key
+    email : str
+        The email associated with the API key
+    scope : str
+        The new scope/permission level. Valid values are:
+        - 'full': Full read and write access
+        - 'read': Read-only access
+    """
+    if scope not in VALID_SCOPES:
+        valid_scopes_str = ", ".join(sorted(VALID_SCOPES))
+        print(f"Error: Invalid scope '{scope}'. Valid scopes are: {valid_scopes_str}")
+        return
+
     table = get_table()
     keys = get_keys()
 
@@ -139,9 +181,9 @@ def update_permission(owner: str, email: str, scope: str):
         for key, value in keys.items()
         if value["owner"] == owner and value["email"] == email
     ]
-    key = keys[matches[0]]
 
     if matches:
+        key = keys[matches[0]]
         table.put_item(
             Item={
                 "api_key": matches[0],
@@ -152,6 +194,7 @@ def update_permission(owner: str, email: str, scope: str):
             }
         )
         print(f"Updated key permission for: {owner}, {email}")
+        print(f"New scope: {scope}")
     else:
         print(
             f"Update not performed since no api key match found for: {owner}, {email}."
@@ -162,7 +205,7 @@ def main():
     """CLI entry point."""
     if len(sys.argv) < 2:
         print(
-            "Usage: python manage_api_keys.py [list|add|remove] "
+            "Usage: python manage_api_keys.py [list|add|remove|update_permission] "
             "<key> [owner] [email] [scope]"
         )
         sys.exit(1)
@@ -170,16 +213,23 @@ def main():
     if cmd == "list":
         list_keys()
     elif cmd == "add" and len(sys.argv) == 5:
-        add_key(sys.argv[2], sys.argv[3], sys.argv[4])
+        owner = sys.argv[2]
+        email = sys.argv[3]
+        scope = sys.argv[4]
+        add_key(owner, email, scope)
     elif cmd == "remove" and len(sys.argv) == 3:
         remove_key(sys.argv[2])
     elif cmd == "update_permission":
-        update_permission(sys.argv[2], sys.argv[3], sys.argv[4])
+        owner = sys.argv[2]
+        email = sys.argv[3]
+        scope = sys.argv[4]
+        update_permission(owner, email, scope)
     else:
-        print(
-            "Usage: python manage_api_keys.py [list|add|remove] "
-            "<key> [owner] [email] [scope]"
-        )
+        print("Usage:")
+        print("  python manage_api_keys.py list")
+        print("  python manage_api_keys.py add <owner> <email> [scope]")
+        print("  python manage_api_keys.py remove <key>")
+        print("  python manage_api_keys.py update_permission <owner> <email> <scope>")
         sys.exit(1)
 
 

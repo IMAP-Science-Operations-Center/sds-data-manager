@@ -253,35 +253,6 @@ class IalirtApiManager(Construct):
             lambda_function=catalog_api,
         )
 
-        ialirt_db_query_handler = lambda_.Function(
-            self,
-            "IAlirtDbQueryApiHandler",
-            function_name="ialirt-db-query-handler",
-            code=code,
-            handler="IAlirtCode.ialirt_db_query_api.lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            timeout=cdk.Duration.minutes(1),
-            # Lambda allocates CPU proportionally to memory,
-            # and DynamoDB queries are often CPU-bound due to
-            # JSON parsing and network serialization.
-            memory_size=2048,  # MB
-            environment={
-                "ALGORITHM_TABLE": algorithm_table.table_name,
-                "REGION": env.region,
-            },
-        )
-
-        # Grant the lambda function read/write permissions on the DynamoDB table.
-        algorithm_table.grant_read_data(ialirt_db_query_handler)
-
-        add_stable_route(
-            api,
-            "/ialirt-db-query",
-            "GET",
-            ialirt_db_query_handler,
-            restricted_route_prefixes,
-        )
-
         ialirt_db_query_formatted_handler = lambda_.Function(
             self,
             "IAlirtDbQueryApiFormattedHandler",
@@ -294,6 +265,9 @@ class IalirtApiManager(Construct):
             # and DynamoDB queries are often CPU-bound due to
             # JSON parsing and network serialization.
             memory_size=2048,
+            # Prevents a bad actor from excessive use.
+            # Means number of lambdas that can be used simultaneously.
+            reserved_concurrent_executions=300,
             environment={
                 "DATA_TABLE": data_table.table_name,
                 "REGION": env.region,
@@ -309,4 +283,33 @@ class IalirtApiManager(Construct):
             "GET",
             ialirt_db_query_formatted_handler,
             auth_route_prefixes,
+        )
+
+        ialirt_db_query_priority = lambda_.Function(
+            self,
+            "IAlirtDbQueryApiPriority",
+            function_name="ialirt-db-query-priority-handler",
+            code=code,
+            handler="IAlirtCode.ialirt_data_query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            # Lambda allocates CPU proportionally to memory,
+            # and DynamoDB queries are often CPU-bound due to
+            # JSON parsing and network serialization.
+            memory_size=2048,
+            environment={
+                "DATA_TABLE": data_table.table_name,
+                "REGION": env.region,
+            },
+        )
+
+        # Grant the lambda function read/write permissions on the DynamoDB table.
+        data_table.grant_read_data(ialirt_db_query_priority)
+
+        add_stable_route(
+            api,
+            "/space-weather-priority",
+            "GET",
+            ialirt_db_query_priority,
+            restricted_route_prefixes,
         )

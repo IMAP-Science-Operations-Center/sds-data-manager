@@ -176,12 +176,12 @@ colorama==0.4.6 ; python_version >= "3.10" and python_version < "4" and platform
 idna==3.11 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea \
     --hash=sha256:795dafcc9c04ed0c1fb032c2aa73654d8e8c5023a7df64a53f39190ada629902
-imap-data-access==0.37.1 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:25743a180993f740cfcfc6805275feba9590324dd3fd6b88ab9cdb8d0731d13c \
-    --hash=sha256:aebd68f8f20e85535ae651a7145468596e975dd194e661b1b1dc212326cbb88e
-imap-processing==1.0.19 ; python_version >= "3.10" and python_version < "4" \
-    --hash=sha256:3970871ed678916f5f4f84b6bc342977f51601a3b12a68f0fd319dab36dab601 \
-    --hash=sha256:819274d52cfc44a74aff626640dc3a100e3360676fc1400e1b0e823cb9adbbe5
+imap-data-access==0.37.3 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:1cec14883a08e49de26c3c4ee20f54f9746da53584c5d1eae22bd52d1c4b9457 \
+    --hash=sha256:26450684ef4e79f3e9ca45c29857e593487be75599db2cac5dc4a715e1eaf218
+imap-processing==1.0.24 ; python_version >= "3.10" and python_version < "4" \
+    --hash=sha256:66d0303d9ab5babcf03da3280e46d27904d40227351d6be7e6f16f5bd8be5cb7 \
+    --hash=sha256:c042df5043cc8bc4eedfbde9c6588c97412bba8f3b2371565d1378b67df621ef
 lxml==6.0.2 ; python_version >= "3.10" and python_version < "4" \
     --hash=sha256:058027e261afed589eddcfe530fcc6f3402d7fd7e89bfd0532df82ebc1563dba \
     --hash=sha256:063eccf89df5b24e361b123e257e437f9e9878f425ee9aae3144c77faf6da6d8 \
