@@ -18,6 +18,11 @@ on:
         description: "Optional git ref (commit SHA, branch, or tag) to deploy (for rollback)"
         required: false
         default: ""
+      skip_ialirt:
+        description: "For manual prod deploys only: skip deploying IalirtStack"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   id-token: write
@@ -104,10 +109,17 @@ jobs:
       - name: Deploy
         env:
           ACCOUNT_NAME: ${{ env.account_name }}
+          SKIP_IALIRT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod' && github.event.inputs.skip_ialirt == 'true' }}
         run: |
           echo "Deploying to environment: $ACCOUNT_NAME"
+          echo "SKIP_IALIRT=$SKIP_IALIRT"
+          if [[ "$SKIP_IALIRT" == "true" ]]; then
+            STACKS="NetworkingStack HostedZoneCertificateStack WebsiteStack SDCStack BackupStack"
+          else
+            STACKS="--all"
+          fi
           # poetry run to get the environment we installed everything into
-          poetry run cdk deploy --all --context account_name=$ACCOUNT_NAME --require-approval never
+          poetry run cdk deploy $STACKS --context account_name=$ACCOUNT_NAME --require-approval never
 
       # ----------------------------------------------------
       # 🏷️ Tag Release (prod only)
