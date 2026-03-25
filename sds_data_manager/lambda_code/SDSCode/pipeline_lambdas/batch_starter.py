@@ -1172,14 +1172,14 @@ def cadence_processing_event(
         data_level = job_node["data_type"]
         descriptor = job_node["descriptor"]
         if instrument == "idex" and data_level == "l2b":
-            # IDEX l2b jobs are dependent on idex l1b evt housekeeping files. The job
+            # IDEX l2b jobs are dependent on idex l1b msg housekeeping files. The job
             # should be offset by 1 month to allow for all the event message
             # packets to be processed for the corresponding l2a files (This should only
             # be done for first version products). L2b jobs also
-            # depend on l1b evt housekeeping files that might be before the cadence job
-            # start date. To account for this, we will query for all the l1b evt files
+            # depend on l1b msg housekeeping files that might be before the cadence job
+            # start date. To account for this, we will query for all the l1b msg files
             # including those two weeks before the cadence job start date. This should
-            # ensure that all the l1b evt files are available for the l2b job.
+            # ensure that all the l1b msg files are available for the l2b job.
             if not reprocessing:
                 offset_1month = datetime.timedelta(days=CadenceDays.ONE_MONTH)
                 start_date = (
@@ -1194,7 +1194,7 @@ def cadence_processing_event(
                 else start_date
             )
             # Subtract two weeks from the start date to get all the necessary hk files.
-            l1b_evt_start_date = (start_date - datetime.timedelta(weeks=2)).strftime(
+            l1b_msg_start_date = (start_date - datetime.timedelta(weeks=2)).strftime(
                 "%Y%m%d"
             )
             start_date = start_date.strftime("%Y%m%d")
@@ -1204,14 +1204,14 @@ def cadence_processing_event(
                 descriptor=descriptor,
                 dependency_type="UPSTREAM",
                 relationship="ALL",
-                start_date=l1b_evt_start_date,
+                start_date=l1b_msg_start_date,
                 end_date=end_date,
             )
             if not upstream_extended_idex_deps:
                 continue
-            # Extract only the processing input for the idex l2b evt files
+            # Extract only the processing input for the idex l2b msg files
             additional_input = upstream_extended_idex_deps.get_processing_inputs(
-                source="idex", data_type="l1b", descriptor="evt"
+                source="idex", data_type="l1b", descriptor="msg"
             )
         else:
             additional_input = None

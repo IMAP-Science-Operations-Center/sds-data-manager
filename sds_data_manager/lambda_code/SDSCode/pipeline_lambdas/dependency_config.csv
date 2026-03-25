@@ -729,6 +729,8 @@ attitude_history, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 planetary_ephemeris, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 
+idex, l1a, msg, idex, l1b, msg, HARD, DOWNSTREAM
+
 idex, l1b, sci-1week, idex, l2a, sci-1week, HARD, DOWNSTREAM
 idex, ancillary, l2a-calibration-curve-yield-params, idex, l2a, sci-1week, HARD, DOWNSTREAM
 idex, ancillary, l2a-calibration-curve-t-rise, idex, l2a, sci-1week, HARD, DOWNSTREAM
@@ -736,7 +738,7 @@ idex, ancillary, l2a-calibration-curve-t-rise, idex, l2a, sci-1week, HARD, DOWNS
 idex, l2a, sci-1week, idex, l2b, all-1mo, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, idex, l2b, all-1mo, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, idex, l2b, all-1mo, HARD_NO_TRIGGER, DOWNSTREAM
-idex, l1b, evt, idex, l2b, all-1mo, HARD_NO_TRIGGER, DOWNSTREAM
+idex, l1b, msg, idex, l2b, all-1mo, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- LO Dependencies ---->
 lo, l0, raw, lo, l1a, all, HARD, DOWNSTREAM
