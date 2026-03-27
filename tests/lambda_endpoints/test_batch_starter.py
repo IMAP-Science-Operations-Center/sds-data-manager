@@ -1452,16 +1452,16 @@ def test_idex_l1b(session, auth_event, mock_upload_request_success, caplog):
 def test_idex_l2b(session, auth_event, mock_upload_request_success):
     """Tests ``lambda_handler` for unique idex l2b case."""
     _static_spice_files(session)
-    # Add 2 idex l1b evt files. Although the second file is out of the month range,
+    # Add 2 idex l1b msg files. Although the second file is out of the month range,
     # It should be included in the ProcessingInputCollection because IDEX l2b jobs
     # need housekeeping files that may be before the start date of the cadence job.
     session.add_all(
         [
             ScienceFiles(
-                file_path="/path/to/imap_idex_l1b_evt_20230201_v001.cdf",
+                file_path="/path/to/imap_idex_l1b_msg_20230201_v001.cdf",
                 instrument="idex",
                 data_level="l1b",
-                descriptor="evt",
+                descriptor="msg",
                 start_date=datetime(2023, 2, 1),
                 version="v001",
                 extension="cdf",
@@ -1470,10 +1470,10 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success):
                 ),
             ),
             ScienceFiles(
-                file_path="/path/to/imap_idex_l1b_evt_20230101_v001.cdf",
+                file_path="/path/to/imap_idex_l1b_msg_20230101_v001.cdf",
                 instrument="idex",
                 data_level="l1b",
-                descriptor="evt",
+                descriptor="msg",
                 start_date=datetime(2023, 1, 1),
                 version="v001",
                 extension="cdf",
@@ -1507,12 +1507,12 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success):
     expected_processing_input = ProcessingInputCollection(
         SPICEInput("naif0012.tls", "imap_sclk_0000.tsc"),
         ScienceInput("imap_idex_l2a_sci-1week_20230202_v001.cdf"),
-        # There will be 2 science inputs containing l1b evt dependencies.
+        # There will be 2 science inputs containing l1b msg dependencies.
         # The second input should include both l1b housekeeping files. THe IDEX
         # l2b processing code will deduplicate all of the inputs
-        ScienceInput("imap_idex_l1b_evt_20230201_v001.cdf"),
+        ScienceInput("imap_idex_l1b_msg_20230201_v001.cdf"),
         ScienceInput(
-            "imap_idex_l1b_evt_20230201_v001.cdf", "imap_idex_l1b_evt_20230101_v001.cdf"
+            "imap_idex_l1b_msg_20230201_v001.cdf", "imap_idex_l1b_msg_20230101_v001.cdf"
         ),
     )
 
@@ -1543,7 +1543,7 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success):
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_idex_l2b_all-1mo-9de6e4ae_20230109_v001.json",
+                    "imap_idex_l2b_all-1mo-4976c57e_20230109_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -1583,7 +1583,7 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success):
                     "--version",
                     "v002",
                     "--dependency",
-                    "imap_idex_l2b_all-1mo-9de6e4ae_20230109_v002.json",
+                    "imap_idex_l2b_all-1mo-4976c57e_20230109_v002.json",
                     "--upload-to-sdc",
                 ]
             },
