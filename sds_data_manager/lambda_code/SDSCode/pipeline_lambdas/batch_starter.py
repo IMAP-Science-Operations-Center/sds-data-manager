@@ -460,7 +460,6 @@ def submit_all_jobs(
     # If we are filtering dependencies, then we do not need to get spice files because
     # there will be a second query for upstream dependencies for each potential file
     # To process.
-    query_start_date = trigger_start_date
     if filter_dependencies:
         get_spice = False
     else:
