@@ -132,6 +132,9 @@ glows, l1b, hist, glows, l2, hist, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings, glows, l2, hist, HARD, DOWNSTREAM
 leapseconds, spice, historical, glows, l2, hist, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, glows, l2, hist, HARD_NO_TRIGGER, DOWNSTREAM
+imap_frames, spice, historical, glows, l2, hist, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, glows, l2, hist, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, glows, l2, hist, HARD_NO_TRIGGER, DOWNSTREAM
 
 glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, calibration-data, glows, l3a, hist, HARD, DOWNSTREAM
