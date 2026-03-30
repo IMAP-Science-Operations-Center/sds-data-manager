@@ -541,7 +541,7 @@ def submit_all_jobs(
         )
         if filter_dependencies or idex_l1b_job:
             query_start_date = (
-                add_buffer_to_idex_start_date(trigger_start_date)
+                add_buffer_to_idex_start_date(start_date)
                 if idex_l1b_job
                 else start_date
             )
