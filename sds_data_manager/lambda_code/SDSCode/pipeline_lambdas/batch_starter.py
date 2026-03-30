@@ -50,6 +50,32 @@ BATCH_JOB_RETRY_STRATEGY = {
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 
 
+def add_buffer_to_idex_start_date(start_date: str, buffer_days: int = 12) -> str:
+    """Add a buffer to the start date for idex l1b sci-1week jobs.
+
+    For idex l1b sci-1week jobs, we want to use a date range of 12 days ending
+    at the start date in the filename. Although they are described as weekly files,
+    they can actually contain over a week of data, so we want to
+    add a buffer to make sure we are getting all the spice coverage we need.
+
+    Parameters
+    ----------
+    start_date : str
+        The start date in the format 'YYYYMMDD'.
+    buffer_days : int
+        The number of days to subtract from the start date to create the buffer.
+        Default is 12.
+    """
+    logger.info(
+        f"Adding {buffer_days}-day buffer to start date {start_date} for idex"
+        f" l1b sci-1week job."
+    )
+    return (
+        datetime.datetime.strptime(start_date, "%Y%m%d")
+        - datetime.timedelta(days=buffer_days)
+    ).strftime("%Y%m%d")
+
+
 def spacecraft_pointing_attitude_job(job_node: dict) -> bool:
     """Determine if the job node is a spacecraft pointing-attitude job."""
     return (
@@ -434,6 +460,7 @@ def submit_all_jobs(
     # If we are filtering dependencies, then we do not need to get spice files because
     # there will be a second query for upstream dependencies for each potential file
     # To process.
+    query_start_date = trigger_start_date
     if filter_dependencies:
         get_spice = False
     else:
@@ -501,28 +528,25 @@ def submit_all_jobs(
     for filename in primary_science.filename_list:
         science_file = ScienceFilePath(filename)
         start_date, end_date = determine_date_range(session, science_file)
-        if (
-            job_node["data_source"] == "idex"
-            and job_node["descriptor"] == "sci-1week"
-            and job_node["data_type"] == "l1b"
-        ):
-            # For idex l1b sci-1week jobs, we want to use a date range of 12 days ending
-            # at the start date in the filename. Although the file is named as
-            # 1week, it can actually contain over a week of data, so we want to
-            # add a buffer to make sure we are getting all the spice coverage we need.
-            query_start_date = (
-                datetime.datetime.strptime(start_date, "%Y%m%d")
-                - datetime.timedelta(days=12)
-            ).strftime("%Y%m%d")
-        else:
-            query_start_date = start_date
 
         # Get the repointing number from the science file object
         job_repointing = science_file.repointing
 
-        # If there is only one file to process, then we can use upstream dependencies
-        # that have already been queried.
-        if filter_dependencies:
+        # For some jobs, we need to filter the upstream dependencies to only include
+        # the files valid for the start date of the primary science file.
+        # Handle special case for idex l1b sci-1week jobs
+        idex_l1b_job = (
+            job_node["data_source"] == "idex"
+            and job_node["descriptor"] == "sci-1week"
+            and job_node["data_type"] == "l1b"
+        )
+        if filter_dependencies or idex_l1b_job:
+            query_start_date = (
+                add_buffer_to_idex_start_date(trigger_start_date)
+                if idex_l1b_job
+                else start_date
+            )
+
             # Query for upstream files only needed for this job with using the
             # start date of the primary science file.
             upstream_deps_for_job = dependency.get_jobs(
