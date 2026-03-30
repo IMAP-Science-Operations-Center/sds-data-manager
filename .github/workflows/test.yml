@@ -40,3 +40,44 @@ jobs:
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
+
+  cdk-tests-postgres:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - uses: Gr1N/setup-poetry@v8
+        with:
+          poetry-version: "1.8.0"
+
+      - name: Install dependencies and app
+        run: |
+          poetry install --with layer-database --with layer-spice --with layer-processing
+
+      - name: Testing with PostgreSQL
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb
+        run: |
+          # Ignore the network marks from the remote test environment
+          poetry run pytest --color=yes --cov --cov-report=xml -m "not network"

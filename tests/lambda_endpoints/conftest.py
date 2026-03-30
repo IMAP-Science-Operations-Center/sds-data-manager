@@ -138,9 +138,10 @@ def mock_upload_request_success():
         yield mock_upload_api, mock_requests
 
 
-# Check if `psycopg` and PostgreSQL are both available and compatible.
-POSTGRES_AVAILABLE = False
-# TODO: fix this to work with postgres locally
+POSTGRES_AVAILABLE = "TEST_DATABASE_URL" in os.environ and os.getenv(
+    "TEST_DATABASE_URL"
+).startswith("postgresql://")
+DB_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
 
 
 # NOTE: The default scope is function, so each test function will
@@ -149,8 +150,7 @@ POSTGRES_AVAILABLE = False
 def session():
     """Create a test postgres database engine."""
     with patch.object(db, "Session") as mock_session:
-        connection = "sqlite:///:memory:"
-        engine = create_engine(connection)
+        engine = create_engine(DB_URL)
 
         # Create the tables and session
         Base.metadata.create_all(engine)
