@@ -4,10 +4,30 @@ import logging
 import os
 from pathlib import Path
 
+import boto3
 import requests
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def get_secret(secret_name: str, region: str) -> str:
+    """Retrieve a secret value from AWS Secrets Manager.
+
+    Parameters
+    ----------
+    secret_name : str
+        The name or ARN of the secret.
+    region : str
+        The AWS region.
+
+    Returns
+    -------
+    str
+        The secret string value.
+    """
+    client = boto3.client("secretsmanager", region_name=region)
+    return client.get_secret_value(SecretId=secret_name)["SecretString"]
 
 
 def write_temp_file(content: str, filename: str) -> Path:
@@ -59,8 +79,12 @@ def lambda_handler(event, context):
     logger.info("Starting schedule fetch.")
 
     url = os.environ.get("SCHEDULE_ENDPOINT_URL")
-    cert_path = write_temp_file(os.environ.get("CERT_CONTENT"), "client.crt")
-    key_path = write_temp_file(os.environ.get("KEY_CONTENT"), "client.key")
+    cert_secret_name = os.environ.get("CERT_SECRET_NAME")
+    key_secret_name = os.environ.get("KEY_SECRET_NAME")
+    region = os.environ.get("AWS_REGION")
+
+    cert_path = write_temp_file(get_secret(cert_secret_name, region), "client.crt")
+    key_path = write_temp_file(get_secret(key_secret_name, region), "client.key")
 
     xml_content = fetch_schedule_xml(url, cert_path, key_path)
     logger.info(f"XML content:\n{xml_content}")
