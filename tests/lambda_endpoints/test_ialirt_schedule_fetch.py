@@ -1,6 +1,5 @@
 """Tests for the ialirt_schedule_fetch module."""
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_schedule_fetch import (
@@ -17,14 +16,14 @@ SAMPLE_XML = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_schedule_fetch.requests.get")
-def test_fetch_schedule_xml(mock_get):
+def test_fetch_schedule_xml(mock_get, tmp_path):
     """Test that fetch_schedule_xml function."""
     mock_get.return_value = MagicMock(text=SAMPLE_XML)
 
     result = fetch_schedule_xml(
         url="https://example.com/schedule",
-        cert_path=Path("/tmp/client.crt"),
-        key_path=Path("/tmp/client.key"),
+        cert_path=tmp_path / "client.crt",
+        key_path=tmp_path / "client.key",
     )
 
     assert result == SAMPLE_XML
