@@ -20,6 +20,7 @@ from sds_data_manager.constructs import (
     ialirt_bucket_construct,
     ialirt_coverage_construct,
     ialirt_efs_construct,
+    ialirt_schedule_fetch_construct,
     ialirt_ingest_lambda_construct,
     ialirt_pointing_schedule_construct,
     ialirt_processing_construct,
@@ -387,6 +388,13 @@ def build_sds(
         construct_id="IalirtPointingConstruct",
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         data_access_url=general_data_access_url,
+    )
+
+    # I-ALiRT schedule fetch lambda (polls external HTTPS endpoint for contact schedule)
+    ialirt_schedule_fetch_construct.IalirtScheduleFetchConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtScheduleFetch",
+        ialirt_bucket=ialirt_bucket.ialirt_bucket,
     )
 
     # I-ALiRT IOIS coverage lambda (facilitates creating coverage json in s3)
