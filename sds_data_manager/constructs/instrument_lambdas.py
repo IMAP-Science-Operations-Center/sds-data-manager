@@ -93,7 +93,9 @@ class BatchStarterLambda(Construct):
             runtime=lambda_.Runtime.PYTHON_3_12,
             environment=lambda_environment,
             memory_size=512,
-            timeout=Duration.minutes(5),
+            # Set max to 15 mins for 3 month map cadence job.
+            # TODO determine if we need 15 mins or if we can reduce this.
+            timeout=Duration.minutes(15),
             vpc=vpc,
             vpc_subnets=subnet,
             security_groups=[rds_security_group],
