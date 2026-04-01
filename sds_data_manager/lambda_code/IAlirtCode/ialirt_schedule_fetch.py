@@ -85,7 +85,8 @@ def lambda_handler(event, context):
 
     if not url or not cert_secret_name or not key_secret_name:
         logger.info(
-            "SCHEDULE_ENDPOINT_URL, CERT_SECRET_NAME, and KEY_SECRET_NAME are required. "
+            "SCHEDULE_ENDPOINT_URL, CERT_SECRET_NAME, "
+            "and KEY_SECRET_NAME are required. "
             "Skipping schedule fetch."
         )
         return
