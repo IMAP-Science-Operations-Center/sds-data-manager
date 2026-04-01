@@ -83,6 +83,13 @@ def lambda_handler(event, context):
     key_secret_name = os.environ.get("KEY_SECRET_NAME")
     region = os.environ.get("AWS_REGION")
 
+    if not url or not cert_secret_name or not key_secret_name:
+        logger.info(
+            "SCHEDULE_ENDPOINT_URL, CERT_SECRET_NAME, and KEY_SECRET_NAME are required. "
+            "Skipping schedule fetch."
+        )
+        return
+
     cert_path = write_temp_file(get_secret(cert_secret_name, region), "client.crt")
     key_path = write_temp_file(get_secret(key_secret_name, region), "client.key")
 

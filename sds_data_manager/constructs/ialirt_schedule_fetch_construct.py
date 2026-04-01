@@ -103,12 +103,17 @@ class IalirtScheduleFetchConstruct(Construct):
         ialirt_schedule_fetch_lambda.add_to_role_policy(s3_write_policy)
 
         # Grant Lambda read access to the cert and key secrets
-        for secret_name in [cert_secret_name, key_secret_name]:
-            if secret_name:
-                secret = secretsmanager.Secret.from_secret_name_v2(
-                    self, f"Secret-{secret_name}", secret_name
-                )
-                secret.grant_read(ialirt_schedule_fetch_lambda)
+        if cert_secret_name:
+            cert_secret = secretsmanager.Secret.from_secret_name_v2(
+                self, "IAlirtCertSecret", cert_secret_name
+            )
+            cert_secret.grant_read(ialirt_schedule_fetch_lambda)
+
+        if key_secret_name:
+            key_secret = secretsmanager.Secret.from_secret_name_v2(
+                self, "IAlirtKeySecret", key_secret_name
+            )
+            key_secret.grant_read(ialirt_schedule_fetch_lambda)
 
         ialirt_schedule_fetch_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
 
