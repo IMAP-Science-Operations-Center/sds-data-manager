@@ -35,6 +35,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
     CadenceDays,
+    cadence_reprocessing_event,
     determine_date_range,
     determine_job_version,
     lambda_handler,
@@ -1193,9 +1194,32 @@ def test_lambda_handler_duplicate_mag_l1c_job(
 
 
 ### TEST CADENCE EVENT
-def test_def_cadence_map_event(
+# TODO remove this test once the three month maps are created. See "TODO" in
+#  cadence_reprocessing_event function for more details.
+def test_cadence_map_event_reprocess(
     setup_s3, session, tmp_path, mock_upload_request_success
 ):
+    """Test the default map start date."""
+    job = {
+        "data_source": "ultra",
+        "data_type": "l2",
+        "descriptor": "u90-ena-h-hf-nsp-full-hae-2deg-3mo",
+    }
+    with patch(
+        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter"
+        ".cadence_processing_event"
+    ) as mock_processing_event:
+        # There are no processing job records in the database, so the cadence event
+        # should default to january 17th. The end date should be three months later,
+        # april 17th.
+        cadence_reprocessing_event(session, job, "20250301", "20250601")
+
+        mock_processing_event.assert_called_with(
+            session, events=None, job=job, start_date="20260117", end_date="20260417"
+        )
+
+
+def test_cadence_map_event(setup_s3, session, tmp_path, mock_upload_request_success):
     """Test that a cadence event kicks off the right processing job."""
     _static_spice_files(session)
     # Add 10 months of ultra l1c "45sensor" pset files to the database

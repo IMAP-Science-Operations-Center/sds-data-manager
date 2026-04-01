@@ -26,7 +26,12 @@ from sqlalchemy.exc import IntegrityError
 from ..api_lambdas import upload_api
 from ..database import database as db
 from ..database import models
-from . import REPOINT_DEPENDENT_INSTRUMENTS, VALID_CADENCE_STRS, dependency
+from . import (
+    FIRST_MAP_START_DATE,
+    REPOINT_DEPENDENT_INSTRUMENTS,
+    VALID_CADENCE_STRS,
+    dependency,
+)
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -1113,10 +1118,10 @@ def cadence_reprocessing_event(session, job, start_date, end_date):
         # jobs. For example, if there are no jobs for ultra,l2,"...4deg-3mo",
         # we still want to attempt to reprocess ultra,l2,"...6deg-3mo" maps.
         if not processed_start_dates:
-            logger.info(
-                f"No previously processed jobs found for: {job_node}, skipping."
-            )
-            continue
+            # TODO: this is a temporary solution to be able to reprocess
+            #   3 month map jobs if there were no map jobs previously processed.
+            #   We should eventually remove this patch and put in a permanent solution.
+            processed_start_dates = [FIRST_MAP_START_DATE]
         logger.info(
             f"Handling cadence reprocessing. Found {len(processed_start_dates)} files "
             f"to reprocess for job: {job_node}."
