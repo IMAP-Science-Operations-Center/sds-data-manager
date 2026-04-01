@@ -20,7 +20,6 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
     download_spice_file,
     get_ancillary,
     get_latest_spice_kernels,
-    insert_data,
     insert_formatted_data,
     insert_kernels,
     lambda_handler,
@@ -48,11 +47,11 @@ def s3_test_packet(s3_client):
 @patch("spiceypy.furnsh")
 @patch("imap_data_access.processing_input.ProcessingInputCollection.download_all_files")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
-def test_lambda_handler(mock_get, mock_download, mock_furnsh, setup_dynamodb):
+def test_lambda_handler(mock_get, mock_download, mock_furnsh, setup_data_table):
     """Test the lambda_handler function."""
     # Mock event data
-    algorithm_table = setup_dynamodb["algorithm_table"]
-    os.environ["DATA_TABLE"] = algorithm_table.name
+    data_table = setup_data_table["data_table"]
+    os.environ["DATA_TABLE"] = data_table.name
 
     mock_response = MagicMock()
     mock_response.json.return_value = [
@@ -74,15 +73,9 @@ def test_lambda_handler(mock_get, mock_download, mock_furnsh, setup_dynamodb):
 
     lambda_handler(event, {})
 
-    response = algorithm_table.get_item(
-        Key={
-            "apid": 478,
-            "met": 123,
-        }
-    )
-    item = response.get("Item")
-
-    assert item is None
+    response = data_table.scan()
+    items = response.get("Items", [])
+    assert len(items) == 0
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.packet_file_to_datasets")
@@ -172,80 +165,6 @@ def test_query_filenames_crossing_hour_boundary(s3_client):
     result = query_filenames(bucket, region, now)
 
     assert sorted(result) == sorted([first_prefix_key, second_prefix_key])
-
-
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.imap_state",
-    return_value=np.array([[1, 2, 3, 4, 5, 6]]),
-)
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.sct_to_et",
-    return_value=12345.0,
-)
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_utc",
-    side_effect=lambda met: "2025-05-21T00:00:00",
-)
-def test_insert_data(
-    mock_met_to_utc,
-    mock_sct_to_et,
-    mock_imap_state,
-    setup_dynamodb,
-):
-    """Test insert_data function."""
-    algorithm_table = setup_dynamodb["algorithm_table"]
-
-    # Existing item with 'hit' keys
-    algorithm_table.put_item(
-        Item={"apid": 478, "met": 123456, "hit_e_a_side_low_en": Decimal("0.0")}
-    )
-
-    # Existing item with no 'hit' keys
-    algorithm_table.put_item(Item={"apid": 478, "met": 123457, "other_data": 42})
-
-    # Create data for all three cases
-    test_data = [
-        # Will skip.
-        {
-            "apid": 478,
-            "met": 123456,
-            "met_in_utc": "2025-05-21T14:00:00",
-            "ttj2000ns": 759175836184000000,
-            "hit_e_a_side_med_en": Decimal("2.0"),
-        },
-        # Will update.
-        {
-            "apid": 478,
-            "met": 123457,
-            "met_in_utc": "2025-05-21T14:00:01",
-            "ttj2000ns": 759175836184000001,
-            "hit_e_a_side_low_en": Decimal("3.0"),
-        },
-        # Will insert.
-        {
-            "apid": 478,
-            "met": 123458,
-            "met_in_utc": "2025-05-21T14:00:02",
-            "ttj2000ns": 759175836184000002,
-            "hit_e_a_side_low_en": Decimal("5.0"),
-        },
-    ]
-
-    insert_data(test_data, algorithm_table, "hit", "test-kernel-set-id")
-
-    item1 = algorithm_table.get_item(Key={"apid": 478, "met": 123456})["Item"]
-    item2 = algorithm_table.get_item(Key={"apid": 478, "met": 123457})["Item"]
-    item3 = algorithm_table.get_item(Key={"apid": 478, "met": 123458})["Item"]
-
-    # Not updated
-    assert item1["hit_e_a_side_low_en"] == Decimal("0.0")
-
-    # Existing item with no 'hit' data should be updated
-    assert item2["hit_e_a_side_low_en"] == Decimal("3.0")
-    assert item2["other_data"] == 42  # Original data still there
-
-    # New item should be inserted
-    assert item3["hit_e_a_side_low_en"] == Decimal("5.0")
 
 
 def test_reformat_data():
@@ -434,16 +353,12 @@ def test_insert_formatted_data(
     return_value=np.array([[1, 2, 3, 4, 5, 6]]),
 )
 @patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.sct_to_et",
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.et_to_ttj2000ns",
     return_value=12345.0,
 )
 @patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_sclkticks",
-    return_value=67890.0,
-)
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.met_to_utc",
-    side_effect=lambda met: "2025-05-21T00:00:00",
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.str_to_et",
+    return_value=12345.0,
 )
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.load_cdf")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.pd.read_csv")
@@ -460,67 +375,91 @@ def test_process_algorithms(
     mock_packet,
     mock_hit,
     mock_get_ancillary,
-    mock_load_cdf,
     mock_read_csv,
-    mock_met_to_sclkticks,
-    mock_sct_to_et,
-    mock_met_to_utc,
+    mock_load_cdf,
+    mock_str_to_et,
+    mock_et_to_ttj2000ns,
     mock_imap_state,
-    setup_dynamodb,
+    setup_data_table,
 ):
-    """Tests process_algorithms function."""
-    algorithm_table = setup_dynamodb["algorithm_table"]
+    """Test process_algorithms function."""
+    data_table = setup_data_table["data_table"]
 
-    # Mock calibration + lookup
     mock_load_cdf.return_value = {"mock": "calibration data"}
     mock_read_csv.return_value = pd.DataFrame({"mock": [1.23]})
     mock_get_ancillary.return_value = Path(
         "/mock/imap_mag_l1b-calibration_20250101_v002.cdf"
     )
 
-    # Mock algorithm outputs
     mock_hit.return_value = [
-        {"apid": 478, "met": 111, "hit_e_a_side_low_en": Decimal("1.0")}
+        {
+            "instrument": "hit",
+            "met_in_utc": "2025-05-21T00:00:01",
+            "apid": 478,
+            "met": 111,
+            "hit_e_a_side_low_en": Decimal("1.0"),
+        }
     ]
-
     mock_swe.return_value = [
         {
+            "instrument": "swe",
+            "met_in_utc": "2025-05-21T00:00:02",
             "apid": 478,
             "met": 222,
             "swe_normalized_counts_quarter_1_esa_0": Decimal("0.123"),
         }
     ]
-
     mock_packet.return_value = [
-        {"apid": 478, "met": 333, "mag_phi_4s_b_gsm": Decimal("0.456")}
+        {
+            "instrument": "mag",
+            "met_in_utc": "2025-05-21T00:00:03",
+            "apid": 478,
+            "met": 333,
+            "mag_phi_4s_b_gsm": Decimal("0.456"),
+        }
     ]
-
     mock_codice.return_value = (
         [],
-        [{"apid": 478, "met": 444, "codice": Decimal("0.111")}],  # codice_hi_data
+        [
+            {
+                "instrument": "codice_hi",
+                "met_in_utc": "2025-05-21T00:00:04",
+                "apid": 478,
+                "met": 444,
+                "codice": Decimal("0.111"),
+            }
+        ],
     )
+    mock_swapi.return_value = [
+        {
+            "instrument": "swapi",
+            "met_in_utc": "2025-05-21T00:00:05",
+            "apid": 478,
+            "met": 555,
+            "swapi": Decimal("0.123"),
+        }
+    ]
 
-    mock_swapi.return_value = [{"apid": 478, "met": 555, "swapi": Decimal("0.123")}]
-
-    # --- Call function ---
     process_algorithms(
         combined=None,
-        algorithm_table=algorithm_table,
-        table_name="ialirt-algorithm-table",
-        kernel_set_key="test-kernel-set-id",
+        data_table=data_table,
+        kernel_set_key="2025-05-21T00:00:00",
+        kernel_set_key_ttj2000ns=12345,
     )
 
-    # --- Verify DynamoDB inserts ---
-    items = algorithm_table.query(KeyConditionExpression=Key("apid").eq(478))["Items"]
-
-    assert any(item["met"] == 111 and "hit_e_a_side_low_en" in item for item in items)
-    assert any(
-        item["met"] == 222 and "swe_normalized_counts_quarter_1_esa_0" in item
-        for item in items
-    )
-    assert any(item["met"] == 333 and "mag_phi_4s_b_gsm" in item for item in items)
-    assert any(item["met"] == 444 and "codice" in item for item in items)
-    assert any(item["met"] == 555 and "swapi" in item for item in items)
+    # Query by instrument since that's the partition key
+    for instrument, _met, _field in [
+        ("hit", 111, "hit_e_a_side_low_en"),
+        ("swe", 222, "swe_normalized_counts_quarter_1_esa_0"),
+        ("mag", 333, "mag_phi_4s_b_gsm"),
+        ("codice_hi", 444, "codice"),
+        ("swapi", 555, "swapi"),
+    ]:
+        response = data_table.query(
+            KeyConditionExpression=Key("instrument").eq(instrument)
+        )
+        items = response["Items"]
+        assert items[0]["instrument"] == instrument
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
@@ -624,10 +563,10 @@ def test_insert_kernels(
     mock_et_to_met,
     mock_met_to_utc,
     mock_met_to_ttj2000ns,
-    setup_dynamodb,
+    setup_data_table,
 ):
     "Test insert_kernels function."
-    algorithm_table = setup_dynamodb["algorithm_table"]
+    data_table = setup_data_table["data_table"]
 
     spice_input = MagicMock()
     spice_input.source = ["leapseconds", "planetary_constants", "imap_frames"]
@@ -636,16 +575,15 @@ def test_insert_kernels(
     dependency_inputs = MagicMock()
     dependency_inputs.processing_input = [spice_input]
 
-    insert_kernels(dependency_inputs, algorithm_table)
+    insert_kernels(dependency_inputs, data_table)
 
-    response = algorithm_table.query(
-        KeyConditionExpression="apid = :a", ExpressionAttributeValues={":a": 478}
+    response = data_table.query(
+        KeyConditionExpression=Key("instrument").eq("spice"),
     )
     items = response["Items"]
 
-    assert items[0]["apid"] == 478
-    assert items[0]["met"] == 498089058
-    assert items[0]["met_in_utc"] == "2025-10-13T22:04:15"
+    assert items[0]["instrument"] == "spice"
+    assert items[0]["time_utc"] == "2025-10-13T22:04:15"
     assert int(items[0]["ttj2000ns"]) == 813665124895612928
     assert items[0]["spice_kernels"] == {
         "leapseconds": "naif0012.tls",

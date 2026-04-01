@@ -15,7 +15,6 @@ import pandas as pd
 import requests
 import spiceypy
 import xarray as xr
-from boto3.dynamodb.conditions import Key
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
     SPICEInput,
@@ -36,10 +35,8 @@ from imap_processing.spice.geometry import (
 from imap_processing.spice.time import (
     et_to_met,
     et_to_ttj2000ns,
-    met_to_sclkticks,
     met_to_ttj2000ns,
     met_to_utc,
-    sct_to_et,
     str_to_et,
 )
 from imap_processing.utils import packet_file_to_datasets
@@ -267,7 +264,7 @@ def parse_packets(filenames: list, bucket: str, download_dir: Path, apid=478):
 
 
 def process_algorithms(  # noqa: PLR0915
-    combined: xr.Dataset, algorithm_table, table_name, kernel_set_key
+    combined: xr.Dataset, data_table, kernel_set_key, kernel_set_key_ttj2000ns
 ):
     """Process the algorithms and insert data, as needed.
 
@@ -275,12 +272,12 @@ def process_algorithms(  # noqa: PLR0915
     ----------
     combined : xr.Dataset
         L0 parsed data.
-    algorithm_table : dynamodb.Table
+    data_table : dynamodb.Table
         The DynamoDB table to insert or update the data.
-    table_name : str
-        Name of the DynamoDB table
-    kernel_set_key : str, optional
+    kernel_set_key : str
         The kernel set identifier.
+    kernel_set_key_ttj2000ns : int
+        The kernel set identifier in ttj2000ns.
     """
     processors = [
         ("mag", process_packet),
@@ -293,6 +290,7 @@ def process_algorithms(  # noqa: PLR0915
 
     # Collect any errors during processing to raise at the end
     processing_errors = []
+    all_ancillary_files = {}
 
     for instrument, process_func in processors:
         try:
@@ -300,16 +298,21 @@ def process_algorithms(  # noqa: PLR0915
                 logger.info("Processing SWE.")
                 download_path = get_ancillary(instrument, "l1b-in-flight-cal")
                 logger.info("swe l1b-in-flight-cal: %s", download_path)
+                ancillary_files = {"swe_l1b-in-flight-cal": download_path.name}
                 result = process_func(combined, [download_path])
             elif instrument == "mag":
                 logger.info("Processing MAG.")
-                download_path = get_ancillary(instrument, "ialirt-calibration")
-                ialirt_calibration_data = load_cdf(download_path)
+                ialirt_cal_path = get_ancillary(instrument, "ialirt-calibration")
+                ialirt_calibration_data = load_cdf(ialirt_cal_path)
 
-                logger.info("mag ialirt-calibration: %s", download_path)
-                download_path = get_ancillary(instrument, "l1b-calibration")
-                logger.info("mag l1b-calibration: %s", download_path)
-                l1b_calibration_data = load_cdf(download_path)
+                logger.info("mag ialirt-calibration: %s", ialirt_cal_path)
+                l1b_cal_path = get_ancillary(instrument, "l1b-calibration")
+                logger.info("mag l1b-calibration: %s", l1b_cal_path)
+                l1b_calibration_data = load_cdf(l1b_cal_path)
+                ancillary_files = {
+                    "mag_ialirt-calibration": ialirt_cal_path.name,
+                    "mag_l1b-calibration": l1b_cal_path.name,
+                }
                 result = process_func(
                     combined,
                     l1b_calibration_data,
@@ -327,6 +330,11 @@ def process_algorithms(  # noqa: PLR0915
                 logger.info("codice l1a-sci-lut: %s", l1a_download_path)
                 logger.info("codice l2-lo-efficiency: %s", l2_efficiency_download_path)
                 logger.info("codice l2-lo-gfactor: %s", l2_geometric_download_path)
+                ancillary_files = {
+                    "codice_l1a-sci-lut": l1a_download_path.name,
+                    "codice_l2-lo-efficiency": l2_efficiency_download_path.name,
+                    "codice_l2-lo-gfactor": l2_geometric_download_path.name,
+                }
                 result, _ = process_func(
                     combined,
                     l1a_download_path,
@@ -345,6 +353,10 @@ def process_algorithms(  # noqa: PLR0915
                 logger.info(
                     "codice l2-hi-ialirt-efficiency: %s", l2_efficiency_download_path
                 )
+                ancillary_files = {
+                    "codice_l1a-sci-lut": l1a_download_path.name,
+                    "codice_l2-hi-ialirt-efficiency": l2_efficiency_download_path.name,
+                }
                 # I-ALiRT Hi does not use a geometric factor.
                 _, result = process_func(
                     combined,
@@ -356,21 +368,19 @@ def process_algorithms(  # noqa: PLR0915
                 logger.info("Processing SWAPI.")
                 download_path = get_ancillary(instrument, "esa-unit-conversion")
                 logger.info("swapi esa-unit-conversion: %s", download_path)
+                ancillary_files = {"swapi_esa-unit-conversion": download_path.name}
                 calibration_data = pd.read_csv(download_path)
                 result = process_func(combined, calibration_data)
             else:
                 logger.info("Processing HIT.")
+                ancillary_files = {}
                 result = process_func(combined)
 
             logger.info("[%s] results populated for [%s]", len(result), instrument)
+            all_ancillary_files.update(ancillary_files)
 
             if any(result) and all(result):
-                if table_name == "ialirt-algorithm-table":
-                    insert_data(result, algorithm_table, instrument, kernel_set_key)
-                else:
-                    insert_formatted_data(
-                        result, algorithm_table, instrument, kernel_set_key
-                    )
+                insert_formatted_data(result, data_table, instrument, kernel_set_key)
 
         except Exception as e:
             error_msg = f"Error processing {instrument}: {e!s}"
@@ -378,108 +388,15 @@ def process_algorithms(  # noqa: PLR0915
             processing_errors.append((instrument, e))
             # Continue to next instrument
 
-
-def insert_data(
-    data: list[dict], algorithm_table, instrument: str, kernel_set_key: str
-):
-    """Insert or update database row, depending on content of item.
-
-    Parameters
-    ----------
-    data : list[dict]
-        Data product produced from processing respectively instrument.
-    algorithm_table : dynamodb.Table
-        The DynamoDB table to insert or update the data.
-    instrument : str
-        The prefix for the product name.
-    kernel_set_key : str
-        The kernel set identifier.
-    """
-    apid = data[0]["apid"]
-    mets = [item["met"] for item in data]
-    min_met = min(mets)
-    max_met = max(mets)
-    logger.info(f"Processing mets {min_met} to {max_met}.")
-    logger.info(f"Processing utc {met_to_utc(min_met)} to {met_to_utc(max_met)}.")
-
-    # Query existing items.
-    response = algorithm_table.query(
-        KeyConditionExpression=Key("apid").eq(apid)
-        & Key("met").between(min_met, max_met)
-    )
-
-    existing_items = {item["met"]: item for item in response.get("Items", [])}
-
-    # Insert or update as needed
-    for raw in data:
-        met = raw["met"]
-        key = {"apid": apid, "met": met}
-        existing = existing_items.get(met)
-        raw["last_modified"] = datetime.now(timezone.utc).isoformat()
-        raw["kernel_set_key"] = kernel_set_key
-
-        # Calculate the spacecraft position and velocity in GSM coordinates.
-        et = sct_to_et(met_to_sclkticks(met))
-        gsm_state = imap_state(
-            [et], ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH
-        )
-        gse_state = imap_state(
-            [et], ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH
-        )
-
-        raw["sc_position_GSM"] = [Decimal(str(val)) for val in gsm_state[0, :3]]
-        raw["sc_velocity_GSM"] = [Decimal(str(val)) for val in gsm_state[0, 3:]]
-        raw["sc_position_GSE"] = [Decimal(str(val)) for val in gse_state[0, :3]]
-        raw["sc_velocity_GSE"] = [Decimal(str(val)) for val in gse_state[0, 3:]]
-
-        if existing:
-            if any(key.startswith(instrument) for key in existing.keys()):
-                continue
-
-            update_expr = "SET " + ", ".join(
-                f"{field} = :{field}"
-                for field in raw
-                if field
-                not in {
-                    "apid",
-                    "met",
-                    "met_in_utc",
-                    "ttj2000ns",
-                    "sc_position_GSM",
-                    "sc_velocity_GSM",
-                    "sc_position_GSE",
-                    "sc_velocity_GSE",
-                    "instrument",
-                    "kernel_set_key",
-                }
-            )
-
-            expression_values = {
-                f":{field}": value
-                for field, value in raw.items()
-                if field
-                not in {
-                    "apid",
-                    "met",
-                    "met_in_utc",
-                    "ttj2000ns",
-                    "sc_position_GSM",
-                    "sc_velocity_GSM",
-                    "sc_position_GSE",
-                    "sc_velocity_GSE",
-                    "instrument",
-                    "kernel_set_key",
-                }
-            }
-
-            algorithm_table.update_item(
-                Key=key,
-                UpdateExpression=update_expr,
-                ExpressionAttributeValues=expression_values,
-            )
-        else:
-            algorithm_table.put_item(Item=raw)
-        logger.info(f"Inserted {instrument.upper()}.")
+    # Insert a single ancillary record keyed to the same time_utc as the SPICE kernels.
+    if all_ancillary_files:
+        ancillary_item = {
+            "instrument": "ancillary",
+            "time_utc": kernel_set_key,
+            "ancillary_files": all_ancillary_files,
+            "ttj2000ns": kernel_set_key_ttj2000ns,
+        }
+        data_table.put_item(Item=ancillary_item)
 
 
 def reformat_data(data):
@@ -581,56 +498,46 @@ def insert_formatted_data(
     data_table.put_item(Item=spacecraft)
 
 
-def insert_kernels(dependency_inputs, algorithm_table):
+def insert_kernels(dependency_inputs, data_table):
     """Insert SPICE kernel metadata into the database.
 
     Parameters
     ----------
     dependency_inputs : ProcessingInputCollection
         SPICE kernel dependencies.
-    algorithm_table : dynamodb.Table
+    data_table : dynamodb.Table
         The DynamoDB table to insert or update the data.
 
     Returns
     -------
     kernel_set_key : str
         The kernel set identifier.
+    kernet_set_key_ttj2000ns : int
+        The kernel set key for TTJ2000 ns.
     """
     last_modified = datetime.now(timezone.utc)
     last_modified_for_spice = last_modified.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     met = et_to_met(str_to_et(last_modified_for_spice))
-    last_modified_utc = last_modified.isoformat()
     spice_input = dependency_inputs.processing_input[0]
     spice_kernels = dict(zip(spice_input.source, spice_input.filename_list))
 
     # Will return the same kernel_set_key for the same set of kernels.
     kernel_set_key = met_to_utc(met).split(".")[0]
 
-    if algorithm_table.table_name == "ialirt-algorithm-table":
-        kernel_item = {
-            "apid": 478,
-            "met": int(met),
-            "met_in_utc": met_to_utc(met).split(".")[0],
-            "ttj2000ns": int(met_to_ttj2000ns(met)),
-            "instrument": "spice",
-            "last_modified": last_modified_utc,
-            "spice_kernels": spice_kernels,
-        }
-    else:
-        kernel_item = {
-            "instrument": "spice",
-            "time_utc": met_to_utc(met).split(".")[0],
-            "spice_kernels": spice_kernels,
-            "ttj2000ns": int(met_to_ttj2000ns(met)),
-        }
+    kernel_item = {
+        "instrument": "spice",
+        "time_utc": met_to_utc(met).split(".")[0],
+        "spice_kernels": spice_kernels,
+        "ttj2000ns": int(met_to_ttj2000ns(met)),
+    }
 
-    algorithm_table.put_item(Item=kernel_item)
+    data_table.put_item(Item=kernel_item)
 
     logger.info(
         f"Stored SPICE kernel mapping in "
         f"DynamoDB: {json.dumps(spice_kernels, indent=2)}"
     )
-    return kernel_set_key
+    return kernel_set_key, int(met_to_ttj2000ns(met))
 
 
 def lambda_handler(event, context):
@@ -652,10 +559,8 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event))
 
-    algorithm_table_name = os.environ.get("ALGORITHM_TABLE")
     data_table_name = os.environ.get("DATA_TABLE")
     dynamodb = boto3.resource("dynamodb")
-    algorithm_table = dynamodb.Table(algorithm_table_name)
     data_table = dynamodb.Table(data_table_name)
     url = os.environ.get("IMAP_DATA_ACCESS_URL")
 
@@ -685,14 +590,13 @@ def lambda_handler(event, context):
         combined = parse_packets(filenames, bucket, Path("/tmp"))  # noqa: S108
         logger.info("Packets parsed. Processing algorithms.")
         # Insert kernel metadata every minute.
-        kernel_set_key = insert_kernels(dependency_inputs, algorithm_table)
+        kernel_set_key, kernel_set_key_ttj2000ns = insert_kernels(
+            dependency_inputs, data_table
+        )
         # Process algorithms and insert new data.
         process_algorithms(
-            combined, algorithm_table, algorithm_table_name, kernel_set_key
+            combined, data_table, kernel_set_key, kernel_set_key_ttj2000ns
         )
-
-        kernel_set_key = insert_kernels(dependency_inputs, data_table)
-        process_algorithms(combined, data_table, data_table_name, kernel_set_key)
 
         logger.info("Successfully wrote all new items to DynamoDB")
     else:
