@@ -2,6 +2,7 @@
 
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 import boto3
@@ -95,4 +96,9 @@ def lambda_handler(event, context):
     key_path = write_temp_file(get_secret(key_secret_name, region), "client.key")
 
     xml_content = fetch_schedule_xml(url, cert_path, key_path)
-    logger.info(f"XML content:\n{xml_content}")
+
+    bucket = os.environ.get("S3_BUCKET")
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    s3_key = f"ground_station_schedules/uksa/imap_ialirt_uksa-schedule_{date_str}.xml"
+    boto3.client("s3").put_object(Bucket=bucket, Key=s3_key, Body=xml_content)
+    logger.info(f"Saved schedule to s3://{bucket}/{s3_key}")
