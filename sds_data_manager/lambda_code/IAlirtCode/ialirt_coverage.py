@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -18,7 +19,6 @@ from imap_data_access.processing_input import (
 from imap_processing.ialirt.generate_coverage import (
     format_coverage_summary,
     generate_coverage,
-    parse_uksa_schedule_xlsx,
 )
 
 logger = logging.getLogger(__name__)
@@ -98,38 +98,74 @@ def get_dsn(download_dir: Path):
     return download_path, dsn_dict
 
 
-def get_uksa(download_dir: Path) -> list[tuple[str, str]]:
-    """Query and download UKSA contact schedule data.
+def parse_uksa_schedule_xml(xml_content: str) -> list[tuple[str, str]]:
+    """Parse UKSA contact schedule XML and return track timestamps.
 
     Parameters
     ----------
-    download_dir : Path
-        The directory where the file will be downloaded.
+    xml_content : str
+        Raw XML string from the UKSA schedule file.
 
     Returns
     -------
     list[tuple[str, str]]
-        List of (start, end) contact windows from the UKSA schedule.
-    """
-    imap_data_access.config["DATA_DIR"] = download_dir
-    uksa_files = imap_data_access.query(
-        table="ancillary",
-        instrument="ialirt",
-        descriptor="uksa-contact-schedule",
-        version="latest",
-    )
+        List of (beginningOfTrack, endOfTrack) tuples for all scheduled activities,
+        converted from DOY format (YYYY-DOYThh:mm:ss.sssZ) to ISO 8601 calendar format.
 
-    if not uksa_files:
-        logger.info("No UKSA files found for IALiRT. Returning empty list.")
+    Notes
+    -----
+    Input timestamp format: 2025-177T12:40:00.000Z (year + day-of-year)
+    Output timestamp format: 2025-06-26T12:40:00Z
+    """
+    root = ET.fromstring(xml_content)  # noqa: S314
+    contacts = []
+    for activity in root.iter("scheduledActivity"):
+        start = activity.get("beginningOfTrack")
+        end = activity.get("endOfTrack")
+        if start and end:
+            start_dt = datetime.strptime(start, "%Y-%jT%H:%M:%S.%fZ")
+            end_dt = datetime.strptime(end, "%Y-%jT%H:%M:%S.%fZ")
+            contacts.append(
+                (
+                    start_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    end_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                )
+            )
+    return contacts
+
+
+def get_uksa(bucket: str, region: str) -> list[tuple[str, str]]:
+    """Read and parse the latest UKSA contact schedule XML from S3.
+
+    Parameters
+    ----------
+    bucket : str
+        The name of the S3 bucket.
+    region : str
+        The AWS region.
+
+    Returns
+    -------
+    list[tuple[str, str]]
+        List of (beginningOfTrack, endOfTrack) tuples from the UKSA schedule.
+    """
+    s3_client = boto3.client("s3", region_name=region)
+    prefix = "ground_station_schedules/uksa/"
+
+    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    objects = response.get("Contents", [])
+
+    if not objects:
+        logger.info("No UKSA schedule files found in S3. Returning empty list.")
         return []
 
-    latest = sorted(
-        uksa_files, key=lambda x: (x["start_date"], x["version"]), reverse=True
-    )[0]
-    download_path = imap_data_access.download(latest["file_path"])
-    logger.info(f"Downloading UKSA schedule to {download_path}.")
+    latest_key = sorted(objects, key=lambda x: x["Key"])[-1]["Key"]
+    logger.info(f"Reading UKSA schedule from s3://{bucket}/{latest_key}")
 
-    return parse_uksa_schedule_xlsx(download_path)
+    obj = s3_client.get_object(Bucket=bucket, Key=latest_key)
+    xml_content = obj["Body"].read().decode("utf-8")
+
+    return parse_uksa_schedule_xml(xml_content)
 
 
 def get_latest_spice_kernels(kernels: list[str], url: str) -> ProcessingInputCollection:
@@ -341,7 +377,7 @@ def lambda_handler(event, context):
     _, dsn = get_dsn(Path("/tmp"))  # noqa: S108
 
     # Get UKSA schedule
-    uksa = get_uksa(Path("/tmp"))  # noqa: S108
+    uksa = get_uksa(bucket, region)
 
     # Download latest SPICE kernels
     dependency_inputs = get_latest_spice_kernels(
