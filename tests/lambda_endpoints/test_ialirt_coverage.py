@@ -302,12 +302,17 @@ SAMPLE_UKSA_XML = """\
 
 
 def test_parse_uksa_schedule_xml():
-    """Test that parse_uksa_schedule_xml extracts and converts track timestamps."""
+    """Test that parse_uksa_schedule_xml extracts activity timestamps with offsets.
+
+    beginningOfActivity + 30 min, endOfActivity - 15 min.
+    Input:  BOA=2025-177T11:40:00Z, EOA=2025-177T14:25:00Z -> 12:10, 14:10
+            BOA=2025-177T16:00:00Z, EOA=2025-177T18:15:00Z -> 16:30, 18:00
+    """
     contacts = parse_uksa_schedule_xml(SAMPLE_UKSA_XML)
 
     assert contacts == [
-        ("2025-06-26T12:40:00Z", "2025-06-26T14:10:00Z"),
-        ("2025-06-26T16:00:00Z", "2025-06-26T18:15:00Z"),
+        ("2025-06-26T12:10:00Z", "2025-06-26T14:10:00Z"),
+        ("2025-06-26T16:30:00Z", "2025-06-26T18:00:00Z"),
     ]
 
 
@@ -335,6 +340,6 @@ def test_get_uksa(s3_client):
     result = get_uksa(bucket, region)
 
     assert result == [
-        ("2025-06-26T12:40:00Z", "2025-06-26T14:10:00Z"),
-        ("2025-06-26T16:00:00Z", "2025-06-26T18:15:00Z"),
+        ("2025-06-26T12:10:00Z", "2025-06-26T14:10:00Z"),
+        ("2025-06-26T16:30:00Z", "2025-06-26T18:00:00Z"),
     ]

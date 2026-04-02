@@ -103,11 +103,11 @@ class IalirtCoverageConstruct(Construct):
     def create_event_rule(
         self, ialirt_coverage_lambda: lambda_.DockerImageFunction
     ) -> None:
-        """Create the event rule to trigger Lambda once per day."""
-        # Scheduled rule - daily at 00:00 UTC
+        """Create the event rule to trigger Lambda twice per day."""
+        # Scheduled rule - 01:00 and 13:00 UTC (one hour after schedule fetch)
         rule = events.Rule(
             self,
-            "IalirtDailyCoverageRule",
-            schedule=events.Schedule.cron(minute="0", hour="0"),
+            "IalirtCoverageRule",
+            schedule=events.Schedule.cron(minute="0", hour="1,13"),
         )
         rule.add_target(targets.LambdaFunction(ialirt_coverage_lambda))

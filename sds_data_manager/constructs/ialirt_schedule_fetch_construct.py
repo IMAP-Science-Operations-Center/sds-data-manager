@@ -122,10 +122,10 @@ class IalirtScheduleFetchConstruct(Construct):
     def create_event_rule(
         self, ialirt_schedule_fetch_lambda: lambda_.DockerImageFunction
     ) -> None:
-        """Create the event rule to trigger Lambda once per hour."""
+        """Create the event rule to trigger Lambda twice per day."""
         rule = events.Rule(
             self,
-            "IalirtHourlyScheduleFetchRule",
-            schedule=events.Schedule.rate(Duration.hours(1)),
+            "IalirtScheduleFetchRule",
+            schedule=events.Schedule.cron(minute="0", hour="0,12"),
         )
         rule.add_target(targets.LambdaFunction(ialirt_schedule_fetch_lambda))

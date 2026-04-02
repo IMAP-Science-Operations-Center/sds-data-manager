@@ -120,11 +120,15 @@ def parse_uksa_schedule_xml(xml_content: str) -> list[tuple[str, str]]:
     root = ET.fromstring(xml_content)  # noqa: S314
     contacts = []
     for activity in root.iter("scheduledActivity"):
-        start = activity.get("beginningOfTrack")
-        end = activity.get("endOfTrack")
+        start = activity.get("beginningOfActivity")
+        end = activity.get("endOfActivity")
         if start and end:
-            start_dt = datetime.strptime(start, "%Y-%jT%H:%M:%S.%fZ")
-            end_dt = datetime.strptime(end, "%Y-%jT%H:%M:%S.%fZ")
+            start_dt = datetime.strptime(start, "%Y-%jT%H:%M:%S.%fZ") + timedelta(
+                minutes=30
+            )
+            end_dt = datetime.strptime(end, "%Y-%jT%H:%M:%S.%fZ") - timedelta(
+                minutes=15
+            )
             contacts.append(
                 (
                     start_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
