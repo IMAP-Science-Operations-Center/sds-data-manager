@@ -109,7 +109,8 @@ def parse_uksa_schedule_xml(xml_content: str) -> list[tuple[str, str]]:
     Returns
     -------
     list[tuple[str, str]]
-        List of (beginningOfTrack, endOfTrack) tuples for all scheduled activities,
+        List of (start, end) tuples derived from each activity's
+        ``beginningOfActivity`` (+30 min) and ``endOfActivity`` (-15 min),
         converted from DOY format (YYYY-DOYThh:mm:ss.sssZ) to ISO 8601 calendar format.
 
     Notes
@@ -151,19 +152,26 @@ def get_uksa(bucket: str, region: str) -> list[tuple[str, str]]:
     Returns
     -------
     list[tuple[str, str]]
-        List of (beginningOfTrack, endOfTrack) tuples from the UKSA schedule.
+        List of (start, end) tuples from the UKSA schedule, with offsets applied
+        per ``parse_uksa_schedule_xml``.
     """
     s3_client = boto3.client("s3", region_name=region)
     prefix = "ground_station_schedules/uksa/"
 
-    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    objects = response.get("Contents", [])
+    paginator = s3_client.get_paginator("list_objects_v2")
+    latest_obj = None
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            if not obj["Key"].endswith(".xml"):
+                continue
+            if latest_obj is None or obj["LastModified"] > latest_obj["LastModified"]:
+                latest_obj = obj
 
-    if not objects:
+    if latest_obj is None:
         logger.info("No UKSA schedule files found in S3. Returning empty list.")
         return []
 
-    latest_key = sorted(objects, key=lambda x: x["Key"])[-1]["Key"]
+    latest_key = latest_obj["Key"]
     logger.info(f"Reading UKSA schedule from s3://{bucket}/{latest_key}")
 
     obj = s3_client.get_object(Bucket=bucket, Key=latest_key)
