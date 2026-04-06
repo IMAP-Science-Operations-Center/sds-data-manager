@@ -184,7 +184,7 @@ def filter_items_by_scope(items: list[dict], scope: str) -> list[dict]:
     return filtered_items
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
     """Create metadata and add it to the database.
 
     This function is an event handler for s3 ingest bucket.
@@ -235,6 +235,11 @@ def lambda_handler(event, context):
             return _error(403, "Unauthorized for HK access.")
         meta_instrument = params["instrument"]
         meta_type = "hk"
+    elif params["instrument"] == "spacecraft_status":
+        if scope not in FULL_SCOPES:
+            return _error(403, "Unauthorized for spacecraft_status access.")
+        meta_instrument = params["instrument"]
+        meta_type = "spacecraft_status"
     elif params["instrument"] == "spacecraft":
         meta_instrument = params["instrument"]
         meta_type = "spacecraft"
