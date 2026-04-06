@@ -1494,7 +1494,7 @@ def _extend_hi_goodtimes_l1b_de_dependencies(
         should be skipped.
     """
     # Extract sensor from descriptor (e.g., "45sensor-goodtimes" -> "45sensor")
-    sensor = descriptor.split("-")[0]
+    sensor = descriptor.split("-", maxsplit=1)[0]
     l1b_de_descriptor = f"{sensor}-de"
     l1b_de_dep = {
         "data_source": "hi",
