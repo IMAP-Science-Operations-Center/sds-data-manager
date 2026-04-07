@@ -19,15 +19,7 @@ spice_basic: &spice_basic
 
 
 spice_45sensor_l1b: &spice_45sensor_l1b
-
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  - *spice_basic
   - upstream_source: imap_frames
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -278,7 +270,6 @@ ancillary_90sensor_l2: &ancillary_90sensor_l2
   - upstream_source: hi
     upstream_data_type: l1b
     upstream_descriptor: 90sensor-de
-
 
 # L2 Products - 45sensor variants
 

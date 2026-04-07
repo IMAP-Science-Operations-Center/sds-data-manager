@@ -107,25 +107,7 @@ class DependencyConfigReader:
                     self._validate_descriptor(descriptor)
                     downstream_node = (instrument, data_type, descriptor)
 
-                    # Flatten upstream dependencies because of how YAML aliases are
-                    # loaded in code. New YAML format loads dependencies as dicts:
-                    #   (l1a, all):
-                    #         - source: hi
-                    #           data_type: l0
-                    #           descriptor: raw
-                    #         - *spice_basic  # YAML alias expands to list of dicts
-                    # When aliased, it may be read as list of lists of dicts.
-                    flattened_upstream_deps = []
-                    for item in upstream_list:
-                        # Handle YAML aliases that expand to list of dicts
-                        if (
-                            isinstance(item, list)
-                            and item
-                            and isinstance(item[0], dict)
-                        ):
-                            flattened_upstream_deps.extend(item)
-                        else:
-                            flattened_upstream_deps.append(item)
+                    flattened_upstream_deps = self.recursive_flatten_list(upstream_list)
 
                     # Validate each upstream node
                     for upstream in flattened_upstream_deps:
@@ -139,6 +121,56 @@ class DependencyConfigReader:
                     ) from e
 
         return dependencies
+
+    def recursive_flatten_list(self, nested_list):
+        """Recursively flatten a nested list structure.
+
+        Multiple inheritance in dependency YAML files can result in
+        lists containing other lists, which this method flattens.
+
+        For example:
+        spice_basic: &spice_basic
+            - upstream_source: leapseconds
+                upstream_data_type: spice
+                upstream_descriptor: historical
+                kickoff_job: false
+            - upstream_source: spacecraft_clock
+                upstream_data_type: spice
+                upstream_descriptor: historical
+                kickoff_job: false
+
+        spice_45sensor_l1b: &spice_45sensor_l1b
+            - *spice_basic
+            - upstream_source: imap_frames
+                upstream_data_type: spice
+                upstream_descriptor: historical
+                kickoff_job: false
+
+        (l1b, 45sensor-de):
+            - *spice_45sensor_l1b
+            - upstream_source: hi
+                upstream_data_type: l1a
+                upstream_descriptor: 45sensor-de
+
+        Parameters
+        ----------
+        nested_list : list
+            A potentially nested list of dependencies.
+
+        Returns
+        -------
+        list
+            A single flattened list of dependencies.
+        """
+        flat_list = []
+        for item in nested_list:
+            if isinstance(item, list):
+                # If the item is a list, extend with the flattened version of that list
+                flat_list.extend(self.recursive_flatten_list(item))
+            else:
+                # Otherwise, append the item (which can be any object)
+                flat_list.append(item)
+        return flat_list
 
     def validate_node(self, node: list) -> bool:
         """Validate a dependency node.
