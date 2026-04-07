@@ -12,6 +12,10 @@ from .dependency import DataSource, DataType
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Date range validation constants
+NEAREST_OPTIONS = ("nd", "np")
+DATE_RANGE_OPTIONS = ("p", "h", "d", "l", *NEAREST_OPTIONS)
+
 
 class DependencyConfigReader:
     """Dependency configuration reader.
@@ -153,12 +157,15 @@ class DependencyConfigReader:
             - h - hourly
             - d - days
             - l - last_processed
-            - n - nearest
+            - nd - nearest day
+            - np - nearest pointing
+
             past and future should end with one of these options. Eg.
                 ("-3p", "3pm") means 3 pointing
                 ("-3d", "5d") means 5 days
                 ("-2h", "2h") means 2 hours
                 ("1l",) means last processed
+                ("6np",) means nearest 6 pointing
 
         Validation is performed for each field.
 
@@ -234,32 +241,55 @@ class DependencyConfigReader:
         if not date_range:
             return
 
-        if not isinstance(date_range, (list)) or len(date_range) != 2:
+        if not isinstance(date_range, (list)) or 2 <= len(date_range) < 1:
             raise ValueError(
-                "Date range must be a list of 2 elements (past, future), "
+                "Date range must be a list of 1-2 elements (past) or (past, future), "
                 f"got {date_range}"
             )
 
-        past, future = date_range
-        date_range_options = ["p", "h", "d", "l", "n"]
-        past_option = past[-1] if past else None
-        future_option = future[-1] if future else None
-        past_int = int(past[:-1]) if past else None
-        future_int = int(future[:-1]) if future else None
+        # Handle both single-element and two-element lists
+        past = date_range[0] if len(date_range) > 0 else None
+        future = date_range[1] if len(date_range) > 1 else None
 
-        if (past_option and past_option not in date_range_options) or (
-            past_int and past_int > 0
+        if past is None and future is None:
+            return
+
+        is_nearest = past.endswith(NEAREST_OPTIONS) if past else False
+
+        # Validate past if provided
+        if is_nearest:
+            past_option = "np" if past.endswith("np") else "nd"
+            past_int = int(past[:-2]) if past[:-2] else None
+        else:
+            past_option = past[-1] if past else None
+            past_int = int(past[:-1]) if past else None
+
+        # Validate past option and its integer value
+        if (past_option not in DATE_RANGE_OPTIONS) or (
+            past_option not in NEAREST_OPTIONS and past_int > 0
         ):
             raise ValueError(
                 f"Invalid past '{past}'. Must end with "
-                f"{date_range_options} and be negative."
+                f"{DATE_RANGE_OPTIONS} and must be negative."
             )
-        if (future_option and future_option not in date_range_options) or (
-            future_int and future_int < 0
-        ):
+
+        # Validate future if provided
+        if future is None:
+            return
+        elif future.endswith(NEAREST_OPTIONS):
+            raise ValueError(
+                "Nearest need to be in this format, (<int><option>, ). "
+                "Eg. ('6np',) or ('6nd',)"
+            )
+        else:
+            future_option = future[-1] if future else None
+            future_int = int(future[:-1]) if future else None
+
+        # Validate future option and integer value
+        if (future_option not in DATE_RANGE_OPTIONS) or (future_int < 0):
             raise ValueError(
                 f"Invalid future '{future}'. Must end with "
-                f"{date_range_options} and be positive."
+                f"{DATE_RANGE_OPTIONS} and be positive."
             )
 
     def _validate_source(self, source: str) -> None:

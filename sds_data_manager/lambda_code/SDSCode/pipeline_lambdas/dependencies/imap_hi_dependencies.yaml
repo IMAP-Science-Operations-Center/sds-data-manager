@@ -232,8 +232,7 @@ ancillary_90sensor_l2: &ancillary_90sensor_l2
   - upstream_source: hi
     upstream_data_type: l1b
     upstream_descriptor: 45sensor-de
-    date_range: ["-3p", "3p"]
-
+    date_range: ["6np",]
   - upstream_source: hi
     upstream_data_type: l1b
     upstream_descriptor: 45sensor-hk
