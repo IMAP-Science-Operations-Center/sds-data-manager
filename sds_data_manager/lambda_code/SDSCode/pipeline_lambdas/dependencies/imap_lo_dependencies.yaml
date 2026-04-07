@@ -12,7 +12,6 @@ spice_basic: &spice_basic
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: spacecraft_clock
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -25,41 +24,33 @@ spice_l1b_de_deps: &spice_l1b_de_deps
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: ephemeris_reconstructed
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: ephemeris_predicted
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: attitude_history
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: imap_frames
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: planetary_ephemeris
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: pointing_attitude
     upstream_data_type: spice
     upstream_descriptor: historical
-
   - upstream_source: science_frames
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -72,46 +63,37 @@ spice_l1c: &spice_l1c
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: spacecraft_clock
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: attitude_history
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: imap_frames
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: planetary_ephemeris
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: pointing_attitude
     upstream_data_type: spice
     upstream_descriptor: historical
-
   - upstream_source: science_frames
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: ephemeris_reconstructed
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: ephemeris_predicted
     upstream_data_type: spice
     upstream_descriptor: best
     kickoff_job: false
-
   - upstream_source: ephemeris_90days
     upstream_data_type: spice
     upstream_descriptor: best
@@ -124,27 +106,22 @@ spice_l2: &spice_l2
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: ephemeris_reconstructed
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: imap_frames
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: planetary_ephemeris
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: science_frames
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -154,7 +131,6 @@ spice_l2: &spice_l2
 # ======== Product-Specific Dependencies ========
 
 (l1a, all):
-
   - upstream_source: lo
     upstream_data_type: l0
     upstream_descriptor: raw
@@ -163,19 +139,15 @@ spice_l2: &spice_l2
 
 
 (l1b, all-rates):
-
   - upstream_source: lo
     upstream_data_type: l1a
     upstream_descriptor: histogram
-
   - upstream_source: lo
     upstream_data_type: l1a
     upstream_descriptor: spin
-
   - upstream_source: spin
     upstream_data_type: spin
     upstream_descriptor: historical
-
   - upstream_source: repoint
     upstream_data_type: repoint
     upstream_descriptor: historical
@@ -184,7 +156,6 @@ spice_l2: &spice_l2
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: sweep-table
-
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: esa-mode-lut
@@ -192,15 +163,12 @@ spice_l2: &spice_l2
 
 
 (l1b, badtimes):
-
   - upstream_source: lo
     upstream_data_type: l1b
     upstream_descriptor: nhk
-
   - upstream_source: spin
     upstream_data_type: spin
     upstream_descriptor: historical
-
   - upstream_source: repoint
     upstream_data_type: repoint
     upstream_descriptor: historical
@@ -209,31 +177,24 @@ spice_l2: &spice_l2
 
 
 (l1b, de):
-
   - upstream_source: lo
     upstream_data_type: l1a
     upstream_descriptor: de
-
   - upstream_source: lo
     upstream_data_type: l1a
     upstream_descriptor: spin
-
   - upstream_source: lo
     upstream_data_type: l1b
     upstream_descriptor: nhk
-
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: bad-times
-
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: sweep-table
-
   - upstream_source: spin
     upstream_data_type: spin
     upstream_descriptor: historical
-
   - upstream_source: repoint
     upstream_data_type: repoint
     upstream_descriptor: historical
@@ -242,19 +203,15 @@ spice_l2: &spice_l2
 
 
 (l1b, derates):
-
   - upstream_source: lo
     upstream_data_type: l1b
     upstream_descriptor: de
-
   - upstream_source: lo
     upstream_data_type: l1a
     upstream_descriptor: spin
-
   - upstream_source: spin
     upstream_data_type: spin
     upstream_descriptor: historical
-
   - upstream_source: repoint
     upstream_data_type: repoint
     upstream_descriptor: historical
@@ -263,7 +220,6 @@ spice_l2: &spice_l2
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: sweep-table
-
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: esa-mode-lut
@@ -271,19 +227,15 @@ spice_l2: &spice_l2
 
 
 (l1b, prostar):
-
   - upstream_source: lo
     upstream_data_type: l1a
     upstream_descriptor: star
-
   - upstream_source: lo
     upstream_data_type: l1a
     upstream_descriptor: spin
-
   - upstream_source: lo
     upstream_data_type: l1b
     upstream_descriptor: nhk
-
   - upstream_source: repoint
     upstream_data_type: repoint
     upstream_descriptor: historical
@@ -292,27 +244,21 @@ spice_l2: &spice_l2
 
 
 (l1c, pset):
-
   - upstream_source: lo
     upstream_data_type: l1b
     upstream_descriptor: de
-
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: good-times
-
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: hydrogen-background
-
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: oxygen-background
-
   - upstream_source: spin
     upstream_data_type: spin
     upstream_descriptor: historical
-
   - upstream_source: repoint
     upstream_data_type: repoint
     upstream_descriptor: historical
@@ -327,7 +273,6 @@ spice_l2: &spice_l2
     upstream_data_type: ancillary
     upstream_descriptor: esa-eta-fit-factors
     kickoff_job: false
-
   - upstream_source: lo
     upstream_data_type: l1c
     upstream_descriptor: pset
@@ -342,7 +287,6 @@ spice_l2: &spice_l2
     upstream_data_type: ancillary
     upstream_descriptor: esa-eta-fit-factors
     kickoff_job: false
-
   - upstream_source: lo
     upstream_data_type: l1c
     upstream_descriptor: pset
@@ -357,7 +301,6 @@ spice_l2: &spice_l2
     upstream_data_type: ancillary
     upstream_descriptor: esa-eta-fit-factors
     kickoff_job: false
-
   - upstream_source: lo
     upstream_data_type: l1c
     upstream_descriptor: pset
@@ -372,7 +315,6 @@ spice_l2: &spice_l2
     upstream_data_type: ancillary
     upstream_descriptor: esa-eta-fit-factors
     kickoff_job: false
-
   - upstream_source: lo
     upstream_data_type: l1c
     upstream_descriptor: pset
@@ -387,7 +329,6 @@ spice_l2: &spice_l2
     upstream_data_type: ancillary
     upstream_descriptor: esa-eta-fit-factors
     kickoff_job: false
-
   - upstream_source: lo
     upstream_data_type: l1c
     upstream_descriptor: pset
@@ -402,7 +343,6 @@ spice_l2: &spice_l2
     upstream_data_type: ancillary
     upstream_descriptor: esa-eta-fit-factors
     kickoff_job: false
-
   - upstream_source: lo
     upstream_data_type: l1c
     upstream_descriptor: pset
@@ -411,12 +351,10 @@ spice_l2: &spice_l2
 
 
 (l2, t090-ena-h-sf-nsp-ram-hae-6deg-1yr):
-
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: esa-eta-fit-factors
     kickoff_job: false
-
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: esa-eta-fit-factors
@@ -445,7 +383,6 @@ spice_l2: &spice_l2
 
 
 (l3, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
-
   - upstream_source: lo
     upstream_data_type: l2
     upstream_descriptor: l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr
@@ -453,7 +390,6 @@ spice_l2: &spice_l2
 
 
 (l3, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
-
   - upstream_source: lo
     upstream_data_type: l2
     upstream_descriptor: l090-enanbs-o-sf-nsp-ram-hae-6deg-1yr
@@ -461,7 +397,6 @@ spice_l2: &spice_l2
 
 
 (l3, l090-spx-h-hf-nsp-ram-hae-6deg-1yr):
-
   - upstream_source: lo
     upstream_data_type: l2
     upstream_descriptor: l090-ena-h-hf-nsp-ram-hae-6deg-1yr
@@ -469,7 +404,6 @@ spice_l2: &spice_l2
 
 
 (l3, l090-spx-h-hf-sp-ram-hae-6deg-1yr):
-
   - upstream_source: lo
     upstream_data_type: l3
     upstream_descriptor: l090-ena-h-hf-sp-ram-hae-6deg-1yr
@@ -477,7 +411,6 @@ spice_l2: &spice_l2
 
 
 (l3, l090-spx-h-sf-nsp-ram-hae-6deg-1yr):
-
   - upstream_source: lo
     upstream_data_type: l2
     upstream_descriptor: l090-ena-h-sf-nsp-ram-hae-6deg-1yr
@@ -485,7 +418,6 @@ spice_l2: &spice_l2
 
 
 (l3, l090-spx-h-sf-sp-ram-hae-6deg-1yr):
-
   - upstream_source: lo
     upstream_data_type: l3
     upstream_descriptor: l090-ena-h-sf-sp-ram-hae-6deg-1yr
@@ -493,7 +425,6 @@ spice_l2: &spice_l2
 
 
 (l3, l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr):
-
   - upstream_source: lo
     upstream_data_type: l2
     upstream_descriptor: l090-enanbs-h-hk-nsp-ram-hae-6deg-1yr
@@ -501,7 +432,6 @@ spice_l2: &spice_l2
 
 
 (l3, l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr):
-
   - upstream_source: lo
     upstream_data_type: l2
     upstream_descriptor: l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr

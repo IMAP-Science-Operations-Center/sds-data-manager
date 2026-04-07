@@ -6,16 +6,13 @@
 
 
 (l1a, all):
-
   - upstream_source: hit
     upstream_data_type: l0
     upstream_descriptor: raw
-
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: spacecraft_clock
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -23,16 +20,13 @@
 
 
 (l1b, hk):
-
   - upstream_source: hit
     upstream_data_type: l0
     upstream_descriptor: raw
-
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-
   - upstream_source: spacecraft_clock
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -40,168 +34,132 @@
 
 
 (l1b, sectored-rates):
-
   - upstream_source: hit
     upstream_data_type: l1a
     upstream_descriptor: counts-sectored
 
 
 (l1b, standard-rates):
-
   - upstream_source: hit
     upstream_data_type: l1a
     upstream_descriptor: counts-standard
 
 
 (l1b, summed-rates):
-
   - upstream_source: hit
     upstream_data_type: l1a
     upstream_descriptor: counts-standard
 
 
 (l2, macropixel-intensity):
-
   - upstream_source: hit
     upstream_data_type: l1b
     upstream_descriptor: sectored-rates
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-macropixel-dt0-factors
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-macropixel-dt1-factors
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-macropixel-dt2-factors
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-macropixel-dt3-factors
 
 
 (l2, standard-intensity):
-
   - upstream_source: hit
     upstream_data_type: l1b
     upstream_descriptor: standard-rates
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-standard-dt0-factors
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-standard-dt1-factors
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-standard-dt2-factors
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-standard-dt3-factors
 
 
 (l2, summed-intensity):
-
   - upstream_source: hit
     upstream_data_type: l1b
     upstream_descriptor: summed-rates
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-summed-dt0-factors
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-summed-dt1-factors
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-summed-dt2-factors
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: l1b-to-l2-summed-dt3-factors
 
 
 (l3, direct-events):
-
   - upstream_source: hit
     upstream_data_type: l1a
     upstream_descriptor: direct-events
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-2A-cosine-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-3A-cosine-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-4A-cosine-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-2B-cosine-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-3B-cosine-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-4B-cosine-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: lo-gain-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: hi-gain-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-2A-charge-fit-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-3A-charge-fit-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-4A-charge-fit-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-2B-charge-fit-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-3B-charge-fit-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: range-4B-charge-fit-lookup
-
   - upstream_source: hit
     upstream_data_type: ancillary
     upstream_descriptor: hit-event-type-lookup
 
 
 (l3, macropixel):
-
   - upstream_source: hit
     upstream_data_type: l2
     upstream_descriptor: macropixel-intensity
-
   - upstream_source: mag
     upstream_data_type: l1d
     upstream_descriptor: norm-dsrf
