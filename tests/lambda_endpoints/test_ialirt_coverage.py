@@ -15,8 +15,10 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage import (
     get_dsn,
     get_latest_outage_file,
     get_latest_spice_kernels,
+    get_uksa,
     lambda_handler,
     parse_outage_file,
+    parse_uksa_schedule_xml,
     setup_spice_file,
 )
 
@@ -28,9 +30,11 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage import (
 @patch("spiceypy.furnsh")
 @patch("imap_data_access.processing_input.ProcessingInputCollection.download_all_files")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.requests.get")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.get_uksa")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.get_dsn")
 def test_lambda_handler(
     mock_get_dsn,
+    mock_get_uksa,
     mock_requests_get,
     mock_download,
     mock_furnsh,
@@ -63,6 +67,7 @@ def test_lambda_handler(
         Path("/imap_ialirt_contact-schedule_20260922_v001.tsv"),
         {},
     )
+    mock_get_uksa.return_value = []
     mock_generate_coverage.return_value = (
         {"DSS-55": ["some coverage"]},
         {"Kiel": ["some outage"]},
@@ -260,3 +265,81 @@ def test_get_dsn(mock_query, mock_ancillaryfilepath, mock_download, tmp_path):
         "DSS-56": [("2025-07-22T21:40:00Z", "2025-07-23T01:40:00Z")],
         "DSS-55": [("2025-07-23T22:00:00Z", "2025-07-24T01:10:00Z")],
     }
+
+
+SAMPLE_UKSA_XML = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<simpleSchedule>
+  <simpleScheduleHeader originatingOrganization="GES"
+    generationTime="2025-177T12:25:28.379Z" version="1"
+    startTime="2025-177T12:25:28.379Z" endTime="2025-365T15:51:31.000Z"
+    status="OPERATIONAL" inclusionType="OVERLAP_INCLUSION"/>
+  <scheduledPackage user="IMAP" comment=""
+    scheduledPackageId="EVENT-2025.126.08.13.26.491418-1029794">
+    <scheduledActivity scheduledActivityId="EVENT-2025.126.08.13.26.491418-1029794"
+      siteRef="GHY6" apertureRef="GHY6"
+      beginningOfActivity="2025-177T11:40:00.000Z"
+      endOfActivity="2025-177T14:25:00.000Z"
+      beginningOfTrack="2025-177T12:40:00.000Z"
+      endOfTrack="2025-177T14:10:00.000Z"
+      activityStatus="COMMITTED">
+      <serviceInfo serviceType="TELEMETRY" frequencyBand="N/A"/>
+    </scheduledActivity>
+  </scheduledPackage>
+  <scheduledPackage user="PROVIDER-CSSS" comment=""
+    scheduledPackageId="GHY6-REQ-3674">
+    <scheduledActivity scheduledActivityId="GHY6-REQ-3674"
+      siteRef="GHY6" apertureRef="GHY6"
+      beginningOfActivity="2025-177T16:00:00.000Z"
+      endOfActivity="2025-177T18:15:00.000Z"
+      beginningOfTrack="2025-177T16:00:00.000Z"
+      endOfTrack="2025-177T18:15:00.000Z"
+      activityStatus="TENTATIVE">
+      <serviceInfo serviceType="TBD" frequencyBand="N/A"/>
+    </scheduledActivity>
+  </scheduledPackage>
+</simpleSchedule>"""
+
+
+def test_parse_uksa_schedule_xml():
+    """Test that parse_uksa_schedule_xml extracts activity timestamps with offsets.
+
+    beginningOfActivity + 30 min, endOfActivity - 15 min.
+    Input:  BOA=2025-177T11:40:00Z, EOA=2025-177T14:25:00Z -> 12:10, 14:10
+            BOA=2025-177T16:00:00Z, EOA=2025-177T18:15:00Z -> 16:30, 18:00
+    """
+    contacts = parse_uksa_schedule_xml(SAMPLE_UKSA_XML)
+
+    assert contacts == [
+        ("2025-06-26T12:10:00Z", "2025-06-26T14:10:00Z"),
+        ("2025-06-26T16:30:00Z", "2025-06-26T18:00:00Z"),
+    ]
+
+
+def test_get_uksa_no_files(s3_client):
+    """Test get_uksa returns empty list when no files exist in S3."""
+    bucket = "test-data-bucket"
+    region = "us-west-2"
+
+    result = get_uksa(bucket, region)
+
+    assert result == []
+
+
+def test_get_uksa(s3_client):
+    """Test get_uksa reads and parses the latest XML from S3."""
+    bucket = "test-data-bucket"
+    region = "us-west-2"
+
+    s3_client.put_object(
+        Bucket=bucket,
+        Key="ground_station_schedules/uksa/imap_ialirt_uksa-schedule_20250626.xml",
+        Body=SAMPLE_UKSA_XML.encode("utf-8"),
+    )
+
+    result = get_uksa(bucket, region)
+
+    assert result == [
+        ("2025-06-26T12:10:00Z", "2025-06-26T14:10:00Z"),
+        ("2025-06-26T16:30:00Z", "2025-06-26T18:00:00Z"),
+    ]

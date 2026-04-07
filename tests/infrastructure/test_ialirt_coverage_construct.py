@@ -40,7 +40,7 @@ def test_creates_lambda_and_rule(template):
     template.resource_count_is("AWS::Events::Rule", 1)
 
     template.has_resource_properties(
-        "AWS::Events::Rule", {"ScheduleExpression": "cron(0 0 * * ? *)"}
+        "AWS::Events::Rule", {"ScheduleExpression": "cron(0 1,13 * * ? *)"}
     )
 
 
