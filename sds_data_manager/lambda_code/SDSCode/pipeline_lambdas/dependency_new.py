@@ -88,10 +88,8 @@ class DependencyConfigReader:
 
             # Parse YAML keys to construct (source, data_type, descriptor) tuples
             for key_str, upstream_list in instrument_config.items():
-                # Skip any comments or anchor definitions (common dependency groups).
-                # Product keys have format: (data_type, descriptor)
-                # Anchor keys don't have parentheses, so skip them.
-                if key_str.startswith("#") or not key_str.startswith("("):
+                # Skip any anchor definitions (common dependency groups).
+                if not key_str.startswith("("):
                     continue
 
                 try:
@@ -175,7 +173,7 @@ class DependencyConfigReader:
     def validate_node(self, node: list) -> bool:
         """Validate a dependency node.
 
-        A valid node must have exactly 5 elements or 6 elements:
+        A valid node must have exactly 5 or 6 elements:
             (
                 source,
                 data_type,

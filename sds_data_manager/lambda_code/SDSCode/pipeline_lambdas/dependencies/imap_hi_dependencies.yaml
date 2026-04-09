@@ -5,9 +5,8 @@
 # and how to properly configure them for your pipeline lambdas.
 
 # ========= Common Dependency Groups =========
-# Common spice dependencies shared by multiple products
+# Common dependencies shared by multiple products
 spice_basic: &spice_basic
-
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -17,87 +16,8 @@ spice_basic: &spice_basic
     upstream_descriptor: historical
     kickoff_job: false
 
-
-spice_45sensor_l1b: &spice_45sensor_l1b
+spice_common: &spice_common
   - *spice_basic
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: planetary_ephemeris
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: ephemeris_reconstructed
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: ephemeris_predicted
-    upstream_data_type: spice
-    upstream_descriptor: best
-    kickoff_job: false
-  - upstream_source: ephemeris_90days
-    upstream_data_type: spice
-    upstream_descriptor: best
-    kickoff_job: false
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-    kickoff_job: false
-
-
-spice_90sensor_l1b: &spice_90sensor_l1b
-
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: planetary_ephemeris
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: ephemeris_reconstructed
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: ephemeris_predicted
-    upstream_data_type: spice
-    upstream_descriptor: best
-    kickoff_job: false
-  - upstream_source: ephemeris_90days
-    upstream_data_type: spice
-    upstream_descriptor: best
-    kickoff_job: false
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-    kickoff_job: false
-
-
-spice_l1c: &spice_l1c
-
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
   - upstream_source: imap_frames
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -114,9 +34,6 @@ spice_l1c: &spice_l1c
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-  - upstream_source: pointing_attitude
-    upstream_data_type: spice
-    upstream_descriptor: historical
   - upstream_source: ephemeris_reconstructed
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -129,6 +46,22 @@ spice_l1c: &spice_l1c
     upstream_data_type: spice
     upstream_descriptor: best
     kickoff_job: false
+
+# ----- Sub section of common dependencies for data level ----
+# common SPICE dependencies
+spice_l1b: &spice_l1b
+  - *spice_basic
+  - *spice_common
+  - upstream_source: spin
+    upstream_data_type: spin
+    upstream_descriptor: historical
+    kickoff_job: false
+
+spice_l1c: &spice_l1c
+  - *spice_common
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
   - upstream_source: repoint
     upstream_data_type: repoint
     upstream_descriptor: historical
@@ -140,15 +73,7 @@ spice_l1c: &spice_l1c
 
 
 spice_l2: &spice_l2
-
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: science_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  - *spice_basic
   - upstream_source: planetary_ephemeris
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -158,10 +83,8 @@ spice_l2: &spice_l2
     upstream_descriptor: historical
     kickoff_job: false
 
-
-# 45sensor specific L2 ancillary dependencies
+# common ancillary dependencies
 ancillary_45sensor_l2: &ancillary_45sensor_l2
-
   - upstream_source: hi
     upstream_data_type: ancillary
     upstream_descriptor: 45sensor-cal-prod
@@ -172,10 +95,7 @@ ancillary_45sensor_l2: &ancillary_45sensor_l2
     upstream_data_type: ancillary
     upstream_descriptor: 45sensor-esa-eta-fit-factors
 
-
-# 90sensor specific L2 ancillary dependencies
 ancillary_90sensor_l2: &ancillary_90sensor_l2
-
   - upstream_source: hi
     upstream_data_type: ancillary
     upstream_descriptor: 90sensor-cal-prod
@@ -186,27 +106,33 @@ ancillary_90sensor_l2: &ancillary_90sensor_l2
     upstream_data_type: ancillary
     upstream_descriptor: 90sensor-esa-eta-fit-factors
 
+# common science dependencies
+l0_data: &l0_data
+  - upstream_source: hi
+    upstream_data_type: l0
+    upstream_descriptor: raw
 
+sensor45_l1c_pset: &sensor45_l1c_pset
+  - upstream_source: hi
+    upstream_data_type: l1c
+    upstream_descriptor: 45sensor-pset
+
+sensor90_l1c_pset: &sensor90_l1c_pset
+  - upstream_source: hi
+    upstream_data_type: l1c
+    upstream_descriptor: 90sensor-pset
 
 # ======== Product-Specific Dependencies ========
-
 (l1a, all):
-  - upstream_source: hi
-    upstream_data_type: l0
-    upstream_descriptor: raw
   - *spice_basic
-
-
+  - *l0_data
 
 (l1b, hk):
-  - upstream_source: hi
-    upstream_data_type: l0
-    upstream_descriptor: raw
   - *spice_basic
-
-
+  - *l0_data
 
 (l1b, 45sensor-de):
+  - *spice_l1b
   - upstream_source: hi
     upstream_data_type: l1a
     upstream_descriptor: 45sensor-de
@@ -216,11 +142,12 @@ ancillary_90sensor_l2: &ancillary_90sensor_l2
   - upstream_source: hi
     upstream_data_type: ancillary
     upstream_descriptor: 45sensor-esa-energies
-  - *spice_45sensor_l1b
-
-
 
 (l1b, 45sensor-goodtimes):
+  - *spice_basic
+  - upstream_source: hi
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-diagfee
   - upstream_source: hi
     upstream_data_type: l1b
     upstream_descriptor: 45sensor-de
@@ -228,30 +155,9 @@ ancillary_90sensor_l2: &ancillary_90sensor_l2
   - upstream_source: hi
     upstream_data_type: l1b
     upstream_descriptor: 45sensor-hk
-  - upstream_source: hi
-    upstream_data_type: l1a
-    upstream_descriptor: 45sensor-diagfee
-  - *spice_basic
-
-
-
-(l1b, 90sensor-de):
-  - upstream_source: hi
-    upstream_data_type: l1a
-    upstream_descriptor: 90sensor-de
-  - upstream_source: hi
-    upstream_data_type: l1b
-    upstream_descriptor: 90sensor-hk
-  - upstream_source: hi
-    upstream_data_type: ancillary
-    upstream_descriptor: 90sensor-esa-energies
-  - *spice_90sensor_l1b
-
-
 
 (l1c, 45sensor-pset):
   - *spice_l1c
-
   - upstream_source: hi
     upstream_data_type: ancillary
     upstream_descriptor: 45sensor-cal-prod
@@ -259,11 +165,20 @@ ancillary_90sensor_l2: &ancillary_90sensor_l2
     upstream_data_type: l1b
     upstream_descriptor: 45sensor-de
 
-
+(l1b, 90sensor-de):
+  - *spice_l1b
+  - upstream_source: hi
+    upstream_data_type: ancillary
+    upstream_descriptor: 90sensor-esa-energies
+  - upstream_source: hi
+    upstream_data_type: l1a
+    upstream_descriptor: 90sensor-de
+  - upstream_source: hi
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-hk
 
 (l1c, 90sensor-pset):
   - *spice_l1c
-
   - upstream_source: hi
     upstream_data_type: ancillary
     upstream_descriptor: 90sensor-cal-prod
@@ -271,627 +186,322 @@ ancillary_90sensor_l2: &ancillary_90sensor_l2
     upstream_data_type: l1b
     upstream_descriptor: 90sensor-de
 
-# L2 Products - 45sensor variants
+# L2 Products - 45sensor
 
 (l2, h45-ena-h-hf-nsp-anti-hae-4deg-1yr):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-anti-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-anti-hae-6deg-1yr):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-anti-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-full-hae-4deg-3mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-full-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-full-hae-6deg-3mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-full-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-ram-hae-4deg-1yr):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-ram-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-ram-hae-6deg-1yr):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-hf-nsp-ram-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-anti-hae-4deg-1yr):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
+  - *sensor45_l1c_pset
 
 
 (l2, h45-ena-h-sf-nsp-anti-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-anti-hae-6deg-1yr):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-anti-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-full-hae-4deg-3mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-full-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-full-hae-6deg-3mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-full-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-ram-hae-4deg-1yr):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-ram-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-ram-hae-6deg-1yr):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
-
-
+  - *sensor45_l1c_pset
 
 (l2, h45-ena-h-sf-nsp-ram-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_45sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 45sensor-pset
-    kickoff_job: false
+  - *sensor45_l1c_pset
 
 
-# L2 Products - 90sensor variants
+# L2 Products - 90sensor
 
 (l2, h90-ena-h-hf-nsp-anti-hae-4deg-1yr):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-anti-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-anti-hae-6deg-1yr):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-anti-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-full-hae-4deg-3mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-full-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-full-hae-6deg-3mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-full-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-ram-hae-4deg-1yr):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-ram-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-ram-hae-6deg-1yr):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-hf-nsp-ram-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-anti-hae-4deg-1yr):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-anti-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-anti-hae-6deg-1yr):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-anti-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-full-hae-4deg-3mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-full-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-full-hae-6deg-3mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-full-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-ram-hae-4deg-1yr):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-ram-hae-4deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-ram-hae-6deg-1yr):
   - *spice_l2
   - *ancillary_90sensor_l2
-
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+  - *sensor90_l1c_pset
 
 (l2, h90-ena-h-sf-nsp-ram-hae-6deg-6mo):
   - *spice_l2
   - *ancillary_90sensor_l2
+  - *sensor90_l1c_pset
 
-  - upstream_source: hi
-    upstream_data_type: l1c
-    upstream_descriptor: 90sensor-pset
-    kickoff_job: false
-
-
+# L3 Products - 45sensor
 
 (l3, h45-spx-h-hf-sp-anti-hae-4deg-1yr):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h45-ena-h-hf-sp-anti-hae-4deg-1yr
 
-
-
 (l3, h45-spx-h-hf-sp-anti-hae-6deg-1yr):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h45-ena-h-hf-sp-anti-hae-6deg-1yr
-
-
 
 (l3, h45-spx-h-hf-sp-full-hae-4deg-6mo):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h45-ena-h-hf-sp-full-hae-4deg-6mo
 
-
-
 (l3, h45-spx-h-hf-sp-full-hae-6deg-6mo):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h45-ena-h-hf-sp-full-hae-6deg-6mo
-
-
 
 (l3, h45-spx-h-hf-sp-ram-hae-4deg-1yr):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h45-ena-h-hf-sp-ram-hae-4deg-1yr
 
-
-
 (l3, h45-spx-h-hf-sp-ram-hae-6deg-1yr):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h45-ena-h-hf-sp-ram-hae-6deg-1yr
 
-
+# L3 Products - 90sensor
 
 (l3, h90-spx-h-hf-sp-anti-hae-4deg-1yr):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h90-ena-h-hf-sp-anti-hae-4deg-1yr
 
-
-
 (l3, h90-spx-h-hf-sp-anti-hae-6deg-1yr):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h90-ena-h-hf-sp-anti-hae-6deg-1yr
-
-
 
 (l3, h90-spx-h-hf-sp-full-hae-4deg-6mo):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h90-ena-h-hf-sp-full-hae-4deg-6mo
 
-
-
 (l3, h90-spx-h-hf-sp-full-hae-6deg-6mo):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h90-ena-h-hf-sp-full-hae-6deg-6mo
-
-
 
 (l3, h90-spx-h-hf-sp-ram-hae-4deg-1yr):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h90-ena-h-hf-sp-ram-hae-4deg-1yr
 
-
-
 (l3, h90-spx-h-hf-sp-ram-hae-6deg-1yr):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: h90-ena-h-hf-sp-ram-hae-6deg-1yr
 
-
+# L3 products - hic
 
 (l3, hic-spx-h-hf-sp-full-hae-4deg-1yr):
   - upstream_source: hi
     upstream_data_type: l3
     upstream_descriptor: hic-ena-h-hf-sp-full-hae-4deg-1yr
-
-
 
 (l3, hic-spx-h-hf-sp-full-hae-6deg-1yr):
   - upstream_source: hi
