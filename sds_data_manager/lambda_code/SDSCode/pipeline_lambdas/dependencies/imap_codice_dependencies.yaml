@@ -64,28 +64,10 @@
     upstream_descriptor: lo-counters-singles
 
 
-(l1b, lo-nsw-angular):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-nsw-angular
-
-
 (l1b, lo-nsw-priority):
   - upstream_source: codice
     upstream_data_type: l1a
     upstream_descriptor: lo-nsw-priority
-
-
-(l1b, lo-nsw-species):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-nsw-species
-
-
-(l1b, lo-sw-angular):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-sw-angular
 
 
 (l1b, lo-sw-priority):
@@ -143,42 +125,6 @@
   - upstream_source: codice
     upstream_data_type: ancillary
     upstream_descriptor: l2-lo-onboard-mpq-cal
-
-
-(l2, lo-nsw-angular):
-  - upstream_source: codice
-    upstream_data_type: l1b
-    upstream_descriptor: lo-nsw-angular
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-gfactor
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-efficiency
-
-
-(l2, lo-nsw-species):
-  - upstream_source: codice
-    upstream_data_type: l1b
-    upstream_descriptor: lo-nsw-species
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-gfactor
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-efficiency
-
-
-(l2, lo-sw-angular):
-  - upstream_source: codice
-    upstream_data_type: l1b
-    upstream_descriptor: lo-sw-angular
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-gfactor
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-efficiency
 
 
 (l2, lo-sw-species):

@@ -73,11 +73,17 @@ spice_l1c: &spice_l1c
 
 
 spice_l2: &spice_l2
-  - *spice_basic
-  - upstream_source: planetary_ephemeris
+  - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_ephemeris
+    upstream_data_type: spice
+    upstream_descriptor: historical
   - upstream_source: ephemeris_reconstructed
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -145,6 +151,13 @@ sensor90_l1c_pset: &sensor90_l1c_pset
 
 (l1b, 45sensor-goodtimes):
   - *spice_basic
+  - upstream_source: repoint
+    upstream_data_type: repoint
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: hi
+    upstream_data_type: ancillary
+    upstream_descriptor: 45sensor-cal-prod
   - upstream_source: hi
     upstream_data_type: l1a
     upstream_descriptor: 45sensor-diagfee
@@ -158,12 +171,16 @@ sensor90_l1c_pset: &sensor90_l1c_pset
 
 (l1c, 45sensor-pset):
   - *spice_l1c
+  - *spice_common
   - upstream_source: hi
     upstream_data_type: ancillary
     upstream_descriptor: 45sensor-cal-prod
   - upstream_source: hi
     upstream_data_type: l1b
     upstream_descriptor: 45sensor-de
+  - upstream_source: hi
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-goodtimes
 
 (l1b, 90sensor-de):
   - *spice_l1b
@@ -185,6 +202,29 @@ sensor90_l1c_pset: &sensor90_l1c_pset
   - upstream_source: hi
     upstream_data_type: l1b
     upstream_descriptor: 90sensor-de
+  - upstream_source: hi
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-goodtimes
+
+(l1b, 90sensor-goodtimes):
+  - *spice_basic
+  - upstream_source: repoint
+    upstream_data_type: repoint
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: hi
+    upstream_data_type: ancillary
+    upstream_descriptor: 45sensor-cal-prod
+  - upstream_source: hi
+    upstream_data_type: l1a
+    upstream_descriptor: 45sensor-diagfee
+  - upstream_source: hi
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-de
+    date_range: ["6np",]
+  - upstream_source: hi
+    upstream_data_type: l1b
+    upstream_descriptor: 45sensor-hk
 
 # L2 Products - 45sensor
 
@@ -464,7 +504,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     upstream_data_type: l3
     upstream_descriptor: h45-ena-h-hf-sp-ram-hae-6deg-1yr
 
-# L3 Products - 90sensor
+# L3 Products - Spectral Index - 45sensor
 
 (l3, h90-spx-h-hf-sp-anti-hae-4deg-1yr):
   - upstream_source: hi
