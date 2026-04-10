@@ -147,7 +147,7 @@ def test_lambda_handler(session, s3_client, mock_upload_request_success):
         lambda_handler(events, context)
         mock_batch_client.submit_job.assert_called_once()
         mock_batch_client.submit_job.assert_called_with(
-            jobName="swe-l1a-sci-job-1",
+            jobName="swe-l1a-all-job-1",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-swe",
             containerOverrides={
@@ -157,13 +157,13 @@ def test_lambda_handler(session, s3_client, mock_upload_request_success):
                     "--data-level",
                     "l1a",
                     "--descriptor",
-                    "sci",
+                    "all",
                     "--start-date",
                     "20240101",
                     "--version",
                     "v001",
                     "--dependency",
-                    "imap_swe_l1a_sci-c685cc19_20240101_v001.json",
+                    "imap_swe_l1a_all-c685cc19_20240101_v001.json",
                     "--upload-to-sdc",
                 ]
             },
@@ -184,7 +184,7 @@ def test_lambda_handler(session, s3_client, mock_upload_request_success):
         lambda_handler(events, context)
         mock_submit.assert_called_with(
             session,
-            {"data_source": "swe", "data_type": "l1a", "descriptor": "sci"},
+            {"data_source": "swe", "data_type": "l1a", "descriptor": "all"},
             "20240101",
             "v001",
             processing_input.serialize(),
@@ -807,7 +807,7 @@ def test_bulk_reprocessing_data_level(session, caplog, auth_event):
         "start_date": "20220101",
         "end_date": "20220301",
         "data_level": "l1a",
-        "descriptor": "sci",
+        "descriptor": "all",
     }
     # Create an authenticated event
     events = auth_event({"queryStringParameters": query_params})
@@ -1829,7 +1829,7 @@ def test_duplicate_job(session, first_status, second_status):
 def test_dependency_success():
     """Test the handler returns the expected dependency result."""
     dependencies = dependency.get_dependencies(
-        ("swe", "l1a", "sci"),
+        ("swe", "l1a", "all"),
         dependency_type="UPSTREAM",
         relationship="HARD",
     )
@@ -1887,7 +1887,7 @@ def test_dependency_success_empty(session):
     dependencies = dependency.get_jobs(
         data_source="swe",
         data_type="l1a",
-        descriptor="sci",
+        descriptor="all",
         dependency_type="UPSTREAM",
         relationship="HARD",
         start_date="20000101",

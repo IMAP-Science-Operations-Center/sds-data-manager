@@ -1130,21 +1130,9 @@ swapi, ancillary, energy-gf-sw-lut, swapi, l3b, combined, HARD, DOWNSTREAM
 
 # <---- SWE Dependencies ---->
 
-swe, l0, raw, swe, l1a, sci, HARD, DOWNSTREAM
-leapseconds, spice, historical, swe, l1a, sci, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, swe, l1a, sci, HARD_NO_TRIGGER, DOWNSTREAM
-
-swe, l0, raw, swe, l1a, hk, HARD, DOWNSTREAM
-leapseconds, spice, historical, swe, l1a, hk, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, swe, l1a, hk, HARD_NO_TRIGGER, DOWNSTREAM
-
-swe, l0, raw, swe, l1a, cem-raw, HARD, DOWNSTREAM
-leapseconds, spice, historical, swe, l1a, cem-raw, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, swe, l1a, cem-raw, HARD_NO_TRIGGER, DOWNSTREAM
-
-swe, l0, raw, swe, l1a, sci, HARD, DOWNSTREAM
-leapseconds, spice, historical, swe, l1a, sci, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, swe, l1a, sci, HARD_NO_TRIGGER, DOWNSTREAM
+swe, l0, raw, swe, l1a, all, HARD, DOWNSTREAM
+leapseconds, spice, historical, swe, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swe, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 swe, l1a, sci, swe, l1b, sci, HARD, DOWNSTREAM
 swe, ancillary, l1b-in-flight-cal, swe, l1b, sci, HARD, DOWNSTREAM
