@@ -214,6 +214,7 @@ ephemeris_90days, spice, best, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTRE
 repoint, repoint, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 spin, spin, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 hi, ancillary, 45sensor-cal-prod, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
+hi, ancillary, 45sensor-goodtimes, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 45sensor-goodtimes, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 
@@ -231,6 +232,7 @@ ephemeris_90days, spice, best, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTRE
 repoint, repoint, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 spin, spin, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 hi, ancillary, 90sensor-cal-prod, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
+hi, ancillary, 90sensor-goodtimes, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 90sensor-goodtimes, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 

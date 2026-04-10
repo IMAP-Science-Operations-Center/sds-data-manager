@@ -481,6 +481,60 @@ def test_get_downstream_dependencies_for_all_relationships():
     assert dependency_response == expected_complete_dependent
 
 
+def test_hi_l1c_backgrounds_ancillary_dependencies():
+    """Test that Hi L1C pset products have backgrounds ancillary dependencies."""
+    # Verify 45sensor-pset upstream dependencies include backgrounds ancillary
+    dependency_response = dependency.get_dependencies(
+        ("hi", "l1c", "45sensor-pset"),
+        relationship="HARD",
+        dependency_type="UPSTREAM",
+    )
+    ancillary_descriptors = [
+        dep["descriptor"]
+        for dep in dependency_response
+        if dep["data_type"] == "ancillary"
+    ]
+    assert "45sensor-goodtimes" in ancillary_descriptors
+
+    # Verify 90sensor-pset upstream dependencies include backgrounds ancillary
+    dependency_response = dependency.get_dependencies(
+        ("hi", "l1c", "90sensor-pset"),
+        relationship="HARD",
+        dependency_type="UPSTREAM",
+    )
+    ancillary_descriptors = [
+        dep["descriptor"]
+        for dep in dependency_response
+        if dep["data_type"] == "ancillary"
+    ]
+    assert "90sensor-goodtimes" in ancillary_descriptors
+
+    # Verify the hi l1c pset products are downstream of the ancillary backgrounds files
+    dependency_response = dependency.get_dependencies(
+        ("hi", "ancillary", "45sensor-goodtimes"),
+        relationship="HARD",
+        dependency_type="DOWNSTREAM",
+    )
+    assert any(
+        dep["data_source"] == "hi"
+        and dep["data_type"] == "l1c"
+        and dep["descriptor"] == "45sensor-pset"
+        for dep in dependency_response
+    )
+
+    dependency_response = dependency.get_dependencies(
+        ("hi", "ancillary", "90sensor-goodtimes"),
+        relationship="HARD",
+        dependency_type="DOWNSTREAM",
+    )
+    assert any(
+        dep["data_source"] == "hi"
+        and dep["data_type"] == "l1c"
+        and dep["descriptor"] == "90sensor-pset"
+        for dep in dependency_response
+    )
+
+
 def test_get_kickoff_jobs():
     """Add test for getting back each instrument pipeline's initial job."""
     dependents = DependencyConfig().kickoff_pipeline_jobs()
