@@ -162,7 +162,7 @@ leapseconds, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREA
 spacecraft_clock, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
+attitude_history, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_predicted, spice, best, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_90days, spice, best, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -176,7 +176,7 @@ leapseconds, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREA
 spacecraft_clock, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
+attitude_history, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_predicted, spice, best, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_90days, spice, best, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
