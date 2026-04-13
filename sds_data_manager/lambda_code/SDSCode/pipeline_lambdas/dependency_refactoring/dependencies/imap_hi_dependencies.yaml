@@ -50,7 +50,6 @@ spice_common: &spice_common
 # ----- Sub section of common dependencies for data level ----
 # common SPICE dependencies
 spice_l1b: &spice_l1b
-  - *spice_basic
   - *spice_common
   - upstream_source: spin
     upstream_data_type: spin
@@ -85,6 +84,10 @@ spice_l2: &spice_l2
     upstream_data_type: spice
     upstream_descriptor: historical
   - upstream_source: ephemeris_reconstructed
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_predicted
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
@@ -171,7 +174,6 @@ sensor90_l1c_pset: &sensor90_l1c_pset
 
 (l1c, 45sensor-pset):
   - *spice_l1c
-  - *spice_common
   - upstream_source: hi
     upstream_data_type: ancillary
     upstream_descriptor: 45sensor-cal-prod

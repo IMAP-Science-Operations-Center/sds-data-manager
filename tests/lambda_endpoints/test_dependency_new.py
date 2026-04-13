@@ -214,6 +214,20 @@ def test_validate_node_dict_empty_descriptor():
         )
 
 
+def test_recursive_flatten_list():
+    """Test that nested lists are flattened correctly."""
+    config = DependencyConfigReader()
+    nested_list = [1, [2, 3], [[4], 5]]
+    assert config.recursive_flatten_list(nested_list) == [1, 2, 3, 4, 5]
+
+    # Empty list
+    assert config.recursive_flatten_list([]) == []
+    # Single element list
+    assert config.recursive_flatten_list([1]) == [1]
+    # Flat list with no nesting
+    assert config.recursive_flatten_list([1, 2, 3, 4]) == [1, 2, 3, 4]
+
+
 def test_load_all_dependencies_all_instruments():
     """Test that we can load all instrument YAML files.
 
