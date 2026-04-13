@@ -4,7 +4,33 @@
 # It contains important information such as the default values and expected behavior of these dependencies,
 # and how to properly configure them for your pipeline lambdas.
 
+# ====== Common Data Dependencies ======
+lo_l3a_dist_common: &lo_l3a_dist_common
+  - upstream_source: codice
+    upstream_data_type: l3a
+    upstream_descriptor: lo-direct-events
+  - upstream_source: codice
+    upstream_data_type: l1a
+    upstream_descriptor: lo-sw-priority
+    kickoff_job: false
+  - upstream_source: codice
+    upstream_data_type: l1a
+    upstream_descriptor: lo-nsw-priority
+    kickoff_job: false
+  - upstream_source: codice
+    upstream_data_type: ancillary
+    upstream_descriptor: lo-mass-species-bin-lookup
+  - upstream_source: codice
+    upstream_data_type: ancillary
+    upstream_descriptor: l2-lo-gfactor
+  - upstream_source: codice
+    upstream_data_type: ancillary
+    upstream_descriptor: lo-energy-per-charge
+  - upstream_source: codice
+    upstream_data_type: ancillary
+    upstream_descriptor: l2-lo-efficiency
 
+# ====== Specific Product Dependencies ======
 (l1a, all):
   - upstream_source: codice
     upstream_data_type: l0
@@ -164,107 +190,19 @@
 
 
 (l3a, lo-heplus-3d-distribution):
-  - upstream_source: codice
-    upstream_data_type: l3a
-    upstream_descriptor: lo-direct-events
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-sw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-nsw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-mass-species-bin-lookup
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-gfactor
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-energy-per-charge
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-efficiency
+  - *lo_l3a_dist_common
 
 
 (l3a, lo-heplus2-3d-distribution):
-  - upstream_source: codice
-    upstream_data_type: l3a
-    upstream_descriptor: lo-direct-events
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-sw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-nsw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-mass-species-bin-lookup
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-gfactor
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-energy-per-charge
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-efficiency
+  - *lo_l3a_dist_common
 
 
 (l3a, lo-hplus-3d-distribution):
-  - upstream_source: codice
-    upstream_data_type: l3a
-    upstream_descriptor: lo-direct-events
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-sw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-nsw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-mass-species-bin-lookup
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-gfactor
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-energy-per-charge
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-efficiency
+  - *lo_l3a_dist_common
 
 
 (l3a, lo-oplus6-3d-distribution):
-  - upstream_source: codice
-    upstream_data_type: l3a
-    upstream_descriptor: lo-direct-events
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-sw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-nsw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-mass-species-bin-lookup
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-gfactor
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-energy-per-charge
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-efficiency
+  - *lo_l3a_dist_common
 
 
 (l3a, lo-partial-densities):
