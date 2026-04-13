@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
-from .dependency import DataSource, DataType
+from ..dependency import DataSource, DataType
 
 # Logger setup
 logger = logging.getLogger(__name__)

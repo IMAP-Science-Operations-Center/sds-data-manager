@@ -8,19 +8,24 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new import (
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import (  # noqa: E501
     DependencyConfigReader,
 )
 
 # Use a short list of instruments that have valid YAML files for testing
 TEST_INSTRUMENTS = ["codice", "hi", "lo", "swe"]
 
+MOCK_VALID_INSTRUMENTS = (
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas."
+    "dependency_refactoring.dependency_new.VALID_INSTRUMENTS"
+)
+
 
 @pytest.fixture(autouse=True)
 def mock_valid_instruments():
     """Automatically mock VALID_INSTRUMENTS for all tests."""
     with patch(
-        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.VALID_INSTRUMENTS",
+        MOCK_VALID_INSTRUMENTS,
         TEST_INSTRUMENTS,
     ):
         yield
@@ -221,7 +226,7 @@ def test_load_all_dependencies_all_instruments():
 
 
 @patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.VALID_INSTRUMENTS",
+    MOCK_VALID_INSTRUMENTS,
     ["test-instrument"],
 )
 def test_load_all_dependencies_missing_file():
@@ -234,11 +239,12 @@ def test_load_all_dependencies_missing_file():
 
 
 @patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.VALID_INSTRUMENTS",
+    MOCK_VALID_INSTRUMENTS,
     ["codice"],
 )
 @patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.yaml.safe_load"
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas."
+    "dependency_refactoring.dependency_new.yaml.safe_load"
 )
 @patch("builtins.open", new_callable=mock_open)
 def test_load_all_dependencies_empty_yaml(mock_file, mock_yaml_load):
@@ -246,7 +252,8 @@ def test_load_all_dependencies_empty_yaml(mock_file, mock_yaml_load):
     mock_yaml_load.return_value = None
 
     with patch(
-        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_new.Path"
+        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas."
+        "dependency_refactoring.dependency_new.Path"
     ) as mock_path:
         mock_yaml_file = MagicMock()
         mock_yaml_file.exists.return_value = True
