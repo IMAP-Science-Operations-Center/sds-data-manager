@@ -272,19 +272,19 @@ def determine_job_version(
         )
     ).scalar()
 
-    # Step 5: By default, use the max version from the science files table unless
-    # it is a spacecraft "pointing-attitude" job. If a so, then use the max version
-    # from the processing jobs table. If the job is a spacecraft pointing-attitude job,
-    # it will produce a SPICE kernel and not a science file. There is no way to
-    # determine the filename of the kernel that will be produced, so we rely on the max
-    # version from the processing jobs table.
-    if instrument == "spacecraft" and descriptor == "pointing-attitude":
-        max_version = max_version_processing
-    else:
-        max_version = max_version_sci
+    # Step 5: Generally, we use the science files table as the source
+    # of truth for the max version. However, some jobs may complete without producing a
+    # science file (e.g. spacecraft "pointing-attitude" jobs produce a SPICE kernel
+    # instead) or we may just not produce a file due to lack of relevant data. To
+    # account for this, we take the max between the science files table
+    # and the processing jobs table. For spacecraft "pointing-attitude" jobs, the
+    # science files table will always be empty, so the max version will come solely from
+    # the processing jobs table.
+    versions = [v for v in [max_version_processing, max_version_sci] if v is not None]
+    max_version = max(int(v[1:]) for v in versions) if versions else None
 
     # Bump the version number. "V001" will be returned if max_version is None.
-    return f"v{int(max_version[1:]) + 1:03d}" if max_version else "v001"
+    return f"v{max_version + 1:03d}" if max_version else "v001"
 
 
 def dependency_hash(serialized_dependencies):

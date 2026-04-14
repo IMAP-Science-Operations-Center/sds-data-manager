@@ -2398,11 +2398,11 @@ def test_lambda_skip_processing_due_to_crid_check(session, caplog):
 # Add tests to verify that the correct version is calculated.
 def test_determine_job_version_science(session):
     """Tests ``determine_job_version`` for science jobs."""
-    # For science files, the job version should be determined from the science files
-    # table. Although there is a successful job with v003, the latest science file is
-    # v001, so the next version should be v002. It is possible for a job to have
-    # Status = SUCCEEDED, but no files were produced for the job, which is why we check
-    # the science files table for the version.
+    # For science files, the job version should be determined to be the max version
+    # from the science files table and the processing job table. There is a successful
+    # processing job record with v003, but latest science file is
+    # v001. The next job version should be v004 because sometimes a job may not produce
+    # a file for a few different reasons.
     records = [
         ScienceFiles(
             file_path="/path/to/imap_lo_l1a_de_20240101_v002.cdf",
@@ -2430,8 +2430,8 @@ def test_determine_job_version_science(session):
     version = determine_job_version(
         session, "lo", "l1a", "de", datetime(2024, 1, 1), "test_dependency"
     )
-    # The version should be v002
-    assert version == "v002"
+    # The version should be v004
+    assert version == "v004"
 
 
 def test_determine_job_version_spacecraft(session):
