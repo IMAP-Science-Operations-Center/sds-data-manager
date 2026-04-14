@@ -385,6 +385,13 @@ spice_l2: &spice_l2
     upstream_descriptor: 90sensor-extendedspin
 
 
+(l1b, 90sensor-badtimes):
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-extendedspin
+  - upstream_source: ultra
+    upstream_data_type: l1b
+    upstream_descriptor: 90sensor-goodtimes
 
 (l1c, 45sensor-heliopset):
   - upstream_source: ultra
