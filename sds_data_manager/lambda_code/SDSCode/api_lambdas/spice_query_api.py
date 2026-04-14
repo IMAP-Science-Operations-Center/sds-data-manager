@@ -4,15 +4,24 @@ import datetime
 import json
 import logging
 
+import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy import func, select
 
 from ..database import database as db
 from ..database import models
+from . import non_spice_table_api
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+# Map the 'type' param in this API to the rawPath that `non_spice_table_api` expects.
+_NON_SPICE_RAW_PATHS = {
+    "spin": "/spin-table",
+    "repoint": "/repoint-table",
+    "thruster": "/small-forces-table",
+}
 
 
 def lambda_handler(event, context):
@@ -28,11 +37,50 @@ def lambda_handler(event, context):
         information about the invocation, function,
         and runtime environment.
 
+    Notes
+    -----
+    The optional ``type`` query parameter controls which table is queried:
+
+    * ``spin`` - spin files table
+    * ``repoint`` - repoint files table
+    * ``thruster`` - small-forces (thruster) files table
+    * ``kernels`` - All supported SPICE kernels types
+    * ``<other>`` - A specific SPICE kernel type from the SPICE files table
+
+    Passing a kernel-type value such as ``attitude_history`` filters the SPICE table
+    by ``kernel_type``. The remaining SPICE-specific parameters
+    (``file_name``, ``start_time``, ``end_time``, ``latest``,
+    ``start_ingest_date``, ``end_ingest_date``) apply.
+
+    When ``type`` is one of the non-SPICE values, the ``file_name`` parameter is
+    renamed to ``file_path``, ``start_time`` is mapped to ``start_date``, ``end_time``
+    is mapped to ``end_date``, and the remaining parameters are passed to the
+    non-SPICE API.
     """
     logger.debug("SPICE Query Event: " + json.dumps(event, indent=2))
 
+    query_params = event["queryStringParameters"] or {}
+    table_type = query_params.get("type", "kernels")
+
+    if table_type in _NON_SPICE_RAW_PATHS:
+        # Remove `type`, since it is not a valid non-SPICE query parameter.
+        query_params.pop("type")
+
+        # Remap incoming parameters to ones supported by the non-SPICE tables API.
+        try:
+            query_params = _remap_to_non_spice_params(query_params)
+        except ValueError:
+            return {"statusCode": 400, "body": "Expected start/end times in ET."}
+
+        return non_spice_table_api.lambda_handler(
+            {
+                "rawPath": _NON_SPICE_RAW_PATHS[table_type],
+                "queryStringParameters": query_params,
+            },
+            context,
+        )
+
     # add session, pick model like in indexer and add query to filter_as
-    query_params = event["queryStringParameters"]
     with db.Session() as session:
         # select the SPICE files table for the query
         query = select(models.SPICEFiles)
@@ -69,7 +117,7 @@ def lambda_handler(event, context):
                     query = query.where(models.SPICEFiles.max_date_j2000 >= int(value))
                 elif param == "end_time":
                     query = query.where(models.SPICEFiles.min_date_j2000 <= int(value))
-                elif param == "type":
+                elif param == "type" and value != "kernels":
                     query = query.where(models.SPICEFiles.kernel_type == value)
                 elif param == "file_name":
                     query = query.where(models.SPICEFiles.file_name == value)
@@ -128,6 +176,31 @@ def lambda_handler(event, context):
     }
 
     return response
+
+
+def _remap_to_non_spice_params(query_params: dict) -> dict:
+    """Remap SPICE query parameters to those supported by the non-SPICE tables API."""
+    if "file_name" in query_params:
+        query_params["file_path"] = query_params.pop("file_name")
+
+    if "start_time" in query_params or "end_time" in query_params:
+        try:
+            spiceypy.et2datetime(0)
+        except spiceypy.utils.exceptions.SpiceMISSINGTIMEINFO:
+            from ..spice_utilities import furnish_best_spice_file  # noqa: PLC0415
+
+            furnish_best_spice_file("leapseconds")
+
+        if "start_time" in query_params:
+            query_params["start_date"] = spiceypy.et2datetime(
+                float(query_params.pop("start_time"))
+            ).strftime("%Y%m%d")
+        if "end_time" in query_params:
+            query_params["end_date"] = spiceypy.et2datetime(
+                float(query_params.pop("end_time"))
+            ).strftime("%Y%m%d")
+
+    return query_params
 
 
 def _convert_spice_metadata_model_to_dict(file: models.SPICEFiles) -> dict:

@@ -10,7 +10,6 @@ from typing import Optional
 
 import spiceypy
 
-from ..spice_utilities import furnish_best_spice_file
 from . import spice_query_api
 from .metakernel import MetaKernel
 
@@ -196,6 +195,8 @@ def _convert_input_times_to_j2000(start_date_str, end_date_str):
             logger.info(
                 "Attempting to load leapseconds kernel needed for time conversion."
             )
+            from ..spice_utilities import furnish_best_spice_file  # noqa: PLC0415
+
             furnish_best_spice_file("leapseconds")
 
         # Convert datetime to J2000 using spiceypy

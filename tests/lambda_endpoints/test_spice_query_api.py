@@ -261,3 +261,23 @@ def test_ingest_time_queries(session):
     }
     returned_query = spice_query_api.lambda_handler(event=event, context={})
     assert len(json.loads(returned_query["body"])) == 1
+
+
+def test_type_query(session, expected_ck_response):
+    """Test if the `type` query parameter works as expected."""
+    _insert_ck_test_data(session)
+
+    # Record returned with no `type` filter
+    event = {"queryStringParameters": {}}
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+    assert len(json.loads(returned_query["body"])) == 1
+
+    # Record returned with `type` filter set to `kernels`.
+    event = {"queryStringParameters": {"type": "kernels"}}
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+    assert len(json.loads(returned_query["body"])) == 1
+
+    # Record returned with `type` filter set to the kernel type.
+    event = {"queryStringParameters": {"type": "attitude_history"}}
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+    assert len(json.loads(returned_query["body"])) == 1
