@@ -3,19 +3,18 @@
 This module provides unit tests for the DependencyConfigReader class used to
 read and retrieve upstream dependencies from instrument YAML configuration files.
 """
+
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
+from sds_data_manager.lambda_code.SDSCode.database.models import ScienceFiles
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import (  # noqa: E501
     DependencyConfigReader,
     DependencyResolver,
 )
-
-from sds_data_manager.lambda_code.SDSCode.database.models import ScienceFiles
-
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.utils import (
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.utils import (
     DependencyNode,
     UpstreamDependencyNode,
     get_cadence_duration,

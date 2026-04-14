@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Optional
 
-from . import VALID_CADENCE_STRS
+from .. import VALID_CADENCE_STRS
 
 
 @dataclass
