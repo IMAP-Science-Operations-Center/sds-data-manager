@@ -1182,6 +1182,7 @@ ultra, l1a, 45sensor-params, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-status,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-goodtimes, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
@@ -1220,6 +1221,11 @@ repoint, repoint, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 
 spin, spin, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
@@ -1279,6 +1285,7 @@ ultra, l1a, 90sensor-params, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-status,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-goodtimes, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
@@ -1316,6 +1323,11 @@ repoint, repoint, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 
 spin, spin, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 
 ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
