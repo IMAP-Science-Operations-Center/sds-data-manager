@@ -1190,11 +1190,11 @@ ultra, l1a, 45sensor-params, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-1-de,ultra, l1b, 45sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-2-de,ultra, l1b, 45sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-3-de,ultra, l1b, 45sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-4-de,ultra, l1b, 45sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
 ultra, l1b, 45sensor-status,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, l1b, 45sensor-priority-1-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, l1b, 45sensor-priority-2-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, l1b, 45sensor-priority-3-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, l1b, 45sensor-priority-4-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-goodtimes, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
@@ -1361,6 +1361,8 @@ pointing_attitude, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD, 
 repoint, repoint, historical, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
 
+spacecraft_clock, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 science_frames, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
@@ -1444,6 +1446,10 @@ ultra, l1a, 90sensor-params, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-1-de,ultra, l1b, 90sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-2-de,ultra, l1b, 90sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-3-de,ultra, l1b, 90sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-4-de,ultra, l1b, 90sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
 ultra, l1b, 90sensor-status,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-goodtimes, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
@@ -1610,6 +1616,8 @@ pointing_attitude, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD, 
 repoint, repoint, historical, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
 
+spacecraft_clock, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 science_frames, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
