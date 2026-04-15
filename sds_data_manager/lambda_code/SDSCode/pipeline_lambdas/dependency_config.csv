@@ -162,7 +162,7 @@ leapseconds, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREA
 spacecraft_clock, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, hi, l1b, 45sensor-de, HARD, DOWNSTREAM
+attitude_history, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_predicted, spice, best, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_90days, spice, best, hi, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -176,7 +176,7 @@ leapseconds, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREA
 spacecraft_clock, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, hi, l1b, 90sensor-de, HARD, DOWNSTREAM
+attitude_history, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_predicted, spice, best, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_90days, spice, best, hi, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -214,6 +214,7 @@ ephemeris_90days, spice, best, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTRE
 repoint, repoint, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 spin, spin, historical, hi, l1c, 45sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 hi, ancillary, 45sensor-cal-prod, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
+hi, ancillary, 45sensor-backgrounds, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 45sensor-goodtimes, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 
@@ -231,6 +232,7 @@ ephemeris_90days, spice, best, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTRE
 repoint, repoint, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 spin, spin, historical, hi, l1c, 90sensor-pset, HARD_NO_TRIGGER, DOWNSTREAM
 hi, ancillary, 90sensor-cal-prod, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
+hi, ancillary, 90sensor-backgrounds, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 90sensor-de, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 hi, l1b, 90sensor-goodtimes, hi, l1c, 90sensor-pset, HARD, DOWNSTREAM
 
@@ -847,6 +849,14 @@ repoint, repoint, historical, lo, l1b, prostar, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, prostar, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, lo, l1b, prostar, HARD_NO_TRIGGER, DOWNSTREAM
 
+lo, l1b, histrates, lo, l1b, goodtimes, HARD, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+
+lo, l1b, histrates, lo, l1b, bgrates, HARD, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
+
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, good-times, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, hydrogen-background, lo, l1c, pset, HARD, DOWNSTREAM
@@ -1130,9 +1140,9 @@ swapi, ancillary, energy-gf-sw-lut, swapi, l3b, combined, HARD, DOWNSTREAM
 
 # <---- SWE Dependencies ---->
 
-swe, l0, raw, swe, l1a, sci, HARD, DOWNSTREAM
-leapseconds, spice, historical, swe, l1a, sci, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, swe, l1a, sci, HARD_NO_TRIGGER, DOWNSTREAM
+swe, l0, raw, swe, l1a, all, HARD, DOWNSTREAM
+leapseconds, spice, historical, swe, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, swe, l1a, all, HARD_NO_TRIGGER, DOWNSTREAM
 
 swe, l1a, sci, swe, l1b, sci, HARD, DOWNSTREAM
 swe, ancillary, l1b-in-flight-cal, swe, l1b, sci, HARD, DOWNSTREAM

@@ -1648,14 +1648,13 @@ def test_calculate_crid(session):
     # The CRID associated with a file is made up of the filepath and the
     # Upstream file versions numbers packed into 2 bytes and sorted by the filename
     # imap_swe_l1b_sci_20240101_v001.cdf has a total of 4 upstream dependency files:
-    # - imap_swe_l1a_sci_20240101_v001.cdf.cdf
-    # - imap_swe_l0_raw_20240101_v001.pkts
-    # - imap_swe_l1a_sci_20240101_v010.cdf
-    # - imap_swe_esa-lut_20221231_v001.cdf
-    # - imap_swe_eu-conversion_20221231_v001.cdf
+    # - imap_swe_esa-lut_20221231_v001.cdf (v001)
+    # - imap_swe_eu-conversion_20221231_v001.cdf (v001)
+    # - imap_swe_l1a_sci_20240101_v010.cdf (v010)
+    # - imap_swe_l1b-in-flight-cal_20230102_v001.cdf (v001)
 
     # the upstream versions should be in order of the filenames alphabetically
-    upstream_versions = b"".join([v.to_bytes(2, "big") for v in [1, 1, 1, 10, 1]])
+    upstream_versions = b"".join([v.to_bytes(2, "big") for v in [1, 1, 10, 1]])
     expected_crid = base64.a85encode(record.file_path.encode() + upstream_versions)
     assert expected_crid.decode("ascii") == crid
 
@@ -1781,9 +1780,12 @@ def test_matching_crid(session):
     ]
     assert not matching_crids_exist(session, records)
     # Update the CRID of the science file to match the calculated CRID
-    records[
-        0
-    ].crid = "05t?ABJ4IG05593E*m[1ARB7.@UF1dBjWVL1,L[>0J[!Y0JG46@q90O!<<-#!<<H,!<"
+    # The CRID is calculated from the file path and upstream versions [1, 1, 10, 1]
+    upstream_versions = b"".join([v.to_bytes(2, "big") for v in [1, 1, 10, 1]])
+    expected_crid = base64.a85encode(
+        b"/path/to/imap_swe_l1b_sci_20240102_v001.cdf" + upstream_versions
+    ).decode("ascii")
+    records[0].crid = expected_crid
     assert matching_crids_exist(session, records)
 
 
