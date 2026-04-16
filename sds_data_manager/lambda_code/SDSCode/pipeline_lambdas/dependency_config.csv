@@ -1455,7 +1455,7 @@ ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-goodtimes, HARD, DOWNSTRE
 ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
 
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
@@ -1475,7 +1475,7 @@ ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-de,
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-de-product-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
@@ -1494,7 +1494,7 @@ ultra, ancillary, l1b-90sensor-sptpphcorr, ultra, l1b, 90sensor-priority-1-de, H
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
 
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
@@ -1513,7 +1513,7 @@ ultra, ancillary, l1b-90sensor-sptpphcorr, ultra, l1b, 90sensor-priority-2-de, H
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
 
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
@@ -1532,7 +1532,7 @@ ultra, ancillary, l1b-90sensor-sptpphcorr, ultra, l1b, 90sensor-priority-3-de, H
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
 
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
@@ -1649,7 +1649,7 @@ ultra, ancillary, l1c-90sensor-sc-pointing-index, ultra, l1c, 90sensor-spacecraf
 ultra, ancillary, l1c-90sensor-sc-pointing-bsf, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-static-dead-times, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
@@ -1657,7 +1657,7 @@ ultra, ancillary, l1c-90sensor-de-product-lookup, ultra, l1c, 90sensor-spacecraf
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-static-dead-times, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
