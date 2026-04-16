@@ -62,7 +62,7 @@ def lambda_handler(event, context):
             select(processing_table)
             .where(and_(*filters))
             .order_by(ProcessingJob.id.desc())
-            .limit(100)
+            .limit(500)
         )
         result = session.scalars(query).all()
         logger.info(f"Query result: {result}")
