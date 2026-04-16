@@ -1190,10 +1190,10 @@ ultra, l1a, 45sensor-params, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
-ultra, l1b, 45sensor-priority-1-de,ultra, l1b, 45sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 45sensor-priority-2-de,ultra, l1b, 45sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 45sensor-priority-3-de,ultra, l1b, 45sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 45sensor-priority-4-de,ultra, l1b, 45sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-1-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-2-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-3-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-4-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-status,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-goodtimes, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
@@ -1371,18 +1371,18 @@ ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD_
 ephemeris_90days, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, l1b, 45sensor-priority-1-de, ultra, l1c, 45sensor-spacecraftpset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 45sensor-priority-2-de, ultra, l1c, 45sensor-spacecraftpset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 45sensor-priority-3-de, ultra, l1c, 45sensor-spacecraftpset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 45sensor-priority-4-de, ultra, l1c, 45sensor-spacecraftpset, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-1-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-2-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-3-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-4-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, l1b, 45sensor-priority-1-de, ultra, l1c, 45sensor-heliopset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 45sensor-priority-2-de, ultra, l1c, 45sensor-heliopset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 45sensor-priority-3-de, ultra, l1c, 45sensor-heliopset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 45sensor-priority-4-de, ultra, l1c, 45sensor-heliopset, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-1-de, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-2-de, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-3-de, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-4-de, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
@@ -1446,10 +1446,10 @@ ultra, l1a, 90sensor-params, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
-ultra, l1b, 90sensor-priority-1-de,ultra, l1b, 90sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 90sensor-priority-2-de,ultra, l1b, 90sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 90sensor-priority-3-de,ultra, l1b, 90sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 90sensor-priority-4-de,ultra, l1b, 90sensor-extendedspin, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-1-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-2-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-3-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-4-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-status,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-goodtimes, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
@@ -1626,18 +1626,18 @@ ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD_
 ephemeris_90days, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 
 ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, l1b, 90sensor-priority-1-de, ultra, l1c, 90sensor-spacecraftpset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 90sensor-priority-2-de, ultra, l1c, 90sensor-spacecraftpset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 90sensor-priority-3-de, ultra, l1c, 90sensor-spacecraftpset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 90sensor-priority-4-de, ultra, l1c, 90sensor-spacecraftpset, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-1-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-2-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-3-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-4-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, l1b, 90sensor-priority-1-de, ultra, l1c, 90sensor-heliopset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 90sensor-priority-2-de, ultra, l1c, 90sensor-heliopset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 90sensor-priority-3-de, ultra, l1c, 90sensor-heliopset, SOFT_TRIGGER, DOWNSTREAM
-ultra, l1b, 90sensor-priority-4-de, ultra, l1c, 90sensor-heliopset, SOFT_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-1-de, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-2-de, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-3-de, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-4-de, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
