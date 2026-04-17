@@ -1,6 +1,7 @@
 """IMAP job handler for managing dependencies and job submission."""
 
-from ..database import database as db
+from sds_data_manager.lambda_code.SDSCode.database import database as db
+
 from .dependency_new import DependencyResolver
 from .utils import UpstreamDependencyNode
 
@@ -35,7 +36,7 @@ class IMAPJobHandler:
 
     def get_dependencies(self, dependency_node: UpstreamDependencyNode):
         """Get the dependencies for the job using the DependencyResolver."""
-        with db.get_session() as session:
+        with db.Session() as session:
             response = DependencyResolver().get_upstream_dependency(
                 session=session, input_upstream_node=dependency_node
             )
@@ -64,7 +65,7 @@ class IMAPJobHandler:
         # TODO: what we have in determine_job_version
         # but refactor little bit but
         # keep same logic.
-        pass
+        return "v001"
 
     def _create_dependencies_file(self):
         """Create and upload a dependency json file to S3 for the job.
