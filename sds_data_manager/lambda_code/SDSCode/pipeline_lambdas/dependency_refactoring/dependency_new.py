@@ -6,12 +6,8 @@ from pathlib import Path
 import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.utils import (  # noqa: E501
-    DependencyNode,
-    UpstreamDependencyNode,
-)
-
 from ..dependency import DataSource, DataType
+from .utils import DependencyNode, UpstreamDependencyNode
 
 # Logger setup
 logger = logging.getLogger(__name__)

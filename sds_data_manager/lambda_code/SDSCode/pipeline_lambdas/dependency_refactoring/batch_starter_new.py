@@ -1,11 +1,8 @@
 """IMAP job handler for managing dependencies and job submission."""
 
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import (  # noqa: E501
-    DependencyResolver,
-)
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.utils import (  # noqa: E501
-    UpstreamDependencyNode,
-)
+from ..database import database as db
+from .dependency_new import DependencyResolver
+from .utils import UpstreamDependencyNode
 
 
 class IMAPJobHandler:
@@ -19,7 +16,10 @@ class IMAPJobHandler:
         potential_job_node : UpstreamDependencyNode
             The job node to process.
         """
-        self.job_node = potential_job_node
+        self.process_job(potential_job_node)
+
+    def process_job(self, potential_job_node: UpstreamDependencyNode):
+        """Process the job by resolving dependencies and submitting to batch."""
         self.dependencies = self.get_dependencies(potential_job_node)
         self.is_duplicate_job = False
         self.job_dependencies_s3_filepath = None
@@ -35,11 +35,12 @@ class IMAPJobHandler:
 
     def get_dependencies(self, dependency_node: UpstreamDependencyNode):
         """Get the dependencies for the job using the DependencyResolver."""
-        response = DependencyResolver().get_upstream_dependency(
-            input_upstream_node=dependency_node
-        )
-        if response["status"] == 200:
-            return response["data"]
+        with db.get_session() as session:
+            response = DependencyResolver().get_upstream_dependency(
+                session=session, input_upstream_node=dependency_node
+            )
+            if response["status"] == 200:
+                return response["data"]
 
         return None
 
@@ -56,6 +57,7 @@ class IMAPJobHandler:
         # 1. Review and keep logic from current CRID logic
         # 2. Refactor current CRID logic into this funciton
         # 3. Add some hash for container image version.
+        return ""
 
     def _determine_job_version(self):
         """Determine job version for a potential job."""
@@ -73,6 +75,9 @@ class IMAPJobHandler:
         # TODO: Remove information not needed for IMAP CLI input from
         # self.potential_job_node
         # cli_input = self.potential_job_node
+
+        # TODO: convert start_date and end_date to string and format needed
+        # for CLI input. Eg. "yyyymmdd"
 
         # upstream_dependency_content = self.dependencies.serialize()
         # TODO: write to dependency json file and upload to s3.

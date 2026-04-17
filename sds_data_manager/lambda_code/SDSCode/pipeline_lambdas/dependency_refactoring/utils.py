@@ -1,4 +1,4 @@
-"""Common fuctions for pipeline lambdas."""
+"""Common functions for pipeline lambdas."""
 
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -97,7 +97,7 @@ def get_cadence_duration(descriptor: str) -> str | None:
     """
     # For given descriptor, parse cadence.
     cadence = descriptor.split("-")[-1]
-    if descriptor.split("-")[-1] in VALID_CADENCE_STRS:
+    if cadence in VALID_CADENCE_STRS:
         return cadence
 
     return None
