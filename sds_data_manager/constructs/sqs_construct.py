@@ -123,6 +123,59 @@ class SqsConstruct(Construct):
                     targets.SqsQueue(self.delay_queue, message_group_id=group_id)
                 )
 
+            # Ultra is split into ultra45 and ultra90 message groups based on sensor
+            # type in the filename. L1 files use "45sensor"/"90sensor" and l2/l3 use
+            # "u45"/"u90". L0 files have no sensor designation
+            # and use the standard rule.
+            if instrument_name == "ultra":
+                ultra_45_rule = events.Rule(
+                    self,
+                    "ultraFileArrived45sensor",
+                    rule_name="ultra_file_arrived_45sensor",
+                    event_pattern=events.EventPattern(
+                        source=["imap.lambda"],
+                        detail_type=["Processed File"],
+                        detail={
+                            "object": {
+                                "key": [
+                                    {"wildcard": "*45sensor*"},
+                                    {"wildcard": "*u45*"},
+                                ],
+                                "instrument": ["ultra"],
+                            },
+                        },
+                    ),
+                )
+                ultra_45_rule.add_target(
+                    targets.SqsQueue(self.instrument_queue, message_group_id="ultra45")
+                )
+
+                ultra_90_rule = events.Rule(
+                    self,
+                    "ultraFileArrived90sensor",
+                    rule_name="ultra_file_arrived_90sensor",
+                    event_pattern=events.EventPattern(
+                        source=["imap.lambda"],
+                        detail_type=["Processed File"],
+                        detail={
+                            "object": {
+                                "key": [
+                                    {"wildcard": "*90sensor*"},
+                                    {"wildcard": "*u90*"},
+                                ],
+                                "instrument": ["ultra"],
+                            },
+                        },
+                    ),
+                )
+                ultra_90_rule.add_target(
+                    targets.SqsQueue(self.instrument_queue, message_group_id="ultra90")
+                )
+
+                # Restrict the standard rule below to l0 only, since 45/90 sensor
+                # files are already routed above.
+                instrument_event_match["object"]["data_level"] = ["l0"]
+
             # Event has filename in it, we need an EventPattern that matches that
             # EventBridge Rule for the SQS queue
             event_from_indexer = events.Rule(
