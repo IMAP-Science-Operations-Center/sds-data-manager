@@ -4,7 +4,6 @@ import datetime
 import json
 import logging
 
-import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy import func, select
 
@@ -59,7 +58,7 @@ def lambda_handler(event, context):
     """
     logger.debug("SPICE Query Event: " + json.dumps(event, indent=2))
 
-    query_params = event["queryStringParameters"] or {}
+    query_params = event.get("queryStringParameters") or {}
     table_type = query_params.get("type", "kernels")
 
     if table_type in _NON_SPICE_RAW_PATHS:
@@ -70,7 +69,10 @@ def lambda_handler(event, context):
         try:
             query_params = _remap_to_non_spice_params(query_params)
         except ValueError:
-            return {"statusCode": 400, "body": "Expected start/end times in ET."}
+            return {
+                "statusCode": 400,
+                "body": json.dumps("Expected start/end times in ET."),
+            }
 
         return non_spice_table_api.lambda_handler(
             {
@@ -184,6 +186,8 @@ def _remap_to_non_spice_params(query_params: dict) -> dict:
         query_params["file_path"] = query_params.pop("file_name")
 
     if "start_time" in query_params or "end_time" in query_params:
+        import spiceypy  # noqa: PLC0415
+
         try:
             spiceypy.et2datetime(0)
         except spiceypy.utils.exceptions.SpiceMISSINGTIMEINFO:
@@ -191,14 +195,17 @@ def _remap_to_non_spice_params(query_params: dict) -> dict:
 
             furnish_best_spice_file("leapseconds")
 
-        if "start_time" in query_params:
-            query_params["start_date"] = spiceypy.et2datetime(
-                float(query_params.pop("start_time"))
-            ).strftime("%Y%m%d")
-        if "end_time" in query_params:
-            query_params["end_date"] = spiceypy.et2datetime(
-                float(query_params.pop("end_time"))
-            ).strftime("%Y%m%d")
+        try:
+            if "start_time" in query_params:
+                query_params["start_date"] = spiceypy.et2datetime(
+                    float(query_params.pop("start_time"))
+                ).strftime("%Y%m%d")
+            if "end_time" in query_params:
+                query_params["end_date"] = spiceypy.et2datetime(
+                    float(query_params.pop("end_time"))
+                ).strftime("%Y%m%d")
+        except spiceypy.utils.exceptions.SpiceError as e:
+            raise ValueError(f"Invalid ET value for start_time/end_time: {e}") from e
 
     return query_params
 

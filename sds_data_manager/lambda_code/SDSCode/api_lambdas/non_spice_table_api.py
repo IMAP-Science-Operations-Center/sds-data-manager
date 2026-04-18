@@ -32,6 +32,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
     else:
         response = {
             "statusCode": 400,
+            "headers": {"Content-Type": "application/json"},
             "body": json.dumps(
                 "Invalid path. Path must contain either 'spin' or 'repoint'."
             ),
@@ -61,6 +62,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
             if param not in valid_parameters:
                 response = {
                     "statusCode": 400,
+                    "headers": {"Content-Type": "application/json"},
                     "body": json.dumps(
                         f"{param} is not a valid query parameter. "
                         + f"Valid query parameters are: {valid_parameters}"
@@ -115,6 +117,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
             except ValueError:
                 response = {
                     "statusCode": 400,
+                    "headers": {"Content-Type": "application/json"},
                     "body": json.dumps(f"Invalid value for {param}: {value}"),
                 }
                 logger.debug(f"Invalid value for {param}: {value}")
@@ -133,7 +136,11 @@ def lambda_handler(event, context):  # noqa: PLR0912
             }
             for result in search_results
         ]
-        return {"statusCode": 200, "body": json.dumps(search_results)}
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(search_results),
+        }
 
     # Spin or small-forces files have a start_date field
     search_results = [
@@ -146,4 +153,8 @@ def lambda_handler(event, context):  # noqa: PLR0912
         }
         for result in search_results
     ]
-    return {"statusCode": 200, "body": json.dumps(search_results)}
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps(search_results),
+    }
