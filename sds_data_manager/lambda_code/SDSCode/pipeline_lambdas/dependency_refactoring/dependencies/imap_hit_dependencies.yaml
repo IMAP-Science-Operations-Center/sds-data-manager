@@ -4,33 +4,29 @@
 # It contains important information such as the default values and expected behavior of these dependencies,
 # and how to properly configure them for your pipeline lambdas.
 
+# ====== Common dependencies =============
+spice_basics: &spice_basics
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+l0_data: &l0_data
+  - upstream_source: hit
+    upstream_data_type: l0
+    upstream_descriptor: raw
 
 (l1a, all):
-  - upstream_source: hit
-    upstream_data_type: l0
-    upstream_descriptor: raw
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-
+  - *spice_basics
+  - *l0_data
 
 (l1b, hk):
-  - upstream_source: hit
-    upstream_data_type: l0
-    upstream_descriptor: raw
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  - *spice_basics
+  - *l0_data
 
 
 (l1b, sectored-rates):

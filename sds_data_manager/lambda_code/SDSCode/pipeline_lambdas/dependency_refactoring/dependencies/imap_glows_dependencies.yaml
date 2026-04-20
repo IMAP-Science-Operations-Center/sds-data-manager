@@ -3,12 +3,13 @@
 # please refer to this document https://imap-processing.readthedocs.io/en/latest/development/data-dependency.html#.
 # It contains important information such as the default values and expected behavior of these dependencies,
 # and how to properly configure them for your pipeline lambdas.
-
-
-(l1a, all):
+# ===== Common dependencies ===========
+pipline_settings: &pipeline_settings
   - upstream_source: glows
-    upstream_data_type: l0
-    upstream_descriptor: raw
+    upstream_data_type: ancillary
+    upstream_descriptor: pipeline-settings
+
+spice_basics: &spice_basics
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -18,41 +19,8 @@
     upstream_descriptor: historical
     kickoff_job: false
 
-
-(l1b, de):
-  - upstream_source: glows
-    upstream_data_type: l1a
-    upstream_descriptor: de
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: conversion-table-for-anc-data
-
-
-(l1b, hist):
-  - upstream_source: glows
-    upstream_data_type: l1a
-    upstream_descriptor: hist
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: exclusions-by-instr-team
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: map-of-excluded-regions
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: map-of-uv-sources
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: pipeline-settings
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: suspected-transients
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: conversion-table-for-anc-data
+hist_spice: &hist_spice
+  - *spice_basics
   - upstream_source: imap_frames
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -61,13 +29,55 @@
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
   - upstream_source: pointing_attitude
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
+
+# ======== Product-specific dependencies ===========
+(l1a, all):
+  - *spice_basics
+  - upstream_source: glows
+    upstream_data_type: l0
+    upstream_descriptor: raw
+
+
+(l1b, de):
+  - upstream_source: glows
+    upstream_data_type: l1a
+    upstream_descriptor: de
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-conversion-table-for-anc-data
+
+
+(l1b, hist):
+  - *pipeline_settings
+  - *hist_spice
+  - upstream_source: glows
+    upstream_data_type: l1a
+    upstream_descriptor: hist
+  - upstream_source: spin
+    upstream_data_type: spin
+    upstream_descriptor: historical
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-exclusions-by-instr-team
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-map-of-excluded-regions
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-map-of-uv-sources
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-suspected-transients
+  - upstream_source: glows
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-conversion-table-for-anc-data
+  - upstream_source: attitude_history
+    upstream_data_type: spice
+    upstream_descriptor: historical
   - upstream_source: ephemeris_reconstructed
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -76,34 +86,21 @@
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
 
 
 (l2, hist):
+  - *pipeline_settings
+  - *hist_spice
   - upstream_source: glows
     upstream_data_type: l1b
     upstream_descriptor: hist
   - upstream_source: glows
     upstream_data_type: ancillary
-    upstream_descriptor: pipeline-settings
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+    upstream_descriptor: l2-calibration
 
 
 (l3a, hist):
+  - *pipeline_settings
   - upstream_source: glows
     upstream_data_type: l2
     upstream_descriptor: hist
@@ -112,10 +109,7 @@
     upstream_descriptor: calibration-data
   - upstream_source: glows
     upstream_data_type: ancillary
-    upstream_descriptor: time-dep-bckgrd
+    upstream_descriptor: l3-time-dep-bckgrd
   - upstream_source: glows
     upstream_data_type: ancillary
-    upstream_descriptor: map-of-extra-helio-bckgrd
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: pipeline-settings
+    upstream_descriptor: l3-map-of-extra-helio-bckgrd
