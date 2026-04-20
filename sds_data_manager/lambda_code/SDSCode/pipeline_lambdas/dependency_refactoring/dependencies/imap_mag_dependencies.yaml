@@ -91,11 +91,11 @@
   - upstream_source: mag
     upstream_data_type: l1b
     upstream_descriptor: norm-magi
-    kickoff_job: false
+    required: false
   - upstream_source: mag
     upstream_data_type: l1b
     upstream_descriptor: burst-magi
-    kickoff_job: false
+    required: false
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -110,11 +110,11 @@
   - upstream_source: mag
     upstream_data_type: l1b
     upstream_descriptor: norm-mago
-    kickoff_job: false
+    required: false
   - upstream_source: mag
     upstream_data_type: l1b
     upstream_descriptor: burst-mago
-    kickoff_job: false
+    required: false
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -138,11 +138,11 @@
   - upstream_source: mag
     upstream_data_type: l1b
     upstream_descriptor: burst-mago
-    kickoff_job: false
+    required: false
   - upstream_source: mag
     upstream_data_type: l1b
     upstream_descriptor: burst-magi
-    kickoff_job: false
+    required: false
   - upstream_source: imap_frames
     upstream_data_type: spice
     upstream_descriptor: historical

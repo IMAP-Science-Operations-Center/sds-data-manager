@@ -5,7 +5,7 @@
 # and how to properly configure them for your pipeline lambdas.
 
 
-(l1a, sci):
+(l1a, all):
   - upstream_source: swe
     upstream_data_type: l0
     upstream_descriptor: raw
