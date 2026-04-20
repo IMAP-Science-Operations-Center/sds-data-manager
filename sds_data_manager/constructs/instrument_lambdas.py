@@ -168,9 +168,18 @@ class BatchStarterLambda(Construct):
         # Note: We are defining the schedules to run at minute level intervals because
         # AWS EventBridge Scheduler does not allow for decimal values in the rate
         # expression. E.g., we cannot specify "rate(91.2 days)" for 3 months.
-        # Determine the first map trigger date by taking the start date + 3 months.
-        first_map_jobs = FIRST_MAP_START_DATE + datetime.timedelta(
+        # Determine the first trigger date for each map cadence:
+        #    - 3 month maps start at FIRST_MAP_START_DATE + 3 months
+        #    - 6 month maps start at FIRST_MAP_START_DATE + 6 months
+        #    - 1 year maps start at FIRST_MAP_START_DATE + 1 year
+        first_3mo_map_jobs = FIRST_MAP_START_DATE + datetime.timedelta(
             days=CadenceDays.THREE_MONTHS.value
+        )
+        first_6mo_map_jobs = FIRST_MAP_START_DATE + datetime.timedelta(
+            days=CadenceDays.SIX_MONTHS.value
+        )
+        first_1yr_map_jobs = FIRST_MAP_START_DATE + datetime.timedelta(
+            days=CadenceDays.ONE_YEAR.value
         )
         # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
         # a 1 month cadence job and the first job should be a month after launch
@@ -178,13 +187,20 @@ class BatchStarterLambda(Construct):
         first_1mo_jobs = launch_date + datetime.timedelta(
             days=CadenceDays.ONE_MONTH.value
         )
+        # Map cadence labels to their first job start dates
+        first_job_lookup = {
+            "1mo": first_1mo_jobs,
+            "3mo": first_3mo_map_jobs,
+            "6mo": first_6mo_map_jobs,
+            "1yr": first_1yr_map_jobs,
+        }
         today = datetime.datetime.now(tz=datetime.timezone.utc)
         # loop through dictionary of cadence labels and their corresponding CadenceDays
         # enum objects
         for label, cadence_obj in CadenceDays.str_lookup().items():
             # Calculate interval in minutes
             interval_minutes = int(cadence_obj.value * 24 * 60)
-            first_job = first_1mo_jobs if label == "1mo" else first_map_jobs
+            first_job = first_job_lookup[label]
             # Calculate the next run time based on the first job date and the cadence
             next_run = calculate_next_run(first_job, today, interval_minutes)
             # Format date as yyyy-MM-ddTHH:mm:ss.SSSZ (with milliseconds)
