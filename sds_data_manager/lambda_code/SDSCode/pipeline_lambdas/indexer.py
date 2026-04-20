@@ -6,6 +6,7 @@ import os
 from datetime import datetime, timezone
 
 import boto3
+from botocore.exceptions import ClientError
 from imap_data_access import (
     AncillaryFilePath,
     ImapFilePath,
@@ -23,6 +24,43 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 s3 = boto3.client("s3")
+ecr = boto3.client("ecr")
+
+
+def get_container_image_digest(container_image: str):
+    """Get the container image digest.
+
+    Parameters
+    ----------
+    container_image : str
+        Container image URI.
+        Eg. 123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest
+
+    Returns
+    -------
+    str
+        Container image digest
+
+    """
+    # Get the repository name and image tag from the container image URI
+    # Eg. for 123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest,
+    # where "123456789012" is the registry id, "swapi-repo" is the repository and
+    # "latest" is the image tag.
+    image_name = container_image.split("/")[-1]
+    # Parse the container image URI to get the repository name and image tag
+    try:
+        response = ecr.describe_images(
+            registryId=container_image.split(".")[0],
+            repositoryName=image_name.split(":")[0],
+            imageIds=[{"imageTag": image_name.split(":")[1]}],
+        )
+    except ClientError as e:
+        logger.error(f"AWS error getting image digest for {container_image}: {e}")
+        raise
+
+    # Extract the image digest from the response
+    image_digest = response["imageDetails"][0]["imageDigest"]
+    return image_digest
 
 
 def get_file_ingestion_date(file_path):
@@ -308,6 +346,7 @@ def batch_event_handler(event):
                 "image": (
                     "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "swapi-repo:latest"
                 ),
+                "imageDigest": "sha256:abc123def456...",
                 "command": [
                     "--instrument", "swapi",
                     "--data-level", "l1",
@@ -373,7 +412,9 @@ def batch_event_handler(event):
         job.status = job_status
         job.job_definition = event["detail"]["jobDefinition"]
         job.job_log_stream_id = event["detail"]["container"]["logStreamName"]
-        job.container_image = event["detail"]["container"]["image"]
+        container_image = event["detail"]["container"]["image"]
+        job.container_image = container_image
+        job.container_image_digest = get_container_image_digest(container_image)
         job.started_at = started_at
         job.stopped_at = stopped_at
         session.commit()

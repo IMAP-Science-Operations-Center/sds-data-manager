@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import boto3
 import pytest
-from moto import mock_events, mock_s3
+from moto import mock_ecr, mock_events, mock_s3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -117,6 +117,24 @@ def events_client():
     """Mock EventBridge client."""
     with mock_events():
         yield boto3.client("events", region_name="us-west-2")
+
+
+@pytest.fixture
+def ecr_client():
+    """Mock ECR client."""
+    with mock_ecr():
+        ecr_client = boto3.client("ecr", region_name="us-west-2")
+        # Create a mock repository for swapi
+        ecr_client.create_repository(repositoryName="swapi-repo")
+        ecr_client.put_image(
+            registryId="123456789012",
+            repositoryName="swapi-repo",
+            imageManifest=json.dumps({}),
+            imageManifestMediaType="json",
+            imageTag="latest",
+            imageDigest="sha256:123exampledigest",
+        )
+        yield ecr_client
 
 
 @pytest.fixture
