@@ -849,6 +849,14 @@ repoint, repoint, historical, lo, l1b, prostar, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, prostar, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, lo, l1b, prostar, HARD_NO_TRIGGER, DOWNSTREAM
 
+lo, l1b, histrates, lo, l1b, goodtimes, HARD, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
+
+lo, l1b, histrates, lo, l1b, bgrates, HARD, DOWNSTREAM
+leapseconds, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
+
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, good-times, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, hydrogen-background, lo, l1c, pset, HARD, DOWNSTREAM
@@ -1170,10 +1178,23 @@ spacecraft_clock, spice, historical, ultra, l1a, all, HARD_NO_TRIGGER, DOWNSTREA
 # Ultra-45 products
 ultra, l1a, 45sensor-de, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-priority-1-de, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-priority-2-de, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-priority-3-de, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-priority-4-de, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, l1a, 45sensor-aux, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-params, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-1-de,ultra, l1b, 45sensor-extendedspin, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-2-de,ultra, l1b, 45sensor-extendedspin, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-3-de,ultra, l1b, 45sensor-extendedspin, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-4-de,ultra, l1b, 45sensor-extendedspin, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-status,ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-goodtimes, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-extendedspin,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes,ultra, l1b, 45sensor-badtimes, HARD, DOWNSTREAM
@@ -1197,6 +1218,83 @@ ultra, ancillary, l1b-45sensor-spbtphcorr, ultra, l1b, 45sensor-de, HARD, DOWNST
 ultra, ancillary, l1b-45sensor-sptpphcorr, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-de-product-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+
+ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-leftslit-lookup, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-rightslit-lookup, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-back-pos-lookup, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tdc-norm-lookup, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxeflat, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxemedium, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxesteep, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-tofxph, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-spbtphcorr, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-sptpphcorr, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+
+ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-leftslit-lookup, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-rightslit-lookup, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-back-pos-lookup, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tdc-norm-lookup, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxeflat, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxemedium, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxesteep, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-tofxph, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-spbtphcorr, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-sptpphcorr, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+
+ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-leftslit-lookup, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-rightslit-lookup, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-back-pos-lookup, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tdc-norm-lookup, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxeflat, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxemedium, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxesteep, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-tofxph, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-spbtphcorr, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-sptpphcorr, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+
+ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-leftslit-lookup, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-rightslit-lookup, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-back-pos-lookup, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tdc-norm-lookup, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxeflat, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxemedium, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-tofxesteep, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-tofxph, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-spbtphcorr, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-sptpphcorr, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
 
 spacecraft_clock, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1b, 45sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1211,13 +1309,80 @@ pointing_attitude, spice, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 repoint, repoint, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 
+spacecraft_clock, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 45sensor-priority-2-de, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 45sensor-priority-3-de, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 45sensor-priority-4-de, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 45sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-1-de, ultra, l1c, 45sensor-spacecraftpset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-2-de, ultra, l1c, 45sensor-spacecraftpset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-3-de, ultra, l1c, 45sensor-spacecraftpset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-4-de, ultra, l1c, 45sensor-spacecraftpset, SOFT_NO_TRIGGER, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-de, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 45sensor-priority-1-de, ultra, l1c, 45sensor-heliopset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-2-de, ultra, l1c, 45sensor-heliopset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-3-de, ultra, l1c, 45sensor-heliopset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 45sensor-priority-4-de, ultra, l1c, 45sensor-heliopset, SOFT_NO_TRIGGER, DOWNSTREAM
 ultra, l1a, 45sensor-rates, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
@@ -1233,6 +1398,7 @@ ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 45sensor-spac
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-static-dead-times, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-45sensor-de-product-lookup, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
@@ -1240,6 +1406,7 @@ ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 45sensor-heli
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-static-dead-times, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-45sensor-de-product-lookup, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 
 repoint, repoint, historical, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1267,15 +1434,28 @@ spin, spin, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTR
 # Ultra-90 products
 ultra, l1a, 90sensor-de, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-priority-1-de, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-aux, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-priority-2-de, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-aux, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-priority-3-de, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-aux, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-priority-4-de, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, l1a, 90sensor-aux, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-params, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-1-de,ultra, l1b, 90sensor-extendedspin, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-2-de,ultra, l1b, 90sensor-extendedspin, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-3-de,ultra, l1b, 90sensor-extendedspin, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-4-de,ultra, l1b, 90sensor-extendedspin, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-status,ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-goodtimes, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-extendedspin,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes,ultra, l1b, 90sensor-badtimes, HARD, DOWNSTREAM
 
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
@@ -1293,6 +1473,83 @@ ultra, ancillary, l1b-90sensor-spbtphcorr, ultra, l1b, 90sensor-de, HARD, DOWNST
 ultra, ancillary, l1b-90sensor-sptpphcorr, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-de-product-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-back-pos-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tdc-norm-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxeflat, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxemedium, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxesteep, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-tofxph, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-spbtphcorr, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-sptpphcorr, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-back-pos-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tdc-norm-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxeflat, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxemedium, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxesteep, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-tofxph, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-spbtphcorr, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-sptpphcorr, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-back-pos-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tdc-norm-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxeflat, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxemedium, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxesteep, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-tofxph, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-spbtphcorr, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-sptpphcorr, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-rightslit-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-egynorm-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-back-pos-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tdc-norm-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-noblades, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-yadjust-lookup, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxeflat, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxemedium, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-tofxesteep, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-tofxph, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-spbtphcorr, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-sptpphcorr, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
 
 spacecraft_clock, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, ultra, l1b, 90sensor-de, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1307,13 +1564,80 @@ pointing_attitude, spice, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 repoint, repoint, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 
+spacecraft_clock, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 90sensor-priority-2-de, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 90sensor-priority-3-de, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+imap_frames, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_ephemeris, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+repoint, repoint, historical, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+spin, spin, historical, ultra, l1b, 90sensor-priority-4-de, HARD, DOWNSTREAM
+
+spacecraft_clock, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+leapseconds, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
 spin, spin, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+science_frames, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
+pointing_attitude, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ephemeris_reconstructed, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ephemeris_predicted, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_90days, spice, historical, ultra, l1b, 90sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 
 ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-1-de, ultra, l1c, 90sensor-spacecraftpset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-2-de, ultra, l1c, 90sensor-spacecraftpset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-3-de, ultra, l1c, 90sensor-spacecraftpset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-4-de, ultra, l1c, 90sensor-spacecraftpset, SOFT_NO_TRIGGER, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-de, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, l1b, 90sensor-priority-1-de, ultra, l1c, 90sensor-heliopset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-2-de, ultra, l1c, 90sensor-heliopset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-3-de, ultra, l1c, 90sensor-heliopset, SOFT_NO_TRIGGER, DOWNSTREAM
+ultra, l1b, 90sensor-priority-4-de, ultra, l1c, 90sensor-heliopset, SOFT_NO_TRIGGER, DOWNSTREAM
 ultra, l1a, 90sensor-rates, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
@@ -1325,17 +1649,19 @@ ultra, ancillary, l1c-90sensor-sc-pointing-index, ultra, l1c, 90sensor-spacecraf
 ultra, ancillary, l1c-90sensor-sc-pointing-bsf, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-static-dead-times, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-de-product-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-static-dead-times, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-de-product-lookup, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 
 repoint, repoint, historical, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM

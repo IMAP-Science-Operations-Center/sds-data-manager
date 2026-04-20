@@ -4,10 +4,8 @@
 # It contains important information such as the default values and expected behavior of these dependencies,
 # and how to properly configure them for your pipeline lambdas.
 
-(l1a, all):
-  - upstream_source: idex
-    upstream_data_type: l0
-    upstream_descriptor: raw
+# ======= Common dependencies =============
+spice_basics: &spice_basics
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -17,22 +15,27 @@
     upstream_descriptor: historical
     kickoff_job: false
 
+# ====== IDEX dependencies =============
+
+(l1a, all):
+  - *spice_basics
+  - upstream_source: idex
+    upstream_data_type: l0
+    upstream_descriptor: raw
+
+(l1a, msg):
+  - upstream_source: idex
+    upstream_data_type: l1a
+    upstream_descriptor: msg
 
 (l1b, sci-1week):
+  - *spice_basics
   - upstream_source: idex
     upstream_data_type: l1a
     upstream_descriptor: sci-1week
   - upstream_source: spin
     upstream_data_type: spin
     upstream_descriptor: historical
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
   - upstream_source: ephemeris_reconstructed
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -66,19 +69,12 @@
 
 
 (l2b, all-1mo):
+  - *spice_basics
   - upstream_source: idex
     upstream_data_type: l2a
     upstream_descriptor: sci-1week
     kickoff_job: false
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
   - upstream_source: idex
     upstream_data_type: l1b
-    upstream_descriptor: evt
+    upstream_descriptor: msg
     kickoff_job: false

@@ -52,6 +52,10 @@ spice_l2: &spice_l2
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
   - upstream_source: imap_frames
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -188,6 +192,10 @@ lo_esa_fit_factors: &lo_esa_fit_factors
   - upstream_source: repoint
     upstream_data_type: repoint
     upstream_descriptor: historical
+  - upstream_source: ephemeris_90days
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
   - upstream_source: lo
     upstream_data_type: ancillary
     upstream_descriptor: good-times
