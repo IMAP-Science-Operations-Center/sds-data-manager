@@ -89,6 +89,7 @@ class ProcessingJob(Base):
     job_definition = Column(String)
     job_log_stream_id = Column(String)
     container_image = Column(String)
+    container_image_digest = Column(String)
     container_command = Column(String)
     started_at = Column(DateTime(timezone=True))
     stopped_at = Column(DateTime(timezone=True))
@@ -106,6 +107,7 @@ class ProcessingJob(Base):
             "start_date",
             "version",
             "repointing",
+            "container_image_digest",
             unique=True,
             postgresql_where=and_(status.in_(["INPROGRESS", "SUCCEEDED"])),
         ),
@@ -127,6 +129,9 @@ class ProcessingJob(Base):
             if self.job_log_stream_id
             else None,
             "container_image": self.container_image if self.container_image else None,
+            "container_image_digest": self.container_image_digest
+            if self.container_image_digest
+            else None,
             "container_command": self.container_command
             if self.container_command
             else None,
