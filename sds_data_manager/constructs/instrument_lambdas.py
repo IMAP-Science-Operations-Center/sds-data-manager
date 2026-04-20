@@ -19,7 +19,6 @@ from constructs import Construct
 
 from sds_data_manager.constructs.api_gateway_construct import ApiGateway
 from sds_data_manager.constructs.database_construct import SdpDatabase
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import FIRST_MAP_START_DATE
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
     CadenceDays,
 )
@@ -172,35 +171,14 @@ class BatchStarterLambda(Construct):
         #    - 3 month maps start at FIRST_MAP_START_DATE + 3 months
         #    - 6 month maps start at FIRST_MAP_START_DATE + 6 months
         #    - 1 year maps start at FIRST_MAP_START_DATE + 1 year
-        first_3mo_map_jobs = FIRST_MAP_START_DATE + datetime.timedelta(
-            days=CadenceDays.THREE_MONTHS.value
-        )
-        first_6mo_map_jobs = FIRST_MAP_START_DATE + datetime.timedelta(
-            days=CadenceDays.SIX_MONTHS.value
-        )
-        first_1yr_map_jobs = FIRST_MAP_START_DATE + datetime.timedelta(
-            days=CadenceDays.ONE_YEAR.value
-        )
-        # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
-        # a 1 month cadence job and the first job should be a month after launch
-        launch_date = datetime.datetime(2025, 9, 24, tzinfo=datetime.timezone.utc)
-        first_1mo_jobs = launch_date + datetime.timedelta(
-            days=CadenceDays.ONE_MONTH.value
-        )
-        # Map cadence labels to their first job start dates
-        first_job_lookup = {
-            "1mo": first_1mo_jobs,
-            "3mo": first_3mo_map_jobs,
-            "6mo": first_6mo_map_jobs,
-            "1yr": first_1yr_map_jobs,
-        }
+
         today = datetime.datetime.now(tz=datetime.timezone.utc)
         # loop through dictionary of cadence labels and their corresponding CadenceDays
         # enum objects
         for label, cadence_obj in CadenceDays.str_lookup().items():
             # Calculate interval in minutes
             interval_minutes = int(cadence_obj.value * 24 * 60)
-            first_job = first_job_lookup[label]
+            first_job = cadence_obj.get_first_job_start_date()
             # Calculate the next run time based on the first job date and the cadence
             next_run = calculate_next_run(first_job, today, interval_minutes)
             # Format date as yyyy-MM-ddTHH:mm:ss.SSSZ (with milliseconds)

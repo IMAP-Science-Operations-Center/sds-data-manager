@@ -28,6 +28,7 @@ from ..database import database as db
 from ..database import models
 from . import (
     FIRST_MAP_START_DATE,
+    LAUNCH_DATE,
     REPOINT_DEPENDENT_INSTRUMENTS,
     VALID_CADENCE_STRS,
     dependency,
@@ -177,6 +178,33 @@ class CadenceDays(float, Enum):
                 f" {cls.valid_cadence_str()}"
             )
         return lookup[cadence_str]
+
+    def get_first_job_start_date(self, as_string: bool = False) -> datetime.datetime:
+        """Get the first job start date for this cadence.
+
+        Parameters
+        ----------
+        as_string : bool
+            If True, return the date as a string in the format 'YYYYMMDD'.
+            Default is False.
+
+        Returns
+        -------
+        datetime.datetime
+            The first job start date for this cadence.
+        """
+        if self == CadenceDays.ONE_MONTH:
+            # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
+            # a 1 month cadence job and the first job should be a month after launch
+            start_date = LAUNCH_DATE + datetime.timedelta(days=self.value)
+        else:
+            # For map jobs, we want the first job to start at the first map start date
+            # plus the cadence. E.g.:
+            #    - 3 month maps start at FIRST_MAP_START_DATE + 3 months
+            #    - 6 month maps start at FIRST_MAP_START_DATE + 6 months
+            #    - 1 year maps start at FIRST_MAP_START_DATE + 1 year
+            start_date = FIRST_MAP_START_DATE + datetime.timedelta(days=self.value)
+        return start_date.strftime("%Y%m%d") if as_string else start_date
 
 
 def determine_job_version(
