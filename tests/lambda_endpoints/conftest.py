@@ -153,8 +153,8 @@ def batch_client():
     """Fixture to mock BATCH_CLIENT."""
     mock_batch_client = Mock()
 
-    def get_job_definition(jobdefinitionname, status=None):
-        instrument = jobdefinitionname.split("-")[1]
+    def get_job_definition(jobDefinitionName, status=None):  # noqa: N803
+        instrument = jobDefinitionName.split("-")[1]
         return {
             "jobDefinitions": [
                 {

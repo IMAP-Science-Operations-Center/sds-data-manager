@@ -141,25 +141,11 @@ def test_lambda_handler(session, s3_client, mock_upload_request_success, batch_c
     }
 
     with (
-        # patch.object(batch_starter, "BATCH_CLIENT") as mock_batch_client,
         patch(
             "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.SQS_CLIENT",
             mock_sqs_client,
         ),
     ):
-        # Set up the mock to return proper job definition
-        batch_client.describe_job_definitions.return_value = {
-            "jobDefinitions": [
-                {
-                    "revision": 1,
-                    "status": "ACTIVE",
-                    "containerProperties": {
-                        "image": "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
-                        "swe-repo:latest"
-                    },
-                }
-            ]
-        }
         lambda_handler(events, context)
         batch_client.submit_job.assert_called_once()
         batch_client.submit_job.assert_called_with(
