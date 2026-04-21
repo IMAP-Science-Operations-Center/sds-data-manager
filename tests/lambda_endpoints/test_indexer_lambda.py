@@ -12,7 +12,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.indexer import (
 )
 
 
-def test_batch_job_event(session, events_client, ecr_client):
+def test_batch_job_event(session, events_client):
     """Test batch job event."""
     # Write to Processing job table with current batch job event info
     job_params = {
