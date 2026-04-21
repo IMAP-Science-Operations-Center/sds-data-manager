@@ -135,6 +135,7 @@ def ecr_client():
             "swe",
             "ultra",
             "spacecraft",
+            "glows",
         ]:
             ecr_client.create_repository(repositoryName=f"{instrument}-repo")
             ecr_client.put_image(
