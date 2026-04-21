@@ -417,6 +417,7 @@ def build_sds(
         construct_id="IalirtAlarm",
         code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
+        data_table=ingest.data_table,
     )
 
     ialirt_monitoring = monitoring_construct.MonitoringConstruct(

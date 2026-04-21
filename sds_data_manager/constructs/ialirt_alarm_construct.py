@@ -3,6 +3,7 @@
 from aws_cdk import (
     Duration,
     RemovalPolicy,
+    aws_dynamodb,
     aws_s3,
 )
 from aws_cdk import (
@@ -38,6 +39,7 @@ class IalirtAlarmConstruct(Construct):
         construct_id: str,
         code: lambda_.Code,
         ialirt_bucket: aws_s3.Bucket,
+        data_table: aws_dynamodb.Table,
         **kwargs,
     ) -> None:
         """Create ialirt alarms and rsync failure notifications.
@@ -52,6 +54,8 @@ class IalirtAlarmConstruct(Construct):
             Lambda code bundle.
         ialirt_bucket : aws_s3.Bucket
             The data bucket to monitor.
+        data_table : aws_dynamodb.Table
+            The ialirt-data-table to monitor for instrument freshness.
         kwargs : dict
             Keyword arguments.
 
@@ -66,24 +70,16 @@ class IalirtAlarmConstruct(Construct):
         ialirt_alarm_email = ssm.StringParameter.value_for_string_parameter(
             self, "/imap/ialirt/alarm_email"
         )
-        # Phone number to text in the case of no packets.
-        ialirt_ssm = ssm.StringParameter.value_for_string_parameter(
-            self, "/imap/ialirt/alarm_ssm_number"
-        )
-        no_packets_topic = sns.Topic(
+        operation_topic = sns.Topic(
             self,
             "IalirtAlarmTopics",
-            display_name="I-ALiRT No Packet Alarm Notifications",
+            display_name="I-ALiRT Operations Alarm Notifications",
         )
         if ialirt_alarm_email:
-            no_packets_topic.add_subscription(
-                subs.EmailSubscription(ialirt_alarm_email)
-            )
-        if ialirt_ssm:
-            no_packets_topic.add_subscription(subs.SmsSubscription(ialirt_ssm))
+            operation_topic.add_subscription(subs.EmailSubscription(ialirt_alarm_email))
 
         # Create CloudWatch monitoring for 'no packets arrived' condition.
-        self.setup_monitoring(ialirt_bucket, no_packets_topic)
+        self.setup_monitoring(ialirt_bucket, operation_topic)
 
         # Setup a notification for rsync failures.
         ops_alarm_email = ssm.StringParameter.value_for_string_parameter(
@@ -97,6 +93,9 @@ class IalirtAlarmConstruct(Construct):
 
         # Create rsync Lambda + event trigger
         self.create_rsync_lambda(ialirt_bucket, code, rsync_topic)
+
+        # Create instrument freshness alarm Lambda + daily schedule
+        self.create_instrument_alarm_lambda(code, data_table, operation_topic)
 
     def create_rsync_lambda(
         self,
@@ -200,3 +199,74 @@ class IalirtAlarmConstruct(Construct):
         alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
 
         return alarm
+
+    def create_instrument_alarm_lambda(
+        self,
+        code: lambda_.Code,
+        data_table: aws_dynamodb.Table,
+        alarm_topic: sns.Topic,
+    ) -> lambda_.Function:
+        """Create a scheduled Lambda that alerts when an instrument has no recent data.
+
+        Parameters
+        ----------
+        code : lambda_.Code
+            Lambda code bundle.
+        data_table : aws_dynamodb.Table
+            The ialirt-data-table to query for instrument freshness.
+        alarm_topic : sns.Topic
+            SNS topic to publish alerts to.
+
+        Returns
+        -------
+        lambda_.Function
+            The created Lambda function.
+
+        """
+        lambda_role = iam.Role(
+            self,
+            "IalirtInstrumentAlarmRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AWSLambdaBasicExecutionRole"
+                ),
+            ],
+        )
+
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["sns:Publish"],
+                resources=[alarm_topic.topic_arn],
+            )
+        )
+
+        data_table.grant_read_data(lambda_role)
+
+        instrument_alarm_lambda = lambda_.Function(
+            self,
+            id="IalirtInstrumentAlarmLambda",
+            function_name="ialirt-instrument-alarm",
+            code=code,
+            handler="IAlirtCode.ialirt_instrument_alarm.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=Duration.minutes(1),
+            memory_size=256,
+            role=lambda_role,
+            environment={
+                "DATA_TABLE": data_table.table_name,
+                "SNS_TOPIC_ARN": alarm_topic.topic_arn,
+            },
+        )
+
+        instrument_alarm_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
+
+        daily_rule = events.Rule(
+            self,
+            "IalirtInstrumentAlarmSchedule",
+            rule_name="ialirt-instrument-alarm-schedule",
+            schedule=events.Schedule.rate(Duration.hours(8)),
+        )
+        daily_rule.add_target(targets.LambdaFunction(instrument_alarm_lambda))
+
+        return instrument_alarm_lambda
