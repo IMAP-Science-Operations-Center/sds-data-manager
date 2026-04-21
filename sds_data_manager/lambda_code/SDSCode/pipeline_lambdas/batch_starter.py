@@ -12,6 +12,7 @@ from typing import Optional, Union
 import boto3
 import imap_data_access
 import requests
+from botocore.exceptions import ClientError
 from imap_data_access import (
     VALID_INSTRUMENTS,
     AncillaryFilePath,
@@ -40,6 +41,8 @@ logger.setLevel(logging.INFO)
 DEPENDENCY_CONFIG = dependency.DependencyConfig()
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
+# Create an ECR client for getting container image digests
+ECR_CLIENT = boto3.client("ecr", region_name="us-west-2")
 # Define the retry strategy for batch jobs
 BATCH_JOB_RETRY_STRATEGY = {
     "attempts": 10,
@@ -53,6 +56,54 @@ BATCH_JOB_RETRY_STRATEGY = {
 }
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
+
+
+def get_container_image_digest(job_definition: str):
+    """Get the container image digest.
+
+    Parameters
+    ----------
+    job_definition : str
+        job definition name to get the container image digest for. For example,
+        "ProcessingJob-swe"
+
+    Returns
+    -------
+    str
+        The sha256 digest of the image manifest. This is a unique identifier for the
+         specific image version used in the batch job.
+
+    """
+    job_def_response = BATCH_CLIENT.describe_job_definitions(
+        jobDefinitionName=job_definition, status="ACTIVE"
+    )
+    if not job_def_response or not job_def_response.get("jobDefinitions"):
+        raise ValueError(f"Job definition not found: {job_definition}")
+    # Get the active job revision (there is only one active at a time)
+    job_deff = job_def_response["jobDefinitions"][0]
+    container_image = job_deff["containerProperties"]["image"]
+    # Parse the container image URI to get the registry id, repository name and image
+    # tag and use those to call describe_images and get the image digest.
+    # Eg. for 123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest,
+    # "123456789012" is the registry id, "swapi-repo" is the repository and
+    # "latest" is the image tag.
+    image_name = container_image.split("/")[-1]
+    try:
+        response = ECR_CLIENT.describe_images(
+            registryId=container_image.split(".")[0],
+            repositoryName=image_name.split(":")[0],
+            imageIds=[{"imageTag": image_name.split(":")[1]}],
+        )
+    except ECR_CLIENT.exceptions.ImageNotFoundException as e:
+        logger.error(f"Image not found in ECR for {container_image}: {e}")
+        raise
+    except ClientError as e:
+        logger.error(f"AWS error getting image digest for {container_image}: {e}")
+        raise
+
+    # Extract the image digest from the response
+    image_digest = response["imageDetails"][0]["imageDigest"]
+    return image_digest
 
 
 def add_buffer_to_idex_start_date(start_date: str, buffer_days: int = 12) -> str:
@@ -374,6 +425,16 @@ def try_to_submit_job(
 
     if repoint is not None:
         batch_command.extend(["--repointing", f"repoint{repoint:05d}"])
+    # Get the necessary AWS information
+    # NOTE: These are here for easier mocking in tests rather than at the module level
+    step = "-l3" if data_level >= "l3" else ""
+    job_definition = f"ProcessingJob-{instrument}{step}"
+
+    # Capture the container image and digest right before submitting the job.
+    # This ensures the exact image digest that will be used is recorded. We record this
+    # before submitting the job to avoid race conditions where the image could change
+    # during job execution.
+    container_image_digest = get_container_image_digest(job_definition)
 
     # All of our upstream requirements have been met.
     # Try to insert a record into the Processing Jobs table
@@ -388,6 +449,7 @@ def try_to_submit_job(
         version=version,
         repointing=repoint,
         container_command=" ".join(batch_command),
+        container_image=container_image_digest,
     )
     try:
         session.add(processing_job)
@@ -405,11 +467,8 @@ def try_to_submit_job(
     # E.g. "codice-l1a-sci-job-1"
     # The `processing_job.id` is used later for updating the job processing table
     job_name = f"{instrument}-{data_level}-{descriptor}-job-{processing_job.id}"
-    # Get the necessary AWS information
-    # NOTE: These are here for easier mocking in tests rather than at the module level
-    step = "-l3" if data_level >= "l3" else ""
-    job_definition = f"ProcessingJob-{instrument}{step}"
     job_queue = "ProcessingJobQueue"
+
     BATCH_CLIENT.submit_job(
         jobName=job_name,
         jobQueue=job_queue,

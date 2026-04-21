@@ -119,22 +119,61 @@ def events_client():
         yield boto3.client("events", region_name="us-west-2")
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def ecr_client():
     """Mock ECR client."""
     with mock_ecr():
         ecr_client = boto3.client("ecr", region_name="us-west-2")
-        # Create a mock repository for swapi
-        ecr_client.create_repository(repositoryName="swapi-repo")
-        ecr_client.put_image(
-            registryId="123456789012",
-            repositoryName="swapi-repo",
-            imageManifest=json.dumps({}),
-            imageManifestMediaType="json",
-            imageTag="latest",
-            imageDigest="sha256:123exampledigest",
-        )
+        # Create a mock repository for each instrument, and add a mock image to each
+        # repository
+        for instrument in [
+            "swapi",
+            "hi",
+            "lo",
+            "mag",
+            "idex",
+            "swe",
+            "ultra",
+            "spacecraft",
+        ]:
+            ecr_client.create_repository(repositoryName=f"{instrument}-repo")
+            ecr_client.put_image(
+                registryId="123456789012",
+                repositoryName=f"{instrument}-repo",
+                imageManifest=json.dumps({}),
+                imageManifestMediaType="json",
+                imageTag="latest",
+                imageDigest=f"sha256:123example{instrument}digest",
+            )
         yield ecr_client
+
+
+@pytest.fixture(autouse=True)
+def batch_client():
+    """Fixture to mock BATCH_CLIENT."""
+    mock_batch_client = Mock()
+
+    def get_job_definition(jobdefinitionname, status=None):
+        instrument = jobdefinitionname.split("-")[1]
+        return {
+            "jobDefinitions": [
+                {
+                    "revision": 1,
+                    "status": "ACTIVE",
+                    "containerProperties": {
+                        "image": f"123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+                        f"{instrument}-repo:latest"
+                    },
+                }
+            ]
+        }
+
+    # Mock describe_job_definitions to return a valid job definition
+    mock_batch_client.describe_job_definitions.side_effect = get_job_definition
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", mock_batch_client),
+    ):
+        yield mock_batch_client
 
 
 @pytest.fixture
@@ -154,6 +193,27 @@ def mock_upload_request_success():
         }
         mock_requests.put.return_value = Mock(status_code=200)
         yield mock_upload_api, mock_requests
+
+
+# @pytest.fixture(autouse=True)
+# def properly_mocked_ecr_client():
+#     """Fixture that returns a properly configured mock ECR_CLIENT.
+#
+#     This is useful for tests that want to patch ECR_CLIENT themselves but
+#     still need the proper describe_images response.
+#     """
+#     mock_ecr_client = Mock()
+#     mock_ecr_client.describe_images.return_value = {
+#         "imageDetails": [
+#             {
+#                 "imageDigest": "sha256:123exampledigest"
+#             }
+#         ]
+#     }
+#     with (
+#         patch.object(batch_starter, "ECR_CLIENT", mock_ecr_client),
+#     ):
+#         yield mock_ecr_client
 
 
 # Check if `psycopg` and PostgreSQL are both available and compatible.

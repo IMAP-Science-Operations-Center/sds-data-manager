@@ -9,6 +9,7 @@ from datetime import datetime
 from os.path import basename
 from unittest.mock import Mock, call, patch
 
+import boto3
 import imap_data_access
 import pytest
 from imap_data_access import SpinInput
@@ -17,6 +18,7 @@ from imap_data_access.processing_input import (
     ScienceInput,
     SPICEInput,
 )
+from moto import mock_batch, mock_ecr
 from sqlalchemy.exc import IntegrityError
 
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -34,6 +36,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     dependency,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
+    ECR_CLIENT,
     CadenceDays,
     cadence_reprocessing_event,
     determine_date_range,
@@ -93,7 +96,7 @@ def _populate_processing_table(session):
     session.commit()
 
 
-def test_lambda_handler(session, s3_client, mock_upload_request_success):
+def test_lambda_handler(session, s3_client, mock_upload_request_success, batch_client):
     """Tests that SWE L0 file ingestion kicks off job."""
     _static_spice_files(session)
     events = {
@@ -138,15 +141,28 @@ def test_lambda_handler(session, s3_client, mock_upload_request_success):
     }
 
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
+        # patch.object(batch_starter, "BATCH_CLIENT") as mock_batch_client,
         patch(
             "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.SQS_CLIENT",
             mock_sqs_client,
         ),
     ):
+        # Set up the mock to return proper job definition
+        batch_client.describe_job_definitions.return_value = {
+            "jobDefinitions": [
+                {
+                    "revision": 1,
+                    "status": "ACTIVE",
+                    "containerProperties": {
+                        "image": "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+                        "swe-repo:latest"
+                    },
+                }
+            ]
+        }
         lambda_handler(events, context)
-        mock_batch_client.submit_job.assert_called_once()
-        mock_batch_client.submit_job.assert_called_with(
+        batch_client.submit_job.assert_called_once()
+        batch_client.submit_job.assert_called_with(
             jobName="swe-l1a-all-job-1",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-swe",
@@ -192,7 +208,7 @@ def test_lambda_handler(session, s3_client, mock_upload_request_success):
         )
 
 
-def test_different_queues(session, s3_client):
+def test_different_queues(session, s3_client, batch_client):
     """Tests events from multiple queues."""
     _static_spice_files(session)
 
@@ -223,7 +239,6 @@ def test_different_queues(session, s3_client):
     }
 
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()),
         patch(
             "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.SQS_CLIENT",
             mock_sqs_client,
@@ -246,7 +261,7 @@ def test_different_queues(session, s3_client):
 
 
 def test_lambda_handler_multiple_events(
-    session, s3_client, mock_upload_request_success
+    session, s3_client, mock_upload_request_success, batch_client
 ):
     """Tests ``lambda_handler`` function with multiple events."""
     _static_spice_files(session)
@@ -331,14 +346,13 @@ def test_lambda_handler_multiple_events(
     }
     context = {"context": "sample_context"}
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
         patch.object(batch_starter, "generate_queue_url", return_value=False),
     ):
         lambda_handler(multiple_events, context)
-        assert mock_batch_client.submit_job.call_count == 2
+        assert batch_client.submit_job.call_count == 2
 
 
-def test_lambda_handler_spice_event(session, mock_upload_request_success):
+def test_lambda_handler_spice_event(session, mock_upload_request_success, batch_client):
     """Tests ``lambda_handler`` function when triggerd by an spice file."""
     _static_spice_files(session)
     # Test that the correct dependencies are gathered when a spice ingest
@@ -395,16 +409,15 @@ def test_lambda_handler_spice_event(session, mock_upload_request_success):
 
     context = {"context": "sample_context"}
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
         patch.object(batch_starter, "generate_queue_url", return_value=False),
     ):
         lambda_handler(events, context)
         # There should be 2 different jobs submitted for the two swe l1b files
-        assert mock_batch_client.submit_job.call_count == 2
+        assert batch_client.submit_job.call_count == 2
         # Assert_called_with only works on the last call
         # Check that the last call is what we expect with the correct dependencies
 
-        mock_batch_client.submit_job.assert_called_with(
+        batch_client.submit_job.assert_called_with(
             jobName="swe-l2-sci-job-2",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-swe",
@@ -452,7 +465,9 @@ def test_lambda_handler_spice_event(session, mock_upload_request_success):
         )
 
 
-def test_lambda_handler_ancillary_event(session, mock_upload_request_success):
+def test_lambda_handler_ancillary_event(
+    session, mock_upload_request_success, batch_client
+):
     """Tests ``lambda_handler`` function when triggerd by an ancillary file."""
     _static_spice_files(session)
     # Other db records needed to proccess l1a to l1b when ancillary file is ingested
@@ -519,12 +534,11 @@ def test_lambda_handler_ancillary_event(session, mock_upload_request_success):
 
     context = {"context": "sample_context"}
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
         patch.object(batch_starter, "generate_queue_url", return_value=False),
     ):
         lambda_handler(events, context)
         # There should be 2 different jobs submitted for one swe l1b ancillary file
-        assert mock_batch_client.submit_job.call_count == 1
+        assert batch_client.submit_job.call_count == 1
         # Assert_called_with only works on the last call
         # Check that the last call is what we expect with the correct dependencies
 
@@ -544,7 +558,7 @@ def test_lambda_handler_ancillary_event(session, mock_upload_request_success):
                 "files": ["imap_swe_eu-conversion_20260303_v001.csv"],
             },
         ]
-        mock_batch_client.submit_job.assert_called_with(
+        batch_client.submit_job.assert_called_with(
             jobName="swe-l1b-sci-job-1",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-swe",
@@ -682,7 +696,9 @@ def test_lambda_handler_missing_upstream_dependency(session, caplog):
         )
 
 
-def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
+def test_lambda_handler_missing_dependency_for_start_date(
+    session, caplog, batch_client
+):
     """Tests ``lambda_handler`` function for a specific case."""
     _static_spice_files(session)
     # This test covers a rare scenario: when a new ancillary file is uploaded, the
@@ -766,11 +782,10 @@ def test_lambda_handler_missing_dependency_for_start_date(session, caplog):
     caplog.set_level("INFO")
     context = {"context": "sample_context"}
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
         patch.object(batch_starter, "generate_queue_url", return_value=False),
     ):
         lambda_handler(multiple_events, context)
-        assert mock_batch_client.submit_job.call_count == 0
+        assert batch_client.submit_job.call_count == 0
     # Check that the expected message was logged.
     expected_log = (
         "Skipping job submission for {'data_source': 'mag', 'data_type': "
@@ -940,7 +955,9 @@ def test_bulk_reprocessing_all_swe(session, caplog):
     assert mock_submit.call_count == 0
 
 
-def test_lambda_handler_mag_l1c_case(session, mock_upload_request_success):
+def test_lambda_handler_mag_l1c_case(
+    session, mock_upload_request_success, batch_client
+):
     """Tests ``lambda_handler` for unique mac l1c case."""
     # Mock the situation where mag l1b files trigger batch starter back to back.
     # We should expect the second job mag l1c to be submitted with a version bump and
@@ -976,12 +993,11 @@ def test_lambda_handler_mag_l1c_case(session, mock_upload_request_success):
         ScienceInput("imap_mag_l1b_norm-mago_20240101_v001.cdf"),
     )
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
         patch.object(batch_starter, "generate_queue_url", return_value=False),
     ):
         lambda_handler(events, context)
         # Verify the function was called
-        mock_batch_client.submit_job.assert_called_with(
+        batch_client.submit_job.assert_called_with(
             jobName="mag-l1c-norm-mago-job-1",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-mag",
@@ -1049,7 +1065,7 @@ def test_lambda_handler_mag_l1c_case(session, mock_upload_request_success):
         )
         lambda_handler(events, context)
         # Verify the function was called
-        mock_batch_client.submit_job.assert_called_with(
+        batch_client.submit_job.assert_called_with(
             jobName="mag-l1c-norm-mago-job-2",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-mag",
@@ -1090,7 +1106,7 @@ def test_lambda_handler_mag_l1c_case(session, mock_upload_request_success):
 
 
 def test_lambda_handler_duplicate_mag_l1c_job(
-    session, caplog, mock_upload_request_success
+    session, caplog, mock_upload_request_success, batch_client
 ):
     """Tests ``lambda_handler` skips processing for a duplicate job."""
     # Mock the situation where mag l1b files trigger batch starter back to back but
@@ -1167,13 +1183,12 @@ def test_lambda_handler_duplicate_mag_l1c_job(
         return original_add(obj)
 
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
         patch.object(batch_starter, "generate_queue_url", return_value=False),
         patch.object(session, "add", side_effect=mock_add),
     ):
         lambda_handler(events, context)
         # Verify the function was called
-        mock_batch_client.submit_job.assert_called_once()
+        batch_client.submit_job.assert_called_once()
 
         events = {
             "Records": [
@@ -1185,10 +1200,10 @@ def test_lambda_handler_duplicate_mag_l1c_job(
             ]
         }
         # Reset call count
-        mock_batch_client.submit_job.call_count = 0
+        batch_client.submit_job.call_count = 0
         lambda_handler(events, context)
         # Verify the function not called
-        assert mock_batch_client.submit_job.call_count == 0
+        assert batch_client.submit_job.call_count == 0
 
         assert ("Job already completed or in progress") in caplog.text
 
@@ -1219,7 +1234,9 @@ def test_cadence_map_event_reprocess(
         )
 
 
-def test_cadence_map_event(setup_s3, session, tmp_path, mock_upload_request_success):
+def test_cadence_map_event(
+    setup_s3, session, tmp_path, mock_upload_request_success, batch_client
+):
     """Test that a cadence event kicks off the right processing job."""
     _static_spice_files(session)
     # Add 10 months of ultra l1c "45sensor" pset files to the database
@@ -1299,7 +1316,6 @@ def test_cadence_map_event(setup_s3, session, tmp_path, mock_upload_request_succ
     }
     context = {"context": "sample_context"}
     with (
-        patch.object(batch_starter, "BATCH_CLIENT") as mock_batch_client,
         patch(
             "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter"
             ".cadence_to_datetime_range"
@@ -1310,9 +1326,9 @@ def test_cadence_map_event(setup_s3, session, tmp_path, mock_upload_request_succ
         lambda_handler(cadence_event, context)
         # Verify the function was called 12 times. There are currently 12 l2 map jobs
         # with the cadence of 3 months.
-        assert mock_batch_client.submit_job.call_count == 12
+        assert batch_client.submit_job.call_count == 12
         # Assert that the function was called with the cadence json file path
-        mock_batch_client.submit_job.assert_called_with(
+        batch_client.submit_job.assert_called_with(
             jobName="ultra-l2-u90-ena-h-sf-nsp-full-hae-6deg-3mo-job-12",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-ultra",
@@ -1473,7 +1489,7 @@ def test_idex_l1b(session, auth_event, mock_upload_request_success, caplog):
         )
 
 
-def test_idex_l2b(session, auth_event, mock_upload_request_success):
+def test_idex_l2b(session, auth_event, mock_upload_request_success, batch_client):
     """Tests ``lambda_handler` for unique idex l2b case."""
     _static_spice_files(session)
     # Add 2 idex l1b msg files. Although the second file is out of the month range,
@@ -1541,7 +1557,6 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success):
     )
 
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client,
         patch(
             "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter"
             ".cadence_to_datetime_range"
@@ -1550,7 +1565,7 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success):
         dt_mock.return_value = ("20230209", "20230309")
         lambda_handler(cadence_event, None)
         # Verify the function was called
-        mock_batch_client.submit_job.assert_called_with(
+        batch_client.submit_job.assert_called_with(
             jobName="idex-l2b-all-1mo-job-1",
             jobQueue="ProcessingJobQueue",
             jobDefinition="ProcessingJob-idex",
@@ -1588,31 +1603,31 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success):
     processing_job_record = session.query(models.ProcessingJob).first()
     processing_job_record.status = models.Status.SUCCEEDED
     session.commit()
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
-        lambda_handler(reprocessing_event, None)
-        mock_batch_client.submit_job.assert_called_with(
-            jobName="idex-l2b-all-1mo-job-2",
-            jobQueue="ProcessingJobQueue",
-            jobDefinition="ProcessingJob-idex",
-            containerOverrides={
-                "command": [
-                    "--instrument",
-                    "idex",
-                    "--data-level",
-                    "l2b",
-                    "--descriptor",
-                    "all-1mo",
-                    "--start-date",
-                    "20230109",
-                    "--version",
-                    "v002",
-                    "--dependency",
-                    "imap_idex_l2b_all-1mo-4976c57e_20230109_v002.json",
-                    "--upload-to-sdc",
-                ]
-            },
-            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
-        )
+
+    lambda_handler(reprocessing_event, None)
+    batch_client.submit_job.assert_called_with(
+        jobName="idex-l2b-all-1mo-job-2",
+        jobQueue="ProcessingJobQueue",
+        jobDefinition="ProcessingJob-idex",
+        containerOverrides={
+            "command": [
+                "--instrument",
+                "idex",
+                "--data-level",
+                "l2b",
+                "--descriptor",
+                "all-1mo",
+                "--start-date",
+                "20230109",
+                "--version",
+                "v002",
+                "--dependency",
+                "imap_idex_l2b_all-1mo-4976c57e_20230109_v002.json",
+                "--upload-to-sdc",
+            ]
+        },
+        retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
+    )
 
     # Verify the function was called with the correct upstream dependencies
     with (
@@ -1899,7 +1914,13 @@ def test_dependency_success_empty(session):
 @patch.object(imap_data_access, "download")
 @patch.object(batch_starter, "SQS_CLIENT")
 def test_repoint_date_range(
-    sqs_mock, mock_download, session, s3_client, tmp_path, mock_upload_request_success
+    sqs_mock,
+    mock_download,
+    session,
+    s3_client,
+    tmp_path,
+    mock_upload_request_success,
+    batch_client,
 ):
     """Test that the repoint date range is correct."""
     filepath = "imap/hi/l0/2000/02/imap_hi_l0_raw_20000224-repoint00047_v001.pkts"
@@ -2024,10 +2045,9 @@ def test_repoint_date_range(
             }
         ]
     }
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
-        lambda_handler(events, None)
-        # should call twice, one for Hi all l1a job and one for l1b hk job.
-        assert mock_batch_client.submit_job.call_count == 2
+    lambda_handler(events, None)
+    # should call twice, one for Hi all l1a job and one for l1b hk job.
+    assert batch_client.submit_job.call_count == 2
 
     # Test date range for ENA and GLOWS instruments
     filename = "imap_hi_l0_raw_20000224-repoint00047_v001.pkts"
@@ -2139,34 +2159,34 @@ def test_repoint_date_range(
             }
         ]
     }
-
-    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
-        lambda_handler(events, None)
-        # verify that the function was called once
-        mock_batch_client.submit_job.assert_called_once()
-        mock_batch_client.submit_job.assert_called_with(
-            jobName="spacecraft-l1a-pointing-attitude-job-3",
-            jobQueue="ProcessingJobQueue",
-            jobDefinition="ProcessingJob-spacecraft",
-            containerOverrides={
-                "command": [
-                    "--instrument",
-                    "spacecraft",
-                    "--data-level",
-                    "l1a",
-                    "--descriptor",
-                    "pointing-attitude",
-                    "--start-date",
-                    "20000225",
-                    "--version",
-                    "v001",
-                    "--dependency",
-                    "imap_spacecraft_l1a_pointing-attitude-12ca6ae0_20000225_v001.json",
-                    "--upload-to-sdc",
-                ]
-            },
-            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
-        )
+    # reset mock call count
+    batch_client.submit_job.call_count = 0
+    lambda_handler(events, None)
+    # verify that the function was called once
+    batch_client.submit_job.assert_called_once()
+    batch_client.submit_job.assert_called_with(
+        jobName="spacecraft-l1a-pointing-attitude-job-3",
+        jobQueue="ProcessingJobQueue",
+        jobDefinition="ProcessingJob-spacecraft",
+        containerOverrides={
+            "command": [
+                "--instrument",
+                "spacecraft",
+                "--data-level",
+                "l1a",
+                "--descriptor",
+                "pointing-attitude",
+                "--start-date",
+                "20000225",
+                "--version",
+                "v001",
+                "--dependency",
+                "imap_spacecraft_l1a_pointing-attitude-12ca6ae0_20000225_v001.json",
+                "--upload-to-sdc",
+            ]
+        },
+        retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
+    )
 
 
 def test_lambda_skip_processing_due_to_crid_check(session, caplog):
@@ -2475,7 +2495,7 @@ def test_hi_goodtimes_multi_repoint_trigger(
     mock_submit_all_jobs,
     mock_get_dependencies,
     session,
-    s3_client,
+    batch_client,
     monkeypatch,
 ):
     """Test Hi Goodtimes multi-repoint trigger logic in s3_processing_event.
@@ -2529,7 +2549,6 @@ def test_hi_goodtimes_multi_repoint_trigger(
     context = {"context": "sample_context"}
 
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", Mock()),
         patch.object(batch_starter, "generate_queue_url", return_value=False),
     ):
         lambda_handler(events, context)
@@ -2553,3 +2572,42 @@ def test_hi_goodtimes_multi_repoint_trigger(
 
     # With trigger repoint 3 and N=2, targets are [2, 3, 4]
     assert repoints_submitted == {2, 3, 4}
+
+
+def test_get_container_image_digest():
+    """Test that the correct image digest is returned."""
+    # In conftest.py, we mocked the ECR client to set up repos for each instrument
+    # and push a mock image for each repo. The mock image has a digest of
+    # "sha256:123example{instrument}digest". Assert that the function returns the
+    # expected digest
+    # given the job definition.
+    for instrument in ["swe", "lo", "idex", "mag"]:  # check a few instruments
+        expected_digest = f"sha256:123example{instrument}digest"
+        job_definition = f"ProcessingJob-{instrument}"
+        digest = batch_starter.get_container_image_digest(job_definition)
+        assert digest == expected_digest
+
+
+def test_get_container_image_no_active_digest():
+    """Test that the correct error is raised."""
+    with mock_ecr():
+        ecr_client = boto3.client("ecr", region_name="us-west-2")
+        # Create a repo but do not push an image, so there is no active digest
+        ecr_client.create_repository(repositoryName="swe-repo")
+        job_definition = "ProcessingJob-swe"
+        with pytest.raises(ECR_CLIENT.exceptions.ImageNotFoundException):
+            batch_starter.get_container_image_digest(job_definition)
+
+
+def test_get_container_image_job_deff_not_found():
+    """Test that the correct error is raised."""
+    with mock_batch():
+        with patch.object(
+            batch_starter,
+            "BATCH_CLIENT",
+            boto3.client("batch", region_name="us-west-2"),
+        ):
+            with pytest.raises(ValueError, match="Job definition not found"):
+                batch_starter.get_container_image_digest("ProcessingJob-swe")
+        job_definition = "ProcessingJob-swe"
+        batch_starter.get_container_image_digest(job_definition)

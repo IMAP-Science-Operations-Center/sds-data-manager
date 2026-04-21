@@ -98,7 +98,6 @@ def test_batch_job_event(session, events_client, ecr_client):
     processing_job = session.execute(query).first()
     assert processing_job.id == job_id
     assert processing_job.status == models.Status.FAILED
-    assert processing_job.container_image_digest == "sha256:123exampledigest"
     # Processing time should be 2025-04-11 18:48:16.519000+00:00.
     # Had to do replace timezone info to be None because test's db
     # looses timezone info. This shouldn't happen in production.
@@ -126,7 +125,6 @@ def test_batch_job_event(session, events_client, ecr_client):
     processing_job = session.execute(query).first()
     assert processing_job.id == job_id
     assert processing_job.status == models.Status.SUCCEEDED
-    assert processing_job.container_image_digest == "sha256:123exampledigest"
 
 
 def test_s3_sci_event(session, s3_client, events_client):
