@@ -1,0 +1,16 @@
+glows, l0, raw
+glows, l1a, de
+glows, l1a, hist
+glows, l1b, de
+glows, l1b, hist
+glows, l2, hist
+glows, l3a, hist
+
+glows, l3b, ion-rate-profile
+glows, l3c, sw-profile
+glows, l3d, solar-hist
+glows, l3e, survival-probability-lo
+glows, l3e, survival-probability-hi-90
+glows, l3e, survival-probability-hi-45
+glows, l3e, survival-probability-ul-sf
+glows, l3e, survival-probability-ul-hf
