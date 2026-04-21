@@ -14,7 +14,7 @@ lo,l1b, derates
 lo,l1b, prostar
 lo,l1b,nhk
 lo,l1b,shk
-lo,l1b,goodtimes
+lo,L1b,good-times
 lo,l1b,bgrates
 lo,l1c, pset
 lo,l2,l090-ena-h-hf-nsp-ram-hae-6deg-1yr
@@ -34,6 +34,3 @@ lo,l3,l090-spx-h-sf-nsp-ram-hae-6deg-1yr
 lo,l3,l090-spx-h-sf-sp-ram-hae-6deg-1yr
 lo,l3,l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr
 lo,l3,l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr
-
-lo, l3, l090-ena-h-sf-sp-ram-hae-6deg-1yr
-lo, l3, l090-ena-h-hf-sp-ram-hae-6deg-1yr

@@ -23,22 +23,6 @@ glows, ancillary, pipeline-settings
 glows, ancillary, suspected-transients
 glows, ancillary, time-dep-bckgrd
 
-glows, ancillary, bad-days-list
-glows, ancillary, electron-density-2010a
-glows, ancillary, energy-grid-hi
-glows, ancillary, energy-grid-lo
-glows, ancillary, energy-grid-ultra
-glows, ancillary, ionization-files
-glows, ancillary, lya-2010a
-glows, ancillary, photoion-2010a
-glows, ancillary, pipeline-settings-l3bcde
-glows, ancillary, plasma-speed-2010a
-glows, ancillary, proton-density-2010a
-glows, ancillary, tess-xyz-8
-glows, ancillary, uv-anisotropy-1CR
-glows, ancillary, uv-anisotropy-2010a
-glows, ancillary, WawHelioIonMP
-
 hi, ancillary, 45sensor-cal-prod
 hi, ancillary, 45sensor-esa-energies
 hi, ancillary, 45sensor-esa-eta-fit-factors

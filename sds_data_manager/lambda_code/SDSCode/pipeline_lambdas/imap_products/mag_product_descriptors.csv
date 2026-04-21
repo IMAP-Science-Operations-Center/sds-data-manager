@@ -11,23 +11,6 @@ mag, l1b, norm-magi
 mag, l1b, norm-mago
 mag, l1c, norm-magi
 mag, l1c, norm-mago
-
-mag, l1d, burst-dsrf
-mag, l1d, burst-gse
-mag, l1d, burst-rtn
-mag, l1d, burst-srf
-
-mag, l1d, norm-dsrf
-mag, l1d, norm-gse
-mag, l1d, norm-rtn
 mag, l1d, norm-srf
-
-mag, l2, burst-dsrf
-mag, l2, burst-gse
-mag, l2, burst-rtn
 mag, l2, burst-srf
-
-mag, l2, norm-dsrf
-mag, l2, norm-gse
-mag, l2, norm-rtn
 mag, l2, norm-srf
