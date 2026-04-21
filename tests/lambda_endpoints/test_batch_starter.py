@@ -36,7 +36,6 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     dependency,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
-    ECR_CLIENT,
     CadenceDays,
     cadence_reprocessing_event,
     determine_date_range,
@@ -2590,12 +2589,16 @@ def test_get_container_image_digest():
 def test_get_container_image_no_active_digest():
     """Test that the correct error is raised."""
     with mock_ecr():
-        ecr_client = boto3.client("ecr", region_name="us-west-2")
-        # Create a repo but do not push an image, so there is no active digest
-        ecr_client.create_repository(repositoryName="swe-repo")
-        job_definition = "ProcessingJob-swe"
-        with pytest.raises(ECR_CLIENT.exceptions.ImageNotFoundException):
-            batch_starter.get_container_image_digest(job_definition)
+        with patch.object(
+            batch_starter,
+            "ECR_CLIENT",
+            boto3.client("ecr", region_name="us-west-2"),
+        ) as ecr_client:
+            # Create a repo but do not push an image, so there is no active digest
+            ecr_client.create_repository(repositoryName="swe-repo")
+            job_definition = "ProcessingJob-swe"
+            with pytest.raises(ecr_client.exceptions.ImageNotFoundException):
+                batch_starter.get_container_image_digest(job_definition)
 
 
 def test_get_container_image_job_deff_not_found():
