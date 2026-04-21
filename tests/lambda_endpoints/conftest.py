@@ -146,7 +146,10 @@ def ecr_client():
                 imageTag="latest",
                 imageDigest=f"sha256:123example{instrument}digest",
             )
-        yield ecr_client
+        with (
+            patch.object(batch_starter, "ECR_CLIENT", ecr_client),
+        ):
+            yield ecr_client
 
 
 @pytest.fixture(autouse=True)
