@@ -268,9 +268,19 @@ def determine_job_version(
     data_level: str,
     descriptor: str,
     start_date: datetime,
-    current_dependencies: str,
 ) -> str:
-    """Return the maximum existing file version in the pipeline increased by one.
+    """Return the next version number for this job (max version + 1).
+
+    This always returns an incremented version. We don't compare dependencies here
+    because the unique constraint on (dependency_hash, container_image_digest)
+    handles duplicate detection reactively in `try_to_submit_job`.
+
+    The duplicate detection works like this: a job is skipped only if BOTH the
+    dependency_hash AND container_image_digest are identical to a previous
+    INPROGRESS or SUCCEEDED job. If either the hash changes or the image digest changes
+    (due to a new software version), a new job submission is allowed with a bumped
+    version.
+
 
     Parameters
     ----------
@@ -284,13 +294,11 @@ def determine_job_version(
         Data descriptor.
     start_date : datetime
         Start date.
-    current_dependencies : str
-        Serialized dependencies for the current job.
 
     Returns
     -------
      str
-        The highest version number.
+        The next version (e.g., v001 for first, v002 for second, etc).
     """
 
     def filter_conditions(table):
@@ -318,26 +326,20 @@ def determine_job_version(
     )
     if max_version_record:
         max_version_processing = max_version_record.version
-        # Step 2: If there is a job already in progress, determine whether the current
-        # job is a duplicate of the in-progress job by checking the dependency file
-        # hash. If the hashes are different, then we know the dependencies have changed
-        # and we should bump the version number and continue with processing.
+        # Step 2: If there is a job already in progress, return the next version number
+        # without checking the science files table. This is to avoid filename
+        # collisions between two jobs running at the same time with the same version
+        # number. The unique constraint on (dependency_hash, container_image_digest)
+        # will prevent the job from being submitted if it is a true duplicate.
         if max_version_record.status == models.Status.INPROGRESS:
-            command = max_version_record.container_command
-            if dependency_hash(current_dependencies) in command:
-                # Return the current max version and this job will not proceed if
-                # everything else is the same.
-                return max_version_processing
-            else:
-                # Dependencies have changed, so bump the version number.
-                logger.info(
-                    f"Job with id: {max_version_record.id} is in progress, but the "
-                    f"dependencies have changed. Bumping version number."
-                )
-                return f"v{int(max_version_processing[1:]) + 1:03d}"
-
+            logger.info(
+                f"Job with id: {max_version_record.id} is in progress. Will try to "
+                f"submit a new job with an incremented version number."
+            )
+            return f"v{int(max_version_processing[1:]) + 1:03d}"
     else:
         max_version_processing = None
+
     # Step 3: If the descriptor is "all", only use the max version from the processing
     # job table. The ScienceFiles table does not have descriptors of "all" since the
     # products produced will have their own specific descriptors.
@@ -356,7 +358,7 @@ def determine_job_version(
     ).scalar()
 
     # Step 5: By default, use the max version from the science files table unless
-    # it is a spacecraft "pointing-attitude" job. If a so, then use the max version
+    # it is a spacecraft "pointing-attitude" job. If so, then use the max version
     # from the processing jobs table. If the job is a spacecraft pointing-attitude job,
     # it will produce a SPICE kernel and not a science file. There is no way to
     # determine the filename of the kernel that will be produced, so we rely on the max
@@ -420,10 +422,15 @@ def try_to_submit_job(
     # Serialize the upstream dependencies and write them to a JSON file. The Imap
     # processing code will read the JSON file and deserialize the dependencies. This is
     # to avoid passing a large string through the batch job command line.
-    # release
-    # The descriptor should include a hash of the serialized dependencies.
-    # This makes it unique for this file and set of dependencies.
-    dep_descriptor = f"{descriptor}-{dependency_hash(serialized_dependencies)}"
+
+    # Calculate the dependency hash, if dependencies
+    # change, the hash changes. Combined with the unique constraint on
+    # (dependency_hash, container_image_digest), this gives us duplicate detection:
+    # same deps + same digest = IntegrityError = job skipped
+    # For a given instrument, data_level, start_date ect. If either the deps change or
+    # the image changes then a new job is allowed with a bumped version number.
+    dep_hash = dependency_hash(serialized_dependencies)
+    dep_descriptor = f"{descriptor}-{dep_hash}"
     dependency_file = DependencyFilePath.generate_from_inputs(
         instrument=instrument,
         data_level=data_level,
@@ -480,6 +487,7 @@ def try_to_submit_job(
         start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
         version=version,
         repointing=repoint,
+        dependency_hash=dep_hash,
         container_command=" ".join(batch_command),
         container_image_digest=container_image_digest,
     )
@@ -593,7 +601,6 @@ def submit_all_jobs(
             descriptor=job_node["descriptor"],
             start_date=datetime.datetime.strptime(trigger_start_date, "%Y%m%d"),
             data_level=job_node["data_type"],
-            current_dependencies=serialized_deps,
         )
         try_to_submit_job(
             session,
@@ -672,7 +679,6 @@ def submit_all_jobs(
             descriptor=job_node["descriptor"],
             start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
             data_level=job_node["data_type"],
-            current_dependencies=serialized_deps,
         )
         try_to_submit_job(
             session,
@@ -1358,7 +1364,6 @@ def cadence_processing_event(
             data_level=data_level,
             descriptor=descriptor,
             start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
-            current_dependencies=serialized_deps,
         )
         # Submit the map job with all of the upstream dependencies in the date range
         try_to_submit_job(

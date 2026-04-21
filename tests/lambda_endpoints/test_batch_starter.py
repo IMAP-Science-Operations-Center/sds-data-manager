@@ -90,6 +90,7 @@ def _populate_processing_table(session):
         descriptor="de",
         start_date=datetime(2010, 1, 1),
         version="v001",
+        dependency_hash="abc123def456",
     )
     session.add(record)
     session.commit()
@@ -191,10 +192,16 @@ def test_lambda_handler(session, s3_client, mock_upload_request_success, batch_c
             session,
             {"data_source": "swe", "data_type": "l1a", "descriptor": "all"},
             "20240101",
-            "v001",
+            "v002",
             processing_input.serialize(),
             repoint=None,
         )
+    # assert submit job was only called once
+    # Even though we call lambda_handler twice, the second time it should not submit
+    # another job because the first job is still in progress and has the same container
+    # image digest and command, so it should hit the unique constraint and not submit
+    # a new job.
+    assert batch_client.submit_job.call_count == 1
 
 
 def test_different_queues(session, s3_client, batch_client):
@@ -448,10 +455,16 @@ def test_lambda_handler_spice_event(session, mock_upload_request_success, batch_
             session,
             {"data_source": "swe", "data_type": "l2", "descriptor": "sci"},
             "20250430",
-            "v001",
+            "v002",
             expected_dependencies.serialize(),
             repoint=None,
         )
+    # assert submit job was only called twice
+    # Even though we call lambda_handler twice, the second time it should not submit
+    # another 2 jobs because the first jobs are still in progress and have the same
+    # container image digest and command, so it should hit the unique constraint and
+    # not submit new jobs
+    assert batch_client.submit_job.call_count == 2
 
 
 def test_lambda_handler_ancillary_event(
@@ -581,10 +594,17 @@ def test_lambda_handler_ancillary_event(
             session,
             {"data_source": "swe", "data_type": "l1b", "descriptor": "sci"},
             "20260303",
-            "v001",
+            "v002",
             json.dumps(inputs),
             repoint=None,
         )
+
+    # assert submit job was only called once
+    # Even though we call lambda_handler twice, the second time it should not submit
+    # another job because the first job is still in progress and has the same container
+    # image digest and command, so it should hit the unique constraint and not submit
+    # a new job.
+    assert batch_client.submit_job.call_count == 1
 
 
 def test_lambda_handler_no_dependencies(session):
@@ -1088,10 +1108,17 @@ def test_lambda_handler_mag_l1c_case(
             session,
             {"data_source": "mag", "data_type": "l1c", "descriptor": "norm-mago"},
             "20240101",
-            "v002",
+            "v003",
             expected_processing_input.serialize(),
             repoint=None,
         )
+
+    # assert submit job was only called twice
+    # Even though we call lambda_handler twice, the second time it should not submit
+    # another 2 jobs because the first jobs are still in progress and have the same
+    # container image digest and command, so it should hit the unique constraint and
+    # not submit new jobs
+    assert batch_client.submit_job.call_count == 2
 
 
 def test_lambda_handler_duplicate_mag_l1c_job(
@@ -1158,8 +1185,9 @@ def test_lambda_handler_duplicate_mag_l1c_job(
                     ProcessingJob.data_level == obj.data_level,
                     ProcessingJob.descriptor == obj.descriptor,
                     ProcessingJob.start_date == obj.start_date,
-                    ProcessingJob.version == obj.version,
                     ProcessingJob.repointing == obj.repointing,
+                    ProcessingJob.dependency_hash == obj.dependency_hash,
+                    ProcessingJob.container_image_digest == obj.container_image_digest,
                     ProcessingJob.status.in_(["INPROGRESS", "SUCCEEDED"]),
                 )
                 .all()
@@ -1632,9 +1660,12 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success, batch_client
             session,
             {"data_source": "idex", "data_type": "l2b", "descriptor": "all-1mo"},
             "20230109",
-            "v002",
+            "v003",
             expected_processing_input.serialize(),
         )
+    # assert submit job was only called twice. The third time we call lambda_handler,
+    # it should not submit a new job because it is a duplicate.
+    assert batch_client.submit_job.call_count == 2
 
 
 def test_invalid_cadence(session):
@@ -1715,6 +1746,7 @@ def test_determine_max_version(session):
         descriptor="de",
         start_date=datetime(2010, 1, 1),
         version="v001",
+        dependency_hash="27005a05",
         container_command="--dependency imap_lo_l1b_de-27005a05_20100101_v001.json",
     )
     session.add(record)
@@ -1727,19 +1759,8 @@ def test_determine_max_version(session):
         data_level="l1b",
         descriptor="de",
         start_date=datetime(2010, 1, 1),
-        current_dependencies="abcdsf",
     )
     assert result == "v002"
-    # Assert that the version returned is "v001" when the job has not been processed.
-    result = determine_job_version(
-        session=session,
-        instrument="swapi",
-        data_level="l1b",
-        descriptor="sci",
-        start_date=datetime(2010, 1, 1),
-        current_dependencies="7f101966",
-    )
-    assert result == "v001"
 
 
 def test_determine_job_version_descriptor_is_all(session):
@@ -1753,7 +1774,6 @@ def test_determine_job_version_descriptor_is_all(session):
         data_level="l1b",
         descriptor="all",
         start_date=datetime(2024, 1, 1),
-        current_dependencies="7f101966",
     )
     assert result == "v001"
 
@@ -1769,7 +1789,6 @@ def test_determine_max_version_missing_processing_job(session):
         data_level="l1a",
         descriptor="sci",
         start_date=datetime(2024, 1, 1),
-        current_dependencies="7f101966",
     )
     assert result == "v001"
 
@@ -1797,6 +1816,7 @@ def test_duplicate_job(session, first_status, second_status):
                 descriptor="de",
                 start_date=datetime(2010, 1, 1),
                 version="v001",
+                dependency_hash="27005a05",
             )
         )
     session.commit()
@@ -1809,6 +1829,7 @@ def test_duplicate_job(session, first_status, second_status):
         descriptor="de",
         start_date=datetime(2010, 1, 1),
         version="v001",
+        dependency_hash="27005a05",
     )
     session.add(record)
     session.commit()
@@ -1821,6 +1842,7 @@ def test_duplicate_job(session, first_status, second_status):
         descriptor="de",
         start_date=datetime(2010, 1, 1),
         version="v001",
+        dependency_hash="27005a05",
     )
     session.add(duplicate)
     with pytest.raises(IntegrityError):
@@ -1839,6 +1861,7 @@ def test_duplicate_job(session, first_status, second_status):
         descriptor="de",
         start_date=datetime(2010, 1, 1),
         version="v001",
+        dependency_hash="27005a05",
     )
     session.add(record)
     session.commit()
@@ -2441,13 +2464,12 @@ def test_determine_job_version_science(session):
             descriptor="de",
             start_date=datetime(2024, 1, 1),
             version="v003",
+            dependency_hash="123examplehash",
         ),
     ]
     session.add_all(records)
     session.add_all(records)
-    version = determine_job_version(
-        session, "lo", "l1a", "de", datetime(2024, 1, 1), "test_dependency"
-    )
+    version = determine_job_version(session, "lo", "l1a", "de", datetime(2024, 1, 1))
     # The version should be v002
     assert version == "v002"
 
@@ -2468,6 +2490,7 @@ def test_determine_job_version_spacecraft(session):
             descriptor="pointing-attitude",
             start_date=datetime(2024, 1, 1),
             version="v002",
+            dependency_hash="123examplehash",
         )
     ]
     session.add_all(records)
@@ -2477,7 +2500,6 @@ def test_determine_job_version_spacecraft(session):
         "l1a",
         "pointing-attitude",
         datetime(2024, 1, 1),
-        "test_dependency",
     )
     # The version should be v003 since there was a successful job with v002
     assert version == "v003"
