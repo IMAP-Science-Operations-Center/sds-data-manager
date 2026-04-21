@@ -79,9 +79,12 @@ def get_container_image_digest(job_definition: str):
     )
     if not job_def_response or not job_def_response.get("jobDefinitions"):
         raise ValueError(f"Job definition not found: {job_definition}")
-    # Get the active job revision (there is only one active at a time)
-    job_deff = job_def_response["jobDefinitions"][0]
-    container_image = job_deff["containerProperties"]["image"]
+    # Select the latest active job definition revision.
+    job_def = max(
+        job_def_response["jobDefinitions"],
+        key=lambda definition: definition.get("revision", 0),
+    )
+    container_image = job_def["containerProperties"]["image"]
     # Parse the container image URI to get the registry id, repository name and image
     # tag and use those to call describe_images and get the image digest.
     # Eg. for 123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest,
@@ -460,7 +463,7 @@ def try_to_submit_job(
     job_definition = f"ProcessingJob-{instrument}{step}"
 
     # Capture the container image and digest right before submitting the job.
-    # This ensures the exact image digest that will be used is recorded. We record this
+    # This ensures the image digest that will be used is recorded. We record this
     # information here and not in indexer.py to avoid race conditions where the image
     # could change during job execution.
     container_image_digest = get_container_image_digest(job_definition)
