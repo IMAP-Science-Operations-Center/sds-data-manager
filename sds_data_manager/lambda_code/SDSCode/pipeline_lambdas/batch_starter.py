@@ -432,8 +432,8 @@ def try_to_submit_job(
 
     # Capture the container image and digest right before submitting the job.
     # This ensures the exact image digest that will be used is recorded. We record this
-    # before submitting the job to avoid race conditions where the image could change
-    # during job execution.
+    # information here and not in indexer.py to avoid race conditions where the image
+    # could change during job execution.
     container_image_digest = get_container_image_digest(job_definition)
 
     # All of our upstream requirements have been met.
