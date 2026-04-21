@@ -372,7 +372,6 @@ def batch_event_handler(event):
         # Make the updates
         job.status = job_status
         job.job_definition = event["detail"]["jobDefinition"]
-        job.job_definition = event["detail"]["jobDefinition"]
         job.job_log_stream_id = event["detail"]["container"]["logStreamName"]
         job.container_image = event["detail"]["container"]["image"]
         job.started_at = started_at

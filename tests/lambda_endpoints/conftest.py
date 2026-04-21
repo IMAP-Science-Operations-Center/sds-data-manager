@@ -195,27 +195,6 @@ def mock_upload_request_success():
         yield mock_upload_api, mock_requests
 
 
-# @pytest.fixture(autouse=True)
-# def properly_mocked_ecr_client():
-#     """Fixture that returns a properly configured mock ECR_CLIENT.
-#
-#     This is useful for tests that want to patch ECR_CLIENT themselves but
-#     still need the proper describe_images response.
-#     """
-#     mock_ecr_client = Mock()
-#     mock_ecr_client.describe_images.return_value = {
-#         "imageDetails": [
-#             {
-#                 "imageDigest": "sha256:123exampledigest"
-#             }
-#         ]
-#     }
-#     with (
-#         patch.object(batch_starter, "ECR_CLIENT", mock_ecr_client),
-#     ):
-#         yield mock_ecr_client
-
-
 # Check if `psycopg` and PostgreSQL are both available and compatible.
 POSTGRES_AVAILABLE = False
 # TODO: fix this to work with postgres locally
