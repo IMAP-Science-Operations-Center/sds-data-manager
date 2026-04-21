@@ -1,10 +1,13 @@
 """Test the I-ALiRT instrument data freshness alarm lambda."""
 
+import os
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_instrument_alarm import (
+    INSTRUMENTS,
     check_instrument,
+    lambda_handler,
     notify_missing,
 )
 
@@ -37,3 +40,14 @@ def test_notify_missing_publishes_correct_message(mock_boto3_client):
             "hit, mag"
         ),
     )
+
+
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_instrument_alarm.notify_missing")
+def test_lambda_handler_returns_missing_instruments(mock_notify, setup_data_table):
+    """lambda_handler returns all instruments as missing when table is empty."""
+    os.environ["SNS_TOPIC_ARN"] = TOPIC_ARN
+
+    result = lambda_handler({}, None)
+
+    assert result["missing_instruments"] == INSTRUMENTS
+    mock_notify.assert_called_once()
