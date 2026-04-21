@@ -1,12 +1,12 @@
-hit, l0, raw
-hit, l1a, counts-standard,
-hit, l1a, counts-sectored,
-hit, l1b, hk
-hit, l1b, sectored-rates
-hit, l1b, standard-rates
-hit, l1b, summed-rates
-hit, l2, macropixel-intensity
-hit, l2, standard-intensity
-hit, l2, summed-intensity
-hit, l3, direct-events
-hit, l3, macropixel
+ hit, l0, raw
+ hit, l1a, counts-standard,
+ hit, l1a, counts-sectored,
+ hit, l1b, hk
+ hit, l1b, sectored-rates
+ hit, l1b, standard-rates
+ hit, l1b, summed-rates
+ hit, l2, macropixel-intensity
+ hit, l2, standard-intensity
+ hit, l2, summed-intensity
+ hit, l3, direct-events
+ hit, l3, macropixel

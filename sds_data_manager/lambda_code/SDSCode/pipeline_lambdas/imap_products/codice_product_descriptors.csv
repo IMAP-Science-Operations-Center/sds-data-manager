@@ -1,49 +1,49 @@
-codice, l0, raw
+ codice, l0, raw
 
-codice, l1a, hi-counters-aggregated
-codice, l1a, hi-counters-singles
-codice, l1a, hi-omni
-codice, l1a, hi-priority
-codice, l1a, hi-sectored
-codice, l1a, lo-counters-aggregated
-codice, l1a, lo-counters-singles
-codice, l1a, lo-nsw-angular
-codice, l1a, lo-nsw-priority
-codice, l1a, lo-nsw-species
-codice, l1a, lo-sw-angular
-codice, l1a, lo-sw-priority
-codice, l1a, lo-sw-species
+ codice, l1a, hi-counters-aggregated
+ codice, l1a, hi-counters-singles
+ codice, l1a, hi-omni
+ codice, l1a, hi-priority
+ codice, l1a, hi-sectored
+ codice, l1a, lo-counters-aggregated
+ codice, l1a, lo-counters-singles
+ codice, l1a, lo-nsw-angular
+ codice, l1a, lo-nsw-priority
+ codice, l1a, lo-nsw-species
+ codice, l1a, lo-sw-angular
+ codice, l1a, lo-sw-priority
+ codice, l1a, lo-sw-species
 
-codice, l1b, hi-counters-aggregated
-codice, l1b, hi-counters-singles
-codice, l1b, hi-omni
-codice, l1b, hi-priority
-codice, l1b, hi-sectored
-codice, l1b, lo-counters-aggregated
-codice, l1b, lo-counters-singles
-codice, l1b, lo-nsw-angular
-codice, l1b, lo-nsw-priority
-codice, l1b, lo-nsw-species
-codice, l1b, lo-sw-angular
-codice, l1b, lo-sw-priority
-codice, l1b, lo-sw-species
+ codice, l1b, hi-counters-aggregated
+ codice, l1b, hi-counters-singles
+ codice, l1b, hi-omni
+ codice, l1b, hi-priority
+ codice, l1b, hi-sectored
+ codice, l1b, lo-counters-aggregated
+ codice, l1b, lo-counters-singles
+ codice, l1b, lo-nsw-angular
+ codice, l1b, lo-nsw-priority
+ codice, l1b, lo-nsw-species
+ codice, l1b, lo-sw-angular
+ codice, l1b, lo-sw-priority
+ codice, l1b, lo-sw-species
 
-codice, l2, hi-direct-events
-codice, l2, hi-omni
-codice, l2, hi-sectored
-codice, l2, lo-direct-events
-codice, l2, lo-nsw-angular
-codice, l2, lo-nsw-species
-codice, l2, lo-sw-angular
-codice, l2, lo-sw-species
+ codice, l2, hi-direct-events
+ codice, l2, hi-omni
+ codice, l2, hi-sectored
+ codice, l2, lo-direct-events
+ codice, l2, lo-nsw-angular
+ codice, l2, lo-nsw-species
+ codice, l2, lo-sw-angular
+ codice, l2, lo-sw-species
 
-codice, l3a, hi-direct-events
-codice, l3a, lo-direct-events
-codice, l3a, lo-heplus-3d-distribution
-codice, l3a, lo-heplus2-3d-distribution
-codice, l3a, lo-hplus-3d-distribution
-codice, l3a, lo-oplus6-3d-distribution
-codice, l3a, lo-partial-densities
-codice, l3a, lo-sw-charge-state-distributions
-codice, l3a, lo-sw-ratios
-codice, l3b, hi-pitch-angle
+ codice, l3a, hi-direct-events
+ codice, l3a, lo-direct-events
+ codice, l3a, lo-heplus-3d-distribution
+ codice, l3a, lo-heplus2-3d-distribution
+ codice, l3a, lo-hplus-3d-distribution
+ codice, l3a, lo-oplus6-3d-distribution
+ codice, l3a, lo-partial-densities
+ codice, l3a, lo-sw-charge-state-distributions
+ codice, l3a, lo-sw-ratios
+ codice, l3b, hi-pitch-angle
