@@ -478,7 +478,7 @@ def try_to_submit_job(
         version=version,
         repointing=repoint,
         container_command=" ".join(batch_command),
-        container_image=container_image_digest,
+        container_image_digest=container_image_digest,
     )
     try:
         session.add(processing_job)

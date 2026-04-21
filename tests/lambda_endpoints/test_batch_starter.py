@@ -175,6 +175,10 @@ def test_lambda_handler(session, s3_client, mock_upload_request_success, batch_c
         QueueUrl="https://sqs.us-west-2.amazonaws.com/123456789012/testing-queue-url.fifo",
         ReceiptHandle="testingtesting123",
     )  # Verify the function was called with the correct upstream dependencies
+    # Check the processing job record
+    processing_job_record = session.query(models.ProcessingJob).first()
+    assert processing_job_record.status == models.Status.INPROGRESS
+    assert processing_job_record.container_image_digest == "sha256:123exampleswedigest"
 
     with (
         patch(
