@@ -179,7 +179,9 @@ class CadenceDays(float, Enum):
             )
         return lookup[cadence_str]
 
-    def get_first_job_start_date(self, as_string: bool = False) -> datetime.datetime:
+    def get_first_job_start_date(
+        self, as_string: bool = False
+    ) -> datetime.datetime | str:
         """Get the first job start date for this cadence.
 
         Parameters
@@ -190,10 +192,10 @@ class CadenceDays(float, Enum):
 
         Returns
         -------
-        datetime.datetime
+        datetime.datetime | str
             The first job start date for this cadence.
         """
-        if self == CadenceDays.ONE_MONTH:
+        if self.value == CadenceDays.ONE_MONTH.value:
             # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
             # a 1 month cadence job and the first job should be a month after launch
             start_date = LAUNCH_DATE + datetime.timedelta(days=self.value)

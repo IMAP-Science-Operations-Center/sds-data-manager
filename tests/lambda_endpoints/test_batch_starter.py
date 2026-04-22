@@ -1669,7 +1669,7 @@ def test_cadence_to_datetime_range():
 
 
 def test_cadence_start_map_start_dates():
-    """Test that the cadence start date for map jobs is correct."""
+    """Test that the cadence start date for cadence jobs is correct."""
     # Verify each cadence obj returns the expected start date
     assert CadenceDays.ONE_MONTH.get_first_job_start_date(as_string=True) == "20251024"
     assert (
@@ -1677,6 +1677,10 @@ def test_cadence_start_map_start_dates():
     )
     assert CadenceDays.SIX_MONTHS.get_first_job_start_date(as_string=True) == "20260718"
     assert CadenceDays.ONE_YEAR.get_first_job_start_date(as_string=True) == "20270117"
+    # check that the start date is a datetime object when as_string is False
+    assert isinstance(
+        CadenceDays.ONE_MONTH.get_first_job_start_date(as_string=False), datetime
+    )
 
 
 def test_upload_dependency_file(

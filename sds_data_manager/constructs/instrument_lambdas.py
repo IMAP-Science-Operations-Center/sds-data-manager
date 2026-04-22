@@ -167,7 +167,7 @@ class BatchStarterLambda(Construct):
         # Note: We are defining the schedules to run at minute level intervals because
         # AWS EventBridge Scheduler does not allow for decimal values in the rate
         # expression. E.g., we cannot specify "rate(91.2 days)" for 3 months.
-        # Determine the first trigger date for each map cadence:
+        # The first trigger date for each map cadence:
         #    - 3 month maps start at FIRST_MAP_START_DATE + 3 months
         #    - 6 month maps start at FIRST_MAP_START_DATE + 6 months
         #    - 1 year maps start at FIRST_MAP_START_DATE + 1 year
