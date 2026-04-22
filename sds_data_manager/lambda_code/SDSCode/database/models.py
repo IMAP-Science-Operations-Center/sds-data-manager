@@ -19,6 +19,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     and_,
+    func,
 )
 from sqlalchemy import (
     Enum as SqlEnum,
@@ -91,24 +92,26 @@ class ProcessingJob(Base):
     container_image = Column(String)
     container_image_digest = Column(String)
     container_command = Column(String)
-    dependency_hash = Column(String, nullable=False)
+    dependency_hash = Column(String)
     started_at = Column(DateTime(timezone=True))
     stopped_at = Column(DateTime(timezone=True))
 
     __table_args__ = (
-        # Partial unique index to ensure only one INPROGRESS or COMPLETED for a record
+        # Partial unique index to ensure only one INPROGRESS or SUCCEEDED for a record
         # We do want to allow multiple FAILED records
         # NOTE: This does not work with sqllite (testing) DBs, only postgres
-        # if any columns are null, they are ignored (such as repointing)
+        # COALESCE(repointing, -1) ensures that NULL repointing values are treated as
+        # equal for uniqueness purposes, while other nullable columns (dependency_hash,
+        # container_image_digest) retain standard NULL behavior (NULL != NULL).
         Index(
             "idx_unique_status",
             "instrument",
             "data_level",
             "descriptor",
             "start_date",
-            "repointing",
             "container_image_digest",
             "dependency_hash",
+            func.coalesce(repointing, -1),
             unique=True,
             postgresql_where=and_(status.in_(["INPROGRESS", "SUCCEEDED"])),
         ),
@@ -124,7 +127,7 @@ class ProcessingJob(Base):
             "start_date": self.start_date.isoformat() if self.start_date else None,
             "version": self.version,
             "repointing": self.repointing,
-            "dependency_hash": self.dependency_hash,
+            "dependency_hash": self.dependency_hash if self.dependency_hash else None,
             # These parameters could be None when the batch job is in progress
             "job_definition": self.job_definition if self.job_definition else None,
             "job_log_stream_id": self.job_log_stream_id

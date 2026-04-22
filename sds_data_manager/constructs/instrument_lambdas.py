@@ -107,7 +107,12 @@ class BatchStarterLambda(Construct):
         # and submit batch job
         lambda_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["events:PutEvents", "batch:SubmitJob"],
+            actions=[
+                "events:PutEvents",
+                "batch:SubmitJob",
+                "batch:DescribeJobDefinitions",
+                "ecr:DescribeImages",
+            ],
             resources=[
                 "*",
             ],

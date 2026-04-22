@@ -1561,18 +1561,6 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success, batch_client
     cadence_event = {
         "cadence": "1mo",
     }
-    expected_processing_input = ProcessingInputCollection(
-        SPICEInput("naif0012.tls", "imap_sclk_0000.tsc"),
-        ScienceInput("imap_idex_l2a_sci-1week_20230202_v001.cdf"),
-        # There will be 2 science inputs containing l1b msg dependencies.
-        # The second input should include both l1b housekeeping files. THe IDEX
-        # l2b processing code will deduplicate all of the inputs
-        ScienceInput("imap_idex_l1b_msg_20230201_v001.cdf"),
-        ScienceInput(
-            "imap_idex_l1b_msg_20230201_v001.cdf", "imap_idex_l1b_msg_20230101_v001.cdf"
-        ),
-    )
-
     with (
         patch(
             "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter"
@@ -1619,6 +1607,22 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success, batch_client
     # Move ProcessingJob from in progress to succeeded to mimic the pipeline.
     processing_job_record = session.query(models.ProcessingJob).first()
     processing_job_record.status = models.Status.SUCCEEDED
+    # Update dependency hash by simulating the addition of a new version bumped idex l1b
+    # file
+    session.add(
+        ScienceFiles(
+            file_path="/path/to/imap_idex_l1b_msg_20230201_v002.cdf",
+            instrument="idex",
+            data_level="l1b",
+            descriptor="msg",
+            start_date=datetime(2023, 2, 1),
+            version="v002",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        )
+    )
     session.commit()
 
     lambda_handler(reprocessing_event, None)
@@ -1639,7 +1643,7 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success, batch_client
                 "--version",
                 "v002",
                 "--dependency",
-                "imap_idex_l2b_all-1mo-4976c57e_20230109_v002.json",
+                "imap_idex_l2b_all-1mo-bf0ea882_20230109_v002.json",
                 "--upload-to-sdc",
             ]
         },
@@ -1654,6 +1658,18 @@ def test_idex_l2b(session, auth_event, mock_upload_request_success, batch_client
             ".cadence_to_datetime_range"
         ) as dt_mock,
     ):
+        expected_processing_input = ProcessingInputCollection(
+            SPICEInput("naif0012.tls", "imap_sclk_0000.tsc"),
+            ScienceInput("imap_idex_l2a_sci-1week_20230202_v001.cdf"),
+            # There will be 2 science inputs containing l1b msg dependencies.
+            # The second input should include both l1b housekeeping files. THe IDEX
+            # l2b processing code will deduplicate all of the inputs
+            ScienceInput("imap_idex_l1b_msg_20230201_v002.cdf"),
+            ScienceInput(
+                "imap_idex_l1b_msg_20230101_v001.cdf",
+                "imap_idex_l1b_msg_20230201_v002.cdf",
+            ),
+        )
         dt_mock.return_value = ("20230209", "20230309")
         lambda_handler(cadence_event, None)
         mock_submit.assert_called_with(

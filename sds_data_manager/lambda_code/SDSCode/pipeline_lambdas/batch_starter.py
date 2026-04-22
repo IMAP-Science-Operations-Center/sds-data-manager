@@ -497,7 +497,10 @@ def try_to_submit_job(
     except IntegrityError:
         # Rollback the session to clear the failed transaction
         session.rollback()
-        logger.info(f"Job already completed or in progress: {processing_job}")
+        logger.info(
+            f"Job already completed or in progress. Tried to submit "
+            f"{processing_job.to_dict()}"
+        )
         return
 
     logger.info(
