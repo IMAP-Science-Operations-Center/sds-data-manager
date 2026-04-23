@@ -1218,7 +1218,7 @@ ultra, ancillary, l1b-45sensor-spbtphcorr, ultra, l1b, 45sensor-de, HARD, DOWNST
 ultra, ancillary, l1b-45sensor-sptpphcorr, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 45sensor-de, HARD, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-de-product-lookup, ultra, l1b, 45sensor-extendedspin, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-de-product-lookup, ultra, l1b, 45sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 
 ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-leftslit-lookup, ultra, l1b, 45sensor-priority-1-de, HARD, DOWNSTREAM
@@ -1394,19 +1394,19 @@ ultra, ancillary, l1c-45sensor-sc-pointing-index, ultra, l1c, 45sensor-spacecraf
 ultra, ancillary, l1c-45sensor-sc-pointing-bsf, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-static-dead-times, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-45sensor-de-product-lookup, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-45sensor-de-product-lookup, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-static-dead-times, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-45sensor-de-product-lookup, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-45sensor-de-product-lookup, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 
 repoint, repoint, historical, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1415,7 +1415,7 @@ planetary_ephemeris, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HAR
 pointing_attitude, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 science_frames, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 spin, spin, historical, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ephemeris_predicted, spice, historical, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 repoint, repoint, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
@@ -1424,7 +1424,7 @@ leapseconds, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER,
 ephemeris_reconstructed, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ephemeris_predicted, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_90days, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1473,7 +1473,7 @@ ultra, ancillary, l1b-90sensor-spbtphcorr, ultra, l1b, 90sensor-de, HARD, DOWNST
 ultra, ancillary, l1b-90sensor-sptpphcorr, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1b, 90sensor-de, HARD, DOWNSTREAM
-ultra, ancillary, l1b-90sensor-de-product-lookup, ultra, l1b, 90sensor-extendedspin, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-de-product-lookup, ultra, l1b, 90sensor-extendedspin, HARD_NO_TRIGGER, DOWNSTREAM
 
 ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-leftslit-lookup, ultra, l1b, 90sensor-priority-1-de, HARD, DOWNSTREAM
@@ -1649,19 +1649,19 @@ ultra, ancillary, l1c-90sensor-sc-pointing-index, ultra, l1c, 90sensor-spacecraf
 ultra, ancillary, l1c-90sensor-sc-pointing-bsf, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-static-dead-times, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-90sensor-de-product-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-de-product-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-static-dead-times, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1c-90sensor-de-product-lookup, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1c-90sensor-de-product-lookup, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 
 repoint, repoint, historical, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 spacecraft_clock, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1670,7 +1670,7 @@ planetary_ephemeris, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HAR
 pointing_attitude, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 science_frames, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 spin, spin, historical, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ephemeris_predicted, spice, historical, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 repoint, repoint, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
@@ -1679,7 +1679,7 @@ leapseconds, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER,
 ephemeris_reconstructed, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ephemeris_predicted, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_90days, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+attitude_history, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
