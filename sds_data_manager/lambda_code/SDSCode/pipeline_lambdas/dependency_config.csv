@@ -1387,22 +1387,22 @@ ultra, l1a, 45sensor-rates, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 45sensor-aux, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1b, 45sensor-goodtimes, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 
-ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-sc-pointing-theta, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-sc-pointing-phi, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-sc-pointing-index, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-sc-pointing-bsf, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
-ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-static-dead-times, ultra, l1c, 45sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-de-product-lookup, ultra, l1c, 45sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
-ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-45sensor-logistic-interpolation, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
-ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-45sensor-imgparams-lookup, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-static-dead-times, ultra, l1c, 45sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-45sensor-de-product-lookup, ultra, l1c, 45sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 
@@ -1640,22 +1640,22 @@ ultra, l1a, 90sensor-rates, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1a, 90sensor-aux, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, l1b, 90sensor-goodtimes, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 
-ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-sc-pointing-theta, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-sc-pointing-phi, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-sc-pointing-index, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-sc-pointing-bsf, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
-ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-static-dead-times, ultra, l1c, 90sensor-spacecraftpset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-de-product-lookup, ultra, l1c, 90sensor-spacecraftpset, HARD_NO_TRIGGER, DOWNSTREAM
-ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-scattering-calibration-data, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, ancillary, l1b-sensor-gf-blades, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1b-90sensor-logistic-interpolation, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
-ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
-ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
+ultra, ancillary, l1b-scattering-thresholds-per-energy, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
+ultra, ancillary, l1b-90sensor-imgparams-lookup, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-static-dead-times, ultra, l1c, 90sensor-heliopset, HARD, DOWNSTREAM
 ultra, ancillary, l1c-90sensor-de-product-lookup, ultra, l1c, 90sensor-heliopset, HARD_NO_TRIGGER, DOWNSTREAM
 
