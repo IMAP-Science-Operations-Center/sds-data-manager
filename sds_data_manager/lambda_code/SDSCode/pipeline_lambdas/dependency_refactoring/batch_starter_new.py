@@ -2,6 +2,7 @@
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 
+from ..batch_starter import dependency_hash, upload_dependency_file
 from .dependency_new import DependencyResolver
 from .utils import UpstreamDependencyNode
 
@@ -22,16 +23,26 @@ class IMAPJobHandler:
     def process_job(self, potential_job_node: UpstreamDependencyNode):
         """Process the job by resolving dependencies and submitting to batch."""
         self.dependencies = self.get_dependencies(potential_job_node)
-        self.is_duplicate_job = False
-        self.job_dependencies_s3_filepath = None
 
         if self.dependencies is not None:
             self._calculate_crid()
             self._determine_job_version()
-            self._create_dependencies_file()
-            if not self.is_duplicate_job:
-                job_success = self.submit_processing_job()
-                if job_success:
+            job_dependencies_s3_filepath = self._create_dependencies_file()
+            dependency_serialized_hash = dependency_hash(self.dependencies.serialize())
+            is_duplicate_job = self.is_duplicate_job(
+                potential_job_node, dependency_serialized_hash
+            )
+            if not is_duplicate_job:
+                upload_response = upload_dependency_file(
+                    self.dependencies.serialize(), job_dependencies_s3_filepath
+                )
+                if upload_response["status"] != 200:
+                    raise Exception("Failed to upload dependency file to S3.")
+
+                job_submit_succeed = self.submit_processing_job(
+                    job_dependencies_s3_filepath
+                )
+                if job_submit_succeed:
                     self.clean_up()
 
     def get_dependencies(self, dependency_node: UpstreamDependencyNode):
@@ -40,6 +51,8 @@ class IMAPJobHandler:
             response = DependencyResolver().get_upstream_dependency(
                 session=session, input_upstream_node=dependency_node
             )
+            # If dependency status is 200, then it means that we have complete set of
+            # dependencies needed.
             if response["status"] == 200:
                 return response["data"]
 
@@ -57,8 +70,44 @@ class IMAPJobHandler:
         # its own class.
         # 1. Review and keep logic from current CRID logic
         # 2. Refactor current CRID logic into this funciton
-        # 3. Add some hash for container image version.
         return ""
+
+    def is_duplicate_job(
+        self,
+        potential_job_node: UpstreamDependencyNode,
+        serialized_dependency_hash: str,
+    ) -> bool:
+        """Determine if the job is a duplicate.
+
+        Requirements for duplicate job determination:
+            1. Must be unique dependency serialized hash AND
+            2. AWS ECR container image digest hash must be unique AND
+            3. Potential job node's must be unique AND
+            4. Job status must be either INPROGRESS or SUCCEEDED.
+        """
+        # 1. Get AWS ECR container image digest hash, container_image_digest.
+        #    This should unique.
+        # 2. Now query DB with these inputs and we will know if a job is duplicate.
+        #   max_version_record = (
+        #     session.query(models.ProcessingJob)
+        #     .filter(table.instrument == potential_job_node.instrument,
+        #             table.data_level == potential_job_node.data_level,
+        #             table.descriptor == potential_job_node.descriptor,
+        #             table.start_date == potential_job_node.start_date,
+        #             table.repoint == potential_job_node.repoint,
+        #             table.dependency_hash == serialized_dependency_hash,
+        #             table.contianer_image_digest == container_image_digest,
+        #             table.status.in_(
+        #                 [models.Status.INPROGRESS.value,
+        #                   models.Status.SUCCEEDED.value]
+        #             )
+        #             )
+        #     .order_by(models.ProcessingJob.version.desc())
+        #     .first()
+        # )
+        # 3. If return exists, it's a duplicate job and return True.
+
+        return False
 
     def _determine_job_version(self):
         """Determine job version for a potential job."""
@@ -81,21 +130,11 @@ class IMAPJobHandler:
         # for CLI input. Eg. "yyyymmdd"
 
         # upstream_dependency_content = self.dependencies.serialize()
-        # TODO: write to dependency json file and upload to s3.
-        upload_success = True
-        if upload_success:
-            # Save dependency file path to use for job submission step.
-            self.job_dependencies_s3_filepath = (
-                "s3://bucket/path/to/dependency_file.json"
-            )
-        else:
-            self.is_duplicate_job = True
-        # If CRID is calculated and dependency json file exists in s3,
-        # then it means this is duplicate job submission.
-        # NOTE: Do we want to give option to submit duplicate by human intervention?
-        # If so, we need to add support for that.
+        # TODO: write to dependency json file.
+        dependency_file_path = "/some/path/dependency_file.json"
+        return dependency_file_path
 
-    def submit_processing_job(self):
+    def submit_processing_job(self, job_dependencies_s3_filepath: str):
         """Submit AWS batch processing job with dependencies and inputs.
 
         Return:
