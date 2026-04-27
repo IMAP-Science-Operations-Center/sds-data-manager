@@ -1238,7 +1238,7 @@ def test_cadence_map_event(setup_s3, session, tmp_path, mock_upload_request_succ
                 ),
             )
             for pset_type, month in zip(
-                ["spacecraft"] * 5 + ["helio"] * 5, range(1, 10), strict=False
+                ["spacecraft"] * 5 + ["helio"] * 5, range(1, 10)
             )
         ]
     )
@@ -1258,7 +1258,7 @@ def test_cadence_map_event(setup_s3, session, tmp_path, mock_upload_request_succ
                 ),
             )
             for pset_type, month in zip(
-                ["spacecraft"] * 5 + ["helio"] * 5, range(1, 10), strict=False
+                ["spacecraft"] * 5 + ["helio"] * 5, range(1, 10)
             )
         ]
     )

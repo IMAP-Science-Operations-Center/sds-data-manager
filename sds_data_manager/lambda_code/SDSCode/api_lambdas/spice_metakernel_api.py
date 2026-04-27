@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
+from typing import Optional
 
 import spiceypy
 
@@ -264,7 +265,7 @@ def lambda_handler(event, context):
 
 
 def _metakernel_builder(
-    start_time: int, end_time: int, file_types: list | None = None
+    start_time: int, end_time: int, file_types: Optional[list] = None
 ) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
     # Create the Metakernel class

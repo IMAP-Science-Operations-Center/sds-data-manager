@@ -7,6 +7,8 @@ An example of the format of the url: https://api.imap-mission.com/query
 https://ialirt.imap-mission.com/ialirt-log-query
 """
 
+from typing import Optional
+
 from aws_cdk import Duration, RemovalPolicy, aws_sns
 from aws_cdk import aws_apigatewayv2 as apigwv2
 from aws_cdk import aws_apigatewayv2_authorizers as apigwv2_authorizers
@@ -31,9 +33,9 @@ class ApiGateway(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        domain_construct: DomainConstruct | None = None,
-        certificate: acm.Certificate | None = None,
-        ialirt_prefix: str | None = None,
+        domain_construct: Optional[DomainConstruct] = None,
+        certificate: Optional[acm.Certificate] = None,
+        ialirt_prefix: Optional[str] = None,
         create_api_keys_table: bool = True,
         **kwargs,
     ) -> None:

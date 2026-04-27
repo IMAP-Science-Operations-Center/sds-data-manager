@@ -5,6 +5,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 import boto3
 import imap_data_access
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def download_from_s3(s3_key: str, bucket_name: str | None = None) -> Path:
+def download_from_s3(s3_key: str, bucket_name: Optional[str] = None) -> Path:
     """Download a file from S3 to a local temporary path.
 
     Parameters

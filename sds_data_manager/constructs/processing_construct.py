@@ -4,6 +4,8 @@ We will use batch processing to schedule and execute jobs. This construct
 will create the necessary resources for batch processing.
 """
 
+from typing import Optional
+
 import aws_cdk as cdk
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
@@ -21,7 +23,7 @@ class ProcessingConstruct(Construct):
         scope: Construct,
         construct_id: str,
         vpc: ec2.Vpc,
-        volumes: list | None = None,
+        volumes: Optional[list] = None,
         **kwargs,
     ):
         """Set up the primary processing environment and queue.

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from os.path import basename
 from pathlib import Path
+from typing import Optional
 
 import imap_data_access
 import numpy as np
@@ -349,7 +350,7 @@ class DependencyConfig:
                     )
         return kick_off_jobs
 
-    def get_all_nodes(self, dep_type: str | None = None) -> list:
+    def get_all_nodes(self, dep_type: Optional[str] = None) -> list:
         """Get a unique list of nodes from the dependency graph.
 
         Returns
@@ -375,7 +376,7 @@ class DependencyConfig:
                 ]
         return list(set(job_nodes))
 
-    def get_cadence_jobs(self, cadence: str | None = None) -> list:
+    def get_cadence_jobs(self, cadence: Optional[str] = None) -> list:
         """Get cadence jobs.
 
         Parameters
@@ -604,7 +605,7 @@ def verify_science_coverage(
     start_date: datetime,
     end_date: datetime,
     dependency: dict,
-    repoint: int | list[int] | None = None,
+    repoint: Optional[int | list[int]] = None,
 ) -> bool:
     """Verify that science files provide continuous daily coverage.
 
@@ -784,8 +785,8 @@ def get_spin_files(
 
 def get_latest_repoint_file(
     end_date: datetime,
-    session: db.Session | None = None,
-) -> str | None:
+    session: Optional[db.Session] = None,
+) -> Optional[str]:
     """Get latest repoint file.
 
     Query for the latest repoint file for given end_date.
@@ -1066,11 +1067,11 @@ def get_upstream_dependency_inputs(
     dependencies: list,
     start_date: datetime,
     end_date: datetime,
-    repoint: int | list[int] | None = None,
+    repoint: Optional[int | list[int]] = None,
     calculate_crids: bool = False,
     get_spice: bool = True,
     require_coverage: bool = False,
-    open_session: db.Session | None = None,
+    open_session: Optional[db.Session] = None,
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
@@ -1344,8 +1345,8 @@ def get_hi_goodtimes_target_repoints(
 def _get_available_repoints(
     session: db.Session,
     dependency: dict,
-    start_date: datetime | None = None,
-    end_date: datetime | None = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
 ) -> list[int]:
     """Query distinct repoint values that exist for a dependency.
 
@@ -1463,7 +1464,7 @@ def _extend_hi_goodtimes_l1b_de_dependencies(
     repoint: int,
     start_date: datetime,
     end_date: datetime,
-) -> ProcessingInputCollection | None:
+) -> Optional[ProcessingInputCollection]:
     """Extend L1B DE dependencies to include N nearest repoints for Hi Goodtimes.
 
     Hi Goodtimes jobs require L1B DE data from N repoints total (target plus
@@ -1597,7 +1598,7 @@ def get_files(
     dependency: dict,
     start_date: datetime,
     end_date: datetime,
-    repoint: int | list[int] | None = None,
+    repoint: Optional[int | list[int]] = None,
 ):
     """Query to database to get ScienceFile or AncillaryFile records.
 
@@ -1713,7 +1714,7 @@ def get_n_nearest_files_by_repoint(
     num_nearest: int,
     repoint: int,
     skip_if_inprogress: bool = False,
-) -> list | None:
+) -> Optional[list]:
     """Get N files nearest to a target repoint.
 
     Finds N files nearest by repoint number. Does NOT include the target
@@ -1795,7 +1796,7 @@ def get_n_nearest_files_by_date(
     num_nearest: int,
     target_date: datetime,
     skip_if_inprogress: bool = False,
-) -> list | None:
+) -> Optional[list]:
     """Get N files nearest to a target date.
 
     Finds N files nearest by date. Does NOT include the target date itself.
@@ -1883,7 +1884,7 @@ def get_jobs(
     descriptor: str,
     start_date: str,
     end_date: str,
-    repoint: int | None = None,
+    repoint: Optional[int] = None,
     calculate_crids: bool = False,
     get_spice: bool = True,
     require_coverage: bool = False,
