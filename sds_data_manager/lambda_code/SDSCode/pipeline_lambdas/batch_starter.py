@@ -7,7 +7,6 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
 
 import boto3
 import imap_data_access
@@ -91,9 +90,9 @@ def spacecraft_pointing_attitude_job(job_node: dict) -> bool:
 
 def cadence_to_datetime_range(
     cadence: str,
-    start_date: Optional[datetime.datetime] = None,
-    as_str: Optional[bool] = False,
-) -> Union[tuple[datetime.datetime, datetime.datetime], tuple[str, str]]:
+    start_date: datetime.datetime | None = None,
+    as_str: bool | None = False,
+) -> tuple[datetime.datetime, datetime.datetime] | tuple[str, str]:
     """Convert the cadence to a datetime range.
 
     Parameters
@@ -145,7 +144,7 @@ class CadenceDays(float, Enum):
         return VALID_CADENCE_STRS
 
     @classmethod
-    def str_lookup(cls, cadence_str: Optional[str] = None):
+    def str_lookup(cls, cadence_str: str | None = None):
         """Get a CadenceDays value from a string.
 
         Parameters
@@ -309,7 +308,7 @@ def try_to_submit_job(
     start_date: str,
     version: str,
     serialized_dependencies: str,
-    repoint: Optional[int] = None,
+    repoint: int | None = None,
 ):
     """Try to submit a batch job with the given job information.
 
@@ -427,7 +426,7 @@ def submit_all_jobs(
     job_node,
     trigger_start_date,
     trigger_end_date,
-    repoint: Optional[int] = None,
+    repoint: int | None = None,
     calculate_crids=False,
     filter_dependencies=True,
 ):
@@ -1143,10 +1142,10 @@ def cadence_reprocessing_event(session, job, start_date, end_date):
 
 def cadence_processing_event(
     session,
-    events: Optional[dict] = None,
-    job: Optional[dict] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    events: dict | None = None,
+    job: dict | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ):
     """Process events triggerd by EventBridge rules.
 
