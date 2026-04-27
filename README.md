@@ -24,7 +24,7 @@ The code in this repository takes the form of an AWS CDK project. It provides th
 
 The development environment uses a GitHub codespace, to ensure that we're all using the proper libraries as we develop and deploy.
 
-Everyone gets 50 free hours per month of github Codespace time. Alternatively, your organization can pay for it to run longer than this.
+Everyone gets 50 free hours per month of GitHub Codespaces time. Alternatively, your organization can pay for it to run longer than this.
 
 To start a new development environment, click the button for "Code" in the upper right corner of the repository, and click "Codespaces".
 
@@ -51,7 +51,7 @@ This will install the dependencies from `poetry.lock`, ensuring that consistent
 versions are used. To activate the virtual environment:
 
 ```bash
-source $(poetry env activate)
+eval "$(poetry env activate)"
 ```
 
 > **Note:** `poetry shell` was removed in Poetry 2. Use `poetry env activate`
