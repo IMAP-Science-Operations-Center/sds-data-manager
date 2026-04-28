@@ -25,6 +25,7 @@ from imap_processing.cdf.utils import load_cdf
 from imap_processing.ialirt.l0.parse_mag import process_packet
 from imap_processing.ialirt.l0.process_codice import process_codice
 from imap_processing.ialirt.l0.process_hit import process_hit
+from imap_processing.ialirt.l0.process_status import process_status
 from imap_processing.ialirt.l0.process_swapi import process_swapi_ialirt
 from imap_processing.ialirt.l0.process_swe import process_swe
 from imap_processing.spice.geometry import (
@@ -286,6 +287,7 @@ def process_algorithms(  # noqa: PLR0915
         ("codice_lo", process_codice),
         ("codice_hi", process_codice),
         ("swapi", process_swapi_ialirt),
+        ("spacecraft_status", process_status),
     ]
 
     # Collect any errors during processing to raise at the end
@@ -371,8 +373,12 @@ def process_algorithms(  # noqa: PLR0915
                 ancillary_files = {"swapi_esa-unit-conversion": download_path.name}
                 calibration_data = pd.read_csv(download_path)
                 result = process_func(combined, calibration_data)
-            else:
+            elif instrument == "hit":
                 logger.info("Processing HIT.")
+                ancillary_files = {}
+                result = process_func(combined)
+            else:
+                logger.info("Processing Spacecraft Status.")
                 ancillary_files = {}
                 result = process_func(combined)
 
