@@ -298,7 +298,7 @@ def determine_job_version(
     Returns
     -------
      str
-        The next version (e.g., v001 for first, v002 for second, etc).
+        The highest version number.
     """
 
     def filter_conditions(table):
