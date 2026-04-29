@@ -33,6 +33,8 @@ dependencies = [
     "imap-data-access>=0.37.0",
 ]
 
+[tool.poetry]
+
 [tool.poetry.requires-plugins]
 poetry-plugin-export = ">=1.8"
 
