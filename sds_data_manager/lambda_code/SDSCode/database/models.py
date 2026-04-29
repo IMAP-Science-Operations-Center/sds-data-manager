@@ -141,7 +141,7 @@ class ScienceFileBase:
     Those two tables share many of the same columns.
     """
 
-    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    file_path = Column(String, nullable=False, primary_key=True)
     instrument = Column(INSTRUMENTS, nullable=False)
     data_level = Column(DATA_LEVELS, nullable=False)
     descriptor = Column(String, nullable=False)
@@ -173,7 +173,7 @@ class SPICEFiles(Base):
 
     __tablename__ = "spice_files"
 
-    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    file_path = Column(String, nullable=False, primary_key=True)
     file_name = Column(String, nullable=False, unique=True)
     ingestion_date = Column(DateTime(timezone=True))
     file_root = Column(String)
@@ -198,7 +198,7 @@ class AncillaryFiles(Base):
 
     __tablename__ = "ancillary_files"
 
-    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    file_path = Column(String, nullable=False, primary_key=True)
     instrument = Column(INSTRUMENTS, nullable=False)
     # TODO: determine character limit for descriptor
     descriptor = Column(String, nullable=False)
@@ -215,7 +215,7 @@ class SpinFiles(Base):
 
     __tablename__ = "spin_files"
     # Spin number will be unique
-    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    file_path = Column(String, nullable=False, primary_key=True)
     # start and end date from file name
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
@@ -228,7 +228,7 @@ class PointingTable(Base):
     """Pointing table."""
 
     __tablename__ = "pointing_table"
-    pointing_id = Column(Integer, nullable=False, primary_key=True, unique=True)
+    pointing_id = Column(Integer, nullable=False, primary_key=True)
     pointing_start_utc = Column(DateTime(timezone=True))
     pointing_end_utc = Column(DateTime(timezone=True))
     repoint_start_utc = Column(DateTime(timezone=True))
@@ -239,7 +239,7 @@ class RepointFiles(Base):
     """Repoint table."""
 
     __tablename__ = "repoint_files"
-    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    file_path = Column(String, nullable=False, primary_key=True)
     end_date = Column(DateTime, nullable=False)
     version = Column(String(2), nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
@@ -250,7 +250,7 @@ class SmallForcesFile(Base):
     """Small forces files table. This file contains thruster data."""
 
     __tablename__ = "small_forces_files"
-    file_path = Column(String, nullable=False, primary_key=True, unique=True)
+    file_path = Column(String, nullable=False, primary_key=True)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
     version = Column(String(2), nullable=False)
