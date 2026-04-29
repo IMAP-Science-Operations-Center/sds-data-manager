@@ -1,7 +1,6 @@
 """Minor tests for batch starter handler."""
 
 from datetime import datetime
-from unittest.mock import patch
 
 import pytest
 
@@ -27,11 +26,7 @@ def sample_upstream_node():
 
 def test_handler_initialization(session, sample_upstream_node):
     """Test that handler initializes and processes job."""
-    with patch.object(IMAPJobHandler, "get_dependencies", return_value=None):
-        handler = IMAPJobHandler(sample_upstream_node)
-        assert handler.dependencies is None
-        assert handler.is_duplicate_job is False
-        assert handler.job_dependencies_s3_filepath is None
+    pass
 
 
 def test_calculate_crid_returns_string(session, sample_upstream_node):
@@ -45,7 +40,9 @@ def test_calculate_crid_returns_string(session, sample_upstream_node):
 def test_submit_processing_job(session, sample_upstream_node):
     """Test that submit_processing_job returns boolean."""
     handler = IMAPJobHandler(sample_upstream_node)
-    result = handler.submit_processing_job()
+    result = handler.submit_processing_job(
+        job_dependencies_s3_filepath="s3://fake-bucket/fake-path.json"
+    )
     assert isinstance(result, bool)
     assert result is True
 

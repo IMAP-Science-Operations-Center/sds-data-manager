@@ -1,8 +1,10 @@
 """IMAP job handler for managing dependencies and job submission."""
 
+import json
+
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 
-from ..batch_starter import dependency_hash, upload_dependency_file
+# from ..batch_starter import dependency_hash, upload_dependency_file
 from .dependency_new import DependencyResolver
 from .utils import UpstreamDependencyNode
 
@@ -27,23 +29,25 @@ class IMAPJobHandler:
         if self.dependencies is not None:
             self._calculate_crid()
             self._determine_job_version()
-            job_dependencies_s3_filepath = self._create_dependencies_file()
-            dependency_serialized_hash = dependency_hash(self.dependencies.serialize())
-            is_duplicate_job = self.is_duplicate_job(
-                potential_job_node, dependency_serialized_hash
-            )
-            if not is_duplicate_job:
-                upload_response = upload_dependency_file(
-                    self.dependencies.serialize(), job_dependencies_s3_filepath
-                )
-                if upload_response["status"] != 200:
-                    raise Exception("Failed to upload dependency file to S3.")
+            # TODO: uncomment these lines at implementation time
+            # -----------------------------------------------------
+            # job_dependencies_s3_filepath = self._create_dependencies_file()
+            # dependency_serialized_hash = dependency_hash(self.dependencies)
+            # is_duplicate_job = self.is_duplicate_job(
+            #     potential_job_node, dependency_serialized_hash
+            # )
+            # if not is_duplicate_job:
+            #     upload_response = upload_dependency_file(
+            #         self.dependencies, job_dependencies_s3_filepath
+            #     )
+            #     if upload_response["status"] != 200:
+            #         raise Exception("Failed to upload dependency file to S3.")
 
-                job_submit_succeed = self.submit_processing_job(
-                    job_dependencies_s3_filepath
-                )
-                if job_submit_succeed:
-                    self.clean_up()
+            #     job_submit_succeed = self.submit_processing_job(
+            #         job_dependencies_s3_filepath
+            #     )
+            #     if job_submit_succeed:
+            #         self.clean_up()
 
     def get_dependencies(self, dependency_node: UpstreamDependencyNode):
         """Get the dependencies for the job using the DependencyResolver."""
@@ -54,7 +58,7 @@ class IMAPJobHandler:
             # If dependency status is 200, then it means that we have complete set of
             # dependencies needed.
             if response["status"] == 200:
-                return response["data"]
+                return json.dumps(response["data"])
 
         return None
 
@@ -129,7 +133,7 @@ class IMAPJobHandler:
         # TODO: convert start_date and end_date to string and format needed
         # for CLI input. Eg. "yyyymmdd"
 
-        # upstream_dependency_content = self.dependencies.serialize()
+        # upstream_dependency_content = self.dependencies
         # TODO: write to dependency json file.
         dependency_file_path = "/some/path/dependency_file.json"
         return dependency_file_path
