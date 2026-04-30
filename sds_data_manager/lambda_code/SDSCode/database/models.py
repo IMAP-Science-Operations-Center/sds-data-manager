@@ -90,6 +90,9 @@ class ProcessingJob(Base):
     job_definition = Column(String)
     job_log_stream_id = Column(String)
     container_image = Column(String)
+    # This is the digest of the container image used for the processing job.
+    # It is a sha256 hash that uniquely identifies the exact version of the container
+    # image used.
     container_image_digest = Column(String)
     container_command = Column(String)
     dependency_hash = Column(String)

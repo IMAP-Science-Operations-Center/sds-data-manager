@@ -61,6 +61,11 @@ SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 def get_container_image_digest(job_definition: str):
     """Get the container image digest.
 
+    The image digest is a sha256 hash of the image manifest and is a unique identifier
+    for the specific version of the container image used in the batch job.
+    This is important for tracking which version of the code is being used for each
+    job.
+
     Parameters
     ----------
     job_definition : str
