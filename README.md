@@ -61,7 +61,7 @@ If running in codespaces, this should already be done.
 
 ### AWS Setup
 
-[AWS Setup page](https://sds-data-manager.readthedocs.io/en/latest/cdk/aws-setup.html)
+[AWS Setup page](https://imap-processing.readthedocs.io/en/latest/infrastructure/index.html)
 
 You may also need to set the `CDK_DEFAULT_ACCOUNT` environment variable.
 
@@ -82,7 +82,7 @@ If you get errors with the 'cdk bootstrap' command, running with `-v` will provi
 
 ### Deploy
 
-[CDK Deployment page](https://sds-data-manager.readthedocs.io/en/latest/cdk/cdk-deployment.html)
+[CDK Deployment page](https://imap-processing.readthedocs.io/en/latest/infrastructure/index.html)
 
 ### Virtual Desktop for Development
 

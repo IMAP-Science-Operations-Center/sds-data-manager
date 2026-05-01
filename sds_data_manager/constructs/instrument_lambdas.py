@@ -19,7 +19,6 @@ from constructs import Construct
 
 from sds_data_manager.constructs.api_gateway_construct import ApiGateway
 from sds_data_manager.constructs.database_construct import SdpDatabase
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import FIRST_MAP_START_DATE
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
     CadenceDays,
 )
@@ -168,23 +167,18 @@ class BatchStarterLambda(Construct):
         # Note: We are defining the schedules to run at minute level intervals because
         # AWS EventBridge Scheduler does not allow for decimal values in the rate
         # expression. E.g., we cannot specify "rate(91.2 days)" for 3 months.
-        # Determine the first map trigger date by taking the start date + 3 months.
-        first_map_jobs = FIRST_MAP_START_DATE + datetime.timedelta(
-            days=CadenceDays.THREE_MONTHS.value
-        )
-        # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
-        # a 1 month cadence job and the first job should be a month after launch
-        launch_date = datetime.datetime(2025, 9, 24, tzinfo=datetime.timezone.utc)
-        first_1mo_jobs = launch_date + datetime.timedelta(
-            days=CadenceDays.ONE_MONTH.value
-        )
+        # The first trigger date for each map cadence:
+        #    - 3 month maps start at FIRST_MAP_START_DATE + 3 months
+        #    - 6 month maps start at FIRST_MAP_START_DATE + 6 months
+        #    - 1 year maps start at FIRST_MAP_START_DATE + 1 year
+
         today = datetime.datetime.now(tz=datetime.timezone.utc)
         # loop through dictionary of cadence labels and their corresponding CadenceDays
         # enum objects
         for label, cadence_obj in CadenceDays.str_lookup().items():
             # Calculate interval in minutes
             interval_minutes = int(cadence_obj.value * 24 * 60)
-            first_job = first_1mo_jobs if label == "1mo" else first_map_jobs
+            first_job = cadence_obj.get_first_job_start_date()
             # Calculate the next run time based on the first job date and the cadence
             next_run = calculate_next_run(first_job, today, interval_minutes)
             # Format date as yyyy-MM-ddTHH:mm:ss.SSSZ (with milliseconds)
