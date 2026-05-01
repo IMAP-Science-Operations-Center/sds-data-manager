@@ -67,6 +67,10 @@
   - upstream_source: mag
     upstream_data_type: l1d
     upstream_descriptor: norm-dsrf
+  - upstream_source: mag
+    upstream_data_type: l1d
+    upstream_descriptor: norm-dsrf
+    kickoff_job: false
   - upstream_source: imap_frames
     upstream_data_type: spice
     upstream_descriptor: historical
