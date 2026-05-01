@@ -7,6 +7,7 @@ import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
 from ..dependency import DataSource, DataType
+from .utils import DependencyNode, UpstreamDependencyNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -103,15 +104,18 @@ class DependencyConfigReader:
                     self._validate_source(instrument)
                     self._validate_data_type(data_type)
                     self._validate_descriptor(descriptor)
-                    downstream_node = (instrument, data_type, descriptor)
+                    potential_job_node = (instrument, data_type, descriptor)
 
                     flattened_upstream_deps = self.recursive_flatten_list(upstream_list)
 
                     # Validate each upstream node
                     for upstream in flattened_upstream_deps:
+                        # TODO: update this line to use
+                        # DependencyNode and move validation logic
+                        # into DependencyNode class intead, ticket #1227.
                         self.validate_node(upstream)
 
-                    dependencies[downstream_node] = flattened_upstream_deps
+                    dependencies[potential_job_node] = flattened_upstream_deps
 
                 except (ValueError, IndexError) as e:
                     raise ValueError(
@@ -346,3 +350,64 @@ class DependencyConfigReader:
             raise ValueError(
                 f"Descriptor must be a non-empty string, got '{descriptor}'"
             )
+
+
+class DependencyResolver:
+    """Get upstream and downstream dependencies for data products."""
+
+    # Read in dependency config files
+    _config = DependencyConfigReader().config
+
+    def get_downstream_dependency_nodes(self, input_node: DependencyNode) -> list:
+        """Get downstream dependency nodes for a given input node.
+
+        Parameters
+        ----------
+        input_node : DependencyNode
+            Then input node contains information such as source, data_type, descriptor.
+
+        Returns
+        -------
+        list
+            A list of downstream dependency nodes that depend on the input node.
+        """
+        return []
+
+    def get_upstream_dependency(
+        self, session, input_upstream_node: UpstreamDependencyNode
+    ):
+        """Get upstream dependencies for a given upstream node.
+
+        UpstreamDependencyNode contains required Inputs:
+            Source
+            Data_type
+            descriptor
+            Start_time: yyyymmddhhmmss
+            End_time: yyyymmddhhmmss
+
+        Responsibilities:
+            - Lookup upstream dependencies
+            - Find all relevant files for upstream dependencies
+            - Determine if it's a complete list
+                Scenarios causing incompleteness:
+                    1. Missing files in the database.
+                    2. (Not supported yet) Due to anomaly (e.g., LOI, TCM, solar wind).
+                    3. (Not supported yet) Due to repoint data delay or downlink delay.
+                    4. If required dependencies missing or job IN PROGRESS.
+
+        Parameters
+        ----------
+        session : Session
+            Database session for querying dependencies and files.
+        input_upstream_node : UpstreamDependencyNode
+            The input upstream node with source, data_type, descriptor,
+            and date range.
+
+        Returns
+        -------
+        dict
+            A dictionary with status code, message, and data.
+            The data contains serialized upstream dependencies for
+            job submission.
+        """
+        return {"status": 200, "message": "Success", "data": {}}
