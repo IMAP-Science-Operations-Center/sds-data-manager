@@ -26,7 +26,7 @@ on:
 
 permissions:
   id-token: write
-  contents: write  # needed for tagging and release creation
+  contents: write # needed for tagging and release creation
   actions: read
 
 jobs:
@@ -78,7 +78,7 @@ jobs:
 
       - uses: Gr1N/setup-poetry@v8
         with:
-          poetry-version: "1.8.0"
+          poetry-version: "2.3.4"
 
       - name: Install dependencies and app
         run: |
