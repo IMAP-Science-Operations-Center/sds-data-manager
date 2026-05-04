@@ -2,7 +2,7 @@
 
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from .. import VALID_CADENCE_STRS
 
@@ -42,7 +42,7 @@ class UpstreamDependencyNode(DependencyNode):
     # These optional needs to go after required fields
     # to line with dataclass rules.
     reprocessing: bool = False
-    repoint: Optional[int] = None
+    repoint: int | None = None
 
     # check in init funciton that use do pass in start_date and
     # end_date for this node.
@@ -96,7 +96,7 @@ def get_cadence_duration(descriptor: str) -> str | None:
     '1mo'
     """
     # For given descriptor, parse cadence.
-    cadence = descriptor.split("-")[-1]
+    cadence = descriptor.rsplit("-", maxsplit=1)[-1]
     if cadence in VALID_CADENCE_STRS:
         return cadence
 
