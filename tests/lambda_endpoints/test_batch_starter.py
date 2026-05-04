@@ -1668,6 +1668,21 @@ def test_cadence_to_datetime_range():
         )
 
 
+def test_cadence_start_map_start_dates():
+    """Test that the cadence start date for cadence jobs is correct."""
+    # Verify each cadence obj returns the expected start date
+    assert CadenceDays.ONE_MONTH.get_first_job_start_date(as_string=True) == "20251024"
+    assert (
+        CadenceDays.THREE_MONTHS.get_first_job_start_date(as_string=True) == "20260418"
+    )
+    assert CadenceDays.SIX_MONTHS.get_first_job_start_date(as_string=True) == "20260718"
+    assert CadenceDays.ONE_YEAR.get_first_job_start_date(as_string=True) == "20270117"
+    # check that the start date is a datetime object when as_string is False
+    assert isinstance(
+        CadenceDays.ONE_MONTH.get_first_job_start_date(as_string=False), datetime
+    )
+
+
 def test_upload_dependency_file(
     s3_client, tmp_path, dependency_file, caplog, mock_upload_request_success
 ):
@@ -1863,12 +1878,6 @@ def test_dependency_success():
         },
         {
             "data_source": "ephemeris_reconstructed",
-            "data_type": "spice",
-            "descriptor": "historical",
-            "relationship": "HARD",
-        },
-        {
-            "data_source": "attitude_history",
             "data_type": "spice",
             "descriptor": "historical",
             "relationship": "HARD",

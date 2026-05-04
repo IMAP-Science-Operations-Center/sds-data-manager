@@ -193,7 +193,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
   - *lo_l3a_dist_common
 
 
-(l3a, lo-heplus2-3d-distribution):
+(l3a, lo-heplusplus-3d-distribution):
   - *lo_l3a_dist_common
 
 
@@ -230,6 +230,10 @@ lo_l3a_dist_common: &lo_l3a_dist_common
   - upstream_source: mag
     upstream_data_type: l1d
     upstream_descriptor: norm-dsrf
+  - upstream_source: mag
+    upstream_data_type: l2
+    upstream_descriptor: norm-dsrf
+    kickoff_job: false
   - upstream_source: codice
     upstream_data_type: l2
     upstream_descriptor: hi-sectored

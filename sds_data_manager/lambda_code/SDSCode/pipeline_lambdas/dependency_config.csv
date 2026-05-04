@@ -69,6 +69,7 @@ codice, l3a, lo-partial-densities, codice, l3a, lo-sw-charge-state-distributions
 codice, l2, hi-direct-events, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
 
 mag, l1d, norm-dsrf, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
+mag, l2, norm-dsrf, codice, l3b, hi-pitch-angle, SOFT_NO_TRIGGER, DOWNSTREAM
 codice, l2, hi-sectored, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 
 codice, l3a, lo-direct-events, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
@@ -79,13 +80,13 @@ codice, ancillary, l2-lo-gfactor, codice, l3a, lo-hplus-3d-distribution, HARD, D
 codice, ancillary, lo-energy-per-charge, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
 codice, ancillary, l2-lo-efficiency, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
 
-codice, l3a, lo-direct-events, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
-codice, l1a, lo-sw-priority, codice, l3a, lo-heplus2-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
-codice, l1a, lo-nsw-priority, codice, l3a, lo-heplus2-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
-codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
-codice, ancillary, l2-lo-gfactor, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
-codice, ancillary, lo-energy-per-charge, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
-codice, ancillary, l2-lo-efficiency, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, l3a, lo-direct-events, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-heplusplus-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-heplusplus-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-gfactor, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-efficiency, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
 
 codice, l3a, lo-direct-events, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
 codice, l1a, lo-sw-priority, codice, l3a, lo-oplus6-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
@@ -751,6 +752,7 @@ hit, ancillary, l1b-to-l2-summed-dt3-factors, hit, l2, summed-intensity, HARD, D
 
 hit, l2, macropixel-intensity, hit, l3, macropixel, HARD, DOWNSTREAM
 mag, l1d, norm-dsrf, hit, l3, macropixel, HARD, DOWNSTREAM
+mag, l2, norm-dsrf, hit, l3, macropixel, SOFT_NO_TRIGGER, DOWNSTREAM
 
 hit, l1a, direct-events, hit, l3, direct-events, HARD, DOWNSTREAM
 hit, ancillary, range-2A-cosine-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
@@ -781,7 +783,7 @@ leapseconds, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREA
 spacecraft_clock, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
 ephemeris_predicted, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, idex, l1b, sci-1week, HARD, DOWNSTREAM
+attitude_history, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, idex, l1b, sci-1week, HARD_NO_TRIGGER, DOWNSTREAM
 
@@ -1159,6 +1161,7 @@ swe, l2, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, ancillary, config, swe, l3, sci, HARD, DOWNSTREAM
 swapi, l3a, proton-sw, swe, l3, sci, HARD, DOWNSTREAM
 mag, l1d, norm-dsrf, swe, l3, sci, HARD, DOWNSTREAM
+mag, l2, norm-dsrf, swe, l3, sci, SOFT_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, swe, l3, sci, SOFT_NO_TRIGGER, DOWNSTREAM
