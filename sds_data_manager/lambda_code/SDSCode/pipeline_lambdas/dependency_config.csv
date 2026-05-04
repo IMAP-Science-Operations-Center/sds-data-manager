@@ -69,6 +69,7 @@ codice, l3a, lo-partial-densities, codice, l3a, lo-sw-charge-state-distributions
 codice, l2, hi-direct-events, codice, l3a, hi-direct-events, HARD, DOWNSTREAM
 
 mag, l1d, norm-dsrf, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
+mag, l2, norm-dsrf, codice, l3b, hi-pitch-angle, SOFT_NO_TRIGGER, DOWNSTREAM
 codice, l2, hi-sectored, codice, l3b, hi-pitch-angle, HARD, DOWNSTREAM
 
 codice, l3a, lo-direct-events, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
@@ -751,6 +752,7 @@ hit, ancillary, l1b-to-l2-summed-dt3-factors, hit, l2, summed-intensity, HARD, D
 
 hit, l2, macropixel-intensity, hit, l3, macropixel, HARD, DOWNSTREAM
 mag, l1d, norm-dsrf, hit, l3, macropixel, HARD, DOWNSTREAM
+mag, l2, norm-dsrf, hit, l3, macropixel, SOFT_NO_TRIGGER, DOWNSTREAM
 
 hit, l1a, direct-events, hit, l3, direct-events, HARD, DOWNSTREAM
 hit, ancillary, range-2A-cosine-lookup, hit, l3, direct-events, HARD, DOWNSTREAM
@@ -1159,6 +1161,7 @@ swe, l2, sci, swe, l3, sci, HARD, DOWNSTREAM
 swe, ancillary, config, swe, l3, sci, HARD, DOWNSTREAM
 swapi, l3a, proton-sw, swe, l3, sci, HARD, DOWNSTREAM
 mag, l1d, norm-dsrf, swe, l3, sci, HARD, DOWNSTREAM
+mag, l2, norm-dsrf, swe, l3, sci, SOFT_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, swe, l3, sci, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, swe, l3, sci, SOFT_NO_TRIGGER, DOWNSTREAM
