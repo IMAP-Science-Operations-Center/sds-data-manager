@@ -80,13 +80,13 @@ codice, ancillary, l2-lo-gfactor, codice, l3a, lo-hplus-3d-distribution, HARD, D
 codice, ancillary, lo-energy-per-charge, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
 codice, ancillary, l2-lo-efficiency, codice, l3a, lo-hplus-3d-distribution, HARD, DOWNSTREAM
 
-codice, l3a, lo-direct-events, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
-codice, l1a, lo-sw-priority, codice, l3a, lo-heplus2-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
-codice, l1a, lo-nsw-priority, codice, l3a, lo-heplus2-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
-codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
-codice, ancillary, l2-lo-gfactor, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
-codice, ancillary, lo-energy-per-charge, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
-codice, ancillary, l2-lo-efficiency, codice, l3a, lo-heplus2-3d-distribution, HARD, DOWNSTREAM
+codice, l3a, lo-direct-events, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
+codice, l1a, lo-sw-priority, codice, l3a, lo-heplusplus-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, l1a, lo-nsw-priority, codice, l3a, lo-heplusplus-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
+codice, ancillary, lo-mass-species-bin-lookup, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-gfactor, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, lo-energy-per-charge, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
+codice, ancillary, l2-lo-efficiency, codice, l3a, lo-heplusplus-3d-distribution, HARD, DOWNSTREAM
 
 codice, l3a, lo-direct-events, codice, l3a, lo-oplus6-3d-distribution, HARD, DOWNSTREAM
 codice, l1a, lo-sw-priority, codice, l3a, lo-oplus6-3d-distribution, HARD_NO_TRIGGER, DOWNSTREAM
