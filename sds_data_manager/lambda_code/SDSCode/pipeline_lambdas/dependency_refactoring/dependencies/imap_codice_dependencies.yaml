@@ -193,7 +193,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
   - *lo_l3a_dist_common
 
 
-(l3a, lo-heplus2-3d-distribution):
+(l3a, lo-heplusplus-3d-distribution):
   - *lo_l3a_dist_common
 
 
