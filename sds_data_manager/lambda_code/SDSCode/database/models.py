@@ -297,3 +297,14 @@ class Version(Base):
     # Data version is a string of the form vXXX
     data_version = Column(String(4), nullable=False)
     updated_date = Column(DateTime, nullable=False)
+
+
+class IDEXL0Files(Base):
+    """Idex l0 table."""
+
+    __tablename__ = "idex_l0_files"
+    # The combination of file path and start date will be unique.
+    # There can be multiple rows with the same file path as long as they have
+    # different start dates and vise versa.
+    file_path = Column(String, nullable=False, primary_key=True)
+    start_date = Column(DateTime, nullable=False, primary_key=True)
