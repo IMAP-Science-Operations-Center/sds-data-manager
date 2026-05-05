@@ -303,8 +303,8 @@ class IDEXL0Files(Base):
     """Idex l0 table."""
 
     __tablename__ = "idex_l0_files"
-    # The combination of file path and start date will be unique.
-    # There can be multiple rows with the same file path as long as they have
-    # different start dates and vise versa.
+    # Set the primary key to be the combination of file path and start date.
     file_path = Column(String, nullable=False, primary_key=True)
     start_date = Column(DateTime, nullable=False, primary_key=True)
+    version = Column(String(2), nullable=False)
+    last_updated = Column(DateTime(timezone=True))
