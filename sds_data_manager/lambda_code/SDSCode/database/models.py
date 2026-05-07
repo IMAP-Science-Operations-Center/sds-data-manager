@@ -307,4 +307,4 @@ class IDEXL0Files(Base):
     file_path = Column(String, nullable=False, primary_key=True)
     start_date = Column(DateTime, nullable=False, primary_key=True)
     version = Column(String(2), nullable=False)
-    last_updated = Column(DateTime(timezone=True))
+    ingestion_date = Column(DateTime(timezone=True))
