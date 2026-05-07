@@ -240,7 +240,6 @@ class ReleaseFiles(AncillaryFileBase, Base):
     __tablename__ = "release_files"
 
 
-
 class SpinFiles(Base):
     """Spin files table."""
 
