@@ -303,9 +303,13 @@ class IDEXL0Files(Base):
     """Idex l0 table."""
 
     __tablename__ = "idex_l0_files"
-    # Set the primary key to be the combination of file path and start date and version.
+    # Set the primary key to be the combination of file path, start date and version.
     # The combo of the three should always be unique.
     file_path = Column(String, nullable=False, primary_key=True)
+    # IDEX CDF files l1a onward are organized in 10 day chunks. The start_date column
+    # refers to the beginning of that 10-day period
+    # There can be more than one row for each file_path if it contains data that are
+    # in two different ten day chunks.
     start_date = Column(DateTime, nullable=False, primary_key=True)
     version = Column(String(2), nullable=False, primary_key=True)
     ingestion_date = Column(DateTime(timezone=True))
