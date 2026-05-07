@@ -78,6 +78,27 @@ class IndexerLambda(Construct):
             layers=layers,
         )
 
+        idex_l0_indexer_lambda = lambda_.Function(
+            self,
+            id="IDEXL0IndexerLambda",
+            function_name="idex-l0-file-indexer",
+            code=code,
+            handler="SDSCode.pipeline_lambdas.indexer.idex_l0_lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            vpc_subnets=vpc_subnets,
+            security_groups=[rds_security_group],
+            environment={
+                "DATA_TRACKER_INDEX": "data_tracker",
+                "S3_BUCKET": data_bucket.bucket_name,
+                "SECRET_NAME": db_secret_name,
+            },
+            layers=layers,
+        )
+
         # Adding events and s3 permission because indexer
         # lambda sents events and read from s3.
         # TODO: narrow s3 permission later
@@ -91,12 +112,14 @@ class IndexerLambda(Construct):
 
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         indexer_lambda.add_to_role_policy(put_event_policy)
+        idex_l0_indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        idex_l0_indexer_lambda.add_to_role_policy(put_event_policy)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
         )
         rds_secret.grant_read(grantee=indexer_lambda)
-
+        rds_secret.grant_read(grantee=idex_l0_indexer_lambda)
         # Events that triggers Indexer Lambda:
         # 1. Arrival of all science data
         # 2. PutEvent from Lambda that builds dependency and starts Batch Job

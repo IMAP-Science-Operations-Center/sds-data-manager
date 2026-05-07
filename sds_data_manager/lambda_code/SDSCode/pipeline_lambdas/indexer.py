@@ -142,7 +142,108 @@ def send_event_from_indexer(file_obj):
     return response
 
 
-def s3_event_handler(event):  # noqa: PLR0915
+def write_file_metadata_to_table(
+    filename: str, s3_filepath: str
+) -> tuple[ImapFilePath, dict] | None:
+    """Write file metadata to database.
+
+    Parameters
+    ----------
+    filename : str
+        The filename to extract metadata from and write to database
+    s3_filepath: str
+        S3 object path. Eg. filepath/filename.pkts
+
+    Returns
+    -------
+    file_obj : ImapFilePath | None
+        The file object created from the filename.
+    params : dict
+        The metadata parameters extracted from the filename and written to the database.
+    """
+    try:
+        file_obj = ScienceFilePath(filename)
+        # setup a dictionary of metadata parameters to write to the
+        # ScienceFiles table. Eg.
+        # {
+        #     "file_path": None,
+        #     "instrument": self.instrument,
+        #     "data_level": self.data_level,
+        #     "descriptor": self.descriptor,
+        #     "start_date": datetime.strptime(self.startdate, "%Y%m%d"),
+        #     "repointing": self.repointing,
+        #     "version": self.version,
+        #     "extension": self.extension,
+        #     "ingestion_date": date_object,
+        # }
+        params = file_obj.extract_filename_components(filename)
+        # delete mission key from metadata params
+        params.pop("mission")
+        params["data_level"] = params.pop("data_level")
+        params["start_date"] = datetime.strptime(params.pop("start_date"), "%Y%m%d")
+
+        params["file_path"] = s3_filepath
+        ingestion_date_object = get_file_ingestion_date(s3_filepath)
+
+        params["ingestion_date"] = ingestion_date_object
+        with db.Session() as session, session.begin():
+            science_file = models.ScienceFiles(**params)
+            session.add(science_file)
+            crid = calculate_crid(session, science_file)
+            science_file.crid = crid
+        logger.info("Wrote data to the ScienceFiles table")
+
+    except ImapFilePath.InvalidImapFileError:
+        logger.info(
+            f"Filename {filename} is not a valid SCIENCE file. Checking for"
+            " ancillary file."
+        )
+        try:
+            file_obj = AncillaryFilePath(filename)
+            # setup a dictionary of metadata parameters to write to the
+            # AncillaryFiles table. Eg.
+            # {
+            #     "file_path": None,
+            #     "instrument": self.instrument,
+            #     "descriptor": self.descriptor,
+            #     "start_date": datetime.strptime(self.startdate, "%Y%m%d"),
+            #     "end_date": datetime.strptime(self.enddate, "%Y%m%d"),
+            #     "version": self.version,
+            #     "extension": self.extension,
+            #     "ingestion_date": date_object,
+            # }
+            params = file_obj.extract_filename_components(filename)
+            # delete mission key from metadata params
+            params.pop("mission")
+            params["start_date"] = datetime.strptime(params.pop("start_date"), "%Y%m%d")
+            if params.get("end_date"):
+                params["end_date"] = datetime.strptime(params.pop("end_date"), "%Y%m%d")
+            params["file_path"] = s3_filepath
+            ingestion_date_object = get_file_ingestion_date(s3_filepath)
+            params["ingestion_date"] = ingestion_date_object
+            with db.Session() as session, session.begin():
+                session.add(models.AncillaryFiles(**params))
+            logger.info("Wrote data to the AncillaryFiles table")
+
+        except ImapFilePath.InvalidImapFileError:
+            file_obj = QuicklookFilePath(filename)
+            params = file_obj.extract_filename_components(filename)
+            # delete mission key from metadata params
+            params.pop("mission")
+            params["start_date"] = datetime.strptime(params.pop("start_date"), "%Y%m%d")
+            # Add file path and ingestion date
+            params["file_path"] = s3_filepath
+            params["ingestion_date"] = get_file_ingestion_date(s3_filepath)
+
+            # Save to database
+            with db.Session() as session, session.begin():
+                session.add(models.QuicklookFiles(**params))
+                session.commit()
+
+    return file_obj, params
+
+
+def s3_event_handler(event):
     """S3 events handler.
 
     S3 event handler takes s3 event and then writes information to
@@ -165,100 +266,14 @@ def s3_event_handler(event):  # noqa: PLR0915
     s3_filepath = event["detail"]["object"]["key"]
 
     filename = os.path.basename(s3_filepath)
-    file_obj = None
     try:
-        file_obj = ScienceFilePath(filename)
-        # setup a dictionary of metadata parameters to write to the
-        # ScienceFiles table. Eg.
-        # {
-        #     "file_path": None,
-        #     "instrument": self.instrument,
-        #     "data_level": self.data_level,
-        #     "descriptor": self.descriptor,
-        #     "start_date": datetime.strptime(self.startdate, "%Y%m%d"),
-        #     "repointing": self.repointing,
-        #     "version": self.version,
-        #     "extension": self.extension,
-        #     "ingestion_date": date_object,
-        # }
-        sci_params = file_obj.extract_filename_components(filename)
-        # delete mission key from metadata params
-        sci_params.pop("mission")
-        sci_params["data_level"] = sci_params.pop("data_level")
-        sci_params["start_date"] = datetime.strptime(
-            sci_params.pop("start_date"), "%Y%m%d"
-        )
-
-        sci_params["file_path"] = s3_filepath
-        ingestion_date_object = get_file_ingestion_date(s3_filepath)
-
-        sci_params["ingestion_date"] = ingestion_date_object
-        with db.Session() as session, session.begin():
-            science_file = models.ScienceFiles(**sci_params)
-            session.add(science_file)
-            crid = calculate_crid(session, science_file)
-            science_file.crid = crid
-        logger.info("Wrote data to the ScienceFiles table")
+        file_obj, _ = write_file_metadata_to_table(filename, s3_filepath)
     except ImapFilePath.InvalidImapFileError:
-        logger.info(
-            f"Filename {filename} is not a valid SCIENCE file. Checking for"
-            " ancillary file."
+        return http_response(
+            status_code=400,
+            body=f"Filename {filename} is not a valid SCIENCE, "
+            + "ANCILLARY or QUICKLOOK file.",
         )
-        try:
-            file_obj = AncillaryFilePath(filename)
-            # setup a dictionary of metadata parameters to write to the
-            # AncillaryFiles table. Eg.
-            # {
-            #     "file_path": None,
-            #     "instrument": self.instrument,
-            #     "descriptor": self.descriptor,
-            #     "start_date": datetime.strptime(self.startdate, "%Y%m%d"),
-            #     "end_date": datetime.strptime(self.enddate, "%Y%m%d"),
-            #     "version": self.version,
-            #     "extension": self.extension,
-            #     "ingestion_date": date_object,
-            # }
-            anc_params = file_obj.extract_filename_components(filename)
-            # delete mission key from metadata params
-            anc_params.pop("mission")
-            anc_params["start_date"] = datetime.strptime(
-                anc_params.pop("start_date"), "%Y%m%d"
-            )
-            if anc_params.get("end_date"):
-                anc_params["end_date"] = datetime.strptime(
-                    anc_params.pop("end_date"), "%Y%m%d"
-                )
-            anc_params["file_path"] = s3_filepath
-            ingestion_date_object = get_file_ingestion_date(s3_filepath)
-            anc_params["ingestion_date"] = ingestion_date_object
-            with db.Session() as session, session.begin():
-                session.add(models.AncillaryFiles(**anc_params))
-            logger.info("Wrote data to the AncillaryFiles table")
-
-        except ImapFilePath.InvalidImapFileError:
-            try:
-                file_obj = QuicklookFilePath(filename)
-                params = file_obj.extract_filename_components(filename)
-                # delete mission key from metadata params
-                params.pop("mission")
-                params["start_date"] = datetime.strptime(
-                    params.pop("start_date"), "%Y%m%d"
-                )
-                # Add file path and ingestion date
-                params["file_path"] = s3_filepath
-                params["ingestion_date"] = get_file_ingestion_date(s3_filepath)
-
-                # Save to database
-                with db.Session() as session, session.begin():
-                    session.add(models.QuicklookFiles(**params))
-                    session.commit()
-            except ImapFilePath.InvalidImapFileError:
-                logger.error(f"Filename {filename} is not a valid filetype.")
-                return http_response(
-                    status_code=400,
-                    body=f"Filename {filename} is not a valid SCIENCE, "
-                    + "ANCILLARY or QUICKLOOK file.",
-                )
 
     if isinstance(file_obj, QuicklookFilePath):
         logger.info("Skipped Event no further processing required for quicklook.")
