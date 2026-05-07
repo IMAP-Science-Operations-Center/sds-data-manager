@@ -11,6 +11,7 @@
   - upstream_source: attitude_history
     upstream_data_type: spice
     upstream_descriptor: historical
+    kickoff_job: false
   - upstream_source: leapseconds
     upstream_data_type: spice
     upstream_descriptor: historical

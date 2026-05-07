@@ -1066,7 +1066,7 @@ spacecraft_clock, spice, historical, spacecraft, l1a, quaternions, HARD_NO_TRIGG
 
 # Pointing kernel
 repoint, repoint, historical, spacecraft, l1a, pointing-attitude, HARD, DOWNSTREAM
-attitude_history, spice, historical, spacecraft, l1a, pointing-attitude, HARD, DOWNSTREAM
+attitude_history, spice, historical, spacecraft, l1a, pointing-attitude, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, spacecraft, l1a, pointing-attitude, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, spacecraft, l1a, pointing-attitude, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, spacecraft, l1a, pointing-attitude, HARD_NO_TRIGGER, DOWNSTREAM
