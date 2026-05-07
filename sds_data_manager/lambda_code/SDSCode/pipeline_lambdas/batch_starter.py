@@ -11,6 +11,7 @@ from pathlib import Path
 import boto3
 import imap_data_access
 import requests
+from botocore.exceptions import ClientError
 from imap_data_access import (
     VALID_INSTRUMENTS,
     AncillaryFilePath,
@@ -40,6 +41,8 @@ logger.setLevel(logging.INFO)
 DEPENDENCY_CONFIG = dependency.DependencyConfig()
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
+# Create an ECR client for getting container image digests
+ECR_CLIENT = boto3.client("ecr", region_name="us-west-2")
 # Define the retry strategy for batch jobs
 BATCH_JOB_RETRY_STRATEGY = {
     "attempts": 10,
@@ -53,6 +56,62 @@ BATCH_JOB_RETRY_STRATEGY = {
 }
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
+
+
+def get_container_image_digest(job_definition: str):
+    """Get the container image digest.
+
+    The image digest is a sha256 hash of the image manifest and is a unique identifier
+    for the specific version of the container image used in the batch job.
+    This is important for tracking which version of the code is being used for each
+    job.
+
+    Parameters
+    ----------
+    job_definition : str
+        job definition name to get the container image digest for. For example,
+        "ProcessingJob-swe"
+
+    Returns
+    -------
+    str
+        The sha256 digest of the image manifest. This is a unique identifier for the
+         specific image version used in the batch job.
+
+    """
+    job_def_response = BATCH_CLIENT.describe_job_definitions(
+        jobDefinitionName=job_definition, status="ACTIVE"
+    )
+    if not job_def_response or not job_def_response.get("jobDefinitions"):
+        raise ValueError(f"Job definition not found: {job_definition}")
+    # Select the latest active job definition revision.
+    job_def = max(
+        job_def_response["jobDefinitions"],
+        key=lambda definition: definition.get("revision", 0),
+    )
+    container_image = job_def["containerProperties"]["image"]
+    # Parse the container image URI to get the registry id, repository name and image
+    # tag and use those to call describe_images and get the image digest.
+    # Eg. for 123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest,
+    # "123456789012" is the registry id, "swapi-repo" is the repository and
+    # "latest" is the image tag.
+    image_name = container_image.split("/")[-1]
+    try:
+        response = ECR_CLIENT.describe_images(
+            registryId=container_image.split(".")[0],
+            repositoryName=image_name.split(":")[0],
+            imageIds=[{"imageTag": image_name.split(":")[1]}],
+        )
+    except ECR_CLIENT.exceptions.ImageNotFoundException as e:
+        logger.error(f"Image not found in ECR for {container_image}: {e}")
+        raise
+    except ClientError as e:
+        logger.error(f"AWS error getting image digest for {container_image}: {e}")
+        raise
+
+    # Extract the image digest from the response
+    image_digest = response["imageDetails"][0]["imageDigest"]
+    return image_digest
 
 
 def add_buffer_to_idex_start_date(start_date: str, buffer_days: int = 12) -> str:
@@ -214,9 +273,19 @@ def determine_job_version(
     data_level: str,
     descriptor: str,
     start_date: datetime,
-    current_dependencies: str,
 ) -> str:
-    """Return the maximum existing file version in the pipeline increased by one.
+    """Return the next version number for this job (max version + 1).
+
+    This always returns an incremented version. We don't compare dependencies here
+    because the unique constraint on (dependency_hash, container_image_digest)
+    handles duplicate detection reactively in `try_to_submit_job`.
+
+    The duplicate detection works like this: a job is skipped only if BOTH the
+    dependency_hash AND container_image_digest are identical to a previous
+    INPROGRESS or SUCCEEDED job. If either the hash changes or the image digest changes
+    (due to a new software version), a new job submission is allowed with a bumped
+    version.
+
 
     Parameters
     ----------
@@ -230,8 +299,6 @@ def determine_job_version(
         Data descriptor.
     start_date : datetime
         Start date.
-    current_dependencies : str
-        Serialized dependencies for the current job.
 
     Returns
     -------
@@ -264,26 +331,20 @@ def determine_job_version(
     )
     if max_version_record:
         max_version_processing = max_version_record.version
-        # Step 2: If there is a job already in progress, determine whether the current
-        # job is a duplicate of the in-progress job by checking the dependency file
-        # hash. If the hashes are different, then we know the dependencies have changed
-        # and we should bump the version number and continue with processing.
+        # Step 2: If there is a job already in progress, return the next version number
+        # without checking the science files table. This is to avoid filename
+        # collisions between two jobs running at the same time with the same version
+        # number. The unique constraint on (dependency_hash, container_image_digest)
+        # will prevent the job from being submitted if it is a true duplicate.
         if max_version_record.status == models.Status.INPROGRESS:
-            command = max_version_record.container_command
-            if dependency_hash(current_dependencies) in command:
-                # Return the current max version and this job will not proceed if
-                # everything else is the same.
-                return max_version_processing
-            else:
-                # Dependencies have changed, so bump the version number.
-                logger.info(
-                    f"Job with id: {max_version_record.id} is in progress, but the "
-                    f"dependencies have changed. Bumping version number."
-                )
-                return f"v{int(max_version_processing[1:]) + 1:03d}"
-
+            logger.info(
+                f"Job with id: {max_version_record.id} is in progress. Will try to "
+                f"submit a new job with an incremented version number."
+            )
+            return f"v{int(max_version_processing[1:]) + 1:03d}"
     else:
         max_version_processing = None
+
     # Step 3: If the descriptor is "all", only use the max version from the processing
     # job table. The ScienceFiles table does not have descriptors of "all" since the
     # products produced will have their own specific descriptors.
@@ -302,7 +363,7 @@ def determine_job_version(
     ).scalar()
 
     # Step 5: By default, use the max version from the science files table unless
-    # it is a spacecraft "pointing-attitude" job. If a so, then use the max version
+    # it is a spacecraft "pointing-attitude" job. If so, then use the max version
     # from the processing jobs table. If the job is a spacecraft pointing-attitude job,
     # it will produce a SPICE kernel and not a science file. There is no way to
     # determine the filename of the kernel that will be produced, so we rely on the max
@@ -366,10 +427,15 @@ def try_to_submit_job(
     # Serialize the upstream dependencies and write them to a JSON file. The Imap
     # processing code will read the JSON file and deserialize the dependencies. This is
     # to avoid passing a large string through the batch job command line.
-    # release
-    # The descriptor should include a hash of the serialized dependencies.
-    # This makes it unique for this file and set of dependencies.
-    dep_descriptor = f"{descriptor}-{dependency_hash(serialized_dependencies)}"
+
+    # Calculate the dependency hash, if dependencies
+    # change, the hash changes. Combined with the unique constraint on
+    # (dependency_hash, container_image_digest), this gives us duplicate detection:
+    # same deps + same digest = IntegrityError = job skipped
+    # For a given instrument, data_level, start_date ect. If either the deps change or
+    # the image changes then a new job is allowed with a bumped version number.
+    dep_hash = dependency_hash(serialized_dependencies)
+    dep_descriptor = f"{descriptor}-{dep_hash}"
     dependency_file = DependencyFilePath.generate_from_inputs(
         instrument=instrument,
         data_level=data_level,
@@ -403,6 +469,16 @@ def try_to_submit_job(
 
     if repoint is not None:
         batch_command.extend(["--repointing", f"repoint{repoint:05d}"])
+    # Get the necessary AWS information
+    # NOTE: These are here for easier mocking in tests rather than at the module level
+    step = "-l3" if data_level >= "l3" else ""
+    job_definition = f"ProcessingJob-{instrument}{step}"
+
+    # Capture the container image and digest right before submitting the job.
+    # This ensures the image digest that will be used is recorded. We record this
+    # information here and not in indexer.py to avoid race conditions where the image
+    # could change during job execution.
+    container_image_digest = get_container_image_digest(job_definition)
 
     # All of our upstream requirements have been met.
     # Try to insert a record into the Processing Jobs table
@@ -416,7 +492,9 @@ def try_to_submit_job(
         start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
         version=version,
         repointing=repoint,
+        dependency_hash=dep_hash,
         container_command=" ".join(batch_command),
+        container_image_digest=container_image_digest,
     )
     try:
         session.add(processing_job)
@@ -424,7 +502,10 @@ def try_to_submit_job(
     except IntegrityError:
         # Rollback the session to clear the failed transaction
         session.rollback()
-        logger.info(f"Job already completed or in progress: {processing_job}")
+        logger.info(
+            f"Job already completed or in progress. Tried to submit "
+            f"{processing_job.to_dict()}"
+        )
         return
 
     logger.info(
@@ -434,11 +515,8 @@ def try_to_submit_job(
     # E.g. "codice-l1a-sci-job-1"
     # The `processing_job.id` is used later for updating the job processing table
     job_name = f"{instrument}-{data_level}-{descriptor}-job-{processing_job.id}"
-    # Get the necessary AWS information
-    # NOTE: These are here for easier mocking in tests rather than at the module level
-    step = "-l3" if data_level >= "l3" else ""
-    job_definition = f"ProcessingJob-{instrument}{step}"
     job_queue = "ProcessingJobQueue"
+
     BATCH_CLIENT.submit_job(
         jobName=job_name,
         jobQueue=job_queue,
@@ -531,7 +609,6 @@ def submit_all_jobs(
             descriptor=job_node["descriptor"],
             start_date=datetime.datetime.strptime(trigger_start_date, "%Y%m%d"),
             data_level=job_node["data_type"],
-            current_dependencies=serialized_deps,
         )
         try_to_submit_job(
             session,
@@ -610,7 +687,6 @@ def submit_all_jobs(
             descriptor=job_node["descriptor"],
             start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
             data_level=job_node["data_type"],
-            current_dependencies=serialized_deps,
         )
         try_to_submit_job(
             session,
@@ -1296,7 +1372,6 @@ def cadence_processing_event(
             data_level=data_level,
             descriptor=descriptor,
             start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
-            current_dependencies=serialized_deps,
         )
         # Submit the map job with all of the upstream dependencies in the date range
         try_to_submit_job(
