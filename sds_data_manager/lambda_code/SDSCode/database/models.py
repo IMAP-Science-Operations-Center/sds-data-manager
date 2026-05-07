@@ -85,8 +85,8 @@ class ProcessingJob(Base):
     version = Column(String(8), nullable=False)
     repointing = Column(Integer, nullable=True)
     # TODO:
-    # Didn't make it required field yet. Revisit this
-    # post discussion
+    #  Didn't make it required field yet. Revisit this
+    #  post discussion
     job_definition = Column(String)
     job_log_stream_id = Column(String)
     container_image = Column(String)
@@ -206,10 +206,11 @@ class SPICEFiles(Base):
     released = Column(Boolean, nullable=False, default=True)
 
 
-class AncillaryFiles(Base):
-    """Ancillary files table."""
+class AncillaryFileBase:
+    """Base class for AncillaryFiles and ReleaseFiles tables.
 
-    __tablename__ = "ancillary_files"
+    Those two tables share the same columns.
+    """
 
     file_path = Column(String, nullable=False, primary_key=True)
     instrument = Column(INSTRUMENTS, nullable=False)
@@ -221,6 +222,23 @@ class AncillaryFiles(Base):
     extension = Column(String, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
     released = Column(Boolean, nullable=False, default=True)
+
+
+class AncillaryFiles(AncillaryFileBase, Base):
+    """Ancillary files table."""
+
+    __tablename__ = "ancillary_files"
+
+
+class ReleaseFiles(AncillaryFileBase, Base):
+    """Release files table.
+
+    Text files that list products to withhold/release
+    to the public.
+    """
+
+    __tablename__ = "release_files"
+
 
 
 class SpinFiles(Base):
