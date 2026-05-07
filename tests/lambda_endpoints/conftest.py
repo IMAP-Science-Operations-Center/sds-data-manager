@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import boto3
 import pytest
-from moto import mock_events, mock_s3
+from moto import mock_ecr, mock_events, mock_s3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -117,6 +117,67 @@ def events_client():
     """Mock EventBridge client."""
     with mock_events():
         yield boto3.client("events", region_name="us-west-2")
+
+
+@pytest.fixture(autouse=True)
+def ecr_client():
+    """Mock ECR client."""
+    with mock_ecr():
+        ecr_client = boto3.client("ecr", region_name="us-west-2")
+        # Create a mock repository for each instrument, and add a mock image to each
+        # repository
+        for instrument in [
+            "swapi",
+            "hi",
+            "lo",
+            "mag",
+            "idex",
+            "swe",
+            "ultra",
+            "spacecraft",
+            "glows",
+        ]:
+            ecr_client.create_repository(repositoryName=f"{instrument}-repo")
+            ecr_client.put_image(
+                registryId="123456789012",
+                repositoryName=f"{instrument}-repo",
+                imageManifest=json.dumps({}),
+                imageManifestMediaType="json",
+                imageTag="latest",
+                imageDigest=f"sha256:123example{instrument}digest",
+            )
+        with (
+            patch.object(batch_starter, "ECR_CLIENT", ecr_client),
+        ):
+            yield ecr_client
+
+
+@pytest.fixture(autouse=True)
+def batch_client():
+    """Fixture to mock BATCH_CLIENT."""
+    mock_batch_client = Mock()
+
+    def get_job_definition(jobDefinitionName, status=None):  # noqa: N803
+        instrument = jobDefinitionName.split("-")[1]
+        return {
+            "jobDefinitions": [
+                {
+                    "revision": 1,
+                    "status": "ACTIVE",
+                    "containerProperties": {
+                        "image": f"123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+                        f"{instrument}-repo:latest"
+                    },
+                }
+            ]
+        }
+
+    # Mock describe_job_definitions to return a valid job definition
+    mock_batch_client.describe_job_definitions.side_effect = get_job_definition
+    with (
+        patch.object(batch_starter, "BATCH_CLIENT", mock_batch_client),
+    ):
+        yield mock_batch_client
 
 
 @pytest.fixture
