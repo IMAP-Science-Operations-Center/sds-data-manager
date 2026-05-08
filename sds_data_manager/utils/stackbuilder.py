@@ -204,6 +204,18 @@ def build_sds(
         layers=[db_lambda_layer, spice_lambda_layer],
     )
 
+    indexer_lambda_construct.IDEXL0IndexerLambda(
+        scope=sdc_stack,
+        construct_id="IDEXL0IndexerLambda",
+        code=lambda_code,
+        db_secret_name=db_secret_name,
+        vpc=networking.vpc,
+        vpc_subnets=rds_construct.rds_subnet_selection,
+        rds_security_group=rds_construct.rds_security_group,
+        data_bucket=data_bucket.data_bucket,
+        layers=[db_lambda_layer, spice_lambda_layer],
+    )
+
     monitoring_lambda_construct.MonitoringLambda(
         scope=sdc_stack,
         construct_id="MonitoringLambda",

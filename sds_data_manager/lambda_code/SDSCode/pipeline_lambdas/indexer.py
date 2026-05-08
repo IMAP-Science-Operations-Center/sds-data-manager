@@ -266,6 +266,13 @@ def s3_event_handler(event):
     s3_filepath = event["detail"]["object"]["key"]
 
     filename = os.path.basename(s3_filepath)
+    if "imap/idex/l0" in s3_filepath:
+        message = (
+            f"Received an IDEX L0 file {filename}. This file will be indexed in "
+            "a separate lambda. See idex-l0-file-indexer lambda for details."
+        )
+        logger.info(message)
+        return http_response(status_code=200, body=f"Success. {message}")
     try:
         file_obj, _ = write_file_metadata_to_table(filename, s3_filepath)
     except ImapFilePath.InvalidImapFileError:

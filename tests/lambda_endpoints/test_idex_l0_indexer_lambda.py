@@ -1,5 +1,6 @@
 """Tests for the idex l0 indexer lambda."""
 
+import datetime
 import os
 from unittest.mock import patch
 
@@ -95,11 +96,11 @@ def test_s3_sci_event(session, s3_client, events_client, setup_data):
     assert returned_value["statusCode"] == 200
 
     # Check that data was written to database by lambda
-    result = session.query(models.ScienceFiles).all()
+    result = session.query(models.IDEXL0Files).all()
     assert len(result) == 1
     assert (
-        result[0].file_path == "imap/hit/l0/2024/01/imap_hit_l0_raw_20240101_v001.pkts"
+        result[0].file_path
+        == "imap/idex/l0/2024/01/imap_idex_l0_raw_20240101_v001.pkts"
     )
-    assert result[0].data_level == "l0"
-    assert result[0].instrument == "hit"
-    assert result[0].extension == "pkts"
+    assert result[0].version == "v001"
+    assert result[0].start_date == datetime.datetime(2025, 3, 31, 0, 0)
