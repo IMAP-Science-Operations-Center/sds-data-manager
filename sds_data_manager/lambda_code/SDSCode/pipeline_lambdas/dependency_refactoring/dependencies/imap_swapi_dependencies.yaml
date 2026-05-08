@@ -96,17 +96,6 @@ l3a_spice_common: &l3a_spice_common
     kickoff_job: false
   - upstream_source: swapi
     upstream_data_type: ancillary
-    upstream_descriptor: clock-angle-and-flow-deflection-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: proton-density-temperature-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: alpha-density-temperature-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
     upstream_descriptor: energy-gf-pui-lut
     kickoff_job: false
   - upstream_source: swapi
@@ -143,16 +132,6 @@ l3a_spice_common: &l3a_spice_common
   - upstream_source: swapi
     upstream_data_type: l2
     upstream_descriptor: sci
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: clock-angle-and-flow-deflection-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: proton-density-temperature-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: alpha-density-temperature-lut
-    kickoff_job: false
   - upstream_source: swapi
     upstream_data_type: ancillary
     upstream_descriptor: energy-gf-pui-lut
@@ -192,17 +171,6 @@ l3a_spice_common: &l3a_spice_common
   - upstream_source: swapi
     upstream_data_type: l2
     upstream_descriptor: sci
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: clock-angle-and-flow-deflection-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: proton-density-temperature-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: alpha-density-temperature-lut
-    kickoff_job: false
   - upstream_source: swapi
     upstream_data_type: ancillary
     upstream_descriptor: energy-gf-pui-lut

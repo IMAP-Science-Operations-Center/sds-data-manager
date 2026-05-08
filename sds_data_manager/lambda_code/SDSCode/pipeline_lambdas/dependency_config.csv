@@ -1076,9 +1076,6 @@ swapi, ancillary, lut-notes, swapi, l2, sci, HARD, DOWNSTREAM
 swapi, l2, sci, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 mag, l1d, norm-rtn, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 mag, l2, norm-rtn, swapi, l3a, alpha-sw, SOFT_NO_TRIGGER, DOWNSTREAM
-swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNSTREAM
-swapi, ancillary, proton-density-temperature-lut, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNSTREAM
-swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 swapi, ancillary, energy-gf-pui-lut, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1099,9 +1096,6 @@ science_frames, spice, historical, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNST
 pointing_attitude, spice, historical, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3a, proton-sw, HARD, DOWNSTREAM
-swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
-swapi, ancillary, proton-density-temperature-lut, swapi, l3a, proton-sw, HARD, DOWNSTREAM
-swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, energy-gf-pui-lut, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1122,9 +1116,6 @@ science_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNS
 pointing_attitude, spice, historical, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 
 swapi, l2, sci, swapi, l3a, pui-he, HARD, DOWNSTREAM
-swapi, ancillary, clock-angle-and-flow-deflection-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
-swapi, ancillary, proton-density-temperature-lut, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
-swapi, ancillary, alpha-density-temperature-lut, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 swapi, ancillary, energy-gf-pui-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, instrument-response-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
 swapi, ancillary, density-of-neutral-helium-lut, swapi, l3a, pui-he, HARD, DOWNSTREAM
