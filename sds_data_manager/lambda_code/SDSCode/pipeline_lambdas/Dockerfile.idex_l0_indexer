@@ -1,6 +1,6 @@
 FROM public.ecr.aws/lambda/python:3.12
 
-COPY processing/requirements.txt ./requirements.txt
+COPY idex_processing/requirements.txt ./requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
