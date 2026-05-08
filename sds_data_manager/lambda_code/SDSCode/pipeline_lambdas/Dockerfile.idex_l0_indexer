@@ -4,6 +4,6 @@ COPY processing/requirements.txt ./requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY SDSCode/pipeline_lambdas/idex_l0_indexer.py .
+COPY SDSCode ./SDSCode
 
-CMD ["idex_l0_indexer.lambda_handler"]
+CMD ["SDSCode.pipeline_lambdas.idex_l0_indexer.lambda_handler"]
