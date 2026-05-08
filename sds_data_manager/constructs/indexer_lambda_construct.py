@@ -324,13 +324,14 @@ class IDEXL0IndexerLambda(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
-        idex_l0_indexer_lambda = lambda_.Function(
+        idex_l0_indexer_lambda = lambda_.DockerImageFunction(
             self,
             id="IDEXL0IndexerLambda",
+            code=lambda_.DockerImageCode.from_image_asset(
+                "sds_data_manager/lambda_code",
+                file="SDSCode/pipeline_lambdas/Dockerfile.idex_l0_indexer",
+            ),
             function_name="idex-l0-file-indexer",
-            code=code,
-            handler="SDSCode.pipeline_lambdas.idex_l0_indexer.lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
             allow_public_subnet=True,
@@ -342,7 +343,6 @@ class IDEXL0IndexerLambda(Construct):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
-            layers=layers,
         )
 
         # Adding events and s3 permission because indexer
