@@ -4,6 +4,40 @@
 # It contains important information such as the default values and expected behavior of these dependencies,
 # and how to properly configure them for your pipeline lambdas.
 
+l3a_spice_common: &l3a_spice_common
+  - upstream_source: ephemeris_reconstructed
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: planetary_ephemeris
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: attitude_history
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: imap_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
 
 (l1, hk):
   - upstream_source: swapi
@@ -52,6 +86,14 @@
   - upstream_source: swapi
     upstream_data_type: l2
     upstream_descriptor: sci
+  - upstream_source: mag
+    upstream_data_type: l1d
+    upstream_descriptor: norm-rtn
+  - upstream_source: mag
+    upstream_data_type: l2
+    upstream_descriptor: norm-rtn
+    required: false
+    kickoff_job: false
   - upstream_source: swapi
     upstream_data_type: ancillary
     upstream_descriptor: clock-angle-and-flow-deflection-lut
@@ -86,7 +128,16 @@
     upstream_data_type: ancillary
     upstream_descriptor: hydrogen-inflow-vector
     kickoff_job: false
-
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: azimuthal-transmission
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: central-effective-area
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: passband-fit-coefficients
+  - *l3a_spice_common
 
 (l3a, proton-sw):
   - upstream_source: swapi
@@ -125,28 +176,16 @@
     upstream_data_type: ancillary
     upstream_descriptor: hydrogen-inflow-vector
     kickoff_job: false
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: science_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: pointing_attitude
-    upstream_data_type: spice
-    upstream_descriptor: historical
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: azimuthal-transmission
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: central-effective-area
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: passband-fit-coefficients
+  - *l3a_spice_common
 
 
 (l3a, pui-he):
@@ -183,39 +222,16 @@
   - upstream_source: swapi
     upstream_data_type: ancillary
     upstream_descriptor: hydrogen-inflow-vector
-  - upstream_source: ephemeris_reconstructed
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: ephemeris_predicted
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: planetary_ephemeris
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: science_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: pointing_attitude
-    upstream_data_type: spice
-    upstream_descriptor: historical
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: azimuthal-transmission
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: central-effective-area
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: passband-fit-coefficients
+  - *l3a_spice_common
 
 
 (l3b, combined):
