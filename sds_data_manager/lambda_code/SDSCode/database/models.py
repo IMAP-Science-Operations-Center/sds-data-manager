@@ -329,5 +329,5 @@ class IDEXL0Files(Base):
     # in two different ten day chunks. These start_date are defined by IDEX team due to
     # above reasons.
     start_date = Column(DateTime, nullable=False, primary_key=True)
-    version = Column(String(4), nullable=False)  # vXXX
+    version = Column(String(4), nullable=False, primary_key=True)  # vXXX
     ingestion_date = Column(DateTime(timezone=True))

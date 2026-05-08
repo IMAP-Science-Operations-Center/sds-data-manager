@@ -1,8 +1,8 @@
 """update_version_in_idex_l0_table.
 
-Revision ID: 320be9613edc
+Revision ID: f110e214a9cc
 Revises: f52014ca1da4
-Create Date: 2026-05-08 15:37:17.152048
+Create Date: 2026-05-08 15:39:34.857614
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "320be9613edc"
+revision: str = "f110e214a9cc"
 down_revision: str | Sequence[str] | None = "f52014ca1da4"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
