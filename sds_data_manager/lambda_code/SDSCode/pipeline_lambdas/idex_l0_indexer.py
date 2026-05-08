@@ -75,7 +75,7 @@ def compute_idex_l0_event_times(s3_filepath: str) -> np.ndarray:
     return np.asarray(event_times)
 
 
-def compute_idex_l0_start_dates(s3_filepath: str):
+def compute_idex_l0_start_dates(s3_filepath: str) -> list:
     """Map an L0 file to the 10-day windows its events fall into.
 
     One L0 file can span multiple windows if it contains events from
@@ -90,7 +90,7 @@ def compute_idex_l0_start_dates(s3_filepath: str):
 
     Returns
     -------
-    np.ndarray | list
+     list
         Unique window start dates touched by this file. Empty list if the
         file has no IDEX events.
     """
@@ -128,7 +128,7 @@ def compute_idex_l0_start_dates(s3_filepath: str):
     # For each event, find the latest window start date that is <= the event time.
     window_idx = np.searchsorted(start_dates, event_times, side="right") - 1
 
-    return np.unique(start_dates[window_idx])
+    return list(np.unique(start_dates[window_idx]))
 
 
 def lambda_handler(event, context):

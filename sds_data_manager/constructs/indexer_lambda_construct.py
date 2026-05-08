@@ -338,6 +338,7 @@ class IDEXL0IndexerLambda(Construct):
             vpc_subnets=vpc_subnets,
             security_groups=[rds_security_group],
             environment={
+                "IMAP_DATA_DIR": "/tmp",  # noqa: S108
                 "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
