@@ -273,7 +273,7 @@ def s3_event_handler(event):
             "a separate lambda. See idex-l0-file-indexer lambda for details."
         )
         logger.info(message)
-        return http_response(status_code=200, body=f"Success. {message}")
+        return http_response(status_code=200, body=message)
     try:
         file_obj, _ = write_file_metadata_to_table(filename, s3_filepath)
     except ImapFilePath.InvalidImapFileError:
