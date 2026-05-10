@@ -11,8 +11,6 @@ import imap_data_access
 import spiceypy
 from imap_data_access import SPICEFilePath
 
-from .api_lambdas import spice_metakernel_api
-
 MAXIMUM_MISSION_J2000_TIME = 4575787269.183866
 
 logger = logging.getLogger(__name__)
@@ -86,6 +84,10 @@ def furnish_best_spice_file(kernel_type: str):
         If S3_BUCKET or DATA_DIR are not set, no files are found in the database,
         or the file is not in the S3 bucket, FileNotFoundError will raise.
     """
+    from .api_lambdas import (  # noqa: PLC0415
+        spice_metakernel_api,
+    )
+
     # Check if S3_BUCKET and DATA_DIR are set
     if "S3_BUCKET" not in os.environ or "DATA_DIR" not in imap_data_access.config:
         raise FileNotFoundError(

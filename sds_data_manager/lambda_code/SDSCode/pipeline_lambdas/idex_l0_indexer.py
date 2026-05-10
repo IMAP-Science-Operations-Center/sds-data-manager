@@ -11,6 +11,7 @@ to pull for a given window.
 
 import logging
 import os
+from pathlib import Path
 
 import boto3
 import numpy as np
@@ -31,6 +32,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 s3 = boto3.client("s3")
+
+IDEX_10_DAY_RANGES_PATH = (
+    Path(__file__).resolve().parent.parent / "utils" / "idex_10_day_CDF_names.csv"
+)
 
 
 def compute_idex_l0_event_times(s3_filepath: str) -> np.ndarray:
@@ -105,9 +110,12 @@ def compute_idex_l0_start_dates(s3_filepath: str) -> list:
 
     # IDEX instrument team defined 10-day window boundaries. Each row is one window with
     # a start and end date.
-    idex_10_day_ranges = pd.read_csv(
-        "sds_data_manager/utils/idex_10_day_CDF_names.csv", header=0
-    )
+    if not IDEX_10_DAY_RANGES_PATH.exists():
+        raise FileNotFoundError(
+            f"Unable to find IDEX window definition CSV at {IDEX_10_DAY_RANGES_PATH}"
+        )
+
+    idex_10_day_ranges = pd.read_csv(IDEX_10_DAY_RANGES_PATH, header=0)
     start_dates = np.sort(
         pd.to_datetime(idex_10_day_ranges["start_date"], format="%Y%m%d")
     )
@@ -147,10 +155,15 @@ def lambda_handler(event, context):
         information about the invocation, function,
         and runtime environment.
     """
+    logger.info(f"Indexing IDEX L0 file from event {event}")
     s3_filepath = event["detail"]["object"]["key"]
     filename = os.path.basename(s3_filepath)
 
     # Furnish spice kernels
+    logger.info(
+        f"Gathering leapsecond and spacecraft clock kernels for IDEX L0"
+        f" indexing of file {filename}"
+    )
     try:
         _ = furnish_best_spice_file("leapseconds")
         _ = furnish_best_spice_file("spacecraft_clock")
@@ -171,16 +184,23 @@ def lambda_handler(event, context):
     # Figure out which 10-day windows this file touches and write one DB row per window.
     # A single file can touch multiple windows if it contains events from different
     # periods.
+    logger.info(
+        "Computing which 10-day windows this IDEX L0 file belongs to based "
+        "on event times"
+    )
     start_dates = compute_idex_l0_start_dates(s3_filepath)
+    logger.info(
+        f"File {filename} belongs to windows starting on these dates: {start_dates}"
+    )
     idex_params = {
         "ingestion_date": params["ingestion_date"],
         "version": params["version"],
         "file_path": params["file_path"],
     }
-
+    logger.info(f"Writing metadata to idex-l0-files db table: {idex_params}")
     with db.Session() as session, session.begin():
         for start_date in start_dates:
-            idex_params["start_date"] = pd.Timestamp(start_date)
+            idex_params["start_date"] = pd.Timestamp(start_date)  # .to_pydatetime()
             session.add(models.IDEXL0Files(**idex_params))
 
     logger.debug(f"IDEX L0 indexing complete for {filename}")

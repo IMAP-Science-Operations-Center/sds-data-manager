@@ -3,6 +3,7 @@
 import aws_cdk as cdk
 from aws_cdk import Environment
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_ecr_assets as ecr_assets
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
@@ -330,10 +331,12 @@ class IDEXL0IndexerLambda(Construct):
             code=lambda_.DockerImageCode.from_image_asset(
                 "sds_data_manager/lambda_code",
                 file="SDSCode/pipeline_lambdas/Dockerfile.idex_l0_indexer",
+                platform=ecr_assets.Platform.LINUX_AMD64,
             ),
             function_name="idex-l0-file-indexer",
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
+            architecture=lambda_.Architecture.X86_64,
             allow_public_subnet=True,
             vpc=vpc,
             vpc_subnets=vpc_subnets,
