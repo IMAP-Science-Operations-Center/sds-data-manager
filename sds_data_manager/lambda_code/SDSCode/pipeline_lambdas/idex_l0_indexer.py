@@ -13,7 +13,6 @@ import logging
 import os
 from pathlib import Path
 
-import boto3
 import numpy as np
 import pandas as pd
 from imap_data_access import ImapFilePath
@@ -30,8 +29,6 @@ from .indexer import http_response, write_file_metadata_to_table
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-s3 = boto3.client("s3")
 
 IDEX_10_DAY_RANGES_PATH = (
     Path(__file__).resolve().parent.parent / "utils" / "idex_10_day_CDF_names.csv"

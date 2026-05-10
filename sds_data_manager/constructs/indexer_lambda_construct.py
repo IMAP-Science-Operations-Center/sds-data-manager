@@ -288,13 +288,11 @@ class IDEXL0IndexerLambda(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        code: lambda_.Code,
         db_secret_name: str,
         vpc: ec2.Vpc,
         vpc_subnets,
         rds_security_group,
         data_bucket,
-        layers: list,
         **kwargs,
     ) -> None:
         """IDEX IndexerLambda Construct.
@@ -305,8 +303,6 @@ class IDEXL0IndexerLambda(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        code : aws_lambda.Code
-            Lambda code bundle
         db_secret_name : str
             The DB secret name
         vpc : obj
@@ -317,8 +313,6 @@ class IDEXL0IndexerLambda(Construct):
             The RDS security group
         data_bucket : obj
             The data bucket
-        layers : list
-            List of Lambda layers cdk.cdfnOutput names
         kwargs : dict
             Keyword arguments
 
@@ -351,16 +345,16 @@ class IDEXL0IndexerLambda(Construct):
         # Adding events and s3 permission because indexer
         # lambda sents events and read from s3.
         # TODO: narrow s3 permission later
-        put_event_policy = iam.PolicyStatement(
+        s3_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["events:PutEvents", "s3:*"],
+            actions=["s3:*"],
             resources=[
                 "*",
             ],
         )
 
         idex_l0_indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-        idex_l0_indexer_lambda.add_to_role_policy(put_event_policy)
+        idex_l0_indexer_lambda.add_to_role_policy(s3_policy)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
@@ -378,6 +372,7 @@ class IDEXL0IndexerLambda(Construct):
                 source=["aws.s3"],
                 detail_type=["Object Created"],
                 detail={
+                    "IMAP_DATA_DIR": "/tmp",  # noqa: S108
                     "bucket": {"name": [data_bucket.bucket_name]},
                     "object": {
                         "key": idex_l0_prefix,

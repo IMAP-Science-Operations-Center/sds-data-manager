@@ -13,7 +13,7 @@ from tests.lambda_endpoints.test_spice_indexer_lambda import (
     put_local_file_in_bucket,
 )
 
-IDEX_LO_TEST_FILE = "imap/idex/l0/2024/01/imap_idex_l0_raw_20240101_v001.pkts"
+IDEX_L0_TEST_FILE = "imap/idex/l0/2024/01/imap_idex_l0_raw_20240101_v001.pkts"
 
 
 @pytest.fixture
@@ -57,7 +57,7 @@ def setup_data(session, s3_client):
     )
     put_local_file_in_bucket(
         s3_client,
-        IDEX_LO_TEST_FILE,
+        IDEX_L0_TEST_FILE,
         pkts_file_test_path,
     )
 
@@ -86,7 +86,7 @@ def test_s3_sci_event(session, s3_client, events_client, setup_data):
             "version": "0",
             "bucket": {"name": "test-data-bucket"},
             "object": {
-                "key": IDEX_LO_TEST_FILE,
+                "key": IDEX_L0_TEST_FILE,
                 "reason": "PutObject",
             },
         },
