@@ -51,7 +51,7 @@ def compute_idex_l0_event_times(s3_filepath: str) -> np.ndarray:
     Returns
     -------
     np.ndarray
-        All event times found in the file, unsorted and not yet deduplicated.
+        All event times found in the file converted to datetime64.
     """
     packet_file = download_from_s3(s3_filepath)
     science_packets, raw_datset_by_apid, _ = decom_packets(packet_file)
@@ -73,8 +73,8 @@ def compute_idex_l0_event_times(s3_filepath: str) -> np.ndarray:
     if IDEXAPID.IDEX_EVT in raw_datset_by_apid:
         shcoarse = raw_datset_by_apid[IDEXAPID.IDEX_EVT]["elsec_evtpkt"].values
         event_times.extend(shcoarse)
-
-    return np.asarray(event_times)
+    # convert to datetime64 for further processing
+    return met_to_datetime64(np.asarray(event_times))
 
 
 def compute_idex_l0_start_dates(s3_filepath: str) -> list:
@@ -102,8 +102,6 @@ def compute_idex_l0_start_dates(s3_filepath: str) -> list:
             f"No IDEX events found in {s3_filepath}, skipping window calculation"
         )
         return []
-
-    event_times = met_to_datetime64(event_times)
 
     # IDEX instrument team defined 10-day window boundaries. Each row is one window with
     # a start and end date.

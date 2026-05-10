@@ -266,7 +266,8 @@ def s3_event_handler(event):
     s3_filepath = event["detail"]["object"]["key"]
 
     filename = os.path.basename(s3_filepath)
-    if "imap/idex/l0" in s3_filepath:
+    # Skip Idex l0 files.
+    if s3_filepath.startswith("imap/idex/l0/"):
         message = (
             f"Received an IDEX L0 file {filename}. This file will be indexed in "
             "a separate lambda. See idex-l0-file-indexer lambda for details."

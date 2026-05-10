@@ -372,7 +372,6 @@ class IDEXL0IndexerLambda(Construct):
                 source=["aws.s3"],
                 detail_type=["Object Created"],
                 detail={
-                    "IMAP_DATA_DIR": "/tmp",  # noqa: S108
                     "bucket": {"name": [data_bucket.bucket_name]},
                     "object": {
                         "key": idex_l0_prefix,
