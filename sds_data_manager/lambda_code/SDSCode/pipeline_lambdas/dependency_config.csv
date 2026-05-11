@@ -840,9 +840,14 @@ lo, l1b, histrates, lo, l1b, goodtimes, HARD, DOWNSTREAM
 leapseconds, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
 
-lo, l1b, histrates, lo, l1b, bgrates, HARD, DOWNSTREAM
-leapseconds, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
+lo, l1b, goodtimes, lo, l1c, quickmap, HARD, DOWNSTREAM
+lo, l1b, bgrates, lo, l1c, quickmap, HARD, DOWNSTREAM
+lo, l1b, de, lo, l1c, quickmap, HARD_NO_TRIGGER, DOWNSTREAM
+lo, l1b, nhk, lo, l1c, quickmap, HARD_NO_TRIGGER, DOWNSTREAM
+lo, l1b, histrates, lo, l1c, quickmap, HARD_NO_TRIGGER, DOWNSTREAM
+leapseconds, spice, historical, lo, l1c, quickmap, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, lo, l1c, quickmap, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft, l1a, quaternions, lo, l1c, quickmap, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 lo, ancillary, good-times, lo, l1c, pset, HARD, DOWNSTREAM
