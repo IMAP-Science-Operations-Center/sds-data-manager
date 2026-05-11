@@ -3,6 +3,17 @@
 # please refer to this document https://imap-processing.readthedocs.io/en/latest/development/data-dependency.html#.
 # It contains important information such as the default values and expected behavior of these dependencies,
 # and how to properly configure them for your pipeline lambdas.
+l3a_ancillary_common: &l3a_ancillary_common
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: azimuthal-transmission
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: central-effective-area
+  - upstream_source: swapi
+    upstream_data_type: ancillary
+    upstream_descriptor: passband-fit-coefficients
+
 
 l3a_spice_common: &l3a_spice_common
   - upstream_source: ephemeris_reconstructed
@@ -83,6 +94,8 @@ l3a_spice_common: &l3a_spice_common
 
 
 (l3a, alpha-sw):
+  - *l3a_spice_common
+  - *l3a_ancillary_common
   - upstream_source: swapi
     upstream_data_type: l2
     upstream_descriptor: sci
@@ -128,18 +141,10 @@ l3a_spice_common: &l3a_spice_common
     upstream_data_type: ancillary
     upstream_descriptor: hydrogen-inflow-vector
     kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: azimuthal-transmission
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: central-effective-area
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: passband-fit-coefficients
-  - *l3a_spice_common
 
 (l3a, proton-sw):
+  - *l3a_spice_common
+  - *l3a_ancillary_common
   - upstream_source: swapi
     upstream_data_type: l2
     upstream_descriptor: sci
@@ -176,19 +181,11 @@ l3a_spice_common: &l3a_spice_common
     upstream_data_type: ancillary
     upstream_descriptor: hydrogen-inflow-vector
     kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: azimuthal-transmission
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: central-effective-area
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: passband-fit-coefficients
-  - *l3a_spice_common
 
 
 (l3a, pui-he):
+  - *l3a_spice_common
+  - *l3a_ancillary_common
   - upstream_source: swapi
     upstream_data_type: l2
     upstream_descriptor: sci
@@ -222,16 +219,6 @@ l3a_spice_common: &l3a_spice_common
   - upstream_source: swapi
     upstream_data_type: ancillary
     upstream_descriptor: hydrogen-inflow-vector
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: azimuthal-transmission
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: central-effective-area
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: passband-fit-coefficients
-  - *l3a_spice_common
 
 
 (l3b, combined):
