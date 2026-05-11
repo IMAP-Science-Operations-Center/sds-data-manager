@@ -25,22 +25,32 @@ class DependencyConfigReader:
         self._config = self._load_all_dependencies()
 
     @property
-    def config(self) -> dict:
-        """Get the underlying dependency configuration dictionary."""
+    def config(self) -> dict[tuple[str, str, str], list[DependencyNode]]:
+        """Get the underlying dependency configuration dictionary.
+
+        Returns
+        -------
+        dict[tuple[str, str, str], list[DependencyNode]]
+            Mapping of ``(source, data_type, descriptor)`` tuples to lists of
+            :class:`~.utils.DependencyNode` upstream dependency objects.
+        """
         return self._config
 
-    def _load_all_dependencies(self) -> dict:
+    def _load_all_dependencies(
+        self,
+    ) -> dict[tuple[str, str, str], list[DependencyNode]]:
         """Load all instrument YAML dependency files and unified dependency.
 
         Returns a dictionary where each key is a parent node
         (source, data_type, descriptor) representing a downstream product,
-        and each value is a list of upstream dependencies as child nodes.
+        and each value is a list of upstream :class:`~.utils.DependencyNode`
+        objects.
 
         Returns
         -------
-        dict
+        dict[tuple[str, str, str], list[DependencyNode]]
             Unified dependency configuration with structure:
-            {(source, data_type, descriptor): [upstream_deps_list]}
+            ``{(source, data_type, descriptor): [DependencyNode, ...]}``
 
         Raises
         ------
@@ -51,9 +61,10 @@ class DependencyConfigReader:
 
         Examples
         --------
-        >>> config = DependencyConfig()
-        >>> config.config[('codice', 'l1a', 'all')]
-        [('codice', 'l0', 'raw', True, True), ...]
+        >>> reader = DependencyConfigReader()
+        >>> nodes = reader.config[('codice', 'l1a', 'all')]
+        >>> nodes[0]
+        DependencyNode(source='codice', data_type='l0', descriptor='raw', ...)
         """
         dependencies = {}
         yaml_dir = Path(__file__).parent

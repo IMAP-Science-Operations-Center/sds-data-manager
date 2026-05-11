@@ -47,7 +47,7 @@ class DependencyNode:
             - np - nearest pointing
 
             past and future should end with one of these options. Eg.
-                ["-3p", "3pm"] means 3 pointing
+                ["-3p", "3p"] means 3 pointing
                 ["-3d", "5d"] means 5 days
                 ["-2h", "2h"] means 2 hours
                 ["1l"] means last processed
