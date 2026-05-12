@@ -12,6 +12,7 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactorin
     DependencyConfigReader,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.utils import (  # noqa: E501
+    DependencyNode,
     format_upstream_node_input,
 )
 
@@ -182,6 +183,83 @@ def test_validate_node_dict_empty_descriptor():
                 "upstream_data_type": "l1a",
                 "upstream_descriptor": "",
             }
+        )
+
+
+# ---------------------------------------------------------------------------
+# _validate_date_range tests
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "date_range",
+    [
+        # Single-element past — one option per cadence type
+        ["-3p"],  # pointing
+        ["-3h"],  # hourly
+        ["-3d"],  # days
+        ["-1l"],  # last processed
+        # Single-element nearest (positive integer, two-char suffix)
+        ["6np"],  # nearest pointing
+        ["6nd"],  # nearest day
+        # Two-element past + future for each regular cadence option
+        ["-3p", "3p"],
+        ["-3h", "3h"],
+        ["-3d", "3d"],
+        # Two-element: past nearest only (future must not be nearest)
+        # nearest options are only valid as single-element
+    ],
+)
+def test_validate_date_range_valid(date_range):
+    """Test that all valid date range formats are accepted."""
+    node = DependencyNode(
+        source="hi",
+        data_type="l1b",
+        descriptor="45sensor-goodtimes",
+        date_range=date_range,
+    )
+    assert node.date_range == date_range
+
+
+def test_validate_date_range_none():
+    """Test that omitting date_range (defaults to empty list) is accepted."""
+    node = DependencyNode(
+        source="hi",
+        data_type="l1b",
+        descriptor="45sensor-goodtimes",
+    )
+    assert node.date_range == []
+
+
+@pytest.mark.parametrize(
+    ("date_range", "match"),
+    [
+        # Past is positive (should be negative)
+        (["3p"], "Invalid past"),
+        (["3h"], "Invalid past"),
+        (["3d"], "Invalid past"),
+        # Past uses unrecognised option letter
+        (["-3x"], "Invalid past"),
+        # Too many elements
+        (["-3p", "3p", "1p"], "1-2 elements"),
+        # Empty list — treated as no date range, but an empty list still passes
+        # the `not date_range` early-return; test non-list type instead
+        ("not-a-list", "1-2 elements"),
+        # Future is negative
+        (["-3p", "-3p"], "Invalid future"),
+        # Future uses nearest option (not allowed)
+        (["-3p", "6np"], "Nearest need"),
+        (["-3p", "6nd"], "Nearest need"),
+        # Future uses unrecognised option letter
+        (["-3p", "3x"], "Invalid future"),
+    ],
+)
+def test_validate_date_range_invalid(date_range, match):
+    """Test that invalid date range formats raise ValueError."""
+    with pytest.raises(ValueError, match=match):
+        DependencyNode(
+            source="hi",
+            data_type="l1b",
+            descriptor="45sensor-goodtimes",
+            date_range=date_range,
         )
 
 
