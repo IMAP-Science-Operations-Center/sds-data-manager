@@ -12,6 +12,7 @@ from imap_data_access import (
     QuicklookFilePath,
     ScienceFilePath,
 )
+from imap_data_access.file_validation import generate_imap_file_path
 
 from ..database import database as db
 from ..database import models
@@ -266,17 +267,22 @@ def s3_event_handler(event):
     s3_filepath = event["detail"]["object"]["key"]
 
     filename = os.path.basename(s3_filepath)
-    # Skip Idex l0 files.
-    if s3_filepath.startswith("imap/idex/l0/"):
-        message = (
-            f"Received an IDEX L0 file {filename}. This file will be indexed in "
-            "a separate lambda. See idex-l0-file-indexer lambda for details."
-        )
-        logger.info(message)
-        return http_response(status_code=200, body=message)
+
     try:
+        file_obj = generate_imap_file_path(filename)
+        # Skip Idex l0 files.
+        if type(file_obj) is ScienceFilePath:
+            if file_obj.instrument == "idex" and file_obj.data_level == "l0":
+                message = (
+                    f"Received an IDEX L0 file {filename}. This file will be indexed "
+                    f"in a separate lambda. See idex-l0-file-indexer lambda for"
+                    f" details."
+                )
+                logger.info(message)
+                return http_response(status_code=200, body=message)
+
         file_obj, _ = write_file_metadata_to_table(filename, s3_filepath)
-    except ImapFilePath.InvalidImapFileError:
+    except ValueError:
         return http_response(
             status_code=400,
             body=f"Filename {filename} is not a valid SCIENCE, "

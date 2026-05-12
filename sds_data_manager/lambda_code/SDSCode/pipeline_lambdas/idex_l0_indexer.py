@@ -5,8 +5,28 @@ event times are in another variable in the packets. Since a single downlink may
 contain events from different time periods, we can't trust
 the filename. This module reads the event times out of each L0 file and
 figures out which 10-day windows those events actually belong to, then
-writes that mapping to the database so downstream jobs know which L0 files
-to pull for a given window.
+writes that mapping to the database so downstream handling can gather the correct l0
+files for each 10-day window start date.
+
+For example the idex l0 database will look something like this:
+
+file_path                                start_date  version ingestion_date
+...imap_idex_l0_raw_20260211_v001.pkts    2026-02-09   v001    2026-05-11
+...imap_idex_l0_raw_20260215_v002.pkts    2026-02-09   v002    2026-05-11
+...imap_idex_l0_raw_20260212_v002.pkts    2026-02-09   v002    2026-05-11
+...imap_idex_l0_raw_20260213_v002.pkts    2026-02-09   v002    2026-05-11
+...imap_idex_l0_raw_20260214_v001.pkts    2026-02-09   v001    2026-05-11
+...imap_idex_l0_raw_20260218_v001.pkts    2026-02-09   v001    2026-05-11
+...imap_idex_l0_raw_20260219_v001.pkts    2026-02-09   v001    2026-05-11
+...imap_idex_l0_raw_20260223_v003.pkts    2026-02-09   v003    2026-05-11
+...imap_idex_l0_raw_20260216_v002.pkts    2026-02-09   v002    2026-05-11
+...imap_idex_l0_raw_20260217_v002.pkts    2026-02-09   v002    2026-05-11
+...imap_idex_l0_raw_20260218_v001.pkts    2026-02-19   v001    2026-05-11
+
+
+The start date corresponds to the start of a 10 day window. To find all the files
+needed to process a given window, downstream code can query the database for all files
+ with that start date.
 """
 
 import logging
@@ -64,15 +84,14 @@ def compute_idex_l0_event_times(s3_filepath: str) -> np.ndarray:
                 if scitype == Scitype.FIRST_PACKET:
                     # Coarse event time is split across two header fields,
                     # shift the high word and OR them together to reconstruct it.
-                    shcoarse = (packet["IDX__TXHDRTIMESEC1"] << 16) + packet[
+                    event_time = (packet["IDX__TXHDRTIMESEC1"] << 16) + packet[
                         "IDX__TXHDRTIMESEC2"
                     ]
-                    event_times.append(shcoarse)
+                    event_times.append(event_time)
 
     # Event message packets store shcoarse directly, no reconstruction needed.
     if IDEXAPID.IDEX_EVT in raw_datset_by_apid:
-        shcoarse = raw_datset_by_apid[IDEXAPID.IDEX_EVT]["elsec_evtpkt"].values
-        event_times.extend(shcoarse)
+        event_times.extend(raw_datset_by_apid[IDEXAPID.IDEX_EVT]["elsec_evtpkt"].values)
     # convert to datetime64 for further processing
     return met_to_datetime64(np.asarray(event_times))
 
@@ -156,9 +175,18 @@ def lambda_handler(event, context):
 
     # Furnish spice kernels
     logger.info(
-        f"Gathering leapsecond and spacecraft clock kernels for IDEX L0"
-        f" indexing of file {filename}"
+        "Gathering leapsecond and spacecraft clock kernels for reading"
+        " event times from IDEX L0 needed for indexing of file"
+        f" {filename} to IDEX database table"
     )
+    # add metadata to science file table.
+    try:
+        _, params = write_file_metadata_to_table(filename, s3_filepath)
+    except ImapFilePath.InvalidImapFileError:
+        return http_response(
+            status_code=400,
+            body=f"Filename {filename} is not a valid SCIENCE file.",
+        )
     try:
         _ = furnish_best_spice_file("leapseconds")
         _ = furnish_best_spice_file("spacecraft_clock")
@@ -166,14 +194,6 @@ def lambda_handler(event, context):
         logger.error(f"Error furnishing SPICE kernels: {e}")
         return http_response(
             status_code=500, body=f"Error furnishing SPICE kernels: {e}"
-        )
-
-    try:
-        _, params = write_file_metadata_to_table(filename, s3_filepath)
-    except ImapFilePath.InvalidImapFileError:
-        return http_response(
-            status_code=400,
-            body=f"Filename {filename} is not a valid SCIENCE file.",
         )
 
     # Figure out which 10-day windows this file touches and write one DB row per window.
