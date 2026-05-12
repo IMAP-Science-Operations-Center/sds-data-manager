@@ -712,6 +712,11 @@ hit, l0, raw, hit, l1b, hk, HARD, DOWNSTREAM
 leapseconds, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
 
+# Custom L0 data delivered by HIT
+hit, l0, pha-telemetry-corrected, hit, l1a, pha-telemetry-corrected, HARD, DOWNSTREAM
+leapseconds, spice, historical, hit, l1a, pha-telemetry-corrected, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hit, l1a, pha-telemetry-corrected, HARD_NO_TRIGGER, DOWNSTREAM
+
 hit, l1a, counts-standard, hit, l1b, standard-rates, HARD, DOWNSTREAM
 hit, l1a, counts-standard, hit, l1b, summed-rates, HARD, DOWNSTREAM
 hit, l1a, counts-sectored, hit, l1b, sectored-rates, HARD, DOWNSTREAM
