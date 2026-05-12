@@ -58,10 +58,10 @@ class NetworkingConstruct(Construct):
         # The VGW decrypts incoming IPSec packets from NOAA and hands them into the VPC.
         self.vpn_gateway = self._create_vpn_gateway()
 
-    def _create_vpn_gateway(self) -> ec2.CfnVpnGateway:
+    def _create_vpn_gateway(self) -> ec2.CfnVPNGateway:
         """Create a Virtual Private Gateway and attach it to the VPC."""
         # Create the Virtual Private Gateway (VGW).
-        vpn_gateway = ec2.CfnVpnGateway(
+        vpn_gateway = ec2.CfnVPNGateway(
             self,
             "VpnGateway",
             # IPSec version 1 is the standard protocol for encrypted VPN tunnels.

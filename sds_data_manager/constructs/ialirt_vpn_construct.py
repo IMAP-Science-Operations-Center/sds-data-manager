@@ -11,7 +11,7 @@ class IalirtVpnConstruct(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        vpn_gateway: ec2.CfnVpnGateway,
+        vpn_gateway: ec2.CfnVPNGateway,
         psk: str,
         wash_ip: str,
         denv_ip: str,
@@ -25,7 +25,7 @@ class IalirtVpnConstruct(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        vpn_gateway : ec2.CfnVpnGateway
+        vpn_gateway : ec2.CfnVPNGateway
             The Virtual Private Gateway to attach the VPN connections to.
         psk : str
             Pre-shared key for IKE authentication, retrieved from Secrets Manager.
@@ -116,7 +116,8 @@ class IalirtVpnConstruct(Construct):
             # Create the VPN connection between our Virtual Private Gateway (VGW)
             # and NOAA's customer gateway. Each connection gets two tunnels by default
             # (AWS requirement for redundancy) — both use the same crypto settings.
-            # static_routes_only=True because NOAA uses static routing, not BGP.
+            # BGP is used (static_routes_only=False) so that if one site (WASH or DENV)
+            # goes down, BGP automatically reroutes traffic through the other.
             # Data flows one way: NOAA sends to us. We do not send to NOAA.
             ec2.CfnVpnConnection(
                 self,
@@ -124,6 +125,6 @@ class IalirtVpnConstruct(Construct):
                 customer_gateway_id=cgw.ref,
                 vpn_gateway_id=vpn_gateway.ref,
                 type="ipsec.1",
-                static_routes_only=True,
+                static_routes_only=False,
                 vpn_tunnel_options_specifications=[tunnel, tunnel],
             )
