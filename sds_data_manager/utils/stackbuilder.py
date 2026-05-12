@@ -8,6 +8,8 @@ from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_rds as rds
+from aws_cdk import aws_secretsmanager as secretsmanager
+from aws_cdk import aws_ssm as ssm
 
 from sds_data_manager.constructs import (
     api_gateway_construct,
@@ -26,6 +28,7 @@ from sds_data_manager.constructs import (
     ialirt_processing_construct,
     ialirt_realtime_construct,
     ialirt_schedule_fetch_construct,
+    ialirt_vpn_construct,
     indexer_lambda_construct,
     instrument_lambdas,
     lambda_layer_construct,
@@ -433,6 +436,41 @@ def build_sds(
         secret_name=ialirt_secret_name,
         account_name=account_name,
     )
+
+    # Retrieve the NOAA VPN pre-shared key from Secrets Manager.
+    # Store the PSK under the key "psk" in a secret named "noaa-vpn-psk"
+    # before deploying this stack.
+    noaa_vpn_psk = (
+        secretsmanager.Secret.from_secret_name_v2(
+            ialirt_stack, "NoaaVpnPsk", "noaa-vpn-psk"
+        )
+        .secret_value_from_json("psk")
+        .unsafe_unwrap()
+    )
+
+    # Retrieve NOAA's border router IPs from SSM Parameter Store.
+    # Store these before deploying:
+    #   aws ssm put-parameter --name "/ialirt/noaa-vpn/wash-ip"
+    #   --value "<ip>" --type String
+    #   aws ssm put-parameter --name "/ialirt/noaa-vpn/denv-ip"
+    #   --value "<ip>" --type String
+    noaa_wash_ip = ssm.StringParameter.value_from_lookup(
+        ialirt_stack, "/ialirt/noaa-vpn/wash-ip"
+    )
+    noaa_denv_ip = ssm.StringParameter.value_from_lookup(
+        ialirt_stack, "/ialirt/noaa-vpn/denv-ip"
+    )
+
+    ialirt_vpn_construct.IalirtVpnConstruct(
+        scope=ialirt_stack,
+        construct_id="IalirtVpn",
+        vpn_gateway=networking.vpn_gateway,
+        psk=noaa_vpn_psk,
+        wash_ip=noaa_wash_ip,
+        denv_ip=noaa_denv_ip,
+    )
+
+
 
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(
         scope=sdc_stack,
