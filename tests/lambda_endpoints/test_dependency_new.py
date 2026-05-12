@@ -12,7 +12,6 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactorin
     DependencyConfigReader,
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.utils import (  # noqa: E501
-    DependencyNode,
     format_upstream_node_input,
 )
 
@@ -35,87 +34,75 @@ def mock_valid_instruments():
         yield
 
 
-# Tests for node validation via DependencyNode + format_upstream_node_input
+# Tests for node validation via format_upstream_node_input
 def test_validate_node_valid_instrument():
     """Test that valid instrument nodes instantiate without error."""
-    DependencyNode(
-        **format_upstream_node_input(
-            {
-                "upstream_source": "codice",
-                "upstream_data_type": "l1a",
-                "upstream_descriptor": "all",
-                "required": True,
-                "kickoff_job": True,
-            }
-        )
+    format_upstream_node_input(
+        {
+            "upstream_source": "codice",
+            "upstream_data_type": "l1a",
+            "upstream_descriptor": "all",
+            "required": True,
+            "kickoff_job": True,
+        }
     )
-    DependencyNode(
-        **format_upstream_node_input(
-            {
-                "upstream_source": "hi",
-                "upstream_data_type": "l1b",
-                "upstream_descriptor": "hi-counters-aggregated",
-                "required": True,
-                "kickoff_job": False,
-            }
-        )
+    format_upstream_node_input(
+        {
+            "upstream_source": "hi",
+            "upstream_data_type": "l1b",
+            "upstream_descriptor": "hi-counters-aggregated",
+            "required": True,
+            "kickoff_job": False,
+        }
     )
 
 
 def test_validate_node_valid_spice():
     """Test that valid SPICE nodes instantiate without error."""
-    DependencyNode(
-        **format_upstream_node_input(
-            {
-                "upstream_source": "leapseconds",
-                "upstream_data_type": "spice",
-                "upstream_descriptor": "historical",
-                "required": True,
-                "kickoff_job": False,
-            }
-        )
+    format_upstream_node_input(
+        {
+            "upstream_source": "leapseconds",
+            "upstream_data_type": "spice",
+            "upstream_descriptor": "historical",
+            "required": True,
+            "kickoff_job": False,
+        }
     )
 
 
 def test_validate_node_dict_valid():
     """Test that valid dict-formatted nodes instantiate without error."""
-    DependencyNode(
-        **format_upstream_node_input(
-            {
-                "upstream_source": "codice",
-                "upstream_data_type": "l1a",
-                "upstream_descriptor": "all",
-                "required": True,
-                "kickoff_job": False,
-            }
-        )
+    format_upstream_node_input(
+        {
+            "upstream_source": "codice",
+            "upstream_data_type": "l1a",
+            "upstream_descriptor": "all",
+            "required": True,
+            "kickoff_job": False,
+        }
     )
 
 
 def test_validate_node_dict_with_defaults():
     """Test that dict nodes with omitted optional fields instantiate without error."""
-    DependencyNode(
-        **format_upstream_node_input(
-            {
-                "upstream_source": "leapseconds",
-                "upstream_data_type": "spice",
-                "upstream_descriptor": "historical",
-            }
-        )
+    format_upstream_node_input(
+        {
+            "upstream_source": "leapseconds",
+            "upstream_data_type": "spice",
+            "upstream_descriptor": "historical",
+        }
     )
 
 
 def test_validate_node_dict_with_date_range():
     """Test that dict nodes with date range instantiate without error."""
-    DependencyNode(
-        **format_upstream_node_input(
-            {
-                "upstream_source": "hi",
-                "upstream_data_type": "l1b",
-                "upstream_descriptor": "45sensor-goodtimes",
-                "date_range": ["-3p", "3p"],
-            }
-        )
+    format_upstream_node_input(
+        {
+            "upstream_source": "hi",
+            "upstream_data_type": "l1b",
+            "upstream_descriptor": "45sensor-goodtimes",
+            "date_range": ["-3p", "3p"],
+        }
     )
 
 
@@ -147,62 +134,54 @@ def test_validate_node_legacy_list_wrong_length():
 def test_validate_node_invalid_source():
     """Test that invalid source raises ValueError."""
     with pytest.raises(ValueError, match="Invalid data source"):
-        DependencyNode(
-            **format_upstream_node_input(
-                {
-                    "upstream_source": "invalid_source",
-                    "upstream_data_type": "l1a",
-                    "upstream_descriptor": "all",
-                    "required": True,
-                    "kickoff_job": True,
-                }
-            )
+        format_upstream_node_input(
+            {
+                "upstream_source": "invalid_source",
+                "upstream_data_type": "l1a",
+                "upstream_descriptor": "all",
+                "required": True,
+                "kickoff_job": True,
+            }
         )
 
 
 def test_validate_node_invalid_data_type():
     """Test that invalid data type raises ValueError."""
     with pytest.raises(ValueError, match="Invalid data type"):
-        DependencyNode(
-            **format_upstream_node_input(
-                {
-                    "upstream_source": "codice",
-                    "upstream_data_type": "invalid_type",
-                    "upstream_descriptor": "all",
-                    "required": True,
-                    "kickoff_job": True,
-                }
-            )
+        format_upstream_node_input(
+            {
+                "upstream_source": "codice",
+                "upstream_data_type": "invalid_type",
+                "upstream_descriptor": "all",
+                "required": True,
+                "kickoff_job": True,
+            }
         )
 
 
 def test_validate_node_empty_descriptor():
     """Test that empty descriptor raises ValueError."""
     with pytest.raises(ValueError, match="non-empty string"):
-        DependencyNode(
-            **format_upstream_node_input(
-                {
-                    "upstream_source": "codice",
-                    "upstream_data_type": "l1a",
-                    "upstream_descriptor": "",
-                    "required": True,
-                    "kickoff_job": True,
-                }
-            )
+        format_upstream_node_input(
+            {
+                "upstream_source": "codice",
+                "upstream_data_type": "l1a",
+                "upstream_descriptor": "",
+                "required": True,
+                "kickoff_job": True,
+            }
         )
 
 
 def test_validate_node_dict_empty_descriptor():
     """Test that dict with empty descriptor raises ValueError."""
     with pytest.raises(ValueError, match="non-empty string"):
-        DependencyNode(
-            **format_upstream_node_input(
-                {
-                    "upstream_source": "codice",
-                    "upstream_data_type": "l1a",
-                    "upstream_descriptor": "",
-                }
-            )
+        format_upstream_node_input(
+            {
+                "upstream_source": "codice",
+                "upstream_data_type": "l1a",
+                "upstream_descriptor": "",
+            }
         )
 
 

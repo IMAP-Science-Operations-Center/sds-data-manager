@@ -236,13 +236,12 @@ def get_cadence_duration(descriptor: str) -> str | None:
     return None
 
 
-def format_upstream_node_input(yaml_dict: dict) -> dict:
-    """Convert a YAML upstream dependency dict to DependencyNode keyword arguments.
+def format_upstream_node_input(yaml_dict: dict) -> DependencyNode:
+    """Convert a YAML upstream dependency dict to a DependencyNode.
 
     YAML upstream entries use ``upstream_source``, ``upstream_data_type``,
     and ``upstream_descriptor`` as keys. This function maps those keys
-    to the DependencyNode field names so the result can be unpacked directly
-    with ``DependencyNode(**format_upstream_node_input(yaml_dict))``.
+    to the DependencyNode field names and constructs the node directly.
 
     Parameters
     ----------
@@ -253,8 +252,8 @@ def format_upstream_node_input(yaml_dict: dict) -> dict:
 
     Returns
     -------
-    dict
-        A dict with keys matching DependencyNode field names.
+    DependencyNode
+        A fully validated DependencyNode instance.
     """
     # Accept only dictionary format
     if not isinstance(yaml_dict, dict):
@@ -269,11 +268,11 @@ def format_upstream_node_input(yaml_dict: dict) -> dict:
         raise ValueError(
             f"Node dict must contain keys {required_keys}, got {set(yaml_dict.keys())}"
         )
-    return {
-        "source": yaml_dict["upstream_source"],
-        "data_type": yaml_dict["upstream_data_type"],
-        "descriptor": yaml_dict["upstream_descriptor"],
-        "required": yaml_dict.get("required", True),
-        "kickoff_job": yaml_dict.get("kickoff_job", True),
-        "date_range": yaml_dict.get("date_range", None),
-    }
+    return DependencyNode(
+        source=yaml_dict["upstream_source"],
+        data_type=yaml_dict["upstream_data_type"],
+        descriptor=yaml_dict["upstream_descriptor"],
+        required=yaml_dict.get("required", True),
+        kickoff_job=yaml_dict.get("kickoff_job", True),
+        date_range=yaml_dict.get("date_range", None),
+    )

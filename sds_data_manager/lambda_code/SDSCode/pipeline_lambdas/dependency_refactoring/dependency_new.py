@@ -119,9 +119,7 @@ class DependencyConfigReader:
                     upstream_deps_nodes = []
                     # Validate each upstream node
                     for upstream in flattened_upstream_deps:
-                        upstream_node = DependencyNode(
-                            **format_upstream_node_input(upstream)
-                        )
+                        upstream_node = format_upstream_node_input(upstream)
                         upstream_deps_nodes.append(upstream_node)
 
                     dependencies[potential_job_node] = upstream_deps_nodes
