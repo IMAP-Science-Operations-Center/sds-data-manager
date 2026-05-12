@@ -95,6 +95,8 @@ class IalirtProcessing(Construct):
             "198.118.1.14/32": [7526],  # BlueNet (tlm relay)
             "193.174.22.3/32": [7564],  # Kiel
             "185.83.168.248/32": [7566, 7567],  # UKSA
+            "41.74.156.19/32": [7568],  # SANSA
+            "41.74.156.20/32": [7568],  # SANSA
         }
 
         for ip_range, ports in partner_access.items():
