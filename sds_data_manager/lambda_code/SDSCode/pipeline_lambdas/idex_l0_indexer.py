@@ -141,9 +141,9 @@ def compute_idex_l0_start_dates(s3_filepath: str) -> list:
     start_range = np.min(start_dates)
     end_range = np.max(end_dates)
     if np.any(event_times < start_range) or np.any(event_times > end_range):
-        # TODO raise a valueError in here but for now continue because there is a
-        #   known issue with some event times. The IDEX team will get back to me on how
-        #   to handle this.
+        # TODO raise a value error here instead of logging a warning. There is
+        #   a known issue in some idex l0 event msg packets where MET == 1. The IDEX
+        #   team is aware and will let us know how to proceed.
         logger.warning(
             f"Event times fall outside the mission window range defined in "
             f"idex_10_day_CDF_names.csv. Event times: {event_times}. "
@@ -155,7 +155,7 @@ def compute_idex_l0_start_dates(s3_filepath: str) -> list:
     window_idx = np.searchsorted(start_dates, event_times, side="right") - 1
 
     # TODO remove this clip once the TODO above is resolved.
-    window_idx = np.clip(window_idx, 0, len(event_times) - 1)
+    window_idx = np.clip(window_idx, 0, len(start_dates) - 1)
 
     return list(np.unique(start_dates[window_idx]))
 
