@@ -32,6 +32,14 @@ class DependencyNode:
 class UpstreamDependencyNode(DependencyNode):
     """Upstream dependency node with date range and other fields.
 
+    Where the DependencyNode represents a job which will output a file,
+    this object represents the required inputs to a given job.
+
+    Each job has one of these objects associated with it, which is then passed
+    into the dependency system and used to determine
+    a) the files required to complete the job, according to this node
+    b) whether those files all exist, and their locations
+
     Extends DependencyNode with fields required for querying upstream
     dependencies from the database, including date range and other
     optional fields that may be used by the dependency resolver or batch starter.

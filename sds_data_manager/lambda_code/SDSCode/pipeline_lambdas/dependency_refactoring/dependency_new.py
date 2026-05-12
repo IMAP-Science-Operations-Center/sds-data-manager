@@ -5,7 +5,11 @@ from pathlib import Path
 
 import yaml
 from imap_data_access import VALID_INSTRUMENTS
+from sqlalchemy import and_, func, or_
 
+from .. import REPOINT_DEPENDENT_INSTRUMENTS
+from ..database import database as db
+from ..database import models
 from ..dependency import DataSource, DataType
 from .utils import DependencyNode, UpstreamDependencyNode
 
@@ -386,7 +390,7 @@ class DependencyResolver:
             End_time: yyyymmddhhmmss
 
         Responsibilities:
-            - Lookup upstream dependencies
+            - Lookup upstream dependencies, using the configuration in _config
             - Find all relevant files for upstream dependencies
             - Determine if it's a complete list
                 Scenarios causing incompleteness:
@@ -411,3 +415,101 @@ class DependencyResolver:
             job submission.
         """
         return {"status": 200, "message": "Success", "data": {}}
+
+    def get_files(
+        self,
+        session: db.Session,
+        edge: DependencyNode,
+        scope: UpstreamDependencyNode,
+    ) -> list:
+        """Query ScienceFiles or AncillaryFiles for one upstream edge.
+
+        Ported from ``get_files`` in
+        ``pipeline_lambdas/dependency.py``. For each ``start_date``
+        only the row with the latest ``version`` is returned. For
+        ancillary edges the result is further reduced to the
+        single row with the latest ``start_date``.
+
+        Parameters
+        ----------
+        session : db.Session
+            Open database session supplied by the caller.
+        edge : DependencyNode
+            Upstream edge identifying which instrument, data type,
+            and descriptor to query for.
+        scope : UpstreamDependencyNode
+            Job-scope node supplying ``start_date``, ``end_date``,
+            and (optionally) ``repoint`` filters.
+
+        Returns
+        -------
+        list
+            Matching ``models.ScienceFiles`` or
+            ``models.AncillaryFiles`` rows.
+        """
+        type_specific_conditions = []
+        if edge.data_type == DataType.ANCILLARY:
+            table = models.AncillaryFiles
+            # Date-range overlap: ancillary file's [start, end]
+            # window overlaps the requested [start, end] window.
+            type_specific_conditions.append(
+                and_(
+                    table.start_date <= scope.end_date,
+                    or_(
+                        table.end_date >= scope.start_date,
+                        table.end_date.is_(None),
+                    ),
+                )
+            )
+        else:
+            table = models.ScienceFiles
+            type_specific_conditions.append(table.data_level == edge.data_type)
+            # Repoint-dependent instruments: filter by repoint
+            # rather than date. Date filtering would incorrectly
+            # exclude files when the caller's date range doesn't
+            # match the target repoint's pointing dates.
+            if (
+                scope.repoint is not None
+                and edge.source in REPOINT_DEPENDENT_INSTRUMENTS
+            ):
+                type_specific_conditions.append(table.repointing == scope.repoint)
+            else:
+                type_specific_conditions.append(
+                    and_(
+                        table.start_date >= scope.start_date,
+                        table.start_date <= scope.end_date,
+                    )
+                )
+
+        filter_conditions = [
+            table.instrument == edge.source,
+            table.descriptor == edge.descriptor,
+            *type_specific_conditions,
+        ]
+        # Latest version per start_date.
+        max_version_query = (
+            session.query(
+                table.start_date,
+                func.max(table.version).label("latest_version"),
+            )
+            .filter(*filter_conditions)
+            .group_by(table.start_date)
+            .subquery()
+        )
+        records = (
+            session.query(table)
+            .join(
+                max_version_query,
+                (table.start_date == max_version_query.c.start_date)
+                & (table.version == max_version_query.c.latest_version),
+            )
+            .filter(*filter_conditions)
+            .all()
+        )
+        if edge.data_type == DataType.ANCILLARY:
+            records = sorted(
+                records,
+                key=lambda x: x.start_date,
+                reverse=True,
+            )[0:1]
+        return records
