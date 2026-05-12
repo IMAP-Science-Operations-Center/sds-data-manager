@@ -50,6 +50,7 @@ from .indexer import http_response, write_file_metadata_to_table
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# TODO use file from imap_processing
 IDEX_10_DAY_RANGES_PATH = (
     Path(__file__).resolve().parent.parent / "utils" / "idex_10_day_CDF_names.csv"
 )
@@ -140,7 +141,10 @@ def compute_idex_l0_start_dates(s3_filepath: str) -> list:
     start_range = np.min(start_dates)
     end_range = np.max(end_dates)
     if np.any(event_times < start_range) or np.any(event_times > end_range):
-        raise ValueError(
+        # TODO raise a valueError in here but for now continue because there is a
+        #   known issue with some event times. The IDEX team will get back to me on how
+        #   to handle this.
+        logger.warning(
             f"Event times fall outside the mission window range defined in "
             f"idex_10_day_CDF_names.csv. Event times: {event_times}. "
             f"Mission window range: {start_range} - {end_range}. "
