@@ -154,6 +154,9 @@ def compute_idex_l0_start_dates(s3_filepath: str) -> list:
     # For each event, find the latest window start date that is <= the event time.
     window_idx = np.searchsorted(start_dates, event_times, side="right") - 1
 
+    # TODO remove this clip once the TODO above is resolved.
+    window_idx = np.clip(window_idx, 0, len(event_times) - 1)
+
     return list(np.unique(start_dates[window_idx]))
 
 
