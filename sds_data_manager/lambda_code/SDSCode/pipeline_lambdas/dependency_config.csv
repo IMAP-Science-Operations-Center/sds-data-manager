@@ -845,9 +845,8 @@ leapseconds, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
-lo, ancillary, good-times, lo, l1c, pset, HARD, DOWNSTREAM
-lo, ancillary, hydrogen-background, lo, l1c, pset, HARD, DOWNSTREAM
-lo, ancillary, oxygen-background, lo, l1c, pset, HARD, DOWNSTREAM
+lo, l1b, goodtimes, lo, l1c, pset, HARD, DOWNSTREAM
+lo, l1b, bgrates, lo, l1c, pset, HARD, DOWNSTREAM
 spin, spin, historical, lo, l1c, pset, HARD, DOWNSTREAM
 repoint, repoint, historical, lo, l1c, pset, HARD, DOWNSTREAM
 leapseconds, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
