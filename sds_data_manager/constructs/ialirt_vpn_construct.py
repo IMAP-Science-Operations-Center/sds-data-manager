@@ -54,42 +54,42 @@ class IalirtVpnConstruct(Construct):
         #   - HMAC-SHA2-256-128 integrity
         #   - DH group 14 (PFS — Perfect Forward Secrecy)
         #   - 3600s (1 hour) lifetime
-        tunnel = ec2.CfnVpnConnection.VpnTunnelOptionsSpecificationProperty(
+        tunnel = ec2.CfnVPNConnection.VpnTunnelOptionsSpecificationProperty(
             pre_shared_key=psk,
             ike_versions=[
-                ec2.CfnVpnConnection.IKEVersionsRequestListValueProperty(value="ikev2")
+                ec2.CfnVPNConnection.IKEVersionsRequestListValueProperty(value="ikev2")
             ],
             phase1_encryption_algorithms=[
-                ec2.CfnVpnConnection.Phase1EncryptionAlgorithmsRequestListValueProperty(
+                ec2.CfnVPNConnection.Phase1EncryptionAlgorithmsRequestListValueProperty(
                     value="AES256"
                 )
             ],
             phase1_integrity_algorithms=[
-                ec2.CfnVpnConnection.Phase1IntegrityAlgorithmsRequestListValueProperty(
+                ec2.CfnVPNConnection.Phase1IntegrityAlgorithmsRequestListValueProperty(
                     value="SHA2-256"
                 )
             ],
             phase1_dh_group_numbers=[
-                ec2.CfnVpnConnection.Phase1DHGroupNumbersRequestListValueProperty(
+                ec2.CfnVPNConnection.Phase1DHGroupNumbersRequestListValueProperty(
                     value=14
                 )
             ],
             phase1_lifetime_seconds=28800,
             phase2_encryption_algorithms=[
-                ec2.CfnVpnConnection.Phase2EncryptionAlgorithmsRequestListValueProperty(
+                ec2.CfnVPNConnection.Phase2EncryptionAlgorithmsRequestListValueProperty(
                     value="AES128"
                 ),
-                ec2.CfnVpnConnection.Phase2EncryptionAlgorithmsRequestListValueProperty(
+                ec2.CfnVPNConnection.Phase2EncryptionAlgorithmsRequestListValueProperty(
                     value="AES256"
                 ),
             ],
             phase2_integrity_algorithms=[
-                ec2.CfnVpnConnection.Phase2IntegrityAlgorithmsRequestListValueProperty(
+                ec2.CfnVPNConnection.Phase2IntegrityAlgorithmsRequestListValueProperty(
                     value="HMAC-SHA2-256-128"
                 )
             ],
             phase2_dh_group_numbers=[
-                ec2.CfnVpnConnection.Phase2DHGroupNumbersRequestListValueProperty(
+                ec2.CfnVPNConnection.Phase2DHGroupNumbersRequestListValueProperty(
                     value=14
                 )
             ],
@@ -119,7 +119,7 @@ class IalirtVpnConstruct(Construct):
             # BGP is used (static_routes_only=False) so that if one site (WASH or DENV)
             # goes down, BGP automatically reroutes traffic through the other.
             # Data flows one way: NOAA sends to us. We do not send to NOAA.
-            ec2.CfnVpnConnection(
+            ec2.CfnVPNConnection(
                 self,
                 f"NoaaVpnConnection{site}",
                 customer_gateway_id=cgw.ref,
