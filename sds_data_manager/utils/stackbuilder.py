@@ -454,10 +454,10 @@ def build_sds(
     #   --value "<ip>" --type String
     #   aws ssm put-parameter --name "/ialirt/noaa-vpn/denv-ip"
     #   --value "<ip>" --type String
-    noaa_wash_ip = ssm.StringParameter.value_from_lookup(
+    noaa_wash_ip = ssm.StringParameter.value_for_string_parameter(
         ialirt_stack, "/ialirt/noaa-vpn/wash-ip"
     )
-    noaa_denv_ip = ssm.StringParameter.value_from_lookup(
+    noaa_denv_ip = ssm.StringParameter.value_for_string_parameter(
         ialirt_stack, "/ialirt/noaa-vpn/denv-ip"
     )
 
