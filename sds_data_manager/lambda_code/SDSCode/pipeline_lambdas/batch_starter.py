@@ -317,6 +317,7 @@ def determine_job_version(
             table.data_level == data_level,
             table.descriptor == descriptor,
             table.start_date == start_date,
+            table.repointing == repointing,
         ]
         if table == models.ProcessingJob:
             conditions.append(
@@ -691,6 +692,7 @@ def submit_all_jobs(
             descriptor=job_node["descriptor"],
             start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
             data_level=job_node["data_type"],
+            repointing=job_repointing,
         )
         try_to_submit_job(
             session,

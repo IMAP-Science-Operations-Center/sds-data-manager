@@ -2521,7 +2521,6 @@ def test_determine_job_version_spacecraft(session):
     assert version == "v003"
 
 
-@pytest.mark.xfail(reason="Issue 1315 not yet fixed.")
 def test_determine_job_version_per_repointing(session):
     """Each repointing on the same date should version independently."""
     # Repoint 1 completed and produced a science file at v001.
