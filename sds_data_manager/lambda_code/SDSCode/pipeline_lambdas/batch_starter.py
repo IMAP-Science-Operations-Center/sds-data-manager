@@ -273,6 +273,7 @@ def determine_job_version(
     data_level: str,
     descriptor: str,
     start_date: datetime,
+    repointing: int | None = None,
 ) -> str:
     """Return the next version number for this job (max version + 1).
 
@@ -299,6 +300,9 @@ def determine_job_version(
         Data descriptor.
     start_date : datetime
         Start date.
+    repointing : int, optional
+        Repointing number. Versions are tracked independently per repointing so
+        that multiple repoints on the same day each start at v001.
 
     Returns
     -------
