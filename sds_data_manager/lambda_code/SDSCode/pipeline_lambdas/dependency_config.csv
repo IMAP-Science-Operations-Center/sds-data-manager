@@ -1091,6 +1091,7 @@ swapi, ancillary, passband-fit-coefficients, swapi, l3a, alpha-sw, HARD, DOWNSTR
 ephemeris_reconstructed, spice, historical, swapi, l3a, alpha-sw, SOFT_NO_TRIGGER, DOWNSTREAM
 ephemeris_predicted, spice, historical, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 planetary_ephemeris, spice, historical, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_constants, spice, historical, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, swapi, l3a, alpha-sw, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, swapi, l3a, alpha-sw, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1114,6 +1115,7 @@ swapi, ancillary, passband-fit-coefficients, swapi, l3a, proton-sw, HARD, DOWNST
 ephemeris_reconstructed, spice, historical, swapi, l3a, proton-sw, SOFT_NO_TRIGGER, DOWNSTREAM
 ephemeris_predicted, spice, historical, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 planetary_ephemeris, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_constants, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, swapi, l3a, proton-sw, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, swapi, l3a, proton-sw, HARD_NO_TRIGGER, DOWNSTREAM
@@ -1137,6 +1139,7 @@ swapi, ancillary, passband-fit-coefficients, swapi, l3a, pui-he, HARD, DOWNSTREA
 ephemeris_reconstructed, spice, historical, swapi, l3a, pui-he, SOFT_NO_TRIGGER, DOWNSTREAM
 ephemeris_predicted, spice, historical, swapi, l3a, pui-he, HARD, DOWNSTREAM
 planetary_ephemeris, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
+planetary_constants, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, swapi, l3a, pui-he, HARD, DOWNSTREAM
 leapseconds, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, swapi, l3a, pui-he, HARD_NO_TRIGGER, DOWNSTREAM
