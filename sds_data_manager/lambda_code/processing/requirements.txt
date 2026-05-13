@@ -268,9 +268,9 @@ greenlet==3.5.0 ; python_version >= "3.10" and python_version < "3.13" and (plat
 idna==3.13 ; python_version >= "3.10" and python_version < "3.13" \
     --hash=sha256:585ea8fe5d69b9181ec1afba340451fba6ba764af97026f92a91d4eef164a242 \
     --hash=sha256:892ea0cde124a99ce773decba204c5552b69c3c67ffd5f232eb7696135bc8bb3
-imap-data-access==0.38.0 ; python_version >= "3.10" and python_version < "3.13" \
-    --hash=sha256:42a1e9cd3cefd14df5a78c45fad1110e2377294eb884c73e2b5a8a49674b3e7d \
-    --hash=sha256:743076cd791a02a061732d409f289b4a976798188f4262b3ae65b5483694fd87
+imap-data-access==0.40.0 ; python_version >= "3.10" and python_version < "3.13" \
+    --hash=sha256:e9d0421f39f77a916263dec57f2786fe8468f215306ef357c097f14f431755c5 \
+    --hash=sha256:f5b05c16ffe8b9c942f9c8aabb828d7e3a7dd649427528e41758ce02ddc12adf
 imap-processing==1.0.30 ; python_version >= "3.10" and python_version < "3.13" \
     --hash=sha256:14432c16a37a9fb4956b24c3fd618cd4ce88e2ba241d489171f0919db99677b7 \
     --hash=sha256:96df525780c1de8a25f4199943ac2b994fd7a1d85844d2680f6e040e073f766a
