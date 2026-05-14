@@ -174,7 +174,7 @@ def s3_event_handler(event):
         return http_response(
             status_code=400,
             body=f"Filename {filename} is not a valid SCIENCE, "
-            + "ANCILLARY or QUICKLOOK file.",
+            + "ANCILLARY or QUICKLOOK file, or RELEASE file.",
         )
 
     # Extract filename components and prepare common parameters for
