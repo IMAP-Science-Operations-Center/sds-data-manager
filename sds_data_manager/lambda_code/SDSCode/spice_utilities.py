@@ -59,7 +59,7 @@ def download_from_s3(s3_key: str, bucket_name: str | None = None) -> Path:
         logger.info(f"Downloaded {s3_key} from bucket {bucket_name} to {local_path}")
         return local_path
     except Exception as e:
-        logger.error()
+        logger.error(e)
         raise FileNotFoundError(
             f"Failed to download {s3_key} from bucket {bucket_name}: {e}"
         ) from e

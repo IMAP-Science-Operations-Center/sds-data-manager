@@ -53,7 +53,7 @@ def add_stable_route(api, base_path, http_method, lambda_function, prefix_list):
 class SdsApiManager(Construct):
     """Construct for API Management."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0915
         self,
         scope: Construct,
         construct_id: str,
@@ -163,8 +163,10 @@ class SdsApiManager(Construct):
         # account only can allow upload through API key.
         if account_name == "prod":
             upload_route_prefixes = ["/api-key"]
+            release_route_prefixes = ["/api-key"]
         else:
             upload_route_prefixes = auth_route_prefixes
+            release_route_prefixes = ["/api-key"]
 
         # {proxy+} is used to allow for any pathParams after /upload/
         add_stable_route(
@@ -375,16 +377,19 @@ class SdsApiManager(Construct):
             security_groups=[rds_security_group],
             environment={
                 "SECRET_NAME": db_secret_name,
+                "IMAP_DATA_DIR": "/tmp",  # noqa: S108
+                "S3_BUCKET": data_bucket.bucket_name,
+                "REGION": env.region,
             },
             layers=layers,
         )
-        for prefix in auth_route_prefixes:
-            # {proxy+} is used to allow for any pathParams after /processing-jobs/
+        for prefix in release_route_prefixes:
             api.add_route(
                 route=f"{prefix}/release",
                 http_method="GET",
                 lambda_function=release_api_lambda,
             )
+        release_api_lambda.add_to_role_policy(s3_read_policy)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
