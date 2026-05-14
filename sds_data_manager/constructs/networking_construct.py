@@ -70,7 +70,7 @@ class NetworkingConstruct(Construct):
         )
 
         # Attach the VGW to the VPC so decrypted traffic can enter the VPC.
-        ec2.CfnVPCGatewayAttachment(
+        attachment = ec2.CfnVPCGatewayAttachment(
             self,
             "VpnGatewayAttachment",
             vpc_id=self.vpc.vpc_id,
@@ -79,12 +79,14 @@ class NetworkingConstruct(Construct):
 
         # Adds VPN route propagation to each public subnet so that regardless of
         # which AZ the I-ALiRT EC2 lands in, it can receive traffic from the VPN.
+        # Must depend on the attachment being complete first.
         for i, subnet in enumerate(self.vpc.public_subnets):
-            ec2.CfnVPNGatewayRoutePropagation(
+            propagation = ec2.CfnVPNGatewayRoutePropagation(
                 self,
                 f"RoutePropagate{i}",
                 route_table_ids=[subnet.route_table.route_table_id],
                 vpn_gateway_id=vpn_gateway.ref,
             )
+            propagation.node.add_dependency(attachment)
 
         return vpn_gateway
