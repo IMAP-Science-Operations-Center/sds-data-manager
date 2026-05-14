@@ -124,7 +124,7 @@ science_frames, spice, historical, glows, l2, hist, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, glows, l2, hist, HARD_NO_TRIGGER, DOWNSTREAM
 
 glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
-glows, ancillary, calibration-data, glows, l3a, hist, HARD, DOWNSTREAM
+glows, ancillary, l2-calibration, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, l3a-time-dep-bckgrd, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, l3a-map-of-extra-helio-bckgrd, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings, glows, l3a, hist, HARD, DOWNSTREAM
