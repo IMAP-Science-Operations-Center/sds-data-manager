@@ -189,7 +189,10 @@ def s3_event_handler(event):
     if isinstance(file_obj, QuicklookFilePath):
         with db.Session() as session, session.begin():
             session.add(models.QuicklookFiles(**params))
-        logger.info("Skipped Event no further processing required for quicklook.")
+        logger.info(
+            "Skipped sending event to batch starter for quicklook. "
+            "The file doesn't kick off any processing jobs."
+        )
         return http_response(status_code=200, body="Success")
 
     elif isinstance(file_obj, ScienceFilePath):
@@ -207,7 +210,10 @@ def s3_event_handler(event):
         with db.Session() as session, session.begin():
             session.add(models.ReleaseFiles(**params))
         logger.info("Wrote data to the ReleaseFiles table")
-        logger.info("Skipped Event no further processing required for release files.")
+        logger.info(
+            "Skipped sending event to batch starter for release files. "
+            "The file doesn't kick off any processing jobs."
+        )
         return http_response(status_code=200, body="Success")
 
     elif isinstance(file_obj, AncillaryFilePath):
