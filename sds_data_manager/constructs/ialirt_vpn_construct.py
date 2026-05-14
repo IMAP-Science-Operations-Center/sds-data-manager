@@ -85,7 +85,7 @@ class IalirtVpnConstruct(Construct):
             ],
             phase2_integrity_algorithms=[
                 ec2.CfnVPNConnection.Phase2IntegrityAlgorithmsRequestListValueProperty(
-                    value="HMAC-SHA2-256-128"
+                    value="SHA2-256"
                 )
             ],
             phase2_dh_group_numbers=[
