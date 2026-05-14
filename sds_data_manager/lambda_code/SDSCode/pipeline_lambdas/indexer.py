@@ -11,6 +11,7 @@ import imap_data_access.file_validation
 from imap_data_access import (
     AncillaryFilePath,
     QuicklookFilePath,
+    ReleaseFilePath,
     ScienceFilePath,
 )
 
@@ -198,6 +199,16 @@ def s3_event_handler(event):
             crid = calculate_crid(session, science_file)
             science_file.crid = crid
         logger.info("Wrote data to the ScienceFiles table")
+
+    # Check ReleaseFilePath before AncillaryFilePath since it inherits from it.
+    elif isinstance(file_obj, ReleaseFilePath):
+        if params.get("end_date"):
+            params["end_date"] = datetime.strptime(params.pop("end_date"), "%Y%m%d")
+        with db.Session() as session, session.begin():
+            session.add(models.ReleaseFiles(**params))
+        logger.info("Wrote data to the ReleaseFiles table")
+        logger.info("Skipped Event no further processing required for release files.")
+        return http_response(status_code=200, body="Success")
 
     elif isinstance(file_obj, AncillaryFilePath):
         if params.get("end_date"):
