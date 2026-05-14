@@ -261,11 +261,12 @@ class IalirtAlarmConstruct(Construct):
 
         instrument_alarm_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
 
+        # Run at 11:00 UTC daily.
         daily_rule = events.Rule(
             self,
             "IalirtInstrumentAlarmSchedule",
             rule_name="ialirt-instrument-alarm-schedule",
-            schedule=events.Schedule.rate(Duration.hours(8)),
+            schedule=events.Schedule.cron(hour="11", minute="0"),
         )
         daily_rule.add_target(targets.LambdaFunction(instrument_alarm_lambda))
 
