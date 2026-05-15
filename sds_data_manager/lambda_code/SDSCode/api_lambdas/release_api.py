@@ -94,17 +94,22 @@ def lambda_handler(event, context):
             )
             return response
         try:
-            if param == "start_time":
-                query = query.where(model.max_date_j2000 >= int(value))
-            elif param == "end_time":
-                query = query.where(model.min_date_j2000 <= int(value))
-            elif param == "release-type":
+            if param == "start_date":
+                query = query.where(
+                    model.start_date >= datetime.datetime.strptime(value, "%Y%m%d")
+                )
+            elif param == "end_date":
+                # the date queries will only look at the file start_date.
+                query = query.where(
+                    model.end_date <= datetime.datetime.strptime(value, "%Y%m%d")
+                )
+            elif param == "release_type":
                 valid_release_types = [
                     "early-release",
                     "unrelease",
                     "withhold-data",  # TODO: make this one default if release-type isn't given?
                 ]
-                if param not in valid_release_types:
+                if value not in valid_release_types:
                     response = {
                         "statusCode": 400,
                         "body": json.dumps(
