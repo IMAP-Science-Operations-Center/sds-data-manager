@@ -117,10 +117,6 @@ l3a_spice_common: &l3a_spice_common
     kickoff_job: false
   - upstream_source: swapi
     upstream_data_type: ancillary
-    upstream_descriptor: instrument-response-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
     upstream_descriptor: density-of-neutral-helium-lut
     kickoff_job: false
   - upstream_source: swapi
@@ -144,10 +140,6 @@ l3a_spice_common: &l3a_spice_common
   - upstream_source: swapi
     upstream_data_type: ancillary
     upstream_descriptor: energy-gf-pui-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: instrument-response-lut
     kickoff_job: false
   - upstream_source: swapi
     upstream_data_type: ancillary
@@ -175,9 +167,6 @@ l3a_spice_common: &l3a_spice_common
   - upstream_source: swapi
     upstream_data_type: ancillary
     upstream_descriptor: energy-gf-pui-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: instrument-response-lut
   - upstream_source: swapi
     upstream_data_type: ancillary
     upstream_descriptor: density-of-neutral-helium-lut
