@@ -14,6 +14,16 @@ from ..database import models
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
+# TODO:
+#   - For release-type, consider making it optional and default to withhold files if type isn't given.
+#     This would make routine releases a simple api call to release files for a date range given, and
+#     by default, checks for any related withhold files to process. "early-release" and "unrelease" would be
+#     special cases that require the release-type param to be used.
+#   - The release column may change from a boolean value to an integer representing
+#     the release number the file pertains to. Needs further discussion
+#   - Some of this code is borrowed from query_api.py. Refactor to reduce duplication
+
 def lambda_handler(event, context):
     """Entry point for the release API lambda.
 
@@ -149,25 +159,6 @@ def lambda_handler(event, context):
         # TODO: should this only return 1 or 0 results?
         search_results = session.execute(query).all()
 
-    # TODO:
-    #  - download and read file found to get list of products
-    #  - query science and ancillary tables for products in specified time range
-    #  - write logic for handling withhold, unrelease, and early release files
-    #       - withhold - update release to False for listed products. update all other files in release to True.
-    #       - unrelease - update release to False for listed products.
-    #       - early release - update release to True for listed products.
-
-    # TODO: for release-type, consider making it optional and default to withhold files if type isn't given.
-    #  This would make routine releases a simple api call to release files for a date range given, and
-    #  by default, checks for any related withhold files to process. "early-release" and "unrelease" would be
-    #  special cases that require the release-type param to be used.
-
-    # TODO: The release column may change from a boolean value to an integer representing
-    #  the release number the file pertains to. Needs further discussion
-
-    # TODO: Some of this code is borrowed from query_api.py. Look at ways to create helper
-    #  functions to reduce duplication
-
     # Convert the search results (list of tuples) to a list of dicts
     search_results = [result._asdict() for result in search_results]
 
@@ -186,4 +177,13 @@ def lambda_handler(event, context):
     logger.info(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
+
+    # TODO: This function currently just queries the release table.
+    #       It also needs to update release status of products
+    #  - download and read release file found to get list of products
+    #  - query science and ancillary tables for products in specified time range
+    #  - write logic for handling withhold, unrelease, and early release files
+    #       - withhold - update release to False for listed products. update all other files in release to True.
+    #       - unrelease - update release to False for listed products.
+    #       - early release - update release to True for listed products.
     return {"statusCode": 200, "body": json.dumps(search_results)}
