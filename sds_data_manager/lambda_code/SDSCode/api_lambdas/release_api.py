@@ -15,29 +15,34 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
-    """Entry point to the release query API lambda.
+    """Entry point for the release API lambda.
 
-    imap-data-access release --instrument --start-date --end-date --release-type --release-number (optional)
+    This API applies release policy to science and ancillary products by updating
+    their public visibility (`released` flag).
 
-    Filename convention for release table records:
+    Release workflows are driven by records in the `ReleaseFiles` table, where each
+    record defines a time range and a release operation.
+
+    Release file naming convention:
         imap_<instrument>_<descriptor>_<start_date>_<end_date>_<version>.<extension>
 
-        The <descriptor> field options:
+    Descriptor semantics:
+        - withhold-data-release-<###>:
+          Release all matching files for the period except those listed in the file.
+        - early-release:
+          Release only the files listed in the file before the scheduled release cadence.
+        - unrelease:
+          Mark previously released listed files as not released.
 
-        withhold-data-release-<###> - it will support integer value associated to a release number.
-        early-release  - it will support making an early release of selected files
-        unrelease - it will support un-releasing selected files after they've been released.
+    Expected API query parameters:
+        instrument, start_date, end_date, release_type, release_number (optional)
 
     Parameters
     ----------
     event : dict
-        The JSON formatted document with the data required for the
-        lambda function to process
+        Input event containing `queryStringParameters`.
     context : LambdaContext
-        This object provides methods and properties that provide
-        information about the invocation, function,
-        and runtime environment.
-
+        Lambda runtime context object.
     """
     logger.debug("Release Query Event: " + json.dumps(event, indent=2))
 
@@ -67,10 +72,10 @@ def lambda_handler(event, context):
     # get a list of all valid search parameters
     valid_parameters = [
         "instrument",
-        "start_time",
-        "end_time",
-        "release-type",
-        "release-number",
+        "start_date",
+        "end_date",
+        "release_type",
+        "release_number",
     ]
 
     # go through each query parameter to set up sqlalchemy query conditions
@@ -85,8 +90,7 @@ def lambda_handler(event, context):
                 ),
             }
             logger.debug(
-                f"Received an invalid query parameter [{param}],"
-                " valid options are: {valid_parameters}"
+                f"Received an invalid query parameter [{param}], valid options are: {valid_parameters}"
             )
             return response
         try:
@@ -95,6 +99,23 @@ def lambda_handler(event, context):
             elif param == "end_time":
                 query = query.where(model.min_date_j2000 <= int(value))
             elif param == "release-type":
+                valid_release_types = [
+                    "early-release",
+                    "unrelease",
+                    "withhold-data",  # TODO: make this one default if release-type isn't given?
+                ]
+                if param not in valid_release_types:
+                    response = {
+                        "statusCode": 400,
+                        "body": json.dumps(
+                            f"{param} is not a valid release_type parameter. "
+                            + f"Valid release_type parameters are: {valid_release_types}"
+                        ),
+                    }
+                    logger.debug(
+                        f"Received an invalid release_type parameter [{param}], valid options are: {valid_release_types}"
+                    )
+                    return response
                 # filter release-type in filename using a "contains" query on the file path
                 query = query.where(model.file_path.contains(value, autoescape=True))
         except ValueError:
@@ -105,12 +126,20 @@ def lambda_handler(event, context):
             logger.debug(f"Invalid value for {param}: {value}")
             return response
     with db.Session() as session:
-        # TODO: should this only return no more than one record?
+        # TODO: should this return no more than one record?
         search_results = session.execute(query).all()
 
     # TODO:
-    # - download and read file for listing of products
-    # - query science and ancillary tables for products in time range and update release to True
-    #   except those in the release file.
+    #  - download and read file to get list of products
+    #  - query science and ancillary tables for products in specified time range
+    #  - write logic for handling withhold, unrelease, and early release files
+    #       - withhold - update release to False for listed products. update all other files in release to True.
+    #       - unrelease - update release to False for listed products.
+    #       - early release - update release to True for listed products.
+
+    # TODO: for release-type, consider making it optional and default to withhold files if type isn't given.
+    #  This makes our regular releases a simple api call to release files for a date range given, and
+    #  by default, checks for any related withhold files to process. "early-release" and "unrelease" would be
+    #  special cases that require the release-type param to be used.
 
     return {"statusCode": 200, "body": "Release API is working!"}
