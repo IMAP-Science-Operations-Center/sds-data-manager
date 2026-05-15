@@ -109,6 +109,7 @@ class IndexerLambda(Construct):
         ]
         science_event_prefixes.append({"prefix": "imap/ancillary/"})
         science_event_prefixes.append({"prefix": "imap/quicklook/"})
+        science_event_prefixes.append({"prefix": "imap/release/"})
         imap_data_arrival_rule = events.Rule(
             self,
             "ImapDataArrival",

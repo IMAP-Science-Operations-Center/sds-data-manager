@@ -27,6 +27,10 @@ l3a_spice_common: &l3a_spice_common
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
+  - upstream_source: planetary_constants
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
   - upstream_source: attitude_history
     upstream_data_type: spice
     upstream_descriptor: historical

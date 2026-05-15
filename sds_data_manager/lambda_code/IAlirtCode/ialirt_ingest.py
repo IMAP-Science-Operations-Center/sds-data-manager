@@ -526,7 +526,11 @@ def insert_kernels(dependency_inputs, data_table):
     met = et_to_met(str_to_et(last_modified_for_spice))
     spice_input = dependency_inputs.processing_input[0]
     spice_kernels = dict(
-        zip(spice_input.source, spice_input.filename_list, strict=True)
+        zip(
+            [path.spice_metadata["type"] for path in spice_input.imap_file_paths],
+            spice_input.filename_list,
+            strict=True,
+        )
     )
 
     # Will return the same kernel_set_key for the same set of kernels.
