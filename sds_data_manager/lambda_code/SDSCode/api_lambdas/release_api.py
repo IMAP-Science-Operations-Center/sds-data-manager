@@ -1,4 +1,5 @@
 """Lambda function for release API endpoint."""
+
 import datetime
 import json
 import logging
@@ -66,27 +67,24 @@ def lambda_handler(event, context):
         )
         return response
 
-    logger.debug("Release Query Event: " + json.dumps(event, indent=2))
+    logger.info("Release Query Event: " + json.dumps(event, indent=2))
 
-    TableModels = namedtuple(
-        "TableModels", ["release", "science", "ancillary"]
-    )
-
-    table_models = TableModels(
-        science=models.ScienceFiles,
-        ancillary=models.AncillaryFiles,
-        release=models.ReleaseFiles
-    )
+    # tables to query for release operations
+    table_models = {
+        "release": models.ReleaseFiles,
+        "science": models.ScienceFiles,
+        "ancillary": models.AncillaryFiles,
+    }
 
     # add session, pick model
     query_params = event["queryStringParameters"]
-    # get desired table for query
-    query_table = "release"
-    logger.info(f"Querying table: {query_table}")
-    model = getattr(table_models, query_table)
+
+    # get desired table for release query
+    logger.info(f"Querying table: Release")
+    model = table_models.get("release")
 
     # select the given table for the query
-    query = select(model.__table__)
+    query = select(model)
 
     # get a list of all valid search parameters
     valid_parameters = [
