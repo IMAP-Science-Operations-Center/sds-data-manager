@@ -44,6 +44,18 @@ def lambda_handler(event, context):
     context : LambdaContext
         Lambda runtime context object.
     """
+    # Check authentication is valid
+    if not is_authenticated_user(event):
+        response = {
+            "statusCode": 400,
+            "body": json.dumps(
+                f"API authentication failed: {event['body']}."),
+        }
+        logger.debug(
+            f"API authentication failed: {event['body']}."
+        )
+        return response
+
     logger.debug("Release Query Event: " + json.dumps(event, indent=2))
 
     TableModels = namedtuple(
@@ -56,18 +68,15 @@ def lambda_handler(event, context):
         release=models.ReleaseFiles
     )
 
-    # add session, pick model like in indexer and add query to filter_as
+    # add session, pick model
     query_params = event["queryStringParameters"]
     # get desired table for query
     query_table = "release"
-
     logger.info(f"Querying table: {query_table}")
     model = getattr(table_models, query_table)
 
     # select the given table for the query
     query = select(model.__table__)
-    if not is_authenticated_user(event):
-        query = query.filter(model.released)
 
     # get a list of all valid search parameters
     valid_parameters = [
@@ -130,12 +139,18 @@ def lambda_handler(event, context):
             }
             logger.debug(f"Invalid value for {param}: {value}")
             return response
+
+    # Keep only rows at the highest version from the filtered result set.
+    filtered_subq = query.subquery()
+    max_version_subq = select(func.max(filtered_subq.c.version)).scalar_subquery()
+    query = select(filtered_subq).where(filtered_subq.c.version == max_version_subq)
+
     with db.Session() as session:
-        # TODO: should this return no more than one record?
+        # TODO: should this only return 1 or 0 results?
         search_results = session.execute(query).all()
 
     # TODO:
-    #  - download and read file to get list of products
+    #  - download and read file found to get list of products
     #  - query science and ancillary tables for products in specified time range
     #  - write logic for handling withhold, unrelease, and early release files
     #       - withhold - update release to False for listed products. update all other files in release to True.
@@ -143,8 +158,32 @@ def lambda_handler(event, context):
     #       - early release - update release to True for listed products.
 
     # TODO: for release-type, consider making it optional and default to withhold files if type isn't given.
-    #  This makes our regular releases a simple api call to release files for a date range given, and
+    #  This would make routine releases a simple api call to release files for a date range given, and
     #  by default, checks for any related withhold files to process. "early-release" and "unrelease" would be
     #  special cases that require the release-type param to be used.
 
-    return {"statusCode": 200, "body": "Release API is working!"}
+    # TODO: The release column may change from a boolean value to an integer representing
+    #  the release number the file pertains to. Needs further discussion
+
+    # TODO: Some of this code is borrowed from query_api.py. Look at ways to create helper
+    #  functions to reduce duplication
+
+    # Convert the search results (list of tuples) to a list of dicts
+    search_results = [result._asdict() for result in search_results]
+
+    # Convert datetimes to string values of format 'YYYYMMDD'
+    # Also remove values that are not needed by users
+    for result in search_results:
+        result["start_date"] = result["start_date"].strftime("%Y%m%d")
+        if result.get("end_date"):
+            result["end_date"] = result["end_date"].strftime("%Y%m%d")
+        d = result["ingestion_date"]
+        if d.tzinfo is not None:
+            # If the datetime has a timezone, convert it to UTC and remove the timezone
+            d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        result["ingestion_date"] = d.strftime("%Y%m%d %H:%M:%S")
+
+    logger.info(
+        "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
+    )
+    return {"statusCode": 200, "body": json.dumps(search_results)}
