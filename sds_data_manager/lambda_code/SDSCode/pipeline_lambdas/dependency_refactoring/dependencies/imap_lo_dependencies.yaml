@@ -204,7 +204,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     upstream_descriptor: goodtimes
   - upstream_source: lo
     upstream_data_type: l1b
-    upstream_descriptor: bgrate
+    upstream_descriptor: bgrates
 
 # ======== Level L2 ========
 (l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr):
