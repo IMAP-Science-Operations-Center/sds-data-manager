@@ -106,7 +106,7 @@ hist_spice: &hist_spice
     upstream_descriptor: hist
   - upstream_source: glows
     upstream_data_type: ancillary
-    upstream_descriptor: calibration-data
+    upstream_descriptor: l2-calibration
   - upstream_source: glows
     upstream_data_type: ancillary
     upstream_descriptor: l3-time-dep-bckgrd
