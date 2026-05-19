@@ -13,7 +13,6 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactorin
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.types import (  # noqa: E501
     DependencyNode,
-    format_upstream_node_input,
 )
 
 # Use a short list of instruments that have valid YAML files for testing
@@ -35,159 +34,77 @@ def mock_valid_instruments():
         yield
 
 
-# Tests for node validation via format_upstream_node_input
+# ---------------------------------------------------------------------------
+# DependencyNode validation tests
+# ---------------------------------------------------------------------------
 def test_validate_node_valid_instrument():
     """Test that valid instrument nodes instantiate without error."""
-    format_upstream_node_input(
-        {
-            "upstream_source": "codice",
-            "upstream_data_type": "l1a",
-            "upstream_descriptor": "all",
-            "required": True,
-            "kickoff_job": True,
-        }
+    node = DependencyNode(source="codice", data_type="l1a", descriptor="all")
+    assert node.source == "codice"
+    assert node.data_type == "l1a"
+    assert node.descriptor == "all"
+
+    node = DependencyNode(
+        source="hi",
+        data_type="l1b",
+        descriptor="hi-counters-aggregated",
+        trigger_job=False,
     )
-    format_upstream_node_input(
-        {
-            "upstream_source": "hi",
-            "upstream_data_type": "l1b",
-            "upstream_descriptor": "hi-counters-aggregated",
-            "required": True,
-            "kickoff_job": False,
-        }
-    )
+    assert node.trigger_job is False
 
 
 def test_validate_node_valid_spice():
     """Test that valid SPICE nodes instantiate without error."""
-    format_upstream_node_input(
-        {
-            "upstream_source": "leapseconds",
-            "upstream_data_type": "spice",
-            "upstream_descriptor": "historical",
-            "required": True,
-            "kickoff_job": False,
-        }
+    node = DependencyNode(
+        source="leapseconds",
+        data_type="spice",
+        descriptor="historical",
+        trigger_job=False,
     )
+    assert node.source == "leapseconds"
+    assert node.trigger_job is False
 
 
-def test_validate_node_dict_valid():
-    """Test that valid dict-formatted nodes instantiate without error."""
-    format_upstream_node_input(
-        {
-            "upstream_source": "codice",
-            "upstream_data_type": "l1a",
-            "upstream_descriptor": "all",
-            "required": True,
-            "kickoff_job": False,
-        }
+def test_validate_node_with_defaults():
+    """Test that nodes with omitted optional fields use correct defaults."""
+    node = DependencyNode(
+        source="leapseconds", data_type="spice", descriptor="historical"
     )
+    assert node.required is True
+    assert node.trigger_job is True
+    assert node.dependency_query_time_range == []
 
 
-def test_validate_node_dict_with_defaults():
-    """Test that dict nodes with omitted optional fields instantiate without error."""
-    format_upstream_node_input(
-        {
-            "upstream_source": "leapseconds",
-            "upstream_data_type": "spice",
-            "upstream_descriptor": "historical",
-        }
+def test_validate_node_with_date_range():
+    """Test that nodes with date range instantiate without error."""
+    node = DependencyNode(
+        source="hi",
+        data_type="l1b",
+        descriptor="45sensor-goodtimes",
+        dependency_query_time_range=["-3p", "3p"],
     )
-
-
-def test_validate_node_dict_with_date_range():
-    """Test that dict nodes with date range instantiate without error."""
-    format_upstream_node_input(
-        {
-            "upstream_source": "hi",
-            "upstream_data_type": "l1b",
-            "upstream_descriptor": "45sensor-goodtimes",
-            "date_range": ["-3p", "3p"],
-        }
-    )
-
-
-def test_validate_node_dict_missing_required_key():
-    """Test that dict missing required key raises ValueError."""
-    with pytest.raises(ValueError, match="must contain keys"):
-        format_upstream_node_input(
-            {"upstream_source": "codice", "upstream_descriptor": "all"}
-        )
-
-
-def test_validate_node_not_list_or_dict():
-    """Test that non-dict raises ValueError."""
-    with pytest.raises(ValueError, match=r"Node must be a dict|must contain keys"):
-        format_upstream_node_input("not_a_dict")
-
-
-def test_validate_node_legacy_list_wrong_length():
-    """Test that dict missing required key raises ValueError."""
-    with pytest.raises(ValueError, match=r"Node must be a dict|must contain keys"):
-        format_upstream_node_input(
-            {
-                "upstream_source": "codice",
-                "upstream_data_type": "l1a",
-            }
-        )
+    assert node.dependency_query_time_range == ["-3p", "3p"]
 
 
 def test_validate_node_invalid_source():
     """Test that invalid source raises ValueError."""
     with pytest.raises(ValueError, match="Invalid data source"):
-        format_upstream_node_input(
-            {
-                "upstream_source": "invalid_source",
-                "upstream_data_type": "l1a",
-                "upstream_descriptor": "all",
-                "required": True,
-                "kickoff_job": True,
-            }
-        )
+        DependencyNode(source="invalid_source", data_type="l1a", descriptor="all")
 
 
 def test_validate_node_invalid_data_type():
     """Test that invalid data type raises ValueError."""
     with pytest.raises(ValueError, match="Invalid data type"):
-        format_upstream_node_input(
-            {
-                "upstream_source": "codice",
-                "upstream_data_type": "invalid_type",
-                "upstream_descriptor": "all",
-                "required": True,
-                "kickoff_job": True,
-            }
-        )
+        DependencyNode(source="codice", data_type="invalid_type", descriptor="all")
 
 
 def test_validate_node_empty_descriptor():
     """Test that empty descriptor raises ValueError."""
     with pytest.raises(ValueError, match="non-empty string"):
-        format_upstream_node_input(
-            {
-                "upstream_source": "codice",
-                "upstream_data_type": "l1a",
-                "upstream_descriptor": "",
-                "required": True,
-                "kickoff_job": True,
-            }
-        )
-
-
-def test_validate_node_dict_empty_descriptor():
-    """Test that dict with empty descriptor raises ValueError."""
-    with pytest.raises(ValueError, match="non-empty string"):
-        format_upstream_node_input(
-            {
-                "upstream_source": "codice",
-                "upstream_data_type": "l1a",
-                "upstream_descriptor": "",
-            }
-        )
+        DependencyNode(source="codice", data_type="l1a", descriptor="")
 
 
 # ---------------------------------------------------------------------------
-# _validate_date_range tests
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize(
     "dependency_query_time_range",
@@ -357,19 +274,19 @@ def test_swe_dependency_config():
     assert l0_upstream_dependency.data_type == "l0"
     assert l0_upstream_dependency.descriptor == "raw"
     assert l0_upstream_dependency.required is True
-    assert l0_upstream_dependency.kickoff_job is True
+    assert l0_upstream_dependency.trigger_job is True
     assert l0_upstream_dependency.dependency_query_time_range == []
 
     assert leapseconds_upstream_dependency.source == "leapseconds"
     assert leapseconds_upstream_dependency.data_type == "spice"
     assert leapseconds_upstream_dependency.descriptor == "historical"
     assert leapseconds_upstream_dependency.required is True
-    assert leapseconds_upstream_dependency.kickoff_job is False
+    assert leapseconds_upstream_dependency.trigger_job is False
     assert leapseconds_upstream_dependency.dependency_query_time_range == []
 
     assert spacecraft_clock_upstream_dependency.source == "spacecraft_clock"
     assert spacecraft_clock_upstream_dependency.data_type == "spice"
     assert spacecraft_clock_upstream_dependency.descriptor == "historical"
     assert spacecraft_clock_upstream_dependency.required is True
-    assert spacecraft_clock_upstream_dependency.kickoff_job is False
+    assert spacecraft_clock_upstream_dependency.trigger_job is False
     assert spacecraft_clock_upstream_dependency.dependency_query_time_range == []
