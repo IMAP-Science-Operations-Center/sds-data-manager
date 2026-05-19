@@ -120,4 +120,4 @@ lint.ignore = ["D104", "D203", "D213", "D300", "D413", "S101", "S104", "PLR0913"
 "tests/infrastructure/test_website_cloudfront_function.py" = ["S"]
 # Module level imports which we sometimes want within functions to
 # make for easier moto mocking
-"tests/*" = ["PLC0415"]
+"tests/*" = ["PLC0415", "D103"]

@@ -7,13 +7,13 @@ read and retrieve upstream dependencies from instrument YAML configuration files
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import (  # noqa: E501
-    DependencyConfigReader,
-)
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.utils import (  # noqa: E501
     DependencyNode,
     format_upstream_node_input,
+)
+
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import (  # noqa: E501
+    DependencyConfigReader,
 )
 
 # Use a short list of instruments that have valid YAML files for testing

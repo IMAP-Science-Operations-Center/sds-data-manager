@@ -1,17 +1,20 @@
 """Simple utilities for reading dependency configurations."""
 
 import logging
+import os
 from pathlib import Path
 
+import requests
 import yaml
 from imap_data_access import VALID_INSTRUMENTS
 from sqlalchemy import and_, func, or_
 
+from ...api_lambdas import upload_api
+from ...database import database as db
+from ...database import models
 from .. import REPOINT_DEPENDENT_INSTRUMENTS
-from ..database import database as db
-from ..database import models
 from ..dependency import DataType
-from .utils import DependencyNode, UpstreamDependencyNode, format_upstream_node_input
+from .types import DependencyNode, ProcessingJobNode, format_upstream_node_input
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -37,7 +40,7 @@ class DependencyConfigReader:
         -------
         dict[tuple[str, str, str], list[DependencyNode]]
             Mapping of ``(source, data_type, descriptor)`` tuples to lists of
-            :class:`~.utils.DependencyNode` upstream dependency objects.
+            :class:`~.types.DependencyNode` upstream dependency objects.
         """
         return self._config
 
@@ -48,7 +51,7 @@ class DependencyConfigReader:
 
         Returns a dictionary where each key is a parent node
         (source, data_type, descriptor) representing a downstream product,
-        and each value is a list of upstream :class:`~.utils.DependencyNode`
+        and each value is a list of upstream :class:`~.types.DependencyNode`
         objects.
 
         Returns
@@ -208,17 +211,14 @@ class DependencyResolver:
         """
         return []
 
-    def get_upstream_dependency(
-        self, session, input_upstream_node: UpstreamDependencyNode
-    ):
+    def get_upstream_dependency(self, session, input_upstream_node: ProcessingJobNode):
         """Get upstream dependencies for a given upstream node.
 
-        UpstreamDependencyNode contains required Inputs:
+        ProcessingJobNode contains required Inputs:
             Source
             Data_type
             descriptor
-            Start_time: yyyymmddhhmmss
-            End_time: yyyymmddhhmmss
+            time_span: TimeRange with start_time and end_time
 
         Responsibilities:
             - Lookup upstream dependencies, using the configuration in _config
@@ -234,9 +234,8 @@ class DependencyResolver:
         ----------
         session : Session
             Database session for querying dependencies and files.
-        input_upstream_node : UpstreamDependencyNode
-            The input upstream node with source, data_type, descriptor,
-            and date range.
+        input_upstream_node : ProcessingJobNode
+            The input node with source, data_type, descriptor, and time_span.
 
         Returns
         -------
@@ -245,15 +244,30 @@ class DependencyResolver:
             The data contains serialized upstream dependencies for
             job submission.
         """
+        upstream_deps = self._config.get(
+            (
+                input_upstream_node.source,
+                input_upstream_node.data_type,
+                input_upstream_node.descriptor,
+            )
+        )
+
+        if not upstream_deps:
+            return {
+                "status": 404,
+                "message": f"No upstream dependencies found for {input_upstream_node}",
+                "data": {},
+            }
+
         return {"status": 200, "message": "Success", "data": {}}
 
     def get_files(
         self,
         session: db.Session,
-        edge: DependencyNode,
-        scope: UpstreamDependencyNode,
+        dependency_node: DependencyNode,
+        scope: ProcessingJobNode,
     ) -> list:
-        """Query ScienceFiles or AncillaryFiles for one upstream edge.
+        """Query ScienceFiles or AncillaryFiles for one upstream dependency_node.
 
         Ported from ``get_files`` in
         ``pipeline_lambdas/dependency.py``. For each ``start_date``
@@ -265,12 +279,12 @@ class DependencyResolver:
         ----------
         session : db.Session
             Open database session supplied by the caller.
-        edge : DependencyNode
-            Upstream edge identifying which instrument, data type,
+        dependency_node : DependencyNode
+            Upstream dependency_node identifying which instrument, data type,
             and descriptor to query for.
-        scope : UpstreamDependencyNode
-            Job-scope node supplying ``start_date``, ``end_date``,
-            and (optionally) ``repoint`` filters.
+        scope : ProcessingJobNode
+            Job-scope node supplying time_span (start_time, end_time)
+            and (optionally) pointing filters.
 
         Returns
         -------
@@ -279,42 +293,46 @@ class DependencyResolver:
             ``models.AncillaryFiles`` rows.
         """
         type_specific_conditions = []
-        if edge.data_type == DataType.ANCILLARY:
+        if dependency_node.data_type == DataType.ANCILLARY:
             table = models.AncillaryFiles
             # Date-range overlap: ancillary file's [start, end]
             # window overlaps the requested [start, end] window.
             type_specific_conditions.append(
                 and_(
-                    table.start_date <= scope.end_date,
+                    table.start_date <= scope.time_span.end_time,
                     or_(
-                        table.end_date >= scope.start_date,
+                        table.end_date >= scope.time_span.start_time,
                         table.end_date.is_(None),
                     ),
                 )
             )
         else:
             table = models.ScienceFiles
-            type_specific_conditions.append(table.data_level == edge.data_type)
+            type_specific_conditions.append(
+                table.data_level == dependency_node.data_type
+            )
             # Repoint-dependent instruments: filter by repoint
             # rather than date. Date filtering would incorrectly
             # exclude files when the caller's date range doesn't
             # match the target repoint's pointing dates.
             if (
-                scope.repoint is not None
-                and edge.source in REPOINT_DEPENDENT_INSTRUMENTS
+                scope.time_span.pointing_number_start is not None
+                and dependency_node.source in REPOINT_DEPENDENT_INSTRUMENTS
             ):
-                type_specific_conditions.append(table.repointing == scope.repoint)
+                type_specific_conditions.append(
+                    table.repointing == scope.time_span.pointing_number_start
+                )
             else:
                 type_specific_conditions.append(
                     and_(
-                        table.start_date >= scope.start_date,
-                        table.start_date <= scope.end_date,
+                        table.start_date >= scope.time_span.start_time,
+                        table.start_date <= scope.time_span.end_time,
                     )
                 )
 
         filter_conditions = [
-            table.instrument == edge.source,
-            table.descriptor == edge.descriptor,
+            table.instrument == dependency_node.source,
+            table.descriptor == dependency_node.descriptor,
             *type_specific_conditions,
         ]
         # Latest version per start_date.
@@ -337,10 +355,69 @@ class DependencyResolver:
             .filter(*filter_conditions)
             .all()
         )
-        if edge.data_type == DataType.ANCILLARY:
+        if dependency_node.data_type == DataType.ANCILLARY:
             records = sorted(
                 records,
                 key=lambda x: x.start_date,
                 reverse=True,
             )[0:1]
         return records
+
+
+def upload_dependency_file(dependency_file_path: Path, serialized_dependencies: str):
+    """Upload a JSON file containing a job's dependencies to S3.
+
+    Parameters
+    ----------
+    dependency_file_path : Path
+        The dependency JSON file to upload.
+    serialized_dependencies : str
+        The serialized upstream dependencies to upload.
+    """
+    # Check if the file already exists
+    if os.path.isfile(dependency_file_path):
+        raise KeyError(
+            f"{dependency_file_path} already exists, cannot create JSON file."
+        )
+    # call the upload API handler directly
+    signed_url = upload_api.lambda_handler(
+        {
+            "pathParameters": {"proxy": dependency_file_path.as_posix()},
+            "requestContext": {
+                "authorizer": {"lambda": {"scope": "write", "apiKey": "batch-starter"}}
+            },
+        },
+        None,
+    )
+    if signed_url["statusCode"] == 409:
+        logger.info(
+            f"Dependency file already exists in S3: {dependency_file_path}. Reusing"
+            f"file."
+        )
+        return {"statusCode": 200, "body": signed_url["body"]}
+    elif signed_url["statusCode"] != 200:
+        logger.error(
+            f"Failed to get S3 pre-signed URL for file: {dependency_file_path}. "
+            f"As a result, failed to kick off job. "
+            f"Error message: {signed_url['body']}, "
+            f"with status code: {signed_url['statusCode']}."
+        )
+        return None
+    try:
+        response = requests.put(
+            signed_url["body"].strip('"'),
+            data=serialized_dependencies,
+            headers={"Content-Type": "application/json"},
+            timeout=60.0,
+        )
+        logger.info(
+            f"Dependency file uploaded successfully to s3 with status code: "
+            f"{response.status_code}"
+        )
+        return response
+    except Exception as e:
+        logger.error(
+            f"Unexpected error during cadence file upload: {e}. "
+            f"Dependency file upload failed and the job did not get kicked off."
+        )
+        return None
