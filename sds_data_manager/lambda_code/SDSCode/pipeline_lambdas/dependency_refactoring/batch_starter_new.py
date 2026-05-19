@@ -318,3 +318,8 @@ def submit_job(
     # logger.info(f"Submitted job {job_name} with this command: {batch_command}")
 
     raise NotImplementedError
+
+
+def lambda_handler(event, context):
+    """AWS Lambda entry point for the batch starter."""
+    return None

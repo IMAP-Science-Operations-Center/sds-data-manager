@@ -7,13 +7,13 @@ read and retrieve upstream dependencies from instrument YAML configuration files
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.utils import (  # noqa: E501
-    DependencyNode,
-    format_upstream_node_input,
-)
 
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import (  # noqa: E501
     DependencyConfigReader,
+)
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.types import (  # noqa: E501
+    DependencyNode,
+    format_upstream_node_input,
 )
 
 # Use a short list of instruments that have valid YAML files for testing
@@ -190,7 +190,7 @@ def test_validate_node_dict_empty_descriptor():
 # _validate_date_range tests
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize(
-    "date_range",
+    "relative_time_range",
     [
         # Single-element past — one option per cadence type
         ["-3p"],  # pointing
@@ -208,29 +208,29 @@ def test_validate_node_dict_empty_descriptor():
         # nearest options are only valid as single-element
     ],
 )
-def test_validate_date_range_valid(date_range):
+def test_validate_date_range_valid(relative_time_range):
     """Test that all valid date range formats are accepted."""
     node = DependencyNode(
         source="hi",
         data_type="l1b",
         descriptor="45sensor-goodtimes",
-        date_range=date_range,
+        relative_time_range=relative_time_range,
     )
-    assert node.date_range == date_range
+    assert node.relative_time_range == relative_time_range
 
 
 def test_validate_date_range_none():
-    """Test that omitting date_range (defaults to empty list) is accepted."""
+    """Test that omitting relative_time_range (defaults to empty list) is accepted."""
     node = DependencyNode(
         source="hi",
         data_type="l1b",
         descriptor="45sensor-goodtimes",
     )
-    assert node.date_range == []
+    assert node.relative_time_range == []
 
 
 @pytest.mark.parametrize(
-    ("date_range", "match"),
+    ("relative_time_range", "match"),
     [
         # Past is positive (should be negative)
         (["3p"], "Invalid past"),
@@ -252,14 +252,14 @@ def test_validate_date_range_none():
         (["-3p", "3x"], "Invalid future"),
     ],
 )
-def test_validate_date_range_invalid(date_range, match):
+def test_validate_date_range_invalid(relative_time_range, match):
     """Test that invalid date range formats raise ValueError."""
     with pytest.raises(ValueError, match=match):
         DependencyNode(
             source="hi",
             data_type="l1b",
             descriptor="45sensor-goodtimes",
-            date_range=date_range,
+            relative_time_range=relative_time_range,
         )
 
 
@@ -358,7 +358,7 @@ def test_swe_dependency_config():
     assert l0_upstream_dependency.descriptor == "raw"
     assert l0_upstream_dependency.required is True
     assert l0_upstream_dependency.kickoff_job is True
-    assert l0_upstream_dependency.date_range is None
+    assert l0_upstream_dependency.relative_time_range is None
 
     assert leapseconds_upstream_dependency.source == "leapseconds"
     assert leapseconds_upstream_dependency.data_type == "spice"
