@@ -153,7 +153,7 @@ class DependencyNode(Node):
             data_type,
             descriptor,
             required,
-            kickoff_job,
+            trigger_job,
             Optional([past, future])
         ]
     If it includes past/future date ranges, it should follow the following format:
@@ -178,13 +178,13 @@ class DependencyNode(Node):
     """
 
     required: bool = True
-    kickoff_job: bool = True
+    trigger_job: bool = True
     dependency_query_time_range: list = field(default_factory=list)
 
     def __post_init__(self):
         """Validate all fields on construction."""
         super().__post_init__()
-        self._validate_boolean_fields(self.required, self.kickoff_job)
+        self._validate_boolean_fields(self.required, self.trigger_job)
         self._validate_date_range(self.dependency_query_time_range)
 
     def serialize(self) -> dict[str, Any]:
@@ -196,10 +196,10 @@ class DependencyNode(Node):
         """Deserialize dictionary to dependency node."""
         return cls(**json_object)
 
-    def _validate_boolean_fields(self, required: bool, kickoff_job: bool) -> None:
-        """Validate required and kickoff_job are booleans."""
-        if not isinstance(required, bool) or not isinstance(kickoff_job, bool):
-            raise ValueError("'required' and 'kickoff_job' must be boolean values")
+    def _validate_boolean_fields(self, required: bool, trigger_job: bool) -> None:
+        """Validate required and trigger_job are booleans."""
+        if not isinstance(required, bool) or not isinstance(trigger_job, bool):
+            raise ValueError("'required' and 'trigger_job' must be boolean values")
 
     def _validate_date_range(self, date_range) -> None:
         """Validate date range format if provided."""
@@ -363,45 +363,3 @@ def get_cadence_duration(descriptor: str) -> str | None:
         return cadence
 
     return None
-
-
-def format_upstream_node_input(yaml_dict: dict) -> DependencyNode:
-    """Convert a YAML upstream dependency dict to a DependencyNode.
-
-    YAML upstream entries use ``upstream_source``, ``upstream_data_type``,
-    and ``upstream_descriptor`` as keys. This function maps those keys
-    to the DependencyNode field names and constructs the node directly.
-
-    Parameters
-    ----------
-    yaml_dict : dict
-        A dict with keys ``upstream_source``, ``upstream_data_type``,
-        ``upstream_descriptor``, and optionally ``required``,
-        ``kickoff_job``, ``date_range``.
-
-    Returns
-    -------
-    DependencyNode
-        A fully validated DependencyNode instance.
-    """
-    # Accept only dictionary format
-    if not isinstance(yaml_dict, dict):
-        raise ValueError(f"Node must be a dict, got {type(yaml_dict).__name__}")
-
-    required_keys = {
-        "upstream_source",
-        "upstream_data_type",
-        "upstream_descriptor",
-    }
-    if not required_keys.issubset(yaml_dict.keys()):
-        raise ValueError(
-            f"Node dict must contain keys {required_keys}, got {set(yaml_dict.keys())}"
-        )
-    return DependencyNode(
-        source=yaml_dict["upstream_source"],
-        data_type=yaml_dict["upstream_data_type"],
-        descriptor=yaml_dict["upstream_descriptor"],
-        required=yaml_dict.get("required", True),
-        kickoff_job=yaml_dict.get("kickoff_job", True),
-        dependency_query_time_range=yaml_dict.get("date_range", []),
-    )

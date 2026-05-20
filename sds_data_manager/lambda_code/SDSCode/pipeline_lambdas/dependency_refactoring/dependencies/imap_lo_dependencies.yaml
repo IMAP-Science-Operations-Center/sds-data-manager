@@ -7,308 +7,481 @@
 # ========= Common Dependency Groups =========
 # Common spice dependencies shared by multiple products
 spice_basic: &spice_basic
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  - source: leapseconds
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: spacecraft_clock
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
 
 spice_common: &spice_common
   - *spice_basic
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: science_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: planetary_ephemeris
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: ephemeris_reconstructed
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: ephemeris_predicted
-    upstream_data_type: spice
-    upstream_descriptor: best
-    kickoff_job: false
-  - upstream_source: pointing_attitude
-    upstream_data_type: spice
-    upstream_descriptor: historical
+  - source: imap_frames
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: science_frames
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: planetary_ephemeris
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: attitude_history
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: ephemeris_reconstructed
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: ephemeris_predicted
+    data_type: spice
+    descriptor: best
+    trigger_job: false
+  - source: pointing_attitude
+    data_type: spice
+    descriptor: historical
 
 spice_l2: &spice_l2
   - *spice_basic
-  - upstream_source: ephemeris_reconstructed
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: ephemeris_predicted
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: planetary_ephemeris
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: science_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  - source: ephemeris_reconstructed
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: ephemeris_predicted
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: imap_frames
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: planetary_ephemeris
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: science_frames
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
 
 lo_90_pset: &lo_90_pset
-  - upstream_source: lo
-    upstream_data_type: l1c
-    upstream_descriptor: pset
-    kickoff_job: false
+  - source: lo
+    data_type: l1c
+    descriptor: pset
+    trigger_job: false
 
 lo_esa_fit_factors: &lo_esa_fit_factors
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: esa-eta-fit-factors
+  - source: lo
+    data_type: ancillary
+    descriptor: esa-eta-fit-factors
 
 # ======== Product-Specific Dependencies ========
 
 # ======== Level L1A ========
 (l1a, all):
-  - upstream_source: lo
-    upstream_data_type: l0
-    upstream_descriptor: raw
-  - *spice_basic
+  inputs:
+    - source: lo
+      data_type: l0
+      descriptor: raw
+    - *spice_basic
+  outputs:
+    - source: lo
+      data_type: l1a
+      descriptor: histogram
+    - source: lo
+      data_type: l1a
+      descriptor: nhk
+    - source: lo
+      data_type: l1a
+      descriptor: shk
+    - source: lo
+      data_type: l1a
+      descriptor: spin
+    - source: lo
+      data_type: l1a
+      descriptor: star
+    - source: lo
+      data_type: l1a
+      descriptor: de
 
 # ======== Level L1B ========
+
 (l1b, all-rates):
-  - *spice_basic
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-  - upstream_source: repoint
-    upstream_data_type: repoint
-    upstream_descriptor: historical
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: sweep-table
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: esa-mode-lut
-  - upstream_source: lo
-    upstream_data_type: l1a
-    upstream_descriptor: histogram
-  - upstream_source: lo
-    upstream_data_type: l1a
-    upstream_descriptor: spin
+  inputs:
+    - *spice_basic
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: ancillary
+      descriptor: sweep-table
+    - source: lo
+      data_type: ancillary
+      descriptor: esa-mode-lut
+    - source: lo
+      data_type: l1a
+      descriptor: histogram
+    - source: lo
+      data_type: l1a
+      descriptor: spin
+  outputs:
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
+    - source: lo
+      data_type: l1b
+      descriptor: monitorrates
+    - source: lo
+      data_type: l1b
+      descriptor: instrument-status-summary
+    - source: lo
+      data_type: l1b
+      descriptor: badtimes
+    - source: lo
+      data_type: l1b
+      descriptor: de
+    - source: lo
+      data_type: l1b
+      descriptor: derates
+    - source: lo
+      data_type: l1b
+      descriptor: prostar
+    - source: lo
+      data_type: l1b
+      descriptor: nhk
+    - source: lo
+      data_type: l1b
+      descriptor: shk
+    - source: lo
+      data_type: l1b
+      descriptor: goodtimes
+    - source: lo
+      data_type: l1b
+      descriptor: bgrates
 
 (l1b, badtimes):
-  - *spice_basic
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-  - upstream_source: repoint
-    upstream_data_type: repoint
-    upstream_descriptor: historical
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: nhk
+  inputs:
+    - *spice_basic
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: l1b
+      descriptor: nhk
+  outputs:
+    - source: lo
+      data_type: l1b
+      descriptor: badtimes
 
 (l1b, de):
-  - *spice_common
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-  - upstream_source: repoint
-    upstream_data_type: repoint
-    upstream_descriptor: historical
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: bad-times
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: sweep-table
-  - upstream_source: lo
-    upstream_data_type: l1a
-    upstream_descriptor: de
-  - upstream_source: lo
-    upstream_data_type: l1a
-    upstream_descriptor: spin
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: nhk
+  inputs:
+    - *spice_common
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: ancillary
+      descriptor: bad-times
+    - source: lo
+      data_type: ancillary
+      descriptor: sweep-table
+    - source: lo
+      data_type: l1a
+      descriptor: de
+    - source: lo
+      data_type: l1a
+      descriptor: spin
+    - source: lo
+      data_type: l1b
+      descriptor: nhk
+  outputs:
+    - source: lo
+      data_type: l1b
+      descriptor: de
 
 (l1b, derates):
-  - *spice_basic
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-  - upstream_source: repoint
-    upstream_data_type: repoint
-    upstream_descriptor: historical
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: sweep-table
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: esa-mode-lut
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: de
-  - upstream_source: lo
-    upstream_data_type: l1a
-    upstream_descriptor: spin
+  inputs:
+    - *spice_basic
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: ancillary
+      descriptor: sweep-table
+    - source: lo
+      data_type: ancillary
+      descriptor: esa-mode-lut
+    - source: lo
+      data_type: l1b
+      descriptor: de
+    - source: lo
+      data_type: l1a
+      descriptor: spin
+  outputs:
+    - source: lo
+      data_type: l1b
+      descriptor: derates
 
 (l1b, prostar):
-  - *spice_basic
-  - upstream_source: repoint
-    upstream_data_type: repoint
-    upstream_descriptor: historical
-  - upstream_source: lo
-    upstream_data_type: l1a
-    upstream_descriptor: star
-  - upstream_source: lo
-    upstream_data_type: l1a
-    upstream_descriptor: spin
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: nhk
+  inputs:
+    - *spice_basic
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: l1a
+      descriptor: star
+    - source: lo
+      data_type: l1a
+      descriptor: spin
+    - source: lo
+      data_type: l1b
+      descriptor: nhk
+  outputs:
+    - source: lo
+      data_type: l1b
+      descriptor: prostar
 
 (l1b, goodtimes):
-  - *spice_basic
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: histrates
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: de
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: nhk
-  - upstream_source: repoint
-    upstream_data_type: repoint
-    upstream_descriptor: historical
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: bg-rates-anti-ram-overrides
+  inputs:
+    - *spice_basic
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
+    - source: lo
+      data_type: l1b
+      descriptor: de
+    - source: lo
+      data_type: l1b
+      descriptor: nhk
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: ancillary
+      descriptor: bg-rates-anti-ram-overrides
+  outputs:
+    - source: lo
+      data_type: l1b
+      descriptor: goodtimes
 
 # ======== Level L1C ========
+
 (l1c, pset):
-  - *spice_common
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-  - upstream_source: repoint
-    upstream_data_type: repoint
-    upstream_descriptor: historical
-  - upstream_source: ephemeris_90days
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: de
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: histrates
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: goodtimes
-  - upstream_source: lo
-    upstream_data_type: l1b
-    upstream_descriptor: bgrates
+  inputs:
+    - *spice_common
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: ephemeris_90days
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: lo
+      data_type: l1b
+      descriptor: de
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
+    - source: lo
+      data_type: l1b
+      descriptor: goodtimes
+    - source: lo
+      data_type: l1b
+      descriptor: bgrates
 
 # ======== Level L2 ========
+  outputs:
+    - source: lo
+      data_type: l1c
+      descriptor: pset
+
 (l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr):
-  - *spice_l2
-  - *lo_esa_fit_factors
-  - *lo_90_pset
+  inputs:
+    - *spice_l2
+    - *lo_esa_fit_factors
+    - *lo_90_pset
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-ena-h-hf-nsp-ram-hae-6deg-1yr
 
 (l2, l090-ena-h-hk-nsp-ram-hae-6deg-1yr):
-  - *spice_l2
-  - *lo_esa_fit_factors
-  - *lo_90_pset
+  inputs:
+    - *spice_l2
+    - *lo_esa_fit_factors
+    - *lo_90_pset
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-ena-h-hk-nsp-ram-hae-6deg-1yr
 
 (l2, l090-ena-h-sf-nsp-ram-hae-6deg-1yr):
-  - *spice_l2
-  - *lo_esa_fit_factors
-  - *lo_90_pset
+  inputs:
+    - *spice_l2
+    - *lo_esa_fit_factors
+    - *lo_90_pset
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-ena-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, l090-ena-o-sf-nsp-ram-hae-6deg-1yr):
-  - *spice_l2
-  - *lo_esa_fit_factors
-  - *lo_90_pset
+  inputs:
+    - *spice_l2
+    - *lo_esa_fit_factors
+    - *lo_90_pset
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-ena-o-sf-nsp-ram-hae-6deg-1yr
 
 (l2, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
-  - *spice_l2
-  - *lo_esa_fit_factors
-  - *lo_90_pset
+  inputs:
+    - *spice_l2
+    - *lo_esa_fit_factors
+    - *lo_90_pset
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-isn-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
-  - *spice_l2
-  - *lo_esa_fit_factors
-  - *lo_90_pset
+  inputs:
+    - *spice_l2
+    - *lo_esa_fit_factors
+    - *lo_90_pset
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-isn-o-sf-nsp-ram-hae-6deg-1yr
 
 (l2, t090-ena-h-sf-nsp-ram-hae-6deg-1yr):
-  - *lo_esa_fit_factors
-  - *lo_esa_fit_factors
+  inputs:
+    - *lo_esa_fit_factors
+    - *lo_esa_fit_factors
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: t090-ena-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, t090-isn-h-sf-nsp-ram-hae-6deg-1yr):
-  - *spice_l2
-  - *lo_90_pset
+  inputs:
+    - *spice_l2
+    - *lo_90_pset
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: t090-isn-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr):
-  - *spice_l2
-  - *lo_90_pset
+  inputs:
+    - *spice_l2
+    - *lo_90_pset
 
 # ======== Level L3 ========
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: t090-isn-o-sf-nsp-ram-hae-6deg-1yr
+
 (l3, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
-  - upstream_source: lo
-    upstream_data_type: l2
-    upstream_descriptor: l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-isn-h-sf-nsp-ram-hae-6deg-1yr
 
 (l3, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
-  - upstream_source: lo
-    upstream_data_type: l2
-    upstream_descriptor: l090-enanbs-o-sf-nsp-ram-hae-6deg-1yr
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-enanbs-o-sf-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-isn-o-sf-nsp-ram-hae-6deg-1yr
 
 (l3, l090-spx-h-hf-nsp-ram-hae-6deg-1yr):
-  - upstream_source: lo
-    upstream_data_type: l2
-    upstream_descriptor: l090-ena-h-hf-nsp-ram-hae-6deg-1yr
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-ena-h-hf-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spx-h-hf-nsp-ram-hae-6deg-1yr
 
 (l3, l090-spx-h-hf-sp-ram-hae-6deg-1yr):
-  - upstream_source: lo
-    upstream_data_type: l3
-    upstream_descriptor: l090-ena-h-hf-sp-ram-hae-6deg-1yr
+  inputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-ena-h-hf-sp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spx-h-hf-sp-ram-hae-6deg-1yr
 
 (l3, l090-spx-h-sf-nsp-ram-hae-6deg-1yr):
-  - upstream_source: lo
-    upstream_data_type: l2
-    upstream_descriptor: l090-ena-h-sf-nsp-ram-hae-6deg-1yr
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-ena-h-sf-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spx-h-sf-nsp-ram-hae-6deg-1yr
 
 (l3, l090-spx-h-sf-sp-ram-hae-6deg-1yr):
-  - upstream_source: lo
-    upstream_data_type: l3
-    upstream_descriptor: l090-ena-h-sf-sp-ram-hae-6deg-1yr
+  inputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-ena-h-sf-sp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spx-h-sf-sp-ram-hae-6deg-1yr
 
 (l3, l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr):
-  - upstream_source: lo
-    upstream_data_type: l2
-    upstream_descriptor: l090-enanbs-h-hk-nsp-ram-hae-6deg-1yr
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-enanbs-h-hk-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr
 
 (l3, l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr):
-  - upstream_source: lo
-    upstream_data_type: l2
-    upstream_descriptor: l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr
-
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr
 

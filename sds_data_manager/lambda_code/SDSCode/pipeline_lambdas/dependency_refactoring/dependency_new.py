@@ -9,7 +9,7 @@ import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
 from ...api_lambdas import upload_api
-from .types import DependencyNode, ProcessingJobNode, format_upstream_node_input
+from .types import DependencyNode, ProcessingJobNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -95,7 +95,7 @@ class DependencyConfigReader:
                 )
 
             # Parse YAML keys to construct (source, data_type, descriptor) tuples
-            for key_str, upstream_list in instrument_config.items():
+            for key_str, value in instrument_config.items():
                 # Skip any anchor definitions (common dependency groups).
                 if not key_str.startswith("("):
                     continue
@@ -117,13 +117,23 @@ class DependencyConfigReader:
                     )
                     potential_job_node = (instrument, data_type, descriptor)
 
+                    upstream_list = value["inputs"]
                     flattened_upstream_deps = self.recursive_flatten_list(upstream_list)
 
                     upstream_deps_nodes = []
-                    # Validate each upstream node
                     for upstream in flattened_upstream_deps:
-                        upstream_node = format_upstream_node_input(upstream)
-                        upstream_deps_nodes.append(upstream_node)
+                        upstream_deps_nodes.append(
+                            DependencyNode(
+                                source=upstream["source"],
+                                data_type=upstream["data_type"],
+                                descriptor=upstream["descriptor"],
+                                required=upstream.get("required", True),
+                                trigger_job=upstream.get("trigger_job", True),
+                                dependency_query_time_range=upstream.get(
+                                    "date_range", []
+                                ),
+                            )
+                        )
 
                     dependencies[potential_job_node] = upstream_deps_nodes
 
@@ -142,27 +152,28 @@ class DependencyConfigReader:
 
         For example:
         spice_basic: &spice_basic
-            - upstream_source: leapseconds
-                upstream_data_type: spice
-                upstream_descriptor: historical
-                kickoff_job: false
-            - upstream_source: spacecraft_clock
-                upstream_data_type: spice
-                upstream_descriptor: historical
-                kickoff_job: false
+            - source: leapseconds
+                data_type: spice
+                descriptor: historical
+                trigger_job: false
+            - source: spacecraft_clock
+                data_type: spice
+                descriptor: historical
+                trigger_job: false
 
         spice_45sensor_l1b: &spice_45sensor_l1b
             - *spice_basic
-            - upstream_source: imap_frames
-                upstream_data_type: spice
-                upstream_descriptor: historical
-                kickoff_job: false
+            - source: imap_frames
+                data_type: spice
+                descriptor: historical
+                trigger_job: false
 
         (l1b, 45sensor-de):
-            - *spice_45sensor_l1b
-            - upstream_source: hi
-                upstream_data_type: l1a
-                upstream_descriptor: 45sensor-de
+            inputs:
+              - *spice_45sensor_l1b
+              - source: hi
+                  data_type: l1a
+                  descriptor: 45sensor-de
 
         Parameters
         ----------
