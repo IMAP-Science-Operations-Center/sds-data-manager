@@ -1,6 +1,7 @@
 """Tests for pipeline lambda types."""
 
-import numpy as np
+from datetime import datetime
+
 import pytest
 
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.types import (  # noqa: E501
@@ -22,8 +23,8 @@ def test_time_range_from_string():
     )
     assert tr.pointing_number_start == 3
     assert tr.pointing_number_end == 5
-    assert tr.start_time == np.datetime64("2025-01-01")
-    assert tr.end_time == np.datetime64("2025-01-31")
+    assert tr.start_time == datetime(2025, 1, 1)
+    assert tr.end_time == datetime(2025, 1, 31)
 
     tr = TimeRange.from_string("20250101", "20250131")
     assert tr.pointing_number_start is None

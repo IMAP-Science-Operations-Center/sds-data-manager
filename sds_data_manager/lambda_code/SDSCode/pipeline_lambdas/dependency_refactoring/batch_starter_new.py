@@ -125,7 +125,7 @@ def determine_job_version(session: db.Session, node: ProcessingJobNode):
             conditions.append(table.start_date == node.time_span.start_time)
         else:
             # If repointing is used, use that instead of the start date.
-            conditions.append(table.repoint == node.time_span.pointing_number_start)
+            conditions.append(table.repointing == node.time_span.pointing_number_start)
 
         if table == models.ProcessingJob:
             conditions.append(
@@ -144,7 +144,9 @@ def determine_job_version(session: db.Session, node: ProcessingJobNode):
 
     # if it is "all" descriptor, this won't correspond to any science files.
     # In both cases, we rely on the max version from the processing jobs table.
-    use_job_table = ["pointing-attiude", "all"]
+    use_job_table = ["pointing-attitude", "all"]
+
+    max_version_processing = None
 
     # query to get the max version from the processing jobs table
     max_version_record = (
@@ -176,8 +178,8 @@ def determine_job_version(session: db.Session, node: ProcessingJobNode):
                 *filter_conditions(models.ScienceFiles)
             )
         ).scalar()
-
-        return f"v{int(max_version_sci[1:]) + 1:03d}"
+        if max_version_sci is not None:
+            return f"v{int(max_version_sci[1:]) + 1:03d}"
 
     # third try: use the maximum version found in completed processing
     if max_version_processing:

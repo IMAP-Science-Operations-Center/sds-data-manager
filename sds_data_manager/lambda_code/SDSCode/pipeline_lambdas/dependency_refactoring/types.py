@@ -1,9 +1,9 @@
 """Common types for pipeline lambdas."""
 
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from typing import Any, ClassVar
 
-import numpy as np
 from imap_data_access import ScienceFilePath
 
 from .. import VALID_CADENCE_STRS
@@ -18,14 +18,14 @@ DATE_RANGE_OPTIONS = ("p", "h", "d", "l", *NEAREST_OPTIONS)
 class TimeRange:
     """A date range with optional pointing numbers.
 
-    Stores start and end times as np.datetime64 values and provides
+    Stores start and end times as datetime values and provides
     conversion to and from the yyyymmdd string format used in filenames.
 
     Attributes
     ----------
-    start_time : np.datetime64
+    start_time : datetime
         Start of the date range.
-    end_time : np.datetime64
+    end_time : datetime
         End of the date range.
     pointing_number_start : int or None
         Pointing number for the start time, or None if not applicable.
@@ -33,8 +33,8 @@ class TimeRange:
         Pointing number for the end time, or None if not applicable.
     """
 
-    start_time: np.datetime64
-    end_time: np.datetime64
+    start_time: datetime
+    end_time: datetime
     pointing_number_start: int | None = None
     pointing_number_end: int | None = None
 
@@ -64,12 +64,8 @@ class TimeRange:
         TimeRange
             A TimeRange instance with parsed datetime values.
         """
-        start_time = np.datetime64(
-            f"{start_time_string[:4]}-{start_time_string[4:6]}-{start_time_string[6:8]}"
-        )
-        end_time = np.datetime64(
-            f"{end_time_string[:4]}-{end_time_string[4:6]}-{end_time_string[6:8]}"
-        )
+        start_time = datetime.strptime(start_time_string, "%Y%m%d")
+        end_time = datetime.strptime(end_time_string, "%Y%m%d")
         return cls(
             start_time=start_time,
             end_time=end_time,
@@ -85,8 +81,8 @@ class TimeRange:
         tuple[str, str]
             (start_time_string, end_time_string) in yyyymmdd format.
         """
-        start_str = str(self.start_time.astype("datetime64[D]")).replace("-", "")
-        end_str = str(self.end_time.astype("datetime64[D]")).replace("-", "")
+        start_str = self.start_time.strftime("%Y%m%d")
+        end_str = self.end_time.strftime("%Y%m%d")
         return start_str, end_str
 
 
@@ -187,6 +183,7 @@ class DependencyNode(Node):
 
     def __post_init__(self):
         """Validate all fields on construction."""
+        super().__post_init__()
         self._validate_boolean_fields(self.required, self.kickoff_job)
         self._validate_date_range(self.dependency_query_time_range)
 
@@ -220,6 +217,13 @@ class DependencyNode(Node):
         future = date_range[1] if len(date_range) > 1 else None
 
         is_nearest = past.endswith(NEAREST_OPTIONS)
+
+        # Nearest is only valid as a single-element list
+        if is_nearest and future is not None:
+            raise ValueError(
+                "Nearest need to be in this format, [<int><option>, ]. "
+                "Eg. ['6np',] or ['6nd',]"
+            )
 
         # Validate past
         if is_nearest:
@@ -399,5 +403,5 @@ def format_upstream_node_input(yaml_dict: dict) -> DependencyNode:
         descriptor=yaml_dict["upstream_descriptor"],
         required=yaml_dict.get("required", True),
         kickoff_job=yaml_dict.get("kickoff_job", True),
-        dependency_query_time_range=yaml_dict.get("date_range", None),
+        dependency_query_time_range=yaml_dict.get("date_range", []),
     )

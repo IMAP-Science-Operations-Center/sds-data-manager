@@ -358,18 +358,18 @@ def test_swe_dependency_config():
     assert l0_upstream_dependency.descriptor == "raw"
     assert l0_upstream_dependency.required is True
     assert l0_upstream_dependency.kickoff_job is True
-    assert l0_upstream_dependency.dependency_query_time_range is None
+    assert l0_upstream_dependency.dependency_query_time_range == []
 
     assert leapseconds_upstream_dependency.source == "leapseconds"
     assert leapseconds_upstream_dependency.data_type == "spice"
     assert leapseconds_upstream_dependency.descriptor == "historical"
     assert leapseconds_upstream_dependency.required is True
     assert leapseconds_upstream_dependency.kickoff_job is False
-    assert leapseconds_upstream_dependency.date_range is None
+    assert leapseconds_upstream_dependency.dependency_query_time_range == []
 
     assert spacecraft_clock_upstream_dependency.source == "spacecraft_clock"
     assert spacecraft_clock_upstream_dependency.data_type == "spice"
     assert spacecraft_clock_upstream_dependency.descriptor == "historical"
     assert spacecraft_clock_upstream_dependency.required is True
     assert spacecraft_clock_upstream_dependency.kickoff_job is False
-    assert spacecraft_clock_upstream_dependency.date_range is None
+    assert spacecraft_clock_upstream_dependency.dependency_query_time_range == []
