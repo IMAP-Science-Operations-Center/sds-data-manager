@@ -28,6 +28,10 @@ l0_data: &l0_data
   - *spice_basics
   - *l0_data
 
+(l1a, pha-telemetry-corrected):
+  - upstream_source: hit
+    upstream_data_type: l0
+    upstream_descriptor: pha-telemetry-corrected
 
 (l1b, sectored-rates):
   - upstream_source: hit

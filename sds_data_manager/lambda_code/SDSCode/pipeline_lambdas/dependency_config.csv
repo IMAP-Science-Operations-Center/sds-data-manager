@@ -110,6 +110,7 @@ science_frames, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 attitude_history, spice, historical, glows, l1b, hist, HARD, DOWNSTREAM
 pointing_attitude, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 ephemeris_reconstructed, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
+ephemeris_predicted, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 planetary_ephemeris, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 leapseconds, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, glows, l1b, hist, HARD_NO_TRIGGER, DOWNSTREAM
@@ -124,7 +125,7 @@ science_frames, spice, historical, glows, l2, hist, HARD_NO_TRIGGER, DOWNSTREAM
 pointing_attitude, spice, historical, glows, l2, hist, HARD_NO_TRIGGER, DOWNSTREAM
 
 glows, l2, hist, glows, l3a, hist, HARD, DOWNSTREAM
-glows, ancillary, calibration-data, glows, l3a, hist, HARD, DOWNSTREAM
+glows, ancillary, l2-calibration, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, l3a-time-dep-bckgrd, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, l3a-map-of-extra-helio-bckgrd, glows, l3a, hist, HARD, DOWNSTREAM
 glows, ancillary, pipeline-settings, glows, l3a, hist, HARD, DOWNSTREAM
@@ -712,6 +713,11 @@ hit, l0, raw, hit, l1b, hk, HARD, DOWNSTREAM
 leapseconds, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
 
+# Custom L0 data delivered by HIT
+hit, l0, pha-telemetry-corrected, hit, l1a, pha-telemetry-corrected, HARD, DOWNSTREAM
+leapseconds, spice, historical, hit, l1a, pha-telemetry-corrected, HARD_NO_TRIGGER, DOWNSTREAM
+spacecraft_clock, spice, historical, hit, l1a, pha-telemetry-corrected, HARD_NO_TRIGGER, DOWNSTREAM
+
 hit, l1a, counts-standard, hit, l1b, standard-rates, HARD, DOWNSTREAM
 hit, l1a, counts-standard, hit, l1b, summed-rates, HARD, DOWNSTREAM
 hit, l1a, counts-sectored, hit, l1b, sectored-rates, HARD, DOWNSTREAM
@@ -845,9 +851,8 @@ leapseconds, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
-lo, ancillary, good-times, lo, l1c, pset, HARD, DOWNSTREAM
-lo, ancillary, hydrogen-background, lo, l1c, pset, HARD, DOWNSTREAM
-lo, ancillary, oxygen-background, lo, l1c, pset, HARD, DOWNSTREAM
+lo, l1b, goodtimes, lo, l1c, pset, HARD, DOWNSTREAM
+lo, l1b, bgrates, lo, l1c, pset, HARD, DOWNSTREAM
 spin, spin, historical, lo, l1c, pset, HARD, DOWNSTREAM
 repoint, repoint, historical, lo, l1c, pset, HARD, DOWNSTREAM
 leapseconds, spice, historical, lo, l1c, pset, HARD_NO_TRIGGER, DOWNSTREAM
