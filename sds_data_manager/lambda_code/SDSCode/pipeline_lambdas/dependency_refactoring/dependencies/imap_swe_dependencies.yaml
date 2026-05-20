@@ -6,6 +6,7 @@
 
 
 (l1a, all):
+  partition: daily
   inputs:
     - source: swe
       data_type: l0
@@ -30,6 +31,7 @@
       descriptor: cem-raw
 
 (l1b, sci):
+  partition: daily
   inputs:
     - source: swe
       data_type: l1a
@@ -57,6 +59,7 @@
       descriptor: sci
 
 (l2, sci):
+  partition: daily
   inputs:
     - source: swe
       data_type: l1b
@@ -70,6 +73,7 @@
       descriptor: sci
 
 (l3, sci):
+  partition: daily
   inputs:
     - source: swe
       data_type: l1b

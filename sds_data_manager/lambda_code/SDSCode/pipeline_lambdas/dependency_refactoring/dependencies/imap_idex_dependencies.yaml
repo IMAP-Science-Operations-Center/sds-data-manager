@@ -18,6 +18,7 @@ spice_basics: &spice_basics
 # ====== IDEX dependencies =============
 
 (l1a, all):
+  partition: daily
   inputs:
     - *spice_basics
     - source: idex
@@ -38,6 +39,7 @@ spice_basics: &spice_basics
       descriptor: catlst
 
 (l1a, msg):
+  partition: daily
   inputs:
     - source: idex
       data_type: l1a
@@ -48,6 +50,7 @@ spice_basics: &spice_basics
       descriptor: msg
 
 (l1b, sci-1week):
+  partition: 10days
   inputs:
     - *spice_basics
     - source: idex
@@ -80,6 +83,7 @@ spice_basics: &spice_basics
       descriptor: sci-1week
 
 (l2a, sci-1week):
+  partition: 10days
   inputs:
     - source: idex
       data_type: l1b
@@ -96,6 +100,7 @@ spice_basics: &spice_basics
       descriptor: sci-1week
 
 (l2b, all-1mo):
+  partition: 1mo
   inputs:
     - *spice_basics
     - source: idex

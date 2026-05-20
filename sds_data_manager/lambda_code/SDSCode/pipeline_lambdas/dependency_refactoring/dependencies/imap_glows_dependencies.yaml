@@ -36,6 +36,7 @@ hist_spice: &hist_spice
 
 # ======== Product-specific dependencies ===========
 (l1a, all):
+  partition: daily
   inputs:
     - *spice_basics
     - source: glows
@@ -50,6 +51,7 @@ hist_spice: &hist_spice
       descriptor: hist
 
 (l1b, de):
+  partition: daily
   inputs:
     - source: glows
       data_type: l1a
@@ -63,6 +65,7 @@ hist_spice: &hist_spice
       descriptor: de
 
 (l1b, hist):
+  partition: daily
   inputs:
     - *pipeline_settings
     - *hist_spice
@@ -104,6 +107,7 @@ hist_spice: &hist_spice
       descriptor: hist
 
 (l2, hist):
+  partition: daily
   inputs:
     - *pipeline_settings
     - *hist_spice
@@ -119,6 +123,7 @@ hist_spice: &hist_spice
       descriptor: hist
 
 (l3a, hist):
+  partition: daily
   inputs:
     - *pipeline_settings
     - source: glows
