@@ -571,6 +571,12 @@ def test_insert_kernels(
     spice_input = MagicMock()
     spice_input.source = ["leapseconds", "planetary_constants", "imap_frames"]
     spice_input.filename_list = ["naif0012.tls", "pck00011.tpc", "imap_100.tf"]
+    mock_paths = []
+    for kernel_type in spice_input.source:
+        mock_path = MagicMock()
+        mock_path.spice_metadata = {"type": kernel_type}
+        mock_paths.append(mock_path)
+    spice_input.imap_file_paths = mock_paths
 
     dependency_inputs = MagicMock()
     dependency_inputs.processing_input = [spice_input]
