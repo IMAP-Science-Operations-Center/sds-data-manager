@@ -133,6 +133,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
 
 # ======== Product-Specific Dependencies ========
 (l1a, all):
+  partition: repoint
   inputs:
     - *spice_basic
     - *l0_data
@@ -169,6 +170,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: 90sensor-memdmp
 
 (l1b, hk):
+  partition: repoint
   inputs:
     - *spice_basic
     - *l0_data
@@ -193,6 +195,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: 90sensor-goodtimes
 
 (l1b, 45sensor-de):
+  partition: repoint
   inputs:
     - *spice_l1b
     - source: hi
@@ -210,6 +213,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: 45sensor-de
 
 (l1b, 45sensor-goodtimes):
+  partition: repoint
   inputs:
     - *spice_basic
     - source: repoint
@@ -235,6 +239,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: 45sensor-goodtimes
 
 (l1c, 45sensor-pset):
+  partition: repoint
   inputs:
     - *spice_l1c
     - source: hi
@@ -255,6 +260,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: 45sensor-pset
 
 (l1b, 90sensor-de):
+  partition: repoint
   inputs:
     - *spice_l1b
     - source: hi
@@ -272,6 +278,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: 90sensor-de
 
 (l1c, 90sensor-pset):
+  partition: repoint
   inputs:
     - *spice_l1c
     - source: hi
@@ -292,6 +299,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: 90sensor-pset
 
 (l1b, 90sensor-goodtimes):
+  partition: repoint
   inputs:
     - *spice_basic
     - source: repoint
@@ -311,14 +319,14 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l1b
       descriptor: 45sensor-hk
-
-# L2 Products - 45sensor
   outputs:
     - source: hi
       data_type: l1b
       descriptor: 90sensor-goodtimes
 
+# L2 Products - 45sensor
 (l2, h45-ena-h-hf-nsp-anti-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -329,6 +337,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-anti-hae-4deg-1yr
 
 (l2, h45-ena-h-hf-nsp-anti-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -339,6 +348,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-anti-hae-4deg-6mo
 
 (l2, h45-ena-h-hf-nsp-anti-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -349,6 +359,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-anti-hae-6deg-1yr
 
 (l2, h45-ena-h-hf-nsp-anti-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -359,6 +370,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-anti-hae-6deg-6mo
 
 (l2, h45-ena-h-hf-nsp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -369,6 +381,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-full-hae-4deg-3mo
 
 (l2, h45-ena-h-hf-nsp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -379,6 +392,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-full-hae-4deg-6mo
 
 (l2, h45-ena-h-hf-nsp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -389,6 +403,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-full-hae-6deg-3mo
 
 (l2, h45-ena-h-hf-nsp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -399,6 +414,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-full-hae-6deg-6mo
 
 (l2, h45-ena-h-hf-nsp-ram-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -409,6 +425,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-ram-hae-4deg-1yr
 
 (l2, h45-ena-h-hf-nsp-ram-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -419,6 +436,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-ram-hae-4deg-6mo
 
 (l2, h45-ena-h-hf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -429,6 +447,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-ram-hae-6deg-1yr
 
 (l2, h45-ena-h-hf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -439,6 +458,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-hf-nsp-ram-hae-6deg-6mo
 
 (l2, h45-ena-h-sf-nsp-anti-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -449,6 +469,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-anti-hae-4deg-1yr
 
 (l2, h45-ena-h-sf-nsp-anti-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -459,6 +480,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-anti-hae-4deg-6mo
 
 (l2, h45-ena-h-sf-nsp-anti-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -469,6 +491,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-anti-hae-6deg-1yr
 
 (l2, h45-ena-h-sf-nsp-anti-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -479,6 +502,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-anti-hae-6deg-6mo
 
 (l2, h45-ena-h-sf-nsp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -489,6 +513,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-full-hae-4deg-3mo
 
 (l2, h45-ena-h-sf-nsp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -499,6 +524,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-full-hae-4deg-6mo
 
 (l2, h45-ena-h-sf-nsp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -509,6 +535,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-full-hae-6deg-3mo
 
 (l2, h45-ena-h-sf-nsp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -519,6 +546,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-full-hae-6deg-6mo
 
 (l2, h45-ena-h-sf-nsp-ram-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -529,6 +557,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-ram-hae-4deg-1yr
 
 (l2, h45-ena-h-sf-nsp-ram-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -539,6 +568,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-ram-hae-4deg-6mo
 
 (l2, h45-ena-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -549,6 +579,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, h45-ena-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_45sensor_l2
@@ -562,6 +593,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-ena-h-sf-nsp-ram-hae-6deg-6mo
 
 (l2, h90-ena-h-hf-nsp-anti-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -572,6 +604,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-anti-hae-4deg-1yr
 
 (l2, h90-ena-h-hf-nsp-anti-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -582,6 +615,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-anti-hae-4deg-6mo
 
 (l2, h90-ena-h-hf-nsp-anti-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -592,6 +626,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-anti-hae-6deg-1yr
 
 (l2, h90-ena-h-hf-nsp-anti-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -602,6 +637,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-anti-hae-6deg-6mo
 
 (l2, h90-ena-h-hf-nsp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -612,6 +648,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-full-hae-4deg-3mo
 
 (l2, h90-ena-h-hf-nsp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -622,6 +659,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-full-hae-4deg-6mo
 
 (l2, h90-ena-h-hf-nsp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -632,6 +670,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-full-hae-6deg-3mo
 
 (l2, h90-ena-h-hf-nsp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -642,6 +681,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-full-hae-6deg-6mo
 
 (l2, h90-ena-h-hf-nsp-ram-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -652,6 +692,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-ram-hae-4deg-1yr
 
 (l2, h90-ena-h-hf-nsp-ram-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -662,6 +703,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-ram-hae-4deg-6mo
 
 (l2, h90-ena-h-hf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -672,6 +714,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-ram-hae-6deg-1yr
 
 (l2, h90-ena-h-hf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -682,6 +725,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-hf-nsp-ram-hae-6deg-6mo
 
 (l2, h90-ena-h-sf-nsp-anti-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -692,6 +736,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-anti-hae-4deg-1yr
 
 (l2, h90-ena-h-sf-nsp-anti-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -702,6 +747,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-anti-hae-4deg-6mo
 
 (l2, h90-ena-h-sf-nsp-anti-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -712,6 +758,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-anti-hae-6deg-1yr
 
 (l2, h90-ena-h-sf-nsp-anti-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -722,6 +769,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-anti-hae-6deg-6mo
 
 (l2, h90-ena-h-sf-nsp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -732,6 +780,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-full-hae-4deg-3mo
 
 (l2, h90-ena-h-sf-nsp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -742,6 +791,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-full-hae-4deg-6mo
 
 (l2, h90-ena-h-sf-nsp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -752,6 +802,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-full-hae-6deg-3mo
 
 (l2, h90-ena-h-sf-nsp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -762,6 +813,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-full-hae-6deg-6mo
 
 (l2, h90-ena-h-sf-nsp-ram-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -772,6 +824,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-ram-hae-4deg-1yr
 
 (l2, h90-ena-h-sf-nsp-ram-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -782,6 +835,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-ram-hae-4deg-6mo
 
 (l2, h90-ena-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -792,6 +846,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, h90-ena-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - *spice_l2
     - *ancillary_90sensor_l2
@@ -804,6 +859,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-ena-h-sf-nsp-ram-hae-6deg-6mo
 
 (l3, h45-spx-h-hf-sp-anti-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
@@ -814,6 +870,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-spx-h-hf-sp-anti-hae-4deg-1yr
 
 (l3, h45-spx-h-hf-sp-anti-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
@@ -824,6 +881,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-spx-h-hf-sp-anti-hae-6deg-1yr
 
 (l3, h45-spx-h-hf-sp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - source: hi
       data_type: l3
@@ -834,6 +892,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-spx-h-hf-sp-full-hae-4deg-6mo
 
 (l3, h45-spx-h-hf-sp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - source: hi
       data_type: l3
@@ -844,6 +903,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-spx-h-hf-sp-full-hae-6deg-6mo
 
 (l3, h45-spx-h-hf-sp-ram-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
@@ -854,6 +914,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-spx-h-hf-sp-ram-hae-4deg-1yr
 
 (l3, h45-spx-h-hf-sp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
@@ -866,6 +927,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h45-spx-h-hf-sp-ram-hae-6deg-1yr
 
 (l3, h90-spx-h-hf-sp-anti-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
@@ -876,6 +938,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-spx-h-hf-sp-anti-hae-4deg-1yr
 
 (l3, h90-spx-h-hf-sp-anti-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
@@ -886,6 +949,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-spx-h-hf-sp-anti-hae-6deg-1yr
 
 (l3, h90-spx-h-hf-sp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - source: hi
       data_type: l3
@@ -896,6 +960,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-spx-h-hf-sp-full-hae-4deg-6mo
 
 (l3, h90-spx-h-hf-sp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - source: hi
       data_type: l3
@@ -906,6 +971,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-spx-h-hf-sp-full-hae-6deg-6mo
 
 (l3, h90-spx-h-hf-sp-ram-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
@@ -916,6 +982,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-spx-h-hf-sp-ram-hae-4deg-1yr
 
 (l3, h90-spx-h-hf-sp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
@@ -928,6 +995,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-spx-h-hf-sp-ram-hae-6deg-1yr
 
 (l3, hic-spx-h-hf-sp-full-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
@@ -938,6 +1006,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: hic-spx-h-hf-sp-full-hae-4deg-1yr
 
 (l3, hic-spx-h-hf-sp-full-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: hi
       data_type: l3
