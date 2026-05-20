@@ -10,14 +10,13 @@ authors = [{name = "IMAP SDS Developers", email = "imap.sdc@lists.lasp.colorado.
 readme = "README.md"
 license = {text = "MIT"}
 keywords = ["IMAP", "SDC", "SOC", "SDS", "Science Operations"]
-requires-python = ">=3.10,<3.13"  # upper bound due to scipy wheel availability; bump when scipy supports 3.14
+requires-python = ">=3.11,<3.13"  # upper bound due to scipy wheel availability; bump when scipy supports 3.14
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Topic :: Software Development",
     "Topic :: Scientific/Engineering",
@@ -32,7 +31,8 @@ classifiers = [
 dependencies = [
     "imap-data-access>=0.40.1",
     "boto3>=1.26.78,<2",
-    "SQLAlchemy<=3.0.0"
+    "SQLAlchemy<=3.0.0",
+    "numpy (>=2.4.6,<3.0.0)"
 ]
 
 [tool.poetry]
@@ -120,4 +120,4 @@ lint.ignore = ["D104", "D203", "D213", "D300", "D413", "S101", "S104", "PLR0913"
 "tests/infrastructure/test_website_cloudfront_function.py" = ["S"]
 # Module level imports which we sometimes want within functions to
 # make for easier moto mocking
-"tests/*" = ["PLC0415"]
+"tests/*" = ["PLC0415", "D103"]
