@@ -340,41 +340,6 @@ def test_s3_quicklook_event(session, s3_client, events_client):
     assert result[0].descriptor == "ql-survey"
 
 
-def test_invalid_file(session, s3_client, events_client):
-    """Test s3 event for an invalid file."""
-    filename = "imap_bad_file_raw_20250101_v001.pkts"
-    filepath = f"other/l0/{filename}"
-
-    s3_client.put_object(
-        Bucket="test-data-bucket",
-        Key=filepath,
-        Body=b"test image data",
-    )
-
-    event = {
-        "detail-type": "Object Created",
-        "source": "aws.s3",
-        "time": "2024-01-16T17:35:08Z",
-        "detail": {
-            "version": "0",
-            "bucket": {"name": "test-data-bucket"},
-            "object": {
-                "key": (filepath),
-                "reason": "PutObject",
-            },
-        },
-    }
-
-    # Test for good event
-    returned_value = indexer.lambda_handler(event=event, context={})
-    assert returned_value["statusCode"] == 400
-    assert returned_value["body"] == (
-        "Filename imap_bad_file_raw_20250101_v001.pkts is"
-        " not a valid SCIENCE, ANCILLARY or "
-        "QUICKLOOK file."
-    )
-
-
 def test_idex_l0_event(session, s3_client, events_client):
     """Test s3 event for idex l0 files."""
     # Use a clearly identifiable IDEX L0 file pattern

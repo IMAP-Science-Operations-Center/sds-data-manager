@@ -350,7 +350,8 @@ class IDEXL0IndexerLambda(Construct):
             effect=iam.Effect.ALLOW,
             actions=["s3:*"],
             resources=[
-                "*",
+                data_bucket.bucket_arn,
+                f"{data_bucket.bucket_arn}/*",
             ],
         )
 

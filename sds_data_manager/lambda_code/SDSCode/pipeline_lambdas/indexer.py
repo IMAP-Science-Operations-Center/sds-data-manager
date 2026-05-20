@@ -144,33 +144,47 @@ def send_event_from_indexer(file_obj):
     return response
 
 
-def write_file_metadata_to_table(
-    filename: str, s3_filepath: str
-) -> tuple[object, dict] | None:
-    """Write file metadata to database.
+def s3_event_handler(event):
+    """S3 events handler.
 
-    Uses generate_imap_file_path to determine the file type, then extracts
-    metadata and writes it to the appropriate database table. Supports
-    ScienceFilePath, QuicklookFilePath, ReleaseFilePath, and AncillaryFilePath.
+    S3 event handler takes s3 event and then writes information to
+    the proper file table. It also sends event to the batch starter
+    lambda once it finishes writing information to database.
 
     Parameters
     ----------
-    filename : str
-        The filename to extract metadata from and write to database.
-    s3_filepath : str
-        S3 object path. Eg. filepath/filename.pkts
+    event : dict
+        The JSON formatted document with the data required for the
+        lambda function to process
 
     Returns
     -------
-    file_obj : ImapFilePath | None
-        The file object created from the filename.
-    params : dict
-        The metadata parameters extracted from the filename and written
-        to the database.
+    dict
+        HTTP response
 
     """
-    file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
+    # Retrieve the Object name
+    s3_filepath = event["detail"]["object"]["key"]
+    filename = os.path.basename(s3_filepath)
 
+    try:
+        file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
+    except ValueError:
+        logger.error(f"Filename {filename} is not a valid filetype.")
+        return http_response(
+            status_code=400,
+            body=f"Filename {filename} is not a valid SCIENCE, "
+            + "ANCILLARY or QUICKLOOK file, or RELEASE file.",
+        )
+    # Skip IDEX L0 files — they are indexed by a separate lambda.
+    if type(file_obj) is ScienceFilePath:
+        if file_obj.instrument == "idex" and file_obj.data_level == "l0":
+            message = (
+                f"Received an IDEX L0 file {filename}. This file will be indexed "
+                f"in a separate lambda. See idex-l0-file-indexer lambda for details."
+            )
+            logger.info(message)
+            return http_response(status_code=200, body=message)
     # Extract filename components and prepare common parameters for
     # database entry
     params = file_obj.extract_filename_components(filename)
@@ -216,54 +230,6 @@ def write_file_metadata_to_table(
         with db.Session() as session, session.begin():
             session.add(models.AncillaryFiles(**params))
         logger.info("Wrote data to the AncillaryFiles table")
-
-    return file_obj, params
-
-
-def s3_event_handler(event):
-    """S3 events handler.
-
-    S3 event handler takes s3 event and then writes information to
-    the proper file table. It also sends event to the batch starter
-    lambda once it finishes writing information to database.
-
-    Parameters
-    ----------
-    event : dict
-        The JSON formatted document with the data required for the
-        lambda function to process
-
-    Returns
-    -------
-    dict
-        HTTP response
-
-    """
-    # Retrieve the Object name
-    s3_filepath = event["detail"]["object"]["key"]
-    filename = os.path.basename(s3_filepath)
-
-    try:
-        file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
-    except ValueError:
-        logger.error(f"Filename {filename} is not a valid filetype.")
-        return http_response(
-            status_code=400,
-            body=f"Filename {filename} is not a valid SCIENCE, "
-            + "ANCILLARY or QUICKLOOK file, or RELEASE file.",
-        )
-
-    # Skip IDEX L0 files — they are indexed by a separate lambda.
-    if type(file_obj) is ScienceFilePath:
-        if file_obj.instrument == "idex" and file_obj.data_level == "l0":
-            message = (
-                f"Received an IDEX L0 file {filename}. This file will be indexed "
-                f"in a separate lambda. See idex-l0-file-indexer lambda for details."
-            )
-            logger.info(message)
-            return http_response(status_code=200, body=message)
-
-    file_obj, _ = write_file_metadata_to_table(filename, s3_filepath)
 
     # Send event from this lambda for Batch starter lambda
     send_event_from_indexer(file_obj)

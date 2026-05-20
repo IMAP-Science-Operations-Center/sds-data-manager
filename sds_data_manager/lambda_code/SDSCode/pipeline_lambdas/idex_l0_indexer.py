@@ -31,11 +31,12 @@ needed to process a given window, downstream code can query the database for all
 
 import logging
 import os
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from imap_data_access import ImapFilePath
+from imap_data_access import ImapFilePath, ScienceFilePath
 from imap_processing.idex.idex_constants import IDEXAPID
 from imap_processing.idex.idex_l0 import decom_packets
 from imap_processing.idex.idex_l1a import Scitype
@@ -44,7 +45,8 @@ from imap_processing.spice.time import met_to_datetime64
 from ..database import database as db
 from ..database import models
 from ..spice_utilities import download_from_s3, furnish_best_spice_file
-from .indexer import http_response, write_file_metadata_to_table
+from .dependency import calculate_crid
+from .indexer import get_file_ingestion_date, http_response
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -54,6 +56,50 @@ logger.setLevel(logging.INFO)
 IDEX_10_DAY_RANGES_PATH = (
     Path(__file__).resolve().parent.parent / "utils" / "idex_10_day_CDF_names.csv"
 )
+
+
+def write_science_metadata_to_table(filename: str, s3_filepath: str) -> dict:
+    """Parse an IDEX L0 science filename and insert metadata into ScienceFiles.
+
+    Parameters
+    ----------
+    filename : str
+        Basename of the science file (for example,
+        ``imap_idex_l0_raw_20240101_v001.pkts``).
+    s3_filepath : str
+        Full S3 object key for the file.
+
+    Returns
+    -------
+    dict
+        Metadata dictionary written to ``models.ScienceFiles``. Includes
+        parsed filename fields plus ``file_path`` and ``ingestion_date``.
+
+    Raises
+    ------
+    ImapFilePath.InvalidImapFileError
+        If ``filename`` does not conform to the IMAP science filename format.
+    ValueError
+        If parsing returns a non-science file object.
+    """
+    file_obj = ScienceFilePath(filename)
+    params = file_obj.extract_filename_components(filename)
+    # Extract filename components and prepare common parameters for
+    # database entry.
+    params.pop("mission")
+    params["start_date"] = datetime.strptime(params.pop("start_date"), "%Y%m%d")
+    params["file_path"] = s3_filepath
+    params["ingestion_date"] = get_file_ingestion_date(s3_filepath)
+
+    with db.Session() as session, session.begin():
+        science_file = models.ScienceFiles(**params)
+        session.add(science_file)
+        crid = calculate_crid(session, science_file)
+        science_file.crid = crid
+
+    logger.info("Wrote data to the ScienceFiles table")
+
+    return params
 
 
 def compute_idex_l0_event_times(s3_filepath: str) -> np.ndarray:
@@ -189,12 +235,13 @@ def lambda_handler(event, context):
     )
     # add metadata to science file table.
     try:
-        _, params = write_file_metadata_to_table(filename, s3_filepath)
+        params = write_science_metadata_to_table(filename, s3_filepath)
     except ImapFilePath.InvalidImapFileError:
         return http_response(
             status_code=400,
             body=f"Filename {filename} is not a valid SCIENCE file.",
         )
+
     try:
         _ = furnish_best_spice_file("leapseconds")
         _ = furnish_best_spice_file("spacecraft_clock")
