@@ -5,40 +5,50 @@
 # and how to properly configure them for your pipeline lambdas.
 
 (l1a, pointing-attitude):
-  - upstream_source: repoint
-    upstream_data_type: repoint
-    upstream_descriptor: historical
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: science_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  inputs:
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: attitude_history
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: leapseconds
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: spacecraft_clock
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: imap_frames
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: science_frames
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+  outputs:
+    - source: spacecraft
+      data_type: l1a
+      descriptor: pointing-attitude
 
 
 (l1a, quaternions):
-  - upstream_source: spacecraft
-    upstream_data_type: l0
-    upstream_descriptor: raw
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  inputs:
+    - source: spacecraft
+      data_type: l0
+      descriptor: raw
+    - source: leapseconds
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: spacecraft_clock
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+  outputs:
+    - source: spacecraft
+      data_type: l1a
+      descriptor: quaternions

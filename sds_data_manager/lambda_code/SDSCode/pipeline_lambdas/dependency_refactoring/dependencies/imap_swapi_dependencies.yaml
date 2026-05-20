@@ -4,234 +4,265 @@
 # It contains important information such as the default values and expected behavior of these dependencies,
 # and how to properly configure them for your pipeline lambdas.
 l3a_ancillary_common: &l3a_ancillary_common
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: azimuthal-transmission
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: central-effective-area
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: passband-fit-coefficients
+  - source: swapi
+    data_type: ancillary
+    descriptor: azimuthal-transmission
+  - source: swapi
+    data_type: ancillary
+    descriptor: central-effective-area
+  - source: swapi
+    data_type: ancillary
+    descriptor: passband-fit-coefficients
 
 
 l3a_spice_common: &l3a_spice_common
-  - upstream_source: ephemeris_reconstructed
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: ephemeris_predicted
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: planetary_ephemeris
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: planetary_constants
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: science_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: pointing_attitude
-    upstream_data_type: spice
-    upstream_descriptor: historical
+  - source: ephemeris_reconstructed
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: ephemeris_predicted
+    data_type: spice
+    descriptor: historical
+  - source: planetary_ephemeris
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: planetary_constants
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: attitude_history
+    data_type: spice
+    descriptor: historical
+  - source: leapseconds
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: imap_frames
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: spacecraft_clock
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: science_frames
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: pointing_attitude
+    data_type: spice
+    descriptor: historical
 
 (l1, hk):
-  - upstream_source: swapi
-    upstream_data_type: l0
-    upstream_descriptor: raw
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-
+  inputs:
+    - source: swapi
+      data_type: l0
+      descriptor: raw
+    - source: leapseconds
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: spacecraft_clock
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+  outputs:
+    - source: swapi
+      data_type: l1
+      descriptor: hk
 
 (l1, sci):
-  - upstream_source: swapi
-    upstream_data_type: l0
-    upstream_descriptor: raw
-  - upstream_source: swapi
-    upstream_data_type: l1a
-    upstream_descriptor: hk
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-
+  inputs:
+    - source: swapi
+      data_type: l0
+      descriptor: raw
+    - source: swapi
+      data_type: l1a
+      descriptor: hk
+    - source: leapseconds
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: spacecraft_clock
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+  outputs:
+    - source: swapi
+      data_type: l1
+      descriptor: sci
 
 (l2, sci):
-  - upstream_source: swapi
-    upstream_data_type: l1
-    upstream_descriptor: sci
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: esa-unit-conversion
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: lut-notes
-
+  inputs:
+    - source: swapi
+      data_type: l1
+      descriptor: sci
+    - source: swapi
+      data_type: ancillary
+      descriptor: esa-unit-conversion
+    - source: swapi
+      data_type: ancillary
+      descriptor: lut-notes
+  outputs:
+    - source: swapi
+      data_type: l2
+      descriptor: sci
 
 (l3a, alpha-sw):
-  - *l3a_spice_common
-  - *l3a_ancillary_common
-  - upstream_source: swapi
-    upstream_data_type: l2
-    upstream_descriptor: sci
-  - upstream_source: mag
-    upstream_data_type: l1d
-    upstream_descriptor: norm-rtn
-  - upstream_source: mag
-    upstream_data_type: l2
-    upstream_descriptor: norm-rtn
-    required: false
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: clock-angle-and-flow-deflection-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: proton-density-temperature-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: alpha-density-temperature-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: energy-gf-pui-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: instrument-response-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: density-of-neutral-helium-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: efficiency-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: helium-inflow-vector
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: hydrogen-inflow-vector
-    kickoff_job: false
+  inputs:
+    - *l3a_spice_common
+    - *l3a_ancillary_common
+    - source: swapi
+      data_type: l2
+      descriptor: sci
+    - source: mag
+      data_type: l1d
+      descriptor: norm-rtn
+    - source: mag
+      data_type: l2
+      descriptor: norm-rtn
+      required: false
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: clock-angle-and-flow-deflection-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: proton-density-temperature-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: alpha-density-temperature-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: energy-gf-pui-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: instrument-response-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: density-of-neutral-helium-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: efficiency-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: helium-inflow-vector
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: hydrogen-inflow-vector
+      trigger_job: false
+  outputs:
+    - source: swapi
+      data_type: l3a
+      descriptor: alpha-sw
 
 (l3a, proton-sw):
-  - *l3a_spice_common
-  - *l3a_ancillary_common
-  - upstream_source: swapi
-    upstream_data_type: l2
-    upstream_descriptor: sci
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: clock-angle-and-flow-deflection-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: proton-density-temperature-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: alpha-density-temperature-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: energy-gf-pui-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: instrument-response-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: density-of-neutral-helium-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: efficiency-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: helium-inflow-vector
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: hydrogen-inflow-vector
-    kickoff_job: false
-
+  inputs:
+    - *l3a_spice_common
+    - *l3a_ancillary_common
+    - source: swapi
+      data_type: l2
+      descriptor: sci
+    - source: swapi
+      data_type: ancillary
+      descriptor: clock-angle-and-flow-deflection-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: proton-density-temperature-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: alpha-density-temperature-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: energy-gf-pui-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: instrument-response-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: density-of-neutral-helium-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: efficiency-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: helium-inflow-vector
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: hydrogen-inflow-vector
+      trigger_job: false
+  outputs:
+    - source: swapi
+      data_type: l3a
+      descriptor: proton-sw
 
 (l3a, pui-he):
-  - *l3a_spice_common
-  - *l3a_ancillary_common
-  - upstream_source: swapi
-    upstream_data_type: l2
-    upstream_descriptor: sci
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: clock-angle-and-flow-deflection-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: proton-density-temperature-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: alpha-density-temperature-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: energy-gf-pui-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: instrument-response-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: density-of-neutral-helium-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: efficiency-lut
-    kickoff_job: false
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: helium-inflow-vector
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: hydrogen-inflow-vector
-
+  inputs:
+    - *l3a_spice_common
+    - *l3a_ancillary_common
+    - source: swapi
+      data_type: l2
+      descriptor: sci
+    - source: swapi
+      data_type: ancillary
+      descriptor: clock-angle-and-flow-deflection-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: proton-density-temperature-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: alpha-density-temperature-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: energy-gf-pui-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: instrument-response-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: density-of-neutral-helium-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: efficiency-lut
+      trigger_job: false
+    - source: swapi
+      data_type: ancillary
+      descriptor: helium-inflow-vector
+    - source: swapi
+      data_type: ancillary
+      descriptor: hydrogen-inflow-vector
+  outputs:
+    - source: swapi
+      data_type: l3a
+      descriptor: pui-he
 
 (l3b, combined):
-  - upstream_source: swapi
-    upstream_data_type: l2
-    upstream_descriptor: sci
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: efficiency-lut
-  - upstream_source: swapi
-    upstream_data_type: ancillary
-    upstream_descriptor: energy-gf-sw-lut
+  inputs:
+    - source: swapi
+      data_type: l2
+      descriptor: sci
+    - source: swapi
+      data_type: ancillary
+      descriptor: efficiency-lut
+    - source: swapi
+      data_type: ancillary
+      descriptor: energy-gf-sw-lut
+  outputs:
+    - source: swapi
+      data_type: l3b
+      descriptor: combined
+
