@@ -66,39 +66,37 @@ class IMAPJobHandler:
         dependency_config = DependencyConfigReader()
         key = (self.source, self.data_type, self.descriptor)
         self.outputs = dependency_config.outputs(key)
-        potential_deps_list = [dep.serialize() for dep in dependency_config.inputs(key)]
+        potential_deps_list = list(dependency_config.inputs(key))
         
-        #TODO: Stop hard coding in this partition
-        # Put the partition in the YAML?
-        self.partitions_def = partition
+        self.partitions_def = dependency_config.partition(key)
 
         spice_types = []
         deps_list = []
-        triggering_deps = [] #TODO: Use the DependencyConfigReader kickoff information
+        triggering_deps = []
         for dep in potential_deps_list:
-            if dep['source'] == 'pointing_attitude':
+            if dep.source == 'pointing_attitude':
                 self.needs_pointing_attitude = True
                 deps_list.append(asset_name+'_pointing_attitude_deps')
-            elif dep['data_type'] == 'spice':
+            elif dep.data_type == 'spice':
                 deps_list.append(asset_name+'_spice_deps')
-                spice_types.append(dep['source'])
+                spice_types.append(dep.source)
                 self.needs_spice = True
-            elif dep['data_type'] == 'spin':
+            elif dep.data_type == 'spin':
                 deps_list.append(asset_name+'_spin_deps')
                 self.needs_spin = True
-            elif dep['data_type'] == 'ancillary':
-                asset_name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
+            elif dep.data_type == 'ancillary':
+                asset_name = dep.source + '_' + dep.data_type + '_' + dep.descriptor
                 deps_list.append(asset_name)
             else:
-                asset_name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
+                asset_name = dep.source + '_' + dep.data_type + '_' + dep.descriptor
                 deps_list.append(asset_name)
-                triggering_deps.append(asset_name)
+                if dep.trigger_job:
+                    triggering_deps.append(asset_name)
 
         self.spice_types = spice_types
         self.deps_list = deps_list
         self.triggering_deps = triggering_deps
 
-        # TODO: Stop hard-coding this job
         outputs_for_job = [x.descriptor.replace("-","") for x in self.outputs]
         self.job = define_asset_job(name=f"{self.asset_name}_processing_job",
                                     selection=AssetSelection.keys(*outputs_for_job)
