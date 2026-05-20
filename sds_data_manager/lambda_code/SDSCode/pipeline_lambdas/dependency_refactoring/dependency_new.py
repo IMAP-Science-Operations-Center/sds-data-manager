@@ -9,7 +9,7 @@ import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
 from ...api_lambdas import upload_api
-from .types import DependencyNode, ProcessingJobNode
+from .types import DependencyNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -44,16 +44,10 @@ class DependencyConfigReader:
     ) -> dict[tuple[str, str, str], list[DependencyNode]]:
         """Load all instrument YAML dependency files and unified dependency.
 
-        Returns a dictionary where each key is a parent node
+        Sets inputs and outputs to dictionaries where each key is a parent node
         (source, data_type, descriptor) representing a downstream product,
         and each value is a list of upstream :class:`~.utils.DependencyNode`
         objects.
-
-        Returns
-        -------
-        dict[tuple[str, str, str], list[DependencyNode]]
-            Unified dependency configuration with structure:
-            ``{(source, data_type, descriptor): [DependencyNode, ...]}``
 
         Raises
         ------
@@ -65,7 +59,7 @@ class DependencyConfigReader:
         Examples
         --------
         >>> reader = DependencyConfigReader()
-        >>> nodes = reader.config[('codice', 'l1a', 'all')]
+        >>> nodes = reader.inputs[('codice', 'l1a', 'all')]
         >>> nodes[0]
         DependencyNode(source='codice', data_type='l0', descriptor='raw', ...)
         """
@@ -118,6 +112,7 @@ class DependencyConfigReader:
                     potential_job_node = (instrument, data_type, descriptor)
 
                     upstream_list = value["inputs"]
+                    outputs_list = value.get("outputs", [])
                     flattened_upstream_deps = self.recursive_flatten_list(upstream_list)
 
                     upstream_deps_nodes = []
@@ -134,8 +129,27 @@ class DependencyConfigReader:
                                 ),
                             )
                         )
+                    for output in outputs_list:
+                        upstream_deps_nodes.append(
+                            DependencyNode(
+                                source=output["source"],
+                                data_type=output["data_type"],
+                                descriptor=output["descriptor"],
+                                # NOTE: required flag is not supported yet.
+                                # That's why it's default to false for outputs.
+                                required=output.get("required", False),
+                                trigger_job=output.get("trigger_job", True),
+                                dependency_query_time_range=output.get(
+                                    "date_range", []
+                                ),
+                            )
+                        )
 
-                    dependencies[potential_job_node] = upstream_deps_nodes
+                    dependencies[potential_job_node] = {
+                        "inputs": upstream_deps_nodes,
+                        "outputs": outputs_list,
+                        "partition": value.get("partition")
+                    }
 
                 except (ValueError, IndexError) as e:
                     raise ValueError(
@@ -194,66 +208,6 @@ class DependencyConfigReader:
                 # Otherwise, append the item (which can be any object)
                 flat_list.append(item)
         return flat_list
-
-
-class DependencyResolver:
-    """Get upstream and downstream dependencies for data products."""
-
-    # Read in dependency config files
-    _config = DependencyConfigReader().config
-
-    def get_downstream_dependency_nodes(self, input_node: DependencyNode) -> list:
-        """Get downstream dependency nodes for a given input node.
-
-        Parameters
-        ----------
-        input_node : DependencyNode
-            Then input node contains information such as source, data_type, descriptor.
-
-        Returns
-        -------
-        list
-            A list of downstream dependency nodes that depend on the input node.
-        """
-        return []
-
-    def get_upstream_dependency(
-        self, session, input_processing_node: ProcessingJobNode
-    ):
-        """Get upstream dependencies for a given processing job node.
-
-        ProcessingJobNode contains required Inputs:
-            Source
-            Data_type
-            descriptor
-            time_span: TimeRange (start and end as np.datetime64)
-
-        Responsibilities:
-            - Lookup upstream dependencies
-            - Find all relevant files for upstream dependencies
-            - Determine if it's a complete list
-                Scenarios causing incompleteness:
-                    1. Missing files in the database.
-                    2. (Not supported yet) Due to anomaly (e.g., LOI, TCM, solar wind).
-                    3. (Not supported yet) Due to repoint data delay or downlink delay.
-                    4. If required dependencies missing or job IN PROGRESS.
-
-        Parameters
-        ----------
-        session : Session
-            Database session for querying dependencies and files.
-        input_processing_node : ProcessingJobNode
-            The processing job node with source, data_type, descriptor,
-            and time_span.
-
-        Returns
-        -------
-        dict
-            A dictionary with status code, message, and data.
-            The data contains serialized upstream dependencies for
-            job submission.
-        """
-        return {"status": 200, "message": "Success", "data": {}}
 
 
 def upload_dependency_file(dependency_file_path: Path, serialized_dependencies: str):
