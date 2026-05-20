@@ -1,0 +1,283 @@
+# <---- Warning ---->
+# For latest dependency configuration guidelines and requirements,
+# please refer to this document https://imap-processing.readthedocs.io/en/latest/development/data-dependency.html#.
+# It contains important information such as the default values and expected behavior of these dependencies,
+# and how to properly configure them for your pipeline lambdas.
+
+
+(l1a, all):
+  - upstream_source: mag
+    upstream_data_type: l0
+    upstream_descriptor: raw
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+(l1b, burst-magi):
+  - upstream_source: mag
+    upstream_data_type: l1a
+    upstream_descriptor: burst-magi
+  - upstream_source: mag
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-calibration
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+(l1b, burst-mago):
+  - upstream_source: mag
+    upstream_data_type: l1a
+    upstream_descriptor: burst-mago
+  - upstream_source: mag
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-calibration
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+(l1b, norm-magi):
+  - upstream_source: mag
+    upstream_data_type: l1a
+    upstream_descriptor: norm-magi
+  - upstream_source: mag
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-calibration
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+(l1b, norm-mago):
+  - upstream_source: mag
+    upstream_data_type: l1a
+    upstream_descriptor: norm-mago
+  - upstream_source: mag
+    upstream_data_type: ancillary
+    upstream_descriptor: l1b-calibration
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+(l1c, norm-magi):
+  - upstream_source: mag
+    upstream_data_type: l1b
+    upstream_descriptor: norm-magi
+    required: false
+  - upstream_source: mag
+    upstream_data_type: l1b
+    upstream_descriptor: burst-magi
+    required: false
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+(l1c, norm-mago):
+  - upstream_source: mag
+    upstream_data_type: l1b
+    upstream_descriptor: norm-mago
+    required: false
+  - upstream_source: mag
+    upstream_data_type: l1b
+    upstream_descriptor: burst-mago
+    required: false
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+(l1d, norm-srf):
+  - upstream_source: mag
+    upstream_data_type: ancillary
+    upstream_descriptor: l1d-calibration
+  - upstream_source: mag
+    upstream_data_type: l1c
+    upstream_descriptor: norm-mago
+  - upstream_source: mag
+    upstream_data_type: l1c
+    upstream_descriptor: norm-magi
+  - upstream_source: mag
+    upstream_data_type: l1b
+    upstream_descriptor: burst-mago
+    required: false
+  - upstream_source: mag
+    upstream_data_type: l1b
+    upstream_descriptor: burst-magi
+    required: false
+  - upstream_source: imap_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: attitude_history
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_reconstructed
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_ephemeris
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_constants
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spin
+    upstream_data_type: spin
+    upstream_descriptor: historical
+
+
+(l2, burst-srf):
+  - upstream_source: mag
+    upstream_data_type: l1b
+    upstream_descriptor: burst-mago
+  - upstream_source: mag
+    upstream_data_type: ancillary
+    upstream_descriptor: l2-calibration
+  - upstream_source: mag
+    upstream_data_type: ancillary
+    upstream_descriptor: l2-burst-offsets
+  - upstream_source: imap_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: attitude_history
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_reconstructed
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_ephemeris
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_constants
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+
+
+(l2, norm-srf):
+  - upstream_source: mag
+    upstream_data_type: l1c
+    upstream_descriptor: norm-mago
+  - upstream_source: mag
+    upstream_data_type: ancillary
+    upstream_descriptor: l2-calibration
+  - upstream_source: mag
+    upstream_data_type: ancillary
+    upstream_descriptor: l2-norm-offsets
+  - upstream_source: imap_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: science_frames
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: pointing_attitude
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: attitude_history
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: leapseconds
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: spacecraft_clock
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: ephemeris_reconstructed
+    upstream_data_type: spice
+    upstream_descriptor: historical
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_ephemeris
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
+  - upstream_source: planetary_constants
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
