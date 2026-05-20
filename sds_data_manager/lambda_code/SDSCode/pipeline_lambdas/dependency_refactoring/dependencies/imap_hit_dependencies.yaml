@@ -21,6 +21,7 @@ l0_data: &l0_data
     descriptor: raw
 
 (l1a, all):
+  partition: daily
   inputs:
     - *spice_basics
     - *l0_data
@@ -36,6 +37,7 @@ l0_data: &l0_data
       descriptor: direct-events
 
 (l1b, hk):
+  partition: daily
   inputs:
     - *spice_basics
     - *l0_data
@@ -45,6 +47,7 @@ l0_data: &l0_data
       descriptor: hk
 
 (l1a, pha-telemetry-corrected):
+  partition: daily
   inputs:
     - source: hit
       data_type: l0
@@ -58,6 +61,7 @@ l0_data: &l0_data
       descriptor: direct-events
 
 (l1b, sectored-rates):
+  partition: daily
   inputs:
     - source: hit
       data_type: l1a
@@ -68,6 +72,7 @@ l0_data: &l0_data
       descriptor: sectored-rates
 
 (l1b, standard-rates):
+  partition: daily
   inputs:
     - source: hit
       data_type: l1a
@@ -78,6 +83,7 @@ l0_data: &l0_data
       descriptor: standard-rates
 
 (l1b, summed-rates):
+  partition: daily
   inputs:
     - source: hit
       data_type: l1a
@@ -88,6 +94,7 @@ l0_data: &l0_data
       descriptor: summed-rates
 
 (l2, macropixel-intensity):
+  partition: daily
   inputs:
     - source: hit
       data_type: l1b
@@ -110,6 +117,7 @@ l0_data: &l0_data
       descriptor: macropixel-intensity
 
 (l2, standard-intensity):
+  partition: daily
   inputs:
     - source: hit
       data_type: l1b
@@ -132,6 +140,7 @@ l0_data: &l0_data
       descriptor: standard-intensity
 
 (l2, summed-intensity):
+  partition: daily
   inputs:
     - source: hit
       data_type: l1b
@@ -154,6 +163,7 @@ l0_data: &l0_data
       descriptor: summed-intensity
 
 (l3, direct-events):
+  partition: daily
   inputs:
     - source: hit
       data_type: l1a
@@ -209,6 +219,7 @@ l0_data: &l0_data
       descriptor: direct-events
 
 (l3, macropixel):
+  partition: daily
   inputs:
     - source: hit
       data_type: l2

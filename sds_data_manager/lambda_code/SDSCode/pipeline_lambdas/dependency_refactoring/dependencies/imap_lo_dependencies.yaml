@@ -84,6 +84,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
 
 # ======== Level L1A ========
 (l1a, all):
+  partition: repoint
   inputs:
     - source: lo
       data_type: l0
@@ -112,6 +113,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
 # ======== Level L1B ========
 
 (l1b, all-rates):
+  partition: repoint
   inputs:
     - *spice_basic
     - source: spin
@@ -168,6 +170,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: bgrates
 
 (l1b, badtimes):
+  partition: repoint
   inputs:
     - *spice_basic
     - source: spin
@@ -185,6 +188,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: badtimes
 
 (l1b, de):
+  partition: repoint
   inputs:
     - *spice_common
     - source: spin
@@ -214,6 +218,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: de
 
 (l1b, derates):
+  partition: repoint
   inputs:
     - *spice_basic
     - source: spin
@@ -240,6 +245,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: derates
 
 (l1b, prostar):
+  partition: repoint
   inputs:
     - *spice_basic
     - source: repoint
@@ -262,6 +268,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: prostar
 
 (l1c, pset):
+  partition: repoint
   inputs:
     - *spice_common
     - source: spin
@@ -291,6 +298,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: pset
 
 (l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *lo_esa_fit_factors
@@ -301,6 +309,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-ena-h-hf-nsp-ram-hae-6deg-1yr
 
 (l2, l090-ena-h-hk-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *lo_esa_fit_factors
@@ -311,6 +320,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-ena-h-hk-nsp-ram-hae-6deg-1yr
 
 (l2, l090-ena-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *lo_esa_fit_factors
@@ -321,6 +331,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-ena-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, l090-ena-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *lo_esa_fit_factors
@@ -331,6 +342,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-ena-o-sf-nsp-ram-hae-6deg-1yr
 
 (l2, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *lo_esa_fit_factors
@@ -341,6 +353,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-isn-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *lo_esa_fit_factors
@@ -351,6 +364,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-isn-o-sf-nsp-ram-hae-6deg-1yr
 
 (l2, t090-ena-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *lo_esa_fit_factors
     - *lo_esa_fit_factors
@@ -360,6 +374,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: t090-ena-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, t090-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *lo_90_pset
@@ -369,6 +384,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: t090-isn-h-sf-nsp-ram-hae-6deg-1yr
 
 (l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - *spice_l2
     - *lo_90_pset
@@ -380,6 +396,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: t090-isn-o-sf-nsp-ram-hae-6deg-1yr
 
 (l3, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: lo
       data_type: l2
@@ -390,6 +407,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-isn-h-sf-nsp-ram-hae-6deg-1yr
 
 (l3, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: lo
       data_type: l2
@@ -400,6 +418,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-isn-o-sf-nsp-ram-hae-6deg-1yr
 
 (l3, l090-spx-h-hf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: lo
       data_type: l2
@@ -410,6 +429,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-spx-h-hf-nsp-ram-hae-6deg-1yr
 
 (l3, l090-spx-h-hf-sp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: lo
       data_type: l3
@@ -420,6 +440,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-spx-h-hf-sp-ram-hae-6deg-1yr
 
 (l3, l090-spx-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: lo
       data_type: l2
@@ -430,6 +451,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-spx-h-sf-nsp-ram-hae-6deg-1yr
 
 (l3, l090-spx-h-sf-sp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: lo
       data_type: l3
@@ -440,6 +462,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-spx-h-sf-sp-ram-hae-6deg-1yr
 
 (l3, l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: lo
       data_type: l2
@@ -450,6 +473,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr
 
 (l3, l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: lo
       data_type: l2
