@@ -182,7 +182,11 @@ def write_file_metadata_to_table(
     if isinstance(file_obj, QuicklookFilePath):
         with db.Session() as session, session.begin():
             session.add(models.QuicklookFiles(**params))
-        logger.info("Wrote data to the QuicklookFiles table")
+        logger.info(
+            "Skipped sending event to batch starter for quicklook. "
+            "The file doesn't kick off any processing jobs."
+        )
+        return http_response(status_code=200, body="Success")
 
     elif isinstance(file_obj, ScienceFilePath):
         with db.Session() as session, session.begin():
@@ -199,6 +203,11 @@ def write_file_metadata_to_table(
         with db.Session() as session, session.begin():
             session.add(models.ReleaseFiles(**params))
         logger.info("Wrote data to the ReleaseFiles table")
+        logger.info(
+            "Skipped sending event to batch starter for release files. "
+            "The file doesn't kick off any processing jobs."
+        )
+        return http_response(status_code=200, body="Success")
 
     elif isinstance(file_obj, AncillaryFilePath):
         if params.get("end_date"):
