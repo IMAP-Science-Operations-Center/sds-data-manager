@@ -183,12 +183,12 @@ class DependencyNode(Node):
 
     required: bool = True
     kickoff_job: bool = True
-    relative_time_range: list = field(default_factory=list)
+    dependency_query_time_range: list = field(default_factory=list)
 
     def __post_init__(self):
         """Validate all fields on construction."""
         self._validate_boolean_fields(self.required, self.kickoff_job)
-        self._validate_date_range(self.relative_time_range)
+        self._validate_date_range(self.dependency_query_time_range)
 
     def serialize(self) -> dict[str, Any]:
         """Serialize dependency node to dictionary."""
@@ -399,5 +399,5 @@ def format_upstream_node_input(yaml_dict: dict) -> DependencyNode:
         descriptor=yaml_dict["upstream_descriptor"],
         required=yaml_dict.get("required", True),
         kickoff_job=yaml_dict.get("kickoff_job", True),
-        relative_time_range=yaml_dict.get("date_range", None),
+        dependency_query_time_range=yaml_dict.get("date_range", None),
     )

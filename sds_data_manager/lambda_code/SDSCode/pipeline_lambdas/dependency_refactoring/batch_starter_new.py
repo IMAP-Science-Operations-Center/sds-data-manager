@@ -35,12 +35,11 @@ def get_dependencies(
     return collection
 
 
-def process_job(potential_job_node: ProcessingJobNode, time_range):
+def process_job(potential_job_node: ProcessingJobNode, dependency_node: DependencyNode):
     """Process the job by resolving dependencies and submitting to batch."""
     # TODO: potential_job_node represents a range of expected jobs.
     # Loop here through each 24 hour span or reprocessing.
 
-    dependency_node = determine_dependency_node(potential_job_node, time_range)
     dependencies = get_dependencies(dependency_node)
     if dependencies.processing_input:
         crid = dependency_hash(dependencies.serialize())
@@ -53,11 +52,6 @@ def process_job(potential_job_node: ProcessingJobNode, time_range):
             version=version,
         )
         # Next: submit the actual job, using submit_job
-
-
-def determine_dependency_node(processing_job: ProcessingJobNode, time_range):
-    """Find the dependency node for a processing job."""
-    return DependencyNode()
 
 
 def dependency_hash(dependencies: str | ProcessingInputCollection):

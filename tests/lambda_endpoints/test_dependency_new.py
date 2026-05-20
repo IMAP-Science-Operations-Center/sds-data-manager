@@ -190,7 +190,7 @@ def test_validate_node_dict_empty_descriptor():
 # _validate_date_range tests
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize(
-    "relative_time_range",
+    "dependency_query_time_range",
     [
         # Single-element past — one option per cadence type
         ["-3p"],  # pointing
@@ -208,29 +208,29 @@ def test_validate_node_dict_empty_descriptor():
         # nearest options are only valid as single-element
     ],
 )
-def test_validate_date_range_valid(relative_time_range):
+def test_validate_date_range_valid(dependency_query_time_range):
     """Test that all valid date range formats are accepted."""
     node = DependencyNode(
         source="hi",
         data_type="l1b",
         descriptor="45sensor-goodtimes",
-        relative_time_range=relative_time_range,
+        dependency_query_time_range=dependency_query_time_range,
     )
-    assert node.relative_time_range == relative_time_range
+    assert node.dependency_query_time_range == dependency_query_time_range
 
 
 def test_validate_date_range_none():
-    """Test that omitting relative_time_range (defaults to empty list) is accepted."""
+    """Test that omitting dependency_query_time_range defaults to empty list."""
     node = DependencyNode(
         source="hi",
         data_type="l1b",
         descriptor="45sensor-goodtimes",
     )
-    assert node.relative_time_range == []
+    assert node.dependency_query_time_range == []
 
 
 @pytest.mark.parametrize(
-    ("relative_time_range", "match"),
+    ("dependency_query_time_range", "match"),
     [
         # Past is positive (should be negative)
         (["3p"], "Invalid past"),
@@ -252,14 +252,14 @@ def test_validate_date_range_none():
         (["-3p", "3x"], "Invalid future"),
     ],
 )
-def test_validate_date_range_invalid(relative_time_range, match):
+def test_validate_date_range_invalid(dependency_query_time_range, match):
     """Test that invalid date range formats raise ValueError."""
     with pytest.raises(ValueError, match=match):
         DependencyNode(
             source="hi",
             data_type="l1b",
             descriptor="45sensor-goodtimes",
-            relative_time_range=relative_time_range,
+            dependency_query_time_range=dependency_query_time_range,
         )
 
 
@@ -358,7 +358,7 @@ def test_swe_dependency_config():
     assert l0_upstream_dependency.descriptor == "raw"
     assert l0_upstream_dependency.required is True
     assert l0_upstream_dependency.kickoff_job is True
-    assert l0_upstream_dependency.relative_time_range is None
+    assert l0_upstream_dependency.dependency_query_time_range is None
 
     assert leapseconds_upstream_dependency.source == "leapseconds"
     assert leapseconds_upstream_dependency.data_type == "spice"

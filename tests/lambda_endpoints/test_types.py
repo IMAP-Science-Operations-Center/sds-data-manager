@@ -63,7 +63,7 @@ def test_dependency_node_defaults():
     node = DependencyNode(source="mag", data_type="l1b", descriptor="norm")
     assert node.required is True
     assert node.kickoff_job is True
-    assert node.relative_time_range == []
+    assert node.dependency_query_time_range == []
 
 
 def test_dependency_node_non_boolean_required_raises():
@@ -77,12 +77,12 @@ def test_dependency_node_non_boolean_kickoff_raises():
 
 
 # ---------------------------------------------------------------------------
-# DependencyNode relative_time_range validation
+# DependencyNode dependency_query_time_range validation
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    "relative_time_range",
+    "dependency_query_time_range",
     [
         ["-3p", "3p"],
         ["-3d", "5d"],
@@ -92,14 +92,14 @@ def test_dependency_node_non_boolean_kickoff_raises():
         ["6nd"],
     ],
 )
-def test_dependency_node_valid_time_ranges(relative_time_range):
+def test_dependency_node_valid_time_ranges(dependency_query_time_range):
     node = DependencyNode(
         source="swe",
         data_type="l1a",
         descriptor="sci",
-        relative_time_range=relative_time_range,
+        dependency_query_time_range=dependency_query_time_range,
     )
-    assert node.relative_time_range == relative_time_range
+    assert node.dependency_query_time_range == dependency_query_time_range
 
 
 def test_dependency_node_nearest_with_future_raises():
@@ -108,7 +108,7 @@ def test_dependency_node_nearest_with_future_raises():
             source="swe",
             data_type="l1a",
             descriptor="sci",
-            relative_time_range=["6np", "3p"],
+            dependency_query_time_range=["6np", "3p"],
         )
 
 
@@ -118,7 +118,7 @@ def test_dependency_node_positive_past_raises():
             source="swe",
             data_type="l1a",
             descriptor="sci",
-            relative_time_range=["3d", "5d"],
+            dependency_query_time_range=["3d", "5d"],
         )
 
 
@@ -128,7 +128,7 @@ def test_dependency_node_negative_future_raises():
             source="swe",
             data_type="l1a",
             descriptor="sci",
-            relative_time_range=["-3d", "-5d"],
+            dependency_query_time_range=["-3d", "-5d"],
         )
 
 
@@ -138,7 +138,7 @@ def test_dependency_node_too_many_elements_raises():
             source="swe",
             data_type="l1a",
             descriptor="sci",
-            relative_time_range=["-3d", "5d", "1d"],
+            dependency_query_time_range=["-3d", "5d", "1d"],
         )
 
 
@@ -149,7 +149,7 @@ def test_dependency_node_serialize_roundtrip():
         descriptor="norm",
         required=False,
         kickoff_job=True,
-        relative_time_range=["-2d", "2d"],
+        dependency_query_time_range=["-2d", "2d"],
     )
     serialized = node.serialize()
     restored = DependencyNode.deserialize(serialized)
@@ -203,7 +203,7 @@ def test_format_upstream_node_input_basic():
     assert result.descriptor == "raw"
     assert result.required is True
     assert result.kickoff_job is True
-    assert result.relative_time_range == []
+    assert result.dependency_query_time_range == []
 
 
 def test_format_upstream_node_input_optional_fields():
@@ -219,7 +219,7 @@ def test_format_upstream_node_input_optional_fields():
     )
     assert result.required is False
     assert result.kickoff_job is False
-    assert result.relative_time_range == ["-2d", "2d"]
+    assert result.dependency_query_time_range == ["-2d", "2d"]
 
 
 @pytest.mark.parametrize(
