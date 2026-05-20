@@ -82,6 +82,10 @@ hist_spice: &hist_spice
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
   - upstream_source: planetary_ephemeris
     upstream_data_type: spice
     upstream_descriptor: historical
@@ -106,7 +110,7 @@ hist_spice: &hist_spice
     upstream_descriptor: hist
   - upstream_source: glows
     upstream_data_type: ancillary
-    upstream_descriptor: calibration-data
+    upstream_descriptor: l2-calibration
   - upstream_source: glows
     upstream_data_type: ancillary
     upstream_descriptor: l3-time-dep-bckgrd

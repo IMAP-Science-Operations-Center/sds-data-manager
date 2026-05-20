@@ -3014,6 +3014,12 @@ def pointing_table_entries(session):
 class TestHiGoodtimesHelpers:
     """Test coverage for Hi Goodtimes helper functions."""
 
+    def test_hi_goodtimes_num_nearest_repoints_default(self):
+        """Test default number of repoints for Hi Goodtimes processing."""
+        from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
+
+        assert dependency.HI_GOODTIMES_NUM_NEAREST_REPOINTS == 9
+
     def test_check_pointing_exists_true(self, pointing_table_entries, session):
         """Test _check_pointing_exists returns True when pointing exists."""
         from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (

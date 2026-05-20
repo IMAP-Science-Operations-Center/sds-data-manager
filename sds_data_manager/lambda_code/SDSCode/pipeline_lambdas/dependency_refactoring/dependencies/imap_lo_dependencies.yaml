@@ -197,17 +197,14 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     upstream_descriptor: historical
     kickoff_job: false
   - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: good-times
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: hydrogen-background
-  - upstream_source: lo
-    upstream_data_type: ancillary
-    upstream_descriptor: oxygen-background
-  - upstream_source: lo
     upstream_data_type: l1b
     upstream_descriptor: de
+  - upstream_source: lo
+    upstream_data_type: l1b
+    upstream_descriptor: goodtimes
+  - upstream_source: lo
+    upstream_data_type: l1b
+    upstream_descriptor: bgrates
 
 # ======== Level L2 ========
 (l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr):
