@@ -8,8 +8,8 @@ import requests
 import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
-from ..api_lambdas import upload_api
-from .utils import DependencyNode, UpstreamDependencyNode, format_upstream_node_input
+from ...api_lambdas import upload_api
+from .types import DependencyNode, ProcessingJobNode, format_upstream_node_input
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -207,16 +207,15 @@ class DependencyResolver:
         return []
 
     def get_upstream_dependency(
-        self, session, input_upstream_node: UpstreamDependencyNode
+        self, session, input_processing_node: ProcessingJobNode
     ):
-        """Get upstream dependencies for a given upstream node.
+        """Get upstream dependencies for a given processing job node.
 
-        UpstreamDependencyNode contains required Inputs:
+        ProcessingJobNode contains required Inputs:
             Source
             Data_type
             descriptor
-            Start_time: yyyymmddhhmmss
-            End_time: yyyymmddhhmmss
+            time_span: TimeRange (start and end as np.datetime64)
 
         Responsibilities:
             - Lookup upstream dependencies
@@ -232,9 +231,9 @@ class DependencyResolver:
         ----------
         session : Session
             Database session for querying dependencies and files.
-        input_upstream_node : UpstreamDependencyNode
-            The input upstream node with source, data_type, descriptor,
-            and date range.
+        input_processing_node : ProcessingJobNode
+            The processing job node with source, data_type, descriptor,
+            and time_span.
 
         Returns
         -------
