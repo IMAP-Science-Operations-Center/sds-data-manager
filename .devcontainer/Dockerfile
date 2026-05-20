@@ -8,7 +8,7 @@ RUN unzip awscliv2.zip
 RUN sudo ./aws/install
 RUN sudo apt-get install -y python3 python3-pip
 
-RUN pip install "poetry<2"
+RUN pip install "poetry>=2.0"
 ENV AWS_CONFIG_FILE=/workspaces/sds-data-manager/.aws/config
 ENV AWS_SHARED_CREDENTIALS_FILE=/workspaces/sds-data-manager/.aws/credentials
 

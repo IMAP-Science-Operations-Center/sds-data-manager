@@ -559,7 +559,7 @@ def verify_spin_coverage(
     sorted_records = sorted(records, key=lambda r: r.start_date)
 
     # Check if first record covers or starts before input start_date
-    if sorted_records[0].start_date > start_date:
+    if sorted_records[0].start_date.replace(tzinfo=timezone.utc) > start_date.replace(tzinfo=timezone.utc):
         gap_start = start_date
         gap_end = sorted_records[0].start_date - timedelta(days=1)
         logger.info(
@@ -585,7 +585,7 @@ def verify_spin_coverage(
             return False
 
     # Check if last record covers past input end_date
-    if sorted_records[-1].end_date < end_date:
+    if sorted_records[-1].end_date.replace(tzinfo=timezone.utc) < end_date.replace(tzinfo=timezone.utc):
         gap_start = sorted_records[-1].end_date + timedelta(days=1)
         gap_end = end_date
         logger.info(
@@ -821,7 +821,7 @@ def get_latest_repoint_file(
     if not latest_repoint_file:
         raise ValueError("No Repoint file found in the database.")
 
-    if latest_repoint_file.end_date < end_date:
+    if latest_repoint_file.end_date.replace(tzinfo=timezone.utc) < end_date.replace(tzinfo=timezone.utc):
         logger.info(
             f"Latest repoint file end date {latest_repoint_file.end_date} "
             f"is before input end date {end_date}"
@@ -1284,29 +1284,6 @@ def get_upstream_dependency_inputs(
                 dependency_inputs.add(processing_input.ScienceInput(*filenames))
 
     return dependency_inputs
-
-
-def _check_pointing_exists(session: db.Session, repoint: int) -> bool:
-    """Check if a pointing exists in the pointing table.
-
-    Parameters
-    ----------
-    session : db.Session
-        Database session.
-    repoint : int
-        The repoint/pointing ID to check.
-
-    Returns
-    -------
-    bool
-        True if the pointing exists, False otherwise.
-    """
-    pointing_record = (
-        session.query(models.PointingTable)
-        .filter(models.PointingTable.pointing_id == repoint)
-        .first()
-    )
-    return pointing_record is not None
 
 
 def get_hi_goodtimes_target_repoints(

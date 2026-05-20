@@ -1,5 +1,5 @@
 """Functions for supporting the batch starter component of the architecture."""
-
+from dataclasses import dataclass
 import datetime
 import hashlib
 import json
@@ -57,6 +57,13 @@ BATCH_JOB_RETRY_STRATEGY = {
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 
+@dataclass
+class BatchJobSubmit:
+    """Class to store information about a batch job submission."""
+    status: str
+    message: str
+    # the ProcessingJob information as a dictionary.
+    job: dict | None = None
 
 def get_container_image_digest(job_definition: str):
     """Get the container image digest.
@@ -273,19 +280,9 @@ def determine_job_version(
     data_level: str,
     descriptor: str,
     start_date: datetime,
+    current_dependencies: str,
 ) -> str:
-    """Return the next version number for this job (max version + 1).
-
-    This always returns an incremented version. We don't compare dependencies here
-    because the unique constraint on (dependency_hash, container_image_digest)
-    handles duplicate detection reactively in `try_to_submit_job`.
-
-    The duplicate detection works like this: a job is skipped only if BOTH the
-    dependency_hash AND container_image_digest are identical to a previous
-    INPROGRESS or SUCCEEDED job. If either the hash changes or the image digest changes
-    (due to a new software version), a new job submission is allowed with a bumped
-    version.
-
+    """Return the maximum existing file version in the pipeline increased by one.
 
     Parameters
     ----------
@@ -299,6 +296,8 @@ def determine_job_version(
         Data descriptor.
     start_date : datetime
         Start date.
+    current_dependencies : str
+        Serialized dependencies for the current job.
 
     Returns
     -------
@@ -331,20 +330,26 @@ def determine_job_version(
     )
     if max_version_record:
         max_version_processing = max_version_record.version
-        # Step 2: If there is a job already in progress, return the next version number
-        # without checking the science files table. This is to avoid filename
-        # collisions between two jobs running at the same time with the same version
-        # number. The unique constraint on (dependency_hash, container_image_digest)
-        # will prevent the job from being submitted if it is a true duplicate.
+        # Step 2: If there is a job already in progress, determine whether the current
+        # job is a duplicate of the in-progress job by checking the dependency file
+        # hash. If the hashes are different, then we know the dependencies have changed
+        # and we should bump the version number and continue with processing.
         if max_version_record.status == models.Status.INPROGRESS:
-            logger.info(
-                f"Job with id: {max_version_record.id} is in progress. Will try to "
-                f"submit a new job with an incremented version number."
-            )
-            return f"v{int(max_version_processing[1:]) + 1:03d}"
+            command = max_version_record.container_command
+            if dependency_hash(current_dependencies) in command:
+                # Return the current max version and this job will not proceed if
+                # everything else is the same.
+                return max_version_processing
+            else:
+                # Dependencies have changed, so bump the version number.
+                logger.info(
+                    f"Job with id: {max_version_record.id} is in progress, but the "
+                    f"dependencies have changed. Bumping version number."
+                )
+                return f"v{int(max_version_processing[1:]) + 1:03d}"
+
     else:
         max_version_processing = None
-
     # Step 3: If the descriptor is "all", only use the max version from the processing
     # job table. The ScienceFiles table does not have descriptors of "all" since the
     # products produced will have their own specific descriptors.
@@ -363,7 +368,7 @@ def determine_job_version(
     ).scalar()
 
     # Step 5: By default, use the max version from the science files table unless
-    # it is a spacecraft "pointing-attitude" job. If so, then use the max version
+    # it is a spacecraft "pointing-attitude" job. If a so, then use the max version
     # from the processing jobs table. If the job is a spacecraft pointing-attitude job,
     # it will produce a SPICE kernel and not a science file. There is no way to
     # determine the filename of the kernel that will be produced, so we rely on the max
@@ -449,7 +454,10 @@ def try_to_submit_job(
     response = upload_dependency_file(dependency_file_path, serialized_dependencies)
     # If response is None, then the upload failed and we should skip submitting the job.
     if not response:
-        return
+        return BatchJobSubmit(
+            status="failed",
+            message="Dependency JSON file upload failed."
+        )
 
     batch_command = [
         "--instrument",
@@ -506,7 +514,11 @@ def try_to_submit_job(
             f"Job already completed or in progress. Tried to submit "
             f"{processing_job.to_dict()}"
         )
-        return
+        return BatchJobSubmit(
+            status="skipped",
+            message="Job already completed or in progress.",
+            job=processing_job.to_dict(),
+        )
 
     logger.info(
         f"Wrote job INPROGRESS to Processing Jobs Table with id: {processing_job.id}"
@@ -527,7 +539,11 @@ def try_to_submit_job(
         retryStrategy=BATCH_JOB_RETRY_STRATEGY,
     )
     logger.info(f"Submitted job {job_name} with this command: {batch_command}")
-
+    return BatchJobSubmit(
+            status="submitted",
+            message="Job submitted successfully.",
+            job=processing_job.to_dict(),
+        )
 
 def submit_all_jobs(
     session,
