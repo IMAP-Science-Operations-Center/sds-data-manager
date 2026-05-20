@@ -39,6 +39,63 @@ class DependencyConfigReader:
         """
         return self._config
 
+    def inputs(self, key: tuple[str, str, str]) -> list[DependencyNode]:
+        """Return upstream input nodes for the given job key.
+
+        Parameters
+        ----------
+        key : tuple[str, str, str]
+            ``(source, data_type, descriptor)`` identifying the downstream job.
+
+        Returns
+        -------
+        list[DependencyNode]
+            Upstream dependency nodes required as inputs for this job.
+
+        Examples
+        --------
+        >>> reader = DependencyConfigReader()
+        >>> reader.inputs(('glows', 'l1a', 'all'))
+        [DependencyNode(source='leapseconds', ...), ...]
+        """
+        return self._config[key]["inputs"]
+
+    def outputs(self, key: tuple[str, str, str]) -> list[DependencyNode]:
+        """Return output product nodes produced by the given job key.
+
+        Parameters
+        ----------
+        key : tuple[str, str, str]
+            ``(source, data_type, descriptor)`` identifying the downstream job.
+
+        Returns
+        -------
+        list[DependencyNode]
+            Output product nodes for this job.
+
+        Examples
+        --------
+        >>> reader = DependencyConfigReader()
+        >>> reader.outputs(('glows', 'l1a', 'all'))
+        [DependencyNode(source='glows', data_type='l1a', descriptor='de', ...), ...]
+        """
+        return self._config[key]["outputs"]
+
+    def partition(self, key: tuple[str, str, str]) -> str | None:
+        """Return the partition string for the given job key.
+
+        Parameters
+        ----------
+        key : tuple[str, str, str]
+            ``(source, data_type, descriptor)`` identifying the downstream job.
+
+        Returns
+        -------
+        str | None
+            Partition cadence string (e.g. ``'1d'``, ``'repoint'``) or ``None``.
+        """
+        return self._config[key]["partition"]
+
     def _load_all_dependencies(
         self,
     ) -> dict[tuple[str, str, str], list[DependencyNode]]:
@@ -112,7 +169,7 @@ class DependencyConfigReader:
                     potential_job_node = (instrument, data_type, descriptor)
 
                     upstream_list = value["inputs"]
-                    outputs_list = value.get("outputs", [])
+                    outputs_list = value.get("outputs") or []
                     flattened_upstream_deps = self.recursive_flatten_list(upstream_list)
 
                     upstream_deps_nodes = []
@@ -129,8 +186,9 @@ class DependencyConfigReader:
                                 ),
                             )
                         )
+                    job_outputs_list = []
                     for output in outputs_list:
-                        upstream_deps_nodes.append(
+                        job_outputs_list.append(
                             DependencyNode(
                                 source=output["source"],
                                 data_type=output["data_type"],
@@ -147,7 +205,7 @@ class DependencyConfigReader:
 
                     dependencies[potential_job_node] = {
                         "inputs": upstream_deps_nodes,
-                        "outputs": outputs_list,
+                        "outputs": job_outputs_list,
                         "partition": value.get("partition")
                     }
 

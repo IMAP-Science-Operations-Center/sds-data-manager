@@ -75,13 +75,12 @@ class IMAPJobHandler:
 
         self.asset_name = asset_name.replace("-", "")
         dependency_config = DependencyConfigReader()
-        inputs = dependency_config.inputs
-        outputs = dependency_config.outputs
-        self.outputs = outputs[asset_name]
+        key = (self.source, self.data_type, self.descriptor)
+        self.outputs = dependency_config.outputs(key)
 
         upstream_deps_list = [
             dep.serialize()
-            for dep in inputs.get((self.source, self.data_type, self.descriptor), [])
+            for dep in dependency_config.inputs(key)
         ]
 
         self.partitions_def = partition
