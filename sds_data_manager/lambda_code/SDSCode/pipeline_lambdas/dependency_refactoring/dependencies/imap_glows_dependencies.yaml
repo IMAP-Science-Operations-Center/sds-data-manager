@@ -82,6 +82,10 @@ hist_spice: &hist_spice
     upstream_data_type: spice
     upstream_descriptor: historical
     kickoff_job: false
+  - upstream_source: ephemeris_predicted
+    upstream_data_type: spice
+    upstream_descriptor: historical
+    kickoff_job: false
   - upstream_source: planetary_ephemeris
     upstream_data_type: spice
     upstream_descriptor: historical
