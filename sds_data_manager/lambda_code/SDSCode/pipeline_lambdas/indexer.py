@@ -6,13 +6,14 @@ import os
 from datetime import datetime, timezone
 
 import boto3
+import imap_data_access
+import imap_data_access.file_validation
 from imap_data_access import (
     AncillaryFilePath,
     QuicklookFilePath,
     ReleaseFilePath,
     ScienceFilePath,
 )
-from imap_data_access.file_validation import generate_imap_file_path
 
 from ..database import database as db
 from ..database import models
@@ -168,7 +169,7 @@ def write_file_metadata_to_table(
         to the database.
 
     """
-    file_obj = generate_imap_file_path(filename)
+    file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
 
     # Extract filename components and prepare common parameters for
     # database entry
@@ -243,7 +244,7 @@ def s3_event_handler(event):
     filename = os.path.basename(s3_filepath)
 
     try:
-        file_obj = generate_imap_file_path(filename)
+        file_obj = imap_data_access.file_validation.generate_imap_file_path(filename)
     except ValueError:
         logger.error(f"Filename {filename} is not a valid filetype.")
         return http_response(
@@ -263,14 +264,6 @@ def s3_event_handler(event):
             return http_response(status_code=200, body=message)
 
     file_obj, _ = write_file_metadata_to_table(filename, s3_filepath)
-
-    # Quicklook and release files don't kick off any further processing.
-    if isinstance(file_obj, (QuicklookFilePath, ReleaseFilePath)):
-        logger.info(
-            "Skipped sending event to batch starter for quicklook/release. "
-            "The file doesn't kick off any processing jobs."
-        )
-        return http_response(status_code=200, body="Success")
 
     # Send event from this lambda for Batch starter lambda
     send_event_from_indexer(file_obj)
