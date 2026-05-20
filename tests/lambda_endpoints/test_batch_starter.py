@@ -2521,6 +2521,60 @@ def test_determine_job_version_spacecraft(session):
     assert version == "v003"
 
 
+def test_determine_job_version_per_repointing(session):
+    """Each repointing on the same date should version independently."""
+    # Repoint 1 completed and produced a science file at v001.
+    session.add_all(
+        [
+            ProcessingJob(
+                status=models.Status.SUCCEEDED,
+                instrument="hi",
+                data_level="l1a",
+                descriptor="de",
+                start_date=datetime(2026, 4, 7),
+                version="v001",
+                repointing=1,
+            ),
+            ScienceFiles(
+                file_path="/path/to/imap_hi_l1a_de_20260407-repoint00001_v001.cdf",
+                instrument="hi",
+                data_level="l1a",
+                descriptor="de",
+                start_date=datetime(2026, 4, 7),
+                version="v001",
+                extension="cdf",
+                repointing=1,
+                ingestion_date=datetime.strptime(
+                    "2026-04-07 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+        ]
+    )
+    session.commit()
+
+    # Repoint 2 is a different pointing; its version counter should start at v001,
+    version = determine_job_version(
+        session=session,
+        instrument="hi",
+        data_level="l1a",
+        descriptor="de",
+        start_date=datetime(2026, 4, 7),
+        repointing=2,
+    )
+    assert version == "v001"
+
+    # Repoint 1 should get v002 on a resubmit because its science file is at v001.
+    version = determine_job_version(
+        session=session,
+        instrument="hi",
+        data_level="l1a",
+        descriptor="de",
+        start_date=datetime(2026, 4, 7),
+        repointing=1,
+    )
+    assert version == "v002"
+
+
 @patch(
     "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.dependency.get_dependencies"
 )

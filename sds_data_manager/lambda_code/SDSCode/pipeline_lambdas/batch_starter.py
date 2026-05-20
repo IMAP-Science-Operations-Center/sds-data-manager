@@ -273,6 +273,7 @@ def determine_job_version(
     data_level: str,
     descriptor: str,
     start_date: datetime,
+    repointing: int | None = None,
 ) -> str:
     """Return the next version number for this job (max version + 1).
 
@@ -299,6 +300,9 @@ def determine_job_version(
         Data descriptor.
     start_date : datetime
         Start date.
+    repointing : int, optional
+        Repointing number. Versions are tracked independently per repointing so
+        that multiple repoints on the same day each start at v001.
 
     Returns
     -------
@@ -313,6 +317,7 @@ def determine_job_version(
             table.data_level == data_level,
             table.descriptor == descriptor,
             table.start_date == start_date,
+            table.repointing == repointing,
         ]
         if table == models.ProcessingJob:
             conditions.append(
@@ -687,6 +692,7 @@ def submit_all_jobs(
             descriptor=job_node["descriptor"],
             start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
             data_level=job_node["data_type"],
+            repointing=job_repointing,
         )
         try_to_submit_job(
             session,

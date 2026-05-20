@@ -254,6 +254,52 @@ def test_send_lambda_put_event(events_client):
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
+def test_s3_release_event(session, s3_client):
+    """Test s3 event for release files.
+
+    Release files should be written to ReleaseFiles table and return 200
+    without sending an EventBridge event (no further pipeline processing).
+    """
+    filename = "imap_swe_early-release_20240101_20240201_v001.txt"
+    filepath = f"imap/release/{filename}"
+
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=filepath,
+        Body=b"test release data",
+    )
+
+    event = {
+        "detail-type": "Object Created",
+        "source": "aws.s3",
+        "time": "2024-01-16T17:35:08Z",
+        "detail": {
+            "version": "0",
+            "bucket": {"name": "test-data-bucket"},
+            "object": {
+                "key": filepath,
+                "reason": "PutObject",
+            },
+        },
+    }
+
+    returned_value = indexer.lambda_handler(event=event, context={})
+    assert returned_value["statusCode"] == 200
+
+    # Confirm written to ReleaseFiles, not AncillaryFiles
+    release_result = session.query(models.ReleaseFiles).all()
+    assert len(release_result) == 1
+    assert release_result[0].file_path == filepath
+    assert release_result[0].start_date == datetime.strptime("20240101", "%Y%m%d")
+    assert release_result[0].end_date == datetime.strptime("20240201", "%Y%m%d")
+    assert release_result[0].instrument == "swe"
+    assert release_result[0].descriptor == "early-release"
+    assert release_result[0].extension == "txt"
+
+    anc_result = session.query(models.AncillaryFiles).all()
+    assert len(anc_result) == 0
+
+
 def test_s3_quicklook_event(session, s3_client, events_client):
     """Test s3 event for quicklook files."""
     # Use a clearly identifiable quicklook file pattern

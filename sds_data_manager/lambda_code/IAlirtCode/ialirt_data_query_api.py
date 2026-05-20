@@ -236,8 +236,8 @@ def lambda_handler(event, context):  # noqa: PLR0912, PLR0915
         meta_instrument = params["instrument"]
         meta_type = "hk"
     elif params["instrument"] == "spacecraft_status":
-        if scope not in FULL_SCOPES:
-            return _error(403, "Unauthorized for spacecraft_status access.")
+        if not has_api_key:
+            return _error(403, "Authentication required for spacecraft_status access.")
         meta_instrument = params["instrument"]
         meta_type = "spacecraft_status"
     elif params["instrument"] == "spacecraft":
