@@ -32,6 +32,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
 
 # ====== Specific Product Dependencies ======
 (l1a, all):
+  partition: daily
   inputs:
     - source: codice
       data_type: l0
@@ -80,6 +81,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-sw-species
 
 (l1b, hi-counters-aggregated):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -90,6 +92,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: hi-counters-aggregated
 
 (l1b, hi-counters-singles):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -100,6 +103,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: hi-counters-singles
 
 (l1b, hi-omni):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -110,6 +114,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: hi-omni
 
 (l1b, hi-priority):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -120,6 +125,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: hi-priority
 
 (l1b, hi-sectored):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -130,6 +136,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: hi-sectored
 
 (l1b, lo-counters-aggregated):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -140,6 +147,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-counters-aggregated
 
 (l1b, lo-counters-singles):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -150,6 +158,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-counters-singles
 
 (l1b, lo-nsw-priority):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -160,6 +169,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-nsw-priority
 
 (l1b, lo-sw-priority):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -170,6 +180,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-sw-priority
 
 (l1b, lo-sw-species):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -180,6 +191,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-sw-species
 
 (l2, hi-direct-events):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -196,6 +208,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: hi-direct-events
 
 (l2, hi-omni):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1b
@@ -209,6 +222,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: hi-omni
 
 (l2, hi-sectored):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1b
@@ -222,6 +236,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: hi-sectored
 
 (l2, lo-direct-events):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -241,6 +256,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-direct-events
 
 (l2, lo-sw-species):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1b
@@ -257,6 +273,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-sw-species
 
 (l3a, hi-direct-events):
+  partition: daily
   inputs:
     - source: codice
       data_type: l2
@@ -267,6 +284,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: hi-direct-events
 
 (l3a, lo-direct-events):
+  partition: daily
   inputs:
     - source: codice
       data_type: l1a
@@ -289,6 +307,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-direct-events
 
 (l3a, lo-heplus-3d-distribution):
+  partition: daily
   inputs:
     - *lo_l3a_dist_common
   outputs:
@@ -297,6 +316,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-heplus-3d-distribution
 
 (l3a, lo-heplusplus-3d-distribution):
+  partition: daily
   inputs:
     - *lo_l3a_dist_common
   outputs:
@@ -305,6 +325,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-heplusplus-3d-distribution
 
 (l3a, lo-hplus-3d-distribution):
+  partition: daily
   inputs:
     - *lo_l3a_dist_common
   outputs:
@@ -313,6 +334,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-hplus-3d-distribution
 
 (l3a, lo-oplus6-3d-distribution):
+  partition: daily
   inputs:
     - *lo_l3a_dist_common
   outputs:
@@ -321,6 +343,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-oplus6-3d-distribution
 
 (l3a, lo-partial-densities):
+  partition: daily
   inputs:
     - source: codice
       data_type: l2
@@ -334,6 +357,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-partial-densities
 
 (l3a, lo-sw-charge-state-distributions):
+  partition: daily
   inputs:
     - source: codice
       data_type: l3a
@@ -344,6 +368,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-sw-charge-state-distributions
 
 (l3a, lo-sw-ratios):
+  partition: daily
   inputs:
     - source: codice
       data_type: l3a
@@ -354,6 +379,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-sw-ratios
 
 (l3b, hi-pitch-angle):
+  partition: daily
   inputs:
     - source: mag
       data_type: l1d

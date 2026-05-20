@@ -177,6 +177,7 @@ spice_l2: &spice_l2
 # ======== Product-Specific Dependencies ========
 
 (l1a, all):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l0
@@ -209,6 +210,7 @@ spice_l2: &spice_l2
       descriptor: 90sensor-rates
 
 (l1b, 45sensor-badtimes):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1b
@@ -234,6 +236,7 @@ spice_l2: &spice_l2
       descriptor: 90sensor-extendedspin
 
 (l1b, 45sensor-de):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1a
@@ -302,6 +305,7 @@ spice_l2: &spice_l2
       descriptor: 45sensor-de
 
 (l1b, 45sensor-extendedspin):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1a
@@ -324,6 +328,7 @@ spice_l2: &spice_l2
       descriptor: 45sensor-extendedspin
 
 (l1b, 45sensor-goodtimes):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1b
@@ -345,6 +350,7 @@ spice_l2: &spice_l2
       data_type: l1b
       descriptor: 90sensor-extendedspin
 (l1b, 90sensor-badtimes):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1b
@@ -370,6 +376,7 @@ spice_l2: &spice_l2
       descriptor: 90sensor-extendedspin
 
 (l1b, 90sensor-de):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1a
@@ -438,6 +445,7 @@ spice_l2: &spice_l2
       descriptor: 90sensor-de
 
 (l1b, 90sensor-extendedspin):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1a
@@ -460,6 +468,7 @@ spice_l2: &spice_l2
       descriptor: 90sensor-extendedspin
 
 (l1b, 90sensor-goodtimes):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1b
@@ -470,6 +479,7 @@ spice_l2: &spice_l2
       descriptor: 90sensor-goodtimes
 
 (l1c, 45sensor-heliopset):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1b
@@ -514,6 +524,7 @@ spice_l2: &spice_l2
       descriptor: 45sensor-heliopset
 
 (l1c, 45sensor-spacecraftpset):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1b
@@ -567,6 +578,7 @@ spice_l2: &spice_l2
       descriptor: 45sensor-spacecraftpset
 
 (l1c, 90sensor-heliopset):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1b
@@ -611,6 +623,7 @@ spice_l2: &spice_l2
       descriptor: 90sensor-heliopset
 
 (l1c, 90sensor-spacecraftpset):
+  partition: repoint
   inputs:
     - source: ultra
       data_type: l1b
@@ -664,6 +677,7 @@ spice_l2: &spice_l2
       descriptor: 90sensor-spacecraftpset
 
 (l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -676,6 +690,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-hf-nsp-full-hae-2deg-1yr
 
 (l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -688,6 +703,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-hf-nsp-full-hae-2deg-3mo
 
 (l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -700,6 +716,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-hf-nsp-full-hae-2deg-6mo
 
 (l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -712,6 +729,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-hf-nsp-full-hae-4deg-1yr
 
 (l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -724,6 +742,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-hf-nsp-full-hae-4deg-3mo
 
 (l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -736,6 +755,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-hf-nsp-full-hae-4deg-6mo
 
 (l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -748,6 +768,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-hf-nsp-full-hae-6deg-1yr
 
 (l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -760,6 +781,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-hf-nsp-full-hae-6deg-3mo
 
 (l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -772,6 +794,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-hf-nsp-full-hae-6deg-6mo
 
 (l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -784,6 +807,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-sf-nsp-full-hae-2deg-1yr
 
 (l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -796,6 +820,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-sf-nsp-full-hae-2deg-3mo
 
 (l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -808,6 +833,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-sf-nsp-full-hae-2deg-6mo
 
 (l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -820,6 +846,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-sf-nsp-full-hae-4deg-1yr
 
 (l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -832,6 +859,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-sf-nsp-full-hae-4deg-3mo
 
 (l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -844,6 +872,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-sf-nsp-full-hae-4deg-6mo
 
 (l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -856,6 +885,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-sf-nsp-full-hae-6deg-1yr
 
 (l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -868,6 +898,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-sf-nsp-full-hae-6deg-3mo
 
 (l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -880,6 +911,7 @@ spice_l2: &spice_l2
       descriptor: u45-ena-h-sf-nsp-full-hae-6deg-6mo
 
 (l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -892,6 +924,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-hf-nsp-full-hae-2deg-1yr
 
 (l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -904,6 +937,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-hf-nsp-full-hae-2deg-3mo
 
 (l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -916,6 +950,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-hf-nsp-full-hae-2deg-6mo
 
 (l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -928,6 +963,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-hf-nsp-full-hae-4deg-1yr
 
 (l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -940,6 +976,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-hf-nsp-full-hae-4deg-3mo
 
 (l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -952,6 +989,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-hf-nsp-full-hae-4deg-6mo
 
 (l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -964,6 +1002,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-hf-nsp-full-hae-6deg-1yr
 
 (l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -976,6 +1015,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-hf-nsp-full-hae-6deg-3mo
 
 (l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -988,6 +1028,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-hf-nsp-full-hae-6deg-6mo
 
 (l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -1000,6 +1041,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-sf-nsp-full-hae-2deg-1yr
 
 (l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -1012,6 +1054,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-sf-nsp-full-hae-2deg-3mo
 
 (l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -1024,6 +1067,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-sf-nsp-full-hae-2deg-6mo
 
 (l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -1036,6 +1080,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-sf-nsp-full-hae-4deg-1yr
 
 (l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -1048,6 +1093,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-sf-nsp-full-hae-4deg-3mo
 
 (l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -1060,6 +1106,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-sf-nsp-full-hae-4deg-6mo
 
 (l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l1c
@@ -1072,6 +1119,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-sf-nsp-full-hae-6deg-1yr
 
 (l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -1084,6 +1132,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-sf-nsp-full-hae-6deg-3mo
 
 (l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l1c
@@ -1096,6 +1145,7 @@ spice_l2: &spice_l2
       descriptor: u90-ena-h-sf-nsp-full-hae-6deg-6mo
 
 (l3, u45-spx-h-hf-sp-full-hae-2deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l3
@@ -1109,6 +1159,7 @@ spice_l2: &spice_l2
       descriptor: u45-spx-h-hf-sp-full-hae-2deg-1yr
 
 (l3, u45-spx-h-hf-sp-full-hae-2deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1122,6 +1173,7 @@ spice_l2: &spice_l2
       descriptor: u45-spx-h-hf-sp-full-hae-2deg-3mo
 
 (l3, u45-spx-h-hf-sp-full-hae-2deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1135,6 +1187,7 @@ spice_l2: &spice_l2
       descriptor: u45-spx-h-hf-sp-full-hae-2deg-6mo
 
 (l3, u45-spx-h-hf-sp-full-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l3
@@ -1148,6 +1201,7 @@ spice_l2: &spice_l2
       descriptor: u45-spx-h-hf-sp-full-hae-4deg-1yr
 
 (l3, u45-spx-h-hf-sp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1161,6 +1215,7 @@ spice_l2: &spice_l2
       descriptor: u45-spx-h-hf-sp-full-hae-4deg-3mo
 
 (l3, u45-spx-h-hf-sp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1174,6 +1229,7 @@ spice_l2: &spice_l2
       descriptor: u45-spx-h-hf-sp-full-hae-4deg-6mo
 
 (l3, u45-spx-h-hf-sp-full-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l3
@@ -1187,6 +1243,7 @@ spice_l2: &spice_l2
       descriptor: u45-spx-h-hf-sp-full-hae-6deg-1yr
 
 (l3, u45-spx-h-hf-sp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1200,6 +1257,7 @@ spice_l2: &spice_l2
       descriptor: u45-spx-h-hf-sp-full-hae-6deg-3mo
 
 (l3, u45-spx-h-hf-sp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1213,6 +1271,7 @@ spice_l2: &spice_l2
       descriptor: u45-spx-h-hf-sp-full-hae-6deg-6mo
 
 (l3, u90-spx-h-hf-sp-full-hae-2deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l3
@@ -1226,6 +1285,7 @@ spice_l2: &spice_l2
       descriptor: u90-spx-h-hf-sp-full-hae-2deg-1yr
 
 (l3, u90-spx-h-hf-sp-full-hae-2deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1239,6 +1299,7 @@ spice_l2: &spice_l2
       descriptor: u90-spx-h-hf-sp-full-hae-2deg-3mo
 
 (l3, u90-spx-h-hf-sp-full-hae-2deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1252,6 +1313,7 @@ spice_l2: &spice_l2
       descriptor: u90-spx-h-hf-sp-full-hae-2deg-6mo
 
 (l3, u90-spx-h-hf-sp-full-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l3
@@ -1265,6 +1327,7 @@ spice_l2: &spice_l2
       descriptor: u90-spx-h-hf-sp-full-hae-4deg-1yr
 
 (l3, u90-spx-h-hf-sp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1278,6 +1341,7 @@ spice_l2: &spice_l2
       descriptor: u90-spx-h-hf-sp-full-hae-4deg-3mo
 
 (l3, u90-spx-h-hf-sp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1291,6 +1355,7 @@ spice_l2: &spice_l2
       descriptor: u90-spx-h-hf-sp-full-hae-4deg-6mo
 
 (l3, u90-spx-h-hf-sp-full-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l3
@@ -1304,6 +1369,7 @@ spice_l2: &spice_l2
       descriptor: u90-spx-h-hf-sp-full-hae-6deg-1yr
 
 (l3, u90-spx-h-hf-sp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1317,6 +1383,7 @@ spice_l2: &spice_l2
       descriptor: u90-spx-h-hf-sp-full-hae-6deg-3mo
 
 (l3, u90-spx-h-hf-sp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1330,6 +1397,7 @@ spice_l2: &spice_l2
       descriptor: u90-spx-h-hf-sp-full-hae-6deg-6mo
 
 (l3, ulc-spx-h-hf-sp-full-hae-2deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l3
@@ -1343,6 +1411,7 @@ spice_l2: &spice_l2
       descriptor: ulc-spx-h-hf-sp-full-hae-2deg-1yr
 
 (l3, ulc-spx-h-hf-sp-full-hae-2deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1356,6 +1425,7 @@ spice_l2: &spice_l2
       descriptor: ulc-spx-h-hf-sp-full-hae-2deg-3mo
 
 (l3, ulc-spx-h-hf-sp-full-hae-2deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1369,6 +1439,7 @@ spice_l2: &spice_l2
       descriptor: ulc-spx-h-hf-sp-full-hae-2deg-6mo
 
 (l3, ulc-spx-h-hf-sp-full-hae-4deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l3
@@ -1382,6 +1453,7 @@ spice_l2: &spice_l2
       descriptor: ulc-spx-h-hf-sp-full-hae-4deg-1yr
 
 (l3, ulc-spx-h-hf-sp-full-hae-4deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1395,6 +1467,7 @@ spice_l2: &spice_l2
       descriptor: ulc-spx-h-hf-sp-full-hae-4deg-3mo
 
 (l3, ulc-spx-h-hf-sp-full-hae-4deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1408,6 +1481,7 @@ spice_l2: &spice_l2
       descriptor: ulc-spx-h-hf-sp-full-hae-4deg-6mo
 
 (l3, ulc-spx-h-hf-sp-full-hae-6deg-1yr):
+  partition: 1yr
   inputs:
     - source: ultra
       data_type: l3
@@ -1421,6 +1495,7 @@ spice_l2: &spice_l2
       descriptor: ulc-spx-h-hf-sp-full-hae-6deg-1yr
 
 (l3, ulc-spx-h-hf-sp-full-hae-6deg-3mo):
+  partition: 3mo
   inputs:
     - source: ultra
       data_type: l3
@@ -1434,6 +1509,7 @@ spice_l2: &spice_l2
       descriptor: ulc-spx-h-hf-sp-full-hae-6deg-3mo
 
 (l3, ulc-spx-h-hf-sp-full-hae-6deg-6mo):
+  partition: 6mo
   inputs:
     - source: ultra
       data_type: l3
