@@ -50,7 +50,7 @@ spice_basics: &spice_basics
       descriptor: msg
 
 (l1b, sci-1week):
-  partition: 10days
+  partition: 10d
   inputs:
     - *spice_basics
     - source: idex
@@ -83,7 +83,7 @@ spice_basics: &spice_basics
       descriptor: sci-1week
 
 (l2a, sci-1week):
-  partition: 10days
+  partition: 10d
   inputs:
     - source: idex
       data_type: l1b
@@ -100,6 +100,7 @@ spice_basics: &spice_basics
       descriptor: sci-1week
 
 (l2b, all-1mo):
+  # TODO: should this be 30d or 1mo partition?
   partition: 1mo
   inputs:
     - *spice_basics
