@@ -6,234 +6,367 @@
 
 # ====== Common Data Dependencies ======
 lo_l3a_dist_common: &lo_l3a_dist_common
-  - upstream_source: codice
-    upstream_data_type: l3a
-    upstream_descriptor: lo-direct-events
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-sw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-nsw-priority
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-mass-species-bin-lookup
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-gfactor
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-energy-per-charge
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-efficiency
+  - source: codice
+    data_type: l3a
+    descriptor: lo-direct-events
+  - source: codice
+    data_type: l1a
+    descriptor: lo-sw-priority
+    trigger_job: false
+  - source: codice
+    data_type: l1a
+    descriptor: lo-nsw-priority
+    trigger_job: false
+  - source: codice
+    data_type: ancillary
+    descriptor: lo-mass-species-bin-lookup
+  - source: codice
+    data_type: ancillary
+    descriptor: l2-lo-gfactor
+  - source: codice
+    data_type: ancillary
+    descriptor: lo-energy-per-charge
+  - source: codice
+    data_type: ancillary
+    descriptor: l2-lo-efficiency
 
 # ====== Specific Product Dependencies ======
 (l1a, all):
-  - upstream_source: codice
-    upstream_data_type: l0
-    upstream_descriptor: raw
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l1a-sci-lut
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-
+  inputs:
+    - source: codice
+      data_type: l0
+      descriptor: raw
+    - source: codice
+      data_type: ancillary
+      descriptor: l1a-sci-lut
+    - source: leapseconds
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: spacecraft_clock
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+  outputs:
+    - source: codice
+      data_type: l1a
+      descriptor: hi-counters-aggregated
+    - source: codice
+      data_type: l1a
+      descriptor: hi-counters-singles
+    - source: codice
+      data_type: l1a
+      descriptor: hi-omni
+    - source: codice
+      data_type: l1a
+      descriptor: hi-priority
+    - source: codice
+      data_type: l1a
+      descriptor: hi-sectored
+    - source: codice
+      data_type: l1a
+      descriptor: lo-counters-aggregated
+    - source: codice
+      data_type: l1a
+      descriptor: lo-counters-singles
+    - source: codice
+      data_type: l1a
+      descriptor: lo-nsw-priority
+    - source: codice
+      data_type: l1a
+      descriptor: lo-sw-priority
+    - source: codice
+      data_type: l1a
+      descriptor: lo-sw-species
 
 (l1b, hi-counters-aggregated):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: hi-counters-aggregated
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: hi-counters-aggregated
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: hi-counters-aggregated
 
 (l1b, hi-counters-singles):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: hi-counters-singles
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: hi-counters-singles
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: hi-counters-singles
 
 (l1b, hi-omni):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: hi-omni
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: hi-omni
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: hi-omni
 
 (l1b, hi-priority):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: hi-priority
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: hi-priority
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: hi-priority
 
 (l1b, hi-sectored):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: hi-sectored
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: hi-sectored
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: hi-sectored
 
 (l1b, lo-counters-aggregated):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-counters-aggregated
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: lo-counters-aggregated
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: lo-counters-aggregated
 
 (l1b, lo-counters-singles):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-counters-singles
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: lo-counters-singles
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: lo-counters-singles
 
 (l1b, lo-nsw-priority):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-nsw-priority
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: lo-nsw-priority
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: lo-nsw-priority
 
 (l1b, lo-sw-priority):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-sw-priority
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: lo-sw-priority
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: lo-sw-priority
 
 (l1b, lo-sw-species):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-sw-species
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: lo-sw-species
+  outputs:
+    - source: codice
+      data_type: l1b
+      descriptor: lo-sw-species
 
 (l2, hi-direct-events):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: hi-direct-events
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-hi-energy-table
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-hi-tof-table
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: hi-direct-events
+    - source: codice
+      data_type: ancillary
+      descriptor: l2-hi-energy-table
+    - source: codice
+      data_type: ancillary
+      descriptor: l2-hi-tof-table
+  outputs:
+    - source: codice
+      data_type: l2
+      descriptor: hi-direct-events
 
 (l2, hi-omni):
-  - upstream_source: codice
-    upstream_data_type: l1b
-    upstream_descriptor: hi-omni
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-hi-omni-efficiency
-
+  inputs:
+    - source: codice
+      data_type: l1b
+      descriptor: hi-omni
+    - source: codice
+      data_type: ancillary
+      descriptor: l2-hi-omni-efficiency
+  outputs:
+    - source: codice
+      data_type: l2
+      descriptor: hi-omni
 
 (l2, hi-sectored):
-  - upstream_source: codice
-    upstream_data_type: l1b
-    upstream_descriptor: hi-sectored
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-hi-sectored-efficiency
-
+  inputs:
+    - source: codice
+      data_type: l1b
+      descriptor: hi-sectored
+    - source: codice
+      data_type: ancillary
+      descriptor: l2-hi-sectored-efficiency
+  outputs:
+    - source: codice
+      data_type: l2
+      descriptor: hi-sectored
 
 (l2, lo-direct-events):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-direct-events
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-onboard-energy-table
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-onboard-energy-bins
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-onboard-mpq-cal
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: lo-direct-events
+    - source: codice
+      data_type: ancillary
+      descriptor: l2-lo-onboard-energy-table
+    - source: codice
+      data_type: ancillary
+      descriptor: l2-lo-onboard-energy-bins
+    - source: codice
+      data_type: ancillary
+      descriptor: l2-lo-onboard-mpq-cal
+  outputs:
+    - source: codice
+      data_type: l2
+      descriptor: lo-direct-events
 
 (l2, lo-sw-species):
-  - upstream_source: codice
-    upstream_data_type: l1b
-    upstream_descriptor: lo-sw-species
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-gfactor
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-lo-efficiency
-
+  inputs:
+    - source: codice
+      data_type: l1b
+      descriptor: lo-sw-species
+    - source: codice
+      data_type: ancillary
+      descriptor: l2-lo-gfactor
+    - source: codice
+      data_type: ancillary
+      descriptor: l2-lo-efficiency
+  outputs:
+    - source: codice
+      data_type: l2
+      descriptor: lo-sw-species
 
 (l3a, hi-direct-events):
-  - upstream_source: codice
-    upstream_data_type: l2
-    upstream_descriptor: hi-direct-events
-
+  inputs:
+    - source: codice
+      data_type: l2
+      descriptor: hi-direct-events
+  outputs:
+    - source: codice
+      data_type: l3a
+      descriptor: hi-direct-events
 
 (l3a, lo-direct-events):
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-sw-priority
-  - upstream_source: codice
-    upstream_data_type: l1a
-    upstream_descriptor: lo-nsw-priority
-  - upstream_source: codice
-    upstream_data_type: l2
-    upstream_descriptor: lo-direct-events
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-energy-per-charge
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: mass-coefficient-lookup
-
+  inputs:
+    - source: codice
+      data_type: l1a
+      descriptor: lo-sw-priority
+    - source: codice
+      data_type: l1a
+      descriptor: lo-nsw-priority
+    - source: codice
+      data_type: l2
+      descriptor: lo-direct-events
+    - source: codice
+      data_type: ancillary
+      descriptor: lo-energy-per-charge
+    - source: codice
+      data_type: ancillary
+      descriptor: mass-coefficient-lookup
+  outputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-direct-events
 
 (l3a, lo-heplus-3d-distribution):
-  - *lo_l3a_dist_common
-
+  inputs:
+    - *lo_l3a_dist_common
+  outputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-heplus-3d-distribution
 
 (l3a, lo-heplusplus-3d-distribution):
-  - *lo_l3a_dist_common
-
+  inputs:
+    - *lo_l3a_dist_common
+  outputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-heplusplus-3d-distribution
 
 (l3a, lo-hplus-3d-distribution):
-  - *lo_l3a_dist_common
-
+  inputs:
+    - *lo_l3a_dist_common
+  outputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-hplus-3d-distribution
 
 (l3a, lo-oplus6-3d-distribution):
-  - *lo_l3a_dist_common
-
+  inputs:
+    - *lo_l3a_dist_common
+  outputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-oplus6-3d-distribution
 
 (l3a, lo-partial-densities):
-  - upstream_source: codice
-    upstream_data_type: l2
-    upstream_descriptor: lo-sw-species
-  - upstream_source: codice
-    upstream_data_type: ancillary
-    upstream_descriptor: mass-per-charge
-
+  inputs:
+    - source: codice
+      data_type: l2
+      descriptor: lo-sw-species
+    - source: codice
+      data_type: ancillary
+      descriptor: mass-per-charge
+  outputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-partial-densities
 
 (l3a, lo-sw-charge-state-distributions):
-  - upstream_source: codice
-    upstream_data_type: l3a
-    upstream_descriptor: lo-partial-densities
-
+  inputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-partial-densities
+  outputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-sw-charge-state-distributions
 
 (l3a, lo-sw-ratios):
-  - upstream_source: codice
-    upstream_data_type: l3a
-    upstream_descriptor: lo-partial-densities
-
+  inputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-partial-densities
+  outputs:
+    - source: codice
+      data_type: l3a
+      descriptor: lo-sw-ratios
 
 (l3b, hi-pitch-angle):
-  - upstream_source: mag
-    upstream_data_type: l1d
-    upstream_descriptor: norm-dsrf
-  - upstream_source: mag
-    upstream_data_type: l2
-    upstream_descriptor: norm-dsrf
-    kickoff_job: false
-  - upstream_source: codice
-    upstream_data_type: l2
-    upstream_descriptor: hi-sectored
+  inputs:
+    - source: mag
+      data_type: l1d
+      descriptor: norm-dsrf
+    - source: mag
+      data_type: l2
+      descriptor: norm-dsrf
+      trigger_job: false
+    - source: codice
+      data_type: l2
+      descriptor: hi-sectored
+  outputs:
+    - source: codice
+      data_type: l3b
+      descriptor: hi-pitch-angle
+

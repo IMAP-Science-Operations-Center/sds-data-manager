@@ -6,75 +6,110 @@
 
 # ======= Common dependencies =============
 spice_basics: &spice_basics
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  - source: leapseconds
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: spacecraft_clock
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
 
 # ====== IDEX dependencies =============
 
 (l1a, all):
-  - *spice_basics
-  - upstream_source: idex
-    upstream_data_type: l0
-    upstream_descriptor: raw
+  inputs:
+    - *spice_basics
+    - source: idex
+      data_type: l0
+      descriptor: raw
+  outputs:
+    - source: idex
+      data_type: l1a
+      descriptor: sci-1week
+    - source: idex
+      data_type: l1a
+      descriptor: msg
+    - source: idex
+      data_type: l1a
+      descriptor: catlst
+    - source: idex
+      data_type: l1b
+      descriptor: catlst
 
 (l1a, msg):
-  - upstream_source: idex
-    upstream_data_type: l1a
-    upstream_descriptor: msg
+  inputs:
+    - source: idex
+      data_type: l1a
+      descriptor: msg
+  outputs:
+    - source: idex
+      data_type: l1a
+      descriptor: msg
 
 (l1b, sci-1week):
-  - *spice_basics
-  - upstream_source: idex
-    upstream_data_type: l1a
-    upstream_descriptor: sci-1week
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-  - upstream_source: ephemeris_reconstructed
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: ephemeris_predicted
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: planetary_ephemeris
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-
+  inputs:
+    - *spice_basics
+    - source: idex
+      data_type: l1a
+      descriptor: sci-1week
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: ephemeris_reconstructed
+      data_type: spice
+      descriptor: historical
+    - source: ephemeris_predicted
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: attitude_history
+      data_type: spice
+      descriptor: historical
+    - source: planetary_ephemeris
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: imap_frames
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+  outputs:
+    - source: idex
+      data_type: l1b
+      descriptor: sci-1week
 
 (l2a, sci-1week):
-  - upstream_source: idex
-    upstream_data_type: l1b
-    upstream_descriptor: sci-1week
-  - upstream_source: idex
-    upstream_data_type: ancillary
-    upstream_descriptor: l2a-calibration-curve-yield-params
-  - upstream_source: idex
-    upstream_data_type: ancillary
-    upstream_descriptor: l2a-calibration-curve-t-rise
-
+  inputs:
+    - source: idex
+      data_type: l1b
+      descriptor: sci-1week
+    - source: idex
+      data_type: ancillary
+      descriptor: l2a-calibration-curve-yield-params
+    - source: idex
+      data_type: ancillary
+      descriptor: l2a-calibration-curve-t-rise
+  outputs:
+    - source: idex
+      data_type: l2a
+      descriptor: sci-1week
 
 (l2b, all-1mo):
-  - *spice_basics
-  - upstream_source: idex
-    upstream_data_type: l2a
-    upstream_descriptor: sci-1week
-    kickoff_job: false
-  - upstream_source: idex
-    upstream_data_type: l1b
-    upstream_descriptor: msg
-    kickoff_job: false
+  inputs:
+    - *spice_basics
+    - source: idex
+      data_type: l2a
+      descriptor: sci-1week
+      trigger_job: false
+    - source: idex
+      data_type: l1b
+      descriptor: msg
+      trigger_job: false
+  outputs:
+    - source: idex
+      data_type: l2b
+      descriptor: sci-1mo
+    - source: idex
+      data_type: l2c
+      descriptor: rectangular-map-1mo

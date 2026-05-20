@@ -5,115 +5,136 @@
 # and how to properly configure them for your pipeline lambdas.
 # ===== Common dependencies ===========
 pipline_settings: &pipeline_settings
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: pipeline-settings
+  - source: glows
+    data_type: ancillary
+    descriptor: pipeline-settings
 
 spice_basics: &spice_basics
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  - source: leapseconds
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: spacecraft_clock
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
 
 hist_spice: &hist_spice
   - *spice_basics
-  - upstream_source: imap_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: science_frames
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: pointing_attitude
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  - source: imap_frames
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: science_frames
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: pointing_attitude
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
 
 # ======== Product-specific dependencies ===========
 (l1a, all):
-  - *spice_basics
-  - upstream_source: glows
-    upstream_data_type: l0
-    upstream_descriptor: raw
-
+  inputs:
+    - *spice_basics
+    - source: glows
+      data_type: l0
+      descriptor: raw
+  outputs:
+    - source: glows
+      data_type: l1a
+      descriptor: de
+    - source: glows
+      data_type: l1a
+      descriptor: hist
 
 (l1b, de):
-  - upstream_source: glows
-    upstream_data_type: l1a
-    upstream_descriptor: de
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-conversion-table-for-anc-data
-
+  inputs:
+    - source: glows
+      data_type: l1a
+      descriptor: de
+    - source: glows
+      data_type: ancillary
+      descriptor: l1b-conversion-table-for-anc-data
+  outputs:
+    - source: glows
+      data_type: l1b
+      descriptor: de
 
 (l1b, hist):
-  - *pipeline_settings
-  - *hist_spice
-  - upstream_source: glows
-    upstream_data_type: l1a
-    upstream_descriptor: hist
-  - upstream_source: spin
-    upstream_data_type: spin
-    upstream_descriptor: historical
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-exclusions-by-instr-team
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-map-of-excluded-regions
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-map-of-uv-sources
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-suspected-transients
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-conversion-table-for-anc-data
-  - upstream_source: attitude_history
-    upstream_data_type: spice
-    upstream_descriptor: historical
-  - upstream_source: ephemeris_reconstructed
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: ephemeris_predicted
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: planetary_ephemeris
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-
+  inputs:
+    - *pipeline_settings
+    - *hist_spice
+    - source: glows
+      data_type: l1a
+      descriptor: hist
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: glows
+      data_type: ancillary
+      descriptor: l1b-exclusions-by-instr-team
+    - source: glows
+      data_type: ancillary
+      descriptor: l1b-map-of-excluded-regions
+    - source: glows
+      data_type: ancillary
+      descriptor: l1b-map-of-uv-sources
+    - source: glows
+      data_type: ancillary
+      descriptor: l1b-suspected-transients
+    - source: glows
+      data_type: ancillary
+      descriptor: l1b-conversion-table-for-anc-data
+    - source: attitude_history
+      data_type: spice
+      descriptor: historical
+    - source: ephemeris_reconstructed
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: planetary_ephemeris
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+  outputs:
+    - source: glows
+      data_type: l1b
+      descriptor: hist
 
 (l2, hist):
-  - *pipeline_settings
-  - *hist_spice
-  - upstream_source: glows
-    upstream_data_type: l1b
-    upstream_descriptor: hist
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-calibration
-
+  inputs:
+    - *pipeline_settings
+    - *hist_spice
+    - source: glows
+      data_type: l1b
+      descriptor: hist
+    - source: glows
+      data_type: ancillary
+      descriptor: l2-calibration
+  outputs:
+    - source: glows
+      data_type: l2
+      descriptor: hist
 
 (l3a, hist):
-  - *pipeline_settings
-  - upstream_source: glows
-    upstream_data_type: l2
-    upstream_descriptor: hist
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l2-calibration
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l3-time-dep-bckgrd
-  - upstream_source: glows
-    upstream_data_type: ancillary
-    upstream_descriptor: l3-map-of-extra-helio-bckgrd
+  inputs:
+    - *pipeline_settings
+    - source: glows
+      data_type: l2
+      descriptor: hist
+    - source: glows
+      data_type: ancillary
+      descriptor: l2-calibration
+    - source: glows
+      data_type: ancillary
+      descriptor: l3-time-dep-bckgrd
+    - source: glows
+      data_type: ancillary
+      descriptor: l3-map-of-extra-helio-bckgrd
+  outputs:
+    - source: glows
+      data_type: l3a
+      descriptor: hist
+

@@ -8,7 +8,6 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactorin
     DependencyNode,
     ProcessingJobNode,
     TimeRange,
-    format_upstream_node_input,
     get_cadence_duration,
 )
 
@@ -63,7 +62,7 @@ def test_node_invalid_raises():
 def test_dependency_node_defaults():
     node = DependencyNode(source="mag", data_type="l1b", descriptor="norm")
     assert node.required is True
-    assert node.kickoff_job is True
+    assert node.trigger_job is True
     assert node.dependency_query_time_range == []
 
 
@@ -74,7 +73,7 @@ def test_dependency_node_non_boolean_required_raises():
 
 def test_dependency_node_non_boolean_kickoff_raises():
     with pytest.raises(ValueError, match="must be boolean"):
-        DependencyNode(source="swe", data_type="l1a", descriptor="sci", kickoff_job=1)
+        DependencyNode(source="swe", data_type="l1a", descriptor="sci", trigger_job=1)
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +148,7 @@ def test_dependency_node_serialize_roundtrip():
         data_type="l1b",
         descriptor="norm",
         required=False,
-        kickoff_job=True,
+        trigger_job=True,
         dependency_query_time_range=["-2d", "2d"],
     )
     serialized = node.serialize()
@@ -188,39 +187,6 @@ def test_processing_job_node_inherits_node_validation():
             descriptor="hist",
             time_span=TimeRange.from_string("20240101", "20240101"),
         )
-
-
-def test_format_upstream_node_input_basic():
-    result = format_upstream_node_input(
-        {
-            "upstream_source": "swe",
-            "upstream_data_type": "l0",
-            "upstream_descriptor": "raw",
-        }
-    )
-    assert isinstance(result, DependencyNode)
-    assert result.source == "swe"
-    assert result.data_type == "l0"
-    assert result.descriptor == "raw"
-    assert result.required is True
-    assert result.kickoff_job is True
-    assert result.dependency_query_time_range == []
-
-
-def test_format_upstream_node_input_optional_fields():
-    result = format_upstream_node_input(
-        {
-            "upstream_source": "mag",
-            "upstream_data_type": "l1a",
-            "upstream_descriptor": "norm",
-            "required": False,
-            "kickoff_job": False,
-            "date_range": ["-2d", "2d"],
-        }
-    )
-    assert result.required is False
-    assert result.kickoff_job is False
-    assert result.dependency_query_time_range == ["-2d", "2d"]
 
 
 @pytest.mark.parametrize(

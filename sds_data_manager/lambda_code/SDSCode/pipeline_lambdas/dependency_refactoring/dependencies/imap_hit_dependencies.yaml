@@ -6,159 +6,209 @@
 
 # ====== Common dependencies =============
 spice_basics: &spice_basics
-  - upstream_source: leapseconds
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
-  - upstream_source: spacecraft_clock
-    upstream_data_type: spice
-    upstream_descriptor: historical
-    kickoff_job: false
+  - source: leapseconds
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
+  - source: spacecraft_clock
+    data_type: spice
+    descriptor: historical
+    trigger_job: false
 
 l0_data: &l0_data
-  - upstream_source: hit
-    upstream_data_type: l0
-    upstream_descriptor: raw
+  - source: hit
+    data_type: l0
+    descriptor: raw
 
 (l1a, all):
-  - *spice_basics
-  - *l0_data
+  inputs:
+    - *spice_basics
+    - *l0_data
+  outputs:
+    - source: hit
+      data_type: l1a
+      descriptor: counts-standard
+    - source: hit
+      data_type: l1a
+      descriptor: counts-sectored
+    - source: hit
+      data_type: l1a
+      descriptor: direct-events
 
 (l1b, hk):
-  - *spice_basics
-  - *l0_data
+  inputs:
+    - *spice_basics
+    - *l0_data
+  outputs:
+    - source: hit
+      data_type: l1b
+      descriptor: hk
 
 (l1b, sectored-rates):
-  - upstream_source: hit
-    upstream_data_type: l1a
-    upstream_descriptor: counts-sectored
-
+  inputs:
+    - source: hit
+      data_type: l1a
+      descriptor: counts-sectored
+  outputs:
+    - source: hit
+      data_type: l1b
+      descriptor: sectored-rates
 
 (l1b, standard-rates):
-  - upstream_source: hit
-    upstream_data_type: l1a
-    upstream_descriptor: counts-standard
-
+  inputs:
+    - source: hit
+      data_type: l1a
+      descriptor: counts-standard
+  outputs:
+    - source: hit
+      data_type: l1b
+      descriptor: standard-rates
 
 (l1b, summed-rates):
-  - upstream_source: hit
-    upstream_data_type: l1a
-    upstream_descriptor: counts-standard
-
+  inputs:
+    - source: hit
+      data_type: l1a
+      descriptor: counts-standard
+  outputs:
+    - source: hit
+      data_type: l1b
+      descriptor: summed-rates
 
 (l2, macropixel-intensity):
-  - upstream_source: hit
-    upstream_data_type: l1b
-    upstream_descriptor: sectored-rates
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-macropixel-dt0-factors
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-macropixel-dt1-factors
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-macropixel-dt2-factors
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-macropixel-dt3-factors
-
+  inputs:
+    - source: hit
+      data_type: l1b
+      descriptor: sectored-rates
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-macropixel-dt0-factors
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-macropixel-dt1-factors
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-macropixel-dt2-factors
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-macropixel-dt3-factors
+  outputs:
+    - source: hit
+      data_type: l2
+      descriptor: macropixel-intensity
 
 (l2, standard-intensity):
-  - upstream_source: hit
-    upstream_data_type: l1b
-    upstream_descriptor: standard-rates
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-standard-dt0-factors
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-standard-dt1-factors
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-standard-dt2-factors
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-standard-dt3-factors
-
+  inputs:
+    - source: hit
+      data_type: l1b
+      descriptor: standard-rates
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-standard-dt0-factors
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-standard-dt1-factors
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-standard-dt2-factors
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-standard-dt3-factors
+  outputs:
+    - source: hit
+      data_type: l2
+      descriptor: standard-intensity
 
 (l2, summed-intensity):
-  - upstream_source: hit
-    upstream_data_type: l1b
-    upstream_descriptor: summed-rates
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-summed-dt0-factors
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-summed-dt1-factors
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-summed-dt2-factors
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: l1b-to-l2-summed-dt3-factors
-
+  inputs:
+    - source: hit
+      data_type: l1b
+      descriptor: summed-rates
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-summed-dt0-factors
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-summed-dt1-factors
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-summed-dt2-factors
+    - source: hit
+      data_type: ancillary
+      descriptor: l1b-to-l2-summed-dt3-factors
+  outputs:
+    - source: hit
+      data_type: l2
+      descriptor: summed-intensity
 
 (l3, direct-events):
-  - upstream_source: hit
-    upstream_data_type: l1a
-    upstream_descriptor: direct-events
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-2A-cosine-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-3A-cosine-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-4A-cosine-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-2B-cosine-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-3B-cosine-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-4B-cosine-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: lo-gain-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: hi-gain-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-2A-charge-fit-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-3A-charge-fit-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-4A-charge-fit-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-2B-charge-fit-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-3B-charge-fit-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: range-4B-charge-fit-lookup
-  - upstream_source: hit
-    upstream_data_type: ancillary
-    upstream_descriptor: hit-event-type-lookup
-
+  inputs:
+    - source: hit
+      data_type: l1a
+      descriptor: direct-events
+    - source: hit
+      data_type: ancillary
+      descriptor: range-2A-cosine-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-3A-cosine-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-4A-cosine-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-2B-cosine-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-3B-cosine-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-4B-cosine-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: lo-gain-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: hi-gain-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-2A-charge-fit-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-3A-charge-fit-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-4A-charge-fit-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-2B-charge-fit-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-3B-charge-fit-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: range-4B-charge-fit-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: hit-event-type-lookup
+  outputs:
+    - source: hit
+      data_type: l3
+      descriptor: direct-events
 
 (l3, macropixel):
-  - upstream_source: hit
-    upstream_data_type: l2
-    upstream_descriptor: macropixel-intensity
-  - upstream_source: mag
-    upstream_data_type: l1d
-    upstream_descriptor: norm-dsrf
-  - upstream_source: mag
-    upstream_data_type: l2
-    upstream_descriptor: norm-dsrf
-    kickoff_job: false
+  inputs:
+    - source: hit
+      data_type: l2
+      descriptor: macropixel-intensity
+    - source: mag
+      data_type: l1d
+      descriptor: norm-dsrf
+    - source: mag
+      data_type: l2
+      descriptor: norm-dsrf
+      trigger_job: false
+  outputs:
+    - source: hit
+      data_type: l3
+      descriptor: macropixel
+
