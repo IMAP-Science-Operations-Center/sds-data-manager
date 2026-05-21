@@ -80,7 +80,7 @@ l3a_spice_common: &l3a_spice_common
       data_type: l0
       descriptor: raw
     - source: swapi
-      data_type: l1a
+      data_type: l1
       descriptor: hk
     - source: leapseconds
       data_type: spice
