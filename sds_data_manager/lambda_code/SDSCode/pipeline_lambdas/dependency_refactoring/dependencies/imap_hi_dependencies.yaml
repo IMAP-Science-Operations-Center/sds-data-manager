@@ -181,18 +181,6 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l1b
       descriptor: 90sensor-hk
-    - source: hi
-      data_type: l1b
-      descriptor: 45sensor-de
-    - source: hi
-      data_type: l1b
-      descriptor: 90sensor-de
-    - source: hi
-      data_type: l1b
-      descriptor: 45sensor-goodtimes
-    - source: hi
-      data_type: l1b
-      descriptor: 90sensor-goodtimes
 
 (l1b, 45sensor-de):
   partition: repoint

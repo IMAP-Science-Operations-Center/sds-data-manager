@@ -1,6 +1,7 @@
 from orchestration.imap_file import IMAPScienceFileHandler, IMAPAncillaryFileHandler
 from orchestration.imap_job import IMAPJobHandler
 from orchestration import custom_partitions
+from orchestration import idex
 from imap_data_access import VALID_DATALEVELS
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import DependencyConfigReader
 
@@ -21,7 +22,7 @@ for potential_job in dependency_config._config.keys():
     partition = dependency_config.partition(potential_job)
     if data_type == "ancillary":
         ancillary_handlers.append(IMAPAncillaryFileHandler(asset_name))
-    elif source == ["idex", "ultra"]:
+    elif data_type == "l0" and source == "idex":
         # Continue because IDEX will defined custom asset and sensor below.
         continue
     elif data_type == "l0":
@@ -33,7 +34,7 @@ for potential_job in dependency_config._config.keys():
 #   1. create asset using handler.build_asset()
 #   2. create assets for spice, spin, and attitude_pointing
 # store in assets list
-assets_to_build = ancillary_handlers + l0_job_handlers + non_l0_job_handlers
+assets_to_build = ancillary_handlers + l0_job_handlers + non_l0_job_handlers + idex.L0_files
 batch_jobs = [x.build_asset() for x in assets_to_build]
 spice_jobs = [x.build_spice_deps_asset() for x in assets_to_build if x.needs_spice]
 spin_jobs = [x.build_spin_deps_asset() for x in assets_to_build if x.needs_spin]

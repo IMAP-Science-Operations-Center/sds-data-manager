@@ -3,10 +3,12 @@ from orchestration import glows, custom_partitions, spin, pointing_attitude, spi
 
 
 defs = Definitions(
-    assets=glows.assets,
+    assets=glows.assets + \
+            imap_assets.assets,
     sensors=glows.sensors + \
             spin.sensors + \
             pointing_attitude.sensors + \
             custom_partitions.sensors + \
-            spice.sensors
+            spice.sensors + \
+            imap_assets.sensors
 )

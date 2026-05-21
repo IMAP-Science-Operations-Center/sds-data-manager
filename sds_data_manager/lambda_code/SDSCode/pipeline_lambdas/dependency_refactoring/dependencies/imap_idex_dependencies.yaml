@@ -38,17 +38,6 @@ spice_basics: &spice_basics
       data_type: l1b
       descriptor: catlst
 
-(l1a, msg):
-  partition: daily
-  inputs:
-    - source: idex
-      data_type: l1a
-      descriptor: msg
-  outputs:
-    - source: idex
-      data_type: l1a
-      descriptor: msg
-
 (l1b, sci-1week):
   partition: 10d
   inputs:
