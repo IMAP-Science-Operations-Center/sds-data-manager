@@ -197,6 +197,9 @@ lo_esa_fit_factors: &lo_esa_fit_factors
   - upstream_source: repoint
     upstream_data_type: repoint
     upstream_descriptor: historical
+  - upstream_source: lo
+    upstream_data_type: ancillary
+    upstream_descriptor: bg-rates-anti-ram-overrides
 
 # ======== Level L1C ========
 (l1c, pset):
