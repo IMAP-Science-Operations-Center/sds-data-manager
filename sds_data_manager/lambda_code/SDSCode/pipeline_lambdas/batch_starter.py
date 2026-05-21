@@ -57,6 +57,49 @@ BATCH_JOB_RETRY_STRATEGY = {
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 
+L3_CRON_JOBS = [
+    (
+        "glows",
+        "l3b",
+        "ion-rate-profile",
+    ),
+    (
+        "lo",
+        "l3",
+        "all-maps",
+    ),
+    (
+        "hi",
+        "l3",
+        "sp-maps",
+    ),
+    (
+        "hi",
+        "l3",
+        "hic-maps",
+    ),
+    (
+        "ultra",
+        "l3",
+        "u45-maps",
+    ),
+    (
+        "ultra",
+        "l3",
+        "u90-maps",
+    ),
+    (
+        "ultra",
+        "l3",
+        "ulc-sp-maps",
+    ),
+    (
+        "ultra",
+        "l3",
+        "ulc-nsp-maps",
+    ),
+]
+
 
 def get_container_image_digest(job_definition: str):
     """Get the container image digest.
@@ -484,6 +527,15 @@ def try_to_submit_job(
     # information here and not in indexer.py to avoid race conditions where the image
     # could change during job execution.
     container_image_digest = get_container_image_digest(job_definition)
+
+    # Certain l3 jobs do not run through the batch starter but call
+    # try_to_submit_job directly from the Schedule Jobs lambda. These jobs gather the
+    # dependencies within the jobs themselves so the dependency hash does not encompass
+    # the true dependencies for the job. For these jobs, do not add the dependency
+    # hash to the processing job table because it could undesirably cause a job to
+    # be considered a duplicate even though it may not be.
+    if (instrument, data_level, descriptor) in L3_CRON_JOBS:
+        dep_hash = None
 
     # All of our upstream requirements have been met.
     # Try to insert a record into the Processing Jobs table
