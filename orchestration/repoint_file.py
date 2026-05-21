@@ -105,7 +105,7 @@ def get_upstream_dependency_inputs_repoint(
 @sensor(asset_selection=AssetSelection.all(),
         minimum_interval_seconds=30,
         default_status=DefaultSensorStatus.RUNNING)
-def pointing_attitude_file_sensor(context: SensorEvaluationContext):
+def repoint_file_sensor(context: SensorEvaluationContext):
 
     # 1. Handle the Cursor
     cursor_str = context.cursor or MISSION_START_TIME
@@ -127,11 +127,11 @@ def pointing_attitude_file_sensor(context: SensorEvaluationContext):
             yield run
     else:
         with db.Session() as session:
-            # Get new pointing_attitude files
+            # Get new repoint files
             new_files = session.query(models.RepointFiles).filter(models.RepointFiles.ingestion_date > cursor_date).all()
             
             if not new_files:
-                yield SensorResult(skip_reason="No new pointing_attitude files ingested.")
+                yield SensorResult(skip_reason="No new repoint files ingested.")
 
             for file in new_files:
                 # Advance cursor date marker
@@ -146,4 +146,4 @@ def pointing_attitude_file_sensor(context: SensorEvaluationContext):
 
     context.update_cursor(latest_ingestion_date.isoformat())
 
-sensors = [pointing_attitude_file_sensor]
+sensors = [repoint_file_sensor]

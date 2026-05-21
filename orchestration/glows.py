@@ -31,7 +31,7 @@ assets_to_build = ancillary_files + l0_files + jobs
 batch_jobs = [x.build_asset() for x in assets_to_build]
 spice_jobs = [x.build_spice_deps_asset() for x in assets_to_build if x.needs_spice]
 spin_jobs = [x.build_spin_deps_asset() for x in assets_to_build if x.needs_spin]
-attitude_pointing_jobs = [x.build_attitude_pointing_deps_asset() for x in assets_to_build if x.needs_pointing_attitude]
+repoint_file_jobs = [x.build_repoint_file_deps_asset() for x in assets_to_build if x.needs_repoint_file]
 
-assets=spice_jobs+batch_jobs+spin_jobs+attitude_pointing_jobs
+assets=spice_jobs+batch_jobs+spin_jobs+repoint_file_jobs
 sensors=[x.build_sensor() for x in assets_to_build]

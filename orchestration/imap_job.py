@@ -30,7 +30,7 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 from orchestration.dependency_refactoring.dependency_new import DependencyConfigReader
 from orchestration.dependency_refactoring.utils import UpstreamDependencyNode
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
-from orchestration import spice, spin, pointing_attitude
+from orchestration import spice, spin, repoint_file
 from orchestration.dagster_utilities import get_materialization_result
 import imap_data_access
 from imap_data_access import processing_input
@@ -51,6 +51,22 @@ outputs_dict = {'glows_l1a_all': ["glows_l1a_hist", "glows_l1a_de"],
                                  "idex_l1b_catlst-10days"],
                 'idex_l2b_all-1mo': ["idex_l2b_sci-1mo", "idex_l2c_rectangular-map-1mo"]}
 
+priority_levels = {'l0':'0',
+                    'l1a':'1',
+                    'l1b':'2',
+                    'l1c':'3',
+                    'l1d':'4',
+                    'l2':'5',
+                    'l2a':'6',
+                    'l2b':'7',
+                    'l2c':'8',
+                    'l2d':'9',
+                    'l3':'10',
+                    'l3a':'11',
+                    'l3b':'12',
+                    'l3c':'13',
+                    'l3d':'14',}
+
 class IMAPJobHandler:
     """Handle IMAP job dependencies and submission."""
 
@@ -63,15 +79,12 @@ class IMAPJobHandler:
             The job node to process.
         """
         self.needs_spin = False
-        self.needs_pointing_attitude = False
+        self.needs_repoint_file = False
         self.needs_spice = False
 
         
         self.source, self.data_type, self.descriptor = asset_name.split("_")
         
-
-        # TODO: Stop hard coding these outputs. 
-        # Put them in the YAML?
         try:
             self.outputs = outputs_dict[asset_name]
         except:
@@ -80,42 +93,41 @@ class IMAPJobHandler:
         self.asset_name = asset_name.replace("-", "")
         _config = DependencyConfigReader().config
         potential_deps_list = [dep.serialize() for dep in _config[(self.source, self.data_type, self.descriptor)]]
-        
-        #TODO: Stop hard coding in this partition
-        # Put the partition in the YAML?
+
         self.partitions_def = partition
 
-        spice_types = []
-        deps_list = []
-        triggering_deps = [] #TODO: Use the DependencyConfigReader kickoff information
+        spice_types = set()
+        deps_list = set()
+        triggering_deps = set() 
         for dep in potential_deps_list:
-            if dep['source'] == 'pointing_attitude':
-                self.needs_pointing_attitude = True
-                deps_list.append(asset_name+'_pointing_attitude_deps')
+            if dep['source'] == 'repoint':
+                self.needs_repoint_file = True
+                deps_list.add(asset_name+'_repoint_file_deps')
             elif dep['data_type'] == 'spice':
-                deps_list.append(asset_name+'_spice_deps')
-                spice_types.append(dep['source'])
+                deps_list.add(asset_name+'_spice_deps')
+                spice_types.add(dep['source'])
                 self.needs_spice = True
             elif dep['data_type'] == 'spin':
-                deps_list.append(asset_name+'_spin_deps')
+                deps_list.add(asset_name+'_spin_deps')
                 self.needs_spin = True
             elif dep['data_type'] == 'ancillary':
                 name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
-                deps_list.append(name)
+                deps_list.add(name)
             else:
+                # TODO: Right now we are only kicking off on science files!
                 name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
-                deps_list.append(name)
-                triggering_deps.append(name)
+                deps_list.add(name)
+                triggering_deps.add(name)
 
-        self.spice_types = spice_types
-        self.deps_list = deps_list
-        self.triggering_deps = triggering_deps
+        self.spice_types = list(spice_types)
+        self.deps_list = list(deps_list)
+        self.triggering_deps = list(triggering_deps)
 
-        # TODO: Stop hard-coding this job
+        
         outputs_for_job = [x.replace("-","") for x in self.outputs]
         self.job = define_asset_job(name=f"{self.asset_name}_processing_job",
-                                    selection=AssetSelection.keys(*outputs_for_job)
-                                    )
+                                    selection=AssetSelection.keys(*outputs_for_job),
+                                    tags={"dagster/priority": priority_levels.get(self.data_type, '0')})
     
     def build_asset(self):
         """
@@ -217,7 +229,7 @@ class IMAPJobHandler:
                                                 output,
                                                 job_version,
                                                 repointing=pointing_number,
-                                                start_date=start_date,
+                                                start_date=start_date.strftime("%Y%m%d"),
                                                 inputs = dependency_inputs.serialize())
 
                         if file:
@@ -339,28 +351,28 @@ class IMAPJobHandler:
             
         return _generic_spin_maker
 
-    def build_attitude_pointing_deps_asset(self):
+    def build_repoint_file_deps_asset(self):
         @asset(
                 name=self.asset_name+"_pointing_attitide_deps",
                 partitions_def=self.partitions_def,
                 output_required=False
         )
-        def _generic_pointing_attitude_maker(context):
+        def _generic_repoint_file_maker(context):
 
             current_partition = context.partition_key
             parts = context.partition_key.split("_")
             start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
             end_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
 
-            pointing_attitude_files = pointing_attitude.get_upstream_dependency_inputs_repoint(start_date,
+            file = repoint_file.get_upstream_dependency_inputs_repoint(start_date,
                                                                                                end_date)
 
             
-            if pointing_attitude_files:
+            if file:
                 materialization = get_materialization_result(context,
-                                                            self.asset_name+"_pointing_attitide_deps",
+                                                            self.asset_name+"_repoint_file_deps",
                                                             current_partition,
-                                                            pointing_attitude_files,
+                                                            file,
                                                             "0",
                                                             "repoint")
                 if materialization:
@@ -368,7 +380,7 @@ class IMAPJobHandler:
             else:
                 raise Failure(description="Processing failed: No data found")
             
-        return _generic_pointing_attitude_maker
+        return _generic_repoint_file_maker
 
     def _parse_dates_from_key(self, partition_key: str):
         """
@@ -481,10 +493,7 @@ class IMAPJobHandler:
                             tags={"dependencies": dependencies.serialize()}
                             yield RunRequest(
                                             partition_key=target_partition,
-                                            # UNIQUE RUN KEY: This prevents Dagster from launching 5 concurrent
-                                            # identical runs if 5 upstream dependencies for the same target
-                                            # time window arrive at the exact same moment.
-                                            run_key=f"{self.asset_name}_{target_partition}_trigger_{record.storage_id}",
+                                            run_key=f"{self.asset_name}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
                                             tags=tags
                                         )
                             
