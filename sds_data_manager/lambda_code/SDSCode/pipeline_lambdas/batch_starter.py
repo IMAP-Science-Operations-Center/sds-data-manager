@@ -28,6 +28,7 @@ from ..database import database as db
 from ..database import models
 from . import (
     FIRST_MAP_START_DATE,
+    L3_CRON_JOBS,
     LAUNCH_DATE,
     REPOINT_DEPENDENT_INSTRUMENTS,
     VALID_CADENCE_STRS,
@@ -56,49 +57,6 @@ BATCH_JOB_RETRY_STRATEGY = {
 }
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
-
-L3_CRON_JOBS = [
-    (
-        "glows",
-        "l3b",
-        "ion-rate-profile",
-    ),
-    (
-        "lo",
-        "l3",
-        "all-maps",
-    ),
-    (
-        "hi",
-        "l3",
-        "sp-maps",
-    ),
-    (
-        "hi",
-        "l3",
-        "hic-maps",
-    ),
-    (
-        "ultra",
-        "l3",
-        "u45-maps",
-    ),
-    (
-        "ultra",
-        "l3",
-        "u90-maps",
-    ),
-    (
-        "ultra",
-        "l3",
-        "ulc-sp-maps",
-    ),
-    (
-        "ultra",
-        "l3",
-        "ulc-nsp-maps",
-    ),
-]
 
 
 def get_container_image_digest(job_definition: str):
