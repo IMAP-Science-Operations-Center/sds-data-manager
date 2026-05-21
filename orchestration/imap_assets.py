@@ -10,15 +10,6 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactorin
 
 dependency_config = DependencyConfigReader()
 
-for potential_job in dependency_config._config.keys():
-    if potential_job[0] == "glows" and potential_job[1] == "l1a":
-        print(potential_job)
-        for dep in dependency_config.inputs(potential_job):
-            print(f"  {dep}")
-        for dep in dependency_config.outputs(potential_job):
-            print(f"  outputs: {dep}")
-
-
 ancillary_handlers = []
 l0_job_handlers = []
 non_l0_job_handlers = []
@@ -36,18 +27,18 @@ for potential_job in dependency_config._config.keys():
     elif data_type in VALID_DATALEVELS:
         non_l0_job_handlers.append(IMAPJobHandler(asset_name, partition))
 
-# # Now using handlers, create assets for each handler:
-# #   1. create asset using handler.build_asset()
-# #   2. create assets for spice, spin, and attitude_pointing
-# # store in assets list
-# assets_to_build = ancillary_handlers + l0_job_handlers + non_l0_job_handlers
-# batch_jobs = [x.build_asset() for x in assets_to_build]
-# spice_jobs = [x.build_spice_deps_asset() for x in assets_to_build if x.needs_spice]
-# spin_jobs = [x.build_spin_deps_asset() for x in assets_to_build if x.needs_spin]
-# attitude_pointing_jobs = [x.build_attitude_pointing_deps_asset() for x in assets_to_build if x.needs_pointing_attitude]
+# Now using handlers, create assets for each handler:
+#   1. create asset using handler.build_asset()
+#   2. create assets for spice, spin, and attitude_pointing
+# store in assets list
+assets_to_build = ancillary_handlers + l0_job_handlers + non_l0_job_handlers
+batch_jobs = [x.build_asset() for x in assets_to_build]
+spice_jobs = [x.build_spice_deps_asset() for x in assets_to_build if x.needs_spice]
+spin_jobs = [x.build_spin_deps_asset() for x in assets_to_build if x.needs_spin]
+attitude_pointing_jobs = [x.build_attitude_pointing_deps_asset() for x in assets_to_build if x.needs_pointing_attitude]
 
-# assets=spice_jobs+batch_jobs+spin_jobs+attitude_pointing_jobs
+assets=spice_jobs+batch_jobs+spin_jobs+attitude_pointing_jobs
 
-# # Now for each asset, create a sensor using handler.build_sensor().
-# # store in sensors list
-# sensors = [x.build_sensor() for x in assets_to_build]
+# Now for each asset, create a sensor using handler.build_sensor().
+# store in sensors list
+sensors = [x.build_sensor() for x in assets_to_build]
