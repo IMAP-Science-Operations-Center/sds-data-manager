@@ -183,6 +183,17 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     upstream_data_type: l1b
     upstream_descriptor: nhk
 
+(l1b, goodtimes):
+  - *spice_basic
+  - upstream_source: lo
+    upstream_data_type: l1b
+    upstream_descriptor: histrates
+  - upstream_source: lo
+    upstream_data_type: l1b
+    upstream_descriptor: de
+  - upstream_source: lo
+    upstream_data_type: l1b
+    upstream_descriptor: nhk
 # ======== Level L1C ========
 (l1c, pset):
   - *spice_common

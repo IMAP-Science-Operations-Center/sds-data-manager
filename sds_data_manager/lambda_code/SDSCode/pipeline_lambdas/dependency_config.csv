@@ -843,6 +843,8 @@ spacecraft_clock, spice, historical, lo, l1b, prostar, HARD_NO_TRIGGER, DOWNSTRE
 leapseconds, spice, historical, lo, l1b, prostar, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1b, histrates, lo, l1b, goodtimes, HARD, DOWNSTREAM
+lo, l1b, de, lo, l1b, goodtimes, HARD, DOWNSTREAM
+lo, l1b, nhk, lo, l1b, goodtimes, HARD, DOWNSTREAM
 leapseconds, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
 
