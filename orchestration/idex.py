@@ -140,10 +140,9 @@ L0_files = [
     idex_l0_raw
 ]
 
-batch_jobs = [IMAPJobHandler("idex_l1a_all", custom_partitions.idex10_partitions),
-              IMAPJobHandler("idex_l1b_msg-10days", custom_partitions.idex10_partitions),
-              IMAPJobHandler("idex_l1b_sci-10days", custom_partitions.idex10_partitions),
-              IMAPJobHandler("idex_l2a_sci-10days", custom_partitions.idex10_partitions),
+batch_jobs = [IMAPJobHandler("idex_l1a_all", custom_partitions.daily_partitions),
+              IMAPJobHandler("idex_l1b_sci-1week", custom_partitions.idex10_partitions),
+              IMAPJobHandler("idex_l2a_sci-1week", custom_partitions.idex10_partitions),
               IMAPJobHandler("idex_l2b_all-1mo", custom_partitions.idex30_partitions)
               ]
 

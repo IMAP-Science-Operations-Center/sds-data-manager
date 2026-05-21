@@ -1,12 +1,10 @@
 from dagster import Definitions
-from orchestration import glows, idex, custom_partitions, spin, pointing_attitude, spice
+from orchestration import glows, custom_partitions, spin, pointing_attitude, spice, imap_assets
 
 
 defs = Definitions(
-    assets=glows.assets + \
-           idex.assets,
+    assets=glows.assets,
     sensors=glows.sensors + \
-            idex.sensors + \
             spin.sensors + \
             pointing_attitude.sensors + \
             custom_partitions.sensors + \

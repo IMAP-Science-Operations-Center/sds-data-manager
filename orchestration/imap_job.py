@@ -30,7 +30,7 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import DependencyConfigReader
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.types import DependencyNode
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
-from orchestration import spice, spin, pointing_attitude
+from orchestration import spice, spin, pointing_attitude, custom_partitions
 from orchestration.dagster_utilities import get_materialization_result
 import imap_data_access
 from imap_data_access import processing_input
@@ -70,6 +70,18 @@ class IMAPJobHandler:
         
         self.partitions_def = dependency_config.partition(key)
 
+        # Map the YAML partition string to the actual PartitionsDefinition object
+        _partition_map = {
+            "daily":   custom_partitions.daily_partitions,
+            "repoint": custom_partitions.repoint_partitions,
+            "10d":     custom_partitions.idex10_partitions,
+            "1mo":     custom_partitions.idex30_partitions,
+            "3mo":     custom_partitions.idex30_partitions,
+            "6mo":     custom_partitions.idex30_partitions,
+            "1yr":     custom_partitions.whole_mission_partition,
+        }
+        self.partitions_def = _partition_map.get(self.partitions_def)
+
         spice_types = []
         deps_list = []
         triggering_deps = []
@@ -97,7 +109,7 @@ class IMAPJobHandler:
         self.deps_list = deps_list
         self.triggering_deps = triggering_deps
 
-        outputs_for_job = [x.descriptor.replace("-","") for x in self.outputs]
+        outputs_for_job = [f"{x.source}_{x.data_type}_{x.descriptor}".replace("-", "") for x in self.outputs]
         self.job = define_asset_job(name=f"{self.asset_name}_processing_job",
                                     selection=AssetSelection.keys(*outputs_for_job)
                                     )
@@ -118,7 +130,8 @@ class IMAPJobHandler:
         deps_keys = [AssetKey(dep.replace("-", "")) for dep in self.deps_list]
         output_assets = {}
         for out in self.outputs:
-            output_assets[out.descriptor.replace("-", "")] = AssetOut(is_required=False) 
+            asset_key = f"{out.source}_{out.data_type}_{out.descriptor}".replace("-", "")
+            output_assets[asset_key] = AssetOut(is_required=False)
 
         @multi_asset(
             name=f"{self.asset_name}_multi_asset_op",

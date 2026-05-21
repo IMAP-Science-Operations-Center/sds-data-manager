@@ -484,6 +484,22 @@ def build_sds(
         env=env,
     )
 
+    # TODO: Note for Tenzin:
+    # Create RDS here.
+    # Then add connections information to below env_vars dict.
+    # These are information needed by daster to connect to RDS:
+    #   username
+    #   DAGSTER_PG_PASSWORD
+    #   DAGSTER_PG_HOST
+    #   db_name
+    #   username: dagster
+    #   port: 5432
+    # 
+    # Dagster will look for DB credentails through dagster.yaml in
+    # orchestration/dagster.yaml.
+    # In there, it's going to read DAGSTER_PG_PASSWORD and DAGSTER_PG_HOST.
+    # Other credentials listed above will be set as default when creating RDS.
+
     dagster_env_vars = {
         "S3_BUCKET": f"sds-data-{env.account}",
         "SECRET_NAME": "sdp-database-cred",
