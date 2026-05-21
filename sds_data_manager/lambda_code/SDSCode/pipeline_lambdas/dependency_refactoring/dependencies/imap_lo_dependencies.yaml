@@ -194,6 +194,18 @@ lo_esa_fit_factors: &lo_esa_fit_factors
   - upstream_source: lo
     upstream_data_type: l1b
     upstream_descriptor: nhk
+  - upstream_source: repoint
+    upstream_data_type: repoint
+    upstream_descriptor: historical
+
+(l1b, bgrates):
+  - *spice_basic
+  - upstream_source: lo
+    upstream_data_type: l1b
+    upstream_descriptor: histrates
+  - upstream_source: repoint
+    upstream_data_type: repoint
+    upstream_descriptor: historical
 # ======== Level L1C ========
 (l1c, pset):
   - *spice_common
