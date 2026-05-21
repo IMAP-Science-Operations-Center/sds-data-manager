@@ -26,7 +26,7 @@ class IMAPScienceFileHandler:
 
     def __init__(self, asset_name, partition):
         self.needs_spin = False
-        self.needs_pointing_attitude = False
+        self.needs_repoint_file = False
         self.needs_spice = False
 
         self.asset_name = asset_name
@@ -119,7 +119,7 @@ class IMAPAncillaryFileHandler:
 
     def __init__(self, asset_name):
         self.needs_spin = False
-        self.needs_pointing_attitude = False
+        self.needs_repoint_file = False
         self.needs_spice = False
 
         self.asset_name = asset_name
