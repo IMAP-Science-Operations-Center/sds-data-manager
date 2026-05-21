@@ -100,12 +100,12 @@ class IMAPJobHandler:
                 deps_list.append(asset_name+'_spin_deps')
                 self.needs_spin = True
             elif dep['data_type'] == 'ancillary':
-                asset_name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
-                deps_list.append(asset_name)
+                name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
+                deps_list.append(name)
             else:
-                asset_name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
-                deps_list.append(asset_name)
-                triggering_deps.append(asset_name)
+                name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
+                deps_list.append(name)
+                triggering_deps.append(name)
 
         self.spice_types = spice_types
         self.deps_list = deps_list

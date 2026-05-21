@@ -81,18 +81,31 @@ class IMAPScienceFileHandler:
             materializations = []
             for record in recent_db_records:
                 type = record.instrument + '_' + record.data_level + '_' + record.descriptor
-                with db.Session() as session:
-                    repoint = session.query(models.PointingTable).filter(models.PointingTable.pointing_id==record.repointing).all()[0]
-                partition_name = "repoint" + str(repoint.pointing_id) + "_" +repoint.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S") + "_to_" + repoint.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S") 
-                type = record.instrument + '_' + record.data_level + '_' + record.descriptor
-                materialization = dagster_utilities.get_materialization(context,
-                                                                        type,
-                                                                        partition_name,
-                                                                        [os.path.basename(record.file_path)],
-                                                                        str(int(record.version[1:])),
-                                                                        "science")
-                if materialization:
-                    materializations.append(materialization)
+
+                asset_graph = context.repository_def.asset_graph
+                
+                partitions_def = asset_graph.get(AssetKey(type)).partitions_def
+                
+                if not partitions_def:
+                    continue
+                if partitions_def.name == 'repoint_partitions':
+                    # We need to only materialize the repoint that this is a part of
+                    with db.Session() as session:
+                        repoint = session.query(models.PointingTable).filter(models.PointingTable.pointing_id==record.repointing).all()[0]
+                        affected_partitions = ["repoint" + str(repoint.pointing_id) + "_" +repoint.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S") + "_to_" + repoint.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S")]
+                else:
+                    # For any other type of science file, we need to materialize the partition that contains the start_date
+                    affected_partitions = custom_partitions.get_affected_partitions(context, partitions_def, record.start_date, record.start_date)
+                
+                for partition in affected_partitions:
+                    materialization = dagster_utilities.get_materialization(context,
+                                                                            type,
+                                                                            partition,
+                                                                            [os.path.basename(record.file_path)],
+                                                                            str(int(record.version[1:])),
+                                                                            "science")
+                    if materialization:
+                        materializations.append(materialization)
 
             return SensorResult(
                 asset_events=materializations,
