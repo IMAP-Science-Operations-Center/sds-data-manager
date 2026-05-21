@@ -2726,7 +2726,7 @@ def test_try_to_submit_job_l3_cron_job(session, batch_client, ecr_client):
     assert processing_job_record.instrument == "glows"
     assert processing_job_record.data_level == "l3b"
     # The dependency hash should be None for l3 cron jobs to allow for multiple runs
-    # with the same dependencies. The schedule lambda cron jobs gathers the
-    # dependencies within the job itself so we dont know at submission time whether the
-    # Job is a duplicate or not.
+    # with the same dependencies. The schedule lambda cron jobs gather the
+    # dependencies within the job itself so we don't know at submission time whether the
+    # job is a duplicate or not.
     assert processing_job_record.dependency_hash is None
