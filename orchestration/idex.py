@@ -130,7 +130,5 @@ def idex_l0_raw(context: AssetExecutionContext):
         raise Failure(description="Processing failed: No data found")
 
 
-
-L0_files = [
-    idex_l0_raw
-]
+L0_sensor = [watch_idex_l0_files]
+L0_asset = [idex_l0_raw]

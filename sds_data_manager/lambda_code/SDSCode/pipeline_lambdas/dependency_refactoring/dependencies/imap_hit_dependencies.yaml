@@ -46,19 +46,6 @@ l0_data: &l0_data
       data_type: l1b
       descriptor: hk
 
-(l1a, pha-telemetry-corrected):
-  partition: daily
-  inputs:
-    - source: hit
-      data_type: l0
-      descriptor: pha-telemetry-corrected
-  outputs:
-    - source: hit
-      data_type: l1a
-      descriptor: counts-standard
-    - source: hit
-      data_type: l1a
-      descriptor: direct-events
 
 (l1b, sectored-rates):
   partition: daily
@@ -235,4 +222,3 @@ l0_data: &l0_data
     - source: hit
       data_type: l3
       descriptor: macropixel
-

@@ -18,7 +18,7 @@ spice_basics: &spice_basics
 # ====== IDEX dependencies =============
 
 (l1a, all):
-  partition: daily
+  partition: 10d
   inputs:
     - *spice_basics
     - source: idex
@@ -27,35 +27,35 @@ spice_basics: &spice_basics
   outputs:
     - source: idex
       data_type: l1a
-      descriptor: sci-1week
+      descriptor: sci-10days
     - source: idex
       data_type: l1a
-      descriptor: msg
-    - source: idex
-      data_type: l1a
-      descriptor: catlst
+      descriptor: catlst-10days
     - source: idex
       data_type: l1b
-      descriptor: catlst
+      descriptor: catlst-10days
+    - source: idex
+      data_type: l1a
+      descriptor: msg-10days
 
-(l1a, msg):
-  partition: daily
+(l1b, msg-10days):
+  partition: 10d
   inputs:
     - source: idex
       data_type: l1a
-      descriptor: msg
+      descriptor: msg-10days
   outputs:
     - source: idex
-      data_type: l1a
-      descriptor: msg
+      data_type: l1b
+      descriptor: msg-10days
 
-(l1b, sci-1week):
+(l1b, sci-10days):
   partition: 10d
   inputs:
     - *spice_basics
     - source: idex
       data_type: l1a
-      descriptor: sci-1week
+      descriptor: sci-10days
     - source: spin
       data_type: spin
       descriptor: historical
@@ -80,14 +80,14 @@ spice_basics: &spice_basics
   outputs:
     - source: idex
       data_type: l1b
-      descriptor: sci-1week
+      descriptor: sci-10days
 
-(l2a, sci-1week):
+(l2a, sci-10days):
   partition: 10d
   inputs:
     - source: idex
       data_type: l1b
-      descriptor: sci-1week
+      descriptor: sci-10days
     - source: idex
       data_type: ancillary
       descriptor: l2a-calibration-curve-yield-params
@@ -97,25 +97,24 @@ spice_basics: &spice_basics
   outputs:
     - source: idex
       data_type: l2a
-      descriptor: sci-1week
+      descriptor: sci-10days
 
-(l2b, all-1mo):
-  # TODO: should this be 30d or 1mo partition?
+(l2b, all-30days):
   partition: 1mo
   inputs:
     - *spice_basics
     - source: idex
       data_type: l2a
-      descriptor: sci-1week
+      descriptor: sci-10days
       trigger_job: false
     - source: idex
       data_type: l1b
-      descriptor: msg
+      descriptor: msg-10days
       trigger_job: false
   outputs:
     - source: idex
       data_type: l2b
-      descriptor: sci-1mo
+      descriptor: sci-30days
     - source: idex
       data_type: l2c
-      descriptor: rectangular-map-1mo
+      descriptor: rectangular-map-30days
