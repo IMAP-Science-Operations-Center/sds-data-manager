@@ -9,37 +9,3 @@ storage:
         env: DAGSTER_PG_HOST # NOTE: You will need to extract the DB endpoint URL post-deployment or pass via secret.
       db_name: dagster
       port: 5432
-
-# Decouple asset runs from the Daemon process using the ECS run launcher
-run_launcher:
-  module: dagster_aws.ecs
-  class: EcsRunLauncher
-  config:
-    secrets:
-      - name: DAGSTER_PG_PASSWORD
-        valueFrom:
-          env: DAGSTER_PG_SECRET_ARN
-    env_vars:
-      - DAGSTER_PG_HOST
-      - S3_BUCKET
-      - ACCOUNT
-      - REGION
-      - SSM_API_KEY_PARAMETER
-    task_definition: 
-      env: DAGSTER_RUN_BASE_TASK_DEF_ARN # Populate with the output of the CDK build
-    container_name: "dagster-run"
-    cluster: 
-      env: DAGSTER_ECS_CLUSTER
-    subnets: 
-      - env: DAGSTER_SUBNET # Private execution subnets mapped from CDK setup
-    security_groups: 
-      - env: DAGSTER_SECURITY_GROUP
-    launch_type: FARGATE
-    use_current_ecs_task_config: false
-
-# Ensures asset state metadata points correctly to distributed instances
-run_coordinator:
-  module: dagster.core.run_coordinator
-  class: QueuedRunCoordinator
-  config:
-    max_concurrent_runs: 20 # Increase to allow many tasks to run/sleep concurrently
