@@ -23,7 +23,8 @@ MISSION_START_TIME = "2025-09-17T00:00:00"
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY POINTING NUMBER
 repoint_partitions = DynamicPartitionsDefinition(name="repoint_partitions")
-@sensor(default_status=DefaultSensorStatus.RUNNING)
+@sensor(default_status=DefaultSensorStatus.RUNNING,
+        minimum_interval_seconds=600)
 def add_repoint_partitions(context: SensorEvaluationContext):
     '''
     Periodically polls the PointingTable, and tells dagster that new repoint numbers exist.

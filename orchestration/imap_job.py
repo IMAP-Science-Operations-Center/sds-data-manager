@@ -66,13 +66,29 @@ priority_levels = {'l0':'0',
                     'l3c':'13',
                     'l3d':'14',}
 
+_sensor_schedule = {'l0':600,
+                    'l1a':600,
+                    'l1b':600,
+                    'l1c':600,
+                    'l1d':600,
+                    'l2': 600,
+                    'l2a':600,
+                    'l2b':600,
+                    'l2c':600,
+                    'l2d':600,
+                    'l3':600,
+                    'l3a':600,
+                    'l3b':600,
+                    'l3c':600,
+                    'l3d':600}
+
 _partition_map = {
             "daily":   custom_partitions.daily_partitions,
             "repoint": custom_partitions.repoint_partitions,
             "10d":     custom_partitions.idex10_partitions,
             # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
             # maps to exactly 30 days. If this changes, this logic will need update.
-            "1mo":     custom_partitions.idex30_partitions,
+            "30d":     custom_partitions.idex30_partitions,
             # TODO: add cadence custom partition definition and update to use those
             # later
             "3mo":     custom_partitions.idex30_partitions,
@@ -83,7 +99,11 @@ _partition_map = {
 class IMAPJobHandler:
     """Handle IMAP job dependencies and submission."""
 
-    def __init__(self, asset_name, partition):
+    def __init__(self, 
+                 asset_name: str, 
+                 partition: str, 
+                 inputs: list[DependencyNode], 
+                 outputs: list[DependencyNode]):
         """Initialize handler with job node and process dependencies.
 
         Parameters
@@ -98,25 +118,15 @@ class IMAPJobHandler:
         
         self.source, self.data_type, self.descriptor = asset_name.split("_")
         
-        try:
-            self.outputs = outputs_dict[asset_name]
-        except:
-            self.outputs = [asset_name]
-        
         self.asset_name = asset_name.replace("-", "")
-        dependency_config = DependencyConfigReader()
-        key = (self.source, self.data_type, self.descriptor)
-        self.outputs = dependency_config.outputs(key)
-        potential_deps_list = list(dependency_config.inputs(key))
 
-        partitions_def = dependency_config.partition(key)
-        self.partitions_def = _partition_map.get(partitions_def)
-
+        self.partitions_def = _partition_map.get(partition)
+        self.sensor_schedule = _sensor_schedule.get(self.data_type, 600)
 
         spice_types = set()
         deps_list = set()
         triggering_deps = set() 
-        for dep in potential_deps_list:
+        for dep in inputs:
             if dep.source == 'repoint':
                 self.needs_repoint_file = True
                 deps_list.add(asset_name+'_repoint_file_deps')
@@ -139,10 +149,11 @@ class IMAPJobHandler:
 
         self.spice_types = list(spice_types)
         self.deps_list = list(deps_list)
+        self.outputs = outputs
         self.triggering_deps = list(triggering_deps)
 
         
-        outputs_for_job = [f"{x.source}_{x.data_type}_{x.descriptor}".replace("-", "") for x in self.outputs]
+        outputs_for_job = [f"{x.source}_{x.data_type}_{x.descriptor}".replace("-", "") for x in outputs]
 
         self.job = define_asset_job(name=f"{self.asset_name}_processing_job",
                                     selection=AssetSelection.keys(*outputs_for_job),
@@ -460,7 +471,7 @@ class IMAPJobHandler:
         @sensor(
             name=sensor_name,
             job=self.job,
-            minimum_interval_seconds=60,
+            minimum_interval_seconds=self.sensor_schedule,
             default_status=DefaultSensorStatus.RUNNING
         )
         def _sensor(context: SensorEvaluationContext):

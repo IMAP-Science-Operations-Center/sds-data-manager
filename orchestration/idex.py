@@ -22,7 +22,7 @@ from orchestration.imap_job import IMAPJobHandler
 MISSION_START_TIME = "2025-09-24T00:00:00"
 
 @sensor(asset_selection=AssetSelection.all(),
-        minimum_interval_seconds=300,
+        minimum_interval_seconds=600,
         default_status=DefaultSensorStatus.RUNNING)
 def watch_idex_l0_files(context):
     '''
