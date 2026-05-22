@@ -36,20 +36,20 @@ for potential_job in dependency_config._config.keys():
 
 # Now using handlers, create assets for each handler:
 #   1. create asset using handler.build_asset()
-#   2. create assets for spice, spin, and attitude_pointing
+#   2. create assets for spice, spin, and a repoint file
 # store in assets list
 assets_to_build = ancillary_handlers + l0_job_handlers + non_l0_job_handlers
 batch_jobs = [x.build_asset() for x in assets_to_build]
 spice_jobs = [x.build_spice_deps_asset() for x in assets_to_build if x.needs_spice]
 spin_jobs = [x.build_spin_deps_asset() for x in assets_to_build if x.needs_spin]
-attitude_pointing_jobs = [
-    x.build_attitude_pointing_deps_asset()
+repoint_file_jobs = [
+    x.build_repoint_file_deps_asset()
     for x in assets_to_build
-    if x.needs_pointing_attitude
+    if x.needs_repoint_file
 ]
 
-assets = spice_jobs + batch_jobs + spin_jobs + attitude_pointing_jobs + idex.L0_asset
+assets = spice_jobs + batch_jobs + spin_jobs + repoint_file_jobs + idex.L0_asset
 
 # Now for each asset, create a sensor using handler.build_sensor().
 # store in sensors list
-sensors = [x.build_sensor() for x in assets_to_build]
+sensors = [x.build_sensor() for x in assets_to_build] + idex.L0_sensor

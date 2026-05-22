@@ -27,11 +27,9 @@ from dagster import (
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
-from orchestration.dependency_refactoring.dependency_new import DependencyConfigReader
-from orchestration.dependency_refactoring.utils import UpstreamDependencyNode
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
-from orchestration import spice, spin, repoint_file
-from orchestration import custom_partitions
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import DependencyConfigReader
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.types import DependencyNode
+from orchestration import spice, spin, repoint_file, custom_partitions
 from orchestration.dagster_utilities import get_materialization_result
 import imap_data_access
 from imap_data_access import processing_input
@@ -124,7 +122,7 @@ class IMAPJobHandler:
                 deps_list.add(asset_name+'_repoint_file_deps')
             elif dep.data_type == 'spice':
                 deps_list.add(asset_name+'_spice_deps')
-                spice_types.add(dep['source'])
+                spice_types.add(dep.source)
                 self.needs_spice = True
             elif dep.data_type == 'spin':
                 deps_list.add(asset_name+'_spin_deps')

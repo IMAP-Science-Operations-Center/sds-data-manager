@@ -221,4 +221,3 @@ l0_data: &l0_data
     - source: hit
       data_type: l3
       descriptor: macropixel
-
