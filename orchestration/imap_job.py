@@ -31,6 +31,7 @@ from orchestration.dependency_refactoring.dependency_new import DependencyConfig
 from orchestration.dependency_refactoring.utils import UpstreamDependencyNode
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
 from orchestration import spice, spin, repoint_file
+from orchestration import custom_partitions
 from orchestration.dagster_utilities import get_materialization_result
 import imap_data_access
 from imap_data_access import processing_input
@@ -67,6 +68,20 @@ priority_levels = {'l0':'0',
                     'l3c':'13',
                     'l3d':'14',}
 
+_partition_map = {
+            "daily":   custom_partitions.daily_partitions,
+            "repoint": custom_partitions.repoint_partitions,
+            "10d":     custom_partitions.idex10_partitions,
+            # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
+            # maps to exactly 30 days. If this changes, this logic will need update.
+            "1mo":     custom_partitions.idex30_partitions,
+            # TODO: add cadence custom partition definition and update to use those
+            # later
+            "3mo":     custom_partitions.idex30_partitions,
+            "6mo":     custom_partitions.idex30_partitions,
+            "1yr":     custom_partitions.whole_mission_partition,
+        }
+
 class IMAPJobHandler:
     """Handle IMAP job dependencies and submission."""
 
@@ -91,40 +106,46 @@ class IMAPJobHandler:
             self.outputs = [asset_name]
         
         self.asset_name = asset_name.replace("-", "")
-        _config = DependencyConfigReader().config
-        potential_deps_list = [dep.serialize() for dep in _config[(self.source, self.data_type, self.descriptor)]]
+        dependency_config = DependencyConfigReader()
+        key = (self.source, self.data_type, self.descriptor)
+        self.outputs = dependency_config.outputs(key)
+        potential_deps_list = list(dependency_config.inputs(key))
 
-        self.partitions_def = partition
+        partitions_def = dependency_config.partition(key)
+        self.partitions_def = _partition_map.get(partitions_def)
+
 
         spice_types = set()
         deps_list = set()
         triggering_deps = set() 
         for dep in potential_deps_list:
-            if dep['source'] == 'repoint':
+            if dep.source == 'repoint':
                 self.needs_repoint_file = True
                 deps_list.add(asset_name+'_repoint_file_deps')
-            elif dep['data_type'] == 'spice':
+            elif dep.data_type == 'spice':
                 deps_list.add(asset_name+'_spice_deps')
                 spice_types.add(dep['source'])
                 self.needs_spice = True
-            elif dep['data_type'] == 'spin':
+            elif dep.data_type == 'spin':
                 deps_list.add(asset_name+'_spin_deps')
                 self.needs_spin = True
-            elif dep['data_type'] == 'ancillary':
-                name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
+            elif dep.data_type == 'ancillary':
+                name = dep.source + '_' + dep.data_type + '_' + dep.descriptor
                 deps_list.add(name)
             else:
-                # TODO: Right now we are only kicking off on science files!
-                name = dep['source'] + '_' + dep['data_type'] + '_' + dep['descriptor']
+                name = dep.source + '_' + dep.data_type + '_' + dep.descriptor
                 deps_list.add(name)
                 triggering_deps.add(name)
+                if dep.trigger_job:
+                    triggering_deps.add(name)
 
         self.spice_types = list(spice_types)
         self.deps_list = list(deps_list)
         self.triggering_deps = list(triggering_deps)
 
         
-        outputs_for_job = [x.replace("-","") for x in self.outputs]
+        outputs_for_job = [f"{x.source}_{x.data_type}_{x.descriptor}".replace("-", "") for x in self.outputs]
+
         self.job = define_asset_job(name=f"{self.asset_name}_processing_job",
                                     selection=AssetSelection.keys(*outputs_for_job),
                                     tags={"dagster/priority": priority_levels.get(self.data_type, '0')})
@@ -145,7 +166,8 @@ class IMAPJobHandler:
         deps_keys = [AssetKey(dep.replace("-", "")) for dep in self.deps_list]
         output_assets = {}
         for out in self.outputs:
-            output_assets[out.replace("-", "")] = AssetOut(is_required=False) 
+            asset_key = f"{out.source}_{out.data_type}_{out.descriptor}".replace("-", "")
+            output_assets[asset_key] = AssetOut(is_required=False)
 
         @multi_asset(
             name=f"{self.asset_name}_multi_asset_op",
@@ -172,7 +194,8 @@ class IMAPJobHandler:
             already_processed = False
             with db.Session() as session:
                 for output in self.outputs:
-                    descriptor = output.split("_")[2]
+                    descriptor = output.descriptor
+                    output_asset_name = f"{output.source}_{output.data_type}_{output.descriptor}"
                     previous_file = self.is_duplicate_job(context,
                                                         session,
                                                         dependency_inputs,
@@ -221,12 +244,11 @@ class IMAPJobHandler:
                     '''
                     #if submit_status.status == 'submitted':
                     for output in self.outputs:
-                        context.log.info(f"Waiting for data product {output} to complete.")
-                        context.log.info(f"Start Date: {start_date}")
-                        context.log.info(f"Job Version: {job_version}")
+                        output_asset_name = f"{output.source}_{output.data_type}_{output.descriptor}"
+                        context.log.info(f"Waiting for data product {output_asset_name} to complete")
                         file = self.wait_for_file(context,
                                                 session,
-                                                output,
+                                                output_asset_name,
                                                 job_version,
                                                 repointing=pointing_number,
                                                 start_date=start_date.strftime("%Y%m%d"),
@@ -502,7 +524,7 @@ class IMAPJobHandler:
 
         return _sensor
 
-    def process_job(self, potential_job_node: UpstreamDependencyNode):
+    def process_job(self, potential_job_node: DependencyNode):
         """Process the job by resolving dependencies and submitting to batch."""
         
 

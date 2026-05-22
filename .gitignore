@@ -44,3 +44,6 @@ app*dev.py
 
 # Sphinx documentation
 docs/build/
+
+#Dagster testing
+.tmp*/

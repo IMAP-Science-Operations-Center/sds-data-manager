@@ -199,10 +199,15 @@ def test_load_all_dependencies_all_instruments():
 
     It tests that we parse them into the expected config format.
     """
-    config = DependencyConfigReader().config
+    reader = DependencyConfigReader()
 
-    # Verify config is loaded and not empty
-    assert len(config) > 0
+    # Verify inputs, outputs, and partition are loaded and not empty
+    assert len(reader._config) > 0
+
+    # All keys are accessible via each method
+    for key in reader._config:
+        assert isinstance(reader.inputs(key), list)
+        assert isinstance(reader.outputs(key), list)
 
 
 @patch(
@@ -249,27 +254,26 @@ def test_load_all_dependencies_empty_yaml(mock_file, mock_yaml_load):
 )
 def test_swe_dependency_config():
     """Test that SWE dependencies are loaded correctly from YAML."""
-    config = DependencyConfigReader().config
+    reader = DependencyConfigReader()
 
     # Check that SWE L1A all descriptor has expected dependencies
     l1a_potential_job_node = ("swe", "l1a", "all")
     l1b_potential_job_node = ("swe", "l1b", "sci")
     l2_potential_job_node = ("swe", "l2", "sci")
     l3_potential_job_node = ("swe", "l3", "sci")
-    assert l1a_potential_job_node in config
-    assert l1b_potential_job_node in config
-    assert l2_potential_job_node in config
-    assert l3_potential_job_node in config
+    assert l1a_potential_job_node in reader._config
+    assert l1b_potential_job_node in reader._config
+    assert l2_potential_job_node in reader._config
+    assert l3_potential_job_node in reader._config
 
-    # Check that upstream is what we expected
-    l1a_potential_job_upstream_deps = config[l1a_potential_job_node]
-    assert len(l1a_potential_job_upstream_deps) == 3
+    # Check that upstream inputs are what we expected for (swe, l1a, all)
+    # Inputs: l0/raw, leapseconds/spice, spacecraft_clock/spice
+    l1a_inputs = reader.inputs(l1a_potential_job_node)
+    assert len(l1a_inputs) == 3
 
-    # Now check that upstream dependencies are what we expected for
-    # (swe, l1a, all)
-    l0_upstream_dependency = l1a_potential_job_upstream_deps[0]
-    leapseconds_upstream_dependency = l1a_potential_job_upstream_deps[1]
-    spacecraft_clock_upstream_dependency = l1a_potential_job_upstream_deps[2]
+    l0_upstream_dependency = l1a_inputs[0]
+    leapseconds_upstream_dependency = l1a_inputs[1]
+    spacecraft_clock_upstream_dependency = l1a_inputs[2]
     assert l0_upstream_dependency.source == "swe"
     assert l0_upstream_dependency.data_type == "l0"
     assert l0_upstream_dependency.descriptor == "raw"
@@ -290,3 +294,19 @@ def test_swe_dependency_config():
     assert spacecraft_clock_upstream_dependency.required is True
     assert spacecraft_clock_upstream_dependency.trigger_job is False
     assert spacecraft_clock_upstream_dependency.dependency_query_time_range == []
+
+    # Check outputs (required=False)
+    l1a_outputs = reader.outputs(l1a_potential_job_node)
+    assert len(l1a_outputs) == 2
+
+    swe_l1a_sci_output = l1a_outputs[0]
+    swe_l1a_hk_output = l1a_outputs[1]
+    assert swe_l1a_sci_output.source == "swe"
+    assert swe_l1a_sci_output.data_type == "l1a"
+    assert swe_l1a_sci_output.descriptor == "sci"
+    assert swe_l1a_sci_output.required is False
+
+    assert swe_l1a_hk_output.source == "swe"
+    assert swe_l1a_hk_output.data_type == "l1a"
+    assert swe_l1a_hk_output.descriptor == "hk"
+    assert swe_l1a_hk_output.required is False

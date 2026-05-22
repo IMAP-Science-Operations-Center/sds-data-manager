@@ -12,6 +12,7 @@ from aws_cdk import aws_rds as rds
 from sds_data_manager.constructs import (
     api_gateway_construct,
     backup_bucket_construct,
+    dagster_construct,
     data_bucket_construct,
     database_construct,
     ialirt_alarm_construct,
@@ -470,7 +471,63 @@ def build_sds(
         secret_name=ialirt_secret_name,
         account_name=account_name,
     )
+     # Dagster Stack
+    # Repo root is three levels up from this file (sds_data_manager/utils/stackbuilder.py)
+    repo_root = str(Path(__file__).parent.parent.parent)
 
+    dagster_repo_stack = dagster_construct.ElasticContainerRegistryStack(
+        scope,
+        "DagsterImageECR",
+        repo_name="dagster-image",
+        untagged_image_duration=7,
+        env=env,
+    )
+
+    dagster_image_stack = dagster_construct.DockerImageStack(
+        scope,
+        "DagsterImageStack",
+        image_name="DagsterImage",
+        directory=repo_root,
+        file="Dockerfile",
+        ecr=dagster_repo_stack.repo.repository_uri,
+        env=env,
+    )
+
+    # TODO: Note for Tenzin:
+    # Create RDS here.
+    # Then add connections information to below env_vars dict.
+    # These are information needed by daster to connect to RDS:
+    #   username
+    #   DAGSTER_PG_PASSWORD
+    #   DAGSTER_PG_HOST
+    #   db_name
+    #   username: dagster
+    #   port: 5432
+    # 
+    # Dagster will look for DB credentails through dagster.yaml in
+    # orchestration/dagster.yaml.
+    # In there, it's going to read DAGSTER_PG_PASSWORD and DAGSTER_PG_HOST.
+    # Other credentials listed above will be set as default when creating RDS.
+
+    dagster_env_vars = {
+        "S3_BUCKET": f"sds-data-{env.account}",
+        "SECRET_NAME": "sdp-database-cred",
+        "ACCOUNT": env.account,
+        "REGION": env.region,
+        "IMAP_DATA_ACCESS_URL": account_config.get(
+            "imap_data_access_url", "https://api.dev.imap-mission.com"
+        ),
+        "SSM_API_KEY_PARAMETER": "/imap-sdc/batch-jobs/api-key",
+    }
+
+    dagster_ecs_stack = dagster_construct.DagsterEcsStack(
+        scope,
+        "DagsterEcsStack",
+        vpc=networking.vpc,
+        env_vars=dagster_env_vars,
+        env=env,
+    )
+    dagster_ecs_stack.node.add_dependency(dagster_image_stack)
 
 def build_backup(scope: App, env: Environment, source_account: str):
     """Build backup bucket with permissions for replication from source_account.
