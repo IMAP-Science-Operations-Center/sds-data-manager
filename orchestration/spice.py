@@ -201,7 +201,7 @@ def get_upstream_dependency_inputs_spice(
     return metakernel_files
 
 @sensor(asset_selection=AssetSelection.all(),
-        minimum_interval_seconds=30,
+        minimum_interval_seconds=600,
         default_status=DefaultSensorStatus.RUNNING)
 def spice_file_sensor(context: SensorEvaluationContext):
 

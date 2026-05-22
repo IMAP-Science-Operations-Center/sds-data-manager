@@ -20,6 +20,19 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 
 MISSION_START_TIME = "2025-09-17T00:00:00"
 
+_partition_map = {
+            "daily":   custom_partitions.daily_partitions,
+            "repoint": custom_partitions.repoint_partitions,
+            "10d":     custom_partitions.idex10_partitions,
+            # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
+            # maps to exactly 30 days. If this changes, this logic will need update.
+            "1mo":     custom_partitions.idex30_partitions,
+            # TODO: add cadence custom partition definition and update to use those
+            # later
+            "3mo":     custom_partitions.idex30_partitions,
+            "6mo":     custom_partitions.idex30_partitions,
+            "1yr":     custom_partitions.whole_mission_partition,
+        }
 
 class IMAPScienceFileHandler:
     """Handle IMAP files that have no associated jobs."""
@@ -31,7 +44,7 @@ class IMAPScienceFileHandler:
 
         self.asset_name = asset_name
         self.source, self.data_type, self.descriptor = self.asset_name.split("_")
-        self.partitions_def = partition
+        self.partitions_def = _partition_map.get(partition)
         
     def build_asset(self):
         return AssetSpec(key=AssetKey([self.asset_name]), partitions_def=self.partitions_def)
@@ -40,7 +53,8 @@ class IMAPScienceFileHandler:
         sensor_name = f"{self.asset_name.replace('-', '')}_sensor"
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
-                default_status=DefaultSensorStatus.RUNNING)
+                default_status=DefaultSensorStatus.RUNNING,
+                minimum_interval_seconds=600)
         def _file_sensor(context: SensorEvaluationContext):
             
             start_date = context.cursor or MISSION_START_TIME
@@ -133,7 +147,8 @@ class IMAPAncillaryFileHandler:
         sensor_name = f"{self.asset_name.replace('-', '')}_sensor"
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
-                default_status=DefaultSensorStatus.RUNNING)
+                default_status=DefaultSensorStatus.RUNNING,
+                minimum_interval_seconds=600)
         def _file_sensor(context: AssetExecutionContext):
 
             stmt = (
