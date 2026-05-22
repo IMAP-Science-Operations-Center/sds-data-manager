@@ -209,31 +209,6 @@ spice_l2: &spice_l2
       data_type: l1a
       descriptor: 90sensor-rates
 
-(l1b, 45sensor-badtimes):
-  partition: repoint
-  inputs:
-    - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-extendedspin
-    - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-goodtimes
-  outputs:
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-goodtimes
-    - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-de
-    - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-extendedspin
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-de
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-extendedspin
 
 (l1b, 45sensor-de):
   partition: repoint
@@ -326,54 +301,6 @@ spice_l2: &spice_l2
     - source: ultra
       data_type: l1b
       descriptor: 45sensor-extendedspin
-
-(l1b, 45sensor-goodtimes):
-  partition: repoint
-  inputs:
-    - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-extendedspin
-  outputs:
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-goodtimes
-    - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-de
-    - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-extendedspin
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-de
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-extendedspin
-(l1b, 90sensor-badtimes):
-  partition: repoint
-  inputs:
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-extendedspin
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-goodtimes
-  outputs:
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-goodtimes
-    - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-de
-    - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-extendedspin
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-de
-    - source: ultra
-      data_type: l1b
-      descriptor: 90sensor-extendedspin
 
 (l1b, 90sensor-de):
   partition: repoint
@@ -1521,4 +1448,3 @@ spice_l2: &spice_l2
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-6deg-6mo
-
