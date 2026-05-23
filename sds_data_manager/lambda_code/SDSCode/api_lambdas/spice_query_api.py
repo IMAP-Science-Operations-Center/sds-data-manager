@@ -113,21 +113,21 @@ def lambda_handler(event, context):
 
         search_results = session.execute(query).scalars().all()
 
-    search_results = [
-        _convert_spice_metadata_model_to_dict(result) for result in search_results
-    ]
-    logger.debug(
-        "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
-    )
+        search_results = [
+            _convert_spice_metadata_model_to_dict(result) for result in search_results
+        ]
+        logger.debug(
+            "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
+        )
 
-    # Format the response
-    response = {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(search_results),  # returns a list of tuples
-    }
+        # Format the response
+        response = {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(search_results),  # returns a list of tuples
+        }
 
-    return response
+        return response
 
 
 def _convert_spice_metadata_model_to_dict(file: models.SPICEFiles) -> dict:

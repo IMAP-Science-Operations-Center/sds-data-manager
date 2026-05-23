@@ -128,30 +128,30 @@ def lambda_handler(event, context):  # noqa: PLR0912
     with db.Session() as session:
         search_results = session.execute(query).all()
 
-    # Convert the search results (list of tuples) to a list of dicts
-    search_results = [result._asdict() for result in search_results]
+        # Convert the search results (list of tuples) to a list of dicts
+        search_results = [result._asdict() for result in search_results]
 
-    # Convert datetimes to string values of format 'YYYYMMDD'
-    # Also remove values that are not needed by users
-    for result in search_results:
-        result["start_date"] = result["start_date"].strftime("%Y%m%d")
-        if result.get("end_date"):
-            result["end_date"] = result["end_date"].strftime("%Y%m%d")
-        d = result["ingestion_date"]
-        if d.tzinfo is not None:
-            # If the datetime has a timezone, convert it to UTC and remove the timezone
-            d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
-        result["ingestion_date"] = d.strftime("%Y%m%d %H:%M:%S")
+        # Convert datetimes to string values of format 'YYYYMMDD'
+        # Also remove values that are not needed by users
+        for result in search_results:
+            result["start_date"] = result["start_date"].strftime("%Y%m%d")
+            if result.get("end_date"):
+                result["end_date"] = result["end_date"].strftime("%Y%m%d")
+            d = result["ingestion_date"]
+            if d.tzinfo is not None:
+                # If the datetime has a timezone, convert it to UTC and remove the timezone
+                d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            result["ingestion_date"] = d.strftime("%Y%m%d %H:%M:%S")
 
-    logger.info(
-        "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
-    )
+        logger.info(
+            "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
+        )
 
-    # Format the response
-    response = {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(search_results),  # returns a list of tuples
-    }
+        # Format the response
+        response = {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(search_results),  # returns a list of tuples
+        }
 
     return response

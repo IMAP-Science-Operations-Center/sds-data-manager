@@ -2,21 +2,59 @@ import json
 import logging
 import datetime
 from dagster import (
+    asset,
     sensor, 
     SensorEvaluationContext, 
     SensorResult, 
     AssetSelection,
-    DefaultSensorStatus
+    DefaultSensorStatus,
+    Failure
 )
 import imap_data_access
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
-from orchestration import custom_partitions, dagster_utilities
+from orchestration import dagster_utilities
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 MISSION_START_TIME = "2025-09-17T00:00:00"
+
+def build_spice_deps_asset(asset_name, partitions_def, spice_types):
+    '''
+    This function will take in various spice_types and make an asset
+    '''
+
+    @asset(
+        name=asset_name,
+        partitions_def=partitions_def,
+        output_required=False
+    )
+    def _generic_spice_maker(context):
+
+        # Will use this in the future to limit SPICE queries 
+        current_partition = context.partition_key
+        parts = context.partition_key.split("_")
+        start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+        end_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+
+        spice_files = get_upstream_dependency_inputs_spice(spice_types, 
+                                                            start_date,
+                                                            end_date)
+
+        if spice_files:
+            materialization = dagster_utilities.get_materialization_result(context,
+                                                                            asset_name,
+                                                                            current_partition,
+                                                                            spice_files,
+                                                                            "0",
+                                                                            "spice")
+            if materialization:
+                yield materialization
+        else:
+            raise Failure(description="Processing failed: No data found")
+
+    return _generic_spice_maker
 
 def check_requested_kernels(combined_kernel_sources, metakernel_files):
     """Check if all requested kernels are present in the metakernel files.
@@ -221,7 +259,7 @@ def spice_file_sensor(context: SensorEvaluationContext):
         min_dt = cursor_date
         max_dt = cursor_date + datetime.timedelta(days=7)                           
         latest_ingestion_date = max_dt
-        for run in dagster_utilities.run_all_affected_partitions(context, "spice_dep", min_dt, max_dt, cursor_suffix):
+        for run in dagster_utilities.run_all_affected_partitions(context, "spice_collection_", min_dt, max_dt, cursor_suffix):
             yield run
     else:
         with db.Session() as session:
@@ -239,7 +277,7 @@ def spice_file_sensor(context: SensorEvaluationContext):
 
                 min_dt = file.min_date_datetime
                 max_dt = file.max_date_datetime
-                for run in dagster_utilities.run_all_affected_partitions(context, "spice_dep", min_dt, max_dt, cursor_suffix):
+                for run in dagster_utilities.run_all_affected_partitions(context, "spice_collection_", min_dt, max_dt, cursor_suffix):
                     yield run
 
     context.update_cursor(latest_ingestion_date.isoformat())

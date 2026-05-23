@@ -1,6 +1,6 @@
 from imap_data_access import VALID_DATALEVELS
 
-from orchestration import idex
+from orchestration import idex, spice, spin, repoint_file
 from orchestration.imap_file import IMAPAncillaryFileHandler, IMAPScienceFileHandler
 from orchestration.imap_job import IMAPJobHandler
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import (
@@ -81,16 +81,18 @@ spin_jobs = []
 repoint_file_jobs = []
 repoint_jobs_created = set()
 spin_jobs_created = set()
+spice_jobs_created = set()
 for asset in assets_to_build:
     batch_jobs.append(asset.build_asset())
     sensors.append(asset.build_sensor())
-    if asset.needs_spice:
-        spice_jobs.append(asset.build_spice_deps_asset())
-    if asset.needs_spin and asset.spin_dependency_name not in spin_jobs_created:
-        spin_jobs.append(asset.build_spin_deps_asset())
+    if asset.spice_dependency_name and asset.spice_dependency_name not in spice_jobs_created:
+        spice_jobs.append(spice.build_spice_deps_asset(asset.spice_dependency_name, asset.partitions_def, asset.spice_types))
+        spice_jobs_created.add(asset.spice_dependency_name)
+    if asset.spin_dependency_name and asset.spin_dependency_name not in spin_jobs_created:
+        spin_jobs.append(spin.build_spin_deps_asset(asset.spin_dependency_name, asset.partitions_def))
         spin_jobs_created.add(asset.spin_dependency_name)
-    if asset.needs_repoint_file and asset.repoint_file_dependency_name not in repoint_jobs_created:
-        repoint_file_jobs.append(asset.build_repoint_file_deps_asset())
+    if asset.repoint_file_dependency_name and asset.repoint_file_dependency_name not in repoint_jobs_created:
+        repoint_file_jobs.append(repoint_file.build_repoint_file_deps_asset(asset.repoint_file_dependency_name, asset.partitions_def))
         repoint_jobs_created.add(asset.repoint_file_dependency_name)
 
 assets = spice_jobs + batch_jobs + spin_jobs + repoint_file_jobs + idex.L0_asset
