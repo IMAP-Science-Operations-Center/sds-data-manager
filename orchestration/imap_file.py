@@ -38,9 +38,9 @@ class IMAPScienceFileHandler:
     """Handle IMAP files that have no associated jobs."""
 
     def __init__(self, asset_name, partition):
-        self.needs_spin = False
-        self.needs_repoint_file = False
-        self.needs_spice = False
+        self.spin_dependency_name = None
+        self.repoint_file_dependency_name = None
+        self.spice_dependency_name = None
         
         self.source, self.data_type, self.descriptor = asset_name.split("_")
         self.asset_name = asset_name.replace('-', '')
@@ -132,9 +132,9 @@ class IMAPAncillaryFileHandler:
     """Handle IMAP job dependencies and submission."""
 
     def __init__(self, asset_name):
-        self.needs_spin = False
-        self.needs_repoint_file = False
-        self.needs_spice = False
+        self.spin_dependency_name = None
+        self.repoint_file_dependency_name = None
+        self.spice_dependency_name = None
 
         self.source, self.data_type, self.descriptor = asset_name.split("_")
         self.asset_name = asset_name.replace('-', '')
