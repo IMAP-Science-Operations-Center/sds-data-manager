@@ -35,8 +35,7 @@ RUN poetry install --with layer-database && poetry install --with layer-spice &&
 
 # Set up the Dagster home directory and copy the system configuration
 # Dagster looks for dagster.yaml in $DAGSTER_HOME
-RUN mkdir -p $DAGSTER_HOME 
-# && cp orchestration/dagster.yaml $DAGSTER_HOME/
+RUN mkdir -p $DAGSTER_HOME && cp orchestration/dagster.yaml $DAGSTER_HOME/
 
 # The CMD is technically overridden by the CDK for the Webserver and Daemon tasks,
 # but providing a default makes the image easier to test locally.
