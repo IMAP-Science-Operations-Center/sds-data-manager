@@ -8,6 +8,7 @@ import boto3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+_ENGINE = None
 
 def get_engine():
     """Create engine from DB URI.
@@ -17,6 +18,10 @@ def get_engine():
         sqlalchemy.engine.Engine : Engine
 
     """
+    global _ENGINE
+    if _ENGINE is not None:
+        return _ENGINE
+
     secret_name = os.getenv("SECRET_NAME")
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager")
@@ -24,13 +29,26 @@ def get_engine():
     db_config = json.loads(secret_string)
     db_uri = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
 
+    _ENGINE = create_engine(
+        db_uri, 
+        pool_size=10,        # Keep 10 connections open and ready
+        max_overflow=20,     # Allow up to 10 extra temporary connections
+        pool_pre_ping=True   # Ensures connections don't go stale
+    )
+
     return create_engine(db_uri)
 
 
 @contextmanager
 def Session():  # noqa: N802
-    """Create session from engine.
-
-    Setting it up this way allows us to more easily mock this behavior in tests.
-    """
-    yield sessionmaker(get_engine())()
+    """Create session from engine."""
+    # This now pulls from the shared connection pool!
+    session = sessionmaker(bind=get_engine())()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close() # Returns the connection to the pool, doesn't destroy it

@@ -8,8 +8,7 @@ from dagster import (
     SensorEvaluationContext,
     SensorResult,
     sensor,
-    DefaultSensorStatus,
-    RunRequest
+    DefaultSensorStatus
 )
 import datetime
 
@@ -32,23 +31,23 @@ def add_repoint_partitions(context: SensorEvaluationContext):
     with db.Session() as session:
         pointing_records = session.query(models.PointingTable).all()
     
-    if not pointing_records:
-        return SensorResult()
+        if not pointing_records:
+            return SensorResult()
 
-    existing_partitions = context.instance.get_dynamic_partitions("repoint_partitions")
+        existing_partitions = context.instance.get_dynamic_partitions("repoint_partitions")
 
-    pointing_partition_names = []
-    for repoint in pointing_records:
-        if not repoint.pointing_start_utc or not repoint.pointing_end_utc:
-            continue
-        partition_name = "repoint" + str(repoint.pointing_id) + "_" +repoint.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S") + "_to_" + repoint.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S") 
-        if partition_name in existing_partitions:
-            continue
-        pointing_partition_names.append(partition_name)
-    partition_requests = []
-    if pointing_partition_names:
-        partition_requests.append(repoint_partitions.build_add_request(pointing_partition_names))
-        context.log.info(f"Registered new dynamic partitions: {pointing_partition_names}")
+        pointing_partition_names = []
+        for repoint in pointing_records:
+            if not repoint.pointing_start_utc or not repoint.pointing_end_utc:
+                continue
+            partition_name = "repoint" + str(repoint.pointing_id) + "_" +repoint.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S") + "_to_" + repoint.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S") 
+            if partition_name in existing_partitions:
+                continue
+            pointing_partition_names.append(partition_name)
+        partition_requests = []
+        if pointing_partition_names:
+            partition_requests.append(repoint_partitions.build_add_request(pointing_partition_names))
+            context.log.info(f"Registered new dynamic partitions: {pointing_partition_names}")
 
     return SensorResult(
         dynamic_partitions_requests=partition_requests
@@ -196,67 +195,6 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
         dynamic_partitions_requests=partition_requests,
         cursor=end_dt.isoformat()
     )
-
-def run_all_affected_partitions(context, 
-                                asset_key_phrase,
-                                min_dt,
-                                max_dt,
-                                suffix):
-    '''
-    This function loops through all assets, looking for the "asset_key_phrase". Then, it yields 
-    a run request for those assets at the partitions that exist between min_dt and max_dt. 
-    '''
-    _cache = {}
-    asset_graph = context.repository_def.asset_graph
-    for asset_key in asset_graph.get_all_asset_keys():
-        context.log.info(f"Determining affected partitions from {asset_key}")
-        if asset_key_phrase not in asset_key.to_user_string():
-            continue # This asset is not applicable
-        context.log.info(f"Found spice partition: {asset_key}")
-        partitions_def = asset_graph.get(asset_key).partitions_def
-        
-        if not partitions_def:
-            continue
-
-        # This serves to cache the partitions so we don't need to calculate them twice. 
-        if partitions_def.name not in _cache:
-            affected_partitions = get_affected_partitions(context, partitions_def, min_dt, max_dt)
-            _cache[partitions_def.name] = affected_partitions
-        else:
-            affected_partitions = _cache[partitions_def.name]
-
-        for partition in affected_partitions:
-            yield RunRequest(
-                run_key=f"{asset_key.to_user_string()}_{partition}_{suffix}",
-                partition_key=partition,
-                asset_selection=[asset_key]
-            )
-
-def get_affected_partitions(context, 
-                            partitions_def, 
-                            min_dt, 
-                            max_dt):
-    '''
-    This is a helper function that returns a set of the repoint partitions that between within 
-    two datetime objects. 
-    '''
-    context.log.info(f"Checking for matching partitions in the time range of {min_dt} to {max_dt}")
-    keys = partitions_def.get_partition_keys(dynamic_partitions_store=context.instance)
-    affected_keys = []
-    for key in keys:
-        context.log.info(f"Checking this partition key: {key}")
-        date_range = key.split('_', 1)[1]
-        if "_to_" in date_range:
-            p_start_str, p_end_str = date_range.split("_to_")
-            p_start = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-            p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-            
-            # Check for time overlap logic
-            if min_dt <= p_end and max_dt >= p_start:
-                context.log.info(f"It was a match! Adding to the affected keys.")
-                affected_keys.append(key)
-
-    return affected_keys
 
 whole_mission_partition = StaticPartitionsDefinition(["wholemission_2025-09-17T00:00:00_to_2045-09-17T00:00:00"])
 

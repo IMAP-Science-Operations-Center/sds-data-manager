@@ -1,20 +1,12 @@
-import os
-import re
-import boto3
-import time
-import json
+import datetime
 from dagster import (
     EventRecordsFilter,
     DagsterEventType,
     AssetKey,
     MaterializeResult,
-    AssetSelection,
-    AutomationCondition,
-    AssetMaterialization
+    AssetMaterialization,
+    RunRequest
 )
-import imap_data_access
-from imap_data_access.io import download
-from sds_data_manager.lambda_code.SDSCode.database import models
 
 def _existing_asset(context,
                     asset_key,
@@ -94,103 +86,64 @@ def get_materialization_result(context,
                     "inputs": inputs
                 }
             )
-    
-def check_already_processed_science_file(context,
-                                         session,
-                                         dependency,
-                                         instrument,
-                                         level,
-                                         descriptor,
-                                         job_command,
-                                         start_date,
-                                         repoint):
+
+def run_all_affected_partitions(context, 
+                                asset_key_phrase,
+                                min_dt,
+                                max_dt,
+                                suffix):
     '''
-    This function will check if the latest file at the SDC has already been processed using 
-    the gathered dependencies. To do this, it:
-
-    1) Finds the latest file
-    2) Finds the corresponding Processing Job
-    3) Read in the .json dependency file from the corresponding Processing Job
-    4) Compares the Ancillary and Science files in the dependency file to the current ones 
-    5) If they all match, the function returns the materialization result of the latest file
-
-    Yes, this is somewhat complicated right now. I think the best way going forward would be to 
-    add the dependencies to a particular file either in the ScienceFiles or ProcessingJob tables. 
+    This function loops through all assets, looking for the "asset_key_phrase". Then, it yields 
+    a run request for those assets at the partitions that exist between min_dt and max_dt. 
     '''
-    if repoint:
-        latest_file = session.query(models.ScienceFiles).filter(
-                                        models.ScienceFiles.instrument == instrument,
-                                        models.ScienceFiles.data_level == level,
-                                        models.ScienceFiles.descriptor == descriptor,
-                                        models.ScienceFiles.repointing == int(repoint)
-                                    ).order_by(models.ScienceFiles.version.desc()).first()
-    else:
-        latest_file = session.query(models.ScienceFiles).filter(
-                                        models.ScienceFiles.instrument == instrument,
-                                        models.ScienceFiles.data_level == level,
-                                        models.ScienceFiles.descriptor == descriptor,
-                                        models.ScienceFiles.start_date == start_date
-                                    ).order_by(models.ScienceFiles.version.desc()).first()
-    if latest_file:
-        max_version_record = (
-            session.query(models.ProcessingJob)
-            .filter(models.ProcessingJob.instrument == latest_file.instrument,
-                models.ProcessingJob.data_level == latest_file.data_level,
-                models.ProcessingJob.descriptor == job_command,
-                models.ProcessingJob.start_date == latest_file.start_date,
-                models.ProcessingJob.status.in_(
-                        [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
-                    ))
-            .order_by(models.ProcessingJob.version.desc())
-            .first()
-        )
-        if max_version_record:
-            match = re.search(r'--dependency\s+(\S+\.json)', max_version_record.container_command)
-            if match:
-                dependency_file = match.group(1)
-                print(dependency_file)
-                context.log.info(dependency_file)
-                SSM_CLIENT = boto3.client("ssm")
-                ssm_parameter_name = os.environ.get(
-                    "SSM_API_KEY_PARAMETER", "/imap-sdc/batch-jobs/api-key"
-                )
-                try:
-                    ssm_response = SSM_CLIENT.get_parameter(
-                        Name=ssm_parameter_name, WithDecryption=True
-                    )
-                    imap_data_access.config["API_KEY"] = ssm_response["Parameter"]["Value"]
-                except Exception as e:
-                    print(f"Could not retrieve API key from SSM: {e}")
-                dependency_filepath = download(dependency_file)
-                with open(dependency_filepath) as f:
-                    old_inputs = json.loads(f.read())
+    _cache = {}
+    asset_graph = context.repository_def.asset_graph
+    for asset_key in asset_graph.get_all_asset_keys():
+        context.log.info(f"Determining affected partitions from {asset_key}")
+        if asset_key_phrase not in asset_key.to_user_string():
+            continue # This asset is not applicable
+        context.log.info(f"Found spice partition: {asset_key}")
+        partitions_def = asset_graph.get(asset_key).partitions_def
+        
+        if not partitions_def:
+            continue
 
-                dependencies_match = True
-                old_science_inputs = []
-                old_ancillary_inputs = []
-                new_science_inputs = []
-                new_ancillary_inputs = []
-                for dep in old_inputs:
-                    if dep['type'] == "science":
-                        old_science_inputs.extend(dep['files'])
-                    if dep['type'] == "ancillary":
-                        old_ancillary_inputs.extend(dep['files'])
-                new_inputs = json.loads(dependency.serialize())
-                for dep in new_inputs:
-                    if dep['type'] == "science":
-                        new_science_inputs.extend(dep['files'])
-                    if dep['type'] == "ancillary":
-                        new_ancillary_inputs.extend(dep['files'])
+        # This serves to cache the partitions so we don't need to calculate them twice. 
+        if partitions_def.name not in _cache:
+            affected_partitions = get_affected_partitions(context, partitions_def, min_dt, max_dt)
+            _cache[partitions_def.name] = affected_partitions
+        else:
+            affected_partitions = _cache[partitions_def.name]
 
-                if set(old_science_inputs) != set(new_science_inputs):
-                    dependencies_match = False
-                if set(old_ancillary_inputs) != set(new_ancillary_inputs):
-                    dependencies_match = False
+        for partition in affected_partitions:
+            yield RunRequest(
+                run_key=f"{asset_key.to_user_string()}_{partition}_{suffix}",
+                partition_key=partition,
+                asset_selection=[asset_key]
+            )
 
-                if dependencies_match:
-                    # The latest file does not need to be updated. 
-                    # We need to tell dagster that this asset is complete. 
-                    context.log.info(f"Latest file: {latest_file.file_path}")
-                    context.log.info(f"Version: {latest_file.version}")
-                    return latest_file
+def get_affected_partitions(context, 
+                            partitions_def, 
+                            min_dt, 
+                            max_dt):
+    '''
+    This is a helper function that returns a set of the repoint partitions that between within 
+    two datetime objects. 
+    '''
+    context.log.info(f"Checking for matching partitions in the time range of {min_dt} to {max_dt}")
+    keys = partitions_def.get_partition_keys(dynamic_partitions_store=context.instance)
+    affected_keys = []
+    for key in keys:
+        context.log.info(f"Checking this partition key: {key}")
+        date_range = key.split('_', 1)[1]
+        if "_to_" in date_range:
+            p_start_str, p_end_str = date_range.split("_to_")
+            p_start = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+            p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+            
+            # Check for time overlap logic
+            if min_dt.replace(tzinfo=datetime.timezone.utc) <= p_end and max_dt.replace(tzinfo=datetime.timezone.utc) >= p_start:
+                context.log.info(f"It was a match! Adding to the affected keys.")
+                affected_keys.append(key)
 
+    return affected_keys

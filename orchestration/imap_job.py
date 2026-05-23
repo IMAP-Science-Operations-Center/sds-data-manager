@@ -42,29 +42,21 @@ from sqlalchemy import func
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# TODO: Maybe we should seperate the yaml into output and input? 
-outputs_dict = {'glows_l1a_all': ["glows_l1a_hist", "glows_l1a_de"],
-                'idex_l1a_all': ["idex_l1a_msg-10days", 
-                                 "idex_l1a_sci-10days",
-                                 "idex_l1a_catlst-10days",
-                                 "idex_l1b_catlst-10days"],
-                'idex_l2b_all-1mo': ["idex_l2b_sci-1mo", "idex_l2c_rectangular-map-1mo"]}
-
 priority_levels = {'l0':'0',
-                    'l1a':'1',
-                    'l1b':'2',
-                    'l1c':'3',
-                    'l1d':'4',
-                    'l2':'5',
-                    'l2a':'6',
-                    'l2b':'7',
-                    'l2c':'8',
-                    'l2d':'9',
-                    'l3':'10',
-                    'l3a':'11',
-                    'l3b':'12',
-                    'l3c':'13',
-                    'l3d':'14',}
+                    'l1a':'-1',
+                    'l1b':'-2',
+                    'l1c':'-3',
+                    'l1d':'-4',
+                    'l2':'-5',
+                    'l2a':'-6',
+                    'l2b':'-7',
+                    'l2c':'-8',
+                    'l2d':'-9',
+                    'l3':'-10',
+                    'l3a':'-11',
+                    'l3b':'-12',
+                    'l3c':'-13',
+                    'l3d':'-14',}
 
 _sensor_schedule = {'l0':600,
                     'l1a':600,
@@ -112,7 +104,9 @@ class IMAPJobHandler:
             The job node to process.
         """
         self.needs_spin = False
+        self.spin_dependency_name = 'spin_files_'+partition
         self.needs_repoint_file = False
+        self.repoint_file_dependency_name = 'repoint_file_'+partition
         self.needs_spice = False
 
         
@@ -129,13 +123,13 @@ class IMAPJobHandler:
         for dep in inputs:
             if dep.source == 'repoint':
                 self.needs_repoint_file = True
-                deps_list.add(asset_name+'_repoint_file_deps')
+                deps_list.add(self.repoint_file_dependency_name)
             elif dep.data_type == 'spice':
                 deps_list.add(asset_name+'_spice_deps')
                 spice_types.add(dep.source)
                 self.needs_spice = True
             elif dep.data_type == 'spin':
-                deps_list.add(asset_name+'_spin_deps')
+                deps_list.add(self.spin_dependency_name)
                 self.needs_spin = True
             elif dep.data_type == 'ancillary':
                 name = dep.source + '_' + dep.data_type + '_' + dep.descriptor
@@ -352,7 +346,7 @@ class IMAPJobHandler:
 
     def build_spin_deps_asset(self):
         @asset(
-            name=self.asset_name+"_spin_deps",
+            name=self.spin_dependency_name,
             partitions_def=self.partitions_def,
             output_required=False
         )
@@ -370,7 +364,7 @@ class IMAPJobHandler:
             
             if spin_files:
                 materialization = get_materialization_result(context,
-                                                            self.asset_name+"_spin_deps",
+                                                            self.spin_dependency_name,
                                                             current_partition,
                                                             spin_files,
                                                             "0",
@@ -384,7 +378,7 @@ class IMAPJobHandler:
 
     def build_repoint_file_deps_asset(self):
         @asset(
-                name=self.asset_name+"_pointing_attitide_deps",
+                name=self.repoint_file_dependency_name,
                 partitions_def=self.partitions_def,
                 output_required=False
         )
@@ -395,13 +389,12 @@ class IMAPJobHandler:
             start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
             end_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
 
-            file = repoint_file.get_upstream_dependency_inputs_repoint(start_date,
-                                                                                               end_date)
+            file = repoint_file.get_upstream_dependency_inputs_repoint(start_date, end_date)
 
             
             if file:
                 materialization = get_materialization_result(context,
-                                                            self.asset_name+"_repoint_file_deps",
+                                                            self.repoint_file_dependency_name,
                                                             current_partition,
                                                             file,
                                                             "0",

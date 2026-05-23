@@ -41,16 +41,16 @@ class IMAPScienceFileHandler:
         self.needs_spin = False
         self.needs_repoint_file = False
         self.needs_spice = False
-
-        self.asset_name = asset_name
-        self.source, self.data_type, self.descriptor = self.asset_name.split("_")
+        
+        self.source, self.data_type, self.descriptor = asset_name.split("_")
+        self.asset_name = asset_name.replace('-', '')
         self.partitions_def = _partition_map.get(partition)
         
     def build_asset(self):
         return AssetSpec(key=AssetKey([self.asset_name]), partitions_def=self.partitions_def)
     
     def build_sensor(self):
-        sensor_name = f"{self.asset_name.replace('-', '')}_sensor"
+        sensor_name = f"{self.asset_name}_sensor"
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
                 default_status=DefaultSensorStatus.RUNNING,
@@ -89,37 +89,37 @@ class IMAPScienceFileHandler:
             with db.Session() as session:
                 recent_db_records = session.scalars(stmt).all()
 
-            if not recent_db_records:
-                return SensorResult(cursor = next_time_to_check.isoformat())
+                if not recent_db_records:
+                    return SensorResult(cursor = next_time_to_check.isoformat())
 
-            materializations = []
-            for record in recent_db_records:
-                type = record.instrument + '_' + record.data_level + '_' + record.descriptor
+                materializations = []
+                for record in recent_db_records:
+                    type = record.instrument + '_' + record.data_level + '_' + record.descriptor
 
-                asset_graph = context.repository_def.asset_graph
-                
-                partitions_def = asset_graph.get(AssetKey(type)).partitions_def
-                
-                if not partitions_def:
-                    continue
-                if partitions_def.name == 'repoint_partitions':
-                    # We need to only materialize the repoint that this is a part of
-                    with db.Session() as session:
-                        repoint = session.query(models.PointingTable).filter(models.PointingTable.pointing_id==record.repointing).all()[0]
-                        affected_partitions = ["repoint" + str(repoint.pointing_id) + "_" +repoint.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S") + "_to_" + repoint.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S")]
-                else:
-                    # For any other type of science file, we need to materialize the partition that contains the start_date
-                    affected_partitions = custom_partitions.get_affected_partitions(context, partitions_def, record.start_date, record.start_date)
-                
-                for partition in affected_partitions:
-                    materialization = dagster_utilities.get_materialization(context,
-                                                                            type,
-                                                                            partition,
-                                                                            [os.path.basename(record.file_path)],
-                                                                            str(int(record.version[1:])),
-                                                                            "science")
-                    if materialization:
-                        materializations.append(materialization)
+                    asset_graph = context.repository_def.asset_graph
+                    
+                    partitions_def = asset_graph.get(AssetKey(type)).partitions_def
+                    
+                    if not partitions_def:
+                        continue
+                    if partitions_def.name == 'repoint_partitions':
+                        # We need to only materialize the repoint that this is a part of
+                        with db.Session() as session:
+                            repoint = session.query(models.PointingTable).filter(models.PointingTable.pointing_id==record.repointing).all()[0]
+                            affected_partitions = ["repoint" + str(repoint.pointing_id) + "_" +repoint.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S") + "_to_" + repoint.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S")]
+                    else:
+                        # For any other type of science file, we need to materialize the partition that contains the start_date
+                        affected_partitions = dagster_utilities.get_affected_partitions(context, partitions_def, record.start_date, record.start_date)
+                    
+                    for partition in affected_partitions:
+                        materialization = dagster_utilities.get_materialization(context,
+                                                                                type,
+                                                                                partition,
+                                                                                [os.path.basename(record.file_path)],
+                                                                                str(int(record.version[1:])),
+                                                                                "science")
+                        if materialization:
+                            materializations.append(materialization)
 
             return SensorResult(
                 asset_events=materializations,
@@ -136,15 +136,15 @@ class IMAPAncillaryFileHandler:
         self.needs_repoint_file = False
         self.needs_spice = False
 
-        self.asset_name = asset_name
-        self.source, self.data_type, self.descriptor = self.asset_name.split("_")
+        self.source, self.data_type, self.descriptor = asset_name.split("_")
+        self.asset_name = asset_name.replace('-', '')
         self.partitions_def = custom_partitions.whole_mission_partition
         
     def build_asset(self):
         return AssetSpec(key=AssetKey([self.asset_name]), partitions_def=self.partitions_def)
     
     def build_sensor(self):
-        sensor_name = f"{self.asset_name.replace('-', '')}_sensor"
+        sensor_name = f"{self.asset_name}_sensor"
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
                 default_status=DefaultSensorStatus.RUNNING,
@@ -169,17 +169,17 @@ class IMAPAncillaryFileHandler:
             with db.Session() as session:
                 ancillary_file = session.scalars(stmt).all()
 
-            if ancillary_file:
-                materialization = dagster_utilities.get_materialization(context,
-                                                                        self.asset_name,
-                                                                        "wholemission_2025-09-17T00:00:00_to_2045-09-17T00:00:00",
-                                                                        [os.path.basename(ancillary_file[0].file_path)],
-                                                                        str(int(ancillary_file[0].version[1:])),
-                                                                        "ancillary")
-                if materialization:
-                    return SensorResult(asset_events=[materialization])
-            else:
-                raise Failure(description="Processing failed: No data found")
+                if ancillary_file:
+                    materialization = dagster_utilities.get_materialization(context,
+                                                                            self.asset_name,
+                                                                            "wholemission_2025-09-17T00:00:00_to_2045-09-17T00:00:00",
+                                                                            [os.path.basename(ancillary_file[0].file_path)],
+                                                                            str(int(ancillary_file[0].version[1:])),
+                                                                            "ancillary")
+                    if materialization:
+                        return SensorResult(asset_events=[materialization])
+                else:
+                    raise Failure(description="Processing failed: No data found")
             
     
         return _file_sensor

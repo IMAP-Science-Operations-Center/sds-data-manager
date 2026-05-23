@@ -22,7 +22,7 @@ non_l0_job_handlers = []
 # Bucket each job into the right handler list based on its data_type.
 all_jobs = dependency_config._config.keys()
 all_job_inputs = set()
-all_job_outputs = set()
+all_job_outputs = []
 
 for potential_job in all_jobs:
     partition = dependency_config.partition(potential_job)
@@ -36,9 +36,9 @@ for potential_job in all_jobs:
     outputs_list_2 = []
     for output in outputs_list:
         name = output.source + '_' + output.data_type + '_' + output.descriptor
-        outputs_list_2.append((name))
+        outputs_list_2.append(name)
     all_job_inputs.update(inputs_list_2)
-    all_job_outputs.update(outputs_list_2)
+    all_job_outputs.extend(outputs_list_2)
     
     source, data_type, descriptor = potential_job
     asset_name = f"{source}_{data_type}_{descriptor}"
@@ -50,22 +50,23 @@ for potential_job in all_jobs:
 # Check for any inputs that have no outputs
 assets_created = []
 for input_name, partition in all_job_inputs:
-    if (input_name not in all_job_outputs) and (input_name not in assets_created):
-        if "_ancillary_" in input_name:
-            ancillary_handlers.append(IMAPAncillaryFileHandler(input_name))
-            assets_created.append(input_name)
-        elif "idex_l0_" in input_name:
-            # Continue because IDEX will defined custom asset and sensor below.
-            continue
-        elif "spice" in input_name:
-            continue
-        elif "spin_spin" in input_name:
-            continue
-        elif "repoint_repoint" in input_name:
-            continue
-        else:
-            l0_job_handlers.append(IMAPScienceFileHandler(input_name, partition))
-            assets_created.append(input_name)
+    if ('3mo' not in input_name) and ('6mo' not in input_name) and ('1yr' not in input_name): # Skip maps for now
+        if (input_name not in all_job_outputs) and (input_name not in assets_created):
+            if "_ancillary_" in input_name:
+                ancillary_handlers.append(IMAPAncillaryFileHandler(input_name))
+                assets_created.append(input_name)
+            elif "idex_l0_" in input_name:
+                # Continue because IDEX will defined custom asset and sensor below.
+                continue
+            elif "spice" in input_name:
+                continue
+            elif "spin_spin" in input_name:
+                continue
+            elif "repoint_repoint" in input_name:
+                continue
+            else:
+                l0_job_handlers.append(IMAPScienceFileHandler(input_name, partition))
+                assets_created.append(input_name)
 
 # Now using handlers, create assets for each handler:
 #   1. create asset using handler.build_asset()
@@ -78,15 +79,19 @@ batch_jobs = []
 spice_jobs = []
 spin_jobs = []
 repoint_file_jobs = []
+repoint_jobs_created = set()
+spin_jobs_created = set()
 for asset in assets_to_build:
     batch_jobs.append(asset.build_asset())
     sensors.append(asset.build_sensor())
     if asset.needs_spice:
         spice_jobs.append(asset.build_spice_deps_asset())
-    if asset.needs_spin:
+    if asset.needs_spin and asset.spin_dependency_name not in spin_jobs_created:
         spin_jobs.append(asset.build_spin_deps_asset())
-    if asset.needs_repoint_file:
+        spin_jobs_created.add(asset.spin_dependency_name)
+    if asset.needs_repoint_file and asset.repoint_file_dependency_name not in repoint_jobs_created:
         repoint_file_jobs.append(asset.build_repoint_file_deps_asset())
+        repoint_jobs_created.add(asset.repoint_file_dependency_name)
 
 assets = spice_jobs + batch_jobs + spin_jobs + repoint_file_jobs + idex.L0_asset
 
