@@ -1,13 +1,15 @@
 import datetime 
 from dagster import (
+    asset,
     AssetSelection,
     SensorEvaluationContext,
     SensorResult,
     sensor,
-    DefaultSensorStatus
+    DefaultSensorStatus,
+    Failure
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
-from orchestration import custom_partitions, dagster_utilities
+from orchestration import dagster_utilities
 import logging
 from contextlib import nullcontext
 from os.path import basename
@@ -18,6 +20,37 @@ from sqlalchemy.orm import aliased
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 MISSION_START_TIME = "2025-09-17T00:00:00"
+
+
+def build_spin_deps_asset(asset_name, partitions_def):
+    @asset(
+        name=asset_name,
+        partitions_def=partitions_def,
+        output_required=False
+    )
+    def _generic_spin_maker(context):
+
+        # Get time range from partition
+        current_partition = context.partition_key
+        parts = context.partition_key.split("_")
+        start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+        end_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+
+        spin_files = get_upstream_dependency_inputs_spin(start_date, end_date)
+        
+        if spin_files:
+            materialization = dagster_utilities.get_materialization_result(context,
+                                                                           asset_name,
+                                                                           current_partition,
+                                                                           spin_files,
+                                                                           "0",
+                                                                           "spin")
+            if materialization:
+                yield materialization
+        else:
+            raise Failure(description="Processing failed: No data found")
+        
+    return _generic_spin_maker
 
 def verify_spin_coverage(
     records: list,

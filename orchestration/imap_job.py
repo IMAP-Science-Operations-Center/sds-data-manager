@@ -9,7 +9,6 @@ import os
 import logging
 import hashlib
 from dagster import (
-    asset,
     AssetExecutionContext,
     Failure,
     AssetSelection,
@@ -19,7 +18,6 @@ from dagster import (
     EventRecordsFilter,
     DagsterEventType,
     RunRequest,
-    SkipReason,
     DefaultSensorStatus,
     multi_asset,
     AssetOut,
@@ -27,9 +25,8 @@ from dagster import (
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import DependencyConfigReader
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.types import DependencyNode
-from orchestration import spice, spin, repoint_file, custom_partitions
+from orchestration import custom_partitions
 from orchestration.dagster_utilities import get_materialization_result
 import imap_data_access
 from imap_data_access import processing_input
@@ -103,13 +100,10 @@ class IMAPJobHandler:
         potential_job_node : UpstreamDependencyNode
             The job node to process.
         """
-        self.needs_spin = False
-        self.spin_dependency_name = 'spin_files_'+partition
-        self.needs_repoint_file = False
-        self.repoint_file_dependency_name = 'repoint_file_'+partition
-        self.needs_spice = False
+        self.spin_dependency_name = None
+        self.repoint_file_dependency_name = None
+        self.spice_dependency_name = None
 
-        
         self.source, self.data_type, self.descriptor = asset_name.split("_")
         
         self.asset_name = asset_name.replace("-", "")
@@ -122,15 +116,13 @@ class IMAPJobHandler:
         triggering_deps = set() 
         for dep in inputs:
             if dep.source == 'repoint':
-                self.needs_repoint_file = True
+                self.repoint_file_dependency_name = 'repoint_file_'+partition
                 deps_list.add(self.repoint_file_dependency_name)
             elif dep.data_type == 'spice':
-                deps_list.add(asset_name+'_spice_deps')
                 spice_types.add(dep.source)
-                self.needs_spice = True
             elif dep.data_type == 'spin':
+                self.spin_dependency_name = 'spin_files_'+partition
                 deps_list.add(self.spin_dependency_name)
-                self.needs_spin = True
             elif dep.data_type == 'ancillary':
                 name = dep.source + '_' + dep.data_type + '_' + dep.descriptor
                 deps_list.add(name)
@@ -146,6 +138,14 @@ class IMAPJobHandler:
         self.outputs = outputs
         self.triggering_deps = list(triggering_deps)
 
+        # Construct the SPICE name
+        if self.spice_types:
+            sorted_types = sorted(self.spice_types)
+            joined_string = "|".join(sorted_types)
+            hash_object = hashlib.sha256(joined_string.encode('utf-8'))
+            short_id = hash_object.hexdigest()[:8]
+            self.spice_dependency_name = 'spice_collection_'+partition+'_'+short_id
+            deps_list.add(self.spice_dependency_name)
         
         outputs_for_job = [f"{x.source}_{x.data_type}_{x.descriptor}".replace("-", "") for x in outputs]
 
@@ -212,7 +212,7 @@ class IMAPJobHandler:
                     if previous_file:
                         already_processed = True
                         materialization = get_materialization_result(context,
-                                                                    output,
+                                                                    output_asset_name,
                                                                     context.partition_key,
                                                                     [os.path.basename(previous_file.file_path)],
                                                                     previous_file.version,
@@ -265,43 +265,6 @@ class IMAPJobHandler:
         # Return the generated function back to Dagster
         return _generic_batch_submitter
 
-    def build_spice_deps_asset(self):
-        '''
-        This function will take in various spice_types, and then populate 
-        each repoint partition with those spice types. 
-        '''
-
-        @asset(
-            name=self.asset_name+"_spice_deps",
-            partitions_def=self.partitions_def,
-            output_required=False
-        )
-        def _generic_spice_maker(context):
-
-            # Will use this in the future to limit SPICE queries 
-            current_partition = context.partition_key
-            parts = context.partition_key.split("_")
-            start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-            end_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-
-            spice_files = spice.get_upstream_dependency_inputs_spice(self.spice_types, 
-                                                                    start_date,
-                                                                    end_date)
-
-            if spice_files:
-                materialization = get_materialization_result(context,
-                                                             self.asset_name+"_spice_deps",
-                                                             current_partition,
-                                                             spice_files,
-                                                             "0",
-                                                             "spice")
-                if materialization:
-                    yield materialization
-            else:
-                raise Failure(description="Processing failed: No data found")
-
-        return _generic_spice_maker
-
     def wait_for_file(self,
                       context,
                       session,
@@ -343,68 +306,6 @@ class IMAPJobHandler:
                 if materialization:
                     return materialization
             time.sleep(1) # TODO: Set this for WAY higher once we're actually waiting for files. 
-
-    def build_spin_deps_asset(self):
-        @asset(
-            name=self.spin_dependency_name,
-            partitions_def=self.partitions_def,
-            output_required=False
-        )
-        def _generic_spin_maker(context):
-
-            # Get time range from partition
-            current_partition = context.partition_key
-            parts = context.partition_key.split("_")
-            start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-            end_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-
-            spin_files = spin.get_upstream_dependency_inputs_spin(start_date,
-                                                                  end_date)
-
-            
-            if spin_files:
-                materialization = get_materialization_result(context,
-                                                            self.spin_dependency_name,
-                                                            current_partition,
-                                                            spin_files,
-                                                            "0",
-                                                            "spin")
-                if materialization:
-                    yield materialization
-            else:
-                raise Failure(description="Processing failed: No data found")
-            
-        return _generic_spin_maker
-
-    def build_repoint_file_deps_asset(self):
-        @asset(
-                name=self.repoint_file_dependency_name,
-                partitions_def=self.partitions_def,
-                output_required=False
-        )
-        def _generic_repoint_file_maker(context):
-
-            current_partition = context.partition_key
-            parts = context.partition_key.split("_")
-            start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-            end_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-
-            file = repoint_file.get_upstream_dependency_inputs_repoint(start_date, end_date)
-
-            
-            if file:
-                materialization = get_materialization_result(context,
-                                                            self.repoint_file_dependency_name,
-                                                            current_partition,
-                                                            file,
-                                                            "0",
-                                                            "repoint")
-                if materialization:
-                    yield materialization
-            else:
-                raise Failure(description="Processing failed: No data found")
-            
-        return _generic_repoint_file_maker
 
     def _parse_dates_from_key(self, partition_key: str):
         """
