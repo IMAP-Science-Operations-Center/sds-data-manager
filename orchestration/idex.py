@@ -51,34 +51,34 @@ def watch_idex_l0_files(context):
     with db.Session() as session:
         recent_db_partitions = session.scalars(stmt).all()
 
-    run_requests = []
-    run_suffix = now_dt.timestamp()
-    for date in recent_db_partitions:
-        # Query the end_date of the partition.
-        # Find the row where the input start date is equal to the start date in the df.
-        matching_row = idex_10_day_ranges[
-            idex_10_day_ranges["start_date"] == date.strftime("%Y%m%d")]
-        if matching_row.empty:
-            context.log.info(f"No window with start date: {date}")
-            continue
-        window_end_dt = datetime.datetime.strptime(
-            matching_row["end_date"].iloc[0], "%Y%m%d"
-        ).replace(tzinfo=datetime.timezone.utc)
+        run_requests = []
+        run_suffix = now_dt.timestamp()
+        for date in recent_db_partitions:
+            # Query the end_date of the partition.
+            # Find the row where the input start date is equal to the start date in the df.
+            matching_row = idex_10_day_ranges[
+                idex_10_day_ranges["start_date"] == date.strftime("%Y%m%d")]
+            if matching_row.empty:
+                context.log.info(f"No window with start date: {date}")
+                continue
+            window_end_dt = datetime.datetime.strptime(
+                matching_row["end_date"].iloc[0], "%Y%m%d"
+            ).replace(tzinfo=datetime.timezone.utc)
 
-        # TODO use get_10_day_window_end_date from imap_processing when that is merged
-        partition_key = "idex10_"+date.strftime("%Y-%m-%dT%H:%M:%S")+"_to_"+window_end_dt.strftime("%Y-%m-%dT%H:%M:%S") 
+            # TODO use get_10_day_window_end_date from imap_processing when that is merged
+            partition_key = "idex10_"+date.strftime("%Y-%m-%dT%H:%M:%S")+"_to_"+window_end_dt.strftime("%Y-%m-%dT%H:%M:%S") 
 
-        # If the end of the window is in the past, then we can trigger the job to
-        # process that partition. If today is the last day of the window (window end
-        # dates are exclusive so the last day of data is window_end_date - 1 day) then
-        # we can process.
-        if now_dt >= (window_end_dt - datetime.timedelta(days=1)):
-            asset_name = "idex_l0_raw"
-            run_requests.append(RunRequest(
-                                    run_key=f"idex_{partition_key}_{run_suffix}",
-                                    partition_key=partition_key,
-                                    asset_selection=[AssetKey(asset_name)]
-                                ))
+            # If the end of the window is in the past, then we can trigger the job to
+            # process that partition. If today is the last day of the window (window end
+            # dates are exclusive so the last day of data is window_end_date - 1 day) then
+            # we can process.
+            if now_dt >= (window_end_dt - datetime.timedelta(days=1)):
+                asset_name = "idex_l0_raw"
+                run_requests.append(RunRequest(
+                                        run_key=f"idex_{partition_key}_{run_suffix}",
+                                        partition_key=partition_key,
+                                        asset_selection=[AssetKey(asset_name)]
+                                    ))
 
     return SensorResult(run_requests=run_requests,
                         cursor = now_iso)
@@ -105,29 +105,29 @@ def idex_l0_raw(context: AssetExecutionContext):
     with db.Session() as session:
         records = session.scalars(stmt).all()
 
-    if records:
-        # Dedup: keep highest version per file base path (strip version suffix)
-        best: dict[str, models.IDEXL0Files] = {}
-        for rec in records:
-            # "imap_idex_l0_raw_20260408_v001.pkts" -> "imap_idex_l0_raw_20260408"
-            base = rec.file_path.rsplit("_", 1)[0]  # strip "_v001.pkts"
-            if base not in best or rec.version > best[base].version:
-                best[base] = rec
+        if records:
+            # Dedup: keep highest version per file base path (strip version suffix)
+            best: dict[str, models.IDEXL0Files] = {}
+            for rec in records:
+                # "imap_idex_l0_raw_20260408_v001.pkts" -> "imap_idex_l0_raw_20260408"
+                base = rec.file_path.rsplit("_", 1)[0]  # strip "_v001.pkts"
+                if base not in best or rec.version > best[base].version:
+                    best[base] = rec
 
-        for rec in records:
-            files.append(rec.file_path)
-            versions.append(rec.version)
+            for rec in records:
+                files.append(rec.file_path)
+                versions.append(rec.version)
 
-        materialization = get_materialization_result(context,
-                                                    "idex_l0_raw",
-                                                    current_partition,
-                                                    files,
-                                                    versions,
-                                                    "science")
-        if materialization:
-            yield materialization
-    else:
-        raise Failure(description="Processing failed: No data found")
+            materialization = get_materialization_result(context,
+                                                        "idex_l0_raw",
+                                                        current_partition,
+                                                        files,
+                                                        versions,
+                                                        "science")
+            if materialization:
+                yield materialization
+        else:
+            raise Failure(description="Processing failed: No data found")
 
 
 L0_sensor = [watch_idex_l0_files]

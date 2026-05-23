@@ -11,7 +11,7 @@ from dagster import (
 import imap_data_access
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
-from orchestration import custom_partitions
+from orchestration import custom_partitions, dagster_utilities
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -221,7 +221,7 @@ def spice_file_sensor(context: SensorEvaluationContext):
         min_dt = cursor_date
         max_dt = cursor_date + datetime.timedelta(days=7)                           
         latest_ingestion_date = max_dt
-        for run in custom_partitions.run_all_affected_partitions(context, "spice_dep", min_dt, max_dt, cursor_suffix):
+        for run in dagster_utilities.run_all_affected_partitions(context, "spice_dep", min_dt, max_dt, cursor_suffix):
             yield run
     else:
         with db.Session() as session:
@@ -239,7 +239,7 @@ def spice_file_sensor(context: SensorEvaluationContext):
 
                 min_dt = file.min_date_datetime
                 max_dt = file.max_date_datetime
-                for run in custom_partitions.run_all_affected_partitions(context, "spice_dep", min_dt, max_dt, cursor_suffix):
+                for run in dagster_utilities.run_all_affected_partitions(context, "spice_dep", min_dt, max_dt, cursor_suffix):
                     yield run
 
     context.update_cursor(latest_ingestion_date.isoformat())

@@ -7,7 +7,7 @@ from dagster import (
     DefaultSensorStatus
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
-from orchestration import custom_partitions
+from orchestration import custom_partitions, dagster_utilities
 
 import logging
 from contextlib import nullcontext
@@ -123,7 +123,7 @@ def repoint_file_sensor(context: SensorEvaluationContext):
         min_dt = cursor_date
         max_dt = cursor_date + datetime.timedelta(days=7)                           
         latest_ingestion_date = max_dt
-        for run in custom_partitions.run_all_affected_partitions(context, "_pointing_attitide_deps", min_dt, max_dt, cursor_suffix):
+        for run in dagster_utilities.run_all_affected_partitions(context, "repoint_file_", min_dt, max_dt, cursor_suffix):
             yield run
     else:
         with db.Session() as session:
@@ -141,7 +141,7 @@ def repoint_file_sensor(context: SensorEvaluationContext):
                 min_dt = datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
                 max_dt = file.end_date.replace(tzinfo=datetime.timezone.utc)
                 
-                for run in custom_partitions.run_all_affected_partitions(context, "_pointing_attitide_deps", min_dt, max_dt, cursor_suffix):
+                for run in dagster_utilities.run_all_affected_partitions(context, "repoint_file_", min_dt, max_dt, cursor_suffix):
                     yield run
 
     context.update_cursor(latest_ingestion_date.isoformat())
