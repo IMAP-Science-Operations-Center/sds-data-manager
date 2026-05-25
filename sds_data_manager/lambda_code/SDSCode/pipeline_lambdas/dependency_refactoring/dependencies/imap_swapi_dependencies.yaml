@@ -70,7 +70,7 @@ l3a_spice_common: &l3a_spice_common
       trigger_job: false
   outputs:
     - source: swapi
-      data_type: l1
+      data_type: l1a
       descriptor: hk
 
 (l1, sci):
@@ -80,7 +80,7 @@ l3a_spice_common: &l3a_spice_common
       data_type: l0
       descriptor: raw
     - source: swapi
-      data_type: l1
+      data_type: l1a
       descriptor: hk
     - source: leapseconds
       data_type: spice
