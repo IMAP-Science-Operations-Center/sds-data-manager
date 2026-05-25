@@ -7,6 +7,7 @@ from contextlib import contextmanager
 import boto3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 
 _ENGINE = None
 
@@ -30,10 +31,8 @@ def get_engine():
     db_uri = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
 
     _ENGINE = create_engine(
-        db_uri, 
-        pool_size=10,        # Keep 10 connections open and ready
-        max_overflow=20,     # Allow up to 10 extra temporary connections
-        pool_pre_ping=True   # Ensures connections don't go stale
+        db_uri,
+        poolclass=NullPool
     )
 
     return create_engine(db_uri)

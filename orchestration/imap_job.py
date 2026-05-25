@@ -145,7 +145,7 @@ class IMAPJobHandler:
             hash_object = hashlib.sha256(joined_string.encode('utf-8'))
             short_id = hash_object.hexdigest()[:8]
             self.spice_dependency_name = 'spice_collection_'+partition+'_'+short_id
-            deps_list.add(self.spice_dependency_name)
+            self.deps_list.append(self.spice_dependency_name)
         
         outputs_for_job = [f"{x.source}_{x.data_type}_{x.descriptor}".replace("-", "") for x in outputs]
 
@@ -225,7 +225,7 @@ class IMAPJobHandler:
                                                     session=session,
                                                     instrument=self.source,
                                                     descriptor=self.descriptor,
-                                                    start_date=start_date.strftime("%Y%m%d"),
+                                                    start_date=start_date,
                                                     data_level=self.data_type,
                                                     current_dependencies=dependency_inputs.serialize(),
                                                 )
@@ -278,7 +278,7 @@ class IMAPJobHandler:
         
         parsed_start_date = None
         if start_date is not None:
-            parsed_start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+            parsed_start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
         
         timeout = 3 # TODO: Set this for WAY higher once we're actually waiting for files. 
         timeout_start = time.time()
@@ -310,7 +310,7 @@ class IMAPJobHandler:
     def _parse_dates_from_key(self, partition_key: str):
         """
         Extracts start and end datetimes from a string formatted like:
-        '{name}_YYYYMMDD_to_YYYYMMDD'
+        '{name}_%Y-%m-%dT%H:%M:%S_to_%Y-%m-%dT%H:%M:%S'
         """
         if not partition_key:
             return None, None
@@ -360,7 +360,7 @@ class IMAPJobHandler:
         5) For each affected partition, we determine the dependencies. If we have all dependencies, we are good! 
         6) Yield a RunRequest for a job to make the asset for the partitions that have all dependencies.
         """
-        deps_keys = [AssetKey(dep) for dep in self.deps_list]
+        deps_keys = [AssetKey(dep.replace("-", "")) for dep in self.deps_list]
         sensor_name = f"{self.asset_name}_kickoff_sensor"
         @sensor(
             name=sensor_name,
@@ -383,14 +383,12 @@ class IMAPJobHandler:
                 # Fetch the last evaluated event ID for this specific dependency
                 last_event_id = cursors.get(dep_name)
                 
-                # Query the Dagster instance for strictly new materializations
-                # TODO: Is dagster events how I want to query this stuff? Or should I use the main database? 
                 filter = EventRecordsFilter(
                         event_type=DagsterEventType.ASSET_MATERIALIZATION,
                         asset_key=dep_key,
                         after_cursor=last_event_id,
                     )
-                new_events = context.instance.get_event_records(filter, limit=100)
+                new_events = context.instance.get_event_records(filter, limit=10)
                 
                 for record in new_events:
                     # Update our new cursor marker to the highest storage ID seen
@@ -403,9 +401,7 @@ class IMAPJobHandler:
                     if not up_start or not up_end:
                         continue
                         
-                    # 3. Calculate overlap
-                    # TODO: The problem with this function is that it will take longer as we get more partitions.
-                    # Is that ok? Should we come up with a better system here? Store times in a database? 
+                    # Calculate overlap
                     target_partitions = self._get_overlapping_target_partitions(
                         upstream_partition_key, up_start, up_end, context.instance
                     )
@@ -459,15 +455,17 @@ class IMAPJobHandler:
         # 2. Iterate through each upstream dependency 
         dependency_inputs = processing_input.ProcessingInputCollection()
         context.log.info(f"Checking for all dependencies existing between {target_start} and {target_end}")
-        for dep_key in self.deps_list:
+        deps_keys = [AssetKey(dep.replace("-", "")) for dep in self.deps_list]
+        for dep_key in deps_keys:
+            dep_name = dep_key.to_user_string()
             found_dep=False
-            context.log.info(f"Checking out {dep_key}")
+            context.log.info(f"Checking out {dep_name}")
             # Fetch a list of all partition keys that have EVER been materialized for this dependency
-            materialized_partitions = context.instance.get_materialized_partitions(AssetKey(dep_key))
+            materialized_partitions = context.instance.get_materialized_partitions(dep_key)
             
             if not materialized_partitions:
                 # TODO: This is probably where we'd let soft dependencies slide 
-                context.log.info(f"Not enought information to process. Missing {dep_key} in range {str(target_start)} to {str(target_end)}")
+                context.log.info(f"Not enought information to process. Missing {dep_name} in range {str(target_start)} to {str(target_end)}")
                 return 
             for up_partition in materialized_partitions:
                 up_start, up_end = self._parse_dates_from_key(up_partition)
@@ -482,7 +480,7 @@ class IMAPJobHandler:
                     mat_event = context.instance.get_event_records(
                                 event_records_filter=EventRecordsFilter(
                                     event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                                    asset_key=AssetKey(dep_key),
+                                    asset_key=dep_key,
                                     asset_partitions=[up_partition],
                                 ),
                                 limit=1, # The most recent event is returned first
@@ -513,7 +511,7 @@ class IMAPJobHandler:
                                 dependency_inputs.add(processing_input.SPICEInput(*file_names))
             if not found_dep:
                 # TODO: Check here if we have a soft dependency.
-                context.log.info(f"Not enought information to process. Missing {dep_key} in range {str(target_start)} to {str(target_end)}")
+                context.log.info(f"Not enought information to process. Missing {dep_name} in range {str(target_start)} to {str(target_end)}")
                 return
 
         return dependency_inputs
