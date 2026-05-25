@@ -55,21 +55,21 @@ priority_levels = {'l0':'0',
                     'l3c':'-13',
                     'l3d':'-14',}
 
-_sensor_schedule = {'l0':600,
-                    'l1a':600,
-                    'l1b':600,
-                    'l1c':600,
-                    'l1d':600,
-                    'l2': 600,
-                    'l2a':600,
-                    'l2b':600,
-                    'l2c':600,
-                    'l2d':600,
-                    'l3':600,
-                    'l3a':600,
-                    'l3b':600,
-                    'l3c':600,
-                    'l3d':600}
+_sensor_schedule = {'l0': 300,
+                    'l1a':300,
+                    'l1b':300,
+                    'l1c':300,
+                    'l1d':300,
+                    'l2': 300,
+                    'l2a':300,
+                    'l2b':300,
+                    'l2c':300,
+                    'l2d':300,
+                    'l3': 300,
+                    'l3a':300,
+                    'l3b':300,
+                    'l3c':300,
+                    'l3d':300}
 
 _partition_map = {
             "daily":   custom_partitions.daily_partitions,
@@ -216,7 +216,8 @@ class IMAPJobHandler:
                                                                     context.partition_key,
                                                                     [os.path.basename(previous_file.file_path)],
                                                                     previous_file.version,
-                                                                    "science")
+                                                                    "science",
+                                                                    inputs = dependency_inputs.serialize())
                         if materialization:
                             yield materialization
 
@@ -370,53 +371,57 @@ class IMAPJobHandler:
         )
         def _sensor(context: SensorEvaluationContext):
             
-            # 1. Load the cursor to track which events we have already seen.
+            # Load the cursor to track which events we have already seen.
             # The cursor maps `{asset_name: last_processed_storage_id}`.
             cursors = json.loads(context.cursor) if context.cursor else {}
             new_cursors = cursors.copy()
             
-            # 2. Iterate through each dependency to find unconsumed materializations
+            # Iterate through each dependency to find unconsumed materializations
             for dep_key in deps_keys:
                 
                 dep_name = dep_key.to_user_string()
                 context.log.info(f"Checking new dependencies for: {dep_name}")
+
                 # Fetch the last evaluated event ID for this specific dependency
                 last_event_id = cursors.get(dep_name)
-                
                 filter = EventRecordsFilter(
                         event_type=DagsterEventType.ASSET_MATERIALIZATION,
                         asset_key=dep_key,
                         after_cursor=last_event_id,
                     )
-                new_events = context.instance.get_event_records(filter, limit=10)
+                new_events = context.instance.get_event_records(filter, limit=1)
+                if new_events:
+                    record = new_events[0]
+                else:
+                    continue
+
+                # Update our new cursor marker to the highest storage ID seen
+                new_cursors[dep_name] = record.storage_id
+                    
+                upstream_partition_key = record.event_log_entry.dagster_event.partition
+                up_start, up_end = self._parse_dates_from_key(upstream_partition_key)
                 
-                for record in new_events:
-                    # Update our new cursor marker to the highest storage ID seen
-                    if not new_cursors.get(dep_name) or record.storage_id > new_cursors[dep_name]:
-                        new_cursors[dep_name] = record.storage_id
-                        
-                    upstream_partition_key = record.event_log_entry.dagster_event.partition
-                    up_start, up_end = self._parse_dates_from_key(upstream_partition_key)
+                if not up_start or not up_end:
+                    continue
                     
-                    if not up_start or not up_end:
-                        continue
-                        
-                    # Calculate overlap
-                    target_partitions = self._get_overlapping_target_partitions(
-                        upstream_partition_key, up_start, up_end, context.instance
-                    )
-                    
-                    for target_partition in target_partitions:
-                        # 4. Queue the RunRequest
-                        target_start, target_end = self._parse_dates_from_key(target_partition)
-                        dependencies = self.get_dependencies(context, target_start, target_end)
-                        if dependencies:
-                            tags={"dependencies": dependencies.serialize()}
-                            yield RunRequest(
-                                            partition_key=target_partition,
-                                            run_key=f"{self.asset_name}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
-                                            tags=tags
-                                        )
+                # Calculate overlap
+                target_partitions = self._get_overlapping_target_partitions(
+                    upstream_partition_key, up_start, up_end, context.instance
+                )
+                
+                for target_partition in target_partitions:
+                    # Queue the RunRequest
+                    target_start, target_end = self._parse_dates_from_key(target_partition)
+                    dependencies = self.get_dependencies(context, target_start, target_end)
+                    if dependencies:
+                        tags={"dependencies": dependencies.serialize()}
+                        yield RunRequest(
+                                        partition_key=target_partition,
+                                        run_key=f"{self.asset_name}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
+                                        tags=tags
+                                    )
+                break # To keep the sensor short, we'll only analyze one new dependency at a time. If there are still new ones, we'll consume them next time. 
+                # The get_dependencies will still get the latest stuff regardless, so we're never submitting outdated data. 
                             
             # 5. Lock in the new cursor state and execute
             context.update_cursor(json.dumps(new_cursors))
@@ -473,10 +478,10 @@ class IMAPJobHandler:
                 if not up_start or not up_end:
                     continue
                     
-                # 3. Apply the overlap logic (StartA < EndB and EndA > StartB)
+                # Apply the overlap logic (StartA < EndB and EndA > StartB)
                 if up_start < target_end and up_end > target_start:
                     context.log.info(f"This partition matches: {up_partition}")
-                    # 4. Fetch the actual materialization record for this overlapping partition
+                    # Fetch the actual materialization record for this overlapping partition
                     mat_event = context.instance.get_event_records(
                                 event_records_filter=EventRecordsFilter(
                                     event_type=DagsterEventType.ASSET_MATERIALIZATION,
