@@ -15,6 +15,7 @@ from contextlib import nullcontext
 from os.path import basename
 from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import aliased
+from sds_data_manager.orchestration.types import DependencyNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -22,9 +23,9 @@ logger.setLevel(logging.INFO)
 MISSION_START_TIME = "2025-09-17T00:00:00"
 
 
-def build_spin_deps_asset(asset_name, partitions_def):
+def build_spin_deps_asset(node: DependencyNode, partitions_def):
     @asset(
-        name=asset_name,
+        name=node.to_dagster_asset().to_user_string(),
         partitions_def=partitions_def,
         output_required=False
     )
@@ -40,7 +41,7 @@ def build_spin_deps_asset(asset_name, partitions_def):
         
         if spin_files:
             materialization = dagster_utilities.get_materialization_result(context,
-                                                                           asset_name,
+                                                                           node.to_dagster_asset(),
                                                                            current_partition,
                                                                            spin_files,
                                                                            "0",
