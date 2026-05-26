@@ -9,9 +9,9 @@ from dagster import (
 )
 
 def _existing_asset(context,
-                    asset_key,
-                    partition,
-                    file_names):
+                    asset_key: AssetKey,
+                    partition: str,
+                    file_names: list[str]):
     '''
     This checks the most recent materialization of an asset, if it exists. 
 
@@ -22,7 +22,7 @@ def _existing_asset(context,
     '''
     records = context.instance.get_event_records(
                         EventRecordsFilter(
-                            asset_key=AssetKey([asset_key]), 
+                            asset_key=asset_key, 
                             asset_partitions=[partition],
                             event_type=DagsterEventType.ASSET_MATERIALIZATION
                         ),
@@ -37,20 +37,21 @@ def _existing_asset(context,
         # Compare lists
         if set(last_files_used) == set(file_names):
             return True
+        
     return False
 
 def get_materialization(context,
-                        asset_key,
-                        partition,
-                        file_names,
-                        version,
-                        data_type):
+                        asset_key: AssetKey,
+                        partition: str,
+                        file_names: list[str],
+                        version: str,
+                        data_type: str):
     
     if _existing_asset(context, asset_key, partition, file_names):
         return
         
     return AssetMaterialization(
-                asset_key=AssetKey([asset_key]),
+                asset_key=asset_key,
                 partition=str(partition),
                 metadata={
                     "file_names": file_names,
@@ -60,12 +61,12 @@ def get_materialization(context,
             )
 
 def get_materialization_result(context,
-                                asset_key: str,
-                                partition: str | None,
-                                file_names: list[str],
-                                versions: list[str],
-                                data_type: str,
-                                inputs: dict = {}) -> MaterializeResult | None:
+                               asset_key: AssetKey,
+                               partition: str | None,
+                               file_names: list[str],
+                               versions: list[str],
+                               data_type: str,
+                               inputs: dict = {}) -> MaterializeResult | None:
     '''
     This provides a common method to materialize an asset. 
 
@@ -73,12 +74,11 @@ def get_materialization_result(context,
 
     data_type must be one of "science", "ancillary", "spice", "spin", or "repoint". 
     '''
-    asset_key = asset_key.replace("-", "")
     if _existing_asset(context, asset_key, partition, file_names):
         return
         
     return MaterializeResult(
-                asset_key=AssetKey(asset_key),
+                asset_key=asset_key,
                 metadata={
                     "file_names": file_names,
                     "input_type": data_type,

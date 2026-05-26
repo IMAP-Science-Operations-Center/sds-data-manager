@@ -10,7 +10,7 @@ from dagster import (
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sds_data_manager.orchestration import dagster_utilities
-
+from sds_data_manager.orchestration.types import DependencyNode
 import logging
 from contextlib import nullcontext
 
@@ -22,9 +22,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 MISSION_START_TIME = "2025-09-17T00:00:00"
 
-def build_repoint_file_deps_asset(asset_name, partitions_def):
+def build_repoint_file_deps_asset(node: DependencyNode, partitions_def):
     @asset(
-            name=asset_name,
+            name=node.to_dagster_asset().to_user_string(),
             partitions_def=partitions_def,
             output_required=False
     )
@@ -40,7 +40,7 @@ def build_repoint_file_deps_asset(asset_name, partitions_def):
         
         if file:
             materialization = dagster_utilities.get_materialization_result(context,
-                                                                            asset_name,
+                                                                            node.to_dagster_asset(),
                                                                             current_partition,
                                                                             file,
                                                                             "0",
