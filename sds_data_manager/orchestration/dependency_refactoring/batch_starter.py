@@ -9,8 +9,8 @@ from sqlalchemy import func
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 
-from ...database import models
-from .dependency_new import DependencyResolver, upload_dependency_file
+from ...lambda_code.SDSCode.database import models
+from .dependency import upload_dependency_file
 from .types import DependencyNode, ProcessingJobNode
 
 logger = logging.getLogger(__name__)

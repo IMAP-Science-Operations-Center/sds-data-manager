@@ -1,6 +1,7 @@
 """IMAP file handler for files on the SDS without associated jobs"""
 import datetime
 import os
+import json
 from dagster import (
     AssetExecutionContext,
     Failure,
@@ -13,8 +14,8 @@ from dagster import (
     AssetSpec
 )
 from sqlalchemy import select
-from orchestration import custom_partitions
-from orchestration import dagster_utilities
+from sds_data_manager.orchestration import custom_partitions
+from sds_data_manager.orchestration import dagster_utilities
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 
@@ -54,20 +55,33 @@ class IMAPScienceFileHandler:
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
                 default_status=DefaultSensorStatus.RUNNING,
-                minimum_interval_seconds=600)
+                minimum_interval_seconds=300)
         def _file_sensor(context: SensorEvaluationContext):
             
-            start_date = context.cursor or MISSION_START_TIME
-            start_dt = datetime.datetime.fromisoformat(start_date).replace(tzinfo=datetime.timezone.utc)
-            if (datetime.datetime.now((datetime.timezone.utc)) - start_dt) > datetime.timedelta(days=7):
-                next_time_to_check = start_dt + datetime.timedelta(days=7)                           
+            if context.cursor:
+                start_dt = json.loads(context.cursor).get('last_start_date', None)
+                ingest_dt = json.loads(context.cursor).get('last_ingest_date', None)
+                start_dt = datetime.datetime.fromisoformat(start_dt).replace(tzinfo=datetime.timezone.utc)
+                ingest_dt = datetime.datetime.fromisoformat(ingest_dt).replace(tzinfo=datetime.timezone.utc)
+            else: 
+                start_dt = datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
+                ingest_dt = datetime.datetime.now((datetime.timezone.utc))
+            if start_dt < ingest_dt:
+                # We are still working through a backlog
+                next_time_to_check = start_dt + datetime.timedelta(days=7)
+                time_field_to_check = models.ScienceFiles.start_date
+                new_cursor = json.dumps({'last_start_date': next_time_to_check.isoformat(), 'last_ingest_date': ingest_dt.isoformat()})                 
             else:
+                # We've caught up to the backlog, now only looking for new files
                 next_time_to_check = datetime.datetime.now((datetime.timezone.utc))
+                time_field_to_check = models.ScienceFiles.ingestion_date
+                start_dt = ingest_dt
+                new_cursor = json.dumps({'last_start_date': next_time_to_check.isoformat(), 'last_ingest_date': next_time_to_check.isoformat()})
 
             stmt = (
                 select(models.ScienceFiles)
-                .filter(models.ScienceFiles.ingestion_date >= start_dt,
-                        models.ScienceFiles.ingestion_date <= next_time_to_check,
+                .filter(time_field_to_check >= start_dt,
+                        time_field_to_check <= next_time_to_check,
                         models.ScienceFiles.instrument==self.source,
                         models.ScienceFiles.data_level==self.data_type,
                         models.ScienceFiles.descriptor==self.descriptor)
@@ -91,7 +105,7 @@ class IMAPScienceFileHandler:
                 recent_db_records = session.scalars(stmt).all()
 
                 if not recent_db_records:
-                    return SensorResult(cursor = next_time_to_check.isoformat())
+                    return SensorResult(cursor = new_cursor)
 
                 materializations = []
                 for record in recent_db_records:
@@ -105,7 +119,7 @@ class IMAPScienceFileHandler:
                         # We need to only materialize the repoint that this is a part of
                         with db.Session() as session:
                             repoint = session.query(models.PointingTable).filter(models.PointingTable.pointing_id==record.repointing).all()[0]
-                            if not repoint.pointing_start_utc or repoint.pointing_end_utc:
+                            if not repoint.pointing_start_utc or not repoint.pointing_end_utc:
                                 continue
                             affected_partitions = ["repoint" + str(repoint.pointing_id) + "_" +repoint.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S") + "_to_" + repoint.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S")]
                     else:
@@ -114,7 +128,7 @@ class IMAPScienceFileHandler:
                     
                     for partition in affected_partitions:
                         materialization = dagster_utilities.get_materialization(context,
-                                                                                type,
+                                                                                self.asset_name,
                                                                                 partition,
                                                                                 [os.path.basename(record.file_path)],
                                                                                 str(int(record.version[1:])),
@@ -124,7 +138,7 @@ class IMAPScienceFileHandler:
 
             return SensorResult(
                 asset_events=materializations,
-                cursor = next_time_to_check.isoformat()
+                cursor = new_cursor
             )
         
         return _file_sensor

@@ -505,7 +505,7 @@ def build_sds(
     #   port: 5432
     # 
     # Dagster will look for DB credentails through dagster.yaml in
-    # orchestration/dagster.yaml.
+    # sds_data_manager/orchestration/dagster.yaml.
     # In there, it's going to read DAGSTER_PG_PASSWORD and DAGSTER_PG_HOST.
     # Other credentials listed above will be set as default when creating RDS.
 

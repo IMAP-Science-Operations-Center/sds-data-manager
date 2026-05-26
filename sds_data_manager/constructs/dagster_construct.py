@@ -129,7 +129,7 @@ class DagsterEcsStack(Stack):
                     "-p",
                     "3000",
                     "-w",
-                    "orchestration/workspace.yaml",
+                    "sds_data_manager/orchestration/workspace.yaml",
                 ],
                 container_port=3000,
                 environment=env_vars,

@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pytest
 
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.types import (  # noqa: E501
+from sds_data_manager.orchestration.dependency_refactoring.types import (  # noqa: E501
     DependencyNode,
     ProcessingJobNode,
     TimeRange,
