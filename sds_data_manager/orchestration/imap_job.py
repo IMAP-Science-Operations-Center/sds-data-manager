@@ -1,37 +1,38 @@
 """IMAP job handler for managing dependencies and job submission."""
 
-import json
 import datetime
+import hashlib
+import json
+import logging
+import os
 import re
 import time
+
 import boto3
-import os
-import logging
-import hashlib
+import imap_data_access
+from botocore.exceptions import ClientError
 from dagster import (
     AssetExecutionContext,
-    Failure,
-    SensorEvaluationContext,
-    sensor,
-    EventRecordsFilter,
-    DagsterEventType,
-    RunRequest,
-    DefaultSensorStatus,
-    multi_asset,
     AssetOut,
-    define_asset_job
+    DagsterEventType,
+    DefaultSensorStatus,
+    EventRecordsFilter,
+    Failure,
+    RunRequest,
+    SensorEvaluationContext,
+    define_asset_job,
+    multi_asset,
+    sensor,
 )
-from sds_data_manager.lambda_code.SDSCode.database import database as db
-from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.orchestration.types import DependencyNode, ProcessingJobNode
-from sds_data_manager.orchestration import custom_partitions
-from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
-import imap_data_access
 from imap_data_access import processing_input
 from imap_data_access.io import download
-import boto3
-from botocore.exceptions import ClientError
 from sqlalchemy import func
+
+from sds_data_manager.lambda_code.SDSCode.database import database as db
+from sds_data_manager.lambda_code.SDSCode.database import models
+from sds_data_manager.orchestration import custom_partitions
+from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
+from sds_data_manager.orchestration.types import DependencyNode, ProcessingJobNode
 
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 # Create an ECR client for getting container image digests
@@ -55,57 +56,61 @@ SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-priority_levels = {'l0':'0',
-                    'l1a':'-1',
-                    'l1b':'-2',
-                    'l1c':'-3',
-                    'l1d':'-4',
-                    'l2':'-5',
-                    'l2a':'-6',
-                    'l2b':'-7',
-                    'l2c':'-8',
-                    'l2d':'-9',
-                    'l3':'-10',
-                    'l3a':'-11',
-                    'l3b':'-12',
-                    'l3c':'-13',
-                    'l3d':'-14',}
+priority_levels = {
+    "l0": "0",
+    "l1a": "-1",
+    "l1b": "-2",
+    "l1c": "-3",
+    "l1d": "-4",
+    "l2": "-5",
+    "l2a": "-6",
+    "l2b": "-7",
+    "l2c": "-8",
+    "l2d": "-9",
+    "l3": "-10",
+    "l3a": "-11",
+    "l3b": "-12",
+    "l3c": "-13",
+    "l3d": "-14",
+}
 
-_sensor_schedule = {'l0': 300,
-                    'l1a':300,
-                    'l1b':300,
-                    'l1c':300,
-                    'l1d':300,
-                    'l2': 300,
-                    'l2a':300,
-                    'l2b':300,
-                    'l2c':300,
-                    'l2d':300,
-                    'l3': 300,
-                    'l3a':300,
-                    'l3b':300,
-                    'l3c':300,
-                    'l3d':300}
+_sensor_schedule = {
+    "l0": 300,
+    "l1a": 300,
+    "l1b": 300,
+    "l1c": 300,
+    "l1d": 300,
+    "l2": 300,
+    "l2a": 300,
+    "l2b": 300,
+    "l2c": 300,
+    "l2d": 300,
+    "l3": 300,
+    "l3a": 300,
+    "l3b": 300,
+    "l3c": 300,
+    "l3d": 300,
+}
 
-_partition_map = {
-            "daily":   custom_partitions.daily_partitions,
-            "repoint": custom_partitions.repoint_partitions,
-            "10d":     custom_partitions.idex10_partitions,
-            # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
-            # maps to exactly 30 days. If this changes, this logic will need update.
-            "30d":     custom_partitions.idex30_partitions,
-            # TODO: add cadence custom partition definition and update to use those
-            # later
-            "3mo":     custom_partitions.idex30_partitions,
-            "6mo":     custom_partitions.idex30_partitions,
-            "1yr":     custom_partitions.whole_mission_partition,
-        }
+partition_map = {
+    "daily": custom_partitions.daily_partitions,
+    "repoint": custom_partitions.repoint_partitions,
+    "10d": custom_partitions.idex10_partitions,
+    # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
+    # maps to exactly 30 days. If this changes, this logic will need update.
+    "30d": custom_partitions.idex30_partitions,
+    # TODO: add cadence custom partition definition and update to use those
+    # later
+    "3mo": custom_partitions.idex30_partitions,
+    "6mo": custom_partitions.idex30_partitions,
+    "1yr": custom_partitions.whole_mission_partition,
+}
+
 
 class IMAPJobHandler:
     """Handle IMAP job dependencies and submission."""
 
-    def __init__(self, 
-                 job: ProcessingJobNode):
+    def __init__(self, job: ProcessingJobNode):
         """Initialize handler with job node and process dependencies.
 
         Parameters
@@ -115,18 +120,21 @@ class IMAPJobHandler:
         """
         self.job_config = job
 
-        self.partitions_def = _partition_map.get(self.job_config.partition)
+        self.partitions_def = partition_map.get(self.job_config.partition)
         self.sensor_schedule = _sensor_schedule.get(self.job_config.data_type, 600)
-        
+
         outputs_for_job = [x.to_dagster_asset() for x in self.job_config.outputs]
 
-        self.dagster_job = define_asset_job(name=f"{self.job_config.to_dagster_asset().to_user_string()}_processing_job",
-                                           selection=outputs_for_job,
-                                           tags={"dagster/priority": priority_levels.get(self.job_config.data_type, '0')})
-    
+        self.dagster_job = define_asset_job(
+            name=f"{self.job_config.to_dagster_asset().to_user_string()}_processing_job",
+            selection=outputs_for_job,
+            tags={
+                "dagster/priority": priority_levels.get(self.job_config.data_type, "0")
+            },
+        )
+
     def build_asset(self):
-        """
-        This builds the Asset for Dagster for a particular job. This function will:
+        """This builds the Asset for Dagster for a particular job. This function will:
 
         1) Get all dependencies from the dependency tree
         2) Check if the job had been submitted before
@@ -134,73 +142,85 @@ class IMAPJobHandler:
            b) If Dagster does know about it, we exit
         3) Get the Job version
         4) Submit the job
-        5) Wait for the output files, and materialize them as we see them in the database. 
+        5) Wait for the output files, and materialize them as we see them in the database.
 
         """
         input_keys = [dep.to_dagster_asset() for dep in self.job_config.inputs]
         output_assets = {}
         for out in self.job_config.outputs:
-            output_assets[out.to_dagster_asset().to_user_string()] = AssetOut(is_required=False)
+            output_assets[out.to_dagster_asset().to_user_string()] = AssetOut(
+                is_required=False
+            )
 
         @multi_asset(
             name=f"{self.job_config.to_dagster_asset().to_user_string()}_multi_asset_op",
-            deps=input_keys, 
+            deps=input_keys,
             partitions_def=self.partitions_def,
-            outs=output_assets
+            outs=output_assets,
         )
         def _generic_batch_submitter(context: AssetExecutionContext):
             parts = context.partition_key.split("_")
-            start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc).date()
+            start_date = (
+                datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S")
+                .replace(tzinfo=datetime.timezone.utc)
+                .date()
+            )
             if "repoint" in parts[0]:
                 pointing_number = int(parts[0][7:])
             else:
                 pointing_number = None
-            
+
             # 1. Figure out what time window this specific run is responsible for
             target_partition = context.partition_key
             target_start, target_end = self._parse_dates_from_key(target_partition)
-            
-            # 2. Get Dependencies 
+
+            # 2. Get Dependencies
             dependency_inputs = self.get_dependencies(context, target_start, target_end)
             if not dependency_inputs:
-                raise Failure(description="Processing failed: Dependency inputs were missing.")
+                raise Failure(
+                    description="Processing failed: Dependency inputs were missing."
+                )
             already_processed = False
             with db.Session() as session:
                 for output in self.job_config.outputs:
-                    previous_file = self.is_duplicate_job(context,
-                                                        session,
-                                                        dependency_inputs,
-                                                        self.job_config.source,
-                                                        self.job_config.data_type,
-                                                        output.descriptor,
-                                                        self.job_config.descriptor,
-                                                        start_date,
-                                                        pointing_number)
-            
+                    previous_file = self.is_duplicate_job(
+                        context,
+                        session,
+                        dependency_inputs,
+                        self.job_config.source,
+                        self.job_config.data_type,
+                        output.descriptor,
+                        self.job_config.descriptor,
+                        start_date,
+                        pointing_number,
+                    )
+
                     if previous_file:
                         already_processed = True
-                        materialization = get_materialization_result(context,
-                                                                    output.to_dagster_asset(),
-                                                                    context.partition_key,
-                                                                    [os.path.basename(previous_file.file_path)],
-                                                                    previous_file.version,
-                                                                    "science",
-                                                                    inputs = dependency_inputs.serialize())
+                        materialization = get_materialization_result(
+                            context,
+                            output.to_dagster_asset(),
+                            context.partition_key,
+                            [os.path.basename(previous_file.file_path)],
+                            previous_file.version,
+                            "science",
+                            inputs=dependency_inputs.serialize(),
+                        )
                         if materialization:
                             yield materialization
 
                 if not already_processed:
                     job_version = self._determine_job_version(
-                                                    session=session,
-                                                    instrument=self.job_config.source,
-                                                    descriptor=self.job_config.descriptor,
-                                                    start_date=start_date,
-                                                    data_level=self.job_config.data_type,
-                                                    current_dependencies=dependency_inputs.serialize(),
-                                                )
+                        session=session,
+                        instrument=self.job_config.source,
+                        descriptor=self.job_config.descriptor,
+                        start_date=start_date,
+                        data_level=self.job_config.data_type,
+                        current_dependencies=dependency_inputs.serialize(),
+                    )
                     context.log.info(f"Job Version to Use: {job_version}")
-                
-                    '''
+
+                    """
                     # SUBMIT JOB HERE!!!
                     job_node = {"data_source":instrument,
                                 "data_type":level,
@@ -213,49 +233,59 @@ class IMAPJobHandler:
                                                                         dependency_inputs.serialize(),
                                                                         repoint=int(target_partition),
                                                                     )
-                    '''
-                    #if submit_status.status == 'submitted':
+                    """
+                    # if submit_status.status == 'submitted':
                     for output in self.job_config.outputs:
-                        context.log.info(f"Waiting for data product {output.source}_{output.data_type}_{output.descriptor} to complete")
-                        file = self.wait_for_file(context,
-                                                 session,
-                                                 output,
-                                                 job_version,
-                                                 repointing=pointing_number,
-                                                 start_date=start_date.strftime("%Y%m%d"),
-                                                 inputs = dependency_inputs.serialize())
+                        context.log.info(
+                            f"Waiting for data product {output.source}_{output.data_type}_{output.descriptor} to complete"
+                        )
+                        file = self.wait_for_file(
+                            context,
+                            session,
+                            output,
+                            job_version,
+                            repointing=pointing_number,
+                            start_date=start_date.strftime("%Y%m%d"),
+                            inputs=dependency_inputs.serialize(),
+                        )
 
                         if file:
                             yield file
-                        # TODO: We should not yield right away. We should collect up anything that this asset has generated, 
-                        # yield what we can, and determine if anything required in the output is missing, then yield a failure. 
+                        # TODO: We should not yield right away. We should collect up anything that this asset has generated,
+                        # yield what we can, and determine if anything required in the output is missing, then yield a failure.
 
         # Return the generated function back to Dagster
         return _generic_batch_submitter
 
-    def wait_for_file(self,
-                      context,
-                      session: db.Session,
-                      output: DependencyNode,
-                      job_version: str,
-                      start_date: str = None,
-                      repointing: int = None,
-                      inputs = {}):
+    def wait_for_file(
+        self,
+        context,
+        session: db.Session,
+        output: DependencyNode,
+        job_version: str,
+        start_date: str = None,
+        repointing: int = None,
+        inputs={},
+    ):
         if start_date is None and repointing is None:
-            raise ValueError("You must at least provide either start_date or repointing")
-        
+            raise ValueError(
+                "You must at least provide either start_date or repointing"
+            )
+
         parsed_start_date = None
         if start_date is not None:
             parsed_start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
-        
-        timeout = 3 # TODO: Set this for WAY higher once we're actually waiting for files. 
+
+        timeout = (
+            3  # TODO: Set this for WAY higher once we're actually waiting for files.
+        )
         timeout_start = time.time()
         while time.time() < timeout_start + timeout:
             filters = [
                 models.ScienceFiles.instrument == output.source,
                 models.ScienceFiles.data_level == output.data_type,
                 models.ScienceFiles.descriptor == output.descriptor,
-                models.ScienceFiles.version == job_version
+                models.ScienceFiles.version == job_version,
             ]
             if repointing is not None:
                 filters.append(models.ScienceFiles.repointing == int(repointing))
@@ -263,49 +293,62 @@ class IMAPJobHandler:
                 filters.append(models.ScienceFiles.start_date == parsed_start_date)
             created_file = session.query(models.ScienceFiles).filter(*filters).first()
             if created_file:
-                context.log.info(f"Found file {os.path.basename(created_file.file_path)}! Creating Asset.")
-                materialization = get_materialization_result(context,
-                                                             output.to_dagster_asset(),
-                                                             context.partition_key,
-                                                             [os.path.basename(created_file.file_path)],
-                                                             str(int(job_version[1:])),
-                                                             "science",
-                                                             inputs = inputs)
+                context.log.info(
+                    f"Found file {os.path.basename(created_file.file_path)}! Creating Asset."
+                )
+                materialization = get_materialization_result(
+                    context,
+                    output.to_dagster_asset(),
+                    context.partition_key,
+                    [os.path.basename(created_file.file_path)],
+                    str(int(job_version[1:])),
+                    "science",
+                    inputs=inputs,
+                )
                 if materialization:
                     return materialization
-            time.sleep(1) # TODO: Set this for WAY higher once we're actually waiting for files. 
+            time.sleep(
+                1
+            )  # TODO: Set this for WAY higher once we're actually waiting for files.
 
-    def _parse_dates_from_key(self, 
-                              partition_key: str) -> tuple[datetime.datetime, datetime.datetime]:
-        """
-        Extracts start and end datetimes from a string formatted like:
+    def _parse_dates_from_key(
+        self, partition_key: str
+    ) -> tuple[datetime.datetime, datetime.datetime]:
+        """Extracts start and end datetimes from a string formatted like:
         '{name}_%Y-%m-%dT%H:%M:%S_to_%Y-%m-%dT%H:%M:%S'
         """
         if not partition_key:
             return None, None
-            
-        date_range = partition_key.split('_', 1)[1]
+
+        date_range = partition_key.split("_", 1)[1]
         if "_to_" in date_range:
             p_start_str, p_end_str = date_range.split("_to_")
-            p_start = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-            p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-            
+            p_start = datetime.datetime.strptime(
+                p_start_str, "%Y-%m-%dT%H:%M:%S"
+            ).replace(tzinfo=datetime.timezone.utc)
+            p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(
+                tzinfo=datetime.timezone.utc
+            )
+
         return p_start, p_end
 
-    def _get_overlapping_target_partitions(self, upstream_partition_key, up_start, up_end, instance):
-        """
-        Evaluates the upstream date range against existing downstream partitions.
+    def _get_overlapping_target_partitions(
+        self, upstream_partition_key, up_start, up_end, instance
+    ):
+        """Evaluates the upstream date range against existing downstream partitions.
         Returns a list of downstream partition keys that overlap.
         """
         target_keys = []
         # Fetch the currently known dynamic partitions for your target asset
-        existing_downstream_keys = instance.get_dynamic_partitions(self.partitions_def.name)
+        existing_downstream_keys = instance.get_dynamic_partitions(
+            self.partitions_def.name
+        )
 
         # Check if the upstream and downstream are in the same partition
         if upstream_partition_key in existing_downstream_keys:
-            # These are actually in same partition! No need to loop through the other keys.  
+            # These are actually in same partition! No need to loop through the other keys.
             return [upstream_partition_key]
-        
+
         for down_key in existing_downstream_keys:
             down_start, down_end = self._parse_dates_from_key(down_key)
             if not down_start or not down_end:
@@ -318,45 +361,46 @@ class IMAPJobHandler:
         return target_keys
 
     def build_sensor(self):
-        """
-        Factory function that returns a Dagster sensor monitoring the dependencies
+        """Factory function that returns a Dagster sensor monitoring the dependencies
         and triggering this asset when overlapping data arrives.
 
         1) Checks for all of the latest asset materializations in dagster for all dependencies of this product
         2) Loops through the latest materializations
         3) Determines what time range those materializations belong to
         4) Determines what partition keys of this asset those new materializations belong to
-        5) For each affected partition, we determine the dependencies. If we have all dependencies, we are good! 
+        5) For each affected partition, we determine the dependencies. If we have all dependencies, we are good!
         6) Yield a RunRequest for a job to make the asset for the partitions that have all dependencies.
         """
         deps_keys = [x.to_dagster_asset() for x in self.job_config.triggering_deps]
-        sensor_name = f"{self.job_config.to_dagster_asset().to_user_string()}_kickoff_sensor"
+        sensor_name = (
+            f"{self.job_config.to_dagster_asset().to_user_string()}_kickoff_sensor"
+        )
+
         @sensor(
             name=sensor_name,
             job=self.dagster_job,
             minimum_interval_seconds=self.sensor_schedule,
-            default_status=DefaultSensorStatus.RUNNING
+            default_status=DefaultSensorStatus.RUNNING,
         )
         def _sensor(context: SensorEvaluationContext):
-            
+
             # Load the cursor to track which events we have already seen.
             # The cursor maps `{asset_name: last_processed_storage_id}`.
             cursors = json.loads(context.cursor) if context.cursor else {}
             new_cursors = cursors.copy()
-            
+
             # Iterate through each dependency to find unconsumed materializations
             for dep_key in deps_keys:
-                
                 dep_name = dep_key.to_user_string()
                 context.log.info(f"Checking new dependencies for: {dep_name}")
 
                 # Fetch the last evaluated event ID for this specific dependency
                 last_event_id = cursors.get(dep_name)
                 filter = EventRecordsFilter(
-                        event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                        asset_key=dep_key,
-                        after_cursor=last_event_id,
-                    )
+                    event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                    asset_key=dep_key,
+                    after_cursor=last_event_id,
+                )
                 new_events = context.instance.get_event_records(filter, limit=1)
                 if new_events:
                     record = new_events[0]
@@ -365,32 +409,36 @@ class IMAPJobHandler:
 
                 # Update our new cursor marker to the highest storage ID seen
                 new_cursors[dep_name] = record.storage_id
-                    
+
                 upstream_partition_key = record.event_log_entry.dagster_event.partition
                 up_start, up_end = self._parse_dates_from_key(upstream_partition_key)
-                
+
                 if not up_start or not up_end:
                     continue
-                    
+
                 # Calculate overlap
                 target_partitions = self._get_overlapping_target_partitions(
                     upstream_partition_key, up_start, up_end, context.instance
                 )
-                
+
                 for target_partition in target_partitions:
                     # Queue the RunRequest
-                    target_start, target_end = self._parse_dates_from_key(target_partition)
-                    dependencies = self.get_dependencies(context, target_start, target_end)
+                    target_start, target_end = self._parse_dates_from_key(
+                        target_partition
+                    )
+                    dependencies = self.get_dependencies(
+                        context, target_start, target_end
+                    )
                     if dependencies:
-                        tags={"dependencies": dependencies.serialize()}
+                        tags = {"dependencies": dependencies.serialize()}
                         yield RunRequest(
-                                        partition_key=target_partition,
-                                        run_key=f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
-                                        tags=tags
-                                    )
-                break # To keep the sensor short, we'll only analyze one new dependency at a time. If there are still new ones, we'll consume them next time. 
-                # The get_dependencies will still get the latest stuff regardless, so we're never submitting outdated data. 
-                            
+                            partition_key=target_partition,
+                            run_key=f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
+                            tags=tags,
+                        )
+                break  # To keep the sensor short, we'll only analyze one new dependency at a time. If there are still new ones, we'll consume them next time.
+                # The get_dependencies will still get the latest stuff regardless, so we're never submitting outdated data.
+
             # 5. Lock in the new cursor state and execute
             context.update_cursor(json.dumps(new_cursors))
 
@@ -398,7 +446,6 @@ class IMAPJobHandler:
 
     def process_job(self, potential_job_node: DependencyNode):
         """Process the job by resolving dependencies and submitting to batch."""
-        
         if self.dependencies is not None:
             self._calculate_crid()
             self._determine_job_version()
@@ -422,59 +469,74 @@ class IMAPJobHandler:
             #     if job_submit_succeed:
             #         self.clean_up()
 
-    def get_dependencies(self, 
-                         context: AssetExecutionContext, 
-                         target_start: datetime.datetime, 
-                         target_end: datetime.datetime):
+    def get_dependencies(
+        self,
+        context: AssetExecutionContext,
+        target_start: datetime.datetime,
+        target_end: datetime.datetime,
+    ):
         """Get the dependencies for the job using the DependencyResolver."""
-
-        # Iterate through each upstream dependency 
+        # Iterate through each upstream dependency
         dependency_inputs = processing_input.ProcessingInputCollection()
-        context.log.info(f"Checking for all dependencies existing between {target_start} and {target_end}")
+        context.log.info(
+            f"Checking for all dependencies existing between {target_start} and {target_end}"
+        )
 
         for input in self.job_config.inputs:
             dep_name = input.to_user_string()
-            found_dep=False
+            found_dep = False
             context.log.info(f"Checking out {dep_name}")
             metadata_list = input.get_all_files_in_time_range()
             for metadata in metadata_list:
                 if "file_names" in metadata:
-                    found_dep = True # We can finally say we have found at least one dependency
+                    found_dep = (
+                        True  # We can finally say we have found at least one dependency
+                    )
                     # Dagster wraps metadata in a MetadataValue object, so we call .value
                     file_names = metadata["file_names"].value
                     # Handle both single strings and lists of files safely
                     if file_names:
-                        context.log.info(f"The file names of the matching partition: {file_names}")
+                        context.log.info(
+                            f"The file names of the matching partition: {file_names}"
+                        )
                     input_type = metadata["input_type"].value
-                    if input_type=='science':
-                        dependency_inputs.add(processing_input.ScienceInput(*file_names))
-                    if input_type=='ancillary':
-                        dependency_inputs.add(processing_input.AncillaryInput(*file_names))
-                    if input_type=='spin':
+                    if input_type == "science":
+                        dependency_inputs.add(
+                            processing_input.ScienceInput(*file_names)
+                        )
+                    if input_type == "ancillary":
+                        dependency_inputs.add(
+                            processing_input.AncillaryInput(*file_names)
+                        )
+                    if input_type == "spin":
                         dependency_inputs.add(processing_input.SpinInput(*file_names))
-                    if input_type=='repoint':
+                    if input_type == "repoint":
                         dependency_inputs.add(
                             processing_input.RepointInput(file_names[0])
                         )
-                    if input_type=='spice':
+                    if input_type == "spice":
                         dependency_inputs.add(processing_input.SPICEInput(*file_names))
             if not found_dep:
                 # TODO: Check here if we have a soft dependency.
-                context.log.info(f"Not enought information to process. Missing {dep_name} in range {str(target_start)} to {str(target_end)}")
+                context.log.info(
+                    f"Not enought information to process. Missing {dep_name} in range {target_start!s} to {target_end!s}"
+                )
                 return
 
         return dependency_inputs
 
-    def is_duplicate_job(self,
-                         context,
-                        session,
-                        dependency,
-                        instrument,
-                        level,
-                        descriptor,
-                        job_command,
-                        start_date,
-                        repoint):
+    def is_duplicate_job(
+        self,
+        context,
+        session,
+        dependency,
+        instrument,
+        level,
+        descriptor,
+        job_command,
+        start_date,
+        repoint,
+    ):
         """Determine if the job is a duplicate.
 
         Requirements for duplicate job determination:
@@ -505,52 +567,74 @@ class IMAPJobHandler:
         # )
         # 3. If return exists, it's a duplicate job and return True.
 
-        '''
-        This function will check if the latest file at the SDC has already been processed using 
+        """
+        This function will check if the latest file at the SDC has already been processed using
         the gathered dependencies. To do this, it:
 
         1) Finds the latest file
         2) Finds the corresponding Processing Job
         3) Read in the .json dependency file from the corresponding Processing Job
-        4) Compares the Ancillary and Science files in the dependency file to the current ones 
+        4) Compares the Ancillary and Science files in the dependency file to the current ones
         5) If they all match, the function returns the materialization result of the latest file
 
-        Yes, this is somewhat complicated right now. I think the best way going forward would be to 
-        add the dependencies to a particular file either in the ScienceFiles or ProcessingJob tables. 
-        '''
-        context.log.info(f"Checking if we have already have a file of this instrument of {instrument}, this level of {level}, and this {descriptor}.")
-        context.log.info(f"And this start date {start_date}, and this pointing number {repoint}.")
+        Yes, this is somewhat complicated right now. I think the best way going forward would be to
+        add the dependencies to a particular file either in the ScienceFiles or ProcessingJob tables.
+        """
+        context.log.info(
+            f"Checking if we have already have a file of this instrument of {instrument}, this level of {level}, and this {descriptor}."
+        )
+        context.log.info(
+            f"And this start date {start_date}, and this pointing number {repoint}."
+        )
         if repoint:
-            latest_file = session.query(models.ScienceFiles).filter(
-                                            models.ScienceFiles.instrument == instrument,
-                                            models.ScienceFiles.data_level == level,
-                                            models.ScienceFiles.descriptor == descriptor,
-                                            models.ScienceFiles.repointing == int(repoint)
-                                        ).order_by(models.ScienceFiles.version.desc()).first()
+            latest_file = (
+                session.query(models.ScienceFiles)
+                .filter(
+                    models.ScienceFiles.instrument == instrument,
+                    models.ScienceFiles.data_level == level,
+                    models.ScienceFiles.descriptor == descriptor,
+                    models.ScienceFiles.repointing == int(repoint),
+                )
+                .order_by(models.ScienceFiles.version.desc())
+                .first()
+            )
         else:
-            latest_file = session.query(models.ScienceFiles).filter(
-                                            models.ScienceFiles.instrument == instrument,
-                                            models.ScienceFiles.data_level == level,
-                                            models.ScienceFiles.descriptor == descriptor,
-                                            models.ScienceFiles.start_date == start_date
-                                        ).order_by(models.ScienceFiles.version.desc()).first()
+            latest_file = (
+                session.query(models.ScienceFiles)
+                .filter(
+                    models.ScienceFiles.instrument == instrument,
+                    models.ScienceFiles.data_level == level,
+                    models.ScienceFiles.descriptor == descriptor,
+                    models.ScienceFiles.start_date == start_date,
+                )
+                .order_by(models.ScienceFiles.version.desc())
+                .first()
+            )
         if latest_file:
-            context.log.info("Yes we did! Now we need to check the processing jobs to see if the same dependencies were used to create this. ")
+            context.log.info(
+                "Yes we did! Now we need to check the processing jobs to see if the same dependencies were used to create this. "
+            )
             max_version_record = (
                 session.query(models.ProcessingJob)
-                .filter(models.ProcessingJob.instrument == latest_file.instrument,
+                .filter(
+                    models.ProcessingJob.instrument == latest_file.instrument,
                     models.ProcessingJob.data_level == latest_file.data_level,
                     models.ProcessingJob.descriptor == job_command,
                     models.ProcessingJob.start_date == latest_file.start_date,
                     models.ProcessingJob.status.in_(
-                            [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
-                        ))
+                        [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
+                    ),
+                )
                 .order_by(models.ProcessingJob.version.desc())
                 .first()
             )
             if max_version_record:
-                context.log.info("A job does indeed look like this one...lets check out its dependencies file")
-                match = re.search(r'--dependency\s+(\S+\.json)', max_version_record.container_command)
+                context.log.info(
+                    "A job does indeed look like this one...lets check out its dependencies file"
+                )
+                match = re.search(
+                    r"--dependency\s+(\S+\.json)", max_version_record.container_command
+                )
                 if match:
                     dependency_file = match.group(1)
                     context.log.info(dependency_file)
@@ -562,30 +646,36 @@ class IMAPJobHandler:
                         ssm_response = SSM_CLIENT.get_parameter(
                             Name=ssm_parameter_name, WithDecryption=True
                         )
-                        imap_data_access.config["API_KEY"] = ssm_response["Parameter"]["Value"]
+                        imap_data_access.config["API_KEY"] = ssm_response["Parameter"][
+                            "Value"
+                        ]
                     except Exception as e:
                         print(f"Could not retrieve API key from SSM: {e}")
                     dependency_filepath = download(dependency_file)
                     with open(dependency_filepath) as f:
                         old_inputs = json.loads(f.read())
-                    context.log.info(f"Check it out! These are the dependencies it previously ran with: {json.dumps(old_inputs)}")
+                    context.log.info(
+                        f"Check it out! These are the dependencies it previously ran with: {json.dumps(old_inputs)}"
+                    )
                     dependencies_match = True
                     old_science_inputs = []
                     old_ancillary_inputs = []
                     new_science_inputs = []
                     new_ancillary_inputs = []
                     for dep in old_inputs:
-                        if dep['type'] == "science":
-                            old_science_inputs.extend(dep['files'])
-                        if dep['type'] == "ancillary":
-                            old_ancillary_inputs.extend(dep['files'])
+                        if dep["type"] == "science":
+                            old_science_inputs.extend(dep["files"])
+                        if dep["type"] == "ancillary":
+                            old_ancillary_inputs.extend(dep["files"])
                     new_inputs = json.loads(dependency.serialize())
-                    context.log.info(f"Check it out! These are the dependencies that we want to run it with now: {json.dumps(new_inputs)}")
+                    context.log.info(
+                        f"Check it out! These are the dependencies that we want to run it with now: {json.dumps(new_inputs)}"
+                    )
                     for dep in new_inputs:
-                        if dep['type'] == "science":
-                            new_science_inputs.extend(dep['files'])
-                        if dep['type'] == "ancillary":
-                            new_ancillary_inputs.extend(dep['files'])
+                        if dep["type"] == "science":
+                            new_science_inputs.extend(dep["files"])
+                        if dep["type"] == "ancillary":
+                            new_ancillary_inputs.extend(dep["files"])
 
                     if set(old_science_inputs) != set(new_science_inputs):
                         dependencies_match = False
@@ -593,14 +683,14 @@ class IMAPJobHandler:
                         dependencies_match = False
 
                     if dependencies_match:
-                        context.log.info(f"It's a match!")
-                        # The latest file does not need to be updated. 
-                        # We need to tell dagster that this asset is complete. 
+                        context.log.info("It's a match!")
+                        # The latest file does not need to be updated.
+                        # We need to tell dagster that this asset is complete.
                         context.log.info(f"Latest file: {latest_file.file_path}")
                         context.log.info(f"Version: {latest_file.version}")
                         return latest_file
                     else:
-                        context.log.info(f"It's not a match!")
+                        context.log.info("It's not a match!")
         else:
             context.log.info("No files have ever been made like this before!")
 
@@ -716,7 +806,7 @@ class IMAPJobHandler:
         """Generate a hash for the serialized dependencies. Use only the first 8 characters.
 
         This is a unique ID for a particular run. Dagster will refused to run a job with
-        the same dependency_hash. 
+        the same dependency_hash.
 
         Parameters
         ----------
@@ -732,7 +822,7 @@ class IMAPJobHandler:
         dependencies = json.loads(serialized_dependencies)
         non_sclk_deps = []
         for dep in dependencies:
-            for file in dep['files']:
+            for file in dep["files"]:
                 if "imap_sclk" not in file:
                     # We'll get rid of the spacecraft_clock kernel, if it exists
                     non_sclk_deps.append(file)
@@ -746,10 +836,10 @@ class IMAPJobHandler:
     def _get_container_image_digest(self):
         """Get the container image digest.
 
-        The image digest is a sha256 hash of the image manifest and is a unique identifier
-        for the specific version of the container image used in the batch job.
-        This is important for tracking which version of the code is being used for each
-        job.
+        The image digest is a sha256 hash of the image manifest and is a unique
+        identifier for the specific version of the container image used in the batch
+        job. This is important for tracking which version of the code is being used
+        for each job.
 
         Parameters
         ----------
@@ -777,8 +867,8 @@ class IMAPJobHandler:
             key=lambda definition: definition.get("revision", 0),
         )
         container_image = job_def["containerProperties"]["image"]
-        # Parse the container image URI to get the registry id, repository name and image
-        # tag and use those to call describe_images and get the image digest.
+        # Parse the container image URI to get the registry id, repository name and
+        # image tag and use those to call describe_images and get the image digest.
         # Eg. for 123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest,
         # "123456789012" is the registry id, "swapi-repo" is the repository and
         # "latest" is the image tag.

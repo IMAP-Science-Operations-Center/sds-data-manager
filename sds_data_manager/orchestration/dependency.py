@@ -209,7 +209,7 @@ class DependencyConfigReader:
                         descriptor=descriptor,
                         inputs=upstream_deps_nodes,
                         outputs=job_outputs_list,
-                        partition=value.get("partition")
+                        partition=value.get("partition"),
                     )
 
                 except (ValueError, IndexError) as e:
@@ -269,6 +269,43 @@ class DependencyConfigReader:
                 # Otherwise, append the item (which can be any object)
                 flat_list.append(item)
         return flat_list
+
+
+def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
+    """Return all the jobs that kick off each instrument pipeline.
+
+    These are nodes that are downstream from a node with the data_level equal to
+    "l0" and the descriptor equal to "raw".
+
+    If instrument is provided, return only the kickoff job for that instruments
+    pipeline.
+
+    Parameters
+    ----------
+    instrument : str, optional
+        The instrument for which to get the kickoff job.
+
+    Returns
+    -------
+    list[ProcessingJobNode]
+        List of ProcessingJobNode that are the root job node of each instrument pipeline.
+        If instrument is provided, return only the kickoff job for that instrument.
+    """
+    kick_off_jobs = []
+
+    reader = DependencyConfigReader()
+    for potential_job in reader.config:
+        for upstream_node in reader.inputs(potential_job):
+            if upstream_node.data_type == "l0" and upstream_node.descriptor == "raw":
+                if instrument and upstream_node.source == instrument:
+                    return [reader.config[potential_job]]
+                kick_off_jobs.append(reader.config[potential_job])
+
+    if not kick_off_jobs:
+        logger.info(
+            "No kickoff jobs found. Please check the instrument dependency YAML files."
+        )
+    return kick_off_jobs
 
 
 def upload_dependency_file(dependency_file_path: Path, serialized_dependencies: str):

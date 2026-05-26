@@ -60,7 +60,7 @@ def template(stack, env, code):
 
 def test_batch_starter_resources(template):
     """Ensure the template has appropriate IAM roles."""
-    template.resource_count_is("AWS::IAM::Role", 7)
+    template.resource_count_is("AWS::IAM::Role", 9)
     # 2 for RDS stack + 1 for BatchStarterLambda + 1 for API Gateway + 1 for
     # bucket notifications
     template.resource_count_is("AWS::Lambda::Function", 5)
