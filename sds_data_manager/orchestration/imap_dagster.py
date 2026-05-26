@@ -1,9 +1,10 @@
+from dagster import Definitions
 from imap_data_access import VALID_DATALEVELS
-
-from orchestration import idex, spice, spin, repoint_file
-from orchestration.imap_file import IMAPAncillaryFileHandler, IMAPScienceFileHandler
-from orchestration.imap_job import IMAPJobHandler
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import (
+from sds_data_manager.orchestration import custom_partitions, repoint_file, spice, idex
+from sds_data_manager.orchestration import spin
+from sds_data_manager.orchestration.imap_file import IMAPAncillaryFileHandler, IMAPScienceFileHandler
+from sds_data_manager.orchestration.imap_job import IMAPJobHandler
+from sds_data_manager.orchestration.dependency_refactoring.dependency import (
     DependencyConfigReader,
 )
 
@@ -95,8 +96,19 @@ for asset in assets_to_build:
         repoint_file_jobs.append(repoint_file.build_repoint_file_deps_asset(asset.repoint_file_dependency_name, asset.partitions_def))
         repoint_jobs_created.add(asset.repoint_file_dependency_name)
 
-assets = spice_jobs + batch_jobs + spin_jobs + repoint_file_jobs + idex.L0_asset
+assets = spice_jobs + batch_jobs + spin_jobs + repoint_file_jobs
 
 # Now for each asset, create a sensor using handler.build_sensor().
 # store in sensors list
-sensors = sensors + idex.L0_sensor
+sensors = sensors
+
+
+defs = Definitions(
+    assets=assets + idex.L0_asset,
+    sensors=spin.sensors
+    + repoint_file.sensors
+    + custom_partitions.sensors
+    + spice.sensors
+    + sensors
+    + idex.L0_sensor,
+)

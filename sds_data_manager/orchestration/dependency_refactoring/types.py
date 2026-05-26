@@ -4,10 +4,11 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, ClassVar
 
+from dagster import AssetKey
 from imap_data_access import ScienceFilePath
 
-from .. import VALID_CADENCE_STRS
-from ..dependency import DataSource, DataType
+from ...lambda_code.SDSCode.pipeline_lambdas import VALID_CADENCE_STRS
+from ...lambda_code.SDSCode.pipeline_lambdas.dependency import DataSource, DataType
 
 # Date range validation constants
 NEAREST_OPTIONS = ("nd", "np")
