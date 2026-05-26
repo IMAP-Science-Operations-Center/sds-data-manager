@@ -13,7 +13,7 @@ from dagster import (
 import imap_data_access
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
-from orchestration import dagster_utilities
+from sds_data_manager.orchestration import dagster_utilities
 
 # Logger setup
 logger = logging.getLogger(__name__)

@@ -8,10 +8,10 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.dependency_new import (  # noqa: E501
+from sds_data_manager.orchestration.dependency_refactoring.dependency import (  # noqa: E501
     DependencyConfigReader,
 )
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.types import (  # noqa: E501
+from sds_data_manager.orchestration.dependency_refactoring.types import (  # noqa: E501
     DependencyNode,
 )
 

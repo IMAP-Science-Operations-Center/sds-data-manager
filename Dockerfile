@@ -30,14 +30,13 @@ COPY pyproject.toml README.md poetry.lock* ./
 
 # Copy internal project directories into the container
 COPY sds_data_manager/ ./sds_data_manager/
-COPY orchestration/ ./orchestration/
 
 RUN poetry install --with layer-database && poetry install --with layer-spice && poetry install --with layer-processing && poetry install --with cdk-install
 
 # Set up the Dagster home directory and copy the system configuration
 # Dagster looks for dagster.yaml in $DAGSTER_HOME
-RUN mkdir -p $DAGSTER_HOME && cp orchestration/dagster.yaml $DAGSTER_HOME/
+RUN mkdir -p $DAGSTER_HOME && cp sds_data_manager/orchestration/dagster.yaml $DAGSTER_HOME/
 
 # The CMD is technically overridden by the CDK for the Webserver and Daemon tasks,
 # but providing a default makes the image easier to test locally.
-CMD ["dagster-webserver", "--read-only", "-h", "0.0.0.0", "-p", "3000", "-w", "orchestration/workspace.yaml"]
+CMD ["dagster-webserver", "--read-only", "-h", "0.0.0.0", "-p", "3000", "-w", "sds_data_manager/orchestration/workspace.yaml"]

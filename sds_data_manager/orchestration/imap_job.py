@@ -25,14 +25,32 @@ from dagster import (
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency_refactoring.types import DependencyNode
-from orchestration import custom_partitions
-from orchestration.dagster_utilities import get_materialization_result
+from sds_data_manager.orchestration.dependency_refactoring.types import DependencyNode
+from sds_data_manager.orchestration import custom_partitions
+from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
 import imap_data_access
 from imap_data_access import processing_input
 from imap_data_access.io import download
 import boto3
+from botocore.exceptions import ClientError
 from sqlalchemy import func
+
+BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
+# Create an ECR client for getting container image digests
+ECR_CLIENT = boto3.client("ecr", region_name="us-west-2")
+# Define the retry strategy for batch jobs
+BATCH_JOB_RETRY_STRATEGY = {
+    "attempts": 10,
+    "evaluateOnExit": [
+        {
+            "onStatusReason": "Your Spot Task was interrupted.",
+            "action": "RETRY",
+        },
+        {"onReason": "*", "action": "EXIT"},
+    ],
+}
+# Create an sqs client
+SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 
 
 # Logger setup
@@ -623,7 +641,6 @@ class IMAPJobHandler:
                 match = re.search(r'--dependency\s+(\S+\.json)', max_version_record.container_command)
                 if match:
                     dependency_file = match.group(1)
-                    print(dependency_file)
                     context.log.info(dependency_file)
                     SSM_CLIENT = boto3.client("ssm")
                     ssm_parameter_name = os.environ.get(
@@ -786,6 +803,9 @@ class IMAPJobHandler:
     def _dependency_hash(self, serialized_dependencies):
         """Generate a hash for the serialized dependencies. Use only the first 8 characters.
 
+        This is a unique ID for a particular run. Dagster will refused to run a job with
+        the same dependency_hash. 
+
         Parameters
         ----------
         serialized_dependencies : str
@@ -796,7 +816,77 @@ class IMAPJobHandler:
         str
             The first 8 characters of the SHA-256 hash of the serialized dependencies.
         """
-        return hashlib.sha256(serialized_dependencies.encode("utf-8")).hexdigest()[:8]
+        # We need to pull out the individual files and put them in alphabetical order
+        dependencies = json.loads(serialized_dependencies)
+        non_sclk_deps = []
+        for dep in dependencies:
+            for file in dep['files']:
+                if "imap_sclk" not in file:
+                    # We'll get rid of the spacecraft_clock kernel, if it exists
+                    non_sclk_deps.append(file)
+        # Append the image_digest
+        sorted_files = sorted(non_sclk_deps)
+        sorted_files.append(self._get_container_image_digest())
+        joined_string = "|".join(sorted_files)
+
+        return hashlib.sha256(joined_string.encode("utf-8")).hexdigest()[:8]
+
+    def _get_container_image_digest(self):
+        """Get the container image digest.
+
+        The image digest is a sha256 hash of the image manifest and is a unique identifier
+        for the specific version of the container image used in the batch job.
+        This is important for tracking which version of the code is being used for each
+        job.
+
+        Parameters
+        ----------
+        job_definition : str
+            job definition name to get the container image digest for. For example,
+            "ProcessingJob-swe"
+
+        Returns
+        -------
+        str
+            The sha256 digest of the image manifest. This is a unique identifier for the
+            specific image version used in the batch job.
+
+        """
+        step = "-l3" if self.data_level >= "l3" else ""
+        job_definition = f"ProcessingJob-{self.source}{step}"
+        job_def_response = BATCH_CLIENT.describe_job_definitions(
+            jobDefinitionName=job_definition, status="ACTIVE"
+        )
+        if not job_def_response or not job_def_response.get("jobDefinitions"):
+            raise ValueError(f"Job definition not found: {job_definition}")
+        # Select the latest active job definition revision.
+        job_def = max(
+            job_def_response["jobDefinitions"],
+            key=lambda definition: definition.get("revision", 0),
+        )
+        container_image = job_def["containerProperties"]["image"]
+        # Parse the container image URI to get the registry id, repository name and image
+        # tag and use those to call describe_images and get the image digest.
+        # Eg. for 123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest,
+        # "123456789012" is the registry id, "swapi-repo" is the repository and
+        # "latest" is the image tag.
+        image_name = container_image.split("/")[-1]
+        try:
+            response = ECR_CLIENT.describe_images(
+                registryId=container_image.split(".")[0],
+                repositoryName=image_name.split(":")[0],
+                imageIds=[{"imageTag": image_name.split(":")[1]}],
+            )
+        except ECR_CLIENT.exceptions.ImageNotFoundException as e:
+            logger.error(f"Image not found in ECR for {container_image}: {e}")
+            raise
+        except ClientError as e:
+            logger.error(f"AWS error getting image digest for {container_image}: {e}")
+            raise
+
+        # Extract the image digest from the response
+        image_digest = response["imageDetails"][0]["imageDigest"]
+        return image_digest
 
     def _create_dependencies_file(self):
         """Create and upload a dependency json file to S3 for the job.

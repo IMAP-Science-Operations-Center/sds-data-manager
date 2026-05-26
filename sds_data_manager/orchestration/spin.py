@@ -9,7 +9,7 @@ from dagster import (
     Failure
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
-from orchestration import dagster_utilities
+from sds_data_manager.orchestration import dagster_utilities
 import logging
 from contextlib import nullcontext
 from os.path import basename

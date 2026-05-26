@@ -8,7 +8,7 @@ import requests
 import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
-from ...api_lambdas import upload_api
+from ...lambda_code.SDSCode.api_lambdas import upload_api
 from .types import DependencyNode
 
 # Logger setup
