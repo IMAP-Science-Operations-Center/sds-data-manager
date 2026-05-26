@@ -134,11 +134,7 @@ class BatchStarterLambda(Construct):
         for q in sqs_queues:
             self.instrument_lambda.add_event_source(SqsEventSource(q))
 
-        # In addition to sending events to batch starter, send them to a sqs that
-        # dagster can poll from.
-        # TODO eventually we only want the reprocessing api to send messages to the sqs
-        #   and not to batch starter. Dagster should be fully responsible for
-        #   reprocessing eventually.
+        # Send reprocessing events to a sqs that dagster can poll from.
         # Create a dead letter queue to save messages that could not be processed.
         # This DLQ just saves the messages and doesn't do anything with them.
         self.dead_letter_queue = sqs.Queue(
