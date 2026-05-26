@@ -126,3 +126,6 @@ def reprocess_sensor(context: SensorEvaluationContext):
         )
 
     return None
+
+
+sensors = [reprocess_sensor]
