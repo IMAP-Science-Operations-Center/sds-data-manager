@@ -3,17 +3,88 @@
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, ClassVar
+import hashlib
+from dagster import AssetKey, AssetExecutionContext, EventRecordsFilter, DagsterEventType
+import imap_data_access
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
 
-from dagster import AssetKey
-from imap_data_access import ScienceFilePath
-
-from ...lambda_code.SDSCode.pipeline_lambdas import VALID_CADENCE_STRS
-from ...lambda_code.SDSCode.pipeline_lambdas.dependency import DataSource, DataType
+from ..lambda_code.SDSCode.pipeline_lambdas import VALID_CADENCE_STRS
 
 # Date range validation constants
 NEAREST_OPTIONS = ("nd", "np")
 DATE_RANGE_OPTIONS = ("p", "h", "d", "l", *NEAREST_OPTIONS)
 
+@dataclass
+class DataSource:
+    """Valid data sources for dependency tracking.
+
+    Valid data sources include valid instruments names
+    from imap_data_access and other data sources related to SPICE.
+    """
+
+    @property
+    def valid_source(self) -> list[str]:
+        """Add data sources.
+
+        Returns
+        -------
+        list[str]
+            list of valid data sources.
+        """
+        # TODO: import this from imap_data_access once it's defined
+        # or transition this class to imap_data_access
+        return [
+            "spin",
+            "repoint",
+            "spice",
+            *spice_metakernel_api.KernelCollection().file_types,
+            *imap_data_access.VALID_INSTRUMENTS,
+        ]
+
+
+def valid_science(data_level) -> bool:
+    """Check if data_level is a valid data level.
+
+    Returns
+    -------
+    bool
+        True if the data_level is in VALID_DATALEVELS.
+    """
+    return data_level in [*imap_data_access.VALID_DATALEVELS]
+
+
+@dataclass
+class DataType:
+    """Valid data types for dependency tracking.
+
+    Valid data types include valid data levels from imap_data_access
+    and other data types related to SPICE and ancillary data.
+    """
+
+    # TODO: transition these class to imap_data_access once it's defined.
+    SPICE: str = "spice"
+    SPIN: str = "spin"
+    REPOINT: str = "repoint"
+    ANCILLARY: str = "ancillary"
+    COLLECTION: str = "collection"
+
+    @property
+    def valid_type(self) -> list[str]:
+        """Add data types.
+
+        Returns
+        -------
+        list[str]
+            list of valid data types.
+        """
+        return [
+            self.SPICE,
+            self.ANCILLARY,
+            self.SPIN,
+            self.REPOINT,
+            self.COLLECTION,
+            *imap_data_access.VALID_DATALEVELS,
+        ]
 
 @dataclass
 class TimeRange:
@@ -138,6 +209,67 @@ class Node:
             raise ValueError(
                 f"Descriptor must be a non-empty string, got '{descriptor}'"
             )
+    
+    def to_dagster_asset(self) -> AssetKey:
+        return AssetKey((self.source + '_' + self.data_type + '_' + self.descriptor).replace('-', ''))
+    
+    def _parse_dates_from_key(self, 
+                              partition_key: str) -> tuple[datetime, datetime]:
+        """
+        Extracts start and end datetimes from a string formatted like:
+        '{name}_%Y-%m-%dT%H:%M:%S_to_%Y-%m-%dT%H:%M:%S'
+        """
+        if not partition_key:
+            return None, None
+            
+        date_range = partition_key.split('_', 1)[1]
+        if "_to_" in date_range:
+            p_start_str, p_end_str = date_range.split("_to_")
+            p_start = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+            p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+            
+        return p_start, p_end
+    
+    def get_all_files_in_time_range(self,
+                                    context: AssetExecutionContext,
+                                    start_dt: datetime,
+                                    end_dt: datetime):
+        '''
+        This function will return the metadata of all materialized assets between start_dt and end_dt
+        '''
+        metadata = []
+
+        # Fetch a list of all partition keys that have EVER been materialized for this dependency
+        materialized_partitions = context.instance.get_materialized_partitions(self.to_dagster_asset())
+        
+        if not materialized_partitions:
+            # TODO: This is probably where we'd let soft dependencies slide 
+            context.log.info(f"Not enought information to process. Missing {self.to_dagster_asset().to_user_string()} in range {str(start_dt)} to {str(end_dt)}")
+            return 
+        
+        for partition in materialized_partitions:
+            partition_start, partition_end = self._parse_dates_from_key(partition)
+            
+            if not partition_start or not partition_end:
+                continue
+                
+            # Apply the overlap logic (StartA < EndB and EndA > StartB)
+            if partition_start < end_dt and partition_end > start_dt:
+                context.log.info(f"This partition matches: {partition}")
+                # Fetch the actual materialization record for this overlapping partition
+                mat_event = context.instance.get_event_records(
+                            event_records_filter=EventRecordsFilter(
+                                event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                                asset_key=input.to_dagster_asset(),
+                                asset_partitions=[partition],
+                            ),
+                            limit=1, # The most recent event is returned first
+                        )
+                if mat_event and mat_event[0].asset_materialization:
+                    metadata.append(mat_event[0].asset_materialization.metadata)
+
+        return metadata
+        
 
 
 @dataclass
@@ -268,54 +400,79 @@ class ProcessingJobNode(Node):
     """Representation of an expected processing job.
 
     This class contains information about the expected settings for a single processing
-    job, such as the time range.
-    This class should be used whenever a specific processing job is needed.
-
-    Attributes
-    ----------
-    time_span: TimeRange
-        The time span of the data - this should include the time span for one processing
-        job. Nominally, this is one day or one repointing (if repointing is included.)
+    job, including inputs, outputs, and the partition to use. 
 
 
     """
+    inputs: list[DependencyNode]
+    outputs: list[DependencyNode]
+    partition: str
+    spice_types: list[str] = None
+    triggering_deps: list[DependencyNode] = None
+    spice_input: DependencyNode = None
+    spin_input: DependencyNode = None
+    repoint_input: bool = None
 
-    time_span: TimeRange
-    reprocessing: bool = False
+    def __post_init__(self):
+        '''
+        We are going to modify the inputs, spice_types, and triggering_deps in this function, 
+        so that we can consolidate multiple files into a "collection". 
+        '''
 
-    def convert_to_cli_call(self, version) -> str:
-        """Convert the node to a string for input into imap_processing CLI.
+        triggering_deps = []
+        spice_types = []
+        deps_list = []
+        for dep in self.inputs:
+            if dep.source == 'repoint':
+                repoint_dep = DependencyNode(source=dep.source,
+                                            data_type=dep.data_type,
+                                            descriptor=self.partition,
+                                            required=dep.required,
+                                            trigger_job=dep.trigger_job,
+                                            dependency_query_time_range=dep.dependency_query_time_range)
+                deps_list.append(repoint_dep)
+                self.repoint_input = repoint_dep
+            elif dep.data_type == 'spice':
+                spice_types.append(dep.source)
+                self.needs_spice = True
+            elif dep.data_type == 'spin':
+                spin_dep = DependencyNode(source=dep.source,
+                               data_type=dep.data_type,
+                               descriptor=self.partition,
+                               required=dep.required,
+                               trigger_job=dep.trigger_job,
+                               dependency_query_time_range=dep.dependency_query_time_range)
+                deps_list.append(spin_dep)
+                self.spin_input = spin_dep
+            elif dep.data_type == 'ancillary':
+                deps_list.append(dep)
+            else:
+                deps_list.append(dep)
+                if dep.data_type == dep.trigger_job:
+                    triggering_deps.append(dep)
+                
+        spice_types = list(spice_types)
+        deps_list = list(deps_list)
 
-        The time values from start_time and pointing_number_start are passed forward,
-        with the end_time and pointing_number_end dropped.
-        """
-        validate_expected_output = ScienceFilePath.generate_from_inputs(
-            self.source,
-            self.data_type,
-            self.descriptor,
-            self.time_span.start_time,
-            version,
-            self.time_span.pointing_number_start,
-        ).validate_filename()
-
-        if validate_expected_output != "":
-            raise ValueError(
-                "Invalid input to IMAP CLI. Would produce file with "
-                "the following errors: {validate_expected_output}"
-            )
-
-        output = (
-            f"--instrument {self.instrument} --data-level {self.data_level} "
-            f"--descriptor {self.descriptor} --start-date {self.start_date}"
-            f"--version {self.version} --dependency {self.dependency}"
-        )
-        if self.repoint:
-            output += f"--repointing {self.repoint}"
-        if self.upload_to_sdc:
-            output += "--upload-to-sdc"
-
-        return output
-
+        # Construct the SPICE name
+        if spice_types:
+            sorted_types = sorted(spice_types)
+            joined_string = "|".join(sorted_types)
+            hash_object = hashlib.sha256(joined_string.encode('utf-8'))
+            short_id = hash_object.hexdigest()[:8]
+            spice_dep = DependencyNode(source='spice',
+                                        data_type='collection',
+                                        descriptor=self.partition + '_' + short_id,
+                                        required=True,
+                                        trigger_job=False,
+                                        dependency_query_time_range=[]
+                            )
+            deps_list.append(spice_dep)
+            self.spice_input = spice_dep
+        
+        self.inputs = deps_list
+        self.triggering_deps = triggering_deps
+        self.spice_types = spice_types
 
 class TriggerEventType:
     """Enum for different trigger event types."""
@@ -334,33 +491,3 @@ class ProcessingJobType:
     POINTING = "pointing"
     CADENCE = "cadence"
     POINTING_ATTITUDE = "pointing_attitude"
-
-
-def get_cadence_duration(descriptor: str) -> str | None:
-    """Get cadence information from a descriptor.
-
-    Cadence jobs are products at data level l2 or l2b whose descriptor contains
-    cadence indicators like "1mo", "3mo", "6mo", or "1yr".
-
-    Parameters
-    ----------
-    descriptor : str
-        The descriptor to check for cadence indicators.
-
-    Returns
-    -------
-    str or None
-        The cadence string (e.g., '1mo', '3mo', '6mo', '1yr').
-        Returns None if no cadence indicators are found.
-
-    Examples
-    --------
-    >>> get_cadence_duration("swe-sci-1mo")
-    '1mo'
-    """
-    # For given descriptor, parse cadence.
-    cadence = descriptor.rsplit("-", maxsplit=1)[-1]
-    if cadence in VALID_CADENCE_STRS:
-        return cadence
-
-    return None

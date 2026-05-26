@@ -8,8 +8,8 @@ import requests
 import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
-from ...lambda_code.SDSCode.api_lambdas import upload_api
-from .types import DependencyNode
+from ..lambda_code.SDSCode.api_lambdas import upload_api
+from .types import DependencyNode, ProcessingJobNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class DependencyConfigReader:
         >>> reader.inputs(('glows', 'l1a', 'all'))
         [DependencyNode(source='leapseconds', ...), ...]
         """
-        return self._config[key]["inputs"]
+        return self._config[key].inputs
 
     def outputs(self, key: tuple[str, str, str]) -> list[DependencyNode]:
         """Return output product nodes produced by the given job key.
@@ -79,7 +79,7 @@ class DependencyConfigReader:
         >>> reader.outputs(('glows', 'l1a', 'all'))
         [DependencyNode(source='glows', data_type='l1a', descriptor='de', ...), ...]
         """
-        return self._config[key]["outputs"]
+        return self._config[key].outputs
 
     def partition(self, key: tuple[str, str, str]) -> str | None:
         """Return the partition string for the given job key.
@@ -94,7 +94,7 @@ class DependencyConfigReader:
         str | None
             Partition cadence string (e.g. ``'1d'``, ``'repoint'``) or ``None``.
         """
-        return self._config[key]["partition"]
+        return self._config[key].partition
 
     def _load_all_dependencies(
         self,
@@ -203,11 +203,14 @@ class DependencyConfigReader:
                             )
                         )
 
-                    dependencies[potential_job_node] = {
-                        "inputs": upstream_deps_nodes,
-                        "outputs": job_outputs_list,
-                        "partition": value.get("partition")
-                    }
+                    dependencies[potential_job_node] = ProcessingJobNode(
+                        source=instrument,
+                        data_type=data_type,
+                        descriptor=descriptor,
+                        inputs=upstream_deps_nodes,
+                        outputs=job_outputs_list,
+                        partition=value.get("partition")
+                    )
 
                 except (ValueError, IndexError) as e:
                     raise ValueError(

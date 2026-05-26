@@ -10,8 +10,8 @@ from sqlalchemy import func
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 
 from ...lambda_code.SDSCode.database import models
-from .dependency import upload_dependency_file
-from .types import DependencyNode, ProcessingJobNode
+from ..dependency import upload_dependency_file
+from ..types import DependencyNode, ProcessingJobNode
 
 logger = logging.getLogger(__name__)
 
@@ -52,32 +52,6 @@ def process_job(potential_job_node: ProcessingJobNode, dependency_node: Dependen
             version=version,
         )
         # Next: submit the actual job, using submit_job
-
-
-def dependency_hash(dependencies: str | ProcessingInputCollection):
-    """Generate a hash for the serialized dependencies. Use only the first 8 characters.
-
-    This hash (also known as a CRID) is used to determine if a job with the same input
-    dependencies, including versions, has already been created.
-
-    Parameters
-    ----------
-    dependencies : str | ProcessingInputCollection
-        The serialized dependencies string OR the ProcessingInputCollection. Either way,
-        the hash will use the output of ProcessingInputCollection.
-
-    Returns
-    -------
-    str
-        The first 8 characters of the SHA-256 hash of the serialized dependencies.
-    """
-    serialized_dependencies = dependencies
-    # TODO: update serialize to sort the files before sending it here, to ensure
-    # better consistency
-    if isinstance(dependencies, ProcessingInputCollection):
-        serialized_dependencies = dependencies.serialize()
-
-    return hashlib.sha256(serialized_dependencies.encode("utf-8")).hexdigest()[:8]
 
 
 def determine_job_version(session: db.Session, node: ProcessingJobNode):

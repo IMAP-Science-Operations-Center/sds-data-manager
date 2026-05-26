@@ -13,7 +13,7 @@ from sds_data_manager.orchestration.dependency_refactoring.batch_starter import 
     determine_job_version,
     lambda_handler,
 )
-from sds_data_manager.orchestration.dependency_refactoring.types import (  # noqa: E501
+from sds_data_manager.orchestration.types import (  # noqa: E501
     ProcessingJobNode,
     TimeRange,
 )
