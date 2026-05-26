@@ -209,7 +209,7 @@ class DependencyConfigReader:
                         descriptor=descriptor,
                         inputs=upstream_deps_nodes,
                         outputs=job_outputs_list,
-                        partition=value.get("partition"),
+                        partition=value.get("partition")
                     )
 
                 except (ValueError, IndexError) as e:
