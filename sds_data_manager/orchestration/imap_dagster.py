@@ -1,6 +1,7 @@
 from dagster import Definitions
 from imap_data_access import VALID_DATALEVELS
-from sds_data_manager.orchestration import custom_partitions, repoint_file, spice, idex
+from sds_data_manager.orchestration import custom_partitions, repoint_file, spice, idex, \
+    reprocessing
 from sds_data_manager.orchestration import spin
 from sds_data_manager.orchestration.imap_file import IMAPAncillaryFileHandler, IMAPScienceFileHandler
 from sds_data_manager.orchestration.imap_job import IMAPJobHandler
@@ -103,5 +104,6 @@ defs = Definitions(
     + custom_partitions.sensors
     + spice.sensors
     + sensors
+    + reprocessing.sensor
     + idex.L0_sensor,
 )

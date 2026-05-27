@@ -134,17 +134,69 @@ class BatchStarterLambda(Construct):
         for q in sqs_queues:
             self.instrument_lambda.add_event_source(SqsEventSource(q))
 
+        # Send reprocessing events to a sqs that dagster can poll from.
+        # Create a dead letter queue to save messages that could not be processed.
+        # This DLQ just saves the messages and doesn't do anything with them.
+        self.dead_letter_queue = sqs.Queue(
+            self,
+            "ReprocessingDeadLetterQueue",
+            queue_name="reprocessing_dead_letter_queue.fifo",
+            encryption=sqs.QueueEncryption.UNENCRYPTED,
+            fifo=True,
+        )
+
+        self.reprocessing_queue = sqs.Queue(
+            self,
+            "ReprocessQueue",
+            queue_name="ReprocessQueue.fifo",
+            # This timeout determines how long the queue waits for processing.
+            visibility_timeout=Duration.seconds(300),
+            fifo=True,
+            # Removes messages with identical content.
+            content_based_deduplication=True,
+            # The dead letter queue will take messages that failed retry.
+            dead_letter_queue=sqs.DeadLetterQueue(
+                max_receive_count=1, queue=self.dead_letter_queue
+            ),
+        )
+        self.reprocessing_sqs_url = self.reprocessing_queue.queue_url
+        # Create a lambda that the API can trigger to send messages to the reprocessing
+        # queue. This is necessary because HTTP API Gateway v2's parameter mapping
+        # expression language is too limited to forward query string parameters as an
+        # SQS message body. This lambda acts as a proxy that converts the
+        # query string parameters to a JSON message and sends it to the queue.
+        self.reprocessing_proxy_lambda = lambda_.Function(
+            self,
+            "reprocessing-proxy",
+            function_name="reprocessing-proxy",
+            code=code,
+            handler="SDSCode.pipeline_lambdas.reprocessing_proxy.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            environment={
+                "QUEUE_URL": self.reprocessing_queue.queue_url,
+            },
+            memory_size=128,
+            timeout=Duration.seconds(30),
+            vpc=vpc,
+            vpc_subnets=subnet,
+            security_groups=[rds_security_group],
+            allow_public_subnet=True,
+            layers=layers,
+        )
+
+        # Permission for the lambda to send messages to the reprocessing queue
+        self.reprocessing_queue.grant_send_messages(self.reprocessing_proxy_lambda)
         # Add api routes for triggering batch starter with a bulk reprocessing request
         # Only allow authenticated routes for reprocessing
         api.add_route(
             route="/authorized/reprocess",
             http_method="POST",
-            lambda_function=self.instrument_lambda,
+            lambda_function=self.reprocessing_proxy_lambda,
         )
         api.add_route(
             route="/api-key/reprocess",
             http_method="POST",
-            lambda_function=self.instrument_lambda,
+            lambda_function=self.reprocessing_proxy_lambda,
         )
 
         # Set up eventBridge rules to trigger batch starter lambda.
