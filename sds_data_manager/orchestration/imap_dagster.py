@@ -67,7 +67,7 @@ for potential_job in all_jobs:
                 input_name = input.to_dagster_asset().to_user_string()
                 if (input_name not in all_outputs) and (input_name not in unique_job_names):
                     if "_ancillary_" in input_name:
-                        ancillary_handlers.append(IMAPAncillaryFileHandler(input_name))
+                        ancillary_handlers.append(IMAPAncillaryFileHandler(input))
                         unique_job_names.append(input_name)
                     elif "idex_l0_" in input_name:
                         # Continue because IDEX will defined custom asset and sensor below.
@@ -79,7 +79,7 @@ for potential_job in all_jobs:
                     elif "repoint" in input_name:
                         continue
                     else:
-                        l0_job_handlers.append(IMAPScienceFileHandler(input_name, non_l0_job.partitions_def))
+                        l0_job_handlers.append(IMAPScienceFileHandler(input, non_l0_job.partitions_def))
                         unique_job_names.append(input_name)
 
 # Now using handlers, create assets for each handler:

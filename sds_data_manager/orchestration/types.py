@@ -1,7 +1,7 @@
 """Common types for pipeline lambdas."""
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+import datetime
 from typing import Any, ClassVar
 import hashlib
 from dagster import AssetKey, AssetExecutionContext, EventRecordsFilter, DagsterEventType
@@ -105,8 +105,8 @@ class TimeRange:
         Pointing number for the end time, or None if not applicable.
     """
 
-    start_time: datetime
-    end_time: datetime
+    start_time: datetime.datetime
+    end_time: datetime.datetime
     pointing_number_start: int | None = None
     pointing_number_end: int | None = None
 
@@ -136,8 +136,8 @@ class TimeRange:
         TimeRange
             A TimeRange instance with parsed datetime values.
         """
-        start_time = datetime.strptime(start_time_string, "%Y%m%d")
-        end_time = datetime.strptime(end_time_string, "%Y%m%d")
+        start_time = datetime.datetime.strptime(start_time_string, "%Y%m%d")
+        end_time = datetime.datetime.strptime(end_time_string, "%Y%m%d")
         return cls(
             start_time=start_time,
             end_time=end_time,
@@ -214,7 +214,7 @@ class Node:
         return AssetKey((self.source + '_' + self.data_type + '_' + self.descriptor).replace('-', ''))
     
     def _parse_dates_from_key(self, 
-                              partition_key: str) -> tuple[datetime, datetime]:
+                              partition_key: str) -> tuple[datetime.datetime, datetime.datetime]:
         """
         Extracts start and end datetimes from a string formatted like:
         '{name}_%Y-%m-%dT%H:%M:%S_to_%Y-%m-%dT%H:%M:%S'
@@ -228,48 +228,7 @@ class Node:
             p_start = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
             p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
             
-        return p_start, p_end
-    
-    def get_all_files_in_time_range(self,
-                                    context: AssetExecutionContext,
-                                    start_dt: datetime,
-                                    end_dt: datetime):
-        '''
-        This function will return the metadata of all materialized assets between start_dt and end_dt
-        '''
-        metadata = []
-
-        # Fetch a list of all partition keys that have EVER been materialized for this dependency
-        materialized_partitions = context.instance.get_materialized_partitions(self.to_dagster_asset())
-        
-        if not materialized_partitions:
-            # TODO: This is probably where we'd let soft dependencies slide 
-            context.log.info(f"Not enought information to process. Missing {self.to_dagster_asset().to_user_string()} in range {str(start_dt)} to {str(end_dt)}")
-            return 
-        
-        for partition in materialized_partitions:
-            partition_start, partition_end = self._parse_dates_from_key(partition)
-            
-            if not partition_start or not partition_end:
-                continue
-                
-            # Apply the overlap logic (StartA < EndB and EndA > StartB)
-            if partition_start < end_dt and partition_end > start_dt:
-                context.log.info(f"This partition matches: {partition}")
-                # Fetch the actual materialization record for this overlapping partition
-                mat_event = context.instance.get_event_records(
-                            event_records_filter=EventRecordsFilter(
-                                event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                                asset_key=input.to_dagster_asset(),
-                                asset_partitions=[partition],
-                            ),
-                            limit=1, # The most recent event is returned first
-                        )
-                if mat_event and mat_event[0].asset_materialization:
-                    metadata.append(mat_event[0].asset_materialization.metadata)
-
-        return metadata
-        
+        return p_start, p_end      
 
 
 @dataclass
@@ -393,6 +352,89 @@ class DependencyNode(Node):
                 f"Invalid future '{future}'. Must end with "
                 f"{DATE_RANGE_OPTIONS} and be positive."
             )
+        
+    def get_all_files_in_time_range(self,
+                                    context: AssetExecutionContext,
+                                    start_dt: datetime.datetime,
+                                    end_dt: datetime.datetime):
+        '''
+        This function will return the metadata of all materialized assets between start_dt and end_dt
+        '''
+        metadata = []
+
+        midpoint = start_dt + ((end_dt - start_dt) / 2) 
+        
+        # Fetch a list of all partition keys that have EVER been materialized for this dependency
+        materialized_partitions = context.instance.get_materialized_partitions(self.to_dagster_asset())
+        
+        if not materialized_partitions:
+            context.log.info(f"Not enought information to process. Missing {self.to_dagster_asset().to_user_string()} in range {str(start_dt)} to {str(end_dt)}")
+            return 
+        
+        range=0
+        partitions_before = []
+        distance_array = []
+        if self.dependency_query_time_range:
+            range = int(self.dependency_query_time_range[0][0])
+
+        # Loop through the partitions to determine if they span the time range
+        for partition in materialized_partitions:
+            partition_start, partition_end = self._parse_dates_from_key(partition)
+            
+            if not partition_start or not partition_end:
+                continue
+            
+            # Apply the overlap logic (StartA < EndB and EndA > StartB)
+            if partition_start < end_dt and partition_end > start_dt:
+                context.log.info(f"This partition matches: {partition}")
+                # Fetch the actual materialization record for this overlapping partition
+                mat_event = context.instance.get_event_records(
+                            event_records_filter=EventRecordsFilter(
+                                event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                                asset_key=self.to_dagster_asset(),
+                                asset_partitions=[partition],
+                            ),
+                            limit=1, # The most recent event is returned first
+                        )
+                if mat_event and mat_event[0].asset_materialization:
+                    metadata.append(mat_event[0].asset_materialization.metadata)
+            else:
+                # We'll keep track of how far this partition is from the date range we're looking at. 
+                partition_midpoint = partition_start + ((partition_end - partition_start) / 2)
+                distance_to_center = midpoint - partition_midpoint
+                if distance_to_center < datetime.timedelta(0):
+                    partitions_before.append(partition)
+                distance_array.append(abs(distance_to_center))
+        
+        # HANDLING SPECIAL TIME CASES 
+        # Now we'll get the nearby partitions (if there are any to retrieve)
+        num_nearby_partitions_gathered = 0
+        num_before_parititons_gathered = 0
+        sorted_partitions = [x for _, x in sorted(zip(distance_array, materialized_partitions))]
+        for partition in sorted_partitions:
+            if num_nearby_partitions_gathered == range:
+                break
+            if num_before_parititons_gathered == range // 2 and partition in partitions_before:
+                # We are already full! Continue searching only the partitions_after
+                continue
+            mat_event = context.instance.get_event_records(
+                            event_records_filter=EventRecordsFilter(
+                                event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                                asset_key=self.to_dagster_asset(),
+                                asset_partitions=[partition],
+                            ),
+                            limit=1, # The most recent event is returned first
+                        )
+            if mat_event and mat_event[0].asset_materialization:
+                metadata.append(mat_event[0].asset_materialization.metadata)
+                num_nearby_partitions_gathered += 1
+                if partition in partitions_before:
+                    num_before_parititons_gathered += 1
+        else:
+            context.log.info("Not enough data was available.")
+            return 
+
+        return metadata
 
 
 @dataclass
@@ -448,7 +490,7 @@ class ProcessingJobNode(Node):
                 deps_list.append(dep)
             else:
                 deps_list.append(dep)
-                if dep.data_type == dep.trigger_job:
+                if dep.trigger_job:
                     triggering_deps.append(dep)
                 
         spice_types = list(spice_types)
