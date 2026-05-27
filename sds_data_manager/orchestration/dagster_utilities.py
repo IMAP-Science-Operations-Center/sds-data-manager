@@ -11,7 +11,8 @@ from dagster import (
 def _existing_asset(context,
                     asset_key: AssetKey,
                     partition: str,
-                    file_names: list[str]):
+                    file_names: list[str],
+                    current_version: int):
     '''
     This checks the most recent materialization of an asset, if it exists. 
 
@@ -33,10 +34,14 @@ def _existing_asset(context,
         # Extract the previous file list from the metadata
         last_metadata = records[0].asset_materialization.metadata
         last_files_used = last_metadata.get("file_names").value
-        
+        last_version = int(last_metadata.get("version").value)
+        if current_version < last_version:
+            # We are trying to add an older version, a better one already exists
+            return True
         # Compare lists
         if set(last_files_used) == set(file_names):
             return True
+        
         
     return False
 
@@ -47,7 +52,7 @@ def get_materialization(context,
                         version: str,
                         data_type: str):
     
-    if _existing_asset(context, asset_key, partition, file_names):
+    if _existing_asset(context, asset_key, partition, file_names, int(version)):
         return
         
     return AssetMaterialization(
@@ -64,7 +69,7 @@ def get_materialization_result(context,
                                asset_key: AssetKey,
                                partition: str | None,
                                file_names: list[str],
-                               versions: list[str],
+                               version: str,
                                data_type: str,
                                inputs: dict = {}) -> MaterializeResult | None:
     '''
@@ -74,7 +79,7 @@ def get_materialization_result(context,
 
     data_type must be one of "science", "ancillary", "spice", "spin", or "repoint". 
     '''
-    if _existing_asset(context, asset_key, partition, file_names):
+    if _existing_asset(context, asset_key, partition, file_names, int(version)):
         return
         
     return MaterializeResult(
@@ -82,7 +87,7 @@ def get_materialization_result(context,
                 metadata={
                     "file_names": file_names,
                     "input_type": data_type,
-                    "version": versions,
+                    "version": version,
                     "inputs": inputs
                 }
             )
@@ -142,8 +147,13 @@ def get_affected_partitions(context,
             p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
             
             # Check for time overlap logic
-            if min_dt.replace(tzinfo=datetime.timezone.utc) <= p_end and max_dt.replace(tzinfo=datetime.timezone.utc) >= p_start:
-                context.log.info(f"It was a match! Adding to the affected keys.")
-                affected_keys.append(key)
+            if min_dt == max_dt:
+                if min_dt.replace(tzinfo=datetime.timezone.utc) < p_end and max_dt.replace(tzinfo=datetime.timezone.utc) >= p_start:
+                    context.log.info(f"It was a match! Adding to the affected keys.")
+                    affected_keys.append(key)
+            else:
+                if min_dt.replace(tzinfo=datetime.timezone.utc) < p_end and max_dt.replace(tzinfo=datetime.timezone.utc) > p_start:
+                    context.log.info(f"It was a match! Adding to the affected keys.")
+                    affected_keys.append(key)
 
     return affected_keys

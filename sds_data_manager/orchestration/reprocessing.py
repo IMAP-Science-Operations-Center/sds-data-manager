@@ -71,7 +71,7 @@ def reprocess_sensor(context: SensorEvaluationContext):
             # for all levels.
             root_job = get_kickoff_jobs(instrument)[0]
             # Create the asset name based on the root job information
-            asset = root_job.to_dagster_asset().to_user_string()
+            asset_name = root_job.to_dagster_asset().to_user_string()
             partition = root_job.partition
         else:
             # If data_level is provided (and therefore descriptor) construct the
