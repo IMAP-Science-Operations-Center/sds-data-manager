@@ -266,7 +266,7 @@ def spin_file_sensor(context: SensorEvaluationContext):
         min_dt = cursor_date
         max_dt = cursor_date + datetime.timedelta(days=7)                           
         latest_ingestion_date = max_dt
-        for run in dagster_utilities.run_all_affected_partitions(context, "spin_files_", min_dt, max_dt, cursor_suffix):
+        for run in dagster_utilities.run_all_affected_partitions(context, "spin_spin_", min_dt, max_dt, cursor_suffix):
             yield run
     else:
         with db.Session() as session:
@@ -284,7 +284,7 @@ def spin_file_sensor(context: SensorEvaluationContext):
                 min_dt = file.start_date
                 max_dt = file.end_date
                     
-                for run in dagster_utilities.run_all_affected_partitions(context, "spice_files_", min_dt, max_dt, cursor_suffix):
+                for run in dagster_utilities.run_all_affected_partitions(context, "spin_spin_", min_dt, max_dt, cursor_suffix):
                     yield run
 
     context.update_cursor(latest_ingestion_date.isoformat())

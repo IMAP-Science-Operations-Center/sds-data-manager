@@ -11,47 +11,31 @@ from dagster import (
     sensor,
     DefaultSensorStatus,
     SensorResult,
-    AssetSpec
+    AssetSpec,
+    DynamicPartitionsDefinition,
 )
 from sqlalchemy import select
-from sds_data_manager.orchestration import custom_partitions
 from sds_data_manager.orchestration import dagster_utilities
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
+from sds_data_manager.orchestration.types import DependencyNode
 
 MISSION_START_TIME = "2025-09-17T00:00:00"
-
-_partition_map = {
-            "daily":   custom_partitions.daily_partitions,
-            "repoint": custom_partitions.repoint_partitions,
-            "10d":     custom_partitions.idex10_partitions,
-            # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
-            # maps to exactly 30 days. If this changes, this logic will need update.
-            "1mo":     custom_partitions.idex30_partitions,
-            # TODO: add cadence custom partition definition and update to use those
-            # later
-            "3mo":     custom_partitions.idex30_partitions,
-            "6mo":     custom_partitions.idex30_partitions,
-            "1yr":     custom_partitions.whole_mission_partition,
-        }
 
 class IMAPScienceFileHandler:
     """Handle IMAP files that have no associated jobs."""
 
-    def __init__(self, asset_name, partition):
-        self.spin_dependency_name = None
-        self.repoint_file_dependency_name = None
-        self.spice_dependency_name = None
-        
-        self.source, self.data_type, self.descriptor = asset_name.split("_")
-        self.asset_name = asset_name.replace('-', '')
-        self.partitions_def = _partition_map.get(partition)
+    def __init__(self, 
+                 node: DependencyNode, 
+                 partition):
+        self.job_config = node
+        self.partitions_def = partition
         
     def build_asset(self):
-        return AssetSpec(key=AssetKey([self.asset_name]), partitions_def=self.partitions_def)
+        return AssetSpec(key=self.job_config.to_dagster_asset(), partitions_def=self.partitions_def)
     
     def build_sensor(self):
-        sensor_name = f"{self.asset_name}_sensor"
+        sensor_name = f"{self.job_config.to_dagster_asset().to_user_string()}_sensor"
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
                 default_status=DefaultSensorStatus.RUNNING,
@@ -82,9 +66,9 @@ class IMAPScienceFileHandler:
                 select(models.ScienceFiles)
                 .filter(time_field_to_check >= start_dt,
                         time_field_to_check <= next_time_to_check,
-                        models.ScienceFiles.instrument==self.source,
-                        models.ScienceFiles.data_level==self.data_type,
-                        models.ScienceFiles.descriptor==self.descriptor)
+                        models.ScienceFiles.instrument==self.job_config.source,
+                        models.ScienceFiles.data_level==self.job_config.data_type,
+                        models.ScienceFiles.descriptor==self.job_config.descriptor)
                 # Define the unique group
                 .distinct(
                     models.ScienceFiles.instrument,
@@ -111,7 +95,7 @@ class IMAPScienceFileHandler:
                 for record in recent_db_records:
                     asset_graph = context.repository_def.asset_graph
                     
-                    partitions_def = asset_graph.get(AssetKey(self.asset_name)).partitions_def
+                    partitions_def = asset_graph.get(self.job_config.to_dagster_asset()).partitions_def
                     
                     if not partitions_def:
                         continue
@@ -128,7 +112,7 @@ class IMAPScienceFileHandler:
                     
                     for partition in affected_partitions:
                         materialization = dagster_utilities.get_materialization(context,
-                                                                                self.asset_name,
+                                                                                self.job_config.to_dagster_asset(),
                                                                                 partition,
                                                                                 [os.path.basename(record.file_path)],
                                                                                 str(int(record.version[1:])),
@@ -146,20 +130,17 @@ class IMAPScienceFileHandler:
 class IMAPAncillaryFileHandler:
     """Handle IMAP job dependencies and submission."""
 
-    def __init__(self, asset_name):
-        self.spin_dependency_name = None
-        self.repoint_file_dependency_name = None
-        self.spice_dependency_name = None
+    def __init__(self, node: DependencyNode):
+        self.job_config = node
+        self.partition_type = self.job_config.to_dagster_asset().to_user_string().replace("_ancillary_", "") 
+        self.partition_name = self.partition_type + "_partitions"
+        self.partitions_def = DynamicPartitionsDefinition(name=self.partition_name)
 
-        self.source, self.data_type, self.descriptor = asset_name.split("_")
-        self.asset_name = asset_name.replace('-', '')
-        self.partitions_def = custom_partitions.whole_mission_partition
-        
     def build_asset(self):
-        return AssetSpec(key=AssetKey([self.asset_name]), partitions_def=self.partitions_def)
+        return AssetSpec(key=self.job_config.to_dagster_asset(), partitions_def=self.partitions_def)
     
     def build_sensor(self):
-        sensor_name = f"{self.asset_name}_sensor"
+        sensor_name = f"{self.job_config.to_dagster_asset().to_user_string()}_sensor"
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
                 default_status=DefaultSensorStatus.RUNNING,
@@ -168,8 +149,8 @@ class IMAPAncillaryFileHandler:
 
             stmt = (
                     select(models.AncillaryFiles)
-                    .filter(models.AncillaryFiles.descriptor==self.descriptor,
-                            models.AncillaryFiles.instrument==self.source)
+                    .filter(models.AncillaryFiles.descriptor==self.job_config.descriptor,
+                            models.AncillaryFiles.instrument==self.job_config.source)
                     .distinct(
                         models.AncillaryFiles.instrument,
                         models.AncillaryFiles.descriptor,
@@ -182,19 +163,37 @@ class IMAPAncillaryFileHandler:
                 )
 
             with db.Session() as session:
-                ancillary_file = session.scalars(stmt).all()
+                ancillary_files = session.scalars(stmt).all()
+                if not ancillary_files:
+                    raise Failure(description="Processing failed: No data found")
+                for file in ancillary_files:
+                    start_date = file.start_date
+                    end_date = file.end_date
+                    if not start_date:
+                        start_date_str = datetime.datetime(2025,9,17).replace(tzinfo=datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+                    else:
+                        start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
+                    if not end_date:
+                        end_date_str = datetime.datetime(2045,9,17).replace(tzinfo=datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+                    else:
+                        end_date_str = end_date.strftime("%Y-%m-%dT%H:%M:%S")
 
-                if ancillary_file:
+                    partition_key = self.partition_type + '_' + start_date_str + '_to_' + end_date_str
+                    existing_partitions = context.instance.get_dynamic_partitions(self.partition_name)
+                    if partition_key not in existing_partitions:
+                        context.instance.add_dynamic_partitions(
+                                                                partitions_def_name=self.partition_name,
+                                                                partition_keys=[partition_key]
+                                                            )
+
                     materialization = dagster_utilities.get_materialization(context,
-                                                                            self.asset_name,
-                                                                            "wholemission_2025-09-17T00:00:00_to_2045-09-17T00:00:00",
-                                                                            [os.path.basename(ancillary_file[0].file_path)],
-                                                                            str(int(ancillary_file[0].version[1:])),
+                                                                            self.job_config.to_dagster_asset(),
+                                                                            partition_key,
+                                                                            [os.path.basename(file.file_path)],
+                                                                            str(int(file.version[1:])),
                                                                             "ancillary")
                     if materialization:
-                        return SensorResult(asset_events=[materialization])
-                else:
-                    raise Failure(description="Processing failed: No data found")
+                        return SensorResult(asset_events=[materialization])                    
             
     
         return _file_sensor

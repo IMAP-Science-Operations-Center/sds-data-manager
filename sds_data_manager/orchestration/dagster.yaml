@@ -24,10 +24,21 @@ run_launcher:
       - ACCOUNT
       - REGION
       - SSM_API_KEY_PARAMETER
+      - DAGSTER_COMPUTE_LOG_BUCKET
     task_definition: 
       env: DAGSTER_RUN_BASE_TASK_DEF_ARN 
     container_name: "dagster-run"
     use_current_ecs_task_config: true
+
+compute_logs:
+  module: dagster_aws.s3.compute_log_manager
+  class: S3ComputeLogManager
+  config:
+    bucket:
+      env: DAGSTER_COMPUTE_LOG_BUCKET
+    region:
+      env: REGION
+    prefix: "run-logs/"
 
 # Ensures asset state metadata points correctly to distributed instances
 run_coordinator:

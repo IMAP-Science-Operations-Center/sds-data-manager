@@ -19,7 +19,8 @@ from dagster import (
     DefaultSensorStatus,
     multi_asset,
     AssetOut,
-    define_asset_job
+    define_asset_job,
+    RunsFilter
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -119,10 +120,11 @@ class IMAPJobHandler:
         self.sensor_schedule = _sensor_schedule.get(self.job_config.data_type, 600)
         
         outputs_for_job = [x.to_dagster_asset() for x in self.job_config.outputs]
-
-        self.dagster_job = define_asset_job(name=f"{self.job_config.to_dagster_asset().to_user_string()}_processing_job",
+        self.dagster_job_name = f"{self.job_config.to_dagster_asset().to_user_string()}_processing_job"
+        self.dagster_job = define_asset_job(name=self.dagster_job_name,
                                            selection=outputs_for_job,
                                            tags={"dagster/priority": priority_levels.get(self.job_config.data_type, '0')})
+        self.triggering_dep_names = [dep.to_dagster_asset().to_user_string() for dep in self.job_config.triggering_deps]
     
     def build_asset(self):
         """
@@ -329,7 +331,6 @@ class IMAPJobHandler:
         5) For each affected partition, we determine the dependencies. If we have all dependencies, we are good! 
         6) Yield a RunRequest for a job to make the asset for the partitions that have all dependencies.
         """
-        deps_keys = [x.to_dagster_asset() for x in self.job_config.triggering_deps]
         sensor_name = f"{self.job_config.to_dagster_asset().to_user_string()}_kickoff_sensor"
         @sensor(
             name=sensor_name,
@@ -345,16 +346,15 @@ class IMAPJobHandler:
             new_cursors = cursors.copy()
             
             # Iterate through each dependency to find unconsumed materializations
-            for dep_key in deps_keys:
-                
-                dep_name = dep_key.to_user_string()
+            for dependency in self.job_config.inputs:
+                dep_name = dependency.to_dagster_asset().to_user_string()
                 context.log.info(f"Checking new dependencies for: {dep_name}")
 
                 # Fetch the last evaluated event ID for this specific dependency
                 last_event_id = cursors.get(dep_name)
                 filter = EventRecordsFilter(
                         event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                        asset_key=dep_key,
+                        asset_key=dependency.to_dagster_asset(),
                         after_cursor=last_event_id,
                     )
                 new_events = context.instance.get_event_records(filter, limit=1)
@@ -371,23 +371,40 @@ class IMAPJobHandler:
                 
                 if not up_start or not up_end:
                     continue
-                    
+                
+                # Kick off jobs in a range around the file
+                # TODO: This is probably too broad. But for now, this 
+                # is probably fine unless we start getting timeouts. 
+                if dependency.dependency_query_time_range:
+                    time_range = int(self.dependency_query_time_range[0][0])
+                    up_start = up_start + datetime.timedelta(days=-time_range)
+                    up_end = up_end + datetime.timedelta(days=time_range)
+                
                 # Calculate overlap
                 target_partitions = self._get_overlapping_target_partitions(
                     upstream_partition_key, up_start, up_end, context.instance
                 )
                 
                 for target_partition in target_partitions:
-                    # Queue the RunRequest
-                    target_start, target_end = self._parse_dates_from_key(target_partition)
-                    dependencies = self.get_dependencies(context, target_start, target_end)
-                    if dependencies:
-                        tags={"dependencies": dependencies.serialize()}
-                        yield RunRequest(
-                                        partition_key=target_partition,
-                                        run_key=f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
-                                        tags=tags
-                                    )
+                    # Check if this partition has already been materializied
+                    runs = context.instance.get_runs(
+                                            filters=RunsFilter(
+                                                job_name=self.dagster_job_name,
+                                                tags={"dagster/partition": target_partition}
+                                            ),
+                                            limit=1  # Limit to 1 since we only care about existence
+                                        )
+                    if (runs and (self.dep_name in self.triggering_input_names)) or not runs:
+                        # Queue the RunRequest
+                        target_start, target_end = self._parse_dates_from_key(target_partition)
+                        dependencies = self.get_dependencies(context, target_start, target_end)
+                        if dependencies:
+                            tags={"dependencies": dependencies.serialize()}
+                            yield RunRequest(
+                                            partition_key=target_partition,
+                                            run_key=f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
+                                            tags=tags
+                                        )
                 break # To keep the sensor short, we'll only analyze one new dependency at a time. If there are still new ones, we'll consume them next time. 
                 # The get_dependencies will still get the latest stuff regardless, so we're never submitting outdated data. 
                             
@@ -433,10 +450,12 @@ class IMAPJobHandler:
         context.log.info(f"Checking for all dependencies existing between {target_start} and {target_end}")
 
         for input in self.job_config.inputs:
-            dep_name = input.to_user_string()
+            dep_name = input.to_dagster_asset().to_user_string()
             found_dep=False
             context.log.info(f"Checking out {dep_name}")
-            metadata_list = input.get_all_files_in_time_range()
+            metadata_list = input.get_all_files_in_time_range(context,
+                                                              target_start,
+                                                              target_end)
             for metadata in metadata_list:
                 if "file_names" in metadata:
                     found_dep = True # We can finally say we have found at least one dependency
@@ -458,8 +477,8 @@ class IMAPJobHandler:
                         )
                     if input_type=='spice':
                         dependency_inputs.add(processing_input.SPICEInput(*file_names))
-            if not found_dep:
-                # TODO: Check here if we have a soft dependency.
+            if not found_dep and input.required:
+                # If we found nothing and this is required, don't return anything.
                 context.log.info(f"Not enought information to process. Missing {dep_name} in range {str(target_start)} to {str(target_end)}")
                 return
 
@@ -589,8 +608,10 @@ class IMAPJobHandler:
 
                     if set(old_science_inputs) != set(new_science_inputs):
                         dependencies_match = False
-                    if set(old_ancillary_inputs) != set(new_ancillary_inputs):
-                        dependencies_match = False
+
+                    # TODO: Should we match on ancillary?
+                    #if set(old_ancillary_inputs) != set(new_ancillary_inputs):
+                    #    dependencies_match = False
 
                     if dependencies_match:
                         context.log.info(f"It's a match!")
