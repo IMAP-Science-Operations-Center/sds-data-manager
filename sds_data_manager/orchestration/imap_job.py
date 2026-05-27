@@ -8,6 +8,7 @@ import boto3
 import os
 import logging
 import hashlib
+import requests
 from dagster import (
     AssetExecutionContext,
     Failure,
@@ -27,12 +28,15 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration.types import DependencyNode, ProcessingJobNode
 from sds_data_manager.orchestration import custom_partitions
 from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
 import imap_data_access
-from imap_data_access import processing_input
+from imap_data_access import processing_input, DependencyFilePath
 from imap_data_access.io import download
 import boto3
 from botocore.exceptions import ClientError
 from sqlalchemy import func
+from pathlib import Path
+from sqlalchemy.exc import IntegrityError
 
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 # Create an ECR client for getting container image digests
@@ -101,6 +105,13 @@ partition_map = {
             "6mo":     custom_partitions.idex30_partitions,
             "1yr":     custom_partitions.whole_mission_partition,
         }
+
+class BatchJobSubmit:
+    """Class to store information about a batch job submission."""
+    status: str
+    message: str
+    # the ProcessingJob information as a dictionary.
+    job: dict | None = None
 
 class IMAPJobHandler:
     """Handle IMAP job dependencies and submission."""
@@ -202,33 +213,33 @@ class IMAPJobHandler:
                                                 )
                     context.log.info(f"Job Version to Use: {job_version}")
                 
-                    '''
-                    # SUBMIT JOB HERE!!!
-                    job_node = {"data_source":instrument,
-                                "data_type":level,
-                                "descriptor":descriptor}
-                    submit_response = batch_starter.try_to_submit_job(
-                                                                        session,
-                                                                        job_node,
-                                                                        start_date,
-                                                                        job_version,
-                                                                        dependency_inputs.serialize(),
-                                                                        repoint=int(target_partition),
-                                                                    )
-                    '''
-                    #if submit_status.status == 'submitted':
-                    for output in self.job_config.outputs:
-                        context.log.info(f"Waiting for data product {output.source}_{output.data_type}_{output.descriptor} to complete")
-                        file = self.wait_for_file(context,
-                                                 session,
-                                                 output,
-                                                 job_version,
-                                                 repointing=pointing_number,
-                                                 start_date=start_date.strftime("%Y%m%d"),
-                                                 inputs = dependency_inputs.serialize())
+                    job_node = {"data_source":self.job_config.source,
+                                "data_type":self.job_config.data_type,
+                                "descriptor":self.job_config.descriptor}
+                    submit_response = self.try_to_submit_job(
+                                                            session,
+                                                            job_node,
+                                                            start_date.strftime("%Y%m%d"),
+                                                            job_version,
+                                                            dependency_inputs.serialize(),
+                                                            repoint=pointing_number,
+                                                        )
+                    context.log.info(f"Submit response: {submit_response.status} - {submit_response.message}, {submit_response.job}")
+                    
+                    if submit_response.status == 'submitted':
+                        for output in self.job_config.outputs:
+                            context.log.info(f"Waiting for data product {output.source}_{output.data_type}_{output.descriptor} to complete")
+                            file = self.wait_for_file(context,
+                                                    session,
+                                                    output,
+                                                    job_version,
+                                                    submit_response.job,
+                                                    repointing=pointing_number,
+                                                    start_date=start_date.strftime("%Y%m%d"),
+                                                    inputs = dependency_inputs.serialize())
 
-                        if file:
-                            yield file
+                            if file:
+                                yield file
                         # TODO: We should not yield right away. We should collect up anything that this asset has generated, 
                         # yield what we can, and determine if anything required in the output is missing, then yield a failure. 
 
@@ -240,9 +251,11 @@ class IMAPJobHandler:
                       session: db.Session,
                       output: DependencyNode,
                       job_version: str,
+                      job_info: dict,
                       start_date: str = None,
                       repointing: int = None,
                       inputs = {}):
+        
         if start_date is None and repointing is None:
             raise ValueError("You must at least provide either start_date or repointing")
         
@@ -250,32 +263,47 @@ class IMAPJobHandler:
         if start_date is not None:
             parsed_start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
         
-        timeout = 3 # TODO: Set this for WAY higher once we're actually waiting for files. 
+        timeout = 1200
         timeout_start = time.time()
         while time.time() < timeout_start + timeout:
-            filters = [
-                models.ScienceFiles.instrument == output.source,
-                models.ScienceFiles.data_level == output.data_type,
-                models.ScienceFiles.descriptor == output.descriptor,
-                models.ScienceFiles.version == job_version
-            ]
-            if repointing is not None:
-                filters.append(models.ScienceFiles.repointing == int(repointing))
-            if parsed_start_date is not None:
-                filters.append(models.ScienceFiles.start_date == parsed_start_date)
-            created_file = session.query(models.ScienceFiles).filter(*filters).first()
-            if created_file:
-                context.log.info(f"Found file {os.path.basename(created_file.file_path)}! Creating Asset.")
-                materialization = get_materialization_result(context,
-                                                             output.to_dagster_asset(),
-                                                             context.partition_key,
-                                                             [os.path.basename(created_file.file_path)],
-                                                             str(int(job_version[1:])),
-                                                             "science",
-                                                             inputs = inputs)
-                if materialization:
-                    return materialization
-            time.sleep(1) # TODO: Set this for WAY higher once we're actually waiting for files. 
+            job_completed = (
+                session.query(models.ProcessingJob)
+                .filter(models.ProcessingJob.instrument == job_info['instrument'],
+                    models.ProcessingJob.data_level == job_info['data_level'],
+                    models.ProcessingJob.descriptor == job_info['job_command'],
+                    models.ProcessingJob.start_date == job_info['start_date'],
+                    models.ProcessingJob.version == job_info['version'],
+                    models.ProcessingJob.status.in_(
+                            [models.Status.FAILED.value, models.Status.SUCCEEDED.value]
+                        ))
+                .order_by(models.ProcessingJob.version.desc())
+                .first()
+            )
+            if not job_completed:
+                time.sleep(60)
+            else:
+                filters = [
+                    models.ScienceFiles.instrument == output.source,
+                    models.ScienceFiles.data_level == output.data_type,
+                    models.ScienceFiles.descriptor == output.descriptor,
+                    models.ScienceFiles.version == job_version
+                ]
+                if repointing is not None:
+                    filters.append(models.ScienceFiles.repointing == int(repointing))
+                if parsed_start_date is not None:
+                    filters.append(models.ScienceFiles.start_date == parsed_start_date)
+                created_file = session.query(models.ScienceFiles).filter(*filters).first()
+                if created_file:
+                    context.log.info(f"Found file {os.path.basename(created_file.file_path)}! Creating Asset.")
+                    materialization = get_materialization_result(context,
+                                                                output.to_dagster_asset(),
+                                                                context.partition_key,
+                                                                [os.path.basename(created_file.file_path)],
+                                                                str(int(job_version[1:])),
+                                                                "science",
+                                                                inputs = inputs)
+                    if materialization:
+                        return materialization
 
     def _parse_dates_from_key(self, 
                               partition_key: str) -> tuple[datetime.datetime, datetime.datetime]:
@@ -856,3 +884,211 @@ class IMAPJobHandler:
         # clean up any resources or temporary files used during the job.
         # Eg. right now, we clean up SQS queue if job is submitted successfully.
         pass
+
+    def try_to_submit_job(
+            self,
+            session: db.Session,
+            job_info: dict,
+            start_date: str,
+            version: str,
+            serialized_dependencies: str,
+            repoint: int | None = None,
+        ):
+        """Try to submit a batch job with the given job information.
+
+        Parameters
+        ----------
+        session : orm session
+            Database session.
+        job_info : dict
+            Dictionary containing components with dates and versions appended.
+        start_date : str
+            Start date of the data in the format 'YYYYMMDD'.
+        version : str
+            Version of the job.
+        serialized_dependencies : str
+            The serialized ProcessingInputCollection of the upstream
+            dependencies.
+        repoint : int, optional
+            The repointing number for the job, if applicable. Default is None. Should
+            be just an integer, no "repoint" prefix.
+        """
+        instrument = job_info["data_source"]
+        data_level = job_info["data_type"]
+        descriptor = job_info["descriptor"]
+
+        # Serialize the upstream dependencies and write them to a JSON file. The Imap
+        # processing code will read the JSON file and deserialize the dependencies. This is
+        # to avoid passing a large string through the batch job command line.
+
+        # Calculate the dependency hash, if dependencies
+        # change, the hash changes. Combined with the unique constraint on
+        # (dependency_hash, container_image_digest), this gives us duplicate detection:
+        # same deps + same digest = IntegrityError = job skipped
+        # For a given instrument, data_level, start_date ect. If either the deps change or
+        # the image changes then a new job is allowed with a bumped version number.
+        dep_hash = self._dependency_hash(serialized_dependencies)
+        dep_descriptor = f"{descriptor}-{dep_hash}"
+        dependency_file = DependencyFilePath.generate_from_inputs(
+            instrument=instrument,
+            data_level=data_level,
+            descriptor=dep_descriptor,
+            start_time=start_date,
+            version=version,
+            extension="json",
+            repointing=repoint,  # since we can have different repointings on the same day
+        )
+        dependency_file_path = dependency_file.construct_path()
+        response = self.upload_dependency_file(dependency_file_path, serialized_dependencies)
+        # If response is None, then the upload failed and we should skip submitting the job.
+        if not response:
+            return BatchJobSubmit(
+                status="failed",
+                message="Dependency JSON file upload failed."
+            )
+
+        batch_command = [
+            "--instrument",
+            instrument,
+            "--data-level",
+            data_level,
+            "--descriptor",
+            descriptor,
+            "--start-date",
+            start_date,
+            "--version",
+            version,
+            "--dependency",
+            dependency_file_path.name,
+            "--upload-to-sdc",
+        ]
+
+        if repoint is not None:
+            batch_command.extend(["--repointing", f"repoint{repoint:05d}"])
+        # Get the necessary AWS information
+        # NOTE: These are here for easier mocking in tests rather than at the module level
+        step = "-l3" if data_level >= "l3" else ""
+        job_definition = f"ProcessingJob-{instrument}{step}"
+
+        # Capture the container image and digest right before submitting the job.
+        # This ensures the image digest that will be used is recorded. We record this
+        # information here and not in indexer.py to avoid race conditions where the image
+        # could change during job execution.
+        container_image_digest = self._get_container_image_digest()
+
+        # All of our upstream requirements have been met.
+        # Try to insert a record into the Processing Jobs table
+        # If this job already exists, then we will get an integrity error
+        # and know that some other process has already taken care of it
+        processing_job = models.ProcessingJob(
+            status=models.Status.INPROGRESS,
+            instrument=instrument,
+            data_level=data_level,
+            descriptor=descriptor,
+            start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
+            version=version,
+            repointing=repoint,
+            dependency_hash=dep_hash,
+            container_command=" ".join(batch_command),
+            container_image_digest=container_image_digest,
+        )
+        try:
+            session.add(processing_job)
+            session.commit()
+        except IntegrityError:
+            # Rollback the session to clear the failed transaction
+            session.rollback()
+            logger.info(
+                f"Job already completed or in progress. Tried to submit "
+                f"{processing_job.to_dict()}"
+            )
+            return BatchJobSubmit(
+                status="skipped",
+                message="Job already completed or in progress.",
+                job=processing_job.to_dict(),
+            )
+
+        logger.info(
+            f"Wrote job INPROGRESS to Processing Jobs Table with id: {processing_job.id}"
+        )
+        # NOTE: The batch job name should contain only alphanumeric characters and hyphens
+        # E.g. "codice-l1a-sci-job-1"
+        # The `processing_job.id` is used later for updating the job processing table
+        job_name = f"{instrument}-{data_level}-{descriptor}-job-{processing_job.id}"
+        job_queue = "ProcessingJobQueue"
+
+        BATCH_CLIENT.submit_job(
+            jobName=job_name,
+            jobQueue=job_queue,
+            jobDefinition=job_definition,
+            containerOverrides={
+                "command": batch_command,
+            },
+            retryStrategy=BATCH_JOB_RETRY_STRATEGY,
+        )
+        logger.info(f"Submitted job {job_name} with this command: {batch_command}")
+        return BatchJobSubmit(
+                status="submitted",
+                message="Job submitted successfully.",
+                job=processing_job.to_dict(),
+            )
+
+    def upload_dependency_file(self,
+                               dependency_file_path: Path, 
+                               serialized_dependencies: str):
+        """Upload a JSON file containing a job's dependencies to S3.
+
+        Parameters
+        ----------
+        dependency_file_path : Path
+            The dependency JSON file to upload.
+        serialized_dependencies : str
+            The serialized upstream dependencies to upload.
+        """
+        # Check if the file already exists
+        if os.path.isfile(dependency_file_path):
+            raise KeyError(
+                f"{dependency_file_path} already exists, cannot create JSON file."
+            )
+        # call the upload API handler directly
+        signed_url = upload_api.lambda_handler(
+            {
+                "pathParameters": {"proxy": dependency_file_path.as_posix()},
+                "requestContext": {
+                    "authorizer": {"lambda": {"scope": "write", "apiKey": "batch-starter"}}
+                },
+            },
+            None,
+        )
+        if signed_url["statusCode"] == 409:
+            logger.info(
+                f"Dependency file already exists in S3: {dependency_file_path}. Reusing"
+                f"file."
+            )
+            return {"statusCode": 200, "body": signed_url["body"]}
+        elif signed_url["statusCode"] != 200:
+            logger.error(
+                f"Failed to get S3 pre-signed URL for file: {dependency_file_path}. "
+                f"As a result, failed to kick off job. "
+                f"Error message: {signed_url['body']}, "
+                f"with status code: {signed_url['statusCode']}."
+            )
+            return None
+        try:
+            response = requests.put(
+                signed_url["body"].strip('"'),
+                data=serialized_dependencies,
+                headers={"Content-Type": "application/json"},
+                timeout=60.0,
+            )
+            logger.info(
+                f"Dependency file uploaded successfully to s3 with status code: "
+                f"{response.status_code}"
+            )
+            return response
+        except Exception as e:
+            logger.error(
+                f"Unexpected error during cadence file upload: {e}. "
+                f"Dependency file upload failed and the job did not get kicked off."
+            )
+            return None

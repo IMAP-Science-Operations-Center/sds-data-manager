@@ -18,7 +18,7 @@ from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 IDEX_10_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_10_day_CDF_names.csv"
 IDEX_30_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_30_day_CDF_names.csv"
 
-MISSION_START_TIME = "2025-09-17T00:00:00"
+MISSION_START_TIME = "2026-04-01T00:00:00"
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY POINTING NUMBER
 repoint_partitions = DynamicPartitionsDefinition(name="repoint_partitions")
@@ -39,6 +39,8 @@ def add_repoint_partitions(context: SensorEvaluationContext):
         pointing_partition_names = []
         for repoint in pointing_records:
             if not repoint.pointing_start_utc or not repoint.pointing_end_utc:
+                continue
+            if repoint.pointing_start_utc < datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc):
                 continue
             partition_name = "repoint" + str(repoint.pointing_id) + "_" +repoint.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S") + "_to_" + repoint.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S") 
             if partition_name in existing_partitions:

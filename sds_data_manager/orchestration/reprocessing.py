@@ -71,12 +71,13 @@ def reprocess_sensor(context: SensorEvaluationContext):
             # for all levels.
             root_job = get_kickoff_jobs(instrument)[0]
             # Create the asset name based on the root job information
-            asset_name = f"{instrument}_{root_job.data_type}_{root_job.descriptor}"
+            asset = root_job.to_dagster_asset().to_user_string()
             partition = root_job.partition
         else:
             # If data_level is provided (and therefore descriptor) construct the
             # asset name using the input parameters
-            asset_name = f"{instrument}_{data_level}_{descriptor}"
+            dagster_descriptor = descriptor.replace('-', '')
+            asset_name = f"{instrument}_{data_level}_{dagster_descriptor}"
             # Get the partition type from the dependency config
             partition = reader.config[(instrument, data_level, descriptor)].partition
 

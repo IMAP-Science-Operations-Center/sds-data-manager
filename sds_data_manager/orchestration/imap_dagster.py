@@ -104,6 +104,6 @@ defs = Definitions(
     + custom_partitions.sensors
     + spice.sensors
     + sensors
-    + reprocessing.sensor
+    + reprocessing.sensors
     + idex.L0_sensor,
 )
