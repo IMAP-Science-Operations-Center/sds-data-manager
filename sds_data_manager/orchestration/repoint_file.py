@@ -20,7 +20,7 @@ from sqlalchemy import desc
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-MISSION_START_TIME = "2025-09-17T00:00:00"
+MISSION_START_TIME = "2026-04-01T00:00:00"
 
 def build_repoint_file_deps_asset(node: DependencyNode, partitions_def):
     @asset(

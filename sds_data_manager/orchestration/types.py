@@ -356,7 +356,7 @@ class DependencyNode(Node):
     def get_all_files_in_time_range(self,
                                     context: AssetExecutionContext,
                                     start_dt: datetime.datetime,
-                                    end_dt: datetime.datetime):
+                                    end_dt: datetime.datetime) -> list:
         '''
         This function will return the metadata of all materialized assets between start_dt and end_dt
         '''
@@ -369,7 +369,7 @@ class DependencyNode(Node):
         
         if not materialized_partitions:
             context.log.info(f"Not enought information to process. Missing {self.to_dagster_asset().to_user_string()} in range {str(start_dt)} to {str(end_dt)}")
-            return 
+            return []
         
         range=0
         partitions_before = []
@@ -432,7 +432,7 @@ class DependencyNode(Node):
                     num_before_parititons_gathered += 1
         else:
             context.log.info("Not enough data was available.")
-            return 
+            return []
 
         return metadata
 
