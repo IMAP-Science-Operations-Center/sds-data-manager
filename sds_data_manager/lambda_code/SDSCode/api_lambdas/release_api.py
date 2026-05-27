@@ -148,6 +148,7 @@ def query_latest_science_files(
             .join(
                 max_ver_subq,
                 (science_table.instrument == max_ver_subq.c.instrument)
+                & (science_table.data_level == max_ver_subq.c.data_level)
                 & (science_table.descriptor == max_ver_subq.c.descriptor)
                 & (science_table.start_date == max_ver_subq.c.start_date)
                 & (science_table.repointing == max_ver_subq.c.repointing)
@@ -181,6 +182,7 @@ def query_latest_science_files(
             .join(
                 max_ver_subq,
                 (science_table.instrument == max_ver_subq.c.instrument)
+                & (science_table.data_level == max_ver_subq.c.data_level)
                 & (science_table.descriptor == max_ver_subq.c.descriptor)
                 & (science_table.start_date == max_ver_subq.c.start_date)
                 & (science_table.version == max_ver_subq.c.max_version),
