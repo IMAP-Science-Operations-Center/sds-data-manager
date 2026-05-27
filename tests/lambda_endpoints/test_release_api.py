@@ -239,3 +239,48 @@ def test_unrelease_all_files_in_date_range(mock_download_read_file, session):
     assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v001.pkts"] is True, (
         "Out-of-range file must remain released"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test Case 4  repoint files for a single day
+# ---------------------------------------------------------------------------
+
+
+def test_release_repoint_files_date_range(session):
+    """Test multiple repoint files for a single day."""
+    # April 7th, Hi has three repoint files with different repointing and version
+    files = [
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.cdf", 209, "v001"),
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00210_v002.cdf", 210, "v002"),
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00211_v003.cdf", 211, "v003"),
+    ]
+    for file_path, repointing, version in files:
+        session.add(
+            models.ScienceFiles(
+                file_path=file_path,
+                instrument="hi",
+                data_level="l1a",
+                descriptor="45sensor-hk",
+                start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
+                repointing=repointing,
+                version=version,
+                extension="cdf",
+                released=False,
+                ingestion_date=datetime.datetime(2026, 4, 8, 0, 0, 0),
+            )
+        )
+    session.commit()
+
+    # Query for all files on this date
+    results = release_api.query_latest_science_files(
+        session,
+        instrument="hi",
+        start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
+        end_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
+    )
+    file_paths = sorted([obj.file_path for obj in results])
+    assert file_paths == [
+        "imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.cdf",
+        "imap_hi_l1a_45sensor-hk_20260407-repoint00210_v002.cdf",
+        "imap_hi_l1a_45sensor-hk_20260407-repoint00211_v003.cdf",
+    ], f"Expected all repoint files, got: {file_paths}"
