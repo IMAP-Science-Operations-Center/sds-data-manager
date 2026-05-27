@@ -299,7 +299,7 @@ def build_sds(
 
     instrument_delay_sqs = file_arrive_sqs_construct.delay_queue
 
-    instrument_lambdas.BatchStarterLambda(
+    batch_starter_construct = instrument_lambdas.BatchStarterLambda(
         scope=sdc_stack,
         construct_id="BatchStarterLambda",
         env=env,
@@ -471,8 +471,9 @@ def build_sds(
         secret_name=ialirt_secret_name,
         account_name=account_name,
     )
-     # Dagster Stack
-    # Repo root is three levels up from this file (sds_data_manager/utils/stackbuilder.py)
+    # Dagster Stack
+    # Repo root is three levels up from this
+    # file (sds_data_manager/utils/stackbuilder.py)
     repo_root = str(Path(__file__).parent.parent.parent)
 
     dagster_repo_stack = dagster_construct.ElasticContainerRegistryStack(
@@ -503,7 +504,7 @@ def build_sds(
     #   db_name
     #   username: dagster
     #   port: 5432
-    # 
+    #
     # Dagster will look for DB credentails through dagster.yaml in
     # sds_data_manager/orchestration/dagster.yaml.
     # In there, it's going to read DAGSTER_PG_PASSWORD and DAGSTER_PG_HOST.
@@ -518,6 +519,7 @@ def build_sds(
             "imap_data_access_url", "https://api.dev.imap-mission.com"
         ),
         "SSM_API_KEY_PARAMETER": "/imap-sdc/batch-jobs/api-key",
+        "REPROCESSING_SQS_URL": batch_starter_construct.reprocessing_sqs_url,
     }
 
     dagster_ecs_stack = dagster_construct.DagsterEcsStack(
@@ -528,6 +530,7 @@ def build_sds(
         env=env,
     )
     dagster_ecs_stack.node.add_dependency(dagster_image_stack)
+
 
 def build_backup(scope: App, env: Environment, source_account: str):
     """Build backup bucket with permissions for replication from source_account.

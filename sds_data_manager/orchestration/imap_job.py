@@ -88,7 +88,7 @@ _sensor_schedule = {'l0': 300,
                     'l3c':300,
                     'l3d':300}
 
-_partition_map = {
+partition_map = {
             "daily":   custom_partitions.daily_partitions,
             "repoint": custom_partitions.repoint_partitions,
             "10d":     custom_partitions.idex10_partitions,
@@ -116,7 +116,7 @@ class IMAPJobHandler:
         """
         self.job_config = job
 
-        self.partitions_def = _partition_map.get(self.job_config.partition)
+        self.partitions_def = partition_map.get(self.job_config.partition)
         self.sensor_schedule = _sensor_schedule.get(self.job_config.data_type, 600)
         
         outputs_for_job = [x.to_dagster_asset() for x in self.job_config.outputs]
