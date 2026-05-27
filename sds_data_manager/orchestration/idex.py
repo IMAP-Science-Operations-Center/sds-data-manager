@@ -17,7 +17,7 @@ from sds_data_manager.orchestration.dagster_utilities import get_materialization
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sqlalchemy import select
 
-MISSION_START_TIME = "2025-09-24T00:00:00"
+MISSION_START_TIME = "2026-04-01T00:00:00"
 
 @sensor(asset_selection=AssetSelection.all(),
         minimum_interval_seconds=600,
@@ -92,11 +92,14 @@ def idex_l0_raw(context: AssetExecutionContext):
     materialize the asset. If the files are the same as before, nothing happens. 
     '''
     current_partition = context.partition_key
-    partition_datetime = datetime.datetime.strptime(current_partition, "%Y-%m-%dT%H:%M:%S")
+    date_range = current_partition.split('_', 1)[1]
+    if "_to_" in date_range:
+        p_start_str, p_end_str = date_range.split("_to_")
+        p_start = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
 
     stmt = (
             select(models.IDEXL0Files)
-            .filter(models.IDEXL0Files.start_date==partition_datetime)
+            .filter(models.IDEXL0Files.start_date==p_start)
             )
     files = []
     versions = []

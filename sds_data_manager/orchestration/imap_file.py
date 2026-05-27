@@ -20,7 +20,10 @@ from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration.types import DependencyNode
 
-MISSION_START_TIME = "2025-09-17T00:00:00"
+from sqlalchemy import select, func
+from sqlalchemy.orm import aliased
+
+MISSION_START_TIME = "2026-04-01T00:00:00"
 
 class IMAPScienceFileHandler:
     """Handle IMAP files that have no associated jobs."""
@@ -43,29 +46,13 @@ class IMAPScienceFileHandler:
         def _file_sensor(context: SensorEvaluationContext):
             
             if context.cursor:
-                start_dt = json.loads(context.cursor).get('last_start_date', None)
-                ingest_dt = json.loads(context.cursor).get('last_ingest_date', None)
-                start_dt = datetime.datetime.fromisoformat(start_dt).replace(tzinfo=datetime.timezone.utc)
-                ingest_dt = datetime.datetime.fromisoformat(ingest_dt).replace(tzinfo=datetime.timezone.utc)
+                start_dt = datetime.datetime.fromisoformat(context.cursor).replace(tzinfo=datetime.timezone.utc)
             else: 
                 start_dt = datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
-                ingest_dt = datetime.datetime.now((datetime.timezone.utc))
-            if start_dt < ingest_dt:
-                # We are still working through a backlog
-                next_time_to_check = start_dt + datetime.timedelta(days=7)
-                time_field_to_check = models.ScienceFiles.start_date
-                new_cursor = json.dumps({'last_start_date': next_time_to_check.isoformat(), 'last_ingest_date': ingest_dt.isoformat()})                 
-            else:
-                # We've caught up to the backlog, now only looking for new files
-                next_time_to_check = datetime.datetime.now((datetime.timezone.utc))
-                time_field_to_check = models.ScienceFiles.ingestion_date
-                start_dt = ingest_dt
-                new_cursor = json.dumps({'last_start_date': next_time_to_check.isoformat(), 'last_ingest_date': next_time_to_check.isoformat()})
 
             stmt = (
                 select(models.ScienceFiles)
-                .filter(time_field_to_check >= start_dt,
-                        time_field_to_check <= next_time_to_check,
+                .filter(models.ScienceFiles.ingestion_date >= start_dt,
                         models.ScienceFiles.instrument==self.job_config.source,
                         models.ScienceFiles.data_level==self.job_config.data_type,
                         models.ScienceFiles.descriptor==self.job_config.descriptor)
@@ -88,10 +75,6 @@ class IMAPScienceFileHandler:
             with db.Session() as session:
                 recent_db_records = session.scalars(stmt).all()
 
-                if not recent_db_records:
-                    return SensorResult(cursor = new_cursor)
-
-                materializations = []
                 for record in recent_db_records:
                     asset_graph = context.repository_def.asset_graph
                     
@@ -118,13 +101,10 @@ class IMAPScienceFileHandler:
                                                                                 str(int(record.version[1:])),
                                                                                 "science")
                         if materialization:
-                            materializations.append(materialization)
+                            yield materialization
 
-            return SensorResult(
-                asset_events=materializations,
-                cursor = new_cursor
-            )
-        
+            context.update_cursor(start_dt.isoformat())
+
         return _file_sensor
 
 class IMAPAncillaryFileHandler:
@@ -146,27 +126,29 @@ class IMAPAncillaryFileHandler:
                 default_status=DefaultSensorStatus.RUNNING,
                 minimum_interval_seconds=600)
         def _file_sensor(context: AssetExecutionContext):
+            row_num = func.row_number().over(
+                            partition_by=(models.AncillaryFiles.start_date, models.AncillaryFiles.end_date),
+                            order_by=models.AncillaryFiles.version.desc()
+                        ).label('rn')
+            # 2. Create a subquery that applies your filters and appends the row number
+            subq = select(models.AncillaryFiles, row_num).where(
+                models.AncillaryFiles.instrument == self.job_config.source,
+                models.AncillaryFiles.descriptor == self.job_config.descriptor
+            ).subquery()
 
-            stmt = (
-                    select(models.AncillaryFiles)
-                    .filter(models.AncillaryFiles.descriptor==self.job_config.descriptor,
-                            models.AncillaryFiles.instrument==self.job_config.source)
-                    .distinct(
-                        models.AncillaryFiles.instrument,
-                        models.AncillaryFiles.descriptor,
-                    )
-                    .order_by(
-                        models.AncillaryFiles.instrument,
-                        models.AncillaryFiles.descriptor,
-                        models.AncillaryFiles.version.desc()
-                    )
-                )
+            # 3. Alias your model to the subquery so SQLAlchemy knows how to map it back to Python objects
+            LatestFile = aliased(models.AncillaryFiles, subq)
 
+            # 4. Execute the final query, grabbing only the rows where the row number is 1
+            stmt = select(LatestFile).where(subq.c.rn == 1)
+
+            materializations = []
             with db.Session() as session:
                 ancillary_files = session.scalars(stmt).all()
                 if not ancillary_files:
                     raise Failure(description="Processing failed: No data found")
                 for file in ancillary_files:
+                    context.log.info(f"Retrieving the following file: {file.file_path}")
                     start_date = file.start_date
                     end_date = file.end_date
                     if not start_date:
@@ -181,6 +163,7 @@ class IMAPAncillaryFileHandler:
                     partition_key = self.partition_type + '_' + start_date_str + '_to_' + end_date_str
                     existing_partitions = context.instance.get_dynamic_partitions(self.partition_name)
                     if partition_key not in existing_partitions:
+                        context.log.info(f"Creating the following partition key: {partition_key}")
                         context.instance.add_dynamic_partitions(
                                                                 partitions_def_name=self.partition_name,
                                                                 partition_keys=[partition_key]
@@ -193,7 +176,9 @@ class IMAPAncillaryFileHandler:
                                                                             str(int(file.version[1:])),
                                                                             "ancillary")
                     if materialization:
-                        return SensorResult(asset_events=[materialization])                    
+                        materializations.append(materialization)
+            
+            return SensorResult(asset_events=materializations)
             
     
         return _file_sensor
