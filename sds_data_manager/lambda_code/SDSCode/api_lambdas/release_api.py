@@ -11,7 +11,7 @@ from imap_data_access.file_validation import (
     ScienceFilePath,
     generate_imap_file_path,
 )
-from sqlalchemy import func, or_, select, union_all
+from sqlalchemy import func, or_, text, union_all
 
 from ..database import database as db
 from ..database import models
@@ -241,15 +241,12 @@ def get_latest_ancillary_files(
     """
     ancillary_table = models.AncillaryFiles
 
-    # ========================================
-    # Step 1: Keep only latest version per
-    # (instrument, descriptor, start_date, end_date).
-    # ========================================
+    # Step 1: Get latest version per (descriptor, start_date, end_date)
+    # Filter by instrument early to reduce data processed
     row_num_col = (
         func.row_number()
         .over(
             partition_by=[
-                ancillary_table.instrument,
                 ancillary_table.descriptor,
                 ancillary_table.start_date,
                 ancillary_table.end_date,
@@ -258,100 +255,68 @@ def get_latest_ancillary_files(
         )
         .label("row_num")
     )
-    ranked = session.query(
-        ancillary_table.file_path,
-        ancillary_table.instrument,
-        ancillary_table.descriptor,
-        ancillary_table.start_date,
-        ancillary_table.end_date,
-        ancillary_table.version,
-        row_num_col,
-    ).subquery()
 
-    latest_versions = session.query(ranked).filter(ranked.c.row_num == 1).subquery()
-
-    # ========================================
-    # Step 2: Files with end_date
-    # ========================================
-    with_end_date_query = session.query(
-        latest_versions.c.file_path,
-        latest_versions.c.instrument,
-        latest_versions.c.descriptor,
-        latest_versions.c.start_date,
-        latest_versions.c.end_date,
-        latest_versions.c.version,
-    ).filter(
-        latest_versions.c.instrument == instrument,
-        latest_versions.c.end_date.isnot(None),
-        latest_versions.c.start_date <= end_date,
-        latest_versions.c.end_date >= start_date,
-    )
-
-    # ========================================
-    # Step 3: Files without end_date
-    # ========================================
-    next_start_date_col = (
-        func.lead(latest_versions.c.start_date)
-        .over(
-            partition_by=[
-                latest_versions.c.instrument,
-                latest_versions.c.descriptor,
-            ],
-            order_by=latest_versions.c.start_date,
-        )
-        .label("next_start_date")
-    )
-    no_end_date_coverage = (
+    latest_versions = (
         session.query(
-            latest_versions.c.file_path,
-            latest_versions.c.instrument,
-            latest_versions.c.descriptor,
-            latest_versions.c.start_date,
-            latest_versions.c.end_date,
-            latest_versions.c.version,
-            next_start_date_col,
+            ancillary_table.file_path,
+            ancillary_table.descriptor,
+            ancillary_table.start_date,
+            ancillary_table.end_date,
         )
-        .filter(
-            latest_versions.c.end_date.is_(None),
-        )
+        .filter(ancillary_table.instrument == instrument)
+        .add_columns(row_num_col)
         .subquery()
     )
 
-    # ========================================================
-    # Step 4: Look for files where start_date <= query_end AND
-    # (next_file_start >= query_start)
-    # ========================================================
-    no_end_date_query = session.query(
-        no_end_date_coverage.c.file_path,
-        no_end_date_coverage.c.instrument,
-        no_end_date_coverage.c.descriptor,
-        no_end_date_coverage.c.start_date,
-        no_end_date_coverage.c.end_date,
-        no_end_date_coverage.c.version,
-    ).filter(
-        no_end_date_coverage.c.instrument == instrument,
-        no_end_date_coverage.c.start_date <= end_date,
+    latest = (
+        session.query(
+            latest_versions.c.file_path,
+            latest_versions.c.descriptor,
+            latest_versions.c.start_date,
+            latest_versions.c.end_date,
+        )
+        .filter(latest_versions.c.row_num == 1)
+        .subquery()
+    )
+
+    # Step 2: Files WITH end_date - simple overlap check
+    with_end_date_query = session.query(latest.c.file_path).filter(
+        latest.c.end_date.isnot(None),
+        latest.c.start_date <= end_date,
+        latest.c.end_date >= start_date,
+    )
+
+    # Step 3: Files WITHOUT end_date - use LEAD() to find coverage end
+    next_start_col = (
+        func.lead(latest.c.start_date)
+        .over(partition_by=latest.c.descriptor, order_by=latest.c.start_date)
+        .label("next_start_date")
+    )
+
+    no_end_with_next = (
+        session.query(latest.c.file_path, latest.c.start_date, next_start_col)
+        .filter(latest.c.end_date.is_(None))
+        .subquery()
+    )
+
+    no_end_date_query = session.query(no_end_with_next.c.file_path).filter(
+        no_end_with_next.c.start_date <= end_date,
         or_(
-            no_end_date_coverage.c.next_start_date.is_(None),
-            no_end_date_coverage.c.next_start_date > start_date,
+            no_end_with_next.c.next_start_date.is_(None),
+            no_end_with_next.c.next_start_date > start_date,
         ),
     )
 
-    # ========================================
-    # Final: UNION ALL and order by file_path.
-    # ========================================
-    combined = union_all(
-        select(with_end_date_query.subquery()),
-        select(no_end_date_query.subquery()),
-    ).order_by("file_path")
+    # Combine
+    combined = union_all(with_end_date_query, no_end_date_query).order_by(
+        text("file_path")
+    )
 
     # Now exclude any files in the exclude list
     if ancillary_files_to_exclude:
         combined = combined.where(~combined.c.file_path.in_(ancillary_files_to_exclude))
 
-    ancillary_file_paths = [
-        row.file_path for row in session.execute(combined).fetchall()
-    ]
+    ancillary_file_paths = [row[0] for row in session.execute(combined).fetchall()]
     if not ancillary_file_paths:
         logger.info(f"Found 0 ancillary file(s) for instrument={instrument}")
         return []

@@ -5,6 +5,8 @@ These tests verify the six core release behaviors against a live in-memory DB:
 Test Case 1  release (no descriptor)  — all matching instrument+date files released
 Test Case 2  early-release
 Test Case 3  unrelease
+Test Case 4  repoint files for a single day
+Test Case 5  ancillary files query
 """
 
 import datetime
@@ -284,3 +286,68 @@ def test_release_repoint_files_date_range(session):
         "imap_hi_l1a_45sensor-hk_20260407-repoint00210_v002.cdf",
         "imap_hi_l1a_45sensor-hk_20260407-repoint00211_v003.cdf",
     ], f"Expected all repoint files, got: {file_paths}"
+
+
+# ---------------------------------------------------------------------------
+# Test Case 5  ancillary files released from manifest
+# ---------------------------------------------------------------------------
+def test_release_ancillary_files_in_date_range(session):
+    """Ancillary files in manifest are released properly."""
+    # Add all as unreleased
+    session.add(
+        models.AncillaryFiles(
+            file_path="imap/ancillary/codice/imap_codice_l1a-sci-lut_20260129_v002.json",
+            instrument="codice",
+            descriptor="l1a-sci-lut",
+            start_date=datetime.datetime.strptime("20260129", "%Y%m%d"),
+            end_date=None,
+            version="v002",
+            extension="json",
+            released=False,
+            ingestion_date=datetime.datetime(2026, 1, 30, 0, 0, 0),
+        )
+    )
+    session.add(
+        models.AncillaryFiles(
+            file_path="imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_20260403_v001.json",
+            instrument="codice",
+            descriptor="l1a-sci-lut",
+            start_date=datetime.datetime.strptime("20260403", "%Y%m%d"),
+            end_date=datetime.datetime.strptime("20260403", "%Y%m%d"),
+            version="v001",
+            extension="json",
+            released=False,
+            ingestion_date=datetime.datetime(2026, 4, 4, 0, 0, 0),
+        )
+    )
+    # Add an out-of-range ancillary file (should not be released)
+    session.add(
+        models.AncillaryFiles(
+            file_path="imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_v002.json",
+            instrument="codice",
+            descriptor="l1a-sci-lut",
+            start_date=datetime.datetime.strptime("20260403", "%Y%m%d"),
+            end_date=None,
+            version="v002",
+            extension="json",
+            released=False,
+            ingestion_date=datetime.datetime(2026, 1, 2, 0, 0, 0),
+        )
+    )
+    session.commit()
+
+    result = release_api.get_latest_ancillary_files(
+        session,
+        instrument="codice",
+        start_date=datetime.datetime.strptime("20260403", "%Y%m%d"),
+        end_date=datetime.datetime.strptime("20260430", "%Y%m%d"),
+    )
+    expected_ancillary_files = [
+        "imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_20260403_v001.json",
+        "imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_v002.json",
+    ]
+    assert len(result) == 2, f"Expected 2 ancillary files, got {len(result)}"
+    assert sorted([f.file_path for f in result]) == expected_ancillary_files, (
+        f"Expected ancillary files {expected_ancillary_files}, "
+        f"got {[f.file_path for f in result]}"
+    )
