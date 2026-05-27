@@ -212,6 +212,9 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     upstream_descriptor: de
   - upstream_source: lo
     upstream_data_type: l1b
+    upstream_descriptor: histrates
+  - upstream_source: lo
+    upstream_data_type: l1b
     upstream_descriptor: goodtimes
   - upstream_source: lo
     upstream_data_type: l1b
