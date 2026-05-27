@@ -398,6 +398,7 @@ class DependencyNode(Node):
                         )
                 if mat_event and mat_event[0].asset_materialization:
                     metadata.append(mat_event[0].asset_materialization.metadata)
+                    context.log.info(f"Appending the following metadata: {mat_event[0].asset_materialization.metadata}")
             else:
                 # We'll keep track of how far this partition is from the date range we're looking at. 
                 partition_midpoint = partition_start + ((partition_end - partition_start) / 2)
@@ -408,31 +409,32 @@ class DependencyNode(Node):
         
         # HANDLING SPECIAL TIME CASES 
         # Now we'll get the nearby partitions (if there are any to retrieve)
-        num_nearby_partitions_gathered = 0
-        num_before_parititons_gathered = 0
-        sorted_partitions = [x for _, x in sorted(zip(distance_array, materialized_partitions))]
-        for partition in sorted_partitions:
-            if num_nearby_partitions_gathered == range:
-                break
-            if num_before_parititons_gathered == range // 2 and partition in partitions_before:
-                # We are already full! Continue searching only the partitions_after
-                continue
-            mat_event = context.instance.get_event_records(
-                            event_records_filter=EventRecordsFilter(
-                                event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                                asset_key=self.to_dagster_asset(),
-                                asset_partitions=[partition],
-                            ),
-                            limit=1, # The most recent event is returned first
-                        )
-            if mat_event and mat_event[0].asset_materialization:
-                metadata.append(mat_event[0].asset_materialization.metadata)
-                num_nearby_partitions_gathered += 1
-                if partition in partitions_before:
-                    num_before_parititons_gathered += 1
-        else:
-            context.log.info("Not enough data was available.")
-            return []
+        if range > 0:
+            num_nearby_partitions_gathered = 0
+            num_before_parititons_gathered = 0
+            sorted_partitions = [x for _, x in sorted(zip(distance_array, materialized_partitions))]
+            for partition in sorted_partitions:
+                if num_nearby_partitions_gathered == range:
+                    break
+                if num_before_parititons_gathered == range // 2 and partition in partitions_before:
+                    # We are already full! Continue searching only the partitions_after
+                    continue
+                mat_event = context.instance.get_event_records(
+                                event_records_filter=EventRecordsFilter(
+                                    event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                                    asset_key=self.to_dagster_asset(),
+                                    asset_partitions=[partition],
+                                ),
+                                limit=1, # The most recent event is returned first
+                            )
+                if mat_event and mat_event[0].asset_materialization:
+                    metadata.append(mat_event[0].asset_materialization.metadata)
+                    num_nearby_partitions_gathered += 1
+                    if partition in partitions_before:
+                        num_before_parititons_gathered += 1
+            else:
+                context.log.info("Not enough data was available.")
+                return []
 
         return metadata
 
