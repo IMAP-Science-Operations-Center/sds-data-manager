@@ -2705,3 +2705,28 @@ def test_get_container_image_job_deff_not_found():
                 batch_starter.get_container_image_digest("ProcessingJob-swe")
         job_definition = "ProcessingJob-swe"
         batch_starter.get_container_image_digest(job_definition)
+
+
+def test_try_to_submit_job_l3_cron_job(session, batch_client, ecr_client):
+    """Test that the L3 cron job is submitted with the correct parameters."""
+    # Call the function to submit the L3 cron job
+    batch_starter.try_to_submit_job(
+        session,
+        job_info={
+            "data_source": "glows",
+            "data_type": "l3b",
+            "descriptor": "ion-rate-profile",
+        },
+        start_date="20240101",
+        version="v001",
+        serialized_dependencies="testing123",
+    )
+    # Verify there is a new processing job record
+    processing_job_record = session.query(models.ProcessingJob).first()
+    assert processing_job_record.instrument == "glows"
+    assert processing_job_record.data_level == "l3b"
+    # The dependency hash should be None for l3 cron jobs to allow for multiple runs
+    # with the same dependencies. The schedule lambda cron jobs gather the
+    # dependencies within the job itself so we don't know at submission time whether the
+    # job is a duplicate or not.
+    assert processing_job_record.dependency_hash is None
