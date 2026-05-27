@@ -9,6 +9,7 @@ import os
 import logging
 import hashlib
 import requests
+from dataclasses import dataclass
 from dagster import (
     AssetExecutionContext,
     Failure,
@@ -106,6 +107,7 @@ partition_map = {
             "1yr":     custom_partitions.whole_mission_partition,
         }
 
+@dataclass
 class BatchJobSubmit:
     """Class to store information about a batch job submission."""
     status: str
@@ -270,7 +272,7 @@ class IMAPJobHandler:
                 session.query(models.ProcessingJob)
                 .filter(models.ProcessingJob.instrument == job_info['instrument'],
                     models.ProcessingJob.data_level == job_info['data_level'],
-                    models.ProcessingJob.descriptor == job_info['job_command'],
+                    models.ProcessingJob.descriptor == job_info['descriptor'],
                     models.ProcessingJob.start_date == job_info['start_date'],
                     models.ProcessingJob.version == job_info['version'],
                     models.ProcessingJob.status.in_(
@@ -396,7 +398,8 @@ class IMAPJobHandler:
                     
                 upstream_partition_key = record.event_log_entry.dagster_event.partition
                 up_start, up_end = self._parse_dates_from_key(upstream_partition_key)
-                
+                context.log.info(f"Found one new dependency at {record.event_log_entry.dagster_event.partition}!")
+
                 if not up_start or not up_end:
                     continue
                 
@@ -422,17 +425,21 @@ class IMAPJobHandler:
                                             ),
                                             limit=1  # Limit to 1 since we only care about existence
                                         )
-                    if (runs and (self.dep_name in self.triggering_input_names)) or not runs:
+                    if (runs and (dep_name in self.triggering_input_names)) or not runs:
                         # Queue the RunRequest
                         target_start, target_end = self._parse_dates_from_key(target_partition)
                         dependencies = self.get_dependencies(context, target_start, target_end)
                         if dependencies:
                             tags={"dependencies": dependencies.serialize()}
+                            run_key = f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}"
+                            context.log.info(f"Yielding a run request with ID: {run_key} on partition {target_partition}.")
                             yield RunRequest(
                                             partition_key=target_partition,
                                             run_key=f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
                                             tags=tags
                                         )
+                    elif runs and (dep_name not in self.triggering_dep_names):
+                        context.log.info("We have already materialized something like this, and this dependency does not trigger new processing.")
                 break # To keep the sensor short, we'll only analyze one new dependency at a time. If there are still new ones, we'll consume them next time. 
                 # The get_dependencies will still get the latest stuff regardless, so we're never submitting outdated data. 
                             

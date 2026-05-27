@@ -117,13 +117,13 @@ def idex_l0_raw(context: AssetExecutionContext):
 
             for rec in records:
                 files.append(rec.file_path)
-                versions.append(rec.version)
+                versions.append(int(rec.version[1:]))
 
             materialization = get_materialization_result(context,
                                                         "idex_l0_raw",
                                                         current_partition,
                                                         files,
-                                                        versions,
+                                                        str(max(versions)),
                                                         "science")
             if materialization:
                 yield materialization
