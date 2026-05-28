@@ -7,7 +7,10 @@ from aws_cdk.assertions import Template
 
 from sds_data_manager.constructs.data_bucket_construct import DataBucketConstruct
 from sds_data_manager.constructs.database_construct import SdpDatabase
-from sds_data_manager.constructs.indexer_lambda_construct import IndexerLambda
+from sds_data_manager.constructs.indexer_lambda_construct import (
+    IDEXL0IndexerLambda,
+    IndexerLambda,
+)
 from sds_data_manager.constructs.networking_construct import NetworkingConstruct
 
 
@@ -44,6 +47,15 @@ def template(stack, env, code):
         data_bucket=data_bucket.data_bucket,
         layers=[],
     )
+    IDEXL0IndexerLambda(
+        stack,
+        "idex-indexer-lambda",
+        db_secret_name="test-secrets",  # noqa
+        vpc=networking_construct.vpc,
+        vpc_subnets=database_construct.rds_subnet_selection,
+        rds_security_group=database_construct.rds_security_group,
+        data_bucket=data_bucket.data_bucket,
+    )
 
     template = Template.from_stack(stack)
     return template
@@ -51,6 +63,6 @@ def template(stack, env, code):
 
 def test_indexer_role(template):
     """Ensure the template has appropriate IAM roles."""
-    template.resource_count_is("AWS::IAM::Role", 5)
-    # 4 for RDS stack + 1 for indexer lambda
-    template.resource_count_is("AWS::Lambda::Function", 4)
+    template.resource_count_is("AWS::IAM::Role", 6)
+    # 4 for RDS stack + 1 for indexer lambda + 1 for idex indexer lambda
+    template.resource_count_is("AWS::Lambda::Function", 5)

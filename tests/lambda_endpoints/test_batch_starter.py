@@ -2521,6 +2521,60 @@ def test_determine_job_version_spacecraft(session):
     assert version == "v003"
 
 
+def test_determine_job_version_per_repointing(session):
+    """Each repointing on the same date should version independently."""
+    # Repoint 1 completed and produced a science file at v001.
+    session.add_all(
+        [
+            ProcessingJob(
+                status=models.Status.SUCCEEDED,
+                instrument="hi",
+                data_level="l1a",
+                descriptor="de",
+                start_date=datetime(2026, 4, 7),
+                version="v001",
+                repointing=1,
+            ),
+            ScienceFiles(
+                file_path="/path/to/imap_hi_l1a_de_20260407-repoint00001_v001.cdf",
+                instrument="hi",
+                data_level="l1a",
+                descriptor="de",
+                start_date=datetime(2026, 4, 7),
+                version="v001",
+                extension="cdf",
+                repointing=1,
+                ingestion_date=datetime.strptime(
+                    "2026-04-07 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+        ]
+    )
+    session.commit()
+
+    # Repoint 2 is a different pointing; its version counter should start at v001,
+    version = determine_job_version(
+        session=session,
+        instrument="hi",
+        data_level="l1a",
+        descriptor="de",
+        start_date=datetime(2026, 4, 7),
+        repointing=2,
+    )
+    assert version == "v001"
+
+    # Repoint 1 should get v002 on a resubmit because its science file is at v001.
+    version = determine_job_version(
+        session=session,
+        instrument="hi",
+        data_level="l1a",
+        descriptor="de",
+        start_date=datetime(2026, 4, 7),
+        repointing=1,
+    )
+    assert version == "v002"
+
+
 @patch(
     "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.dependency.get_dependencies"
 )
@@ -2651,3 +2705,28 @@ def test_get_container_image_job_deff_not_found():
                 batch_starter.get_container_image_digest("ProcessingJob-swe")
         job_definition = "ProcessingJob-swe"
         batch_starter.get_container_image_digest(job_definition)
+
+
+def test_try_to_submit_job_l3_cron_job(session, batch_client, ecr_client):
+    """Test that the L3 cron job is submitted with the correct parameters."""
+    # Call the function to submit the L3 cron job
+    batch_starter.try_to_submit_job(
+        session,
+        job_info={
+            "data_source": "glows",
+            "data_type": "l3b",
+            "descriptor": "ion-rate-profile",
+        },
+        start_date="20240101",
+        version="v001",
+        serialized_dependencies="testing123",
+    )
+    # Verify there is a new processing job record
+    processing_job_record = session.query(models.ProcessingJob).first()
+    assert processing_job_record.instrument == "glows"
+    assert processing_job_record.data_level == "l3b"
+    # The dependency hash should be None for l3 cron jobs to allow for multiple runs
+    # with the same dependencies. The schedule lambda cron jobs gather the
+    # dependencies within the job itself so we don't know at submission time whether the
+    # job is a duplicate or not.
+    assert processing_job_record.dependency_hash is None

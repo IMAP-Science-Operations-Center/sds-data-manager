@@ -1,0 +1,9 @@
+FROM public.ecr.aws/lambda/python:3.12
+
+COPY idex_processing/requirements.txt ./requirements.txt
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY SDSCode ./SDSCode
+
+CMD ["SDSCode.pipeline_lambdas.idex_l0_indexer.lambda_handler"]

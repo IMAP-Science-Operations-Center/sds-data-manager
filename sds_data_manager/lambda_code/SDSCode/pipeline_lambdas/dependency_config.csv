@@ -713,11 +713,6 @@ hit, l0, raw, hit, l1b, hk, HARD, DOWNSTREAM
 leapseconds, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, hit, l1b, hk, HARD_NO_TRIGGER, DOWNSTREAM
 
-# Custom L0 data delivered by HIT
-hit, l0, pha-telemetry-corrected, hit, l1a, pha-telemetry-corrected, HARD, DOWNSTREAM
-leapseconds, spice, historical, hit, l1a, pha-telemetry-corrected, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, hit, l1a, pha-telemetry-corrected, HARD_NO_TRIGGER, DOWNSTREAM
-
 hit, l1a, counts-standard, hit, l1b, standard-rates, HARD, DOWNSTREAM
 hit, l1a, counts-standard, hit, l1b, summed-rates, HARD, DOWNSTREAM
 hit, l1a, counts-sectored, hit, l1b, sectored-rates, HARD, DOWNSTREAM
@@ -843,14 +838,15 @@ spacecraft_clock, spice, historical, lo, l1b, prostar, HARD_NO_TRIGGER, DOWNSTRE
 leapseconds, spice, historical, lo, l1b, prostar, HARD_NO_TRIGGER, DOWNSTREAM
 
 lo, l1b, histrates, lo, l1b, goodtimes, HARD, DOWNSTREAM
+lo, l1b, de, lo, l1b, goodtimes, HARD, DOWNSTREAM
+lo, l1b, nhk, lo, l1b, goodtimes, HARD, DOWNSTREAM
+lo, ancillary, bg-rates-anti-ram-overrides, lo, l1b, goodtimes, SOFT_NO_TRIGGER, DOWNSTREAM
+repoint, repoint, historical, lo, l1b, goodtimes, HARD, DOWNSTREAM
 leapseconds, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, lo, l1b, goodtimes, HARD_NO_TRIGGER, DOWNSTREAM
 
-lo, l1b, histrates, lo, l1b, bgrates, HARD, DOWNSTREAM
-leapseconds, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
-spacecraft_clock, spice, historical, lo, l1b, bgrates, HARD_NO_TRIGGER, DOWNSTREAM
-
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
+lo, l1b, histrates, lo, l1c, pset, HARD, DOWNSTREAM
 lo, l1b, goodtimes, lo, l1c, pset, HARD, DOWNSTREAM
 lo, l1b, bgrates, lo, l1c, pset, HARD, DOWNSTREAM
 spin, spin, historical, lo, l1c, pset, HARD, DOWNSTREAM

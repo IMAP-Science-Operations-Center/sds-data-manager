@@ -31,7 +31,7 @@ logger.setLevel(logging.INFO)
 
 # Configuration for Hi Goodtimes multi-repoint dependencies
 # Total number of repoints to include when processing goodtimes (including target).
-HI_GOODTIMES_NUM_NEAREST_REPOINTS = 7
+HI_GOODTIMES_NUM_NEAREST_REPOINTS = 9
 
 
 @dataclass
