@@ -301,10 +301,10 @@ luts_90sensor_l1b: &luts_90sensor_l1b
 (l1a, all):
   partition: repoint
   inputs:
+    - *spice_basic
     - source: ultra
       data_type: l0
       descriptor: raw
-    - *spice_basic
   outputs:
     - source: ultra
       data_type: l1a
@@ -393,14 +393,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 45sensor-de):
   partition: repoint
   inputs:
+    - *luts_45sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-aux
-    - *luts_45sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -409,14 +409,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 45sensor-priority-1-de):
   partition: repoint
   inputs:
+    - *luts_45sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-priority-1-de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-aux
-    - *luts_45sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -425,14 +425,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 45sensor-priority-2-de):
   partition: repoint
   inputs:
+    - *luts_45sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-priority-2-de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-aux
-    - *luts_45sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -441,14 +441,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 45sensor-priority-3-de):
   partition: repoint
   inputs:
+    - *luts_45sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-priority-3-de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-aux
-    - *luts_45sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -457,14 +457,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 45sensor-priority-4-de):
   partition: repoint
   inputs:
+    - *luts_45sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-priority-4-de
     - source: ultra
       data_type: l1a
       descriptor: 45sensor-aux
-    - *luts_45sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -548,14 +548,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 90sensor-de):
   partition: repoint
   inputs:
+    - *luts_90sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-aux
-    - *luts_90sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -564,14 +564,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 90sensor-priority-1-de):
   partition: repoint
   inputs:
+    - *luts_90sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-priority-1-de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-aux
-    - *luts_90sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -580,14 +580,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 90sensor-priority-2-de):
   partition: repoint
   inputs:
+    - *luts_90sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-priority-2-de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-aux
-    - *luts_90sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -596,14 +596,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 90sensor-priority-3-de):
   partition: repoint
   inputs:
+    - *luts_90sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-priority-3-de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-aux
-    - *luts_90sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -612,14 +612,14 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l1b, 90sensor-priority-4-de):
   partition: repoint
   inputs:
+    - *luts_90sensor_l1b
+    - *spice_l1b_de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-priority-4-de
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-aux
-    - *luts_90sensor_l1b
-    - *spice_l1b_de
   outputs:
     - source: ultra
       data_type: l1b
@@ -704,6 +704,7 @@ de_inputs_90sensor: &de_inputs_90sensor
   partition: repoint
   inputs:
     - *de_inputs_45sensor
+    - *spice_l1c_common
     - source: ultra
       data_type: ancillary
       descriptor: l1b-90sensor-scattering-calibration-data
@@ -734,7 +735,6 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: repoint
       data_type: repoint
       descriptor: historical
-    - *spice_l1c_common
   outputs:
     - source: ultra
       data_type: l1c
@@ -744,6 +744,7 @@ de_inputs_90sensor: &de_inputs_90sensor
   partition: repoint
   inputs:
     - *de_inputs_45sensor
+    - *spice_l1c_spacecraft
     - source: ultra
       data_type: ancillary
       descriptor: l1b-90sensor-scattering-calibration-data
@@ -783,7 +784,6 @@ de_inputs_90sensor: &de_inputs_90sensor
       data_type: ancillary
       descriptor: l1c-45sensor-de-product-lookup
       trigger_job: false
-    - *spice_l1c_spacecraft
   outputs:
     - source: ultra
       data_type: l1c
@@ -796,6 +796,7 @@ de_inputs_90sensor: &de_inputs_90sensor
   partition: repoint
   inputs:
     - *de_inputs_90sensor
+    - *spice_l1c_common
     - source: ultra
       data_type: ancillary
       descriptor: l1b-90sensor-scattering-calibration-data
@@ -826,7 +827,6 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: repoint
       data_type: repoint
       descriptor: historical
-    - *spice_l1c_common
   outputs:
     - source: ultra
       data_type: l1c
@@ -836,6 +836,7 @@ de_inputs_90sensor: &de_inputs_90sensor
   partition: repoint
   inputs:
     - *de_inputs_90sensor
+    - *spice_l1c_spacecraft
     - source: ultra
       data_type: ancillary
       descriptor: l1b-90sensor-scattering-calibration-data
@@ -875,7 +876,6 @@ de_inputs_90sensor: &de_inputs_90sensor
       data_type: ancillary
       descriptor: l1c-90sensor-de-product-lookup
       trigger_job: false
-    - *spice_l1c_spacecraft
   outputs:
     - source: ultra
       data_type: l1c
@@ -887,11 +887,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-hf-nsp-full-hae-2deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -900,11 +900,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-hf-nsp-full-hae-2deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -913,11 +913,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-hf-nsp-full-hae-2deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -926,11 +926,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-hf-nsp-full-hae-4deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -939,11 +939,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-hf-nsp-full-hae-4deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -952,11 +952,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-hf-nsp-full-hae-4deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -965,11 +965,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-hf-nsp-full-hae-6deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -978,11 +978,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-hf-nsp-full-hae-6deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -991,11 +991,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-hf-nsp-full-hae-6deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1004,11 +1004,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-sf-nsp-full-hae-2deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1017,11 +1017,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-sf-nsp-full-hae-2deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1030,11 +1030,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-sf-nsp-full-hae-2deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1043,11 +1043,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-sf-nsp-full-hae-4deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1056,11 +1056,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-sf-nsp-full-hae-4deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1069,11 +1069,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-sf-nsp-full-hae-4deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1082,11 +1082,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-sf-nsp-full-hae-6deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1095,11 +1095,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-sf-nsp-full-hae-6deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1108,11 +1108,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u45-ena-h-sf-nsp-full-hae-6deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 45sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1124,11 +1124,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-hf-nsp-full-hae-2deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1137,11 +1137,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-hf-nsp-full-hae-2deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1150,11 +1150,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-hf-nsp-full-hae-2deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1163,11 +1163,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-hf-nsp-full-hae-4deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1176,11 +1176,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-hf-nsp-full-hae-4deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1189,11 +1189,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-hf-nsp-full-hae-4deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1202,11 +1202,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-hf-nsp-full-hae-6deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1215,11 +1215,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-hf-nsp-full-hae-6deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1228,11 +1228,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-hf-nsp-full-hae-6deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-heliopset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1241,11 +1241,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-sf-nsp-full-hae-2deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1254,11 +1254,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-sf-nsp-full-hae-2deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1267,11 +1267,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-sf-nsp-full-hae-2deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1280,11 +1280,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-sf-nsp-full-hae-4deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1293,11 +1293,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-sf-nsp-full-hae-4deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1306,11 +1306,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-sf-nsp-full-hae-4deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1319,11 +1319,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-sf-nsp-full-hae-6deg-1yr):
   partition: 1yr
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1332,11 +1332,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-sf-nsp-full-hae-6deg-3mo):
   partition: 3mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
@@ -1345,11 +1345,11 @@ de_inputs_90sensor: &de_inputs_90sensor
 (l2, u90-ena-h-sf-nsp-full-hae-6deg-6mo):
   partition: 6mo
   inputs:
+    - *spice_l2
     - source: ultra
       data_type: l1c
       descriptor: 90sensor-spacecraftpset
       trigger_job: false
-    - *spice_l2
   outputs:
     - source: ultra
       data_type: l2
