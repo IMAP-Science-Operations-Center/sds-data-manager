@@ -33,9 +33,10 @@ def build_spin_deps_asset(node: DependencyNode, partitions_def):
 
         # Get time range from partition
         current_partition = context.partition_key
-        parts = context.partition_key.split("_")
-        start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-        end_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+        date_range = current_partition.split('_', 1)[1]
+        p_start_str, p_end_str = date_range.split("_to_")
+        start_date = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+        end_date = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
 
         spin_files = get_upstream_dependency_inputs_spin(start_date, end_date)
         
@@ -259,7 +260,7 @@ def spin_file_sensor(context: SensorEvaluationContext):
     
     # A unique suffix is added to the run_key so Dagster allows this partition 
     # to be run *again* if a different file updates the same timeframe next week.
-    cursor_suffix = latest_ingestion_date.timestamp()
+    cursor_suffix = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # 2. Query for new files
     if (datetime.datetime.now((datetime.timezone.utc)) - cursor_date) > datetime.timedelta(days=7):

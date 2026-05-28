@@ -1,7 +1,6 @@
 import datetime
 import pandas as pd
 from dagster import (
-    SensorEvaluationContext,
     SensorResult,
     sensor,
     RunRequest,
@@ -13,7 +12,7 @@ from dagster import (
     DefaultSensorStatus
 )
 from sds_data_manager.orchestration import custom_partitions
-from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
+from sds_data_manager.orchestration.dagster_utilities import get_materialization_result, get_affected_partitions
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sqlalchemy import select
 
@@ -64,19 +63,20 @@ def watch_idex_l0_files(context):
             ).replace(tzinfo=datetime.timezone.utc)
 
             # TODO use get_10_day_window_end_date from imap_processing when that is merged
-            partition_key = "idex10_"+date.strftime("%Y-%m-%dT%H:%M:%S")+"_to_"+window_end_dt.strftime("%Y-%m-%dT%H:%M:%S") 
+            partition_keys = get_affected_partitions(context, custom_partitions.idex10_partitions, date, window_end_dt)
 
-            # If the end of the window is in the past, then we can trigger the job to
-            # process that partition. If today is the last day of the window (window end
-            # dates are exclusive so the last day of data is window_end_date - 1 day) then
-            # we can process.
-            if now_dt >= (window_end_dt - datetime.timedelta(days=1)):
-                asset_name = "idex_l0_raw"
-                run_requests.append(RunRequest(
-                                        run_key=f"idex_{partition_key}_{run_suffix}",
-                                        partition_key=partition_key,
-                                        asset_selection=[AssetKey(asset_name)]
-                                    ))
+            for key in partition_keys:
+                # If the end of the window is in the past, then we can trigger the job to
+                # process that partition. If today is the last day of the window (window end
+                # dates are exclusive so the last day of data is window_end_date - 1 day) then
+                # we can process.
+                if now_dt >= (window_end_dt - datetime.timedelta(days=1)):
+                    asset_name = "idex_l0_raw"
+                    run_requests.append(RunRequest(
+                                            run_key=f"idex_{key}_{run_suffix}",
+                                            partition_key=key,
+                                            asset_selection=[AssetKey(asset_name)]
+                                        ))
 
     return SensorResult(run_requests=run_requests,
                         cursor = now_iso)
@@ -120,7 +120,7 @@ def idex_l0_raw(context: AssetExecutionContext):
                 versions.append(int(rec.version[1:]))
 
             materialization = get_materialization_result(context,
-                                                        "idex_l0_raw",
+                                                        AssetKey("idex_l0_raw"),
                                                         current_partition,
                                                         files,
                                                         str(max(versions)),

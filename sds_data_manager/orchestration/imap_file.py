@@ -13,6 +13,8 @@ from dagster import (
     SensorResult,
     AssetSpec,
     DynamicPartitionsDefinition,
+    EventRecordsFilter,
+    DagsterEventType
 )
 from sqlalchemy import select
 from sds_data_manager.orchestration import dagster_utilities
@@ -60,16 +62,12 @@ class IMAPScienceFileHandler:
                         models.ScienceFiles.descriptor==self.job_config.descriptor)
                 # Define the unique group
                 .distinct(
-                    models.ScienceFiles.instrument,
-                    models.ScienceFiles.data_level,
-                    models.ScienceFiles.descriptor,
+                    models.ScienceFiles.start_date,
                     models.ScienceFiles.repointing,
                 )
                 # Order by the group, then by version descending to put the highest at the top
                 .order_by(
-                    models.ScienceFiles.instrument,
-                    models.ScienceFiles.data_level,
-                    models.ScienceFiles.descriptor,
+                    models.ScienceFiles.start_date,
                     models.ScienceFiles.repointing,
                     models.ScienceFiles.version.desc()
                 )
@@ -78,7 +76,8 @@ class IMAPScienceFileHandler:
             with db.Session() as session:
                 recent_db_records = session.scalars(stmt).all()
 
-                for record in recent_db_records:                
+                for record in recent_db_records:
+                    context.log.info(f"Analyzing file: {record.file_path}")                
                     if self.partitions_def.name == 'repoint_partitions':
                         # We need to only materialize the repoint that this is a part of
                         with db.Session() as session:
@@ -94,6 +93,7 @@ class IMAPScienceFileHandler:
                                                                                         record.start_date)
                         
                     for partition in affected_partitions:
+                        context.log.info(f"The following partition was identified as affected: {partition}")
                         materialization = dagster_utilities.get_materialization(context,
                                                                                 self.job_config.to_dagster_asset(),
                                                                                 partition,
@@ -101,6 +101,7 @@ class IMAPScienceFileHandler:
                                                                                 str(int(record.version[1:])),
                                                                                 "science")
                         if materialization:
+                            context.log.info(f"{record.file_path} will be materialized.")
                             materializations.append(materialization)
             return SensorResult(asset_events=materializations,
                                 cursor=start_dt.isoformat())
@@ -153,25 +154,50 @@ class IMAPAncillaryFileHandler:
                     raise Failure(description="Processing failed: No data found")
                 
                 for record in ancillary_files:
-                    start_date = record.start_date
-                    end_date = record.end_date
-                    if not start_date:
-                        start_date = datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
-                    if not end_date:
-                        end_date = datetime.datetime(2045,9,17).replace(tzinfo=datetime.timezone.utc)
+                    file_start_date = record.start_date
+                    file_end_date = record.end_date
+                    if not file_start_date:
+                        file_start_date = datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
+                    if not file_end_date:
+                        file_end_date = datetime.datetime(2045,9,17).replace(tzinfo=datetime.timezone.utc)
 
                     affected_partitions = dagster_utilities.get_affected_partitions(context, 
                                                                                     self.partitions_def, 
-                                                                                    start_date, 
-                                                                                    end_date)
+                                                                                    file_start_date.replace(tzinfo=datetime.timezone.utc), 
+                                                                                    file_end_date.replace(tzinfo=datetime.timezone.utc))
                     
                     for partition in affected_partitions:
+                        partition_start_date, partition_end_date = self._parse_dates_from_key(partition)
+
+                        # We're going to do some complex logic here to determine which file we need to use. 
+                        # Determine if we already have a file here, and if its start_date is closer or further away than
+                        # the start date of the partition we're looking at. Honestly, this should probably be in an asset,
+                        # since this might take a while. TODO.
+                        records = context.instance.get_event_records(
+                                                EventRecordsFilter(
+                                                    asset_key=self.job_config.to_dagster_asset(), 
+                                                    asset_partitions=[partition],
+                                                    event_type=DagsterEventType.ASSET_MATERIALIZATION
+                                                ),
+                                                limit=1
+                                            )
+                        if records:
+                            # Extract the previous file list from the metadata
+                            last_metadata = records[0].asset_materialization.metadata
+                            previous_file_start_date = datetime.datetime.strptime(last_metadata.get('start_date', "20250101"), '%Y%m%d').replace(tzinfo=datetime.timezone.utc)
+                            distance_to_previous_file = previous_file_start_date.replace(tzinfo=datetime.timezone.utc) - partition_start_date.replace(tzinfo=datetime.timezone.utc)
+                            distance_to_new_file = file_start_date.replace(tzinfo=datetime.timezone.utc) - partition_start_date.replace(tzinfo=datetime.timezone.utc)
+                            if distance_to_previous_file < distance_to_new_file:
+                                # If the file we're looking at is further away that the last file, we shouldn't do anything to this partition. 
+                                continue
+
                         materialization = dagster_utilities.get_materialization(context,
                                                                                 self.job_config.to_dagster_asset(),
                                                                                 partition,
                                                                                 [os.path.basename(record.file_path)],
-                                                                                str(int(record.version[1:])),
-                                                                                "science")
+                                                                                record.version[1:],
+                                                                                "ancillary",
+                                                                                start_date=record.start_date.strftime('%Y%m%d'))
                         if materialization:
                             materializations.append(materialization)
 
@@ -179,3 +205,20 @@ class IMAPAncillaryFileHandler:
                                 cursor=start_dt.isoformat())            
     
         return _file_sensor
+    
+    def _parse_dates_from_key(self, 
+                              partition_key: str) -> tuple[datetime.datetime, datetime.datetime]:
+        """
+        Extracts start and end datetimes from a string formatted like:
+        '{name}_%Y-%m-%dT%H:%M:%S_to_%Y-%m-%dT%H:%M:%S'
+        """
+        if not partition_key:
+            return None, None
+            
+        date_range = partition_key.split('_', 1)[1]
+        if "_to_" in date_range:
+            p_start_str, p_end_str = date_range.split("_to_")
+            p_start = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+            p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+            
+        return p_start, p_end

@@ -62,22 +62,24 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 priority_levels = {'l0':'0',
-                    'l1a':'-1',
-                    'l1b':'-2',
-                    'l1c':'-3',
-                    'l1d':'-4',
-                    'l2':'-5',
-                    'l2a':'-6',
-                    'l2b':'-7',
-                    'l2c':'-8',
-                    'l2d':'-9',
-                    'l3':'-10',
-                    'l3a':'-11',
-                    'l3b':'-12',
-                    'l3c':'-13',
-                    'l3d':'-14',}
+                   'l1': -1,
+                   'l1a':'-2',
+                   'l1b':'-3',
+                   'l1c':'-4',
+                   'l1d':'-5',
+                   'l2':'-6',
+                   'l2a':'-7',
+                   'l2b':'-8',
+                   'l2c':'-9',
+                   'l2d':'-10',
+                   'l3':'-11',
+                   'l3a':'-12',
+                   'l3b':'-13',
+                   'l3c':'-14',
+                   'l3d':'-15',}
 
 _sensor_schedule = {'l0': 300,
+                    'l1': 300,
                     'l1a':300,
                     'l1b':300,
                     'l1c':300,
@@ -137,7 +139,7 @@ class IMAPJobHandler:
         self.dagster_job = define_asset_job(name=self.dagster_job_name,
                                            selection=outputs_for_job,
                                            tags={"dagster/priority": priority_levels.get(self.job_config.data_type, '0')})
-        self.triggering_dep_names = [dep.to_dagster_asset().to_user_string() for dep in self.job_config.triggering_deps]
+        self.triggering_input_names = [dep.to_dagster_asset().to_user_string() for dep in self.job_config.triggering_deps]
     
     def build_asset(self):
         """
@@ -198,7 +200,7 @@ class IMAPJobHandler:
                                                                     output.to_dagster_asset(),
                                                                     context.partition_key,
                                                                     [os.path.basename(previous_file.file_path)],
-                                                                    previous_file.version,
+                                                                    str(int(previous_file.version[1:])),
                                                                     "science",
                                                                     inputs = dependency_inputs.serialize())
                         if materialization:
@@ -306,6 +308,7 @@ class IMAPJobHandler:
                                                                 inputs = inputs)
                     if materialization:
                         return materialization
+                break
 
     def _parse_dates_from_key(self, 
                               partition_key: str) -> tuple[datetime.datetime, datetime.datetime]:
@@ -380,17 +383,18 @@ class IMAPJobHandler:
                 dep_name = dependency.to_dagster_asset().to_user_string()
                 context.log.info(f"Checking new dependencies for: {dep_name}")
 
-                # Fetch the last evaluated event ID for this specific dependency
-                last_event_id = cursors.get(dep_name)
+                # Fetch the evaluated event ID for this specific dependency
+                last_event_id = cursors.get(dep_name, 0)
                 filter = EventRecordsFilter(
                         event_type=DagsterEventType.ASSET_MATERIALIZATION,
                         asset_key=dependency.to_dagster_asset(),
                         after_cursor=last_event_id,
                     )
-                new_events = context.instance.get_event_records(filter, limit=1)
+                new_events = context.instance.get_event_records(filter, limit=1, ascending=True)
                 if new_events:
                     record = new_events[0]
                 else:
+                    context.log.info("No new materializations found.")
                     continue
 
                 # Update our new cursor marker to the highest storage ID seen
@@ -431,14 +435,14 @@ class IMAPJobHandler:
                         dependencies = self.get_dependencies(context, target_start, target_end)
                         if dependencies:
                             tags={"dependencies": dependencies.serialize()}
-                            run_key = f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}"
+                            run_key = f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}".replace(":", "")
                             context.log.info(f"Yielding a run request with ID: {run_key} on partition {target_partition}.")
                             yield RunRequest(
                                             partition_key=target_partition,
                                             run_key=f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
                                             tags=tags
                                         )
-                    elif runs and (dep_name not in self.triggering_dep_names):
+                    elif runs and (dep_name not in self.triggering_input_names):
                         context.log.info("We have already materialized something like this, and this dependency does not trigger new processing.")
                 break # To keep the sensor short, we'll only analyze one new dependency at a time. If there are still new ones, we'll consume them next time. 
                 # The get_dependencies will still get the latest stuff regardless, so we're never submitting outdated data. 
