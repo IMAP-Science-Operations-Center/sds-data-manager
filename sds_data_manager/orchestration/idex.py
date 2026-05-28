@@ -1,4 +1,6 @@
 import datetime
+import os
+
 import pandas as pd
 from dagster import (
     SensorResult,
@@ -110,13 +112,15 @@ def idex_l0_raw(context: AssetExecutionContext):
             # Dedup: keep highest version per file base path (strip version suffix)
             best: dict[str, models.IDEXL0Files] = {}
             for rec in records:
+                # Get the basename from the filepath
+                filename = os.path.basename(rec.file_path)
+                base = filename.rsplit("_", 1)[0]  # strip "_v001.pkts"
                 # "imap_idex_l0_raw_20260408_v001.pkts" -> "imap_idex_l0_raw_20260408"
-                base = rec.file_path.rsplit("_", 1)[0]  # strip "_v001.pkts"
                 if base not in best or rec.version > best[base].version:
                     best[base] = rec
 
             for rec in records:
-                files.append(rec.file_path)
+                files.append(filename)
                 versions.append(int(rec.version[1:]))
 
             materialization = get_materialization_result(context,
