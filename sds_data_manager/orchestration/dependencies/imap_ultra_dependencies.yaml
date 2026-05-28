@@ -296,42 +296,7 @@ luts_90sensor_l1b: &luts_90sensor_l1b
     descriptor: l1b-90sensor-scattering-calibration-data
 
 
-# ======== Product-Specific Dependencies ========
-
-(l1a, all):
-  partition: repoint
-  inputs:
-    - *spice_basic
-    - source: ultra
-      data_type: l0
-      descriptor: raw
-  outputs:
-    - source: ultra
-      data_type: l1a
-      descriptor: 45sensor-de
-    - source: ultra
-      data_type: l1a
-      descriptor: 45sensor-aux
-    - source: ultra
-      data_type: l1a
-      descriptor: 45sensor-params
-    - source: ultra
-      data_type: l1a
-      descriptor: 45sensor-rates
-    - source: ultra
-      data_type: l1a
-      descriptor: 90sensor-de
-    - source: ultra
-      data_type: l1a
-      descriptor: 90sensor-aux
-    - source: ultra
-      data_type: l1a
-      descriptor: 90sensor-params
-    - source: ultra
-      data_type: l1a
-      descriptor: 90sensor-rates
-
-# ======== Common DE Inputs========
+# ======== Common DE Input Groups ========
 # Shared DE inputs for extendedspin and pset products
 
 de_inputs_45sensor: &de_inputs_45sensor
@@ -356,9 +321,6 @@ de_inputs_45sensor: &de_inputs_45sensor
   - source: ultra
     data_type: l1a
     descriptor: 45sensor-aux
-  - source: ultra
-    data_type: l1b
-    descriptor: 45sensor-goodtimes
 
 
 de_inputs_90sensor: &de_inputs_90sensor
@@ -383,9 +345,72 @@ de_inputs_90sensor: &de_inputs_90sensor
   - source: ultra
     data_type: l1a
     descriptor: 90sensor-aux
-  - source: ultra
-    data_type: l1b
-    descriptor: 90sensor-goodtimes
+
+
+# ======== Product-Specific Dependencies ========
+
+(l1a, all):
+  partition: repoint
+  inputs:
+    - *spice_basic
+    - source: ultra
+      data_type: l0
+      descriptor: raw
+  outputs:
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-priority-1-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-priority-2-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-priority-3-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-priority-4-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-aux
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-params
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-rates
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-status
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-priority-1-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-priority-2-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-priority-3-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-priority-4-de
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-aux
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-params
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-rates
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-status
 
 
 # ======== Ultra-45 L1B Products ========
@@ -706,6 +731,9 @@ de_inputs_90sensor: &de_inputs_90sensor
     - *de_inputs_45sensor
     - *spice_l1c_common
     - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-goodtimes
+    - source: ultra
       data_type: ancillary
       descriptor: l1b-90sensor-scattering-calibration-data
       trigger_job: false
@@ -745,6 +773,9 @@ de_inputs_90sensor: &de_inputs_90sensor
   inputs:
     - *de_inputs_45sensor
     - *spice_l1c_spacecraft
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-goodtimes
     - source: ultra
       data_type: ancillary
       descriptor: l1b-90sensor-scattering-calibration-data
@@ -798,6 +829,9 @@ de_inputs_90sensor: &de_inputs_90sensor
     - *de_inputs_90sensor
     - *spice_l1c_common
     - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-goodtimes
+    - source: ultra
       data_type: ancillary
       descriptor: l1b-90sensor-scattering-calibration-data
       trigger_job: false
@@ -837,6 +871,9 @@ de_inputs_90sensor: &de_inputs_90sensor
   inputs:
     - *de_inputs_90sensor
     - *spice_l1c_spacecraft
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-goodtimes
     - source: ultra
       data_type: ancillary
       descriptor: l1b-90sensor-scattering-calibration-data
