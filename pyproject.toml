@@ -34,7 +34,7 @@ dependencies = [
     "imap-data-access>=0.41.0",
     "boto3>=1.26.78,<2",
     "SQLAlchemy<=3.0.0",
-    "pandas (>=3.0.3,<4.0.0)",
+    "numpy (>=2.4.6,<3.0.0)"
 ]
 
 [tool.poetry]
@@ -57,6 +57,7 @@ dagster = "^1.13.1"
 dagster-webserver = "^1.13.1"
 dagster-postgres = ">=0.29.4,<0.30.0"
 dagster-aws = ">=0.29.4,<0.30.0"
+"pandas" = ">=3.0.3,<4.0.0"
 
 # Example to create requirements.txt for lambda layers:
 # poetry export -f requirements.txt --with layer-database -o
