@@ -289,13 +289,16 @@ class DagsterEcsConstruct(Construct):
                 ),
             ),
             public_load_balancer=True,
-            # Set to False for VPN/Internal access
             open_listener=False,
-            security_groups=[sg],
         )
         webserver_service.load_balancer.connections.allow_from(
             ec2.Peer.ipv4("128.138.131.0/24"),
             ec2.Port.tcp(80),
+        )
+        webserver_service.service.connections.allow_to(
+            sg,
+            ec2.Port.tcp(5432),
+            "Allow Dagster Webserver to access RDS"
         )
 
         # Dagster Daemon
