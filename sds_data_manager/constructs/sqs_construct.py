@@ -50,7 +50,7 @@ class SqsConstruct(Construct):
             encryption=aws_sqs.QueueEncryption.UNENCRYPTED,
             # This timeout determines how long the queue waits for processing. It must
             # be longer than the timeout of the lambda.
-            visibility_timeout=Duration.seconds(300),
+            visibility_timeout=Duration.seconds(900),
             # This is required. It removes messages with identical content. Since
             # the event includes a filename each event should be totally unique.
             content_based_deduplication=True,
@@ -71,7 +71,7 @@ class SqsConstruct(Construct):
             encryption=aws_sqs.QueueEncryption.UNENCRYPTED,
             # This timeout determines how long the queue waits for processing. It must
             # be longer than the timeout of the lambda.
-            visibility_timeout=Duration.seconds(300),
+            visibility_timeout=Duration.seconds(900),
             # This is required. It removes messages with identical content. Since
             # the event includes a filename each event should be totally unique.
             content_based_deduplication=True,

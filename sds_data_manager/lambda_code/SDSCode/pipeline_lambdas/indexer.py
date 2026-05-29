@@ -176,7 +176,15 @@ def s3_event_handler(event):
             body=f"Filename {filename} is not a valid SCIENCE, "
             + "ANCILLARY or QUICKLOOK file, or RELEASE file.",
         )
-
+    # Skip IDEX L0 files — they are indexed by a separate lambda.
+    if type(file_obj) is ScienceFilePath:
+        if file_obj.instrument == "idex" and file_obj.data_level == "l0":
+            message = (
+                f"Received an IDEX L0 file {filename}. This file will be indexed "
+                f"in a separate lambda. See idex-l0-file-indexer lambda for details."
+            )
+            logger.info(message)
+            return http_response(status_code=200, body=message)
     # Extract filename components and prepare common parameters for
     # database entry
     params = file_obj.extract_filename_components(filename)

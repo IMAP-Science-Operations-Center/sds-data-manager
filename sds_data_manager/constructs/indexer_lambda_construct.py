@@ -3,6 +3,7 @@
 import aws_cdk as cdk
 from aws_cdk import Environment
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_ecr_assets as ecr_assets
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
@@ -96,7 +97,6 @@ class IndexerLambda(Construct):
             self, "rds_secret", db_secret_name
         )
         rds_secret.grant_read(grantee=indexer_lambda)
-
         # Events that triggers Indexer Lambda:
         # 1. Arrival of all science data
         # 2. PutEvent from Lambda that builds dependency and starts Batch Job
@@ -280,3 +280,109 @@ class SPICEIndexerLambda(Construct):
 
         # Add the Lambda function as the target for the rule
         event_rule.add_target(targets.LambdaFunction(self.spice_ingest_lambda))
+
+
+class IDEXL0IndexerLambda(Construct):
+    """Construct for IDEX l0 indexer lambda."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        db_secret_name: str,
+        vpc: ec2.Vpc,
+        vpc_subnets,
+        rds_security_group,
+        data_bucket,
+        **kwargs,
+    ) -> None:
+        """IDEX IndexerLambda Construct.
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        db_secret_name : str
+            The DB secret name
+        vpc : obj
+            The VPC
+        vpc_subnets : obj
+            The VPC subnets
+        rds_security_group : obj
+            The RDS security group
+        data_bucket : obj
+            The data bucket
+        kwargs : dict
+            Keyword arguments
+
+        """
+        super().__init__(scope, construct_id, **kwargs)
+
+        idex_l0_indexer_lambda = lambda_.DockerImageFunction(
+            self,
+            id="IDEXL0IndexerLambda",
+            code=lambda_.DockerImageCode.from_image_asset(
+                "sds_data_manager/lambda_code",
+                file="SDSCode/pipeline_lambdas/Dockerfile.idex_l0_indexer",
+                platform=ecr_assets.Platform.LINUX_AMD64,
+            ),
+            function_name="idex-l0-file-indexer",
+            timeout=cdk.Duration.minutes(1),
+            memory_size=1000,
+            architecture=lambda_.Architecture.X86_64,
+            allow_public_subnet=True,
+            vpc=vpc,
+            vpc_subnets=vpc_subnets,
+            security_groups=[rds_security_group],
+            environment={
+                "IMAP_DATA_DIR": "/tmp",  # noqa: S108
+                "S3_BUCKET": data_bucket.bucket_name,
+                "SECRET_NAME": db_secret_name,
+            },
+        )
+
+        # Adding events and s3 permission because indexer
+        # lambda sents events and read from s3.
+        # TODO: narrow s3 permission later
+        s3_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:*"],
+            resources=[
+                data_bucket.bucket_arn,
+                f"{data_bucket.bucket_arn}/*",
+            ],
+        )
+
+        idex_l0_indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        idex_l0_indexer_lambda.add_to_role_policy(s3_policy)
+
+        rds_secret = secrets.Secret.from_secret_name_v2(
+            self, "rds_secret", db_secret_name
+        )
+
+        rds_secret.grant_read(grantee=idex_l0_indexer_lambda)
+        # Only IDEX L0 file arrivals trigger this lambda.
+        idex_l0_prefix = [{"prefix": "imap/idex/l0/"}]
+
+        idex_data_arrival_rule = events.Rule(
+            self,
+            "IDEXL0DataArrival",
+            rule_name="idex-l0-data-arrival",
+            event_pattern=events.EventPattern(
+                source=["aws.s3"],
+                detail_type=["Object Created"],
+                detail={
+                    "bucket": {"name": [data_bucket.bucket_name]},
+                    "object": {
+                        "key": idex_l0_prefix,
+                    },
+                },
+            ),
+        )
+
+        # Add the Lambda function as the target for the rule
+        idex_data_arrival_rule.add_target(
+            targets.LambdaFunction(idex_l0_indexer_lambda)
+        )

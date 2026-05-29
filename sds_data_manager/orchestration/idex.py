@@ -1,4 +1,6 @@
 import datetime
+import os
+
 import pandas as pd
 from dagster import (
     SensorResult,
@@ -66,17 +68,13 @@ def watch_idex_l0_files(context):
             partition_keys = get_affected_partitions(context, custom_partitions.idex10_partitions, date, window_end_dt)
 
             for key in partition_keys:
-                # If the end of the window is in the past, then we can trigger the job to
-                # process that partition. If today is the last day of the window (window end
-                # dates are exclusive so the last day of data is window_end_date - 1 day) then
-                # we can process.
-                if now_dt >= (window_end_dt - datetime.timedelta(days=1)):
-                    asset_name = "idex_l0_raw"
-                    run_requests.append(RunRequest(
-                                            run_key=f"idex_{key}_{run_suffix}",
-                                            partition_key=key,
-                                            asset_selection=[AssetKey(asset_name)]
-                                        ))
+                # Trigger the job as soon as there is a file in the window.
+                asset_name = "idex_l0_raw"
+                run_requests.append(RunRequest(
+                                        run_key=f"idex_{key}_{run_suffix}",
+                                        partition_key=key,
+                                        asset_selection=[AssetKey(asset_name)]
+                                    ))
 
     return SensorResult(run_requests=run_requests,
                         cursor = now_iso)
@@ -110,13 +108,15 @@ def idex_l0_raw(context: AssetExecutionContext):
             # Dedup: keep highest version per file base path (strip version suffix)
             best: dict[str, models.IDEXL0Files] = {}
             for rec in records:
+                # Get the basename from the filepath
+                filename = os.path.basename(rec.file_path)
+                base = filename.rsplit("_", 1)[0]  # strip "_v001.pkts"
                 # "imap_idex_l0_raw_20260408_v001.pkts" -> "imap_idex_l0_raw_20260408"
-                base = rec.file_path.rsplit("_", 1)[0]  # strip "_v001.pkts"
                 if base not in best or rec.version > best[base].version:
                     best[base] = rec
 
             for rec in records:
-                files.append(rec.file_path)
+                files.append(filename)
                 versions.append(int(rec.version[1:]))
 
             materialization = get_materialization_result(context,

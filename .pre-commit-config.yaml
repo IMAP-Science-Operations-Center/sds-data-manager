@@ -61,3 +61,14 @@ repos:
             "--with",
             "layer-processing",
           ]
+      - id: poetry-export
+        name: export layer idex processing requirements.txt
+        args:
+          [
+            "-f",
+            "requirements.txt",
+            "-o",
+            "sds_data_manager/lambda_code/idex_processing/requirements.txt",
+            "--with",
+            "layer-idex-processing",
+          ]
