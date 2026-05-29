@@ -14,6 +14,7 @@ from sds_data_manager.orchestration.dependency import (
     get_kickoff_jobs,
 )
 from sds_data_manager.orchestration.imap_job import partition_map
+from sds_data_manager.orchestration.types import Node, ProcessingJobNode
 
 SQS_CLIENT = boto3.client("sqs", "us-west-2")
 
@@ -30,15 +31,19 @@ def read_sqs_messages(sqs_queue_url=None):
 
 @sensor(
     asset_selection=AssetSelection.all(),
-    minimum_interval_seconds=100,  # TODO what do we want here
+    minimum_interval_seconds=100,
 )
 def reprocess_sensor(context: SensorEvaluationContext):
     """Sensor that triggers reprocessing backfills."""
     sqs_queue_url = os.getenv("REPROCESSING_SQS_URL")
     messages = read_sqs_messages(sqs_queue_url)
-    reader = DependencyConfigReader()
+
+    context.log.info(f"Found {len(messages)} reprocessing events")
+
     if not messages:
         return None
+
+    reader = DependencyConfigReader()
 
     for message in messages:
         params = json.loads(message["Body"])
@@ -50,62 +55,51 @@ def reprocess_sensor(context: SensorEvaluationContext):
         end_date = params.get("end_date")
 
         context.log.info(
-            f"A reprocessing event was triggered with the parameters: {instrument=}, "
+            f"Reprocessing event received: {instrument=}, "
             f"{data_level=}, {descriptor=}, {start_date=}, {end_date=}"
         )
-        if not end_date or not start_date:
-            raise ValueError(
-                "Start date and end date are required for a reprocessing Event."
-            )
-        if not instrument:
-            raise ValueError("Instrument must be provided for a reprocessing event.")
 
-        if bool(data_level) != bool(descriptor):
-            raise ValueError(
-                "data_level and descriptor must both be provided or both None."
-            )
+        # Check inputs. If they are not valid, log a warning and delete the message to
+        # avoid retrying.
+        if not validate_reprocess_params(
+            context, instrument, data_level, descriptor, start_date, end_date
+        ):
+            delete_sqs_message(sqs_queue_url, message)
+            continue
 
-        if not data_level:
-            # If data_level is not provided, we need to reprocess all levels.
-            # Get the jobs that kick of each pipeline, to trigger processing
-            # for all levels.
-            root_job = get_kickoff_jobs(instrument)[0]
-            # Create the asset name based on the root job information
-            asset_name = root_job.to_dagster_asset().to_user_string()
-            partition = root_job.partition
-        else:
-            # If data_level is provided (and therefore descriptor) construct the
-            # asset name using the input parameters
-            dagster_descriptor = descriptor.replace('-', '')
-            asset_name = f"{instrument}_{data_level}_{dagster_descriptor}"
-            # Get the partition type from the dependency config
-            partition = reader.config[(instrument, data_level, descriptor)].partition
+        # Get the assets for this reprocessing
+        result = get_job_assets(context, reader, instrument, data_level, descriptor)
+        if result is None:
+            # If there is no root node continue.
+            delete_sqs_message(sqs_queue_url, message)
+            continue
 
-        # Get the partitions definition based on the DependencyNode
+        output_asset_keys, partition = result
         partition_def = partition_map.get(partition)
-        # convert start and end date to datetime
-        start_date = datetime.datetime.strptime(start_date, "%Y%m%d").replace(
+
+        start_dt = datetime.datetime.strptime(start_date, "%Y%m%d").replace(
             tzinfo=datetime.timezone.utc
         )
-        end_date = datetime.datetime.strptime(end_date, "%Y%m%d").replace(
+        end_dt = datetime.datetime.strptime(end_date, "%Y%m%d").replace(
             tzinfo=datetime.timezone.utc
         )
 
-        # Determine the affected partitions based on the start_date and end_date
-        partition_keys = get_affected_partitions(
-            context, partition_def, start_date, end_date
-        )
+        partition_keys = get_affected_partitions(context, partition_def, start_dt, end_dt)
         if not partition_keys:
-            return None
-        context.log.info(
-            f"Reprocessing asset {asset_name} across {partition_keys} partitions"
-        )
+            context.log.warning(
+                f"No partitions found for {output_asset_keys} between {start_date} and "
+                f"{end_date}."
+            )
+            delete_sqs_message(sqs_queue_url, message)
+            continue
+
+        context.log.info(f"Reprocessing {output_asset_keys} across partitions: {partition_keys}")
 
         backfill = PartitionBackfill.from_asset_partitions(
             backfill_id=f"reprocess-{instrument}-{int(datetime.datetime.now().timestamp())}",
             asset_graph=context.repository_def.asset_graph,
             partition_names=partition_keys,
-            asset_selection=[AssetKey(asset_name)],
+            asset_selection=[output_asset_keys[0]], # Only trigger the first output. For a multi-asset this will trigger them all
             backfill_timestamp=datetime.datetime.now(datetime.timezone.utc).timestamp(),
             tags={
                 "instrument": instrument,
@@ -118,15 +112,90 @@ def reprocess_sensor(context: SensorEvaluationContext):
             description=None,
             run_config=None,
         )
-
         context.instance.add_backfill(backfill)
 
-        SQS_CLIENT.delete_message(
-            QueueUrl=sqs_queue_url,
-            ReceiptHandle=message["ReceiptHandle"],
-        )
+        # After a submitting the backfill, remove the sqs message
+        delete_sqs_message(sqs_queue_url, message)
 
     return None
+
+
+def validate_reprocess_params(
+    context: SensorEvaluationContext,
+    instrument: str | None,
+    data_level: str | None,
+    descriptor: str | None,
+    start_date: str | None,
+    end_date: str | None,
+) -> bool:
+    """Validate reprocessing parameters. Logs a warning and returns False if invalid."""
+    if not instrument:
+        context.log.warning("Reprocessing message missing 'instrument'. Skipping.")
+        return False
+    if not start_date or not end_date:
+        context.log.warning(
+            f"Reprocessing message for {instrument} missing start and end date. Skipping."
+        )
+        return False
+    if bool(data_level) != bool(descriptor):
+        context.log.warning(
+            f"Reprocessing message for {instrument}. Both data_level and descriptor "
+            f" must be provided or both omitted. Skipping."
+        )
+        return False
+    return True
+
+
+def get_job_assets(
+    context: SensorEvaluationContext,
+    reader: DependencyConfigReader,
+    instrument: str,
+    data_level: str | None,
+    descriptor: str | None,
+) -> tuple[list[AssetKey], str] | None:
+    """Resolve the job node to reprocess. Returns None if not found."""
+    if not data_level:
+        kickoff_jobs = get_kickoff_jobs(instrument)
+        if not kickoff_jobs:
+            context.log.warning(f"No kickoff jobs found for {instrument}. Skipping.")
+            return None
+        job_node = kickoff_jobs[0]
+    else:
+        node_key = (instrument, data_level, descriptor)
+        if node_key in reader.config:
+            job_node = reader.config[node_key]
+        else:
+            try:
+                job_node = reader.get_node_for_output(Node(instrument, data_level, descriptor))
+            except ValueError:
+                context.log.warning(
+                    f"No job found for ({instrument}, {data_level}, {descriptor}). "
+                    "Check that the instrument, data_level, and descriptor combination "
+                    "is valid. Skipping."
+                )
+                return None
+    # get the output keys for the job node. If there are no outputs, log a warning and
+    # skip.
+    output_keys = [
+        AssetKey(output.to_dagster_asset().to_user_string())
+        for output in job_node.outputs
+    ]
+    if not output_keys:
+        context.log.warning(
+            f"Job node for ({instrument}, {data_level}, {descriptor}) has no outputs."
+            f" Skipping."
+        )
+        return None
+
+    return output_keys, job_node.partition
+
+
+def delete_sqs_message(queue_url: str, message: dict) -> None:
+    """Delete a message from the SQS queue."""
+    SQS_CLIENT.delete_message(
+        QueueUrl=queue_url,
+        ReceiptHandle=message["ReceiptHandle"],
+    )
 
 
 sensors = [reprocess_sensor]

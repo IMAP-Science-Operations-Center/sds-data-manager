@@ -25,6 +25,7 @@ run_launcher:
       - REGION
       - SSM_API_KEY_PARAMETER
       - DAGSTER_COMPUTE_LOG_BUCKET
+      - REPROCESSING_SQS_URL
       - IMAP_DATA_ACCESS_URL
       - REPROCESSING_SQS_URL
     task_definition: 

@@ -139,8 +139,8 @@ class BatchStarterLambda(Construct):
         # This DLQ just saves the messages and doesn't do anything with them.
         self.dead_letter_queue = sqs.Queue(
             self,
-            "ReprocessingDeadLetterQueue",
-            queue_name="reprocessing_dead_letter_queue.fifo",
+            "ReprocessDeadLetterQueue",
+            queue_name="reprocessDQL.fifo",
             encryption=sqs.QueueEncryption.UNENCRYPTED,
             fifo=True,
         )

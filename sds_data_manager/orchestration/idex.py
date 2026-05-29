@@ -115,7 +115,8 @@ def idex_l0_raw(context: AssetExecutionContext):
                 if base not in best or rec.version > best[base].version:
                     best[base] = rec
 
-            for rec in records:
+            for rec in best.values():
+                filename = os.path.basename(rec.file_path)
                 files.append(filename)
                 versions.append(int(rec.version[1:]))
 
