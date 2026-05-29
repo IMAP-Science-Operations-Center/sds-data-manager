@@ -14,7 +14,7 @@ from sds_data_manager.orchestration.dependency import (
     get_kickoff_jobs,
 )
 from sds_data_manager.orchestration.imap_job import partition_map
-from sds_data_manager.orchestration.types import Node, ProcessingJobNode
+from sds_data_manager.orchestration.types import Node
 
 SQS_CLIENT = boto3.client("sqs", "us-west-2")
 
@@ -84,7 +84,9 @@ def reprocess_sensor(context: SensorEvaluationContext):
             tzinfo=datetime.timezone.utc
         )
 
-        partition_keys = get_affected_partitions(context, partition_def, start_dt, end_dt)
+        partition_keys = get_affected_partitions(
+            context, partition_def, start_dt, end_dt
+        )
         if not partition_keys:
             context.log.warning(
                 f"No partitions found for {output_asset_keys} between {start_date} and "
@@ -93,13 +95,15 @@ def reprocess_sensor(context: SensorEvaluationContext):
             delete_sqs_message(sqs_queue_url, message)
             continue
 
-        context.log.info(f"Reprocessing {output_asset_keys} across partitions: {partition_keys}")
+        context.log.info(
+            f"Reprocessing {output_asset_keys} across partitions: {partition_keys}"
+        )
 
         backfill = PartitionBackfill.from_asset_partitions(
             backfill_id=f"reprocess-{instrument}-{int(datetime.datetime.now().timestamp())}",
             asset_graph=context.repository_def.asset_graph,
             partition_names=partition_keys,
-            asset_selection=[output_asset_keys[0]], # Only trigger the first output. For a multi-asset this will trigger them all
+            asset_selection=output_asset_keys,
             backfill_timestamp=datetime.datetime.now(datetime.timezone.utc).timestamp(),
             tags={
                 "instrument": instrument,
@@ -134,7 +138,8 @@ def validate_reprocess_params(
         return False
     if not start_date or not end_date:
         context.log.warning(
-            f"Reprocessing message for {instrument} missing start and end date. Skipping."
+            f"Reprocessing message for {instrument} missing start and end date. "
+            f"Skipping."
         )
         return False
     if bool(data_level) != bool(descriptor):
@@ -166,7 +171,9 @@ def get_job_assets(
             job_node = reader.config[node_key]
         else:
             try:
-                job_node = reader.get_node_for_output(Node(instrument, data_level, descriptor))
+                job_node = reader.get_node_for_output(
+                    Node(instrument, data_level, descriptor)
+                )
             except ValueError:
                 context.log.warning(
                     f"No job found for ({instrument}, {data_level}, {descriptor}). "
