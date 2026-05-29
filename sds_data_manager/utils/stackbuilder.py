@@ -460,48 +460,43 @@ def build_sds(
         secret_name=ialirt_secret_name,
         account_name=account_name,
     )
+    
     # Dagster Stack
+    dagster_stack = Stack(scope, "DagsterStack", cross_region_references=True, env=env)
+
+    dagster_repo_construct = dagster_construct.EcrConstruct(
+        scope=dagster_stack,
+        construct_id="DagsterImageECR",
+        repo_name="dagster-image",
+    )
+
     # Repo root is three levels up from this
     # file (sds_data_manager/utils/stackbuilder.py)
     repo_root = str(Path(__file__).parent.parent.parent)
-
-    dagster_repo_stack = dagster_construct.ElasticContainerRegistryStack(
-        scope,
-        "DagsterImageECR",
-        repo_name="dagster-image",
-        untagged_image_duration=7,
-        env=env,
-    )
-
-    dagster_image_stack = dagster_construct.DockerImageStack(
-        scope,
-        "DagsterImageStack",
+    dagster_image_construct = dagster_construct.DagsterDockerImageConstruct(
+        scope=dagster_stack,
+        construct_id="DagsterImageConstruct",
         image_name="DagsterImage",
         directory=repo_root,
         file="Dockerfile",
-        ecr=dagster_repo_stack.repo.repository_uri,
-        env=env,
+        ecr=dagster_repo_construct.container_repo.repository_uri
     )
 
-    # TODO: Note for Tenzin:
-    # Create RDS here.
-    # Then add connections information to below env_vars dict.
-    # These are information needed by daster to connect to RDS:
-    #   username
-    #   DAGSTER_PG_PASSWORD
-    #   DAGSTER_PG_HOST
-    #   db_name
-    #   username: dagster
-    #   port: 5432
-    #
-    # Dagster will look for DB credentails through dagster.yaml in
-    # sds_data_manager/orchestration/dagster.yaml.
-    # In there, it's going to read DAGSTER_PG_PASSWORD and DAGSTER_PG_HOST.
-    # Other credentials listed above will be set as default when creating RDS.
+    dagster_database_construct = dagster_construct.DagsterDatabaseConstruct(
+        scope=dagster_stack,
+        construct_id='DagsterDatabase',
+        vpc=networking.vpc,
+        sg=rds_construct.rds_security_group
+    )
+
+    logs_bucket = dagster_construct.DagsterS3LoggingBucket(
+        scope=dagster_stack,
+        construct_id='DagsterLogBucket',
+    )
 
     dagster_env_vars = {
         "S3_BUCKET": f"sds-data-{env.account}",
-        "SECRET_NAME": "sdp-database-cred",
+        "SECRET_NAME": db_secret_name,
         "ACCOUNT": env.account,
         "REGION": env.region,
         "IMAP_DATA_ACCESS_URL": account_config.get(
@@ -509,16 +504,19 @@ def build_sds(
         ),
         "SSM_API_KEY_PARAMETER": "/imap-sdc/batch-jobs/api-key",
         "REPROCESSING_SQS_URL": batch_starter_construct.reprocessing_sqs_url,
+        "DAGSTER_PG_HOST": dagster_database_construct.db_instance.db_instance_endpoint_address,
+        "DAGSTER_COMPUTE_LOG_BUCKET": logs_bucket.logs_bucket.bucket_name,
     }
 
-    dagster_ecs_stack = dagster_construct.DagsterEcsStack(
-        scope,
-        "DagsterEcsStack",
+    dagster_ecs_stack = dagster_construct.DagsterEcsConstruct(
+        scope=dagster_stack,
+        construct_id="DagsterEcsStack",
         vpc=networking.vpc,
-        env_vars=dagster_env_vars,
-        env=env,
+        sg=rds_construct.rds_security_group,
+        dagster_env_vars=dagster_env_vars,
+        db_secret=dagster_database_construct.db_secret
     )
-    dagster_ecs_stack.node.add_dependency(dagster_image_stack)
+    dagster_ecs_stack.node.add_dependency(dagster_image_construct)
 
 
 def build_backup(scope: App, env: Environment, source_account: str):

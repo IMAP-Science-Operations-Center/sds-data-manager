@@ -2,45 +2,99 @@
 
 from constructs import Construct
 from aws_cdk import (
-    RemovalPolicy,
+    App,
     Stack,
+    RemovalPolicy,
+    aws_s3 as s3,
     aws_ec2 as ec2,
+    aws_ecr as ecr,
     aws_ecs as ecs,
+    aws_rds as rds,
     aws_iam as iam,
     aws_logs as logs,
     aws_ecs_patterns as ecs_patterns,
-    aws_ecr as ecr,
+    aws_secretsmanager as secretsmanager,
 )
 from aws_cdk.aws_ecr_assets import DockerImageAsset, Platform
 from aws_cdk.aws_ecr import Repository
 from cdk_ecr_deployment import ECRDeployment, DockerImageName
+from aws_cdk import Stack
 
 import aws_cdk as cdk
 
 
-class ElasticContainerRegistryStack(Stack):
-    """Create the ECR to store the container images."""
+class EcrConstruct(Construct):
+    """Construct the ECR Resources."""
 
-    def __init__(self, scope, id, *, repo_name, untagged_image_duration, **kwargs):
-        super().__init__(scope, id, **kwargs)
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        repo_name: str,
+        **kwargs,
+    ) -> None:
+        """DataStorageConstruct constructor.
 
-        repo_lifecycle_rule = ecr.LifecycleRule(
-            description="Remove old untagged images",
-            max_image_age=cdk.Duration.days(untagged_image_duration),
-            tag_status=ecr.TagStatus.UNTAGGED,
-        )
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        repo_name : str
+            The name to give the repository
+        kwargs : dict
+            Keyword arguments
 
-        self.repo = ecr.Repository(
-            self, id, lifecycle_rules=[repo_lifecycle_rule], repository_name=repo_name
-        )
+        """
+        super().__init__(scope, construct_id, **kwargs)
 
+        repo_lifecycle_rule = ecr.LifecycleRule(description='Remove old untagged images',
+                                                max_image_age=cdk.Duration.days(7), # Remove after 7 days
+                                                tag_status=ecr.TagStatus.UNTAGGED)
 
-class DockerImageStack(Stack):
-    """Create the Docker image and push it to ECR."""
+        self.container_repo = ecr.Repository(self, construct_id, lifecycle_rules=[repo_lifecycle_rule],
+                                            repository_name=repo_name)
 
-    def __init__(self, scope, id, *, image_name, directory, file="Dockerfile", ecr,
-                 docker_tag="latest", **kwargs):
-        super().__init__(scope, id, **kwargs)
+        self.container_repo.apply_removal_policy(RemovalPolicy.RETAIN)
+
+class DagsterDockerImageConstruct(Construct):
+    """Construct the actual Docker image."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        image_name: str,
+        directory: str,
+        ecr: str,
+        file: str = "Dockerfile",
+        docker_tag: str = "latest",
+        **kwargs,
+    ) -> None:
+        """DagsterDockerImageConstruct constructor.
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        image_name : str
+            The name to give the image
+        directory : str
+            The directory of the Dockerfile
+        ecr : str
+            The URI of the ECR to push the Docker image to
+        file : str 
+            The name of the Dockerfile to use
+        docker_tag : str
+            The tag to give the docker image once pushed
+        kwargs : dict
+            Keyword arguments
+
+        """
+        super().__init__(scope, construct_id, **kwargs)
 
         self.asset = DockerImageAsset(
             self,
@@ -58,31 +112,102 @@ class DockerImageStack(Stack):
             memory_limit=4096,
         )
 
-
-class DagsterEcsStack(Stack):
-    """ECS Fargate stack running the Dagster webserver."""
+class DagsterDatabaseConstruct(Construct):
+    """Construct the database Dagster needs to keep track of processing state"""
 
     def __init__(
         self,
         scope: Construct,
         construct_id: str,
-        *,
         vpc: ec2.IVpc,
-        env_vars: dict,
+        sg,
+        **kwargs,
+    ) -> None:
+        """DagsterDatabaseConstruct constructor.
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        vpc : ec2.IVpc
+            The VPC to use
+        sg : ISecurityGroup
+            The security group to use
+        kwargs : dict
+            Keyword arguments
+
+        """
+        super().__init__(scope, construct_id, **kwargs)
+
+        self.db_secret = secretsmanager.Secret(
+            self, "DagsterDatabaseSecret",
+            generate_secret_string=secretsmanager.SecretStringGenerator(
+                secret_string_template='{"username":"dagster"}',
+                generate_string_key="password",
+                exclude_characters="\"@/\\"
+            )
+        )
+        
+        self.db_instance = rds.DatabaseInstance(
+            self, "DagsterStorageDB",
+            engine=rds.DatabaseInstanceEngine.postgres(version=rds.PostgresEngineVersion.VER_16),
+            instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.XLARGE2),
+            vpc=vpc,
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
+            credentials=rds.Credentials.from_secret(self.db_secret),
+            database_name="dagster",
+            security_groups=[sg],
+            removal_policy=RemovalPolicy.RETAIN, # Retain data on stack updates/destroy
+        )
+
+class DagsterS3LoggingBucket(Construct):
+    """Construct the database Dagster needs to store logs from asset runs"""
+
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        **kwargs,
+    ) -> None:
+        """DagsterS3LoggingBucket constructor.
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        kwargs : dict
+            Keyword arguments
+
+        """
+        super().__init__(scope, construct_id, **kwargs)
+
+        self.logs_bucket = s3.Bucket(self, "DagsterComputeLogsBucket",
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL
+        )
+
+class DagsterEcsConstruct(Construct):
+    """ECS Fargate construct for setting up all ECS tasks."""
+
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        vpc: ec2.IVpc,
+        sg,
+        dagster_env_vars,
+        db_secret,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # ECS Cluster
         cluster = ecs.Cluster(self, "DagsterCluster", vpc=vpc)
-
-        security_group = ec2.SecurityGroup(
-            self,
-            "DagsterSecurityGroup",
-            vpc=vpc,
-            description="Security group for Dagster ECS tasks",
-            allow_all_outbound=True,
-        )
 
         # Execution role for pulling images and writing logs
         execution_role = iam.Role(
@@ -112,6 +237,26 @@ class DagsterEcsStack(Stack):
         )
         ecr_image = ecs.EcrImage(dagster_repo, "latest")
 
+        # These tasks will run the Assets
+        run_task_def = ecs.FargateTaskDefinition(
+            self, "DagsterRunBaseTaskDef",
+            cpu=1024, 
+            memory_limit_mib=2048,
+            execution_role=execution_role,
+            task_role=task_role
+        )
+        run_task_def.add_container(
+            "dagster-run", # Must match standard naming expectation
+            image=ecr_image,
+            environment=dagster_env_vars,
+            secrets={"DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(db_secret, "password")},
+            logging=ecs.LogDriver.aws_logs(
+                stream_prefix="DagsterRuns",
+                log_group=logs.LogGroup(self, "RunLogs", removal_policy=RemovalPolicy.DESTROY)
+            )
+        )
+        dagster_env_vars["DAGSTER_RUN_BASE_TASK_DEF_ARN"] = run_task_def.task_definition_arn
+        
         webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
             "DagsterWebserver",
@@ -122,8 +267,7 @@ class DagsterEcsStack(Stack):
             task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
                 image=ecr_image,
                 command=[
-                    "dagster",
-                    "dev",
+                    "dagster-webserver",
                     "-h",
                     "0.0.0.0",
                     "-p",
@@ -132,7 +276,7 @@ class DagsterEcsStack(Stack):
                     "sds_data_manager/orchestration/workspace.yaml",
                 ],
                 container_port=3000,
-                environment=env_vars,
+                environment=dagster_env_vars,
                 execution_role=execution_role,
                 task_role=task_role,
                 log_driver=ecs.LogDriver.aws_logs(
@@ -147,9 +291,37 @@ class DagsterEcsStack(Stack):
             public_load_balancer=True,
             # Set to False for VPN/Internal access
             open_listener=False,
-            security_groups=[security_group],
+            security_groups=[sg],
         )
         webserver_service.load_balancer.connections.allow_from(
             ec2.Peer.ipv4("128.138.131.0/24"),
             ec2.Port.tcp(80),
+        )
+
+        # Dagster Daemon
+        daemon_task_def = ecs.FargateTaskDefinition(self, "DagsterDaemonTask",
+            cpu=16384,
+            memory_limit_mib=32768,
+            execution_role=execution_role,
+            task_role=task_role
+        )
+        
+        daemon_task_def.add_container("DaemonContainer",
+            image=ecr_image,
+            command=["dagster-daemon", "run", "-w", "sds_data_manager/orchestration/workspace.yaml"],
+            environment=dagster_env_vars,
+            secrets={
+                "DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(db_secret, "password")
+            },
+            logging=ecs.LogDriver.aws_logs(
+                stream_prefix="DagsterDaemon",
+                log_group=logs.LogGroup(self, "DaemonLogs", removal_policy=RemovalPolicy.DESTROY)
+            )
+        )
+
+        ecs.FargateService(self, "DagsterDaemonService",
+            cluster=cluster,
+            task_definition=daemon_task_def,
+            desired_count=1,
+            security_groups=[sg]
         )
