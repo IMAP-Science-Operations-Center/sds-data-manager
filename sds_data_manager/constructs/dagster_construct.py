@@ -56,7 +56,7 @@ class EcrConstruct(Construct):
         self.container_repo = ecr.Repository(self, construct_id, lifecycle_rules=[repo_lifecycle_rule],
                                             repository_name=repo_name)
 
-        self.container_repo.apply_removal_policy(RemovalPolicy.RETAIN)
+        self.container_repo.apply_removal_policy(RemovalPolicy.DESTROY)
 
 class DagsterDockerImageConstruct(Construct):
     """Construct the actual Docker image."""
