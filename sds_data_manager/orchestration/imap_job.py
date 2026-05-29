@@ -411,7 +411,7 @@ class IMAPJobHandler:
                 # TODO: This is probably too broad. But for now, this 
                 # is probably fine unless we start getting timeouts. 
                 if dependency.dependency_query_time_range:
-                    time_range = int(self.dependency_query_time_range[0][0])
+                    time_range = int(dependency.dependency_query_time_range[0][0])
                     up_start = up_start + datetime.timedelta(days=-time_range)
                     up_end = up_end + datetime.timedelta(days=time_range)
                 
