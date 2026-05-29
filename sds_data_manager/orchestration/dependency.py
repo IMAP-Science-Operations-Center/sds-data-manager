@@ -9,7 +9,7 @@ import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
 from ..lambda_code.SDSCode.api_lambdas import upload_api
-from .types import DependencyNode, ProcessingJobNode
+from .types import DependencyNode, ProcessingJobNode, Node
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -270,6 +270,40 @@ class DependencyConfigReader:
                 flat_list.append(item)
         return flat_list
 
+    def get_node_for_output(
+            self, node: Node
+    ) -> ProcessingJobNode:
+        """Return the Dependency node that produces the given output.
+
+        Parameters
+        ----------
+        node : Node
+            The output node for which to find the producing job.
+
+        Returns
+        -------
+        ProcessingJobNode
+            The job node whose outputs include the specified product.
+
+        Raises
+        ------
+        ValueError
+            If no job is found that produces the given output.
+        """
+        for job_node in self._config.values():
+            for output in job_node.outputs:
+                if (
+                        output.source == node.source
+                        and output.data_type == node.data_type
+                        and output.descriptor == node.descriptor
+                ):
+                    return job_node
+
+        raise ValueError(
+            f"No job found that produces output: "
+            f"({node})"
+        )
+
 
 def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
     """Return all the jobs that kick off each instrument pipeline.
@@ -306,6 +340,7 @@ def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
             "No kickoff jobs found. Please check the instrument dependency YAML files."
         )
     return kick_off_jobs
+
 
 
 def upload_dependency_file(dependency_file_path: Path, serialized_dependencies: str):
