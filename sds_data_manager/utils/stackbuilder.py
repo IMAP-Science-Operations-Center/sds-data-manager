@@ -467,7 +467,7 @@ def build_sds(
     dagster_repo_construct = dagster_construct.EcrConstruct(
         scope=dagster_stack,
         construct_id="DagsterImageECR",
-        repo_name="dagster-image",
+        repo_name="dagsterimage",
     )
 
     # Repo root is three levels up from this

@@ -233,7 +233,7 @@ class DagsterEcsConstruct(Construct):
         )
 
         dagster_repo = Repository.from_repository_name(
-            self, construct_id, repository_name="dagster-image"
+            self, construct_id, repository_name="dagsterimage"
         )
         ecr_image = ecs.EcrImage(dagster_repo, "latest")
 
@@ -283,10 +283,11 @@ class DagsterEcsConstruct(Construct):
                     stream_prefix="DagsterWebserver",
                     log_group=logs.LogGroup(
                         self,
-                        "WebserverLogs",
+                        "DagsterWebserverLogs",
                         removal_policy=RemovalPolicy.DESTROY,
                     ),
                 ),
+                secrets={"DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(db_secret, "password")},
             ),
             public_load_balancer=True,
             open_listener=False,
