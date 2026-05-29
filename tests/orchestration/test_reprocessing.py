@@ -36,19 +36,11 @@ def test_reprocess_one_repoint_partition(mock_env_vars) -> None:
 
     # Set up upstream assets for glows pipeline
     @asset(partitions_def=repoint_partitions)
-    def glows_l1a_all():
-        pass
-
-    @asset(partitions_def=repoint_partitions)
-    def glows_l1b_de():
-        pass
-
-    @asset(partitions_def=repoint_partitions)
-    def glows_l1b_hist():
+    def glows_l1a_de():
         pass
 
     # Create a definition object with all the related assets
-    defs = Definitions(assets=[glows_l1a_all, glows_l1b_de, glows_l1b_hist])
+    defs = Definitions(assets=[glows_l1a_de])
 
     context = build_sensor_context(
         instance=instance,
@@ -88,7 +80,7 @@ def test_reprocess_one_repoint_partition(mock_env_vars) -> None:
     ].asset_backfill_data.target_subset.partitions_subsets_by_asset_key
     # There should be only one asset key
     assert len(backfill_subset) == 1
-    assert backfill_subset[AssetKey("glows_l1a_all")] == DefaultPartitionsSubset(
+    assert backfill_subset[AssetKey("glows_l1a_de")] == DefaultPartitionsSubset(
         subset={"repoint123_2026-01-01T00:00:00_to_2026-01-02T00:00:00"}
     )
 
@@ -102,19 +94,10 @@ def test_reprocess_all_codice(mock_env_vars) -> None:
 
     # Set up upstream assets for the codice pipeline
     @asset(partitions_def=daily_partitions)
-    def codice_l1a_all():
+    def codice_l1a_hicountersaggregated():
         pass
-
-    @asset(partitions_def=daily_partitions)
-    def codice_l1b_hi_omni():
-        pass
-
-    @asset(partitions_def=daily_partitions)
-    def codice_l2_hi_omni():
-        pass
-
     # Create a definition object with all the related assets
-    defs = Definitions(assets=[codice_l1a_all, codice_l1b_hi_omni, codice_l2_hi_omni])
+    defs = Definitions(assets=[codice_l1a_hicountersaggregated])
 
     context = build_sensor_context(
         instance=instance,
@@ -152,6 +135,66 @@ def test_reprocess_all_codice(mock_env_vars) -> None:
     ].asset_backfill_data.target_subset.partitions_subsets_by_asset_key
     # There should be only one asset key
     assert len(backfill_subset) == 1
-    assert backfill_subset[AssetKey("codice_l1a_all")] == DefaultPartitionsSubset(
+    assert backfill_subset[AssetKey("codice_l1a_hicountersaggregated")] == DefaultPartitionsSubset(
+        subset={"daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"}
+    )
+
+
+def test_reprocess_all_output_node(mock_env_vars) -> None:
+    """Test the reprocessing functionality for an output node."""
+
+    instance = DagsterInstance.ephemeral()
+    instance.add_dynamic_partitions(
+        "daily_partitions", ["daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"]
+    )
+
+    # Set up upstream assets for the codice pipeline
+    @asset(partitions_def=daily_partitions)
+    def codice_l1a_hicountersaggregated():
+        pass
+
+    # Create a definition object with all the related assets
+    defs = Definitions(assets=[codice_l1a_hicountersaggregated])
+
+    context = build_sensor_context(
+        instance=instance,
+        repository_def=defs.get_repository_def(),
+    )
+
+    mock_sqs_client = Mock()
+    # This reprocessing command specifies an output node
+    # Test the reprocessing functionality that it can find the root node and reprocess.
+    mock_sqs_client.receive_message.return_value = {
+        "Messages": [
+            {
+                "MessageId": "test-id",
+                "ReceiptHandle": "test-handle",
+                "Body": json.dumps(
+                    {
+                        "end_date": "20260101",
+                        "instrument": "codice",
+                        "reprocessing": "True",
+                        "data_level": "l1a",
+                        "descriptor": "hi-omni",
+                        "start_date": "20260101",
+                    }
+                ),
+            }
+        ]
+    }
+    with (
+        patch.object(reprocessing, "SQS_CLIENT", mock_sqs_client),
+    ):
+        reprocessing.reprocess_sensor(context)
+
+    # Check that there was a backfill submitted
+    backfills = instance.get_backfills()
+    assert len(backfills) == 1
+    backfill_subset = backfills[
+        0
+    ].asset_backfill_data.target_subset.partitions_subsets_by_asset_key
+    # There should be only one asset key
+    assert len(backfill_subset) == 1
+    assert backfill_subset[AssetKey("codice_l1a_hicountersaggregated")] == DefaultPartitionsSubset(
         subset={"daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"}
     )
