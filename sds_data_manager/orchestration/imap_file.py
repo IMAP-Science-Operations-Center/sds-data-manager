@@ -14,7 +14,8 @@ from dagster import (
     AssetSpec,
     DynamicPartitionsDefinition,
     EventRecordsFilter,
-    DagsterEventType
+    DagsterEventType,
+    TextMetadataValue
 )
 from sqlalchemy import select
 from sds_data_manager.orchestration import dagster_utilities
@@ -184,7 +185,7 @@ class IMAPAncillaryFileHandler:
                         if records:
                             # Extract the previous file list from the metadata
                             last_metadata = records[0].asset_materialization.metadata
-                            previous_file_start_date = datetime.datetime.strptime(last_metadata.get('start_date', "20250101"), '%Y%m%d').replace(tzinfo=datetime.timezone.utc)
+                            previous_file_start_date = datetime.datetime.strptime(last_metadata.get('start_date', TextMetadataValue("20250101")).value, '%Y%m%d').replace(tzinfo=datetime.timezone.utc)
                             distance_to_previous_file = previous_file_start_date.replace(tzinfo=datetime.timezone.utc) - partition_start_date.replace(tzinfo=datetime.timezone.utc)
                             distance_to_new_file = file_start_date.replace(tzinfo=datetime.timezone.utc) - partition_start_date.replace(tzinfo=datetime.timezone.utc)
                             if distance_to_previous_file < distance_to_new_file:

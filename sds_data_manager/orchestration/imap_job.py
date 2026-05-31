@@ -377,9 +377,10 @@ class IMAPJobHandler:
             # The cursor maps `{asset_name: last_processed_storage_id}`.
             cursors = json.loads(context.cursor) if context.cursor else {}
             new_cursors = cursors.copy()
-            
+            sensor_start_time = time.time()
             # Iterate through each dependency to find unconsumed materializations
             for dependency in self.job_config.inputs:
+
                 dep_name = dependency.to_dagster_asset().to_user_string()
                 context.log.info(f"Checking new dependencies for: {dep_name}")
 
@@ -390,64 +391,64 @@ class IMAPJobHandler:
                         asset_key=dependency.to_dagster_asset(),
                         after_cursor=last_event_id,
                     )
-                new_events = context.instance.get_event_records(filter, limit=1, ascending=True)
-                if new_events:
-                    record = new_events[0]
-                else:
-                    context.log.info("No new materializations found.")
-                    continue
+                new_events = context.instance.get_event_records(filter, limit=100, ascending=True)
+                for record in new_events:
+                    # Update our new cursor marker to the highest storage ID seen
+                    new_cursors[dep_name] = record.storage_id
+                        
+                    upstream_partition_key = record.event_log_entry.dagster_event.partition
+                    up_start, up_end = self._parse_dates_from_key(upstream_partition_key)
+                    context.log.info(f"Found one new dependency at {record.event_log_entry.dagster_event.partition}!")
 
-                # Update our new cursor marker to the highest storage ID seen
-                new_cursors[dep_name] = record.storage_id
+                    if not up_start or not up_end:
+                        continue
                     
-                upstream_partition_key = record.event_log_entry.dagster_event.partition
-                up_start, up_end = self._parse_dates_from_key(upstream_partition_key)
-                context.log.info(f"Found one new dependency at {record.event_log_entry.dagster_event.partition}!")
-
-                if not up_start or not up_end:
-                    continue
+                    # Kick off jobs in a range around the file
+                    # TODO: This is probably too broad. But for now, this 
+                    # is probably fine unless we start getting timeouts. 
+                    if dependency.dependency_query_time_range:
+                        time_range = int(dependency.dependency_query_time_range[0][0])
+                        up_start = up_start + datetime.timedelta(days=-time_range)
+                        up_end = up_end + datetime.timedelta(days=time_range)
+                    
+                    # Calculate overlap
+                    target_partitions = self._get_overlapping_target_partitions(
+                        upstream_partition_key, up_start, up_end, context.instance
+                    )
+                    
+                    for target_partition in target_partitions:
+                        # Check if this partition has already been materializied
+                        runs = context.instance.get_runs(
+                                                filters=RunsFilter(
+                                                    job_name=self.dagster_job_name,
+                                                    tags={"dagster/partition": target_partition}
+                                                ),
+                                                limit=1  # Limit to 1 since we only care about existence
+                                            )
+                        if (runs and (dep_name in self.triggering_input_names)) or not runs:
+                            # Queue the RunRequest
+                            target_start, target_end = self._parse_dates_from_key(target_partition)
+                            dependencies = self.get_dependencies(context, target_start, target_end)
+                            if dependencies:
+                                tags={"dependencies": dependencies.serialize()}
+                                run_key = f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}".replace(":", "")
+                                context.log.info(f"Yielding a run request with ID: {run_key} on partition {target_partition}.")
+                                yield RunRequest(
+                                                partition_key=target_partition,
+                                                run_key=f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
+                                                tags=tags
+                                            )
+                        elif runs and (dep_name not in self.triggering_input_names):
+                            context.log.info("We have already materialized something like this, and this dependency does not trigger new processing.")
+                    
+                    if (time.time() - sensor_start_time) > 30:
+                        context.log.info("Sensor took too long, will inspect new items on the next run. ")
+                        break # To keep the sensor short, we'll force it to stop analysis after 30 seconds. It will pick up again.  
+                if (time.time() - sensor_start_time) > 30:
+                        context.log.info("Sensor took too long, will inspect new items on the next run. ")
+                        break # To keep the sensor short, we'll force it to stop analysis after 30 seconds. It will pick up again.  
                 
-                # Kick off jobs in a range around the file
-                # TODO: This is probably too broad. But for now, this 
-                # is probably fine unless we start getting timeouts. 
-                if dependency.dependency_query_time_range:
-                    time_range = int(dependency.dependency_query_time_range[0][0])
-                    up_start = up_start + datetime.timedelta(days=-time_range)
-                    up_end = up_end + datetime.timedelta(days=time_range)
-                
-                # Calculate overlap
-                target_partitions = self._get_overlapping_target_partitions(
-                    upstream_partition_key, up_start, up_end, context.instance
-                )
-                
-                for target_partition in target_partitions:
-                    # Check if this partition has already been materializied
-                    runs = context.instance.get_runs(
-                                            filters=RunsFilter(
-                                                job_name=self.dagster_job_name,
-                                                tags={"dagster/partition": target_partition}
-                                            ),
-                                            limit=1  # Limit to 1 since we only care about existence
-                                        )
-                    if (runs and (dep_name in self.triggering_input_names)) or not runs:
-                        # Queue the RunRequest
-                        target_start, target_end = self._parse_dates_from_key(target_partition)
-                        dependencies = self.get_dependencies(context, target_start, target_end)
-                        if dependencies:
-                            tags={"dependencies": dependencies.serialize()}
-                            run_key = f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}".replace(":", "")
-                            context.log.info(f"Yielding a run request with ID: {run_key} on partition {target_partition}.")
-                            yield RunRequest(
-                                            partition_key=target_partition,
-                                            run_key=f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{self._dependency_hash(dependencies.serialize())}",
-                                            tags=tags
-                                        )
-                    elif runs and (dep_name not in self.triggering_input_names):
-                        context.log.info("We have already materialized something like this, and this dependency does not trigger new processing.")
-                break # To keep the sensor short, we'll only analyze one new dependency at a time. If there are still new ones, we'll consume them next time. 
-                # The get_dependencies will still get the latest stuff regardless, so we're never submitting outdated data. 
-                            
-            # 5. Lock in the new cursor state and execute
+            # Lock in the new cursor state
             context.update_cursor(json.dumps(new_cursors))
 
         return _sensor

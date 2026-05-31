@@ -35,7 +35,8 @@ def build_spin_deps_asset(node: DependencyNode, partitions_def):
         current_partition = context.partition_key
         date_range = current_partition.split('_', 1)[1]
         p_start_str, p_end_str = date_range.split("_to_")
-        start_date = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+        # We need to replace the start_time for spin files
+        start_date = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
 
         spin_files = get_upstream_dependency_inputs_spin(start_date, end_date)
