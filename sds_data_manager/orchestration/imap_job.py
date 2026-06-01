@@ -4,6 +4,8 @@ import json
 import datetime
 import re
 import time
+from collections import defaultdict
+
 import boto3
 import os
 import logging
@@ -151,7 +153,7 @@ class IMAPJobHandler:
            b) If Dagster does know about it, we exit
         3) Get the Job version
         4) Submit the job
-        5) Wait for the output files, and materialize them as we see them in the database. 
+        5) Wait for the output files, and materialize them as we see them in the database.
 
         """
         input_keys = [dep.to_dagster_asset() for dep in self.job_config.inputs]
@@ -484,9 +486,8 @@ class IMAPJobHandler:
                          target_start: datetime.datetime, 
                          target_end: datetime.datetime):
         """Get the dependencies for the job using the DependencyResolver."""
-
-        # Iterate through each upstream dependency 
-        dependency_inputs = processing_input.ProcessingInputCollection()
+        # Iterate through each upstream dependency
+        processing_inputs = processing_input.ProcessingInputCollection()
         context.log.info(f"Checking for all dependencies existing between {target_start} and {target_end}")
 
         for input in self.job_config.inputs:
@@ -496,33 +497,45 @@ class IMAPJobHandler:
             metadata_list = input.get_all_files_in_time_range(context,
                                                               target_start,
                                                               target_end)
+            dependency_inputs = defaultdict(list)
             for metadata in metadata_list:
                 if "file_names" in metadata:
                     found_dep = True # We can finally say we have found at least one dependency
                     # Dagster wraps metadata in a MetadataValue object, so we call .value
                     file_names = metadata["file_names"].value
                     # Handle both single strings and lists of files safely
+                    if isinstance(file_names, str):
+                        file_names = [file_names]
                     if file_names:
                         context.log.info(f"The file names of the matching partition: {file_names}")
                     input_type = metadata["input_type"].value
-                    if input_type=='science':
-                        dependency_inputs.add(processing_input.ScienceInput(*file_names))
-                    if input_type=='ancillary':
-                        dependency_inputs.add(processing_input.AncillaryInput(*file_names))
-                    if input_type=='spin':
-                        dependency_inputs.add(processing_input.SpinInput(*file_names))
-                    if input_type=='repoint':
-                        dependency_inputs.add(
-                            processing_input.RepointInput(file_names[0])
-                        )
-                    if input_type=='spice':
-                        dependency_inputs.add(processing_input.SPICEInput(*file_names))
+                    dependency_inputs[input_type].extend(file_names)
+
+            # After all the files are found for this dependency add them to the
+            # processing input collection as a single Input
+            if len(dependency_inputs.keys()) > 1:
+                raise ValueError(f"Multiple data types for the same DependencyNode is not supported. Found these types for {dep_name}: {list(dependency_inputs.keys())}")
+            if len(dependency_inputs.keys()) == 1:
+                input_type = next(iter(dependency_inputs))
+                files = dependency_inputs[input_type]
+                if input_type == "science":
+                    processing_inputs.add(processing_input.ScienceInput(*files))
+                if input_type == "ancillary":
+                    processing_inputs.add(processing_input.AncillaryInput(*files))
+                if input_type == "spin":
+                    processing_inputs.add(processing_input.SpinInput(*files))
+                if input_type == "repoint":
+                    processing_inputs.add(processing_input.RepointInput(files[0]))
+                if input_type == "spice":
+                    processing_inputs.add(processing_input.SPICEInput(*files))
+
+
             if not found_dep and input.required:
                 # If we found nothing and this is required, don't return anything.
-                context.log.info(f"Not enought information to process. Missing {dep_name} in range {str(target_start)} to {str(target_end)}")
+                context.log.info(f"Not enough information to process. Missing {dep_name} in range {str(target_start)} to {str(target_end)}")
                 return
 
-        return dependency_inputs
+        return processing_inputs
 
     def is_duplicate_job(self,
                          context,
