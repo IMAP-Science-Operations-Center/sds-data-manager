@@ -9,7 +9,7 @@ from dagster import (
     Failure
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
-from sds_data_manager.orchestration import dagster_utilities
+from sds_data_manager.orchestration import dagster_utilities, config
 from sds_data_manager.orchestration.types import DependencyNode
 import logging
 from contextlib import nullcontext
@@ -20,7 +20,6 @@ from sqlalchemy import desc
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-MISSION_START_TIME = "2026-04-01T00:00:00"
 
 def build_repoint_file_deps_asset(node: DependencyNode, partitions_def):
     @asset(
@@ -140,7 +139,7 @@ def get_upstream_dependency_inputs_repoint(
 def repoint_file_sensor(context: SensorEvaluationContext):
 
     # 1. Handle the Cursor
-    cursor_str = context.cursor or MISSION_START_TIME
+    cursor_str = context.cursor or config.MISSION_START_TIME
     cursor_date = datetime.datetime.fromisoformat(cursor_str).replace(tzinfo=datetime.timezone.utc)
     
     # Track the latest ingestion date to update the cursor at the end
@@ -170,7 +169,7 @@ def repoint_file_sensor(context: SensorEvaluationContext):
                 if file.ingestion_date > latest_ingestion_date:
                     latest_ingestion_date = file.ingestion_date
 
-                min_dt = datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
+                min_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
                 max_dt = file.end_date.replace(tzinfo=datetime.timezone.utc)
                 
                 for run in dagster_utilities.run_all_affected_partitions(context, "repoint_repoint_", min_dt, max_dt, cursor_suffix):

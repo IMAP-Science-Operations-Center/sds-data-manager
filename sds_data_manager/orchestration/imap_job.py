@@ -23,7 +23,9 @@ from dagster import (
     AssetOut,
     define_asset_job,
     RunsFilter,
-    SkipReason
+    SkipReason,
+    DagsterRunStatus,
+    RetryRequested
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -165,6 +167,14 @@ class IMAPJobHandler:
             outs=output_assets
         )
         def _generic_batch_submitter(context: AssetExecutionContext):
+
+            # TODO: Is this needed if we only check every few minutes? 
+            #  Before doing anything, check if any of the dependencies are currently running or about to run. 
+            # If so, let us try again in 5 minutes. 
+            # dependencies_running = self._check_for_running_dependencies()
+            # if dependencies_running:
+            #    raise RetryRequested(max_retries=10, seconds_to_wait=600)
+
             parts = context.partition_key.split("_")
             start_date = datetime.datetime.strptime(parts[-3], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc).date()
             if "repoint" in parts[0]:
@@ -172,15 +182,16 @@ class IMAPJobHandler:
             else:
                 pointing_number = None
             
-            # 1. Figure out what time window this specific run is responsible for
+            # Figure out what time window this specific run is responsible for
             target_partition = context.partition_key
             target_start, target_end = self._parse_dates_from_key(target_partition)
-            
-            # 2. Get Dependencies 
+
+            # Get Dependencies 
             dependency_inputs = self.get_dependencies(context, target_start, target_end)
 
             if not dependency_inputs:
-                raise Failure(description="Processing failed: Dependency inputs were missing.")
+                return SkipReason("Dependency inputs were missing.")
+            
             with db.Session() as session:
                 job_version = self._determine_job_version(
                                                 session=session,
@@ -221,7 +232,7 @@ class IMAPJobHandler:
                         if file:
                             output_files.append(file)
                     if not output_files:
-                        raise Failure(description="Processing failed, no files ")
+                        raise Failure(description="Processing failed, no files were generated, though a Batch job was submitted.")
                     else:
                         for f in output_files:
                             yield f
@@ -292,6 +303,27 @@ class IMAPJobHandler:
                     if materialization:
                         return materialization
                 break
+
+    def _check_for_running_dependencies(self, context):
+        '''This function checks if anything upstream of this file is currently running.
+        '''
+        input_set = set([dep.to_dagster_asset() for dep in self.job_config.inputs])
+        in_flight_runs = context.instance.get_runs(
+            filters=RunsFilter(
+                statuses=[
+                    DagsterRunStatus.QUEUED,
+                    DagsterRunStatus.STARTING,
+                    DagsterRunStatus.STARTED,
+                ]
+            )
+        )
+        conflict_found = False
+        for run in in_flight_runs:
+            if run.asset_selection and input_set.intersection(run.assest_selection):
+                conflict_found = True
+                context.log.info(f"Dependency found in active run: {run.run_id}")
+                break
+        return conflict_found
 
     def _parse_dates_from_key(self, 
                               partition_key: str) -> tuple[datetime.datetime, datetime.datetime]:

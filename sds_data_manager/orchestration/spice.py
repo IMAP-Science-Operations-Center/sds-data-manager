@@ -13,13 +13,12 @@ from dagster import (
 import imap_data_access
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
-from sds_data_manager.orchestration import dagster_utilities
+from sds_data_manager.orchestration import dagster_utilities, config
 from sds_data_manager.orchestration.types import DependencyNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-MISSION_START_TIME = "2026-04-01T00:00:00"
 
 def build_spice_deps_asset(node: DependencyNode, partitions_def, spice_types):
     '''
@@ -245,7 +244,7 @@ def get_upstream_dependency_inputs_spice(
 def spice_file_sensor(context: SensorEvaluationContext):
 
     # 1. Handle the Cursor
-    cursor_str = context.cursor or MISSION_START_TIME
+    cursor_str = context.cursor or config.MISSION_START_TIME
     cursor_date = datetime.datetime.fromisoformat(cursor_str).replace(tzinfo=datetime.timezone.utc)
     
     # Track the latest ingestion date to update the cursor at the end

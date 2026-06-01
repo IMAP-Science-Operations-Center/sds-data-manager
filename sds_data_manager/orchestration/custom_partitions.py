@@ -14,11 +14,10 @@ import datetime
 
 import pandas as pd
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
+from sds_data_manager.orchestration import config
 
 IDEX_10_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_10_day_CDF_names.csv"
 IDEX_30_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_30_day_CDF_names.csv"
-
-MISSION_START_TIME = "2026-04-01T00:00:00"
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY POINTING NUMBER
 repoint_partitions = DynamicPartitionsDefinition(name="repoint_partitions")
@@ -39,7 +38,7 @@ def add_repoint_partitions(context: SensorEvaluationContext):
         for repoint in pointing_records:
             if not repoint.pointing_start_utc or not repoint.pointing_end_utc:
                 continue
-            if repoint.pointing_start_utc < datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc):
+            if repoint.pointing_start_utc < datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc):
                 continue
             partition_name = "repoint" + str(repoint.pointing_id) + "_" +repoint.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S") + "_to_" + repoint.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S") 
             if partition_name in existing_partitions:
@@ -61,7 +60,7 @@ def add_daily_partitions(context: SensorEvaluationContext):
     '''
     Periodically polls the PointingTable, and tells dagster that new repoint numbers exist.
     '''
-    start_date = context.cursor or MISSION_START_TIME
+    start_date = context.cursor or config.MISSION_START_TIME
     start_dt = datetime.datetime.fromisoformat(start_date).replace(tzinfo=datetime.timezone.utc)
     end_dt = datetime.datetime.now((datetime.timezone.utc))
 
@@ -93,7 +92,7 @@ def add_idex_10_day_partitions(context: SensorEvaluationContext):
     '''
     Periodically polls the PointingTable, and tells dagster that new repoint numbers exist.
     '''
-    start_date = context.cursor or MISSION_START_TIME
+    start_date = context.cursor or config.MISSION_START_TIME
     start_dt = datetime.datetime.fromisoformat(start_date).replace(tzinfo=datetime.timezone.utc)
     end_dt = datetime.datetime.now((datetime.timezone.utc))+datetime.timedelta(days=40) # We'll grab up to the next ~4 10 day periods 
 
@@ -147,7 +146,7 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
     '''
     Periodically polls the PointingTable, and tells dagster that new repoint numbers exist.
     '''
-    start_date = context.cursor or MISSION_START_TIME
+    start_date = context.cursor or config.MISSION_START_TIME
     start_dt = datetime.datetime.fromisoformat(start_date).replace(tzinfo=datetime.timezone.utc)
     end_dt = datetime.datetime.now((datetime.timezone.utc))+datetime.timedelta(days=40) # We'll make sure we're grabbing the next couple of 30-day periods
 

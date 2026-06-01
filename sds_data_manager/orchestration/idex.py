@@ -13,12 +13,10 @@ from dagster import (
     AssetSelection,
     DefaultSensorStatus
 )
-from sds_data_manager.orchestration import custom_partitions
+from sds_data_manager.orchestration import custom_partitions, config
 from sds_data_manager.orchestration.dagster_utilities import get_materialization_result, get_affected_partitions
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sqlalchemy import select
-
-MISSION_START_TIME = "2026-04-01T00:00:00"
 
 @sensor(asset_selection=AssetSelection.all(),
         minimum_interval_seconds=600)
@@ -29,7 +27,7 @@ def watch_idex_l0_files(context):
     For every partition with an update, we kick off a run of the "idex_l0_raw" asset.
     '''
     
-    start_date = context.cursor or MISSION_START_TIME
+    start_date = context.cursor or config.MISSION_START_TIME
     start_dt = datetime.datetime.fromisoformat(start_date).replace(tzinfo=datetime.timezone.utc)
     now_dt = datetime.datetime.now(datetime.timezone.utc)
     now_iso = now_dt.isoformat()

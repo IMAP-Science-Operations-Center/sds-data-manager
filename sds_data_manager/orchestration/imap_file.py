@@ -18,15 +18,13 @@ from dagster import (
     TextMetadataValue
 )
 from sqlalchemy import select
-from sds_data_manager.orchestration import dagster_utilities
+from sds_data_manager.orchestration import dagster_utilities, config
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration.types import DependencyNode
 
 from sqlalchemy import select, func
 from sqlalchemy.orm import aliased
-
-MISSION_START_TIME = "2026-04-01T00:00:00"
 
 class IMAPScienceFileHandler:
     """Handle IMAP files that have no associated jobs."""
@@ -52,7 +50,7 @@ class IMAPScienceFileHandler:
             if context.cursor:
                 start_dt = datetime.datetime.fromisoformat(context.cursor).replace(tzinfo=datetime.timezone.utc)
             else: 
-                start_dt = datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
+                start_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
 
             stmt = (
                 select(models.ScienceFiles)
@@ -129,7 +127,7 @@ class IMAPAncillaryFileHandler:
             if context.cursor:
                 start_dt = datetime.datetime.fromisoformat(context.cursor).replace(tzinfo=datetime.timezone.utc)
             else: 
-                start_dt = datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
+                start_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
 
             # 1. Define the Window Function
             row_num = func.row_number().over(
@@ -156,7 +154,7 @@ class IMAPAncillaryFileHandler:
                     file_start_date = record.start_date
                     file_end_date = record.end_date
                     if not file_start_date:
-                        file_start_date = datetime.datetime.fromisoformat(MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
+                        file_start_date = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
                     if not file_end_date:
                         file_end_date = datetime.datetime(2045,9,17).replace(tzinfo=datetime.timezone.utc)
 
@@ -186,7 +184,7 @@ class IMAPAncillaryFileHandler:
                             previous_file_start_date = datetime.datetime.strptime(last_metadata.get('start_date', TextMetadataValue("20250101")).value, '%Y%m%d').replace(tzinfo=datetime.timezone.utc)
                             distance_to_previous_file = previous_file_start_date.replace(tzinfo=datetime.timezone.utc) - partition_start_date.replace(tzinfo=datetime.timezone.utc)
                             distance_to_new_file = file_start_date.replace(tzinfo=datetime.timezone.utc) - partition_start_date.replace(tzinfo=datetime.timezone.utc)
-                            if distance_to_previous_file < distance_to_new_file:
+                            if abs(distance_to_previous_file) < abs(distance_to_new_file):
                                 # If the file we're looking at is further away that the last file, we shouldn't do anything to this partition. 
                                 continue
 
@@ -196,7 +194,7 @@ class IMAPAncillaryFileHandler:
                                                                                 [os.path.basename(record.file_path)],
                                                                                 record.version[1:],
                                                                                 "ancillary",
-                                                                                start_date=record.start_date.strftime('%Y%m%d'))
+                                                                                start_date=file_start_date.strftime('%Y%m%d'))
                         if materialization:
                             materializations.append(materialization)
 
