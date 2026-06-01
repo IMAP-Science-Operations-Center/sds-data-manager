@@ -123,7 +123,7 @@ class IMAPAncillaryFileHandler:
         sensor_name = f"{self.job_config.to_dagster_asset().to_user_string()}_sensor"
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
-                minimum_interval_seconds=600)
+                minimum_interval_seconds=300)
         def _file_sensor(context: AssetExecutionContext):
 
             if context.cursor:

@@ -495,8 +495,8 @@ class ProcessingJobNode(Node):
                 deps_list.append(dep)
             else:
                 deps_list.append(dep)
-                if dep.trigger_job:
-                    triggering_deps.append(dep)
+            if dep.trigger_job:
+                triggering_deps.append(dep)
                 
         spice_types = list(spice_types)
         deps_list = list(deps_list)
