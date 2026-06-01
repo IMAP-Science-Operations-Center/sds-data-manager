@@ -296,17 +296,17 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       trigger_job: false
     - source: hi
       data_type: ancillary
-      descriptor: 45sensor-cal-prod
+      descriptor: 90sensor-cal-prod
     - source: hi
       data_type: l1a
-      descriptor: 45sensor-diagfee
+      descriptor: 90sensor-diagfee
     - source: hi
       data_type: l1b
-      descriptor: 45sensor-de
+      descriptor: 90sensor-de
       date_range: ["6np",]
     - source: hi
       data_type: l1b
-      descriptor: 45sensor-hk
+      descriptor: 90sensor-hk
   outputs:
     - source: hi
       data_type: l1b
