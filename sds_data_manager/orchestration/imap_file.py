@@ -48,13 +48,13 @@ class IMAPScienceFileHandler:
             materializations = []
 
             if context.cursor:
-                start_dt = datetime.datetime.fromisoformat(context.cursor).replace(tzinfo=datetime.timezone.utc)
+                latest_ingestion_date = datetime.datetime.fromisoformat(context.cursor).replace(tzinfo=datetime.timezone.utc)
             else: 
-                start_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
+                latest_ingestion_date = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
 
             stmt = (
                 select(models.ScienceFiles)
-                .filter(#models.ScienceFiles.ingestion_date >= start_dt,
+                .filter(models.ScienceFiles.ingestion_date >= latest_ingestion_date,
                         models.ScienceFiles.instrument==self.job_config.source,
                         models.ScienceFiles.data_level==self.job_config.data_type,
                         models.ScienceFiles.descriptor==self.job_config.descriptor)
@@ -75,7 +75,9 @@ class IMAPScienceFileHandler:
                 recent_db_records = session.scalars(stmt).all()
 
                 for record in recent_db_records:
-                    context.log.info(f"Analyzing file: {record.file_path}")                
+                    if record.ingestion_date > latest_ingestion_date:
+                        latest_ingestion_date = record.ingestion_date
+                    context.log.info(f"Analyzing file: {record.file_path}")           
                     if self.partitions_def.name == 'repoint_partitions':
                         # We need to only materialize the repoint that this is a part of
                         with db.Session() as session:
@@ -102,7 +104,7 @@ class IMAPScienceFileHandler:
                             context.log.info(f"{record.file_path} will be materialized.")
                             materializations.append(materialization)
             return SensorResult(asset_events=materializations,
-                                cursor=start_dt.isoformat())
+                                cursor=latest_ingestion_date.isoformat())
 
         return _file_sensor
 
