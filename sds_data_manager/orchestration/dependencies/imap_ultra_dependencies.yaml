@@ -845,7 +845,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       trigger_job: false
     - source: ultra
       data_type: ancillary
-      descriptor: l1b-45sensor-logistic-interpolation
+      descriptor: l1b-90sensor-logistic-interpolation
       trigger_job: false
     - source: ultra
       data_type: ancillary
@@ -900,7 +900,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       trigger_job: false
     - source: ultra
       data_type: ancillary
-      descriptor: l1b-45sensor-logistic-interpolation
+      descriptor: l1b-90sensor-logistic-interpolation
       trigger_job: false
     - source: ultra
       data_type: ancillary
