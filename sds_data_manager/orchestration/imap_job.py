@@ -247,7 +247,7 @@ class IMAPJobHandler:
         parsed_start_date = None
         if start_date is not None:
             parsed_start_date = datetime.datetime.strptime(start_date, "%Y%m%d")
-        
+
         timeout = 1200
         timeout_start = time.time()
         while time.time() < timeout_start + timeout:
@@ -257,6 +257,8 @@ class IMAPJobHandler:
                     models.ProcessingJob.data_level == job_info['data_level'],
                     models.ProcessingJob.descriptor == job_info['descriptor'],
                     models.ProcessingJob.start_date == job_info['start_date'],
+                    models.ProcessingJob.repointing == job_info['repointing'],
+                    models.ProcessingJob.dependency_hash == job_info['dependency_hash'],
                     models.ProcessingJob.version == job_info['version'],
                     models.ProcessingJob.status.in_(
                             [models.Status.FAILED.value, models.Status.SUCCEEDED.value]
