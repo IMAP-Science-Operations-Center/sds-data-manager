@@ -361,7 +361,7 @@ class DependencyNode(Node):
         This function will return the metadata of all materialized assets between start_dt and end_dt
         '''
         metadata = []
-
+        partitions_gathered = []
         midpoint = start_dt + ((end_dt - start_dt) / 2) 
         
         # Fetch a list of all partition keys that have EVER been materialized for this dependency
@@ -398,7 +398,7 @@ class DependencyNode(Node):
                         )
                 if mat_event and mat_event[0].asset_materialization:
                     metadata.append(mat_event[0].asset_materialization.metadata)
-                    context.log.info(f"Appending the following metadata: {mat_event[0].asset_materialization.metadata}")
+                    partitions_gathered.append(partition)
             else:
                 # We'll keep track of how far this partition is from the date range we're looking at. 
                 partition_midpoint = partition_start + ((partition_end - partition_start) / 2)
@@ -414,6 +414,8 @@ class DependencyNode(Node):
             num_before_parititons_gathered = 0
             sorted_partitions = [x for _, x in sorted(zip(distance_array, materialized_partitions))]
             for partition in sorted_partitions:
+                if partition in partitions_gathered:
+                    continue
                 if num_nearby_partitions_gathered == range:
                     break
                 if num_before_parititons_gathered == range // 2 and partition in partitions_before:
@@ -429,6 +431,7 @@ class DependencyNode(Node):
                             )
                 if mat_event and mat_event[0].asset_materialization:
                     metadata.append(mat_event[0].asset_materialization.metadata)
+                    partitions_gathered.append(partition)
                     num_nearby_partitions_gathered += 1
                     if partition in partitions_before:
                         num_before_parititons_gathered += 1

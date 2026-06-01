@@ -217,7 +217,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l1b
       descriptor: 45sensor-de
-      date_range: ["6np",]
+      date_range: ["8np",]
     - source: hi
       data_type: l1b
       descriptor: 45sensor-hk
@@ -303,7 +303,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l1b
       descriptor: 90sensor-de
-      date_range: ["6np",]
+      date_range: ["8np",]
     - source: hi
       data_type: l1b
       descriptor: 90sensor-hk

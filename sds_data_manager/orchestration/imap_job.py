@@ -444,6 +444,7 @@ class IMAPJobHandler:
         processing_inputs = processing_input.ProcessingInputCollection()
         context.log.info(f"Checking for all dependencies existing between {target_start} and {target_end}")
 
+        found_science=False
         for input in self.job_config.inputs:
             dep_name = input.to_dagster_asset().to_user_string()
             found_dep=False
@@ -473,6 +474,7 @@ class IMAPJobHandler:
                 input_type = next(iter(dependency_inputs))
                 files = dependency_inputs[input_type]
                 if input_type == "science":
+                    found_science = True # We can finally say we found a science file
                     processing_inputs.add(processing_input.ScienceInput(*files))
                 if input_type == "ancillary":
                     processing_inputs.add(processing_input.AncillaryInput(*files))
@@ -488,7 +490,10 @@ class IMAPJobHandler:
                 # If we found nothing and this is required, don't return anything.
                 context.log.info(f"Not enough information to process. Missing {dep_name} in range {str(target_start)} to {str(target_end)}")
                 return
-
+        if not found_science:
+            context.log.info(f"No science files were detected between {str(target_start)} to {str(target_end)}")
+            return
+                             
         return processing_inputs
 
     def _determine_job_version(
