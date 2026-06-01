@@ -136,8 +136,7 @@ def get_upstream_dependency_inputs_repoint(
     return [latest_repoint_file]
 
 @sensor(asset_selection=AssetSelection.all(),
-        minimum_interval_seconds=600,
-        default_status=DefaultSensorStatus.RUNNING)
+        minimum_interval_seconds=600)
 def repoint_file_sensor(context: SensorEvaluationContext):
 
     # 1. Handle the Cursor

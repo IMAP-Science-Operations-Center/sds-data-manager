@@ -44,7 +44,6 @@ class IMAPScienceFileHandler:
         sensor_name = f"{self.job_config.to_dagster_asset().to_user_string()}_sensor"
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
-                default_status=DefaultSensorStatus.RUNNING,
                 minimum_interval_seconds=300)
         def _file_sensor(context: SensorEvaluationContext):
             
@@ -124,7 +123,6 @@ class IMAPAncillaryFileHandler:
         sensor_name = f"{self.job_config.to_dagster_asset().to_user_string()}_sensor"
         @sensor(name=sensor_name,
                 asset_selection=AssetSelection.all(),
-                default_status=DefaultSensorStatus.RUNNING,
                 minimum_interval_seconds=600)
         def _file_sensor(context: AssetExecutionContext):
 

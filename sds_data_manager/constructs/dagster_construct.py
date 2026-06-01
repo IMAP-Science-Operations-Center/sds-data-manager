@@ -53,10 +53,12 @@ class EcrConstruct(Construct):
                                                 max_image_age=cdk.Duration.days(7), # Remove after 7 days
                                                 tag_status=ecr.TagStatus.UNTAGGED)
 
-        self.container_repo = ecr.Repository(self, construct_id, lifecycle_rules=[repo_lifecycle_rule],
-                                            repository_name=repo_name)
-
-        self.container_repo.apply_removal_policy(RemovalPolicy.DESTROY)
+        self.container_repo = ecr.Repository(self, 
+                                             construct_id, 
+                                             lifecycle_rules=[repo_lifecycle_rule],
+                                             repository_name=repo_name,
+                                             empty_on_delete=True, 
+                                             removal_policy=RemovalPolicy.DESTROY)
 
 class DagsterDockerImageConstruct(Construct):
     """Construct the actual Docker image."""

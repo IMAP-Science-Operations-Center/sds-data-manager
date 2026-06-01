@@ -31,7 +31,7 @@ def read_sqs_messages(sqs_queue_url=None):
 
 @sensor(
     asset_selection=AssetSelection.all(),
-    minimum_interval_seconds=100,
+    minimum_interval_seconds=100
 )
 def reprocess_sensor(context: SensorEvaluationContext):
     """Sensor that triggers reprocessing backfills."""

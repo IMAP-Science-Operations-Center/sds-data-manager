@@ -21,8 +21,7 @@ from sqlalchemy import select
 MISSION_START_TIME = "2026-04-01T00:00:00"
 
 @sensor(asset_selection=AssetSelection.all(),
-        minimum_interval_seconds=600,
-        default_status=DefaultSensorStatus.RUNNING)
+        minimum_interval_seconds=600)
 def watch_idex_l0_files(context):
     '''
     Polls the IDEX L0 table for updates. 

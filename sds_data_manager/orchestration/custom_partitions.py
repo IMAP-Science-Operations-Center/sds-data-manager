@@ -22,8 +22,7 @@ MISSION_START_TIME = "2026-04-01T00:00:00"
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY POINTING NUMBER
 repoint_partitions = DynamicPartitionsDefinition(name="repoint_partitions")
-@sensor(default_status=DefaultSensorStatus.RUNNING,
-        minimum_interval_seconds=600)
+@sensor(minimum_interval_seconds=600)
 def add_repoint_partitions(context: SensorEvaluationContext):
     '''
     Periodically polls the PointingTable, and tells dagster that new repoint numbers exist.
@@ -57,8 +56,7 @@ def add_repoint_partitions(context: SensorEvaluationContext):
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY DAY
 daily_partitions = DynamicPartitionsDefinition(name="daily_partitions")
-@sensor(default_status=DefaultSensorStatus.RUNNING,
-        minimum_interval_seconds=86400)
+@sensor(minimum_interval_seconds=86400)
 def add_daily_partitions(context: SensorEvaluationContext):
     '''
     Periodically polls the PointingTable, and tells dagster that new repoint numbers exist.
@@ -90,8 +88,7 @@ def add_daily_partitions(context: SensorEvaluationContext):
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY 10-day
 idex10_partitions = DynamicPartitionsDefinition(name="idex_10_day_partitions")
-@sensor(default_status=DefaultSensorStatus.RUNNING,
-        minimum_interval_seconds=86400)
+@sensor(minimum_interval_seconds=86400)
 def add_idex_10_day_partitions(context: SensorEvaluationContext):
     '''
     Periodically polls the PointingTable, and tells dagster that new repoint numbers exist.
@@ -145,8 +142,7 @@ def add_idex_10_day_partitions(context: SensorEvaluationContext):
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY 30-day
 idex30_partitions = DynamicPartitionsDefinition(name="idex_30_day_partitions")
-@sensor(default_status=DefaultSensorStatus.RUNNING,
-        minimum_interval_seconds=86400)
+@sensor(minimum_interval_seconds=86400)
 def add_idex_30_day_partitions(context: SensorEvaluationContext):
     '''
     Periodically polls the PointingTable, and tells dagster that new repoint numbers exist.

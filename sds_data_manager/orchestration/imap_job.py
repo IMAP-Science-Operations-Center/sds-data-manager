@@ -2,16 +2,14 @@
 
 import json
 import datetime
-import re
 import time
-from collections import defaultdict
-
 import boto3
 import os
 import logging
 import hashlib
 import requests
 from dataclasses import dataclass
+from collections import defaultdict
 from dagster import (
     AssetExecutionContext,
     Failure,
@@ -24,7 +22,8 @@ from dagster import (
     multi_asset,
     AssetOut,
     define_asset_job,
-    RunsFilter
+    RunsFilter,
+    SkipReason
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -32,9 +31,7 @@ from sds_data_manager.orchestration.types import DependencyNode, ProcessingJobNo
 from sds_data_manager.orchestration import custom_partitions
 from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
-import imap_data_access
 from imap_data_access import processing_input, DependencyFilePath
-from imap_data_access.io import download
 import boto3
 from botocore.exceptions import ClientError
 from sqlalchemy import func
@@ -153,7 +150,7 @@ class IMAPJobHandler:
            b) If Dagster does know about it, we exit
         3) Get the Job version
         4) Submit the job
-        5) Wait for the output files, and materialize them as we see them in the database.
+        5) Wait for the output files, and materialize them as we see them in the database. 
 
         """
         input_keys = [dep.to_dagster_asset() for dep in self.job_config.inputs]
@@ -181,73 +178,55 @@ class IMAPJobHandler:
             
             # 2. Get Dependencies 
             dependency_inputs = self.get_dependencies(context, target_start, target_end)
+
             if not dependency_inputs:
                 raise Failure(description="Processing failed: Dependency inputs were missing.")
-            already_processed = False
             with db.Session() as session:
-                for output in self.job_config.outputs:
-                    previous_file = self.is_duplicate_job(context,
-                                                        session,
-                                                        dependency_inputs,
-                                                        self.job_config.source,
-                                                        self.job_config.data_type,
-                                                        output.descriptor,
-                                                        self.job_config.descriptor,
-                                                        start_date,
-                                                        pointing_number)
+                job_version = self._determine_job_version(
+                                                session=session,
+                                                instrument=self.job_config.source,
+                                                descriptor=self.job_config.descriptor,
+                                                start_date=start_date,
+                                                data_level=self.job_config.data_type,
+                                                current_dependencies=dependency_inputs.serialize(),
+                                            )
+                context.log.info(f"Job Version to Use: {job_version}")
             
-                    if previous_file:
-                        already_processed = True
-                        materialization = get_materialization_result(context,
-                                                                    output.to_dagster_asset(),
-                                                                    context.partition_key,
-                                                                    [os.path.basename(previous_file.file_path)],
-                                                                    str(int(previous_file.version[1:])),
-                                                                    "science",
-                                                                    inputs = dependency_inputs.serialize())
-                        if materialization:
-                            yield materialization
-
-                if not already_processed:
-                    job_version = self._determine_job_version(
-                                                    session=session,
-                                                    instrument=self.job_config.source,
-                                                    descriptor=self.job_config.descriptor,
-                                                    start_date=start_date,
-                                                    data_level=self.job_config.data_type,
-                                                    current_dependencies=dependency_inputs.serialize(),
-                                                )
-                    context.log.info(f"Job Version to Use: {job_version}")
+                job_node = {"data_source":self.job_config.source,
+                            "data_type":self.job_config.data_type,
+                            "descriptor":self.job_config.descriptor}
+                submit_response = self.try_to_submit_job(
+                                                        session,
+                                                        job_node,
+                                                        start_date.strftime("%Y%m%d"),
+                                                        job_version,
+                                                        dependency_inputs.serialize(),
+                                                        repoint=pointing_number,
+                                                    )
+                context.log.info(f"Submit response: {submit_response.status} - {submit_response.message}, {submit_response.job}")
                 
-                    job_node = {"data_source":self.job_config.source,
-                                "data_type":self.job_config.data_type,
-                                "descriptor":self.job_config.descriptor}
-                    submit_response = self.try_to_submit_job(
-                                                            session,
-                                                            job_node,
-                                                            start_date.strftime("%Y%m%d"),
-                                                            job_version,
-                                                            dependency_inputs.serialize(),
-                                                            repoint=pointing_number,
-                                                        )
-                    context.log.info(f"Submit response: {submit_response.status} - {submit_response.message}, {submit_response.job}")
-                    
-                    if submit_response.status == 'submitted':
-                        for output in self.job_config.outputs:
-                            context.log.info(f"Waiting for data product {output.source}_{output.data_type}_{output.descriptor} to complete")
-                            file = self.wait_for_file(context,
-                                                    session,
-                                                    output,
-                                                    job_version,
-                                                    submit_response.job,
-                                                    repointing=pointing_number,
-                                                    start_date=start_date.strftime("%Y%m%d"),
-                                                    inputs = dependency_inputs.serialize())
+                output_files = []
+                if submit_response.status == 'submitted':
+                    for output in self.job_config.outputs:
+                        context.log.info(f"Waiting for data product {output.source}_{output.data_type}_{output.descriptor} to complete")
+                        file = self.wait_for_file(context,
+                                                session,
+                                                output,
+                                                job_version,
+                                                submit_response.job,
+                                                repointing=pointing_number,
+                                                start_date=start_date.strftime("%Y%m%d"),
+                                                inputs = dependency_inputs.serialize())
 
-                            if file:
-                                yield file
-                        # TODO: We should not yield right away. We should collect up anything that this asset has generated, 
-                        # yield what we can, and determine if anything required in the output is missing, then yield a failure. 
+                        if file:
+                            output_files.append(file)
+                    if not output_files:
+                        raise Failure(description="Processing failed, no files ")
+                    else:
+                        for f in output_files:
+                            yield f
+                else:
+                    return SkipReason(f"Batch Job Status: {submit_response.status} - {submit_response.message}, {submit_response.job}")
 
         # Return the generated function back to Dagster
         return _generic_batch_submitter
@@ -371,7 +350,6 @@ class IMAPJobHandler:
             name=sensor_name,
             job=self.dagster_job,
             minimum_interval_seconds=self.sensor_schedule,
-            default_status=DefaultSensorStatus.RUNNING
         )
         def _sensor(context: SensorEvaluationContext):
             
@@ -455,32 +433,6 @@ class IMAPJobHandler:
 
         return _sensor
 
-    def process_job(self, potential_job_node: DependencyNode):
-        """Process the job by resolving dependencies and submitting to batch."""
-        
-        if self.dependencies is not None:
-            self._calculate_crid()
-            self._determine_job_version()
-            # TODO: uncomment these lines at implementation time
-            # -----------------------------------------------------
-            # job_dependencies_s3_filepath = self._create_dependencies_file()
-            # dependency_serialized_hash = dependency_hash(self.dependencies)
-            # is_duplicate_job = self.is_duplicate_job(
-            #     potential_job_node, dependency_serialized_hash
-            # )
-            # if not is_duplicate_job:
-            #     upload_response = upload_dependency_file(
-            #         self.dependencies, job_dependencies_s3_filepath
-            #     )
-            #     if upload_response["status"] != 200:
-            #         raise Exception("Failed to upload dependency file to S3.")
-
-            #     job_submit_succeed = self.submit_processing_job(
-            #         job_dependencies_s3_filepath
-            #     )
-            #     if job_submit_succeed:
-            #         self.clean_up()
-
     def get_dependencies(self, 
                          context: AssetExecutionContext, 
                          target_start: datetime.datetime, 
@@ -536,147 +488,6 @@ class IMAPJobHandler:
                 return
 
         return processing_inputs
-
-    def is_duplicate_job(self,
-                         context,
-                        session,
-                        dependency,
-                        instrument,
-                        level,
-                        descriptor,
-                        job_command,
-                        start_date,
-                        repoint):
-        """Determine if the job is a duplicate.
-
-        Requirements for duplicate job determination:
-            1. Must be unique dependency serialized hash AND
-            2. AWS ECR container image digest hash must be unique AND
-            3. Potential job node's must be unique AND
-            4. Job status must be either INPROGRESS or SUCCEEDED.
-        """
-        # 1. Get AWS ECR container image digest hash, container_image_digest.
-        #    This should unique.
-        # 2. Now query DB with these inputs and we will know if a job is duplicate.
-        #   max_version_record = (
-        #     session.query(models.ProcessingJob)
-        #     .filter(table.instrument == potential_job_node.instrument,
-        #             table.data_level == potential_job_node.data_level,
-        #             table.descriptor == potential_job_node.descriptor,
-        #             table.start_date == potential_job_node.start_date,
-        #             table.repoint == potential_job_node.repoint,
-        #             table.dependency_hash == serialized_dependency_hash,
-        #             table.contianer_image_digest == container_image_digest,
-        #             table.status.in_(
-        #                 [models.Status.INPROGRESS.value,
-        #                   models.Status.SUCCEEDED.value]
-        #             )
-        #             )
-        #     .order_by(models.ProcessingJob.version.desc())
-        #     .first()
-        # )
-        # 3. If return exists, it's a duplicate job and return True.
-
-        '''
-        This function will check if the latest file at the SDC has already been processed using 
-        the gathered dependencies. To do this, it:
-
-        1) Finds the latest file
-        2) Finds the corresponding Processing Job
-        3) Read in the .json dependency file from the corresponding Processing Job
-        4) Compares the Ancillary and Science files in the dependency file to the current ones 
-        5) If they all match, the function returns the materialization result of the latest file
-
-        Yes, this is somewhat complicated right now. I think the best way going forward would be to 
-        add the dependencies to a particular file either in the ScienceFiles or ProcessingJob tables. 
-        '''
-        context.log.info(f"Checking if we have already have a file of this instrument of {instrument}, this level of {level}, and this {descriptor}.")
-        context.log.info(f"And this start date {start_date}, and this pointing number {repoint}.")
-        if repoint:
-            latest_file = session.query(models.ScienceFiles).filter(
-                                            models.ScienceFiles.instrument == instrument,
-                                            models.ScienceFiles.data_level == level,
-                                            models.ScienceFiles.descriptor == descriptor,
-                                            models.ScienceFiles.repointing == int(repoint)
-                                        ).order_by(models.ScienceFiles.version.desc()).first()
-        else:
-            latest_file = session.query(models.ScienceFiles).filter(
-                                            models.ScienceFiles.instrument == instrument,
-                                            models.ScienceFiles.data_level == level,
-                                            models.ScienceFiles.descriptor == descriptor,
-                                            models.ScienceFiles.start_date == start_date
-                                        ).order_by(models.ScienceFiles.version.desc()).first()
-        if latest_file:
-            context.log.info("Yes we did! Now we need to check the processing jobs to see if the same dependencies were used to create this. ")
-            max_version_record = (
-                session.query(models.ProcessingJob)
-                .filter(models.ProcessingJob.instrument == latest_file.instrument,
-                    models.ProcessingJob.data_level == latest_file.data_level,
-                    models.ProcessingJob.descriptor == job_command,
-                    models.ProcessingJob.start_date == latest_file.start_date,
-                    models.ProcessingJob.status.in_(
-                            [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
-                        ))
-                .order_by(models.ProcessingJob.version.desc())
-                .first()
-            )
-            if max_version_record:
-                context.log.info("A job does indeed look like this one...lets check out its dependencies file")
-                match = re.search(r'--dependency\s+(\S+\.json)', max_version_record.container_command)
-                if match:
-                    dependency_file = match.group(1)
-                    context.log.info(dependency_file)
-                    SSM_CLIENT = boto3.client("ssm")
-                    ssm_parameter_name = os.environ.get(
-                        "SSM_API_KEY_PARAMETER", "/imap-sdc/batch-jobs/api-key"
-                    )
-                    try:
-                        ssm_response = SSM_CLIENT.get_parameter(
-                            Name=ssm_parameter_name, WithDecryption=True
-                        )
-                        imap_data_access.config["API_KEY"] = ssm_response["Parameter"]["Value"]
-                    except Exception as e:
-                        print(f"Could not retrieve API key from SSM: {e}")
-                    dependency_filepath = download(dependency_file)
-                    with open(dependency_filepath) as f:
-                        old_inputs = json.loads(f.read())
-                    context.log.info(f"Check it out! These are the dependencies it previously ran with: {json.dumps(old_inputs)}")
-                    dependencies_match = True
-                    old_science_inputs = []
-                    old_ancillary_inputs = []
-                    new_science_inputs = []
-                    new_ancillary_inputs = []
-                    for dep in old_inputs:
-                        if dep['type'] == "science":
-                            old_science_inputs.extend(dep['files'])
-                        if dep['type'] == "ancillary":
-                            old_ancillary_inputs.extend(dep['files'])
-                    new_inputs = json.loads(dependency.serialize())
-                    context.log.info(f"Check it out! These are the dependencies that we want to run it with now: {json.dumps(new_inputs)}")
-                    for dep in new_inputs:
-                        if dep['type'] == "science":
-                            new_science_inputs.extend(dep['files'])
-                        if dep['type'] == "ancillary":
-                            new_ancillary_inputs.extend(dep['files'])
-
-                    if set(old_science_inputs) != set(new_science_inputs):
-                        dependencies_match = False
-
-                    # TODO: Should we match on ancillary?
-                    #if set(old_ancillary_inputs) != set(new_ancillary_inputs):
-                    #    dependencies_match = False
-
-                    if dependencies_match:
-                        context.log.info(f"It's a match!")
-                        # The latest file does not need to be updated. 
-                        # We need to tell dagster that this asset is complete. 
-                        context.log.info(f"Latest file: {latest_file.file_path}")
-                        context.log.info(f"Version: {latest_file.version}")
-                        return latest_file
-                    else:
-                        context.log.info(f"It's not a match!")
-        else:
-            context.log.info("No files have ever been made like this before!")
 
     def _determine_job_version(
         self,
