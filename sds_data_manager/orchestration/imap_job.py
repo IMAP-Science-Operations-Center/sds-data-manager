@@ -200,6 +200,7 @@ class IMAPJobHandler:
                                                 start_date=start_date,
                                                 data_level=self.job_config.data_type,
                                                 current_dependencies=dependency_inputs.serialize(),
+                                                repointing=pointing_number
                                             )
                 context.log.info(f"Job Version to Use: {job_version}")
             
@@ -536,6 +537,7 @@ class IMAPJobHandler:
         descriptor: str,
         start_date: datetime,
         current_dependencies: str,
+        repointing: int | None = None,
     ) -> str:
         """Return the maximum existing file version in the pipeline increased by one.
 
@@ -553,6 +555,9 @@ class IMAPJobHandler:
             Start date.
         current_dependencies : str
             Serialized dependencies for the current job.
+        repointing : int, optional
+            Repointing number. Versions are tracked independently per repointing so
+            that multiple repoints on the same day each start at v001.
 
         Returns
         -------
@@ -567,6 +572,7 @@ class IMAPJobHandler:
                 table.data_level == data_level,
                 table.descriptor == descriptor,
                 table.start_date == start_date,
+                table.repointing == repointing,
             ]
             if table == models.ProcessingJob:
                 conditions.append(
@@ -657,11 +663,12 @@ class IMAPJobHandler:
         non_sclk_deps = []
         for dep in dependencies:
             for file in dep['files']:
-                if "imap_sclk" not in file:
-                    # We'll get rid of the spacecraft_clock kernel, if it exists
+                if "imap_sclk" not in file and ".repoint" not in file:
+                    # We'll get rid of the spacecraft_clock kernel and repoint file. 
+                    # These are updated frequently, and make zero difference to processing.
                     non_sclk_deps.append(file)
         # Append the image_digest
-        sorted_files = sorted(non_sclk_deps)
+        sorted_files = sorted(list(set(non_sclk_deps)))
         sorted_files.append(self._get_container_image_digest())
         joined_string = "|".join(sorted_files)
 
