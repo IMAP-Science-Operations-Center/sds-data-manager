@@ -403,7 +403,7 @@ class DependencyNode(Node):
                 # We'll keep track of how far this partition is from the date range we're looking at. 
                 partition_midpoint = partition_start + ((partition_end - partition_start) / 2)
                 distance_to_center = midpoint - partition_midpoint
-                if distance_to_center < datetime.timedelta(0):
+                if distance_to_center > datetime.timedelta(0):
                     partitions_before.append(partition)
                 distance_array.append(abs(distance_to_center))
         
