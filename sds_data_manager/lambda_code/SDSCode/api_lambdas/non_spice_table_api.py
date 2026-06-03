@@ -121,12 +121,25 @@ def lambda_handler(event, context):  # noqa: PLR0912
                 return response
 
         search_results = session.execute(query).scalars().all()
-    # format the search results into a list of dictionaries
-    if table == RepointFiles:
-        # Repointing files do not have a start_date field
+        # format the search results into a list of dictionaries
+        if table == RepointFiles:
+            # Repointing files do not have a start_date field
+            search_results = [
+                {
+                    "file_path": result.file_path,
+                    "end_date": result.end_date.strftime("%Y-%m-%d, %H:%M:%S"),
+                    "version": result.version,
+                    "ingestion_date": result.ingestion_date.strftime("%Y-%m-%d, %H:%M:%S"),
+                }
+                for result in search_results
+            ]
+            return {"statusCode": 200, "body": json.dumps(search_results)}
+
+        # Spin or small-forces files have a start_date field
         search_results = [
             {
                 "file_path": result.file_path,
+                "start_date": result.start_date.strftime("%Y-%m-%d, %H:%M:%S"),
                 "end_date": result.end_date.strftime("%Y-%m-%d, %H:%M:%S"),
                 "version": result.version,
                 "ingestion_date": result.ingestion_date.strftime("%Y-%m-%d, %H:%M:%S"),
@@ -134,16 +147,3 @@ def lambda_handler(event, context):  # noqa: PLR0912
             for result in search_results
         ]
         return {"statusCode": 200, "body": json.dumps(search_results)}
-
-    # Spin or small-forces files have a start_date field
-    search_results = [
-        {
-            "file_path": result.file_path,
-            "start_date": result.start_date.strftime("%Y-%m-%d, %H:%M:%S"),
-            "end_date": result.end_date.strftime("%Y-%m-%d, %H:%M:%S"),
-            "version": result.version,
-            "ingestion_date": result.ingestion_date.strftime("%Y-%m-%d, %H:%M:%S"),
-        }
-        for result in search_results
-    ]
-    return {"statusCode": 200, "body": json.dumps(search_results)}
