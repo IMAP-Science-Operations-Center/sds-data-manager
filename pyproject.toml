@@ -117,7 +117,7 @@ lint.select = ["B", "D", "E", "F", "I", "N", "S", "W", "PL", "PT", "UP", "RUF"]
 # S104: Possible binding to all interfaces
 # PLR0913: Too many arguments in function definition
 # PLR2004: Magic value in comparison
-lint.ignore = ["D104", "D203", "D213", "D300", "D413", "S101", "S104", "PLR0913", "PLR2004"]
+lint.ignore = ["D104", "D203", "D213", "D300", "D413", "S101", "S104", "PLR0913", "PLR2004", "S608"]
 
 [tool.ruff.lint.per-file-ignores]
 # TODO: Too many statements, this could be refactored to separate
