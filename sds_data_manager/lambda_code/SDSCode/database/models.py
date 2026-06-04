@@ -160,7 +160,8 @@ class ScienceFileBase:
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
     repointing = Column(Integer, nullable=True)
-    version = Column(String(4), nullable=False)  # vXXX
+    release_number = Column(Integer, nullable=False, default=0)
+    data_version = Column(String(4), nullable=False)  # vXXX
     ingestion_date = Column(DateTime(timezone=True))
     cr = Column(Integer, nullable=True)
     crid = Column(String, nullable=True)
@@ -331,3 +332,13 @@ class IDEXL0Files(Base):
     start_date = Column(DateTime, nullable=False, primary_key=True)
     version = Column(String(4), nullable=False, primary_key=True)  # vXXX
     ingestion_date = Column(DateTime(timezone=True))
+
+
+class ReleaseNumber(Base):
+    """Release number table."""
+
+    __tablename__ = "release_number"
+    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
+    release_number = Column(Integer, nullable=False, unique=True)
+    updated_date = Column(DateTime, nullable=False)
+    updated_by = Column(String, nullable=False)
