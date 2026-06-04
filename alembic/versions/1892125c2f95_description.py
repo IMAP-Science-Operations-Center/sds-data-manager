@@ -24,9 +24,9 @@ TABLES = ("science_files", "quicklook_files")
 
 def upgrade() -> None:
     """Upgrade schema: convert version string → int + add constraints."""
-    # First, add release_number table
+    # First, add global_release table
     op.create_table(
-        "release_number",
+        "global_release",
         sa.Column(
             "id",
             sa.Integer(),
@@ -126,4 +126,4 @@ def downgrade() -> None:
         # 5. Drop column
         op.drop_column(table, "release_number")
 
-    op.drop_table("release_number")
+    op.drop_table("global_release")
