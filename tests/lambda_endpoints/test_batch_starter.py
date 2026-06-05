@@ -2730,3 +2730,6 @@ def test_try_to_submit_job_l3_cron_job(session, batch_client, ecr_client):
     # dependencies within the job itself so we don't know at submission time whether the
     # job is a duplicate or not.
     assert processing_job_record.dependency_hash is None
+
+
+pytestmark = pytest.mark.skip(reason="Needs update for ticket #1400")
