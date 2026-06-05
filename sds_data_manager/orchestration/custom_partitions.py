@@ -61,7 +61,7 @@ def add_daily_partitions(context: SensorEvaluationContext):
     Periodically polls the PointingTable, and tells dagster that new repoint numbers exist.
     '''
     start_date = context.cursor or config.MISSION_START_TIME
-    start_dt = datetime.datetime.fromisoformat(start_date).replace(tzinfo=datetime.timezone.utc)
+    start_dt = datetime.datetime.fromisoformat(start_date).replace(tzinfo=datetime.timezone.utc).replace(hour=0, minute=0, second=0)
     end_dt = datetime.datetime.now((datetime.timezone.utc))
 
     existing_partitions = context.instance.get_dynamic_partitions("daily_partitions")
