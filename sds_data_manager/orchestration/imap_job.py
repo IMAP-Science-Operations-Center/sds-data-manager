@@ -196,7 +196,6 @@ class IMAPJobHandler:
                                                          )
                 context.log.info(f"Job Version to Use: {job_version}")
                 
-                '''
                 
                 submit_response = self.try_to_submit_job(session,
                                                         target_start,
@@ -217,13 +216,19 @@ class IMAPJobHandler:
                                                     inputs=dependency_inputs.serialize())
 
                     if not output_files:
-                        raise Failure(description="Processing failed, no files were generated, though a Batch job was submitted.")
+                        if batch_status == models.Status.SUCCEEDED.value:
+                            #SKIP
+                            yield SkipReason("No files were output, though the job succeeded.")
+                        else:
+                            raise Failure(description="Processing failed and no files were generated.")
                     else:
                         for f in output_files:
                             yield f
+                        if batch_status == models.Status.FAILED.value:
+                            raise Failure(description="Processing failed, though some files were generated.")
                 else:
                     return SkipReason(f"Batch Job Status: {submit_response.status} - {submit_response.message}, {submit_response.job}")
-                '''
+                
         # Return the generated function back to Dagster
         return _generic_batch_submitter
 
@@ -620,7 +625,7 @@ class IMAPJobHandler:
         if not file and self.job_config.repoint_input.required:
             raise MissingDependencies(f"Missing dependency for {self.job_config.repoint_input.to_dagster_asset().to_user_string()} between {target_start} and {target_end}")
         
-        return repoint_file
+        return file
     
     def get_spice_file_inputs(self,
                               session,
@@ -684,6 +689,8 @@ class IMAPJobHandler:
 
         # Get Science files
         science_files = self.get_science_file_inputs(context, target_start, target_end)
+        if not science_files:
+            raise MissingDependencies("No science files were found for job. All processing requires at least one science file as input.")
         processing_inputs.add(processing_input.ScienceInput(*science_files))
 
         # Get Ancillary files

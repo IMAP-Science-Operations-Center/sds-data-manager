@@ -19,9 +19,8 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
                 if "-de" in input.descriptor:
                     repoint_list = self.get_n_nearest_repoints(context, session, input, target_pointing_number)
                     metadata_list = input.get_all_files_by_repoint_numbers(context, repoint_list)
-
-            if metadata_list is None:
-                raise imap_job.MissingDependencies(f"Hi Goodtimes: skipping repoint {target_pointing_number} due to INPROGRESS jobs")
+                    if metadata_list is None:
+                        raise imap_job.MissingDependencies(f"Hi Goodtimes: skipping repoint {target_pointing_number} due to INPROGRESS jobs")
         
             for metadata in metadata_list:
                 if "file_names" in metadata:
@@ -34,16 +33,12 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
                         context.log.info(f"The file names of the matching partition: {file_names}")
                     science_files.extend(file_names)
         
-        num_future = np.sum(repoint_list > target_pointing_number)
+        num_future = np.sum(np.array(repoint_list) > target_pointing_number)
         min_future_repoints = HI_GOODTIMES_NUM_NEAREST_REPOINTS // 2
         if num_future < min_future_repoints:
             required_future_pointing = target_pointing_number + HI_GOODTIMES_NUM_NEAREST_REPOINTS
             if not self._check_pointing_exists(session, required_future_pointing):
-                context.log.info(
-                    f"Hi Goodtimes: skipping repoint {target_pointing_number} - pointing "
-                    f"{required_future_pointing} does not exist yet"
-                )
-                return None
+                raise imap_job.MissingDependencies(f"Hi Goodtimes: skipping repoint {target_pointing_number} - pointing {required_future_pointing} does not exist yet")
 
         context.log.info(f"Hi Goodtimes adding L1B DE files: {science_files}")
 

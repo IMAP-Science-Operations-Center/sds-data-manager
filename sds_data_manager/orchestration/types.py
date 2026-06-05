@@ -383,7 +383,7 @@ class DependencyNode(Node):
         materialized_partitions = context.instance.get_materialized_partitions(self.to_dagster_asset())
 
         for partition in materialized_partitions:
-            parts = context.partition_key.split("_")
+            parts = partition.split("_")
             if "repoint" in parts[0]:
                 pointing_number = int(parts[0][7:])
                 if pointing_number in target_repoints:
