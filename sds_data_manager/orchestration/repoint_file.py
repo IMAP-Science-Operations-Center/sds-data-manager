@@ -21,37 +21,6 @@ from sqlalchemy import desc
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-def build_repoint_file_deps_asset(node: DependencyNode, partitions_def):
-    @asset(
-            name=node.to_dagster_asset().to_user_string(),
-            partitions_def=partitions_def,
-            output_required=False
-    )
-    def _generic_repoint_file_maker(context):
-
-        current_partition = context.partition_key
-        date_range = current_partition.split('_', 1)[1]
-        p_start_str, p_end_str = date_range.split("_to_")
-        start_date = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-        end_date = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-
-        file = get_upstream_dependency_inputs_repoint(start_date, end_date)
-
-        
-        if file:
-            materialization = dagster_utilities.get_materialization_result(context,
-                                                                            node.to_dagster_asset(),
-                                                                            current_partition,
-                                                                            file,
-                                                                            "0",
-                                                                            "repoint")
-            if materialization:
-                yield materialization
-        else:
-            raise Failure(description="Processing failed: No data found")
-        
-    return _generic_repoint_file_maker
-
 def get_latest_repoint_file(
     end_date: datetime,
     session: db.Session = None,
@@ -133,48 +102,3 @@ def get_upstream_dependency_inputs_repoint(
         )
 
     return [latest_repoint_file]
-
-@sensor(asset_selection=AssetSelection.all(),
-        minimum_interval_seconds=600)
-def repoint_file_sensor(context: SensorEvaluationContext):
-
-    # 1. Handle the Cursor
-    cursor_str = context.cursor or config.MISSION_START_TIME
-    cursor_date = datetime.datetime.fromisoformat(cursor_str).replace(tzinfo=datetime.timezone.utc)
-    
-    # Track the latest ingestion date to update the cursor at the end
-    latest_ingestion_date = cursor_date
-    
-    # A unique suffix is added to the run_key so Dagster allows this partition 
-    # to be run *again* if a different file updates the same timeframe next week.
-    cursor_suffix = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # 2. Query for new files
-    if (datetime.datetime.now((datetime.timezone.utc)) - cursor_date) > datetime.timedelta(days=7):
-        min_dt = cursor_date
-        max_dt = cursor_date + datetime.timedelta(days=7)                           
-        latest_ingestion_date = max_dt
-        for run in dagster_utilities.run_all_affected_partitions(context, "repoint_repoint_", min_dt, max_dt, cursor_suffix):
-            yield run
-    else:
-        with db.Session() as session:
-            # Get new repoint files
-            new_files = session.query(models.RepointFiles).filter(models.RepointFiles.ingestion_date > cursor_date).all()
-            
-            if not new_files:
-                yield SensorResult(skip_reason="No new repoint files ingested.")
-
-            for file in new_files:
-                # Advance cursor date marker
-                if file.ingestion_date > latest_ingestion_date:
-                    latest_ingestion_date = file.ingestion_date
-
-                min_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(tzinfo=datetime.timezone.utc)
-                max_dt = file.end_date.replace(tzinfo=datetime.timezone.utc)
-                
-                for run in dagster_utilities.run_all_affected_partitions(context, "repoint_repoint_", min_dt, max_dt, cursor_suffix):
-                    yield run
-
-    context.update_cursor(latest_ingestion_date.isoformat())
-
-sensors = [repoint_file_sensor]

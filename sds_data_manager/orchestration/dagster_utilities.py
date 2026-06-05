@@ -159,3 +159,19 @@ def get_affected_partitions(context,
                     affected_keys.append(key)
 
     return affected_keys
+
+def parse_dates_from_partition_key(partition_key: str) -> tuple[datetime.datetime, datetime.datetime]:
+    """
+    Extracts start and end datetimes from a string formatted like:
+    '{name}_%Y-%m-%dT%H:%M:%S_to_%Y-%m-%dT%H:%M:%S'
+    """
+    if not partition_key:
+        return None, None
+        
+    date_range = partition_key.split('_', 1)[1]
+    if "_to_" in date_range:
+        p_start_str, p_end_str = date_range.split("_to_")
+        p_start = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+        p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+        
+    return p_start, p_end
