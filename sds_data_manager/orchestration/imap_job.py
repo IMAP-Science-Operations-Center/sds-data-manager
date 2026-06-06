@@ -184,9 +184,11 @@ class IMAPJobHandler:
 
                     if not dependency_inputs:
                         return SkipReason("Dependency inputs were missing.")
+                    
                 except MissingDependencies as e:
                     return SkipReason(str(e))
-
+                
+                context.log.info(f"Using the following dependencies: {dependency_inputs.serialize()}")
 
                 # We have the dependencies, lets try to submit the job!
                 job_version = self._determine_job_version(session=session,
@@ -206,26 +208,25 @@ class IMAPJobHandler:
                 context.log.info(f"Submit response: {submit_response.status} - {submit_response.message}, {submit_response.job}")
                 
                 if submit_response.status == 'submitted':
-                    batch_status = self.wait_for_batch_job(session, submit_response.job)                      
-                    output_files = self.find_output(context,
+                    batch_status = self.wait_for_batch_job(session, submit_response.job)
+                    time.sleep(60) # Give the indexer time to pick up the files 
+                    output_files = self.find_outputs(context,
                                                     session,
-                                                    job_version,
-                                                    submit_response.job,
-                                                    repointing=target_pointing_number,
+                                                    job_version=job_version,
                                                     start_date=target_start,
+                                                    repointing=target_pointing_number,
                                                     inputs=dependency_inputs.serialize())
 
                     if not output_files:
                         if batch_status == models.Status.SUCCEEDED.value:
-                            #SKIP
                             yield SkipReason("No files were output, though the job succeeded.")
-                        else:
-                            raise Failure(description="Processing failed and no files were generated.")
+                        if batch_status == models.Status.FAILED.value:
+                            raise Failure(description="Processing failed and no files were generated.")                      
                     else:
                         for f in output_files:
                             yield f
                         if batch_status == models.Status.FAILED.value:
-                            raise Failure(description="Processing failed, though some files were generated.")
+                            raise Failure(description="Processing failed, though there are previous files we can use.")  
                 else:
                     return SkipReason(f"Batch Job Status: {submit_response.status} - {submit_response.message}, {submit_response.job}")
                 
@@ -236,7 +237,7 @@ class IMAPJobHandler:
                            session: db.Session,
                            job_info: dict):        
 
-        timeout = 2400
+        timeout = 3600
         timeout_start = time.time()
         while time.time() < timeout_start + timeout:
             job_completed = (
@@ -263,7 +264,7 @@ class IMAPJobHandler:
     def find_outputs(self,
                        context,
                        session: db.Session,
-                       job_version: str,
+                       job_version: str = None,
                        start_date: datetime.datetime = None,
                        repointing: int = None,
                        inputs = {}):
@@ -278,24 +279,33 @@ class IMAPJobHandler:
                 models.ScienceFiles.instrument == output.source,
                 models.ScienceFiles.data_level == output.data_type,
                 models.ScienceFiles.descriptor == output.descriptor,
-                models.ScienceFiles.version == job_version
             ]
+            if job_version:
+                filters.append(models.ScienceFiles.version == job_version)
             if repointing is not None:
                 filters.append(models.ScienceFiles.repointing == int(repointing))
             if start_date is not None:
                 filters.append(models.ScienceFiles.start_date == start_date.date())
-            created_file = session.query(models.ScienceFiles).filter(*filters).first()
+            created_file = session.query(models.ScienceFiles).filter(*filters).distinct(
+                    models.ScienceFiles.start_date,
+                    models.ScienceFiles.repointing,
+                ).order_by(
+                    models.ScienceFiles.start_date,
+                    models.ScienceFiles.repointing,
+                    models.ScienceFiles.version.desc()
+                ).first()
             if created_file:
                 context.log.info(f"Found file {os.path.basename(created_file.file_path)}! Creating Asset.")
                 materialization = get_materialization_result(context,
                                                             output.to_dagster_asset(),
                                                             context.partition_key,
                                                             [os.path.basename(created_file.file_path)],
-                                                            str(int(job_version[1:])),
+                                                            str(int(created_file.version[1:])),
                                                             "science",
                                                             inputs = inputs)
                 if materialization:
                     output_materializations.append(materialization)
+        return output_materializations
 
     def _check_for_running_dependencies(self, context):
         '''This function checks if anything upstream of this file is currently running.
@@ -367,7 +377,7 @@ class IMAPJobHandler:
         def _sensor(context: SensorEvaluationContext):
 
             # Create a unique suffix for this sensor trigger
-            cursor_suffix = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            job_suffix = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # Load the cursor to track which events we have already seen.
             # The cursor maps `{science_asset_name: last_processed_storage_id}`.
@@ -426,7 +436,7 @@ class IMAPJobHandler:
                     
                     # If this has never been run, OR it has run, but we always trigger from this dependency 
                     if (runs and (dep_name in self.triggering_input_names)) or not runs:
-                        run_key = f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{cursor_suffix}"
+                        run_key = f"{self.job_config.to_dagster_asset().to_user_string()}_{target_partition}_{job_suffix}"
                         context.log.info(f"Yielding a run request with ID: {run_key} on partition {target_partition}.")
 
                         # Go to _generic_batch_sumbitter 
@@ -456,6 +466,9 @@ class IMAPJobHandler:
         '''
         This function parses the main database tables for anything new. 
         '''
+        if dependency.source in ['leapseconds', 'spacecraft_clock', 'imap_frames', 'science_frames', 'planetary_constants']:
+            # Never trigger from these
+            return []
         
         partitions_to_run = []
         dep_name = dependency.to_dagster_asset().to_user_string()
@@ -562,14 +575,14 @@ class IMAPJobHandler:
         # input start_date or is None. For example, if the input start_date is
         # '20240524' and the end_date is '20240527', the query could return an ancillary
         # file with the date range ('20240525', '20240528').
-        filenames = []
+        anc_processing_inputs = []
         for input in self.job_config.inputs:
             if input.data_type=='ancillary':
                 table = models.AncillaryFiles
                 type_specific_conditions = []
                 type_specific_conditions.append(
                     and_(
-                        table.start_date <= target_end,
+                        table.start_date < target_end,
                         or_(table.end_date >= target_start, table.end_date.is_(None)),
                     )
                 )
@@ -599,18 +612,19 @@ class IMAPJobHandler:
                 # Check requirement here if needed or not
                 if not records and input.required:
                     raise MissingDependencies(f"Missing dependency for {input.to_dagster_asset().to_user_string()} between {target_start} and {target_end}")
-                filenames.extend([os.path.basename(record.file_path) for record in records])
-        return filenames
+                filenames = [os.path.basename(record.file_path) for record in records]
+                anc_processing_inputs.append(processing_input.AncillaryInput(*filenames))
+        return anc_processing_inputs
     
     def get_spin_files_inputs(self,
                         session,
                         target_start: datetime.datetime,
                         target_end: datetime.datetime) -> list[str]:
         
-        spin_files = spin.get_upstream_dependency_inputs_spin(target_start,
-                                                                target_end,
-                                                                False,
-                                                                session)
+        spin_files = spin.get_upstream_dependency_inputs_spin(target_start.replace(hour=0, minute=0, second=0),
+                                                              target_end,
+                                                              False,
+                                                              session)
         if not spin_files and self.job_config.spin_input.required:
             raise MissingDependencies(f"Missing dependency for {self.job_config.spin_input.to_dagster_asset().to_user_string()} between {target_start} and {target_end}")
         return spin_files
@@ -637,18 +651,18 @@ class IMAPJobHandler:
                                                                 target_end)
         return spice_files
     
-    def get_science_file_inputs(self,
+    def get_science_files_inputs(self,
                                 context,
                                 target_start,
                                 target_end):
-        dependency_inputs = defaultdict(list)
+        science_processing_inputs = []
         for input in self.job_config.science_inputs:
             dep_name = input.to_dagster_asset().to_user_string()
             found_dep=False
-            context.log.info(f"Checking out {dep_name}")
             metadata_list = input.get_all_files_in_time_range(context,
                                                               target_start,
                                                               target_end)
+            science_files = []
             for metadata in metadata_list:
                 if "file_names" in metadata:
                     found_dep = True # We can finally say we have found at least one dependency
@@ -659,22 +673,18 @@ class IMAPJobHandler:
                         file_names = [file_names]
                     if file_names:
                         context.log.info(f"The file names of the matching partition: {file_names}")
-                    input_type = metadata["input_type"].value
-                    dependency_inputs[input_type].extend(file_names)
+                    science_files.extend(file_names)
             
             if not found_dep and input.required:
                 # If we found nothing and this is required, don't return anything.
                 raise MissingDependencies(f"Not enough information to process. Missing {dep_name} in range {str(target_start)} to {str(target_end)}")
-        # After all the files are found for this dependency add them to the
-        # processing input collection as a single Input
-        if len(dependency_inputs.keys()) > 1:
-            raise ValueError(f"Multiple data types for the same DependencyNode is not supported. Found these types for {dep_name}: {list(dependency_inputs.keys())}")
+            science_processing_inputs.append(processing_input.ScienceInput(*list(set(science_files))))
         
-        if not dependency_inputs:
+        if not science_processing_inputs:
             # Return right away if we have zero science files.
             raise MissingDependencies(f"No science files were discovered. All jobs require at least one science file.")
 
-        return list(set(dependency_inputs['science']))
+        return science_processing_inputs
 
     def get_dependencies(self, 
                         session,
@@ -688,16 +698,16 @@ class IMAPJobHandler:
         context.log.info(f"Checking for all dependencies existing between {target_start} and {target_end}")
 
         # Get Science files
-        science_files = self.get_science_file_inputs(context, target_start, target_end)
-        if not science_files:
-            raise MissingDependencies("No science files were found for job. All processing requires at least one science file as input.")
-        processing_inputs.add(processing_input.ScienceInput(*science_files))
+        science_files = self.get_science_files_inputs(context, target_start, target_end)
+        for inputs in science_files:
+            processing_inputs.add(inputs)
 
         # Get Ancillary files
         if self.job_config.ancillary_inputs:
             ancillary_files = self.get_ancillary_files_inputs(session, target_start, target_end)
             if ancillary_files:
-                processing_inputs.add(processing_input.AncillaryInput(*ancillary_files))
+                for inputs in ancillary_files:
+                    processing_inputs.add(inputs)
         
         # Get the Repoint file
         if self.job_config.repoint_input:
@@ -1017,7 +1027,7 @@ class IMAPJobHandler:
             instrument=self.job_config.source,
             data_level=self.job_config.data_type,
             descriptor=self.job_config.descriptor,
-            start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
+            start_date=datetime.datetime.strptime(start_date_str, "%Y%m%d"),
             version=version,
             repointing=repoint,
             dependency_hash=dep_hash,
