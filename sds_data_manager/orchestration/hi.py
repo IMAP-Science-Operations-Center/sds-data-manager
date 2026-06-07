@@ -3,17 +3,21 @@ from dagster import AssetExecutionContext
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 import numpy as np
+from imap_data_access import processing_input
 
 HI_GOODTIMES_NUM_NEAREST_REPOINTS = 8
 
 class HiGoodtimesJob(imap_job.IMAPJobHandler):
 
-    def get_science_file_inputs(self, context, target_start, target_end):
+    # Override this function from IMAPJobHandler
+    def get_science_files_inputs(self, context, target_start, target_end):
+        science_processing_inputs = []
+        science_files = []
         with db.Session() as session:
             parts = context.partition_key.split("_")
             if "repoint" in parts[0]:
                 target_pointing_number = int(parts[0][7:])
-            science_files = super().get_science_file_inputs(context, target_start, target_end)
+            science_processing_inputs.extend(super().get_science_files_inputs(context, target_start, target_end))
 
             for input in self.job_config.science_inputs:
                 if "-de" in input.descriptor:
@@ -39,6 +43,9 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
             required_future_pointing = target_pointing_number + HI_GOODTIMES_NUM_NEAREST_REPOINTS
             if not self._check_pointing_exists(session, required_future_pointing):
                 raise imap_job.MissingDependencies(f"Hi Goodtimes: skipping repoint {target_pointing_number} - pointing {required_future_pointing} does not exist yet")
+
+        if science_files:
+            science_processing_inputs.append(processing_input.ScienceInput(*list(set(science_files))))
 
         context.log.info(f"Hi Goodtimes adding L1B DE files: {science_files}")
 

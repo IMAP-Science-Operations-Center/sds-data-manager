@@ -219,7 +219,7 @@ class IMAPJobHandler:
 
                     if not output_files:
                         if batch_status == models.Status.SUCCEEDED.value:
-                            yield SkipReason("No files were output, though the job succeeded.")
+                            return SkipReason("No files were output, though the job succeeded.")
                         if batch_status == models.Status.FAILED.value:
                             raise Failure(description="Processing failed and no files were generated.")                      
                     else:
@@ -228,7 +228,17 @@ class IMAPJobHandler:
                         if batch_status == models.Status.FAILED.value:
                             raise Failure(description="Processing failed, though there are previous files we can use.")  
                 else:
-                    return SkipReason(f"Batch Job Status: {submit_response.status} - {submit_response.message}, {submit_response.job}")
+                    # If we skipped the job, let us materialize the outputs so that dagster knows about them at least
+                    output_files = self.find_outputs(context,
+                                                     session,
+                                                     start_date=target_start,
+                                                     repointing=target_pointing_number,
+                                                     inputs=dependency_inputs.serialize())
+                    for f in output_files:
+                        yield f
+
+                    if not output_files:
+                        return SkipReason(f"Batch Job Status: {submit_response.status} - {submit_response.message}, {submit_response.job}")
                 
         # Return the generated function back to Dagster
         return _generic_batch_submitter
@@ -258,7 +268,10 @@ class IMAPJobHandler:
             if not job_completed:
                 time.sleep(60)
             else:
-                return job_completed.status
+                return job_completed.status.name
+            
+        # If we time out, return a failure
+        return models.Status.FAILED.value
 
 
     def find_outputs(self,
@@ -526,7 +539,7 @@ class IMAPJobHandler:
                 asset_key=dependency.to_dagster_asset(),
                 after_cursor=last_event_id,
             )
-        new_events = context.instance.get_event_records(filter, limit=10, ascending=True)
+        new_events = context.instance.get_event_records(filter, limit=100, ascending=True)
         
 
         partitions_to_run = []
@@ -678,7 +691,8 @@ class IMAPJobHandler:
             if not found_dep and input.required:
                 # If we found nothing and this is required, don't return anything.
                 raise MissingDependencies(f"Not enough information to process. Missing {dep_name} in range {str(target_start)} to {str(target_end)}")
-            science_processing_inputs.append(processing_input.ScienceInput(*list(set(science_files))))
+            if science_files:
+                science_processing_inputs.append(processing_input.ScienceInput(*list(set(science_files))))
         
         if not science_processing_inputs:
             # Return right away if we have zero science files.

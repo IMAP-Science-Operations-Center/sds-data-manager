@@ -134,10 +134,10 @@ hist_spice: &hist_spice
       descriptor: l2-calibration
     - source: glows
       data_type: ancillary
-      descriptor: l3-time-dep-bckgrd
+      descriptor: l3a-time-dep-bckgrd
     - source: glows
       data_type: ancillary
-      descriptor: l3-map-of-extra-helio-bckgrd
+      descriptor: l3a-map-of-extra-helio-bckgrd
   outputs:
     - source: glows
       data_type: l3a
