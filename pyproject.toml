@@ -120,6 +120,8 @@ lint.select = ["B", "D", "E", "F", "I", "N", "S", "W", "PL", "PT", "UP", "RUF"]
 lint.ignore = ["D104", "D203", "D213", "D300", "D413", "S101", "S104", "PLR0913", "PLR2004"]
 
 [tool.ruff.lint.per-file-ignores]
+# Alembic migration scripts are auto-generated; skip all lint rules
+"alembic/versions/*.py" = ["ALL"]
 # TODO: Too many statements, this could be refactored to separate
 #       it into a few smaller pieces
 "sds_data_manager/utils/stackbuilder.py" = ["PLR0915"]

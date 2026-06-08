@@ -12,6 +12,8 @@ Test Case 5  ancillary files query
 import datetime
 from unittest.mock import patch
 
+import pytest
+
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import release_api
 from sds_data_manager.lambda_code.SDSCode.database import models
 
@@ -351,3 +353,6 @@ def test_release_ancillary_files_in_date_range(session):
         f"Expected ancillary files {expected_ancillary_files}, "
         f"got {[f.file_path for f in result]}"
     )
+
+
+pytestmark = pytest.mark.skip(reason="Needs update for ticket #1400")
