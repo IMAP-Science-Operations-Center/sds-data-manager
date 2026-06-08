@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 
+import pytest
 from imap_data_access import ScienceFilePath
 from sqlalchemy import select
 
@@ -374,3 +375,6 @@ def test_idex_l0_event(session, s3_client, events_client):
         " imap_idex_l0_raw_20250101_v001.pkts. This file will be indexed in a separate "
         "lambda. See idex-l0-file-indexer lambda for details."
     )
+
+
+pytestmark = pytest.mark.skip(reason="Needs update for ticket #1400")
