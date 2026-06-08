@@ -9,7 +9,6 @@ import logging
 import hashlib
 import requests
 from dataclasses import dataclass
-from collections import defaultdict
 from dagster import (
     AssetExecutionContext,
     Failure,
@@ -226,9 +225,9 @@ class IMAPJobHandler:
                         for f in output_files:
                             yield f
                         if batch_status == models.Status.FAILED.value:
-                            raise Failure(description="Processing failed, though there are previous files we can use.")  
-                else:
-                    # If we skipped the job, let us materialize the outputs so that dagster knows about them at least
+                            raise Failure(description="Processing failed, though there are previous files we can use.")
+                elif submit_response.status=='skipped':
+                    # If we skipped the job, let us materialize any previous outputs so that dagster knows about them at least
                     output_files = self.find_outputs(context,
                                                      session,
                                                      start_date=target_start,
@@ -239,6 +238,8 @@ class IMAPJobHandler:
 
                     if not output_files:
                         return SkipReason(f"Batch Job Status: {submit_response.status} - {submit_response.message}, {submit_response.job}")
+                else:
+                    raise Failure(description=submit_response.message)
                 
         # Return the generated function back to Dagster
         return _generic_batch_submitter
@@ -1020,7 +1021,35 @@ class IMAPJobHandler:
 
         if repoint is not None:
             batch_command.extend(["--repointing", f"repoint{repoint:05d}"])
+        
+        # We will check here if this job has already failed with these specific dependencies
+        conditions = [
+                models.ProcessingJob.instrument == self.job_config.source,
+                models.ProcessingJob.data_level == self.job_config.data_type,
+                models.ProcessingJob.descriptor == self.job_config.descriptor,
+                models.ProcessingJob.dependency_hash == dep_hash,
+                models.ProcessingJob.start_date == start_date.date()
+                ]
+        conditions.append(
+                    models.ProcessingJob.status.in_(
+                        [models.Status.FAILED.value]
+                    )
+                )
+        if repoint is not None:
+            conditions.append(models.ProcessingJob.repointing == repoint)
 
+        already_failed_job = (
+            session.query(models.ProcessingJob)
+            .filter(*conditions)
+            .order_by(models.ProcessingJob.version.desc())
+            .first()
+        )
+        if already_failed_job:
+            return BatchJobSubmit(
+                status="failed",
+                message="This exact job has been submitted previously, and has already failed. No need to run it again."
+            )
+        
         # Get the necessary AWS information
         # NOTE: These are here for easier mocking in tests rather than at the module level
         step = "-l3" if self.job_config.data_type >= "l3" else ""

@@ -49,7 +49,7 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
 
         context.log.info(f"Hi Goodtimes adding L1B DE files: {science_files}")
 
-        return science_files
+        return science_processing_inputs
             
     def get_n_nearest_repoints(
             self,
