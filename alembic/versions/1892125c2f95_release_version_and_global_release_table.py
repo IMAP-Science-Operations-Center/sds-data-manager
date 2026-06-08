@@ -35,7 +35,6 @@ def upgrade() -> None:
         ),
         sa.Column("release_number", sa.Integer(), nullable=False),
         sa.Column("updated_date", sa.DateTime(), nullable=False),
-        sa.Column("updated_by", sa.String(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("release_number"),
     )
@@ -75,6 +74,7 @@ def upgrade() -> None:
                 "release_number", sa.Integer(), nullable=False, server_default="0"
             ),
         )
+
 
         # 5. Add constraints for data_version and release_number column
         op.create_check_constraint(

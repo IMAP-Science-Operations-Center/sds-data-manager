@@ -352,4 +352,3 @@ class GlobalRelease(Base):
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     release_number = Column(Integer, nullable=False, unique=True)
     updated_date = Column(DateTime, nullable=False)
-    updated_by = Column(String, nullable=False)
