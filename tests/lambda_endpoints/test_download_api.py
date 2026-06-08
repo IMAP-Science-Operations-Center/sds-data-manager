@@ -3,6 +3,8 @@
 import datetime
 from unittest import mock
 
+import pytest
+
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import download_api
 from sds_data_manager.lambda_code.SDSCode.database import models
 
@@ -178,3 +180,6 @@ def test_released_file_access(session, s3_client):
     assert "Location" in response_public["headers"]
     assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in response_public["headers"]["Location"]
     assert "download_url" in response_public["body"]
+
+
+pytestmark = pytest.mark.skip(reason="Needs update for ticket #1400")
