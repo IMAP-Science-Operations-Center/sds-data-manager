@@ -514,6 +514,8 @@ class IMAPJobHandler:
                 for file in new_files:
                     min_dt = getattr(file, datetime_start_column)
                     max_dt = getattr(file, datetime_end_column)
+                    if not min_dt or not max_dt:
+                        continue
                     partitions = dagster_utilities.get_affected_partitions(context, self.partitions_def, min_dt, max_dt)
 
                     partitions_to_run.extend(partitions)

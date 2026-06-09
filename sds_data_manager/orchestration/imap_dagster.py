@@ -54,8 +54,8 @@ for potential_job in all_jobs:
                     if "_ancillary_" in input_name:
                         continue
                     elif "idex_l0_" in input_name:
-                        # Continue because IDEX will defined custom asset and sensor below.
-                        continue
+                        file_handlers.append(idex.IDEXL0FileHandler(input, job.partitions_def))
+                        unique_job_names.append(input_name)
                     elif "spice" in input_name:
                         continue
                     elif "spin" in input_name:
@@ -80,10 +80,8 @@ for asset in assets_to_build:
 
 assets = batch_jobs
 
-defs = Definitions(assets = assets 
-                   + idex.L0_asset,
+defs = Definitions(assets = assets,
                    sensors = custom_partitions.sensors
                    + sensors
                    + reprocessing.sensors
-                   + idex.L0_sensor,
 )

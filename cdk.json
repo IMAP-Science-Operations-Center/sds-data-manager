@@ -28,7 +28,9 @@
     "prod": {
       "account": "593025701104",
       "domain_name": "imap-mission.com",
-      "region": "us-west-2"
+      "region": "us-west-2",
+      "rds_size": "XLARGE2",
+      "rds_class": "BURSTABLE3"
     },
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,
