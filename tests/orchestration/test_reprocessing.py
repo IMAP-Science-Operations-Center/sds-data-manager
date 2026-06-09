@@ -96,6 +96,7 @@ def test_reprocess_all_codice(mock_env_vars) -> None:
     @asset(partitions_def=daily_partitions)
     def codice_l1a_hicountersaggregated():
         pass
+
     # Create a definition object with all the related assets
     defs = Definitions(assets=[codice_l1a_hicountersaggregated])
 
@@ -135,14 +136,15 @@ def test_reprocess_all_codice(mock_env_vars) -> None:
     ].asset_backfill_data.target_subset.partitions_subsets_by_asset_key
     # There should be only one asset key
     assert len(backfill_subset) == 1
-    assert backfill_subset[AssetKey("codice_l1a_hicountersaggregated")] == DefaultPartitionsSubset(
+    assert backfill_subset[
+        AssetKey("codice_l1a_hicountersaggregated")
+    ] == DefaultPartitionsSubset(
         subset={"daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"}
     )
 
 
 def test_reprocess_all_output_node(mock_env_vars) -> None:
     """Test the reprocessing functionality for an output node."""
-
     instance = DagsterInstance.ephemeral()
     instance.add_dynamic_partitions(
         "daily_partitions", ["daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"]
@@ -195,6 +197,8 @@ def test_reprocess_all_output_node(mock_env_vars) -> None:
     ].asset_backfill_data.target_subset.partitions_subsets_by_asset_key
     # There should be only one asset key
     assert len(backfill_subset) == 1
-    assert backfill_subset[AssetKey("codice_l1a_hicountersaggregated")] == DefaultPartitionsSubset(
+    assert backfill_subset[
+        AssetKey("codice_l1a_hicountersaggregated")
+    ] == DefaultPartitionsSubset(
         subset={"daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"}
     )

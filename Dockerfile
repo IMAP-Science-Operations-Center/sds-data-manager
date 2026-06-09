@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_CREATE=false \
     DAGSTER_HOME="/opt/dagster/dagster_home" \
-    PYTHONPATH="/opt/dagster/app" \ 
+    PYTHONPATH="/opt/dagster/app" \
     DAGSTER_SENSOR_GRPC_TIMEOUT_SECONDS=300
 
 # Add Poetry to PATH

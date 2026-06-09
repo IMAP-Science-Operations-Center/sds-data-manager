@@ -1,26 +1,40 @@
 #!/usr/bin/env python3
 
-from constructs import Construct
+import aws_cdk as cdk
 from aws_cdk import (
-    App,
-    Stack,
     RemovalPolicy,
-    aws_s3 as s3,
+)
+from aws_cdk import (
     aws_ec2 as ec2,
+)
+from aws_cdk import (
     aws_ecr as ecr,
+)
+from aws_cdk import (
     aws_ecs as ecs,
-    aws_rds as rds,
-    aws_iam as iam,
-    aws_logs as logs,
+)
+from aws_cdk import (
     aws_ecs_patterns as ecs_patterns,
+)
+from aws_cdk import (
+    aws_iam as iam,
+)
+from aws_cdk import (
+    aws_logs as logs,
+)
+from aws_cdk import (
+    aws_rds as rds,
+)
+from aws_cdk import (
+    aws_s3 as s3,
+)
+from aws_cdk import (
     aws_secretsmanager as secretsmanager,
 )
-from aws_cdk.aws_ecr_assets import DockerImageAsset, Platform
 from aws_cdk.aws_ecr import Repository
-from cdk_ecr_deployment import ECRDeployment, DockerImageName
-from aws_cdk import Stack
-
-import aws_cdk as cdk
+from aws_cdk.aws_ecr_assets import DockerImageAsset, Platform
+from cdk_ecr_deployment import DockerImageName, ECRDeployment
+from constructs import Construct
 
 
 class EcrConstruct(Construct):
@@ -49,16 +63,21 @@ class EcrConstruct(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
-        repo_lifecycle_rule = ecr.LifecycleRule(description='Remove old untagged images',
-                                                max_image_age=cdk.Duration.days(7), # Remove after 7 days
-                                                tag_status=ecr.TagStatus.UNTAGGED)
+        repo_lifecycle_rule = ecr.LifecycleRule(
+            description="Remove old untagged images",
+            max_image_age=cdk.Duration.days(7),  # Remove after 7 days
+            tag_status=ecr.TagStatus.UNTAGGED,
+        )
 
-        self.container_repo = ecr.Repository(self, 
-                                             construct_id, 
-                                             lifecycle_rules=[repo_lifecycle_rule],
-                                             repository_name=repo_name,
-                                             empty_on_delete=True, 
-                                             removal_policy=RemovalPolicy.DESTROY)
+        self.container_repo = ecr.Repository(
+            self,
+            construct_id,
+            lifecycle_rules=[repo_lifecycle_rule],
+            repository_name=repo_name,
+            empty_on_delete=True,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
 
 class DagsterDockerImageConstruct(Construct):
     """Construct the actual Docker image."""
@@ -88,7 +107,7 @@ class DagsterDockerImageConstruct(Construct):
             The directory of the Dockerfile
         ecr : str
             The URI of the ECR to push the Docker image to
-        file : str 
+        file : str
             The name of the Dockerfile to use
         docker_tag : str
             The tag to give the docker image once pushed
@@ -113,6 +132,7 @@ class DagsterDockerImageConstruct(Construct):
             dest=DockerImageName(ecr + ":" + docker_tag),
             memory_limit=4096,
         )
+
 
 class DagsterDatabaseConstruct(Construct):
     """Construct the database Dagster needs to keep track of processing state"""
@@ -144,25 +164,34 @@ class DagsterDatabaseConstruct(Construct):
         super().__init__(scope, construct_id, **kwargs)
 
         self.db_secret = secretsmanager.Secret(
-            self, "DagsterDatabaseSecret",
+            self,
+            "DagsterDatabaseSecret",
             generate_secret_string=secretsmanager.SecretStringGenerator(
                 secret_string_template='{"username":"dagster"}',
                 generate_string_key="password",
-                exclude_characters="\"@/\\"
-            )
+                exclude_characters='"@/\\',
+            ),
         )
-        
+
         self.db_instance = rds.DatabaseInstance(
-            self, "DagsterStorageDB",
-            engine=rds.DatabaseInstanceEngine.postgres(version=rds.PostgresEngineVersion.VER_16),
-            instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.XLARGE2),
+            self,
+            "DagsterStorageDB",
+            engine=rds.DatabaseInstanceEngine.postgres(
+                version=rds.PostgresEngineVersion.VER_16
+            ),
+            instance_type=ec2.InstanceType.of(
+                ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.XLARGE2
+            ),
             vpc=vpc,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_ISOLATED),
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
+            ),
             credentials=rds.Credentials.from_secret(self.db_secret),
             database_name="dagster",
             security_groups=[sg],
-            removal_policy=RemovalPolicy.RETAIN, # Retain data on stack updates/destroy
+            removal_policy=RemovalPolicy.RETAIN,  # Retain data on stack updates/destroy
         )
+
 
 class DagsterS3LoggingBucket(Construct):
     """Construct the database Dagster needs to store logs from asset runs"""
@@ -187,11 +216,14 @@ class DagsterS3LoggingBucket(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
-        self.logs_bucket = s3.Bucket(self, "DagsterComputeLogsBucket",
+        self.logs_bucket = s3.Bucket(
+            self,
+            "DagsterComputeLogsBucket",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
+
 
 class DagsterEcsConstruct(Construct):
     """ECS Fargate construct for setting up all ECS tasks."""
@@ -241,24 +273,33 @@ class DagsterEcsConstruct(Construct):
 
         # These tasks will run the Assets
         run_task_def = ecs.FargateTaskDefinition(
-            self, "DagsterRunBaseTaskDef",
-            cpu=1024, 
+            self,
+            "DagsterRunBaseTaskDef",
+            cpu=1024,
             memory_limit_mib=2048,
             execution_role=execution_role,
-            task_role=task_role
+            task_role=task_role,
         )
         run_task_def.add_container(
-            "dagster-run", # Must match standard naming expectation
+            "dagster-run",  # Must match standard naming expectation
             image=ecr_image,
             environment=dagster_env_vars,
-            secrets={"DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(db_secret, "password")},
+            secrets={
+                "DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(
+                    db_secret, "password"
+                )
+            },
             logging=ecs.LogDriver.aws_logs(
                 stream_prefix="DagsterRuns",
-                log_group=logs.LogGroup(self, "RunLogs", removal_policy=RemovalPolicy.DESTROY)
-            )
+                log_group=logs.LogGroup(
+                    self, "RunLogs", removal_policy=RemovalPolicy.DESTROY
+                ),
+            ),
         )
-        dagster_env_vars["DAGSTER_RUN_BASE_TASK_DEF_ARN"] = run_task_def.task_definition_arn
-        
+        dagster_env_vars["DAGSTER_RUN_BASE_TASK_DEF_ARN"] = (
+            run_task_def.task_definition_arn
+        )
+
         webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
             "DagsterWebserver",
@@ -289,7 +330,11 @@ class DagsterEcsConstruct(Construct):
                         removal_policy=RemovalPolicy.DESTROY,
                     ),
                 ),
-                secrets={"DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(db_secret, "password")},
+                secrets={
+                    "DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(
+                        db_secret, "password"
+                    )
+                },
             ),
             public_load_balancer=True,
             open_listener=False,
@@ -299,35 +344,47 @@ class DagsterEcsConstruct(Construct):
             ec2.Port.tcp(80),
         )
         webserver_service.service.connections.allow_to(
-            sg,
-            ec2.Port.tcp(5432),
-            "Allow Dagster Webserver to access RDS"
+            sg, ec2.Port.tcp(5432), "Allow Dagster Webserver to access RDS"
         )
 
         # Dagster Daemon
-        daemon_task_def = ecs.FargateTaskDefinition(self, "DagsterDaemonTask",
+        daemon_task_def = ecs.FargateTaskDefinition(
+            self,
+            "DagsterDaemonTask",
             cpu=16384,
             memory_limit_mib=32768,
             execution_role=execution_role,
-            task_role=task_role
+            task_role=task_role,
         )
-        
-        daemon_task_def.add_container("DaemonContainer",
+
+        daemon_task_def.add_container(
+            "DaemonContainer",
             image=ecr_image,
-            command=["dagster-daemon", "run", "-w", "sds_data_manager/orchestration/workspace.yaml"],
+            command=[
+                "dagster-daemon",
+                "run",
+                "-w",
+                "sds_data_manager/orchestration/workspace.yaml",
+            ],
             environment=dagster_env_vars,
             secrets={
-                "DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(db_secret, "password")
+                "DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(
+                    db_secret, "password"
+                )
             },
             logging=ecs.LogDriver.aws_logs(
                 stream_prefix="DagsterDaemon",
-                log_group=logs.LogGroup(self, "DaemonLogs", removal_policy=RemovalPolicy.DESTROY)
-            )
+                log_group=logs.LogGroup(
+                    self, "DaemonLogs", removal_policy=RemovalPolicy.DESTROY
+                ),
+            ),
         )
 
-        ecs.FargateService(self, "DagsterDaemonService",
+        ecs.FargateService(
+            self,
+            "DagsterDaemonService",
             cluster=cluster,
             task_definition=daemon_task_def,
             desired_count=1,
-            security_groups=[sg]
+            security_groups=[sg],
         )

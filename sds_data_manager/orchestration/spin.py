@@ -1,25 +1,18 @@
-import datetime 
-from dagster import (
-    asset,
-    AssetSelection,
-    SensorEvaluationContext,
-    SensorResult,
-    sensor,
-    DefaultSensorStatus,
-    Failure
-)
-from sds_data_manager.lambda_code.SDSCode.database import database as db, models
-from sds_data_manager.orchestration import dagster_utilities, config
+import datetime
 import logging
 from contextlib import nullcontext
 from os.path import basename
+
 from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import aliased
-from sds_data_manager.orchestration.types import DependencyNode
+
+from sds_data_manager.lambda_code.SDSCode.database import database as db
+from sds_data_manager.lambda_code.SDSCode.database import models
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 
 def verify_spin_coverage(
     records: list,
@@ -57,7 +50,9 @@ def verify_spin_coverage(
     sorted_records = sorted(records, key=lambda r: r.start_date)
 
     # Check if first record covers or starts before input start_date
-    if sorted_records[0].start_date.replace(tzinfo=datetime.timezone.utc) > start_date.replace(tzinfo=datetime.timezone.utc):
+    if sorted_records[0].start_date.replace(
+        tzinfo=datetime.timezone.utc
+    ) > start_date.replace(tzinfo=datetime.timezone.utc):
         gap_start = start_date
         gap_end = sorted_records[0].start_date - datetime.timedelta(days=1)
         logger.info(
@@ -83,7 +78,9 @@ def verify_spin_coverage(
             return False
 
     # Check if last record covers past input end_date
-    if sorted_records[-1].end_date.replace(tzinfo=datetime.timezone.utc) < end_date.replace(tzinfo=datetime.timezone.utc):
+    if sorted_records[-1].end_date.replace(
+        tzinfo=datetime.timezone.utc
+    ) < end_date.replace(tzinfo=datetime.timezone.utc):
         gap_start = sorted_records[-1].end_date + datetime.timedelta(days=1)
         gap_end = end_date
         logger.info(
@@ -97,6 +94,7 @@ def verify_spin_coverage(
         f"{end_date.strftime('%Y%m%d')}: {len(records)} file(s) cover range"
     )
     return True
+
 
 def get_spin_files(
     session,
@@ -160,7 +158,7 @@ def get_spin_files(
 
     return records
 
-# ruff: noqa: PLR0915, PLR0912, PLR0911
+
 def get_upstream_dependency_inputs_spin(
     start_date: datetime,
     end_date: datetime,

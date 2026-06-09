@@ -1,25 +1,17 @@
-import datetime 
-from dagster import (
-    asset,
-    AssetSelection,
-    SensorEvaluationContext,
-    SensorResult,
-    sensor,
-    DefaultSensorStatus,
-    Failure
-)
-from sds_data_manager.lambda_code.SDSCode.database import database as db, models
-from sds_data_manager.orchestration import dagster_utilities, config
-from sds_data_manager.orchestration.types import DependencyNode
+import datetime
 import logging
 from contextlib import nullcontext
-
 from os.path import basename
+
 from sqlalchemy import desc
+
+from sds_data_manager.lambda_code.SDSCode.database import database as db
+from sds_data_manager.lambda_code.SDSCode.database import models
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 
 def get_latest_repoint_file(
     end_date: datetime,
@@ -58,7 +50,9 @@ def get_latest_repoint_file(
     if not latest_repoint_file:
         raise ValueError("No Repoint file found in the database.")
 
-    if latest_repoint_file.end_date.replace(tzinfo=datetime.timezone.utc) < end_date.replace(tzinfo=datetime.timezone.utc):
+    if latest_repoint_file.end_date.replace(
+        tzinfo=datetime.timezone.utc
+    ) < end_date.replace(tzinfo=datetime.timezone.utc):
         logger.info(
             f"Latest repoint file end date {latest_repoint_file.end_date} "
             f"is before input end date {end_date}"
@@ -67,7 +61,7 @@ def get_latest_repoint_file(
 
     return basename(latest_repoint_file.file_path)
 
-# ruff: noqa: PLR0915, PLR0912, PLR0911
+
 def get_upstream_dependency_inputs_repoint(
     start_date: datetime,
     end_date: datetime,
@@ -97,8 +91,6 @@ def get_upstream_dependency_inputs_repoint(
         if latest_repoint_file is None:
             logger.info(f"No repoint file found for {start_date} to {end_date}")
             return None
-        logger.info(
-            f"Found repoint file: {latest_repoint_file}."
-        )
+        logger.info(f"Found repoint file: {latest_repoint_file}.")
 
     return [latest_repoint_file]

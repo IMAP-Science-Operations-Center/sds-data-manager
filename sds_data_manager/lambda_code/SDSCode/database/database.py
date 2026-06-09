@@ -11,6 +11,7 @@ from sqlalchemy.pool import NullPool
 
 _ENGINE = None
 
+
 def get_engine():
     """Create engine from DB URI.
 
@@ -30,10 +31,7 @@ def get_engine():
     db_config = json.loads(secret_string)
     db_uri = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
 
-    _ENGINE = create_engine(
-        db_uri,
-        poolclass=NullPool
-    )
+    _ENGINE = create_engine(db_uri, poolclass=NullPool)
 
     return create_engine(db_uri)
 
@@ -50,4 +48,4 @@ def Session():  # noqa: N802
         session.rollback()
         raise
     finally:
-        session.close() # Returns the connection to the pool, doesn't destroy it
+        session.close()  # Returns the connection to the pool, doesn't destroy it

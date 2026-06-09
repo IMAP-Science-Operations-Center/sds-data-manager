@@ -1,20 +1,10 @@
+import datetime
 import json
 import logging
-import datetime
-from dagster import (
-    asset,
-    sensor, 
-    SensorEvaluationContext, 
-    SensorResult, 
-    AssetSelection,
-    DefaultSensorStatus,
-    Failure
-)
+
 import imap_data_access
-from sds_data_manager.lambda_code.SDSCode.database import database as db, models
+
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
-from sds_data_manager.orchestration import dagster_utilities, config
-from sds_data_manager.orchestration.types import DependencyNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -109,12 +99,10 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
     return False
 
 
-# ruff: noqa: PLR0915, PLR0912, PLR0911
 def get_upstream_dependency_inputs_spice(
     dependencies: list,
     start_date: datetime.datetime,
     end_date: datetime.datetime,
-    repoint: int | list[int] = None,
 ):
     """Construct a ProcessingInputCollection of dependency files.
 
@@ -130,11 +118,6 @@ def get_upstream_dependency_inputs_spice(
         Start date to find dependent files with.
     end_date : datetime
         End date to find dependent files with.
-    repoint : int or list[int], optional
-        If provided, will be used to filter files by repoint number(s). Can be a
-        single int or a list of ints.
-    open_session : db.Session, optional
-        Database session. If not provided, a new session will be created.
 
     Returns
     -------
@@ -144,9 +127,7 @@ def get_upstream_dependency_inputs_spice(
 
     # convert start_date and end_date in seconds after j2000.
     # TODO: remove this once Bryan changes takes in 'yyyymmdd' format
-    def yyyymmdd_to_seconds_since_j2000(
-        date_str: str, add_24_hrs=False
-    ) -> float:
+    def yyyymmdd_to_seconds_since_j2000(date_str: str, add_24_hrs=False) -> float:
         # Parse input date string
         dt = datetime.datetime.strptime(date_str, "%Y%m%d").replace(
             tzinfo=datetime.timezone.utc
@@ -160,17 +141,13 @@ def get_upstream_dependency_inputs_spice(
         delta = dt - j2000
         return delta.total_seconds()
 
-    start_time = yyyymmdd_to_seconds_since_j2000(
-        start_date.strftime("%Y%m%d")
-    )
+    start_time = yyyymmdd_to_seconds_since_j2000(start_date.strftime("%Y%m%d"))
     # TODO revisit setting end_time after SIT-4. Should be handled upstream
-    if end_date == start_date or repoint is not None:
+    if end_date == start_date:
         add_24_hrs = True
     else:
         add_24_hrs = False
-    end_time = yyyymmdd_to_seconds_since_j2000(
-        end_date.strftime("%Y%m%d"), add_24_hrs
-    )
+    end_time = yyyymmdd_to_seconds_since_j2000(end_date.strftime("%Y%m%d"), add_24_hrs)
     metakernel_response = spice_metakernel_api.lambda_handler(
         {
             "queryStringParameters": {
@@ -185,20 +162,14 @@ def get_upstream_dependency_inputs_spice(
         None,
     )
     if metakernel_response["statusCode"] != 200:
-        logger.error(
-            f"Metakernel lambda raised error: {metakernel_response['body']}"
-        )
+        logger.error(f"Metakernel lambda raised error: {metakernel_response['body']}")
         return None
     metakernel_files = json.loads(metakernel_response["body"])
     # If number of kernels returned doesn't match the number of file types
     # requested
-    has_all_kernels = check_requested_kernels(
-        ",".join(dependencies), metakernel_files
-    )
+    has_all_kernels = check_requested_kernels(",".join(dependencies), metakernel_files)
     if not has_all_kernels:
         return None
 
-    logger.info(
-        f"Found metakernel files: {metakernel_files}. Adding to collection."
-    )
+    logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")
     return metakernel_files

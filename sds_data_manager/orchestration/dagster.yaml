@@ -28,8 +28,8 @@ run_launcher:
       - REPROCESSING_SQS_URL
       - IMAP_DATA_ACCESS_URL
       - REPROCESSING_SQS_URL
-    task_definition: 
-      env: DAGSTER_RUN_BASE_TASK_DEF_ARN 
+    task_definition:
+      env: DAGSTER_RUN_BASE_TASK_DEF_ARN
     container_name: "dagster-run"
     use_current_ecs_task_config: true
 

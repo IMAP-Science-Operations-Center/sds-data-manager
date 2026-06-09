@@ -9,7 +9,7 @@ import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
 from ..lambda_code.SDSCode.api_lambdas import upload_api
-from .types import DependencyNode, ProcessingJobNode, Node
+from .types import DependencyNode, Node, ProcessingJobNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -209,7 +209,7 @@ class DependencyConfigReader:
                         descriptor=descriptor,
                         inputs=upstream_deps_nodes,
                         outputs=job_outputs_list,
-                        partition=value.get("partition")
+                        partition=value.get("partition"),
                     )
 
                 except (ValueError, IndexError) as e:
@@ -263,16 +263,15 @@ class DependencyConfigReader:
         flat_list = []
         for item in nested_list:
             if isinstance(item, list):
-                # If the item is a list, extend with the flattened version of that list
+                # If the item is a list, extend with the flattened version of
+                # that list
                 flat_list.extend(self.recursive_flatten_list(item))
             else:
                 # Otherwise, append the item (which can be any object)
                 flat_list.append(item)
         return flat_list
 
-    def get_node_for_output(
-            self, node: Node
-    ) -> ProcessingJobNode:
+    def get_node_for_output(self, node: Node) -> ProcessingJobNode:
         """Return the Dependency node that produces the given output.
 
         Parameters
@@ -293,16 +292,13 @@ class DependencyConfigReader:
         for job_node in self._config.values():
             for output in job_node.outputs:
                 if (
-                        output.source == node.source
-                        and output.data_type == node.data_type
-                        and output.descriptor == node.descriptor
+                    output.source == node.source
+                    and output.data_type == node.data_type
+                    and output.descriptor == node.descriptor
                 ):
                     return job_node
 
-        raise ValueError(
-            f"No job found that produces output: "
-            f"({node})"
-        )
+        raise ValueError(f"No job found that produces output: ({node})")
 
 
 def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
@@ -322,7 +318,8 @@ def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
     Returns
     -------
     list[ProcessingJobNode]
-        List of ProcessingJobNode that are the root job node of each instrument pipeline.
+        List of ProcessingJobNode that are the root job node of each instrument
+        pipeline.
         If instrument is provided, return only the kickoff job for that instrument.
     """
     kick_off_jobs = []
@@ -340,7 +337,6 @@ def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
             "No kickoff jobs found. Please check the instrument dependency YAML files."
         )
     return kick_off_jobs
-
 
 
 def upload_dependency_file(dependency_file_path: Path, serialized_dependencies: str):

@@ -129,7 +129,9 @@ def lambda_handler(event, context):  # noqa: PLR0912
                     "file_path": result.file_path,
                     "end_date": result.end_date.strftime("%Y-%m-%d, %H:%M:%S"),
                     "version": result.version,
-                    "ingestion_date": result.ingestion_date.strftime("%Y-%m-%d, %H:%M:%S"),
+                    "ingestion_date": result.ingestion_date.strftime(
+                        "%Y-%m-%d, %H:%M:%S"
+                    ),
                 }
                 for result in search_results
             ]

@@ -29,10 +29,7 @@ def read_sqs_messages(sqs_queue_url=None):
     return response.get("Messages", [])
 
 
-@sensor(
-    asset_selection=AssetSelection.all(),
-    minimum_interval_seconds=100
-)
+@sensor(asset_selection=AssetSelection.all(), minimum_interval_seconds=100)
 def reprocess_sensor(context: SensorEvaluationContext):
     """Sensor that triggers reprocessing backfills."""
     sqs_queue_url = os.getenv("REPROCESSING_SQS_URL")
@@ -183,10 +180,7 @@ def get_job_assets(
                 return None
     # get the output keys for the job node. If there are no outputs, log a warning and
     # skip.
-    output_keys = [
-        AssetKey(output.to_dagster_asset().to_user_string())
-        for output in job_node.outputs
-    ]
+    output_keys = [AssetKey(output.to_dagster_name()) for output in job_node.outputs]
     if not output_keys:
         context.log.warning(
             f"Job node for ({instrument}, {data_level}, {descriptor}) has no outputs."

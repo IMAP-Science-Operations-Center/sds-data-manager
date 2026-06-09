@@ -1,17 +1,13 @@
 from dagster import Definitions
 from imap_data_access import VALID_DATALEVELS
-from sds_data_manager.orchestration import custom_partitions, idex, hi, reprocessing
-from sds_data_manager.orchestration.imap_file import  IMAPScienceFileHandler
-from sds_data_manager.orchestration.imap_job import IMAPJobHandler
+
+from sds_data_manager.orchestration import custom_partitions, hi, idex, reprocessing
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
 )
+from sds_data_manager.orchestration.imap_file import IMAPScienceFileHandler
+from sds_data_manager.orchestration.imap_job import IMAPJobHandler
 
-# TODO: how to push code changes to dagster cluster?
-# Potential solution: after CDK deploy to dev or prod, add Git action to deploy latest code
-# to dagster using this command:
-#   aws ecs update-service --cluster DagsterEcsStack-DagsterClusterxxx --service DagsterEcsStack-DagsterWebserverServicexxx
-#   --force-new-deployment --profile xxx --region us-west-2
 dependency_config = DependencyConfigReader()
 
 file_handlers = []
@@ -27,34 +23,42 @@ all_outputs = []
 for potential_job in all_jobs:
     outputs_list = list(dependency_config.outputs(potential_job))
     for output in outputs_list:
-        name = output.to_dagster_asset().to_user_string()
+        name = output.to_dagster_name()
         all_outputs.append(name)
 
 # Next, we'll gather up all the job and file handlers
 for potential_job in all_jobs:
-    partition = dependency_config.partition(potential_job)   
-    inputs_list = list(dependency_config.inputs(potential_job)) 
+    partition = dependency_config.partition(potential_job)
+    inputs_list = list(dependency_config.inputs(potential_job))
     source, data_type, descriptor = potential_job
 
     if data_type in VALID_DATALEVELS:
-        if ('3mo' not in descriptor) and ('6mo' not in descriptor) and ('1yr' not in descriptor): # Skip maps for now
-            if 'goodtimes' in descriptor and source == 'hi' and data_type=='l1b':
+        if (
+            ("3mo" not in descriptor)
+            and ("6mo" not in descriptor)
+            and ("1yr" not in descriptor)
+        ):  # Skip maps for now
+            if "goodtimes" in descriptor and source == "hi" and data_type == "l1b":
                 job = hi.HiGoodtimesJob(dependency_config._config[potential_job])
             else:
                 job = IMAPJobHandler(dependency_config._config[potential_job])
-                
-            if job.job_config.to_dagster_asset().to_user_string() not in unique_job_names:
+
+            if job.job_config.to_dagster_name() not in unique_job_names:
                 job_handlers.append(job)
-                unique_job_names.append(job.job_config.to_dagster_asset().to_user_string())
+                unique_job_names.append(job.job_config.to_dagster_name())
 
             # Finally, check for inputs that do not have a corresponding output.
             for input in inputs_list:
-                input_name = input.to_dagster_asset().to_user_string()
-                if (input_name not in all_outputs) and (input_name not in unique_job_names):
+                input_name = input.to_dagster_name()
+                if (input_name not in all_outputs) and (
+                    input_name not in unique_job_names
+                ):
                     if "_ancillary_" in input_name:
                         continue
                     elif "idex_l0_" in input_name:
-                        file_handlers.append(idex.IDEXL0FileHandler(input, job.partitions_def))
+                        file_handlers.append(
+                            idex.IDEXL0FileHandler(input, job.partitions_def)
+                        )
                         unique_job_names.append(input_name)
                     elif "spice" in input_name:
                         continue
@@ -63,7 +67,9 @@ for potential_job in all_jobs:
                     elif "repoint" in input_name:
                         continue
                     else:
-                        file_handlers.append(IMAPScienceFileHandler(input, job.partitions_def))
+                        file_handlers.append(
+                            IMAPScienceFileHandler(input, job.partitions_def)
+                        )
                         unique_job_names.append(input_name)
 
 # Now using handlers, create assets for each handler:
@@ -80,8 +86,6 @@ for asset in assets_to_build:
 
 assets = batch_jobs
 
-defs = Definitions(assets = assets,
-                   sensors = custom_partitions.sensors
-                   + sensors
-                   + reprocessing.sensors
+defs = Definitions(
+    assets=assets, sensors=custom_partitions.sensors + sensors + reprocessing.sensors
 )

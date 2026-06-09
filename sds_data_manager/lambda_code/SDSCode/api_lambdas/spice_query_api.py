@@ -117,7 +117,9 @@ def lambda_handler(event, context):
             _convert_spice_metadata_model_to_dict(result) for result in search_results
         ]
         logger.debug(
-            "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
+            "Found [%s] Query Search Results: %s",
+            len(search_results),
+            str(search_results),
         )
 
         # Format the response

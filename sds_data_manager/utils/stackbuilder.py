@@ -460,7 +460,7 @@ def build_sds(
         secret_name=ialirt_secret_name,
         account_name=account_name,
     )
-    
+
     # Dagster Stack
     dagster_stack = Stack(scope, "DagsterStack", cross_region_references=True, env=env)
 
@@ -479,21 +479,22 @@ def build_sds(
         image_name="DagsterImage",
         directory=repo_root,
         file="Dockerfile",
-        ecr=dagster_repo_construct.container_repo.repository_uri
+        ecr=dagster_repo_construct.container_repo.repository_uri,
     )
 
     dagster_database_construct = dagster_construct.DagsterDatabaseConstruct(
         scope=dagster_stack,
-        construct_id='DagsterDatabase',
+        construct_id="DagsterDatabase",
         vpc=networking.vpc,
-        sg=rds_construct.rds_security_group
+        sg=rds_construct.rds_security_group,
     )
 
     logs_bucket = dagster_construct.DagsterS3LoggingBucket(
         scope=dagster_stack,
-        construct_id='DagsterLogBucket',
+        construct_id="DagsterLogBucket",
     )
 
+    dg_host_name = dagster_database_construct.db_instance.db_instance_endpoint_address
     dagster_env_vars = {
         "S3_BUCKET": f"sds-data-{env.account}",
         "SECRET_NAME": db_secret_name,
@@ -504,7 +505,7 @@ def build_sds(
         ),
         "SSM_API_KEY_PARAMETER": "/imap-sdc/batch-jobs/api-key",
         "REPROCESSING_SQS_URL": batch_starter_construct.reprocessing_sqs_url,
-        "DAGSTER_PG_HOST": dagster_database_construct.db_instance.db_instance_endpoint_address,
+        "DAGSTER_PG_HOST": dg_host_name,
         "DAGSTER_COMPUTE_LOG_BUCKET": logs_bucket.logs_bucket.bucket_name,
     }
 
@@ -514,7 +515,7 @@ def build_sds(
         vpc=networking.vpc,
         sg=rds_construct.rds_security_group,
         dagster_env_vars=dagster_env_vars,
-        db_secret=dagster_database_construct.db_secret
+        db_secret=dagster_database_construct.db_secret,
     )
     dagster_ecs_stack.node.add_dependency(dagster_image_construct)
 

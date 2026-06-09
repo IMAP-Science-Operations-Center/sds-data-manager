@@ -1,18 +1,24 @@
 """Common types for pipeline lambdas."""
 
-from dataclasses import asdict, dataclass, field
 import datetime
+from dataclasses import asdict, dataclass, field
 from typing import Any, ClassVar
-import hashlib
-from dagster import AssetKey, AssetExecutionContext, EventRecordsFilter, DagsterEventType
+
 import imap_data_access
+from dagster import (
+    AssetExecutionContext,
+    AssetKey,
+    DagsterEventType,
+    EventRecordsFilter,
+)
+
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
 from sds_data_manager.orchestration import dagster_utilities
-from ..lambda_code.SDSCode.pipeline_lambdas import VALID_CADENCE_STRS
 
 # Date range validation constants
 NEAREST_OPTIONS = ("nd", "np")
 DATE_RANGE_OPTIONS = ("p", "h", "d", "l", *NEAREST_OPTIONS)
+
 
 @dataclass
 class DataSource:
@@ -85,6 +91,7 @@ class DataType:
             self.COLLECTION,
             *imap_data_access.VALID_DATALEVELS,
         ]
+
 
 @dataclass
 class TimeRange:
@@ -209,9 +216,16 @@ class Node:
             raise ValueError(
                 f"Descriptor must be a non-empty string, got '{descriptor}'"
             )
-    
+
+    def to_dagster_name(self) -> str:
+        """Return the dagster asset name."""
+        return (self.source + "_" + self.data_type + "_" + self.descriptor).replace(
+            "-", ""
+        )
+
     def to_dagster_asset(self) -> AssetKey:
-        return AssetKey((self.source + '_' + self.data_type + '_' + self.descriptor).replace('-', ''))  
+        """Return the dagster AssetKey."""
+        return AssetKey(self.to_dagster_name())
 
 
 @dataclass
@@ -335,52 +349,61 @@ class DependencyNode(Node):
                 f"Invalid future '{future}'. Must end with "
                 f"{DATE_RANGE_OPTIONS} and be positive."
             )
-        
-    def get_all_files_in_time_range(self,
-                                    context: AssetExecutionContext,
-                                    start_dt: datetime.datetime,
-                                    end_dt: datetime.datetime) -> list:
-        '''
-        This function will return the metadata of all materialized assets between start_dt and end_dt
-        '''
+
+    def get_all_files_in_time_range(
+        self,
+        context: AssetExecutionContext,
+        start_dt: datetime.datetime,
+        end_dt: datetime.datetime,
+    ) -> list:
+        """Return the metadata of all assets between start_dt and end_dt."""
         metadata = []
-        
-        # Fetch a list of all partition keys that have EVER been materialized for this dependency
-        materialized_partitions = context.instance.get_materialized_partitions(self.to_dagster_asset())
-        
+
+        # Fetch a list of all partition keys that have EVER been materialized
+        materialized_partitions = context.instance.get_materialized_partitions(
+            self.to_dagster_asset()
+        )
+
         if not materialized_partitions:
-            context.log.info(f"Not enought information to process. Missing {self.to_dagster_asset().to_user_string()} in range {str(start_dt)} to {str(end_dt)}")
+            context.log.info(
+                f"""Not enought information to process. Missing
+                    {self.to_dagster_name()}
+                    in range {start_dt!s} to {end_dt!s}"""
+            )
             return []
-        
+
         # Loop through the partitions to determine if they span the time range
         for partition in materialized_partitions:
-            partition_start, partition_end = dagster_utilities.parse_dates_from_partition_key(partition)
-            
+            partition_start, partition_end = (
+                dagster_utilities.parse_dates_from_partition_key(partition)
+            )
+
             if not partition_start or not partition_end:
                 continue
-            
+
             # Apply the overlap logic (StartA < EndB and EndA > StartB)
             if partition_start < end_dt and partition_end > start_dt:
                 context.log.info(f"This partition matches: {partition}")
                 # Fetch the actual materialization record for this overlapping partition
                 mat_event = context.instance.get_event_records(
-                            event_records_filter=EventRecordsFilter(
-                                event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                                asset_key=self.to_dagster_asset(),
-                                asset_partitions=[partition],
-                            ),
-                            limit=1, # The most recent event is returned first
-                        )
+                    event_records_filter=EventRecordsFilter(
+                        event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                        asset_key=self.to_dagster_asset(),
+                        asset_partitions=[partition],
+                    ),
+                    limit=1,  # The most recent event is returned first
+                )
                 if mat_event and mat_event[0].asset_materialization:
                     metadata.append(mat_event[0].asset_materialization.metadata)
 
         return metadata
-        
-    def get_all_files_by_repoint_numbers(self,
-                                        context,
-                                        target_repoints: list[int]):
+
+    def get_all_files_by_repoint_numbers(self, context, target_repoints: list[int]):
+        """Return all metadata of materialized assets for the list of repoints."""
         metadata = []
-        materialized_partitions = context.instance.get_materialized_partitions(self.to_dagster_asset())
+        materialized_partitions = context.instance.get_materialized_partitions(
+            self.to_dagster_asset()
+        )
 
         for partition in materialized_partitions:
             parts = partition.split("_")
@@ -393,22 +416,24 @@ class DependencyNode(Node):
                             asset_key=self.to_dagster_asset(),
                             asset_partitions=[partition],
                         ),
-                        limit=1, # The most recent event is returned first
+                        limit=1,  # The most recent event is returned first
                     )
                     if mat_event and mat_event[0].asset_materialization:
                         metadata.append(mat_event[0].asset_materialization.metadata)
-                
+
         return metadata
-        
+
+
 @dataclass
 class ProcessingJobNode(Node):
     """Representation of an expected processing job.
 
     This class contains information about the expected settings for a single processing
-    job, including inputs, outputs, and the partition to use. 
+    job, including inputs, outputs, and the partition to use.
 
 
     """
+
     inputs: list[DependencyNode]
     outputs: list[DependencyNode]
     partition: str
@@ -421,9 +446,7 @@ class ProcessingJobNode(Node):
     repoint_input: DependencyNode = None
 
     def __post_init__(self):
-        '''
-        We are going to break up the input into different types for easy access in this function
-        '''
+        """Consolidate and modify the inputs."""
         all_inputs = []
         triggering_deps = []
         spice_inputs = []
@@ -432,14 +455,14 @@ class ProcessingJobNode(Node):
         spice_types = []
         for dep in self.inputs:
             all_inputs.append(dep)
-            if dep.source == 'repoint':
+            if dep.source == "repoint":
                 self.repoint_input = dep
-            elif dep.data_type == 'spice':
+            elif dep.data_type == "spice":
                 spice_inputs.append(dep)
                 spice_types.append(dep.source)
-            elif dep.data_type == 'spin':
+            elif dep.data_type == "spin":
                 self.spin_input = dep
-            elif dep.data_type == 'ancillary':
+            elif dep.data_type == "ancillary":
                 ancillary_inputs.append(dep)
             else:
                 science_inputs.append(dep)
@@ -452,6 +475,7 @@ class ProcessingJobNode(Node):
         self.ancillary_inputs = ancillary_inputs
         self.science_inputs = science_inputs
         self.spice_types = spice_types
+
 
 class TriggerEventType:
     """Enum for different trigger event types."""

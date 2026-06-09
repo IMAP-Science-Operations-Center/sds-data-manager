@@ -144,7 +144,9 @@ def lambda_handler(event, context):  # noqa: PLR0912
             result["ingestion_date"] = d.strftime("%Y%m%d %H:%M:%S")
 
         logger.info(
-            "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
+            "Found [%s] Query Search Results: %s",
+            len(search_results),
+            str(search_results),
         )
 
         # Format the response

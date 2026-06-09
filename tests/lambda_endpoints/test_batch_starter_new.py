@@ -3,17 +3,18 @@
 import json
 from datetime import datetime
 
+from sds_data_manager.orchestration.dependency_refactoring.batch_starter import (
+    dependency_hash,
+    determine_job_version,
+    lambda_handler,
+)
+
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     ProcessingJob,
     ScienceFiles,
 )
-from sds_data_manager.orchestration.dependency_refactoring.batch_starter import (  # noqa: E501
-    dependency_hash,
-    determine_job_version,
-    lambda_handler,
-)
-from sds_data_manager.orchestration.types import (  # noqa: E501
+from sds_data_manager.orchestration.types import (
     ProcessingJobNode,
     TimeRange,
 )
