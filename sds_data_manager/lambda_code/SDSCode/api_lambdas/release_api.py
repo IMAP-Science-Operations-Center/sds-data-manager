@@ -238,10 +238,8 @@ def get_latest_ancillary_files(
         ),
     )
 
-    # Combine
-    combined = union_all(with_end_date_query, no_end_date_query).order_by(
-        text("file_path")
-    )
+    # Combine — ORDER BY positional index works across all DB backends for UNION ALL
+    combined = union_all(with_end_date_query, no_end_date_query).order_by(text("1"))
 
     latest_ancillary_files = [row[0] for row in session.execute(combined).fetchall()]
 
