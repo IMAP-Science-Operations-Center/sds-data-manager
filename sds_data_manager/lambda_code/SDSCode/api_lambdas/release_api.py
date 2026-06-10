@@ -105,7 +105,7 @@ def validate_query_params(event):
     }
 
 
-def query_latest_science_files(
+def query_releasable_science_files(
     session,
     instrument,
     start_date,
@@ -113,7 +113,20 @@ def query_latest_science_files(
     release_number,
     science_files_to_exclude=None,
 ):
-    """Query for the latest-version science file paths matching given criteria."""
+    """Query releaseable science files for given release number.
+
+    At every mission wide release, all data that will be released
+    to public should have vRRR.000. Eg. If release 1, all data
+    since launch will now have v001.000. If release 2,
+    all data will have v002.000 and so on.
+
+    In between public release version, version MMM will be used to
+    track updates to intermediate data. eg. After public
+    release 1, data can have v001.001 or v001.012 and so on
+    indicating that data was reprocessed 1 or 12 times respectively
+    since release 1, due to updates, such as input data changed
+    or processing code changed.
+    """
     science_table = models.ScienceFiles
 
     # query for release number for the given instrument and date range
@@ -122,6 +135,7 @@ def query_latest_science_files(
         science_table.start_date >= start_date,
         science_table.start_date <= end_date,
         science_table.release_number == release_number,
+        science_table.data_version == 0,
     )
 
     if science_files_to_exclude:
@@ -325,7 +339,7 @@ def release_type_handler(query_params):
                 exclude_file
             )
 
-        science_files_to_update = query_latest_science_files(
+        science_files_to_update = query_releasable_science_files(
             session,
             instrument,
             start_date,
