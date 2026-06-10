@@ -32,6 +32,7 @@ def _science(
     start_date="20250115",
     released=False,
     release_number=0,
+    data_version=1,
 ):
     session.add(
         models.ScienceFiles(
@@ -40,7 +41,7 @@ def _science(
             data_level="l0",
             descriptor=descriptor,
             start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
-            data_version=1,
+            data_version=data_version,
             release_number=release_number,
             extension="pkts",
             released=released,
@@ -98,32 +99,35 @@ def test_release_all_files_in_date_range(mock_download_read_file, session):
     """
     _science(
         session,
-        file_path="imap/hit/l0/imap_hit_l0_hk_20250110_v001.001.pkts",
+        file_path="imap/hit/l0/imap_hit_l0_hk_20250110_v001.000.pkts",
         instrument="hit",
         descriptor="hk",
         start_date="20250110",
         release_number=1,
+        data_version=0,
     )
     _science(
         session,
-        file_path="imap/hit/l0/imap_hit_l0_sci_20250120_v001.001.pkts",
+        file_path="imap/hit/l0/imap_hit_l0_sci_20250120_v001.000.pkts",
         instrument="hit",
         descriptor="sci",
         start_date="20250120",
         release_number=1,
+        data_version=0,
     )
     _science(
         session,
-        file_path="imap/hit/l0/imap_hit_l0_hk_20250201_v000.001.pkts",
+        file_path="imap/hit/l0/imap_hit_l0_hk_20250201_v001.000.pkts",
         instrument="hit",
         descriptor="hk",
         start_date="20250201",
-        release_number=0,
+        release_number=1,
+        data_version=0,
     )  # outside range
 
     # Provide the manifest file with the two in-range files
     science_files = [
-        "imap/hit/l0/imap_hit_l0_hk_20250110_v001.001.pkts",
+        "imap/hit/l0/imap_hit_l0_hk_20250110_v001.000.pkts",
     ]
     ancillary_files = []
     mock_download_read_file.return_value = (science_files, ancillary_files)
@@ -144,13 +148,13 @@ def test_release_all_files_in_date_range(mock_download_read_file, session):
     assert result["statusCode"] == 200
 
     rows = {r.file_path: r.released for r in session.query(models.ScienceFiles).all()}
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250110_v001.001.pkts"] is False, (
+    assert rows["imap/hit/l0/imap_hit_l0_hk_20250110_v001.000.pkts"] is False, (
         "Excluded in-range file should not be released"
     )
-    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.001.pkts"] is True, (
+    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.000.pkts"] is True, (
         "Non-excluded in-range file should be released"
     )
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v000.001.pkts"] is False, (
+    assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v001.000.pkts"] is False, (
         "Out-of-range file must stay unreleased"
     )
 
@@ -162,13 +166,13 @@ def test_release_all_files_in_date_range(mock_download_read_file, session):
     )
     assert result["statusCode"] == 200
     rows = {r.file_path: r.released for r in session.query(models.ScienceFiles).all()}
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250110_v001.001.pkts"] is True, (
+    assert rows["imap/hit/l0/imap_hit_l0_hk_20250110_v001.000.pkts"] is True, (
         "In-range file should be released"
     )
-    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.001.pkts"] is True, (
+    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.000.pkts"] is True, (
         "In-range file should be released"
     )
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v000.001.pkts"] is False, (
+    assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v001.000.pkts"] is False, (
         "Out-of-range file must stay unreleased"
     )
 
@@ -541,9 +545,9 @@ def test_release_repoint_files_date_range(session):
     """Test multiple repoint files for a single day."""
     # April 7th, Hi has three repoint files with different repointing and data_version
     files = [
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.001.cdf", 209, 1),
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00210_v001.002.cdf", 210, 2),
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.003.cdf", 211, 3),
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.000.cdf", 209, 0),
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00210_v001.000.cdf", 210, 0),
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.000.cdf", 211, 0),
     ]
     for file_path, repointing, version in files:
         session.add(
@@ -564,7 +568,7 @@ def test_release_repoint_files_date_range(session):
     session.commit()
 
     # Query for all files on this date
-    results = release_api.query_latest_science_files(
+    results = release_api.query_releasable_science_files(
         session,
         instrument="hi",
         start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
@@ -573,7 +577,7 @@ def test_release_repoint_files_date_range(session):
     )
     file_paths = sorted([obj.file_path for obj in results])
     assert file_paths == [
-        "imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.001.cdf",
-        "imap_hi_l1a_45sensor-hk_20260407-repoint00210_v001.002.cdf",
-        "imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.003.cdf",
+        "imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.000.cdf",
+        "imap_hi_l1a_45sensor-hk_20260407-repoint00210_v001.000.cdf",
+        "imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.000.cdf",
     ], f"Expected all repoint files, got: {file_paths}"
