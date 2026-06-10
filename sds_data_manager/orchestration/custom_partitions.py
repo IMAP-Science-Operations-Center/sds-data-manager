@@ -1,4 +1,4 @@
-"""This file contains information for working with our custom partitions."""
+"""Contains information for working with our custom partitions."""
 
 import datetime
 
@@ -7,7 +7,6 @@ from dagster import (
     DynamicPartitionsDefinition,
     SensorEvaluationContext,
     SensorResult,
-    StaticPartitionsDefinition,
     sensor,
 )
 
@@ -28,9 +27,7 @@ repoint_partitions = DynamicPartitionsDefinition(name="repoint_partitions")
 
 @sensor(minimum_interval_seconds=600)
 def add_repoint_partitions(context: SensorEvaluationContext):
-    """Periodically polls the PointingTable, and tells dagster that new
-    repoint numbers exist.
-    """
+    """Alert dagster when new repoint partitions should be made."""
     with db.Session() as session:
         pointing_records = session.query(models.PointingTable).all()
 
@@ -78,7 +75,7 @@ daily_partitions = DynamicPartitionsDefinition(name="daily_partitions")
 
 @sensor(minimum_interval_seconds=86400)
 def add_daily_partitions(context: SensorEvaluationContext):
-    """Periodically add daily partitions."""
+    """Alert Dagster when new daily partitions should be made."""
     start_date = context.cursor or config.MISSION_START_TIME
     start_dt = (
         datetime.datetime.fromisoformat(start_date)
@@ -125,9 +122,7 @@ idex10_partitions = DynamicPartitionsDefinition(name="idex_10_day_partitions")
 
 @sensor(minimum_interval_seconds=86400)
 def add_idex_10_day_partitions(context: SensorEvaluationContext):
-    """Periodically polls the PointingTable, and tells dagster that
-    new repoint numbers exist.
-    """
+    """Alert Dagster when new IDEX 10-day partitions should be made."""
     start_date = context.cursor or config.MISSION_START_TIME
     start_dt = datetime.datetime.fromisoformat(start_date).replace(
         tzinfo=datetime.timezone.utc
@@ -188,9 +183,7 @@ idex30_partitions = DynamicPartitionsDefinition(name="idex_30_day_partitions")
 
 @sensor(minimum_interval_seconds=86400)
 def add_idex_30_day_partitions(context: SensorEvaluationContext):
-    """Periodically polls the PointingTable, and tells dagster
-    that new repoint numbers exist.
-    """
+    """Alert Dagster when new IDEX 30-day partitions should be made."""
     start_date = context.cursor or config.MISSION_START_TIME
     start_dt = datetime.datetime.fromisoformat(start_date).replace(
         tzinfo=datetime.timezone.utc
@@ -248,10 +241,6 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
         dynamic_partitions_requests=partition_requests, cursor=end_dt.isoformat()
     )
 
-
-whole_mission_partition = StaticPartitionsDefinition(
-    ["wholemission_2025-09-17T00:00:00_to_2045-09-17T00:00:00"]
-)
 
 sensors = [
     add_repoint_partitions,

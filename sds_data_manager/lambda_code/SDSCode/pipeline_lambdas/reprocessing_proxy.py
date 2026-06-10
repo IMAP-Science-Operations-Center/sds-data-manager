@@ -1,3 +1,5 @@
+"""Forward reprocessing events to Dagster."""
+
 import json
 import logging
 import os
@@ -12,6 +14,7 @@ logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
+    """Forward events to a reprocessing queue."""
     params = event.get("queryStringParameters", {})
 
     logger.info(

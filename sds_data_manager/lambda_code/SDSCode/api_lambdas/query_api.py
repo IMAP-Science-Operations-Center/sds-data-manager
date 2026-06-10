@@ -139,7 +139,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
                 result["end_date"] = result["end_date"].strftime("%Y%m%d")
             d = result["ingestion_date"]
             if d.tzinfo is not None:
-                # If the datetime has a timezone, convert it to UTC and remove the timezone
+                # Convert it to UTC and remove the timezone
                 d = d.astimezone(datetime.timezone.utc).replace(tzinfo=None)
             result["ingestion_date"] = d.strftime("%Y%m%d %H:%M:%S")
 

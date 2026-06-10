@@ -20,7 +20,7 @@ def get_engine():
         sqlalchemy.engine.Engine : Engine
 
     """
-    global _ENGINE
+    global _ENGINE  # noqa: PLW0603
     if _ENGINE is not None:
         return _ENGINE
 

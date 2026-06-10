@@ -1,3 +1,5 @@
+"""Override behavior for HI processing."""
+
 import numpy as np
 from dagster import AssetExecutionContext
 from imap_data_access import processing_input
@@ -10,6 +12,8 @@ HI_GOODTIMES_NUM_NEAREST_REPOINTS = 8
 
 
 class HiGoodtimesJob(imap_job.IMAPJobHandler):
+    """Overriding parts of the Hi processing pipeline."""
+
     # Override this function from IMAPJobHandler
     def get_science_files_inputs(self, context, target_start, target_end):
         """Override the behavior of IMAPJobHander.get_science_files_inputs."""
@@ -150,8 +154,8 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
 
         Parameters
         ----------
-        session : db.Session
-            Database session.
+        context : AssetExecutionContext
+            The Dagster context class
         dependency : DependencyNode
             A dataclass containing the source, data_type, descriptor.
 

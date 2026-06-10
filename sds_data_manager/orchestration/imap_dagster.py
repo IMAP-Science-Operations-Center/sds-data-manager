@@ -1,3 +1,5 @@
+"""The Dagster entrypoint. Builds all assets and sensors."""
+
 from dagster import Definitions
 from imap_data_access import VALID_DATALEVELS
 

@@ -1,3 +1,5 @@
+"""Contains all functions needed to calculate repoint file dependencies."""
+
 import datetime
 import logging
 from contextlib import nullcontext

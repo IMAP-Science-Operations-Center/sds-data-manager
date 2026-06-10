@@ -1,3 +1,5 @@
+"""Contains all functions needed to calculate SPICE files dependencies."""
+
 import datetime
 import json
 import logging

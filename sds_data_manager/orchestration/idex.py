@@ -1,3 +1,5 @@
+"""Override behavior for IDEX processing."""
+
 import datetime
 import os
 

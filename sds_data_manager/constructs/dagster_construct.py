@@ -1,3 +1,4 @@
+"""Construct resources needed for Dagster."""
 #!/usr/bin/env python3
 
 import aws_cdk as cdk
@@ -135,7 +136,7 @@ class DagsterDockerImageConstruct(Construct):
 
 
 class DagsterDatabaseConstruct(Construct):
-    """Construct the database Dagster needs to keep track of processing state"""
+    """Construct the database Dagster needs to keep track of processing state."""
 
     def __init__(
         self,
@@ -167,7 +168,7 @@ class DagsterDatabaseConstruct(Construct):
             self,
             "DagsterDatabaseSecret",
             generate_secret_string=secretsmanager.SecretStringGenerator(
-                secret_string_template='{"username":"dagster"}',
+                secret_string_template='{"username":"dagster"}',  # noqa: S106
                 generate_string_key="password",
                 exclude_characters='"@/\\',
             ),
@@ -189,12 +190,12 @@ class DagsterDatabaseConstruct(Construct):
             credentials=rds.Credentials.from_secret(self.db_secret),
             database_name="dagster",
             security_groups=[sg],
-            removal_policy=RemovalPolicy.RETAIN,  # Retain data on stack updates/destroy
+            removal_policy=RemovalPolicy.RETAIN,  # Retain data on stack updates
         )
 
 
 class DagsterS3LoggingBucket(Construct):
-    """Construct the database Dagster needs to store logs from asset runs"""
+    """Construct the database Dagster needs to store logs from asset runs."""
 
     def __init__(
         self,
@@ -238,6 +239,7 @@ class DagsterEcsConstruct(Construct):
         db_secret,
         **kwargs,
     ) -> None:
+        """Initialize the Construct."""
         super().__init__(scope, construct_id, **kwargs)
 
         # ECS Cluster

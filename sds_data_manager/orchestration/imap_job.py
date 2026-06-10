@@ -97,7 +97,7 @@ partition_map = {
     # later
     "3mo": custom_partitions.idex30_partitions,
     "6mo": custom_partitions.idex30_partitions,
-    "1yr": custom_partitions.whole_mission_partition,
+    "1yr": custom_partitions.idex30_partitions,
 }
 
 
