@@ -1,4 +1,4 @@
-"""Construct for creating instrument queues and attaching batch_starter as a target."""
+"""Construct for creating queues."""
 
 from aws_cdk import Duration, aws_sqs
 from aws_cdk import aws_events as events

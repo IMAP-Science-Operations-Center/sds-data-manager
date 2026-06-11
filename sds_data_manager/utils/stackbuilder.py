@@ -35,7 +35,6 @@ from sds_data_manager.constructs import (
     packet_downloader_lambda_construct,
     processing_construct,
     route53_hosted_zone,
-    scheduled_job_lambda,
     sds_api_manager_construct,
     spice_monitoring_construct,
     website_hosting,
@@ -288,9 +287,9 @@ def build_sds(
                 f"{instrument.lower()}{step}", data_access_url=api_key_data_access_url
             )
 
-    batch_starter_construct = instrument_lambdas.BatchStarterLambda(
+    batch_starter_construct = instrument_lambdas.ReprocessingTools(
         scope=sdc_stack,
-        construct_id="BatchStarterLambda",
+        construct_id="ReprocessingTools",
         env=env,
         api=api,
         data_bucket=data_bucket.data_bucket,
@@ -299,18 +298,6 @@ def build_sds(
         rds_security_group=rds_construct.rds_security_group,
         vpc=networking.vpc,
         sqs_queues=[],
-        layers=[db_lambda_layer, spice_lambda_layer],
-    )
-
-    scheduled_job_lambda.ScheduledJobLambda(
-        scope=sdc_stack,
-        construct_id="ScheduledJobLambda",
-        env=env,
-        data_bucket=data_bucket.data_bucket,
-        code=lambda_code,
-        rds_construct=rds_construct,
-        rds_security_group=rds_construct.rds_security_group,
-        vpc=networking.vpc,
         layers=[db_lambda_layer, spice_lambda_layer],
     )
 

@@ -17,7 +17,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
     Base,
     SPICEFiles,
 )
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
+from sds_data_manager.orchestration import imap_job
 
 BUCKET_NAME = "test-data-bucket"
 
@@ -147,7 +147,7 @@ def ecr_client():
                 imageDigest=f"sha256:123example{instrument}digest",
             )
         with (
-            patch.object(batch_starter, "ECR_CLIENT", ecr_client),
+            patch.object(imap_job, "ECR_CLIENT", ecr_client),
         ):
             yield ecr_client
 
@@ -175,7 +175,7 @@ def batch_client():
     # Mock describe_job_definitions to return a valid job definition
     mock_batch_client.describe_job_definitions.side_effect = get_job_definition
     with (
-        patch.object(batch_starter, "BATCH_CLIENT", mock_batch_client),
+        patch.object(imap_job, "BATCH_CLIENT", mock_batch_client),
     ):
         yield mock_batch_client
 
@@ -184,10 +184,8 @@ def batch_client():
 def mock_upload_request_success():
     """Fixture to mock upload_api and requests.put for successful uploads."""
     with (
-        patch.object(batch_starter, "upload_api") as mock_upload_api,
-        patch(
-            "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.requests"
-        ) as mock_requests,
+        patch.object(imap_job, "upload_api") as mock_upload_api,
+        patch("sds_data_manager.orchestration.imap_job.requests") as mock_requests,
     ):
         mock_upload_api.lambda_handler.return_value = {
             "statusCode": 200,

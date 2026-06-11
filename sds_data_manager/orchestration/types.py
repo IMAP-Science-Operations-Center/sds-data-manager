@@ -438,7 +438,7 @@ class ProcessingJobNode(Node):
     outputs: list[DependencyNode]
     partition: str
     spice_types: list[str] = None
-    triggering_deps: list[DependencyNode] = None
+    triggering_deps: list[DependencyNode] = None  # Dependencies that trigger processing
     science_inputs: list[DependencyNode] = None
     ancillary_inputs: list[DependencyNode] = None
     spice_inputs: list[DependencyNode] = None

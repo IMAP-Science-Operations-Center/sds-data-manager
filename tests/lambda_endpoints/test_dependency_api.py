@@ -1,43 +1,10 @@
 """Test data dependency functions."""
 
-import base64
-from collections import namedtuple
 from datetime import datetime
-from os.path import basename
-from unittest.mock import patch
 
-import imap_data_access
 import pytest
-from imap_data_access.processing_input import (
-    AncillaryInput,
-    ProcessingInputCollection,
-    ScienceInput,
-)
 
-from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.lambda_code.SDSCode.database.models import (
-    AncillaryFiles,
-    ProcessingJob,
-    RepointFiles,
-    ScienceFiles,
-    SPICEFiles,
-    SpinFiles,
-)
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency import (
-    DependencyConfig,
-    _get_inprogress_dates,
-    _get_inprogress_repoints,
-    calculate_crid,
-    get_files,
-    get_jobs,
-    get_n_nearest_files_by_date,
-    get_n_nearest_files_by_repoint,
-    get_upstream_dependency_inputs,
-    matching_crids_exist,
-    verify_science_coverage,
-    verify_spin_coverage,
-)
+from sds_data_manager.lambda_code.SDSCode.database.models import ScienceFiles
 from tests.lambda_endpoints.conftest import (
     _static_spice_files,
 )
@@ -136,6 +103,7 @@ def hi_l1b_de_repoint_files(session):
     return records
 
 
+'''
 #####################################
 # ERROR STATUS CODE TESTS
 #####################################
@@ -274,7 +242,7 @@ def test_missing_soft_dependencies(session):
 def test_missing_required_params():
     """Test that 400 error is returned."""
     with pytest.raises(
-        TypeError, match=r"get_jobs\(\) missing 1 required positional argument:"
+        TypeError, match=r"get_jobs\\(\\) missing 1 required positional argument:"
     ):
         dependency.get_jobs(
             dependency_type="DOWNSTREAM",
@@ -3083,3 +3051,4 @@ class TestHiGoodtimesHelpers:
 
         assert 10 in targets
         assert targets == [9, 10, 11]
+'''

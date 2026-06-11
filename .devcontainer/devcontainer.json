@@ -15,5 +15,5 @@
 		}
 	},
 	"forwardPorts": [6080],
-    "postCreateCommand": "poetry install && poetry install --with layer-database && poetry install --with layer-spice && poetry install --with layer-processing && poetry install --with cdk-install && poetry install --extras dev"
+    "postCreateCommand": "poetry install && poetry install --with layer-database && poetry install --with layer-spice && poetry install --with layer-processing && poetry install --with cdk-install && poetry install --extras dev --extras test"
 }

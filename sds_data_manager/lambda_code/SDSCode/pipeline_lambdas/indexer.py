@@ -17,7 +17,6 @@ from imap_data_access import (
 
 from ..database import database as db
 from ..database import models
-from .dependency import calculate_crid
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup
@@ -207,7 +206,7 @@ def s3_event_handler(event):
         with db.Session() as session, session.begin():
             science_file = models.ScienceFiles(**params)
             session.add(science_file)
-            crid = calculate_crid(session, science_file)
+            crid = None
             science_file.crid = crid
         logger.info("Wrote data to the ScienceFiles table")
 

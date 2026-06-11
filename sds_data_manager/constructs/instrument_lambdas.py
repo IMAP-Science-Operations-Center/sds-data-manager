@@ -19,12 +19,10 @@ from constructs import Construct
 
 from sds_data_manager.constructs.api_gateway_construct import ApiGateway
 from sds_data_manager.constructs.database_construct import SdpDatabase
-from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
-    CadenceDays,
-)
+from sds_data_manager.orchestration.config import CadenceDays
 
 
-class BatchStarterLambda(Construct):
+class ReprocessingTools(Construct):
     """Generic Construct with customizable runtime code."""
 
     def __init__(
@@ -42,7 +40,7 @@ class BatchStarterLambda(Construct):
         layers: list,
         **kwargs,
     ):
-        """BatchStarterLambda Constructor.
+        """ReprocessingTools Constructor.
 
         Parameters
         ----------
@@ -74,51 +72,9 @@ class BatchStarterLambda(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
-        # Define Lambda Environment Variables
-        lambda_environment = {
-            "S3_BUCKET": f"{data_bucket.bucket_name}",
-            "SECRET_NAME": rds_construct.rds_creds.secret_name,
-            "ACCOUNT": f"{env.account}",
-            "REGION": f"{env.region}",
-        }
         # Lambda should use private subnet
         subnet = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
 
-        self.instrument_lambda = lambda_.Function(
-            self,
-            "BatchStarterLambda",
-            function_name="BatchStarterLambda",
-            code=code,
-            handler="SDSCode.pipeline_lambdas.batch_starter.lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            environment=lambda_environment,
-            memory_size=512,
-            # Set max to 15 mins temporarily for the 3 month map cadence job.
-            # TODO determine if we need 15 mins or if we can reduce this.
-            timeout=Duration.minutes(15),
-            vpc=vpc,
-            vpc_subnets=subnet,
-            security_groups=[rds_security_group],
-            allow_public_subnet=True,
-            layers=layers,
-        )
-
-        # Permissions to send event to EventBridge
-        # and submit batch job
-        lambda_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
-            actions=[
-                "events:PutEvents",
-                "batch:SubmitJob",
-                "batch:DescribeJobDefinitions",
-                "ecr:DescribeImages",
-            ],
-            resources=[
-                "*",
-            ],
-        )
-        self.instrument_lambda.add_to_role_policy(lambda_policy)
-        data_bucket.grant_read_write(self.instrument_lambda)
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", rds_construct.secret_name
         )

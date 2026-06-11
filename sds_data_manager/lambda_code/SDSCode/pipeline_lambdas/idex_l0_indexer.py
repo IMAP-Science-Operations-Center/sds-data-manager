@@ -45,7 +45,6 @@ from imap_processing.spice.time import met_to_datetime64
 from ..database import database as db
 from ..database import models
 from ..spice_utilities import download_from_s3, furnish_best_spice_file
-from .dependency import calculate_crid
 from .indexer import get_file_ingestion_date, http_response
 
 # Logger setup
@@ -94,7 +93,7 @@ def write_science_metadata_to_table(filename: str, s3_filepath: str) -> dict:
     with db.Session() as session, session.begin():
         science_file = models.ScienceFiles(**params)
         session.add(science_file)
-        crid = calculate_crid(session, science_file)
+        crid = None
         science_file.crid = crid
 
     logger.info("Wrote data to the ScienceFiles table")
