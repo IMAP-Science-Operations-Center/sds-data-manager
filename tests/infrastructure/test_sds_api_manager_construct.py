@@ -43,6 +43,6 @@ def template(stack, env):
 
 def test_indexer_role(template):
     """Ensure that the template has appropriate IAM roles."""
-    template.resource_count_is("AWS::IAM::Role", 13)
+    template.resource_count_is("AWS::IAM::Role", 14)
     # Ensure that the template has appropriate lambda count
-    template.resource_count_is("AWS::Lambda::Function", 12)
+    template.resource_count_is("AWS::Lambda::Function", 13)
