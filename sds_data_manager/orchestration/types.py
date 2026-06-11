@@ -498,21 +498,37 @@ class ProcessingJobType:
 
 @dataclass(frozen=True)
 class MapWindow:
-    """Represent a cadence window with explicit datetime boundaries."""
+    """Represent an ENA map cadence window with explicit date range."""
 
     cadence: str
     start: datetime.datetime
     end: datetime.datetime
 
-    def to_partition_key(self) -> str:
+    def to_partition_name(self) -> str:
         """Convert this window to a Dagster partition key string."""
         start_str = self.start.strftime("%Y-%m-%dT%H:%M:%S")
         end_str = self.end.strftime("%Y-%m-%dT%H:%M:%S")
         return f"cadence_{self.cadence}_{start_str}_to_{end_str}"
 
 
-class BaseMapJob:
-    """Base class for a single map type definition."""
+class BaseENAMapPartition:
+    """Base class for defining ENA map partition windows.
+
+    This class provides common utilities for map jobs to determine the
+    current map window or retrieve all windows for a given cadence. Map
+    windows are used to construct Dagster cadence-based partition names.
+
+    For example, given a current time, the class derives values such as
+    ``year`` and ``year_plus_1`` that are substituted into partition name
+    templates, e.g.:
+
+        "cadence_3mo_{year}-10-17T00:00:00_to_{year_plus_1}-01-17T00:00:00"
+
+    It also provides methods to get all windows for a cadence and determine
+    the active window based on the current time. This allows the
+    Dagster orchestration code to dynamically determine which map
+    partition name to use when starting a map job.
+    """
 
     cadence: ClassVar[str]
     partitions: ClassVar[tuple[str, ...]]
@@ -522,6 +538,14 @@ class BaseMapJob:
         self.current_time = current_time
 
     def _year_values(self) -> dict[str, int]:
+        """Derive year value from the current time.
+
+        Year is used to fill in the partition templates. For example,
+        1yr cadence partitions are defined as:
+            'cadence_1yr_{year}-01-17T00:00:00_to_{year_plus_1}-01-17T00:00:00'
+        The keys are used to substitute the year values in the partition
+        templates.
+        """
         current_year = self.current_time.year
         return {
             "year": current_year,
@@ -529,8 +553,27 @@ class BaseMapJob:
         }
 
     def get_windows(self) -> list[MapWindow]:
-        """Build all configured windows for this cadence type."""
+        """Build all configured windows for the cadence type.
+
+        Based on the current time's year, generate cadence windows
+        for the cadence. Eg.
+            - For 3mo cadence, it will generate 4 windows:
+                - Jan 17 to Apr 18
+                - Apr 18 to Jul 18
+                - Jul 18 to Oct 17
+                - Oct 17 to Jan 17 of the next year
+            - For 6mo cadence, it will generate 2 windows:
+                - Jan 17 to Jul 18
+                - Jul 18 to Jan 17 of the next year
+            - For 1yr cadence, it will generate 1 window:
+                - Jan 17 to Jan 17 of the next year
+        """
         windows: list[MapWindow] = []
+        # Use self.partitions to get the template of the partition
+        # name. Then fill in the template with the year values
+        # to get the actual window's date range. Finally
+        # construct the MapWindow object with the cadence and
+        # the date range.
         for template in self.partitions:
             partition_name = template.format(**self._year_values())
             prefix = f"cadence_{self.cadence}_"
@@ -548,15 +591,22 @@ class BaseMapJob:
         return windows
 
     def get_current_window(self) -> MapWindow | None:
-        """Return the active map window for current_time, if it exists."""
+        """Return the active map window for current_time.
+
+        Active window is defined relative to the current time.
+        For example, if current time is June 1, 2025 and cadence
+        is 3mo, the active window would be the one that starts
+        on Apr 18, 2025 and ends on Jul 18, 2025. Similarly for
+        6mo or 1yr cadence.
+        """
         for window in self.get_windows():
             if window.start <= self.current_time < window.end:
                 return window
         return None
 
 
-class Map3MoJob(BaseMapJob):
-    """Map definition for 3-month partitions."""
+class Map3MoPartition(BaseENAMapPartition):
+    """3-month map partitions."""
 
     cadence: ClassVar[str] = "3mo"
     partitions: ClassVar[tuple[str, ...]] = (
@@ -570,8 +620,8 @@ class Map3MoJob(BaseMapJob):
     )
 
 
-class Map6MoJob(BaseMapJob):
-    """Map definition for 6-month partitions."""
+class Map6MoPartition(BaseENAMapPartition):
+    """6-month map partitions."""
 
     cadence: ClassVar[str] = "6mo"
     partitions: ClassVar[tuple[str, ...]] = (
@@ -582,106 +632,11 @@ class Map6MoJob(BaseMapJob):
     )
 
 
-class Map1YrJob(BaseMapJob):
-    """Map definition for 1-year partitions."""
+class Map1YrPartition(BaseENAMapPartition):
+    """1-year map partitions."""
 
     cadence: ClassVar[str] = "1yr"
     partitions: ClassVar[tuple[str, ...]] = (
         # Partition is always 365 days (or 366 on leap year).
         "cadence_1yr_{year}-01-17T00:00:00_to_{year_plus_1}-01-17T00:00:00",
     )
-
-
-class MapJobs:
-    """IMAP map specific job implementations."""
-
-    _CADENCE_PRIORITY: ClassVar[tuple[str, ...]] = ("3mo", "6mo", "1yr")
-    _CADENCE_TYPES: ClassVar[dict[str, type[BaseMapJob]]] = {
-        "3mo": Map3MoJob,
-        "6mo": Map6MoJob,
-        "1yr": Map1YrJob,
-    }
-
-    def __init__(
-        self,
-        current_time: datetime.datetime | None = None,
-    ):
-        """Initialize map computation for the provided timestamp."""
-        if current_time is None:
-            current_time = datetime.datetime.now(tz=datetime.timezone.utc)
-        if current_time.tzinfo is None:
-            current_time = current_time.replace(tzinfo=datetime.timezone.utc)
-
-        self.current_time = current_time
-
-    def _get_map_job(self, cadence_str: str) -> BaseMapJob:
-        """Return the map-specific subclass instance for the given key."""
-        cadence_type = self._CADENCE_TYPES.get(cadence_str)
-        if cadence_type is None:
-            raise ValueError(
-                "Invalid cadence: "
-                f"{cadence_str}. Valid cadences are: "
-                f"{list(self._CADENCE_TYPES.keys())}"
-            )
-        return cadence_type(self.current_time)
-
-    def get_current_window(self, cadence_str: str) -> MapWindow | None:
-        """Return the active map window for current_time, if it exists."""
-        return self._get_map_job(cadence_str).get_current_window()
-
-    def get_map_partitions_to_create(self, cadence_str: str) -> list[str]:
-        """Return the most recently closed partition for a cadence, if any."""
-        # TODO: if we go into progressive maps approach, we don't need this.
-        # If end date of active window is in the past, we can create the
-        # partition and trigger map job. If end date is in the future, we
-        # should not create the partition yet.
-        windows = self._get_map_job(cadence_str).get_windows()
-        closed_windows = [
-            window for window in windows if window.end <= self.current_time
-        ]
-        if closed_windows:
-            latest_closed = max(closed_windows, key=lambda window: window.end)
-            return [latest_closed.to_partition_key()]
-        return []
-
-    def get_progressive_map_partition_names(
-        self,
-    ) -> list[str]:
-        """Return progressive map partition names, deduping identical date ranges."""
-        progressive_partitions: list[str] = []
-        seen_ranges: set[tuple[datetime.datetime, datetime.datetime]] = set()
-        current_time_str = self.current_time.strftime("%Y-%m-%dT%H:%M:%S")
-
-        for cadence_str in self._CADENCE_PRIORITY:
-            active_window = self.get_current_window(cadence_str)
-            if not active_window:
-                continue
-
-            partition_range = (active_window.start, self.current_time)
-            if partition_range in seen_ranges:
-                continue
-
-            seen_ranges.add(partition_range)
-            start_date_str = active_window.start.strftime("%Y-%m-%dT%H:%M:%S")
-            progressive_partitions.append(
-                f"cadence_{cadence_str}_{start_date_str}_to_{current_time_str}"
-            )
-
-        return progressive_partitions
-
-
-print(
-    MapJobs(
-        current_time=datetime.datetime(
-            2026, 7, 18, 0, 0, 0, tzinfo=datetime.timezone.utc
-        )
-    ).get_map_partitions_to_create("3mo")
-)
-print(MapJobs().get_map_partitions_to_create("6mo"))
-print(MapJobs().get_progressive_map_partition_names())
-
-# Output of above print statements:
-# ['cadence_3mo_2026-04-18T00:00:00_to_2026-07-18T00:00:00']
-# []
-# ['cadence_3mo_2026-04-18T00:00:00_to_2026-06-02T23:50:40',
-#  'cadence_6mo_2026-01-17T00:00:00_to_2026-06-02T23:50:40']
