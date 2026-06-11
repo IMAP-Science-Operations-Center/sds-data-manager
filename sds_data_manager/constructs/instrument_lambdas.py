@@ -4,22 +4,13 @@ import datetime
 
 from aws_cdk import Duration, Environment
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import (
-    aws_iam as iam,
-)
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_s3 as s3
-from aws_cdk import (
-    aws_scheduler as scheduler,
-)
-from aws_cdk import aws_secretsmanager as secrets
 from aws_cdk import aws_sqs as sqs
-from aws_cdk.aws_lambda_event_sources import SqsEventSource
 from constructs import Construct
 
 from sds_data_manager.constructs.api_gateway_construct import ApiGateway
 from sds_data_manager.constructs.database_construct import SdpDatabase
-from sds_data_manager.orchestration.config import CadenceDays
 
 
 class ReprocessingTools(Construct):
@@ -75,11 +66,6 @@ class ReprocessingTools(Construct):
         # Lambda should use private subnet
         subnet = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
 
-        rds_secret = secrets.Secret.from_secret_name_v2(
-            self, "rds_secret", rds_construct.secret_name
-        )
-        rds_secret.grant_read(grantee=self.instrument_lambda)
-
         # This sets up the lambda to be triggered by the SQS queues. Since they are FIFO
         # queues, each instrument will have messages processed in order. However,
         # different instruments will be processed in parallel, with multiple instances
@@ -87,8 +73,6 @@ class ReprocessingTools(Construct):
         # The nominal case is for there to be a file arrived queue and a delayed
         # file arrived queue. On the batch starter side, all events will look the
         # same from the two queues.
-        for q in sqs_queues:
-            self.instrument_lambda.add_event_source(SqsEventSource(q))
 
         # Send reprocessing events to a sqs that dagster can poll from.
         # Create a dead letter queue to save messages that could not be processed.
@@ -154,23 +138,13 @@ class ReprocessingTools(Construct):
             http_method="POST",
             lambda_function=self.reprocessing_proxy_lambda,
         )
-
-        # Set up eventBridge rules to trigger batch starter lambda.
-        # create a permission for Scheduled rules
-        self.instrument_lambda.add_permission(
-            "AllowEventBridgeInvokeScheduled",
-            principal=iam.ServicePrincipal("events.amazonaws.com"),
-            action="lambda:InvokeFunction",
-            source_arn=f"arn:aws:events:{env.region}:{env.account}:rule/ProcessingScheduledJob*",
-        )
+        """
         # Create IAM role for EventBridge Scheduler
         scheduler_role = iam.Role(
             scope=scope,
             id="SchedulerExecutionRole",
             assumed_by=iam.ServicePrincipal("scheduler.amazonaws.com"),
         )
-
-        self.instrument_lambda.grant_invoke(scheduler_role)
 
         # Many l2 jobs create maps and need 3-12 months worth of data to run.
         # Create eventBridge rules to trigger:
@@ -230,6 +204,7 @@ class ReprocessingTools(Construct):
                 ),
                 state="ENABLED",
             )
+        """
 
 
 def calculate_next_run(first_job, today, interval_minutes):
