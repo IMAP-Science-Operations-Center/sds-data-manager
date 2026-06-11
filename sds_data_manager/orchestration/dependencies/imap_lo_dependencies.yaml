@@ -470,3 +470,14 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr
+
+(l3, all-maps):
+  partition: 1yr
+  inputs:
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-ena-h-hf-sp-ram-hae-6deg-1yr

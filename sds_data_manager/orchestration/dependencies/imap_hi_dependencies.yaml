@@ -1003,3 +1003,25 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: hic-spx-h-hf-sp-full-hae-6deg-1yr
+
+(l3, sp-maps):
+  partition: 1yr
+  inputs:
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+  outputs:
+    - source: hi
+      data_type: l3
+      descriptor: h90-spx-h-hf-sp-full-hae-6deg-6mo
+
+(l3, hic-maps):
+  partition: 1yr
+  inputs:
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+  outputs:
+    - source: hi
+      data_type: l3
+      descriptor: hic-ena-h-hf-nsp-full-hae-6deg-1yr

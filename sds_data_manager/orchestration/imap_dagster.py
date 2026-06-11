@@ -3,7 +3,13 @@
 from dagster import Definitions
 from imap_data_access import VALID_DATALEVELS
 
-from sds_data_manager.orchestration import custom_partitions, hi, idex, reprocessing
+from sds_data_manager.orchestration import (
+    custom_partitions,
+    hi,
+    idex,
+    l3_jobs,
+    reprocessing,
+)
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
 )
@@ -42,6 +48,27 @@ for potential_job in all_jobs:
         ):  # Skip maps for now
             if "goodtimes" in descriptor and source == "hi" and data_type == "l1b":
                 job = hi.HiGoodtimesJob(dependency_config._config[potential_job])
+            if (
+                source == "glows"
+                and descriptor == "ion-rate-profile"
+                and data_type == "l3b"
+            ):
+                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
+            if source == "lo" and descriptor == "all-maps" and data_type == "l3":
+                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
+            if source == "hi" and descriptor == "sp-maps" and data_type == "l3":
+                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
+            if source == "hi" and descriptor == "hic-maps" and data_type == "l3":
+                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
+            if source == "ultra" and descriptor == "u45-maps" and data_type == "l3":
+                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
+            if source == "ultra" and descriptor == "u90-maps" and data_type == "l3":
+                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
+            if source == "ultra" and descriptor == "ulc-sp-maps" and data_type == "l3":
+                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
+            if source == "ultra" and descriptor == "ulc-nsp-maps" and data_type == "l3":
+                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
+
             else:
                 job = IMAPJobHandler(dependency_config._config[potential_job])
 

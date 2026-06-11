@@ -143,3 +143,13 @@ hist_spice: &hist_spice
       data_type: l3a
       descriptor: hist
 
+(l3b, ion-rate-profile):
+  partition: repoint
+  inputs:
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+  outputs:
+    - source: glows
+      data_type: l3b
+      descriptor: ion-rate-profile
