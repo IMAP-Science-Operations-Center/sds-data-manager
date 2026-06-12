@@ -1774,7 +1774,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       descriptor: ulc-spx-h-hf-sp-full-hae-6deg-6mo
 
 (l3, u45-maps):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: repoint
       data_type: repoint
@@ -1785,7 +1785,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       descriptor: u45-ena-h-sf-sp-full-hae-6deg-1yr
 
 (l3, u90-maps):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: repoint
       data_type: repoint
@@ -1796,7 +1796,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       descriptor: u90-ena-h-sf-sp-full-hae-6deg-1yr
 
 (l3, ulc-sp-maps):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: repoint
       data_type: repoint
@@ -1807,7 +1807,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       descriptor: ulc-ena-h-hf-sp-full-hae-6deg-1yr
 
 (l3, ulc-nsp-maps):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: repoint
       data_type: repoint

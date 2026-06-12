@@ -1005,7 +1005,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: hic-spx-h-hf-sp-full-hae-6deg-1yr
 
 (l3, sp-maps):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: repoint
       data_type: repoint
@@ -1016,7 +1016,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       descriptor: h90-spx-h-hf-sp-full-hae-6deg-6mo
 
 (l3, hic-maps):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: repoint
       data_type: repoint

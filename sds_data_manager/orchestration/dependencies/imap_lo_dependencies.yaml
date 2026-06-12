@@ -472,7 +472,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr
 
 (l3, all-maps):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: repoint
       data_type: repoint

@@ -144,7 +144,7 @@ hist_spice: &hist_spice
       descriptor: hist
 
 (l3b, ion-rate-profile):
-  partition: repoint
+  partition: daily
   inputs:
     - source: repoint
       data_type: repoint

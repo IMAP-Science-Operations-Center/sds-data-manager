@@ -34,7 +34,6 @@ dependencies = [
     "imap-data-access>=0.41.0",
     "boto3>=1.26.78,<2",
     "SQLAlchemy<=3.0.0",
-    "pandas (>=3.0.3,<4.0.0)",
 ]
 
 [tool.poetry]
@@ -84,6 +83,7 @@ spiceypy = "^6.0.0"
 
 [tool.poetry.group.layer-processing.dependencies]
 imap-processing = "1.0.32"
+pandas = ">=3.0.3,<4.0.0"
 
 
 [tool.poetry.group.layer-idex-processing.dependencies]
@@ -92,6 +92,7 @@ spiceypy = "^6.0.0"
 sqlalchemy = "^2.0.49"
 psycopg2-binary = "^2.9.12"
 psycopg = "^3.3.4"
+pandas = ">=3.0.3,<4.0.0"
 
 [project.urls]
 homepage = "https://github.com/IMAP-Science-Operations-Center"

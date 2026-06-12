@@ -287,20 +287,6 @@ def build_sds(
                 f"{instrument.lower()}{step}", data_access_url=api_key_data_access_url
             )
 
-    batch_starter_construct = instrument_lambdas.ReprocessingTools(
-        scope=sdc_stack,
-        construct_id="ReprocessingTools",
-        env=env,
-        api=api,
-        data_bucket=data_bucket.data_bucket,
-        code=lambda_code,
-        rds_construct=rds_construct,
-        rds_security_group=rds_construct.rds_security_group,
-        vpc=networking.vpc,
-        sqs_queues=[],
-        layers=[db_lambda_layer, spice_lambda_layer],
-    )
-
     # Create lambda that mounts EFS and writes SPICE files to the EFS and the database
     indexer_lambda_construct.SPICEIndexerLambda(
         scope=sdc_stack,
@@ -448,6 +434,16 @@ def build_sds(
         account_name=account_name,
     )
 
+    reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(
+        scope=sdc_stack,
+        construct_id="ReprocessingTools",
+        api=api,
+        code=lambda_code,
+        rds_security_group=rds_construct.rds_security_group,
+        vpc=networking.vpc,
+        layers=[db_lambda_layer, spice_lambda_layer],
+    )
+
     # Dagster Stack
     dagster_stack = Stack(scope, "DagsterStack", cross_region_references=True, env=env)
 
@@ -491,7 +487,7 @@ def build_sds(
             "imap_data_access_url", "https://api.dev.imap-mission.com"
         ),
         "SSM_API_KEY_PARAMETER": "/imap-sdc/batch-jobs/api-key",
-        "REPROCESSING_SQS_URL": batch_starter_construct.reprocessing_sqs_url,
+        "REPROCESSING_SQS_URL": reprocessing_tools_construct.reprocessing_sqs_url,
         "DAGSTER_PG_HOST": dg_host_name,
         "DAGSTER_COMPUTE_LOG_BUCKET": logs_bucket.logs_bucket.bucket_name,
     }

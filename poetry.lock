@@ -2308,7 +2308,7 @@ version = "2.4.6"
 description = "Fundamental package for array computing in Python"
 optional = false
 python-versions = ">=3.11"
-groups = ["main", "layer-idex-processing", "layer-processing", "layer-spice"]
+groups = ["layer-idex-processing", "layer-processing", "layer-spice"]
 files = [
     {file = "numpy-2.4.6-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:0280e0356c0829a18d9de1cb7eee50ec22ca639878d7240307ca0943d73cd2c4"},
     {file = "numpy-2.4.6-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:110f8b71aacb688ec69062bb7f6938a0f8acb01b7c1c4beb453c65b6d234584d"},
@@ -2403,7 +2403,7 @@ version = "3.0.3"
 description = "Powerful data structures for data analysis, time series, and statistics"
 optional = false
 python-versions = ">=3.11"
-groups = ["main", "layer-idex-processing", "layer-processing"]
+groups = ["layer-idex-processing", "layer-processing"]
 files = [
     {file = "pandas-3.0.3-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:455f6f8139d4282188f526868dbc3c828470e88a3d9d59a891bd46a455f21b98"},
     {file = "pandas-3.0.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:4e15135e2ee5df1063313e2425ceef8ac0f4ae775893815b0923651b806a5639"},
@@ -4070,12 +4070,12 @@ version = "2026.2"
 description = "Provider of IANA time zone data"
 optional = false
 python-versions = ">=2"
-groups = ["main", "cdk-install", "layer-database", "layer-idex-processing", "layer-processing"]
+groups = ["cdk-install", "layer-database", "layer-idex-processing", "layer-processing"]
 files = [
     {file = "tzdata-2026.2-py2.py3-none-any.whl", hash = "sha256:bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7"},
     {file = "tzdata-2026.2.tar.gz", hash = "sha256:9173fde7d80d9018e02a662e168e5a2d04f87c41ea174b139fbef642eda62d10"},
 ]
-markers = {main = "sys_platform == \"win32\" or sys_platform == \"emscripten\"", layer-database = "sys_platform == \"win32\"", layer-idex-processing = "sys_platform == \"win32\" or sys_platform == \"emscripten\"", layer-processing = "sys_platform == \"win32\" or sys_platform == \"emscripten\""}
+markers = {layer-database = "sys_platform == \"win32\"", layer-idex-processing = "sys_platform == \"win32\" or sys_platform == \"emscripten\"", layer-processing = "sys_platform == \"win32\" or sys_platform == \"emscripten\""}
 
 [[package]]
 name = "universal-pathlib"
@@ -4650,4 +4650,4 @@ tool = ["alembic"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "4fd021d9deef9379b917e5b9d49776f79c9561aa2853e0e5e660e2560258a66a"
+content-hash = "13767a152b2146a46f463fa18e7a2ddeafdb89c5e54fc970925d274b716369b6"

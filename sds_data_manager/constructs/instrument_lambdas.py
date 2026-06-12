@@ -2,15 +2,13 @@
 
 import datetime
 
-from aws_cdk import Duration, Environment
+from aws_cdk import Duration
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_sqs as sqs
 from constructs import Construct
 
 from sds_data_manager.constructs.api_gateway_construct import ApiGateway
-from sds_data_manager.constructs.database_construct import SdpDatabase
 
 
 class ReprocessingTools(Construct):
@@ -20,14 +18,10 @@ class ReprocessingTools(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        env: Environment,
         api: ApiGateway,
-        data_bucket: s3.Bucket,
         code: lambda_.Code,
-        rds_construct: SdpDatabase,
         rds_security_group: ec2.SecurityGroup,
         vpc: ec2.Vpc,
-        sqs_queues: list[sqs.Queue],
         layers: list,
         **kwargs,
     ):
@@ -79,7 +73,7 @@ class ReprocessingTools(Construct):
         # This DLQ just saves the messages and doesn't do anything with them.
         self.dead_letter_queue = sqs.Queue(
             self,
-            "ReprocessDeadLetterQueue",
+            "ReprocessingDeadLetterQueue",
             queue_name="reprocessDQL.fifo",
             encryption=sqs.QueueEncryption.UNENCRYPTED,
             fifo=True,
@@ -87,7 +81,7 @@ class ReprocessingTools(Construct):
 
         self.reprocessing_queue = sqs.Queue(
             self,
-            "ReprocessQueue",
+            "ReprocessingQueue",
             queue_name="ReprocessQueue.fifo",
             # This timeout determines how long the queue waits for processing.
             visibility_timeout=Duration.seconds(300),
@@ -107,8 +101,8 @@ class ReprocessingTools(Construct):
         # query string parameters to a JSON message and sends it to the queue.
         self.reprocessing_proxy_lambda = lambda_.Function(
             self,
-            "reprocessing-proxy",
-            function_name="reprocessing-proxy",
+            "ReprocessingProxyLambda",
+            function_name="reprocessing-handler",
             code=code,
             handler="SDSCode.pipeline_lambdas.reprocessing_proxy.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
