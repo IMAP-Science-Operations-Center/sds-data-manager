@@ -10,11 +10,7 @@ from dagster import (
     sensor,
 )
 
-from sds_data_manager.orchestration import (
-    dagster_utilities,
-    imap_job,
-    repoint_file
-)
+from sds_data_manager.orchestration import dagster_utilities, imap_job, repoint_file
 
 
 class L3CronHandler(imap_job.IMAPJobHandler):
@@ -27,7 +23,7 @@ class L3CronHandler(imap_job.IMAPJobHandler):
         @sensor(
             name=sensor_name,
             job=self.dagster_job,
-            minimum_interval_seconds=43200,
+            minimum_interval_seconds=86400,
         )
         def _sensor(context: SensorEvaluationContext):
 
@@ -60,7 +56,7 @@ class L3CronHandler(imap_job.IMAPJobHandler):
     def get_science_files_inputs(self, context, target_start, target_end):
         """Return no science files without an error."""
         return []
-    
+
     def get_repoint_file_inputs(self, session, target_start, target_end):
         """Return the repoint file needed to cover a time range."""
         min_python_date = datetime.datetime(1, 1, 1)

@@ -128,6 +128,7 @@ class IMAPJobHandler:
         job : ProcessingJobNode
             The job node to process.
         """
+        self.BATCH_JOB_TIMEOUT_SECONDS = 3600  # 1 hour, can be adjusted as needed
         self.job_config = job
 
         self.partitions_def = partition_map.get(self.job_config.partition)
@@ -289,9 +290,8 @@ class IMAPJobHandler:
 
     def wait_for_batch_job(self, session: db.Session, job_info: dict):
         """Wait for a Batch job to complete, and return the status."""
-        timeout = 3600
         timeout_start = time.time()
-        while time.time() < timeout_start + timeout:
+        while time.time() < timeout_start + self.BATCH_JOB_TIMEOUT_SECONDS:
             job_completed = (
                 session.query(models.ProcessingJob)
                 .filter(
@@ -1237,11 +1237,12 @@ class IMAPJobHandler:
         # and hyphens
         # E.g. "codice-l1a-sci-job-1"
         # The `processing_job.id` is used later for updating the job processing table
-        job_name = f"""{self.job_config.source}-
-                       {self.job_config.data_type}-
-                       {self.job_config.descriptor}-
-                       job-{processing_job.id}
-                    """
+        job_name = (
+            f"{self.job_config.source}-"
+            f"{self.job_config.data_type}-"
+            f"{self.job_config.descriptor}-"
+            f"job-{processing_job.id}"
+        )
         job_queue = "ProcessingJobQueue"
 
         BATCH_CLIENT.submit_job(
