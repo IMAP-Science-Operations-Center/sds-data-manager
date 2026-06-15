@@ -83,7 +83,8 @@ class ProcessingJob(Base):
     data_level = Column(DATA_LEVELS, nullable=False)
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
-    version = Column(String(8), nullable=False)
+    release_number = Column(Integer, nullable=False, default=0)
+    data_version = Column(Integer, nullable=False)
     repointing = Column(Integer, nullable=True)
     # TODO:
     #  Didn't make it required field yet. Revisit this
