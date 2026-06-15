@@ -14,6 +14,7 @@ from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secretsmanager
+from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 
 
@@ -84,34 +85,57 @@ class IalirtProcessing(Construct):
             allow_all_outbound=True,
         )
 
-        # Allow inbound and outbound traffic from a specific port and IP.
-        partner_access = {
-            "128.138.131.0/24": [
-                7526,
-                7564,
-                7566,
-                7567,
-            ],  # LASP (used for testing only)
-            "198.118.1.14/32": [7526],  # BlueNet (tlm relay)
-            "193.174.22.3/32": [7564],  # Kiel
-            "185.83.168.248/32": [7566, 7567],  # UKSA
-            "41.74.156.19/32": [7568],  # SANSA
-            "41.74.156.20/32": [7568],  # SANSA
+        # Each partner's CIDR(s) are stored in SSM
+        # and resolved as CloudFormation dynamic references at deploy
+        # time, e.g.:
+        #   aws ssm put-parameter --name /imap/ialirt/partners/lasp \
+        #       --value <cidr> --type String --overwrite
+        partner_config = {
+            "lasp": {  # used for testing only
+                "params": ["lasp"],
+                "ports": [7526, 7564, 7565, 7566, 7567],
+            },
+            "bluenet": {  # tlm relay
+                "params": ["bluenet"],
+                "ports": [7526],
+            },
+            "astralintu": {
+                "params": ["astralintu"],
+                "ports": [7563],
+            },
+            "kiel": {
+                "params": ["kiel"],
+                "ports": [7564],
+            },
+            "uksa": {
+                "params": ["uksa"],
+                "ports": [7566, 7567],
+            },
+            "sansa": {
+                "params": ["sansa-1", "sansa-2"],
+                "ports": [7568],
+            },
         }
 
-        for ip_range, ports in partner_access.items():
-            for port in ports:
-                self.ecs_security_group.add_ingress_rule(
-                    peer=ec2.Peer.ipv4(ip_range),
-                    connection=ec2.Port.tcp(port),
-                    description=f"Allow inbound traffic on TCP port {port}",
+        for partner, config in partner_config.items():
+            for param in config["params"]:
+                cidr = ssm.StringParameter.value_for_string_parameter(
+                    self, f"/imap/ialirt/partners/{param}"
                 )
-                # Allow outbound traffic.
-                self.ecs_security_group.add_egress_rule(
-                    peer=ec2.Peer.ipv4(ip_range),
-                    connection=ec2.Port.tcp(port),
-                    description=f"Allow outbound traffic on TCP port {port}",
-                )
+                for port in config["ports"]:
+                    self.ecs_security_group.add_ingress_rule(
+                        peer=ec2.Peer.ipv4(cidr),
+                        connection=ec2.Port.tcp(port),
+                        description=f"Allow inbound traffic from {partner} "
+                        f"on TCP port {port}",
+                    )
+                    # Allow outbound traffic.
+                    self.ecs_security_group.add_egress_rule(
+                        peer=ec2.Peer.ipv4(cidr),
+                        connection=ec2.Port.tcp(port),
+                        description=f"Allow outbound traffic to {partner} "
+                        f"on TCP port {port}",
+                    )
 
     def add_compute_resources(self):
         """Add ECS compute resources for a container."""
