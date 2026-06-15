@@ -77,9 +77,11 @@ def reprocess_sensor(context: SensorEvaluationContext):
         start_dt = datetime.datetime.strptime(start_date, "%Y%m%d").replace(
             tzinfo=datetime.timezone.utc
         )
+        # Add 1 day to end_dt then subtract 1 second to capture all data through
+        # end of day
         end_dt = datetime.datetime.strptime(end_date, "%Y%m%d").replace(
             tzinfo=datetime.timezone.utc
-        )
+        ) + datetime.timedelta(days=1, seconds=-1)
 
         partition_keys = get_affected_partitions(
             context, partition_def, start_dt, end_dt
