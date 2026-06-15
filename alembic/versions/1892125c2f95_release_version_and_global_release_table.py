@@ -19,7 +19,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-TABLES = ("science_files", "quicklook_files")
+TABLES = ("science_files", "quicklook_files", "processing_job_table")
 
 
 def upgrade() -> None:
