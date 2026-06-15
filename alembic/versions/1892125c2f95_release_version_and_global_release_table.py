@@ -1,4 +1,5 @@
-"""description.
+"""Release version and global release table
+Revision ID: 1892125c2f95.
 
 Revision ID: 1892125c2f95
 Revises: f110e214a9cc
