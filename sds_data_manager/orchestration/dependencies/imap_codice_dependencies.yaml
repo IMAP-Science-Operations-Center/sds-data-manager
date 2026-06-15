@@ -28,7 +28,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
     descriptor: lo-energy-per-charge
   - source: codice
     data_type: ancillary
-    descriptor: l2-lo-efficiency
+    descriptor: l3-lo-efficiency
 
 # ====== Specific Product Dependencies ======
 (l1a, all):
