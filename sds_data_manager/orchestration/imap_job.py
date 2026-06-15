@@ -781,9 +781,9 @@ class IMAPJobHandler:
         )
         if not spice_files and self.job_config.spice_inputs:
             # If no SPICE files are returned, but there are SPICE inputs, raise failure
-            raise MissingDependenciesError(f"""Missing SPICE files between 
+            raise MissingDependenciesError(f"""Missing SPICE files between
                                            {target_start} and {target_end}""")
-            
+
         return spice_files
 
     def get_science_files_inputs(self, context, target_start, target_end):
