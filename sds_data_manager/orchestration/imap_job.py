@@ -197,6 +197,7 @@ class IMAPJobHandler:
         4) Submit the job
         5) Wait for the output files,
            and materialize them as we see them in the database.
+
         """
         # Before doing anything, check if any of the dependencies are currently
         # running or about to run.
@@ -205,7 +206,6 @@ class IMAPJobHandler:
         if dependencies_running:
             context.log.info("Retrying job in 5 minutes.")
             raise RetryRequested(max_retries=10, seconds_to_wait=300)
-
         # Figure out what time window this specific run is responsible for
         target_partition = context.partition_key
         target_start, target_end = dagster_utilities.parse_dates_from_partition_key(
@@ -234,15 +234,6 @@ class IMAPJobHandler:
             context.log.info(
                 f"Using the following dependencies: {dependency_inputs.serialize()}"
             )
-
-            # We have the dependencies, lets try to submit the job!
-            job_version = self._determine_job_version(
-                session=session,
-                start_date=target_start,
-                current_dependencies=dependency_inputs.serialize(),
-                repointing=target_pointing_number,
-            )
-            context.log.info(f"Job Version to Use: {job_version}")
             # We have the dependencies, lets try to submit the job!
             output_versions = self._determine_output_versions(
                 session=session,
