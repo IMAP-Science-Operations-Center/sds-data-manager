@@ -105,44 +105,168 @@ def validate_query_params(event):
     }
 
 
-def query_releasable_science_files(
-    session,
-    instrument,
-    start_date,
-    end_date,
-    release_number,
-    science_files_to_exclude=None,
+def query_latest_science_files(
+    session, instrument, start_date, end_date, science_files_to_exclude=None
 ):
-    """Query releaseable science files for given release number.
+    """Query for the latest-version science file paths matching given criteria.
 
-    At every mission wide release, all data that will be released
-    to public should have vRRR.000. Eg. If release 1, all data
-    since launch will now have v001.000. If release 2,
-    all data will have v002.000 and so on.
-
-    In between public release version, version MMM will be used to
-    track updates to intermediate data. eg. After public
-    release 1, data can have v001.001 or v001.012 and so on
-    indicating that data was reprocessed 1 or 12 times respectively
-    since release 1, due to updates, such as input data changed
-    or processing code changed.
+    Latest version is determined by finding the maximum major_version, then
+    within that, the maximum minor_version for each unique file grouping.
     """
     science_table = models.ScienceFiles
 
-    # query for release number for the given instrument and date range
-    latest_science_files = session.query(science_table).filter(
-        science_table.instrument == instrument,
-        science_table.start_date >= start_date,
-        science_table.start_date <= end_date,
-        science_table.release_number == release_number,
-        science_table.data_version == 0,
+    # Check if any file in the range has a non-null repointing
+    has_repointing = (
+        session.query(science_table)
+        .filter(
+            science_table.instrument == instrument,
+            science_table.start_date >= start_date,
+            science_table.start_date <= end_date,
+            science_table.repointing.isnot(None),
+        )
+        .first()
+        is not None
     )
 
+    if has_repointing:
+        # Find max major_version for each file group
+        max_major_subq = (
+            session.query(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.repointing,
+                func.max(science_table.major_version).label("max_major"),
+            )
+            .group_by(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.repointing,
+            )
+            .subquery()
+        )
+
+        # Within max major_version, find max minor_version
+        max_minor_subq = (
+            session.query(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.repointing,
+                science_table.major_version,
+                func.max(science_table.minor_version).label("max_minor"),
+            )
+            .join(
+                max_major_subq,
+                (science_table.instrument == max_major_subq.c.instrument)
+                & (science_table.data_level == max_major_subq.c.data_level)
+                & (science_table.descriptor == max_major_subq.c.descriptor)
+                & (science_table.start_date == max_major_subq.c.start_date)
+                & (science_table.repointing == max_major_subq.c.repointing)
+                & (science_table.major_version == max_major_subq.c.max_major),
+            )
+            .group_by(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.repointing,
+                science_table.major_version,
+            )
+            .subquery()
+        )
+
+        latest_science_files = (
+            session.query(science_table)
+            .join(
+                max_minor_subq,
+                (science_table.instrument == max_minor_subq.c.instrument)
+                & (science_table.data_level == max_minor_subq.c.data_level)
+                & (science_table.descriptor == max_minor_subq.c.descriptor)
+                & (science_table.start_date == max_minor_subq.c.start_date)
+                & (science_table.repointing == max_minor_subq.c.repointing)
+                & (science_table.major_version == max_minor_subq.c.major_version)
+                & (science_table.minor_version == max_minor_subq.c.max_minor),
+            )
+            .filter(
+                science_table.instrument == instrument,
+                science_table.start_date >= start_date,
+                science_table.start_date <= end_date,
+            )
+        )
+    else:
+        # Find max major_version for each file group
+        max_major_subq = (
+            session.query(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                func.max(science_table.major_version).label("max_major"),
+            )
+            .group_by(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+            )
+            .subquery()
+        )
+
+        # Within max major_version, find max minor_version
+        max_minor_subq = (
+            session.query(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.major_version,
+                func.max(science_table.minor_version).label("max_minor"),
+            )
+            .join(
+                max_major_subq,
+                (science_table.instrument == max_major_subq.c.instrument)
+                & (science_table.data_level == max_major_subq.c.data_level)
+                & (science_table.descriptor == max_major_subq.c.descriptor)
+                & (science_table.start_date == max_major_subq.c.start_date)
+                & (science_table.major_version == max_major_subq.c.max_major),
+            )
+            .group_by(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.major_version,
+            )
+            .subquery()
+        )
+
+        latest_science_files = (
+            session.query(science_table)
+            .join(
+                max_minor_subq,
+                (science_table.instrument == max_minor_subq.c.instrument)
+                & (science_table.data_level == max_minor_subq.c.data_level)
+                & (science_table.descriptor == max_minor_subq.c.descriptor)
+                & (science_table.start_date == max_minor_subq.c.start_date)
+                & (science_table.major_version == max_minor_subq.c.major_version)
+                & (science_table.minor_version == max_minor_subq.c.max_minor),
+            )
+            .filter(
+                science_table.instrument == instrument,
+                science_table.start_date >= start_date,
+                science_table.start_date <= end_date,
+            )
+        )
     if science_files_to_exclude:
         latest_science_files = latest_science_files.filter(
             ~science_table.file_path.in_(science_files_to_exclude)
         )
-    results = list(latest_science_files.all())
+    results = list(latest_science_files)
     logger.info(f"Found {len(results)} science file(s) for instrument={instrument}")
     return results
 
@@ -339,12 +463,11 @@ def release_type_handler(query_params):
                 exclude_file
             )
 
-        science_files_to_update = query_releasable_science_files(
+        science_files_to_update = query_latest_science_files(
             session,
             instrument,
             start_date,
             end_date,
-            release_number,
             science_files_to_exclude=science_files_to_exclude,
         )
 
