@@ -1636,19 +1636,19 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "imap-processing"
-version = "1.0.32"
+version = "1.0.34"
 description = "IMAP Science Operations Center Processing"
 optional = false
 python-versions = "<3.13,>=3.10"
 groups = ["layer-idex-processing", "layer-processing"]
 files = [
-    {file = "imap_processing-1.0.32-py3-none-any.whl", hash = "sha256:d53ca85c1ca111354074949e479fd082e518416194817bd094513ca048bdf17b"},
-    {file = "imap_processing-1.0.32.tar.gz", hash = "sha256:c6dc7e945d8118e2ad5b48cc2ba98aadfe80c4b26d641b8255172aaebf28b77b"},
+    {file = "imap_processing-1.0.34-py3-none-any.whl", hash = "sha256:ad2a2c4c2f0a868afb9bdf41c74d54ec0b8bdfb2828b7fb97c564ef8db73b3dd"},
+    {file = "imap_processing-1.0.34.tar.gz", hash = "sha256:d47baf8e1debb562cd62214b16b5163f8c232be271c9b0b459e74fefd1d92ad1"},
 ]
 
 [package.dependencies]
 astropy-healpix = ">=1.0"
-cdflib = ">=1.3.6"
+cdflib = ">=1.3.11"
 imap-data-access = ">=0.37.0"
 numpy = ">=2,<3"
 sammi-cdf = ">=1.0,<2"
@@ -4650,4 +4650,4 @@ tool = ["alembic"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "13767a152b2146a46f463fa18e7a2ddeafdb89c5e54fc970925d274b716369b6"
+content-hash = "7a723f6eba8150f4763fe7d74e59204e80ddaddc5e63ceb0ddb24e267123a528"
