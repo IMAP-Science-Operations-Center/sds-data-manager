@@ -83,7 +83,9 @@ class ProcessingJob(Base):
     data_level = Column(DATA_LEVELS, nullable=False)
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
-    version = Column(String(8), nullable=False)
+    # vMMM.mmmm
+    major_version = Column(Integer, nullable=False, default=1)
+    minor_version = Column(Integer, nullable=False, default=1)
     repointing = Column(Integer, nullable=True)
     # TODO:
     #  Didn't make it required field yet. Revisit this
@@ -119,6 +121,14 @@ class ProcessingJob(Base):
             unique=True,
             postgresql_where=and_(status.in_(["INPROGRESS", "SUCCEEDED"])),
         ),
+        CheckConstraint(
+            "major_version >= 0 AND major_version <= 999",
+            name="ck_major_version_max_999",
+        ),
+        CheckConstraint(
+            "minor_version >= 0 AND minor_version <= 9999",
+            name="ck_minor_version_max_9999",
+        ),
     )
 
     def to_dict(self):
@@ -129,7 +139,8 @@ class ProcessingJob(Base):
             "data_level": str(self.data_level),
             "descriptor": self.descriptor,
             "start_date": self.start_date.isoformat() if self.start_date else None,
-            "version": self.version,
+            "major_version": self.major_version,
+            "minor_version": self.minor_version,
             "repointing": self.repointing,
             "dependency_hash": self.dependency_hash if self.dependency_hash else None,
             # These parameters could be None when the batch job is in progress
@@ -161,8 +172,9 @@ class ScienceFileBase:
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
     repointing = Column(Integer, nullable=True)
-    release_number = Column(Integer, nullable=False, default=0)
-    data_version = Column(Integer, nullable=False)
+    # vMMM.mmmm
+    major_version = Column(Integer, nullable=False, default=1)
+    minor_version = Column(Integer, nullable=False, default=1)
     ingestion_date = Column(DateTime(timezone=True))
     cr = Column(Integer, nullable=True)
     crid = Column(String, nullable=True)
@@ -170,11 +182,12 @@ class ScienceFileBase:
 
     __table_args__ = (
         CheckConstraint(
-            "release_number >= 0 AND release_number <= 999",
-            name="ck_release_number_max_999",
+            "major_version >= 0 AND major_version <= 999",
+            name="ck_major_version_max_999",
         ),
         CheckConstraint(
-            "data_version >= 0 AND data_version <= 999", name="ck_data_version_max_999"
+            "minor_version >= 0 AND minor_version <= 9999",
+            name="ck_minor_version_max_9999",
         ),
     )
 
@@ -341,14 +354,18 @@ class IDEXL0Files(Base):
     # in two different ten day chunks. These start_date are defined by IDEX team due to
     # above reasons.
     start_date = Column(DateTime, nullable=False, primary_key=True)
-    version = Column(String(4), nullable=False, primary_key=True)  # vXXX
+    # vMMM.mmmm
+    major_version = Column(Integer, nullable=False, primary_key=True, default=1)
+    minor_version = Column(Integer, nullable=False, primary_key=True, default=1)
     ingestion_date = Column(DateTime(timezone=True))
 
-
-class GlobalRelease(Base):
-    """Global Release table that tracks release number."""
-
-    __tablename__ = "global_release"
-    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
-    release_number = Column(Integer, nullable=False, unique=True)
-    updated_date = Column(DateTime, nullable=False)
+    __table_args__ = (
+        CheckConstraint(
+            "major_version >= 0 AND major_version <= 999",
+            name="ck_major_version_max_999",
+        ),
+        CheckConstraint(
+            "minor_version >= 0 AND minor_version <= 9999",
+            name="ck_minor_version_max_9999",
+        ),
+    )
