@@ -602,65 +602,12 @@ def unrelease_type_handler(query_params):
 
 
 def reprocess_type_handler(query_params):
-    """Update global release table with the new release number.
+    """Reprocess for data release.
 
-    This table update is monitored by Dagster sensor. When this table is
-    updated, it will trigger reprocessing for the new release number.
+    NOTE: This may not be needed. If not needed, remove support
+    at imap-data-access before removing this.
     """
-    release_number = int(query_params["release_number"])
-
-    with db.Session() as session:
-        # First check that there is no existing DB record with
-        # release number.
-        existing_record = (
-            session.query(models.GlobalRelease)
-            .filter(models.GlobalRelease.release_number == release_number)
-            .first()
-        )
-
-        if existing_record:
-            return {
-                "statusCode": 400,
-                "body": json.dumps(
-                    f"Release number {release_number} already exists. "
-                    "Please choose a release number that has not been used before."
-                ),
-            }
-
-        # If new release number is not increment by 1 from the latest release number.
-        latest_release = (
-            session.query(models.GlobalRelease)
-            .order_by(models.GlobalRelease.release_number.desc())
-            .first()
-        )
-
-        if latest_release and release_number != latest_release.release_number + 1:
-            return {
-                "statusCode": 400,
-                "body": json.dumps(
-                    f"Release number {release_number} is not the next increment "
-                    f"from the latest release number "
-                    f"{latest_release.release_number}. "
-                    "Please choose the next sequential release number."
-                ),
-            }
-
-        # Add to table with the new release number and update the timestamp.
-        new_release = models.GlobalRelease(
-            release_number=release_number,
-            updated_date=datetime.datetime.utcnow(),
-        )
-
-        session.add(new_release)
-        session.commit()
-
-        return {
-            "statusCode": 200,
-            "body": json.dumps(
-                f"Successfully created release number {release_number}. "
-                "Dagster reprocessing will be triggered automatically."
-            ),
-        }
+    return {"statusCode": 200, "body": "Reprocess for data release not supported yet."}
 
 
 def lambda_handler(event, context):

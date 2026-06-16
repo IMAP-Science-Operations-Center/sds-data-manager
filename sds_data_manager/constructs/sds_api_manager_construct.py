@@ -391,31 +391,6 @@ class SdsApiManager(Construct):
             )
         release_api_lambda.add_to_role_policy(s3_read_policy)
 
-        # API for latest global release number
-        global_release_latest_api_lambda = lambda_.Function(
-            self,
-            id="GlobalReleaseLatestAPILambda",
-            function_name="global-release-latest-api-handler",
-            code=code,
-            handler="SDSCode.api_lambdas.global_release_latest_api.lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            timeout=cdk.Duration.minutes(1),
-            memory_size=1000,
-            allow_public_subnet=True,
-            vpc=vpc,
-            security_groups=[rds_security_group],
-            environment={
-                "SECRET_NAME": db_secret_name,
-            },
-            layers=layers,
-        )
-        for prefix in auth_route_prefixes:
-            api.add_route(
-                route=f"{prefix}/global-release/latest",
-                http_method="GET",
-                lambda_function=global_release_latest_api_lambda,
-            )
-
         rds_secret = secrets.Secret.from_secret_name_v2(
             self, "rds_secret", db_secret_name
         )
@@ -427,7 +402,6 @@ class SdsApiManager(Construct):
         rds_secret.grant_read(grantee=upload_api_lambda)
         rds_secret.grant_read(grantee=batch_job_query_api_lambda)
         rds_secret.grant_read(grantee=release_api_lambda)
-        rds_secret.grant_read(grantee=global_release_latest_api_lambda)
 
         for prefix in auth_route_prefixes:
             # Add spin table route
