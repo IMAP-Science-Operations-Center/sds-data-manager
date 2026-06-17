@@ -40,87 +40,100 @@ def reprocess_sensor(context: SensorEvaluationContext):
     if not messages:
         return None
 
-    reader = DependencyConfigReader()
-
     for message in messages:
-        params = json.loads(message["Body"])
-
-        instrument = params.get("instrument")
-        data_level = params.get("data_level")
-        descriptor = params.get("descriptor")
-        start_date = params.get("start_date")
-        end_date = params.get("end_date")
-
-        context.log.info(
-            f"Reprocessing event received: {instrument=}, "
-            f"{data_level=}, {descriptor=}, {start_date=}, {end_date=}"
-        )
-
-        # Check inputs. If they are not valid, log a warning and delete the message to
-        # avoid retrying.
-        if not validate_reprocess_params(
-            context, instrument, data_level, descriptor, start_date, end_date
-        ):
-            delete_sqs_message(sqs_queue_url, message)
-            continue
-
-        # Get the assets for this reprocessing
-        result = get_job_assets(context, reader, instrument, data_level, descriptor)
-        if result is None:
-            # If there is no root node continue.
-            delete_sqs_message(sqs_queue_url, message)
-            continue
-
-        output_asset_keys, partition = result
-        partition_def = partition_map.get(partition)
-
-        start_dt = datetime.datetime.strptime(start_date, "%Y%m%d").replace(
-            tzinfo=datetime.timezone.utc
-        )
-        # Add 1 day to end_dt then subtract 1 second to capture all data through
-        # end of day
-        end_dt = datetime.datetime.strptime(end_date, "%Y%m%d").replace(
-            tzinfo=datetime.timezone.utc
-        ) + datetime.timedelta(days=1, seconds=-1)
-
-        partition_keys = get_affected_partitions(
-            context, partition_def, start_dt, end_dt
-        )
-        if not partition_keys:
-            context.log.warning(
-                f"No partitions found for {output_asset_keys} between {start_date} and "
-                f"{end_date}."
+        try:
+            process_single_message(context, message, sqs_queue_url)
+        except Exception as e:
+            context.log.exception(
+                f"Error processing message {message['MessageId']}: {e}"
             )
-            delete_sqs_message(sqs_queue_url, message)
+            # Don't delete message and continue processing. The message will try again
+            # Before getting moved to the reprocessing DQL.
             continue
-
-        context.log.info(
-            f"Reprocessing {output_asset_keys} across partitions: {partition_keys}"
-        )
-
-        backfill = PartitionBackfill.from_asset_partitions(
-            backfill_id=f"reprocess-{instrument}-{int(datetime.datetime.now().timestamp())}",
-            asset_graph=context.repository_def.asset_graph,
-            partition_names=partition_keys,
-            asset_selection=output_asset_keys,
-            backfill_timestamp=datetime.datetime.now(datetime.timezone.utc).timestamp(),
-            tags={
-                "instrument": instrument,
-                "descriptor": descriptor or "",
-                "data_level": data_level or "",
-            },
-            dynamic_partitions_store=context.instance,
-            all_partitions=False,
-            title=None,
-            description=None,
-            run_config=None,
-        )
-        context.instance.add_backfill(backfill)
-
-        # After a submitting the backfill, remove the sqs message
-        delete_sqs_message(sqs_queue_url, message)
 
     return None
+
+
+def process_single_message(
+    context: SensorEvaluationContext, message, sqs_queue_url
+) -> None:
+    """Process a single SQS message for reprocessing."""
+    reader = DependencyConfigReader()
+
+    # unpack message params
+    params = json.loads(message["Body"])
+    instrument = params.get("instrument")
+    data_level = params.get("data_level")
+    descriptor = params.get("descriptor")
+    start_date = params.get("start_date")
+    end_date = params.get("end_date")
+
+    context.log.info(
+        f"Reprocessing event received: {instrument=}, "
+        f"{data_level=}, {descriptor=}, {start_date=}, {end_date=}"
+    )
+
+    # Check inputs. If they are not valid, log a warning and delete the message to
+    # avoid retrying.
+    if not validate_reprocess_params(
+        context, instrument, data_level, descriptor, start_date, end_date
+    ):
+        delete_sqs_message(sqs_queue_url, message)
+        return
+
+    # Get the assets for this reprocessing
+    result = get_job_assets(context, reader, instrument, data_level, descriptor)
+    if result is None:
+        # If there is no root node continue.
+        delete_sqs_message(sqs_queue_url, message)
+        return
+
+    output_asset_keys, partition = result
+    partition_def = partition_map.get(partition)
+
+    start_dt = datetime.datetime.strptime(start_date, "%Y%m%d").replace(
+        tzinfo=datetime.timezone.utc
+    )
+    # Add 1 day to end_dt then subtract 1 second to capture all data through
+    # end of day
+    end_dt = datetime.datetime.strptime(end_date, "%Y%m%d").replace(
+        tzinfo=datetime.timezone.utc
+    ) + datetime.timedelta(days=1, seconds=-1)
+
+    partition_keys = get_affected_partitions(context, partition_def, start_dt, end_dt)
+    if not partition_keys:
+        context.log.warning(
+            f"No partitions found for {output_asset_keys} between {start_date} and "
+            f"{end_date}."
+        )
+        delete_sqs_message(sqs_queue_url, message)
+        return
+
+    context.log.info(
+        f"Reprocessing {output_asset_keys} across partitions: {partition_keys}"
+    )
+
+    backfill = PartitionBackfill.from_asset_partitions(
+        backfill_id=f"reprocess-{instrument}-{message['MessageId']}",
+        asset_graph=context.repository_def.asset_graph,
+        partition_names=partition_keys,
+        asset_selection=output_asset_keys,
+        backfill_timestamp=datetime.datetime.now(datetime.timezone.utc).timestamp(),
+        tags={
+            "instrument": instrument,
+            "descriptor": descriptor or "",
+            "data_level": data_level or "",
+        },
+        dynamic_partitions_store=context.instance,
+        all_partitions=False,
+        title=None,
+        description=None,
+        run_config=None,
+    )
+    context.instance.add_backfill(backfill)
+
+    # After a submitting the backfill, remove the sqs message
+    delete_sqs_message(sqs_queue_url, message)
 
 
 def validate_reprocess_params(

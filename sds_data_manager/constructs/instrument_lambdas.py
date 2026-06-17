@@ -88,9 +88,10 @@ class ReprocessingTools(Construct):
             fifo=True,
             # Removes messages with identical content.
             content_based_deduplication=True,
-            # The dead letter queue will take messages that failed retry.
+            # The dead letter queue will take messages that failed retry. Allow 2
+            # retries before the message gets sent to the DQL
             dead_letter_queue=sqs.DeadLetterQueue(
-                max_receive_count=1, queue=self.dead_letter_queue
+                max_receive_count=2, queue=self.dead_letter_queue
             ),
         )
         self.reprocessing_sqs_url = self.reprocessing_queue.queue_url
