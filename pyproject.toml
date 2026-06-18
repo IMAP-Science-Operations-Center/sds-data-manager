@@ -31,7 +31,7 @@ python = ">=3.11,<3.13"
 # the correct version and hash are used:
 #   poetry export -f requirements.txt -o lambda_layer/database/requirements.txt --with layer-database
 dependencies = [
-    "imap-data-access>=0.41.0",
+    "imap-data-access>=0.42.0.dev",
     "boto3>=1.26.78,<2",
     "SQLAlchemy<=3.0.0",
 ]
