@@ -106,7 +106,7 @@ repository = "https://github.com/IMAP-Science-Operations-Center/sds-data-manager
 testpaths = [
   "tests",
 ]
-addopts = "-ra"
+addopts = "-ra -p no:anyio"
 markers = [
     "network: Test that requires network access",
 ]
