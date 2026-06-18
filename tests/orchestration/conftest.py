@@ -1,41 +1,30 @@
-import pytest
-from testcontainers.postgres import PostgresContainer
-from sqlalchemy import create_engine
-import boto3
-import os
-import json
-import pytest
-from moto import mock_ecr, mock_events, mock_s3
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+"""Unit testing configuration for tests/orchestration."""
+
 import datetime
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
-from sds_data_manager.lambda_code.SDSCode.database import database as db
-from sds_data_manager.lambda_code.SDSCode.database.models import (
-    Base,
-    SPICEFiles,
-)
-from sds_data_manager.orchestration import imap_job
+import json
+import os
 from unittest.mock import Mock, patch
+
+import boto3
+import imap_data_access
+import pytest
 from dagster import (
     build_sensor_context,
     instance_for_test,
-    AssetMaterialization,
-    AssetKey,
 )
-from sds_data_manager.orchestration.imap_dagster import defs 
+from moto import mock_ecr, mock_s3
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from testcontainers.postgres import PostgresContainer
+
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
+from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
-import imap_data_access 
-from dagster import (
-    AssetExecutionContext,
-    AssetKey,
-    AssetMaterialization,
-    DagsterEventType,
-    DynamicPartitionsDefinition,
-    EventRecordsFilter,
-    MaterializeResult,
-    build_sensor_context
+from sds_data_manager.lambda_code.SDSCode.database.models import (
+    Base,
 )
+from sds_data_manager.orchestration import imap_job
+from sds_data_manager.orchestration.imap_dagster import defs
 
 BUCKET_NAME = "test-data-bucket"
 
@@ -55,6 +44,10 @@ def _set_env(monkeypatch, tmpdir):
     monkeypatch.setenv("IMAP_DATA_ACCESS_URL", "https://test.url")
     monkeypatch.setenv("DATA_DIR", str(tmpdir))
     monkeypatch.setenv("REGION", "testing")
+    monkeypatch.setenv(
+        "REPROCESSING_SQS_URL",
+        "https://sqs.us-west-2.amazonaws.com/test/reprocessing_queue",
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -81,42 +74,6 @@ def setup_s3(s3_client):
         yield s3_client
 
 
-@pytest.fixture(scope="module")
-def ancillary_file():
-    """Path to a valid ancillary file."""
-    return "imap/ancillary/swe/imap_swe_test-ancillary-description_20100101_v000.cdf"
-
-
-@pytest.fixture(scope="module")
-def science_file():
-    """Path to a valid science file."""
-    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v000.cdf"
-
-
-@pytest.fixture(scope="module")
-def dependency_file():
-    """Path to a valid dependency file."""
-    return (
-        "imap/dependency/ultra/l2/2025/03/imap_ultra_l2_u45-ena-h-hf-nsp-test-hae-6deg"
-        "-3mo-4d649e314e8ac32e3fb76fe5d5aad46f_20250301_v001.json"
-    )
-
-
-@pytest.fixture(scope="module")
-def spice_file():
-    """Path to a valid spice file."""
-    return "imap/spice/ck/imap_2025_032_2025_034_003.ah.bc"
-
-
-@pytest.fixture(scope="module")
-def invalid_file():
-    """Path for an invalid file."""
-    return (
-        "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_"
-        "second-description_20100101_v000.cdf"
-    )
-
-
 @pytest.fixture(autouse=True)
 def s3_client():
     """Mock S3 Client, so we don't need network requests."""
@@ -128,13 +85,6 @@ def s3_client():
         )
 
         yield s3_client
-
-
-@pytest.fixture
-def events_client():
-    """Mock EventBridge client."""
-    with mock_events():
-        yield boto3.client("events", region_name="us-west-2")
 
 
 @pytest.fixture(autouse=True)
@@ -214,20 +164,22 @@ def mock_upload_request_success():
         mock_requests.put.return_value = Mock(status_code=200)
         yield mock_upload_api, mock_requests
 
+
 @pytest.fixture(scope="module")
 def postgres_container():
     """Spins up an isolated Postgres database via Docker."""
     with PostgresContainer("postgres:15-alpine") as postgres:
         yield postgres.get_connection_url()
 
+
 @pytest.fixture
 def mock_db_session(postgres_container):
-    """Sets up the schema and returns a session for the test to use."""
+    """Set up the schema and returns a session for the test to use."""
     with patch.object(db, "Session") as mock_session:
         engine = create_engine(postgres_container)
-        
-        Base.metadata.create_all(engine) 
-        
+
+        Base.metadata.create_all(engine)
+
         with sessionmaker(bind=engine)() as session:
             # Attach this session to the mocked module's Session call
             mock_session.return_value = session
@@ -240,6 +192,7 @@ def mock_db_session(postgres_container):
             session.close()
             # Drop tables to ensure clean state for next test
             Base.metadata.drop_all(engine)
+
 
 @pytest.fixture
 def pointing_table_entries(mock_db_session):
@@ -259,6 +212,7 @@ def pointing_table_entries(mock_db_session):
     mock_db_session.commit()
     return records
 
+
 def _irrelevant_spice_data():
     """Populate irrelevant columns in DB with dummy data."""
     irrelevant_data = {
@@ -272,6 +226,7 @@ def _irrelevant_spice_data():
         "lsk_kernel": "nothing",
     }
     return irrelevant_data
+
 
 def _insert_spice_file(session, filename, intervals, upload_time=0):
     spice_object = imap_data_access.SPICEFilePath(filename)
@@ -290,45 +245,41 @@ def _insert_spice_file(session, filename, intervals, upload_time=0):
     session.add(models.SPICEFiles(**metadata_params))
     session.commit()
 
+
 @pytest.fixture
 def insert_test_spice_files(mock_db_session):
-    """Put a filepath into the test data.
-    """
+    """Put a filepath into the test data."""
     # This file should NOT be loaded, because there is a
     # a newer version of the file
-    _insert_spice_file(
-        mock_db_session, "naif0012.tls", [[1, 10000000000000]]
-    )
+    _insert_spice_file(mock_db_session, "naif0012.tls", [[1, 10000000000000]])
 
-    _insert_spice_file(
-        mock_db_session, "imap_sclk_0189.tsc", [[1, 10000000000000]]
-    )
+    _insert_spice_file(mock_db_session, "imap_sclk_0189.tsc", [[1, 10000000000000]])
+
 
 @pytest.fixture
-def ephemeral_instance(pointing_table_entries, insert_test_spice_files):
-    """Provides an isolated, in-memory Dagster instance."""
+def ephemeral_instance(pointing_table_entries):
+    """Provide an isolated, in-memory Dagster instance."""
     with instance_for_test() as instance:
-        
         # Add repoint partitions
         context = build_sensor_context(instance=instance)
         add_repoint_partitions_sensor = defs.get_sensor_def("add_repoint_partitions")
         sensor_result = add_repoint_partitions_sensor(context)
-        
+
         for request in sensor_result.dynamic_partitions_requests:
             instance.add_dynamic_partitions(
-                    partitions_def_name=request.partitions_def_name,
-                    partition_keys=request.partition_keys
-                )
-            
+                partitions_def_name=request.partitions_def_name,
+                partition_keys=request.partition_keys,
+            )
+
         # Add daily partitions
         context = build_sensor_context(instance=instance)
         add_repoint_partitions_sensor = defs.get_sensor_def("add_daily_partitions")
         sensor_result = add_repoint_partitions_sensor(context)
-        
+
         for request in sensor_result.dynamic_partitions_requests:
             instance.add_dynamic_partitions(
-                    partitions_def_name=request.partitions_def_name,
-                    partition_keys=request.partition_keys
-                )
-            
+                partitions_def_name=request.partitions_def_name,
+                partition_keys=request.partition_keys,
+            )
+
         yield instance

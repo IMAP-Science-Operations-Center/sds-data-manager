@@ -128,7 +128,10 @@ class IMAPJobHandler:
         job : ProcessingJobNode
             The job node to process.
         """
-        self.BATCH_JOB_TIMEOUT_SECONDS = 3600  # 1 hour, can be adjusted as needed
+        self.BATCH_JOB_TIMEOUT_SECONDS = 3600  # 1 hour, can be adjusted as needed.
+        self.WAIT_TIME_AFTER_BATCH = (
+            60  # time to wait after a batch job completes to search for files.
+        )
         self.job_config = job
 
         self.partitions_def = partition_map.get(self.job_config.partition)
@@ -150,21 +153,7 @@ class IMAPJobHandler:
         ]
 
     def build_asset(self):
-        """Create an Asset in Dagster for a particular data product.
-
-        This function will:
-
-        1) Get all dependencies from the dependency tree
-        2) Check if the job had been submitted before
-           a) If it has, and Dagster doesn't know about it, then it will materialize
-              the asset
-           b) If Dagster does know about it, we exit
-        3) Get the Job version
-        4) Submit the job
-        5) Wait for the output files,
-           and materialize them as we see them in the database.
-
-        """
+        """Create an Asset in Dagster for a particular data product."""
         input_keys = [dep.to_dagster_asset() for dep in self.job_config.inputs]
         output_assets = {}
         for out in self.job_config.outputs:
@@ -177,121 +166,146 @@ class IMAPJobHandler:
             outs=output_assets,
         )
         def _generic_batch_submitter(context: AssetExecutionContext):
-
-            # TODO: Is this needed if we only check every few minutes?
-            # Before doing anything, check if any of the dependencies are currently
-            # running or about to run.
-            #
-            # If so, let us try again in 5 minutes.
-            # dependencies_running = self._check_for_running_dependencies()
-            # if dependencies_running:
-            #    raise RetryRequested(max_retries=10, seconds_to_wait=600)
-
-            # Figure out what time window this specific run is responsible for
-            target_partition = context.partition_key
-            target_start, target_end = dagster_utilities.parse_dates_from_partition_key(
-                target_partition
+            yield self.run_job(
+                context, self.BATCH_JOB_TIMEOUT_SECONDS, self.WAIT_TIME_AFTER_BATCH
             )
-
-            # Get the repoint number of the job, based on the partition name.
-            parts = context.partition_key.split("_")
-            target_pointing_number = None
-            if "repoint" in parts[0]:
-                target_pointing_number = int(parts[0][7:])
-
-            # Get Dependencies
-            with db.Session() as session:
-                try:
-                    dependency_inputs = self.get_dependencies(
-                        session, context, target_start, target_end
-                    )
-
-                    if not dependency_inputs:
-                        return SkipReason("Dependency inputs were missing.")
-
-                except MissingDependenciesError as e:
-                    return SkipReason(str(e))
-
-                context.log.info(
-                    f"Using the following dependencies: {dependency_inputs.serialize()}"
-                )
-
-                # We have the dependencies, lets try to submit the job!
-                job_version = self._determine_job_version(
-                    session=session,
-                    start_date=target_start,
-                    current_dependencies=dependency_inputs.serialize(),
-                    repointing=target_pointing_number,
-                )
-                context.log.info(f"Job Version to Use: {job_version}")
-
-                submit_response = self.try_to_submit_job(
-                    session,
-                    target_start,
-                    job_version,
-                    dependency_inputs.serialize(),
-                    repoint=target_pointing_number,
-                )
-                context.log.info(
-                    f"""Submit response: {submit_response.status}
-                      - {submit_response.message},
-                      {submit_response.job}"""
-                )
-
-                if submit_response.status == "submitted":
-                    batch_status = self.wait_for_batch_job(session, submit_response.job)
-                    time.sleep(60)  # Give the indexer time to pick up the files
-                    output_files = self.find_outputs(
-                        context,
-                        session,
-                        job_version=job_version,
-                        start_date=target_start,
-                        repointing=target_pointing_number,
-                        inputs=dependency_inputs.serialize(),
-                    )
-
-                    if (
-                        batch_status == models.Status.SUCCEEDED.value
-                        and not output_files
-                    ):
-                        return SkipReason(
-                            "No files were output, though the job succeeded."
-                        )
-                    for f in output_files:
-                        yield f
-                    if batch_status == models.Status.FAILED.value:
-                        raise Failure(
-                            description="Batch Job Failure. View logs for details."
-                        )
-                elif submit_response.status == "skipped":
-                    # If we skipped the job, let us materialize any previous outputs
-                    # so that we ensure dagster knows about them
-                    output_files = self.find_outputs(
-                        context,
-                        session,
-                        start_date=target_start,
-                        repointing=target_pointing_number,
-                        inputs=dependency_inputs.serialize(),
-                    )
-                    for f in output_files:
-                        yield f
-
-                    if not output_files:
-                        return SkipReason(
-                            f"""Batch Job Status: {submit_response.status}
-                            - {submit_response.message},
-                            {submit_response.job}"""
-                        )
-                else:
-                    raise Failure(description=submit_response.message)
 
         # Return the generated function back to Dagster
         return _generic_batch_submitter
 
-    def wait_for_batch_job(self, session: db.Session, job_info: dict):
+    def run_job(
+        self,
+        context: AssetExecutionContext,
+        batch_job_timeout: int,
+        time_to_wait_after_batch_query: int,
+    ):
+        """Perform all steps needed to run the Batch job.
+
+        This function will:
+
+        1) Get all dependencies from the dependency tree
+        2) Check if the job had been submitted before
+           a) If it has, and Dagster doesn't know about it, then it will materialize
+              the asset
+           b) If Dagster does know about it, we exit
+        3) Get the Job version
+        4) Submit the job
+        5) Wait for the output files,
+           and materialize them as we see them in the database.
+        """
+        # TODO: Is this needed if we only check every few minutes?
+        # Before doing anything, check if any of the dependencies are currently
+        # running or about to run.
+        #
+        # If so, let us try again in 5 minutes.
+        # dependencies_running = self._check_for_running_dependencies()
+        # if dependencies_running:
+        #    raise RetryRequested(max_retries=10, seconds_to_wait=600)
+
+        # Figure out what time window this specific run is responsible for
+        target_partition = context.partition_key
+        target_start, target_end = dagster_utilities.parse_dates_from_partition_key(
+            target_partition
+        )
+
+        # Get the repoint number of the job, based on the partition name.
+        parts = context.partition_key.split("_")
+        target_pointing_number = None
+        if "repoint" in parts[0]:
+            target_pointing_number = int(parts[0][7:])
+
+        # Get Dependencies
+        with db.Session() as session:
+            try:
+                dependency_inputs = self.get_dependencies(
+                    session, context, target_start, target_end
+                )
+
+                if not dependency_inputs:
+                    return SkipReason("Dependency inputs were missing.")
+
+            except MissingDependenciesError as e:
+                return SkipReason(str(e))
+
+            context.log.info(
+                f"Using the following dependencies: {dependency_inputs.serialize()}"
+            )
+
+            # We have the dependencies, lets try to submit the job!
+            job_version = self._determine_job_version(
+                session=session,
+                start_date=target_start,
+                current_dependencies=dependency_inputs.serialize(),
+                repointing=target_pointing_number,
+            )
+            context.log.info(f"Job Version to Use: {job_version}")
+
+            submit_response = self.try_to_submit_job(
+                session,
+                target_start,
+                job_version,
+                dependency_inputs.serialize(),
+                repoint=target_pointing_number,
+            )
+            context.log.info(
+                f"""Submit response: {submit_response.status}
+                    - {submit_response.message},
+                    {submit_response.job}"""
+            )
+
+            if submit_response.status == "submitted":
+                batch_status = self.wait_for_batch_job(
+                    session,
+                    submit_response.job,
+                    batch_job_timeout,
+                    time_to_wait_after_batch_query,
+                )
+                time.sleep(
+                    time_to_wait_after_batch_query
+                )  # Give the indexer time to pick up the files
+                output_files = self.find_outputs(
+                    context,
+                    session,
+                    job_version=job_version,
+                    start_date=target_start,
+                    repointing=target_pointing_number,
+                    inputs=dependency_inputs.serialize(),
+                )
+                for f in output_files:
+                    yield f
+                if batch_status == models.Status.FAILED.value:
+                    raise Failure(
+                        description="Batch Job Failure. View logs for details."
+                    )
+                if batch_status is None:
+                    raise Failure(
+                        description=f"""Timeout Error.
+                                        Dagster has waited {batch_job_timeout}
+                                        seconds for the job to complete,
+                                        and it did not finish."""
+                    )
+            elif submit_response.status == "skipped":
+                # If we skipped the job, let us materialize any previous outputs
+                # so that we ensure dagster knows about them
+
+                output_files = self.find_outputs(
+                    context,
+                    session,
+                    start_date=target_start,
+                    repointing=target_pointing_number,
+                    inputs=dependency_inputs.serialize(),
+                )
+                for f in output_files:
+                    yield f
+            else:
+                raise Failure(description=submit_response.message)
+
+    def wait_for_batch_job(
+        self, session: db.Session, job_info: dict, timeout: int, wait_time: int
+    ):
         """Wait for a Batch job to complete, and return the status."""
         timeout_start = time.time()
-        while time.time() < timeout_start + self.BATCH_JOB_TIMEOUT_SECONDS:
+        while time.time() < timeout_start + timeout:
             job_completed = (
                 session.query(models.ProcessingJob)
                 .filter(
@@ -310,12 +324,12 @@ class IMAPJobHandler:
                 .first()
             )
             if not job_completed:
-                time.sleep(60)
+                time.sleep(wait_time)
             else:
                 return job_completed.status.name
 
-        # If we time out, return a failure
-        return models.Status.FAILED.value
+        # If we time out, return nothing
+        return
 
     def find_outputs(
         self,
