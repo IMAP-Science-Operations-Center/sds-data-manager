@@ -46,9 +46,11 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l1a
       descriptor: de
+      major_version: 1
     - source: glows
       data_type: l1a
       descriptor: hist
+      major_version: 1
 
 (l1b, de):
   partition: repoint
@@ -63,6 +65,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l1b
       descriptor: de
+      major_version: 1
 
 (l1b, hist):
   partition: repoint
@@ -105,6 +108,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l1b
       descriptor: hist
+      major_version: 1
 
 (l2, hist):
   partition: repoint
@@ -121,6 +125,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l2
       descriptor: hist
+      major_version: 1
 
 (l3a, hist):
   partition: repoint
@@ -142,6 +147,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l3a
       descriptor: hist
+      major_version: 1
 
 (l3b, ion-rate-profile):
   partition: daily
@@ -153,3 +159,4 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l3b
       descriptor: ion-rate-profile
+      major_version: 1
