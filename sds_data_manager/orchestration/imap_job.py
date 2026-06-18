@@ -166,7 +166,7 @@ class IMAPJobHandler:
             outs=output_assets,
         )
         def _generic_batch_submitter(context: AssetExecutionContext):
-            yield self.run_job(
+            yield from self.run_job(
                 context, self.BATCH_JOB_TIMEOUT_SECONDS, self.WAIT_TIME_AFTER_BATCH
             )
 
