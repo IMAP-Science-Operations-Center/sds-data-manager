@@ -81,11 +81,17 @@ def test_glows_l1a_end_to_end(
     )
 
     # Find the glows_l1a_all_processing_job and call it.
-    for job in job_handlers:
-        if job.dagster_job_name == "glows_l1a_all_processing_job":
-            glows_l1a_job = job
-            break
-
+    glows_l1a_job = next(
+        (
+            job
+            for job in job_handlers
+            if job.dagster_job_name == "glows_l1a_all_processing_job"
+        ),
+        None,
+    )
+    assert (
+        glows_l1a_job is not None
+    ), "glows_l1a_all_processing_job was not found in job_handlers"
     # TEST 3: Run the asset and verify there is a timeout error.
     with pytest.raises(Failure, match="Timeout"):
         yielded_files = list(glows_l1a_job.run_job(context, 1, 1))
