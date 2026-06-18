@@ -80,10 +80,7 @@ def s3_client():
     with mock_s3():
         s3_client = boto3.client("s3", region_name="us-east-1")
 
-        s3_client.create_bucket(
-            Bucket=BUCKET_NAME,
-        )
-
+        # Bucket creation is handled in the setup_s3 fixture.
         yield s3_client
 
 
