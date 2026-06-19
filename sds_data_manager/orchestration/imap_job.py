@@ -194,6 +194,17 @@ class IMAPJobHandler:
         5) Wait for the output files,
            and materialize them as we see them in the database.
         """
+
+        1) Get all dependencies from the dependency tree
+        2) Check if the job had been submitted before
+           a) If it has, and Dagster doesn't know about it, then it will materialize
+              the asset
+           b) If Dagster does know about it, we exit
+        3) Get the Job version
+        4) Submit the job
+        5) Wait for the output files,
+           and materialize them as we see them in the database.
+        """
         # TODO: Is this needed if we only check every few minutes?
         # Before doing anything, check if any of the dependencies are currently
         # running or about to run.
