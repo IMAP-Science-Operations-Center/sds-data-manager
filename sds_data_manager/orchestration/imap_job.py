@@ -62,7 +62,6 @@ BATCH_JOB_RETRY_STRATEGY = {
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
 
-
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -129,7 +128,7 @@ class IMAPJobHandler:
             The job node to process.
         """
         self.BATCH_JOB_TIMEOUT_SECONDS = 3600  # 1 hour, can be adjusted as needed.
-        self.WAIT_TIME_AFTER_BATCH = (
+        self.WAIT_TIME_AFTER_BATCH_SECONDS = (
             60  # time to wait after a batch job completes to search for files.
         )
         self.job_config = job
@@ -167,7 +166,9 @@ class IMAPJobHandler:
         )
         def _generic_batch_submitter(context: AssetExecutionContext):
             yield from self.run_job(
-                context, self.BATCH_JOB_TIMEOUT_SECONDS, self.WAIT_TIME_AFTER_BATCH
+                context,
+                self.BATCH_JOB_TIMEOUT_SECONDS,
+                self.WAIT_TIME_AFTER_BATCH_SECONDS,
             )
 
         # Return the generated function back to Dagster

@@ -1,20 +1,33 @@
 """The Dagster entrypoint. Builds all assets and sensors."""
 
+import importlib
+import pkgutil
+
 from dagster import Definitions
 from imap_data_access import VALID_DATALEVELS
 
+import sds_data_manager.orchestration.custom_behavior
 from sds_data_manager.orchestration import (
     custom_partitions,
-    hi,
-    idex,
-    l3_jobs,
     reprocessing,
 )
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
 )
-from sds_data_manager.orchestration.imap_file import IMAPScienceFileHandler
-from sds_data_manager.orchestration.imap_job import IMAPJobHandler
+from sds_data_manager.orchestration.file_handler_registry import FileBuilderRegistry
+from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
+
+
+# This ensures that the custom behavior is loaded in appropriately before called
+def load_all_builders():
+    """Dynamically imports all modules in the builders package to trigger decorators."""
+    package = sds_data_manager.orchestration.custom_behavior
+    for _, module_name, _ in pkgutil.iter_modules(package.__path__):
+        importlib.import_module(f"{package.__name__}.{module_name}")
+
+
+load_all_builders()
+
 
 dependency_config = DependencyConfigReader()
 
@@ -46,35 +59,12 @@ for potential_job in all_jobs:
             and ("6mo" not in descriptor)
             and ("1yr" not in descriptor)
         ):  # Skip maps for now
-            if "goodtimes" in descriptor and source == "hi" and data_type == "l1b":
-                job = hi.HiGoodtimesJob(dependency_config._config[potential_job])
-            elif (
-                source == "glows"
-                and descriptor == "ion-rate-profile"
-                and data_type == "l3b"
-            ):
-                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
-            elif source == "lo" and descriptor == "all-maps" and data_type == "l3":
-                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
-            elif source == "hi" and descriptor == "sp-maps" and data_type == "l3":
-                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
-            elif source == "hi" and descriptor == "hic-maps" and data_type == "l3":
-                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
-            elif source == "ultra" and descriptor == "u45-maps" and data_type == "l3":
-                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
-            elif source == "ultra" and descriptor == "u90-maps" and data_type == "l3":
-                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
-            elif (
-                source == "ultra" and descriptor == "ulc-sp-maps" and data_type == "l3"
-            ):
-                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
-            elif (
-                source == "ultra" and descriptor == "ulc-nsp-maps" and data_type == "l3"
-            ):
-                job = l3_jobs.L3CronHandler(dependency_config._config[potential_job])
-            else:
-                job = IMAPJobHandler(dependency_config._config[potential_job])
-
+            job = JobBuilderRegistry.get_builder(
+                dependency_config._config[potential_job]
+            )
+            print(job.dagster_job_name)
+            print(potential_job)
+            print(type(job))
             if job.job_config.to_dagster_name() not in unique_job_names:
                 job_handlers.append(job)
                 unique_job_names.append(job.job_config.to_dagster_name())
@@ -87,26 +77,18 @@ for potential_job in all_jobs:
                 ):
                     if "_ancillary_" in input_name:
                         continue
-                    elif "idex_l0_" in input_name:
-                        file_handlers.append(
-                            idex.IDEXL0FileHandler(input, job.partitions_def)
-                        )
-                        unique_job_names.append(input_name)
                     elif "spice" in input_name:
                         continue
                     elif "spin" in input_name:
                         continue
                     elif "repoint" in input_name:
                         continue
-                    else:
-                        file_handlers.append(
-                            IMAPScienceFileHandler(input, job.partitions_def)
-                        )
-                        unique_job_names.append(input_name)
+                    file_handler = FileBuilderRegistry.get_builder(
+                        input, job.partitions_def
+                    )
+                    file_handlers.append(file_handler)
+                    unique_job_names.append(input_name)
 
-# Now using handlers, create assets for each handler:
-#   1. create asset using handler.build_asset()
-#   2. create assets for spice, spin, and a repoint file
 # store in assets list
 assets_to_build = job_handlers + file_handlers
 

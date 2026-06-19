@@ -23,9 +23,11 @@ from sds_data_manager.orchestration.dagster_utilities import (
     get_affected_partitions,
     get_materialization_result,
 )
+from sds_data_manager.orchestration.file_handler_registry import FileBuilderRegistry
 from sds_data_manager.orchestration.types import DependencyNode
 
 
+@FileBuilderRegistry.register("idex", "l0", "raw")
 class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
     """Handle IMAP files that have no associated jobs."""
 

@@ -7,10 +7,13 @@ from imap_data_access import processing_input
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import imap_job, types
+from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 
 HI_GOODTIMES_NUM_NEAREST_REPOINTS = 8
 
 
+@JobBuilderRegistry.register("hi", "l1b", "45-sensorgoodtimes")
+@JobBuilderRegistry.register("hi", "l1b", "90-sensorgoodtimes")
 class HiGoodtimesJob(imap_job.IMAPJobHandler):
     """Overriding parts of the Hi processing pipeline."""
 
