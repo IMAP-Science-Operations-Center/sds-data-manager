@@ -62,9 +62,7 @@ for potential_job in all_jobs:
             job = JobBuilderRegistry.get_builder(
                 dependency_config._config[potential_job]
             )
-            print(job.dagster_job_name)
-            print(potential_job)
-            print(type(job))
+
             if job.job_config.to_dagster_name() not in unique_job_names:
                 job_handlers.append(job)
                 unique_job_names.append(job.job_config.to_dagster_name())

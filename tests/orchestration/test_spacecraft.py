@@ -82,7 +82,7 @@ def test_spacecraft_l1a_no_repoint(
         instance=ephemeral_instance,
     )
 
-    # Find the glows_l1a_all_processing_job and call it.
+    # Find the spacecraft_l1a_pointingattitude_processing_job and call it.
     spacecraft_l1a_job = next(
         (
             job
@@ -114,7 +114,7 @@ def test_spacecraft_l1a_no_spice(mock_db_session, ephemeral_instance):
         instance=ephemeral_instance,
     )
 
-    # Find the glows_l1a_all_processing_job and call it.
+    # Find the spacecraft_l1a_pointingattitude_processing_job and call it.
     spacecraft_l1a_job = next(
         (
             job
@@ -149,7 +149,7 @@ def test_spacecraft_l1a_submits(
         instance=ephemeral_instance,
     )
 
-    # Find the glows_l1a_all_processing_job and call it.
+    # Find the spacecraft_l1a_pointingattitude_processing_job and call it.
     spacecraft_l1a_job = next(
         (
             job
