@@ -1,10 +1,8 @@
 """Test the dagster reprocessing functionality."""
 
 import json
-import os
 from unittest.mock import Mock, patch
 
-import pytest
 from dagster import AssetKey, DagsterInstance, Definitions, asset, build_sensor_context
 from dagster._core.definitions.partitions.subset import DefaultPartitionsSubset
 
@@ -15,19 +13,7 @@ from sds_data_manager.orchestration.custom_partitions import (
 )
 
 
-@pytest.fixture
-def mock_env_vars():
-    """Mock environment variables."""
-    with patch.dict(
-        os.environ,
-        {
-            "REPROCESSING_SQS_URL": "https://sqs.us-west-2.amazonaws.com/test/reprocessing_queue"
-        },
-    ):
-        yield
-
-
-def test_reprocess_one_repoint_partition(mock_env_vars) -> None:
+def test_reprocess_one_repoint_partition() -> None:
     """Test the reprocessing functionality."""
     instance = DagsterInstance.ephemeral()
     instance.add_dynamic_partitions(
@@ -89,7 +75,7 @@ def test_reprocess_one_repoint_partition(mock_env_vars) -> None:
     )
 
 
-def test_reprocess_all_swe(mock_env_vars) -> None:
+def test_reprocess_all_swe() -> None:
     """Test the reprocessing functionality for all of swe."""
     instance = DagsterInstance.ephemeral()
     instance.add_dynamic_partitions(
@@ -153,7 +139,7 @@ def test_reprocess_all_swe(mock_env_vars) -> None:
     )
 
 
-def test_reprocess_all_output_node(mock_env_vars) -> None:
+def test_reprocess_all_output_node() -> None:
     """Test the reprocessing functionality for an output node."""
     instance = DagsterInstance.ephemeral()
     instance.add_dynamic_partitions(

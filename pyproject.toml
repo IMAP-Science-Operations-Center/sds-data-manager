@@ -94,6 +94,10 @@ psycopg2-binary = "^2.9.12"
 psycopg = "^3.3.4"
 pandas = ">=3.0.3,<4.0.0"
 
+
+[tool.poetry.group.test.dependencies]
+testcontainers = "^4.14.2"
+
 [project.urls]
 homepage = "https://github.com/IMAP-Science-Operations-Center"
 repository = "https://github.com/IMAP-Science-Operations-Center/sds-data-manager"
