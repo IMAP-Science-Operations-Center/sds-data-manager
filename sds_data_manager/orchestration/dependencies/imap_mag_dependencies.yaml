@@ -141,6 +141,12 @@
       data_type: l1b
       descriptor: norm-magi
       required: false
+      # Also pull the previous day's normal-mode L1B so L1C can continue the
+      # previous day's timeline across the day boundary when the current day
+      # opens with a gap (MAG SDC Data Validation 4.3.3 time inheritance;
+      # imap_processing issue 2925). [past, future] days (past is negative);
+      # the next day is not needed.
+      date_range: ["-1d", "0d"]
     - source: mag
       data_type: l1b
       descriptor: burst-magi
@@ -166,6 +172,12 @@
       data_type: l1b
       descriptor: norm-mago
       required: false
+      # Also pull the previous day's normal-mode L1B so L1C can continue the
+      # previous day's timeline across the day boundary when the current day
+      # opens with a gap (MAG SDC Data Validation 4.3.3 time inheritance;
+      # imap_processing issue 2925). [past, future] days (past is negative);
+      # the next day is not needed.
+      date_range: ["-1d", "0d"]
     - source: mag
       data_type: l1b
       descriptor: burst-mago
