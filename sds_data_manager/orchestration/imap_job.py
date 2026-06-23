@@ -1062,7 +1062,22 @@ class IMAPJobHandler:
         sorted_files.append(self._get_container_image_digest())
         joined_string = "|".join(sorted_files)
 
-        return hashlib.sha256(joined_string.encode("utf-8")).hexdigest()[:8]
+        return self._get_sha256_descriptor(joined_string)
+
+    def _get_sha256_descriptor(self, input_string: str) -> str:
+        """Generate an 8-digit hash descriptor label for a given input string.
+
+        Parameters
+        ----------
+        input_string : str
+            The input string to hash.
+
+        Returns
+        -------
+        str
+            The first 8 characters of the SHA-256 hash of the input string.
+        """
+        return hashlib.sha256(input_string.encode("utf-8")).hexdigest()[:8]
 
     def _get_container_image_digest(self):
         """Get the container image digest.
@@ -1136,9 +1151,7 @@ class IMAPJobHandler:
         ----------
         session : orm session
             Database session.
-        job_info : dict
-            Dictionary containing components with dates and versions appended.
-        start_date : str
+        start_date : datetime.datetime
             Start date of the data in the format 'YYYYMMDD'.
         output_versions : dict
             Dictionary keyed by output descriptor, where each value is a dict with
@@ -1177,10 +1190,12 @@ class IMAPJobHandler:
                 "version": output_versions,
             }
         )
-        # TODO do I need to calculate the dependency hash with the version info so it
-        # changes with versions ? YES I do.
+        # Add the dependency hash and version hash to the dependency file name to ensure
+        # uniqueness. The dependency hash is based on the upstream dependencies and the
+        # container image digest. The version hash is based on the output versions.
         dep_hash = self._dependency_hash(serialized_dependencies)
-        dep_descriptor = f"{self.job_config.descriptor}-{dep_hash}"
+        version_hash = self._get_sha256_descriptor(json.dumps(output_versions))
+        dep_descriptor = f"{self.job_config.descriptor}-{dep_hash}-{version_hash}"
         dependency_file = DependencyFilePath.generate_from_inputs(
             instrument=self.job_config.source,
             data_level=self.job_config.data_type,
