@@ -130,22 +130,7 @@ l3a_spice_common: &l3a_spice_common
       trigger_job: false
     - source: swapi
       data_type: ancillary
-      descriptor: clock-angle-and-flow-deflection-lut
-      trigger_job: false
-    - source: swapi
-      data_type: ancillary
-      descriptor: proton-density-temperature-lut
-      trigger_job: false
-    - source: swapi
-      data_type: ancillary
-      descriptor: alpha-density-temperature-lut
-    - source: swapi
-      data_type: ancillary
       descriptor: energy-gf-pui-lut
-      trigger_job: false
-    - source: swapi
-      data_type: ancillary
-      descriptor: instrument-response-lut
       trigger_job: false
     - source: swapi
       data_type: ancillary
@@ -177,21 +162,7 @@ l3a_spice_common: &l3a_spice_common
       descriptor: sci
     - source: swapi
       data_type: ancillary
-      descriptor: clock-angle-and-flow-deflection-lut
-    - source: swapi
-      data_type: ancillary
-      descriptor: proton-density-temperature-lut
-    - source: swapi
-      data_type: ancillary
-      descriptor: alpha-density-temperature-lut
-      trigger_job: false
-    - source: swapi
-      data_type: ancillary
       descriptor: energy-gf-pui-lut
-      trigger_job: false
-    - source: swapi
-      data_type: ancillary
-      descriptor: instrument-response-lut
       trigger_job: false
     - source: swapi
       data_type: ancillary
@@ -223,21 +194,7 @@ l3a_spice_common: &l3a_spice_common
       descriptor: sci
     - source: swapi
       data_type: ancillary
-      descriptor: clock-angle-and-flow-deflection-lut
-    - source: swapi
-      data_type: ancillary
-      descriptor: proton-density-temperature-lut
-      trigger_job: false
-    - source: swapi
-      data_type: ancillary
-      descriptor: alpha-density-temperature-lut
-      trigger_job: false
-    - source: swapi
-      data_type: ancillary
       descriptor: energy-gf-pui-lut
-    - source: swapi
-      data_type: ancillary
-      descriptor: instrument-response-lut
     - source: swapi
       data_type: ancillary
       descriptor: density-of-neutral-helium-lut
