@@ -11,6 +11,7 @@ from dagster import (
     EventRecordsFilter,
     MaterializeResult,
 )
+from imap_data_access.file_validation import Version
 
 
 def _existing_asset(
@@ -18,7 +19,7 @@ def _existing_asset(
     asset_key: AssetKey,
     partition: str,
     file_names: list[str],
-    current_version: int,
+    current_version: Version,
 ):
     """Return True if an Asset should not be materialized.
 
@@ -41,8 +42,9 @@ def _existing_asset(
         # Extract the previous file list from the metadata
         last_metadata = records[0].asset_materialization.metadata
         last_files_used = last_metadata.get("file_names").value
-        last_version = int(last_metadata.get("version").value)
-        if current_version < last_version:
+        last_major_version = int(last_metadata.get("major_version").value)
+        last_minor_version = int(last_metadata.get("minor_version").value)
+        if current_version < Version(last_major_version, last_minor_version):
             # We are trying to add an older version, a better one already exists
             return True
         # Compare lists
@@ -57,12 +59,12 @@ def get_materialization(
     asset_key: AssetKey,
     partition: str,
     file_names: list[str],
-    version: str,
+    version: Version,
     data_type: str,
     start_date: str = "",
 ):
     """Return AssetMaterialization only if different from previous materialization."""
-    if _existing_asset(context, asset_key, partition, file_names, int(version)):
+    if _existing_asset(context, asset_key, partition, file_names, version):
         return
 
     return AssetMaterialization(
@@ -71,7 +73,8 @@ def get_materialization(
         metadata={
             "file_names": file_names,
             "input_type": data_type,
-            "version": version,
+            "major_version": str(version.major),
+            "minor_version": str(version.minor),
             "start_date": start_date,
         },
     )
@@ -82,7 +85,7 @@ def get_materialization_result(
     asset_key: AssetKey,
     partition: str | None,
     file_names: list[str],
-    version: str,
+    version: Version,
     data_type: str,
     inputs: dict | None = None,
 ) -> MaterializeResult | None:
@@ -92,7 +95,7 @@ def get_materialization_result(
 
     data_type must be one of "science", "ancillary", "spice", "spin", or "repoint".
     """
-    if _existing_asset(context, asset_key, partition, file_names, int(version)):
+    if _existing_asset(context, asset_key, partition, file_names, version):
         return
 
     return MaterializeResult(
@@ -100,7 +103,8 @@ def get_materialization_result(
         metadata={
             "file_names": file_names,
             "input_type": data_type,
-            "version": version,
+            "major_version": str(version.major),
+            "minor_version": str(version.minor),
             "inputs": inputs,
         },
     )
