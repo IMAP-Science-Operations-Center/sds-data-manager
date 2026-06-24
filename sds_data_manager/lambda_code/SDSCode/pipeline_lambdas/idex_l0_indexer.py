@@ -263,7 +263,8 @@ def lambda_handler(event, context):
     )
     idex_params = {
         "ingestion_date": params["ingestion_date"],
-        "version": params["version"],
+        "major_version": params["major_version"],
+        "minor_version": params["minor_version"],
         "file_path": params["file_path"],
     }
     logger.info(f"Writing metadata to idex-l0-files db table: {idex_params}")

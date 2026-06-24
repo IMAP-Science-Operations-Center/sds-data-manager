@@ -72,7 +72,7 @@ def ancillary_file():
 @pytest.fixture(scope="module")
 def science_file():
     """Path to a valid science file."""
-    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v000.0001.cdf"
+    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v001.0001.cdf"
 
 
 @pytest.fixture(scope="module")
@@ -93,10 +93,7 @@ def spice_file():
 @pytest.fixture(scope="module")
 def invalid_file():
     """Path for an invalid file."""
-    return (
-        "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_"
-        "second-description_20100101_v000.cdf"
-    )
+    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v001.001.cdf"
 
 
 @pytest.fixture(autouse=True)
