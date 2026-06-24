@@ -28,6 +28,7 @@ from dagster import (
     sensor,
 )
 from imap_data_access import VALID_DATALEVELS, DependencyFilePath, processing_input
+from imap_data_access.file_validation import Version
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 
@@ -244,7 +245,7 @@ class IMAPJobHandler:
             submit_response = self.try_to_submit_job(
                 session,
                 target_start,
-                job_version,
+                output_versions,
                 dependency_inputs.serialize(),
                 repoint=target_pointing_number,
             )
@@ -267,7 +268,7 @@ class IMAPJobHandler:
                 output_files = self.find_outputs(
                     context,
                     session,
-                    job_version=job_version,
+                    output_versions=output_versions,
                     start_date=target_start,
                     repointing=target_pointing_number,
                     inputs=dependency_inputs.serialize(),
@@ -324,7 +325,7 @@ class IMAPJobHandler:
                 )
                 .order_by(
                     models.ProcessingJob.major_version.desc(),
-                    models.ProcessingJob.minor.desc(),
+                    models.ProcessingJob.minor_version.desc(),
                 )
                 .first()
             )
@@ -340,7 +341,7 @@ class IMAPJobHandler:
         self,
         context,
         session: db.Session,
-        output_versions: dict,
+        output_versions: dict | None = None,
         start_date: datetime.datetime | None = None,
         repointing: int | None = None,
         inputs: dict | None = None,
@@ -359,14 +360,15 @@ class IMAPJobHandler:
                 models.ScienceFiles.data_level == output.data_type,
                 models.ScienceFiles.descriptor == output.descriptor,
             ]
-            if output.descriptor in output_versions.keys():
-                versions = output_versions[output.descriptor]
-                filters.append(
-                    models.ScienceFiles.major_version == versions.major_version
-                )
-                filters.append(
-                    models.ScienceFiles.minor_version == versions.major_version
-                )
+            if output_versions is not None:
+                if output.descriptor in output_versions.keys():
+                    versions = output_versions[output.descriptor]
+                    filters.append(
+                        models.ScienceFiles.major_version == versions["major_version"]
+                    )
+                    filters.append(
+                        models.ScienceFiles.minor_version == versions["minor_version"]
+                    )
             if repointing is not None:
                 filters.append(models.ScienceFiles.repointing == int(repointing))
             if start_date is not None:
@@ -397,7 +399,7 @@ class IMAPJobHandler:
                     output.to_dagster_asset(),
                     context.partition_key,
                     [os.path.basename(created_file.file_path)],
-                    str(int(created_file.version[1:])),
+                    Version(created_file.major_version, created_file.minor_version),
                     "science",
                     inputs=inputs,
                 )
