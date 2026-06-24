@@ -72,7 +72,7 @@ def ancillary_file():
 @pytest.fixture(scope="module")
 def science_file():
     """Path to a valid science file."""
-    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v000.cdf"
+    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v000.0001.cdf"
 
 
 @pytest.fixture(scope="module")
@@ -80,7 +80,7 @@ def dependency_file():
     """Path to a valid dependency file."""
     return (
         "imap/dependency/ultra/l2/2025/03/imap_ultra_l2_u45-ena-h-hf-nsp-test-hae-6deg"
-        "-3mo-4d649e314e8ac32e3fb76fe5d5aad46f_20250301_v001.json"
+        "-3mo-4d649e314e8ac32e3fb76fe5d5aad46f_20250301_v001.0001.json"
     )
 
 
