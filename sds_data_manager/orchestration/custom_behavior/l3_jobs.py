@@ -11,8 +11,17 @@ from dagster import (
 )
 
 from sds_data_manager.orchestration import dagster_utilities, imap_job, repoint_file
+from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 
 
+@JobBuilderRegistry.register("lo", "l3", "all-maps")
+@JobBuilderRegistry.register("hi", "l3", "sp-maps")
+@JobBuilderRegistry.register("hi", "l3", "hic-maps")
+@JobBuilderRegistry.register("glows", "l3b", "ion-rate-profile")
+@JobBuilderRegistry.register("ultra", "l3", "u45-maps")
+@JobBuilderRegistry.register("ultra", "l3", "u90-maps")
+@JobBuilderRegistry.register("ultra", "l3", "ulc-sp-maps")
+@JobBuilderRegistry.register("ultra", "l3", "ulc-nsp-maps")
 class L3CronHandler(imap_job.IMAPJobHandler):
     """Handle IMAP job dependencies and submission."""
 
