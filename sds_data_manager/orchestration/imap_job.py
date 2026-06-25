@@ -1070,7 +1070,7 @@ class IMAPJobHandler:
         dependency_strings.append(self._get_container_image_digest())
         # Append a string of each output descriptor and its major version, sorted
         # alphabetically by descriptor
-        # e.g. 'burst-magi:1,burst-mago:1,norm-magi:1,norm-mago:1'
+        # e.g. 'burst-magi:1,burst-mago:1,burst-raw:1,norm-magi:1,norm-mago:1'
         version_string = ",".join(
             sorted(
                 [
