@@ -1,5 +1,8 @@
 """Lambda to transition S3 files to new version."""
 
+from . import database as db
+from . import models
+
 
 def lambda_handler(event, context):
     """Lambda handler for transitioning S3 files to new version.
@@ -20,6 +23,11 @@ def lambda_handler(event, context):
     # 5. Able to make query to DB and science table.
     # 6. Verify the new version files record matches with what's in science table.
     # 7. Once verified, switch to the new version files.
+    with db.Session() as session:
+        # Query science table
+        session.query(models.ScienceFiles).all()
+        pass
+
     return {
         "statusCode": 200,
         "body": "S3 file transition completed successfully.",

@@ -300,6 +300,7 @@ class S3VersionTransitionLambda(Construct):
             "S3_BUCKET": f"{data_bucket.bucket_name}",
             "ACCOUNT": f"{env.account}",
             "REGION": f"{env.region}",
+            "SECRET_NAME": rds_construct.rds_creds.secret_name,
         }
         # Lambda should use private subnet
         subnet = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
