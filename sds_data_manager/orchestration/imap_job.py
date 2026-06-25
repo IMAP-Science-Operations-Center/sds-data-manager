@@ -1213,7 +1213,7 @@ class IMAPJobHandler:
         # Add the dependency hash and version hash to the dependency file name to ensure
         # uniqueness. The dependency hash is based on the upstream dependencies and the
         # container image digest. The version hash is based on the output versions.
-        dep_hash = self._dependency_hash(serialized_dependencies)
+        dep_hash = self._dependency_hash(serialized_dependencies, output_versions)
         version_hash = self._get_sha256_descriptor(json.dumps(output_versions))
         dep_descriptor = f"{self.job_config.descriptor}-{dep_hash}-{version_hash}"
         dependency_file = DependencyFilePath.generate_from_inputs(
