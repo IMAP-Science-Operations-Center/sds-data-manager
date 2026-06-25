@@ -1031,21 +1031,29 @@ class IMAPJobHandler:
 
         return output_versions
 
-    def _dependency_hash(self, serialized_dependencies: str):
+    def _dependency_hash(
+        self, serialized_dependencies: str, output_versions: dict[str, dict[str, int]]
+    ) -> str:
         """Generate a hash for the serialized dependencies.
 
         This is a unique ID for a particular run. Dagster will refuse to run a job with
-        the same dependency_hash.
+        the same dependency_hash. It is created from the upstream dependencies,
+        the container image hash, and the output products and their major version
+        numbers.
 
         Parameters
         ----------
         serialized_dependencies : str
             The serialized dependencies string.
+        output_versions : dict[str, dict[str, int]]
+            A dictionary of major and minor version numbers for each output descriptor.
 
         Returns
         -------
         str
-            The first 8 characters of the SHA-256 hash of the serialized dependencies.
+            The first 8 characters of the SHA-256 hash of the serialized dependencies,
+            container image digest, and output products and their major versions
+             numbers
         """
         # We need to pull out the individual files and put them in alphabetical order
         dependencies = json.loads(serialized_dependencies)
@@ -1058,9 +1066,21 @@ class IMAPJobHandler:
                     # difference to processing.
                     non_sclk_deps.append(file)
         # Append the image_digest
-        sorted_files = sorted(list(set(non_sclk_deps)))
-        sorted_files.append(self._get_container_image_digest())
-        joined_string = "|".join(sorted_files)
+        dependency_strings = sorted(list(set(non_sclk_deps)))
+        dependency_strings.append(self._get_container_image_digest())
+        # Append a string of each output descriptor and its major version, sorted
+        # alphabetically by descriptor
+        # e.g. 'burst-magi:1,burst-mago:1,norm-magi:1,norm-mago:1'
+        version_string = ",".join(
+            sorted(
+                [
+                    f"{desc}:{val['major_version']}"
+                    for desc, val in output_versions.items()
+                ]
+            )
+        )
+        dependency_strings.append(version_string)
+        joined_string = "|".join(dependency_strings)
 
         return self._get_sha256_descriptor(joined_string)
 
