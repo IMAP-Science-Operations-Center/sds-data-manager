@@ -114,7 +114,7 @@ jobs:
           echo "Deploying to environment: $ACCOUNT_NAME"
           echo "SKIP_IALIRT=$SKIP_IALIRT"
           if [[ "$SKIP_IALIRT" == "true" ]]; then
-            STACKS="NetworkingStack HostedZoneCertificateStack WebsiteStack SDCStack BackupStack"
+            STACKS="NetworkingStack HostedZoneCertificateStack WebsiteStack SDCStack DagsterStack BackupStack"
           else
             STACKS="--all"
           fi

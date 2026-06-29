@@ -70,7 +70,7 @@ def test_spacecraft_l1a_sensor(mock_db_session, ephemeral_instance):
     run_requests = list(sensor_result)
 
     # Verify things were kicked off
-    assert len(run_requests) > 270, "Expected numerous kickoffs to be attempted."
+    assert len(run_requests) == 10, "Expected a run for each repoint partition."
 
 
 def test_spacecraft_l1a_no_repoint(

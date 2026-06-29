@@ -5,7 +5,7 @@
 # and how to properly configure them for your pipeline lambdas.
 
 (l1a, pointing-attitude):
-  partition: daily
+  partition: repoint
   inputs:
     - source: repoint
       data_type: repoint
