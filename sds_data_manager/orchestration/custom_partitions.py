@@ -7,12 +7,16 @@ from dagster import (
     DynamicPartitionsDefinition,
     SensorEvaluationContext,
     SensorResult,
+    SkipReason,
     sensor,
 )
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import config
+from sds_data_manager.orchestration.maps_utils import (
+    get_progressive_map_partition_names,
+)
 
 IDEX_10_DAY_RANGES_PATH = (
     "sds_data_manager/lambda_code/SDSCode/utils/idex_10_day_CDF_names.csv"
@@ -20,6 +24,19 @@ IDEX_10_DAY_RANGES_PATH = (
 IDEX_30_DAY_RANGES_PATH = (
     "sds_data_manager/lambda_code/SDSCode/utils/idex_30_day_CDF_names.csv"
 )
+
+MISSION_START_TIME = "2026-04-01T00:00:00"
+
+cadence_3mo_partitions = DynamicPartitionsDefinition(name="cadence_3mo_partitions")
+cadence_6mo_partitions = DynamicPartitionsDefinition(name="cadence_6mo_partitions")
+cadence_1yr_partitions = DynamicPartitionsDefinition(name="cadence_1yr_partitions")
+
+CADENCE_PARTITION_DEFS = {
+    "3mo": cadence_3mo_partitions,
+    "6mo": cadence_6mo_partitions,
+    "1yr": cadence_1yr_partitions,
+}
+
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY POINTING NUMBER
 repoint_partitions = DynamicPartitionsDefinition(name="repoint_partitions")
@@ -240,6 +257,56 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
     return SensorResult(
         dynamic_partitions_requests=partition_requests, cursor=end_dt.isoformat()
     )
+
+
+# Run daily (24 hours = 86400 seconds)
+# TODO: update to run daily or weekly or at specified time
+# based on progressive discussion in the future.
+@sensor(minimum_interval_seconds=86400)
+def add_cadence_map_partitions(context: SensorEvaluationContext):
+    """Create missing cadence partitions daily.
+
+    This sensor checks for new cadence partitions that need to be created
+    and adds them to Dagster.
+    """
+    added_any = False
+
+    # Calculate partitions based on current time and compare
+    # against existing partitions in dagster.
+    for cadence_str, partition_def in CADENCE_PARTITION_DEFS.items():
+        existing_partitions = set(
+            context.instance.get_dynamic_partitions(partition_def.name)
+        )
+
+        # If normal cadence job, skip adding partitions that
+        # already exist.
+        # TODO: If progressive map, retrigger for all valid progressive map partitions
+        # based on current time. Eg. call this instead
+        #   get_progressive_map_partition_names()
+        missing_partitions = [
+            partition_name
+            for partition_name in get_progressive_map_partition_names(cadence_str)
+            if partition_name not in existing_partitions
+        ]
+        if not missing_partitions:
+            continue
+
+        # Add missing partitions via instance API
+        context.instance.add_dynamic_partitions(
+            partitions_def_name=partition_def.name,
+            partition_keys=missing_partitions,
+        )
+        context.log.info(
+            f"Added new {cadence_str} cadence partitions: {missing_partitions}"
+        )
+        added_any = True
+
+    if not added_any:
+        return SkipReason("No new cadence partitions to create")
+
+    # TODO: This sensor only manages partitions. Use auto-materialize
+    # or manual triggers to run jobs on these partitions.
+    return SensorResult()
 
 
 sensors = [
