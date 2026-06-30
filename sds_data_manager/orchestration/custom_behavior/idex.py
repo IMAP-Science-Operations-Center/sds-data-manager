@@ -14,6 +14,7 @@ from dagster import (
     asset,
     sensor,
 )
+from imap_data_access.file_validation import Version
 from sqlalchemy import select
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
@@ -72,20 +73,23 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
                         base = filename.rsplit("_", 1)[0]  # strip "_v001.pkts"
                         # "imap_idex_l0_raw_20260408_v001.pkts" ->
                         # "imap_idex_l0_raw_20260408"
-                        if base not in best or rec.version > best[base].version:
+                        current_version = Version(rec.major_version, rec.minor_version)
+                        if base not in best or current_version > Version(
+                            best[base].major_version, best[base].minor_version
+                        ):
                             best[base] = rec
 
                     for rec in best.values():
                         filename = os.path.basename(rec.file_path)
                         files.append(filename)
-                        versions.append(int(rec.version[1:]))
+                        versions.append(Version(rec.major_version, rec.minor_version))
 
                     materialization = get_materialization_result(
                         context,
                         AssetKey("idex_l0_raw"),
                         current_partition,
                         files,
-                        str(max(versions)),
+                        max(versions),
                         "science",
                     )
                     if materialization:
