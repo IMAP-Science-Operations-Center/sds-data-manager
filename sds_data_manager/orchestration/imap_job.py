@@ -1036,10 +1036,13 @@ class IMAPJobHandler:
     ) -> str:
         """Generate a hash for the serialized dependencies.
 
-        This is a unique ID for a particular run. Dagster will refuse to run a job with
-        the same dependency_hash. It is created from the upstream dependencies,
-        the container image hash, and the output products and their major version
-        numbers.
+        This is a unique ID for a particular run. This is a unique ID for a particular
+        run. Dagster will refuse to run a job with the same dependency_hash. It is
+        derived from the upstream dependencies, the container image hash, and the
+        output products' major version numbers. Minor versions are excluded because
+        they only change with a dependency update, major version bump, or code change —
+        whereas major versions can change independent of those, so excluding minor lets
+        us reprocess when only the major version has been bumped.
 
         Parameters
         ----------
