@@ -36,6 +36,11 @@
       data_type: l1a
       descriptor: burst-mago
       major_version: 1
+    - source: mag
+      data_type: l1a
+      descriptor: burst-raw
+      major_version: 1
+
 
 (l1b, burst-magi):
   partition: daily
