@@ -65,6 +65,14 @@ def upload_cdf(
     basename_map: dict[str, str],
 ):
     """Download/modify/upload a pkts/cdf file on S3."""
+    try:
+        client.head_object(Bucket=bucket, Key=dst_key)
+    except client.exceptions.ClientError:
+        pass
+    else:
+        logger.info(f"Target exists, leaving untouched: s3://{bucket}/{dst_key}")
+        return
+
     if src_key.endswith("pkts"):
         client.copy_object(
             Bucket=bucket,
