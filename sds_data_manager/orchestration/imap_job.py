@@ -399,7 +399,7 @@ class IMAPJobHandler:
         # Get all ancestral upstream assets.
         input_set = set(
             context.repository_def.asset_graph.get_ancestor_asset_keys(
-                self.job_config.to_dagster_asset()
+                self.job_config.outputs[0].to_dagster_asset()
             )
         )
         in_flight_runs = context.instance.get_runs(
