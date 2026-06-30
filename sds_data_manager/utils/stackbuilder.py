@@ -502,19 +502,6 @@ def build_sds(
     )
     dagster_ecs_stack.node.add_dependency(dagster_image_construct)
 
-    # NOTE: one time use lambda to transition s3 files to new version.
-    instrument_lambdas.S3VersionTransitionLambda(
-        scope=sdc_stack,
-        construct_id="S3FileVersionTransitionLambda",
-        env=env,
-        data_bucket=data_bucket.data_bucket,
-        code=lambda_code,
-        rds_construct=rds_construct,
-        rds_security_group=rds_construct.rds_security_group,
-        vpc=networking.vpc,
-        layers=[db_lambda_layer, spice_lambda_layer],
-    )
-
 
 def build_backup(scope: App, env: Environment, source_account: str):
     """Build backup bucket with permissions for replication from source_account.
