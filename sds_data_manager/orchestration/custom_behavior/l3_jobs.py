@@ -74,7 +74,9 @@ class L3CronHandler(imap_job.IMAPJobHandler):
         )
         return file
 
-    def _dependency_hash(self, serialized_dependencies: str):
+    def _dependency_hash(
+        self, serialized_dependencies: str, output_versions: dict[str, dict[str, int]]
+    ) -> str:
         """Generate a hash for the serialized dependencies.
 
         We are overriding the behavior of IMAPJobHandler. Dependencies are largely
@@ -86,6 +88,8 @@ class L3CronHandler(imap_job.IMAPJobHandler):
         ----------
         serialized_dependencies : str
             The serialized dependencies string.
+        output_versions : dict[str, dict[str, int]]
+            The output versions dictionary.
 
         Returns
         -------
