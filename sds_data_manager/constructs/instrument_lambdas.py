@@ -2,19 +2,13 @@
 
 import datetime
 
-from aws_cdk import Duration, Environment
+from aws_cdk import Duration
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import (
-    aws_iam as iam,
-)
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_s3 as s3
-from aws_cdk import aws_secretsmanager as secrets
 from aws_cdk import aws_sqs as sqs
 from constructs import Construct
 
 from sds_data_manager.constructs.api_gateway_construct import ApiGateway
-from sds_data_manager.constructs.database_construct import SdpDatabase
 
 
 class ReprocessingTools(Construct):
@@ -242,97 +236,3 @@ def calculate_next_run(first_job, today, interval_minutes):
             minutes=(events_passed + 1) * interval_minutes
         )
         return next_run
-
-
-class S3VersionTransitionLambda(Construct):
-    """Generic Construct with customizable runtime code.
-
-    Lambda used one-time to transition s3 files to new
-    version. This lambda is used in dev and prod to test
-    and apply the transition of s3 files in production.
-
-    Lambda code defined here will help with making sure
-    dev and prod has same setup when transitioning.
-    """
-
-    def __init__(
-        self,
-        scope: Construct,
-        construct_id: str,
-        env: Environment,
-        data_bucket: s3.Bucket,
-        code: lambda_.Code,
-        rds_construct: SdpDatabase,
-        rds_security_group: ec2.SecurityGroup,
-        vpc: ec2.Vpc,
-        layers: list,
-        **kwargs,
-    ):
-        """S3VersionTransitionLambda Constructor.
-
-        Parameters
-        ----------
-        scope : Construct
-            Parent construct.
-        construct_id : str
-            A unique string identifier for this construct.
-        env : Environment
-            Account and region.
-        data_bucket: s3.Bucket
-            S3 bucket.
-        code : lambda_.Code
-            Lambda code bundle.
-        rds_construct: SdpDatabase,
-            RDS construct.
-        rds_security_group: ec2.SecurityGroup,
-            RDS security group.
-        vpc: ec2.Vpc,
-            VPC.
-        layers : list
-            List of Lambda layers cdk.cdfnOutput names.
-        kwargs : dict
-            Keyword arguments
-        """
-        super().__init__(scope, construct_id, **kwargs)
-
-        # Define Lambda Environment Variables
-        lambda_environment = {
-            "S3_BUCKET": f"{data_bucket.bucket_name}",
-            "ACCOUNT": f"{env.account}",
-            "REGION": f"{env.region}",
-            "SECRET_NAME": rds_construct.rds_creds.secret_name,
-        }
-        # Lambda should use private subnet
-        subnet = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
-
-        self.instrument_lambda = lambda_.Function(
-            self,
-            "S3VersionTransitionLambda",
-            function_name="S3VersionTransitionLambda",
-            code=code,
-            handler="SDSCode.database.s3_file_transition.lambda_handler",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            environment=lambda_environment,
-            memory_size=512,
-            # Set max to 15 mins temporarily
-            timeout=Duration.minutes(15),
-            vpc=vpc,
-            vpc_subnets=subnet,
-            security_groups=[rds_security_group],
-            allow_public_subnet=True,
-            layers=layers,
-        )
-        # S3 permission to read and write to the bucket
-        s3_policy_statement = iam.PolicyStatement(
-            actions=["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
-            resources=[
-                f"{data_bucket.bucket_arn}",
-                f"{data_bucket.bucket_arn}/*",
-            ],
-        )
-        self.instrument_lambda.add_to_role_policy(s3_policy_statement)
-        data_bucket.grant_read_write(self.instrument_lambda)
-        rds_secret = secrets.Secret.from_secret_name_v2(
-            self, "rds_secret", rds_construct.secret_name
-        )
-        rds_secret.grant_read(grantee=self.instrument_lambda)
