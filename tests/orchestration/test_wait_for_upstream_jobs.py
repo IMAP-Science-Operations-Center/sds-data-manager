@@ -48,7 +48,7 @@ def test_check_for_running_dependencies() -> None:
 
     # Mock a glows l1a run
     run = instance.create_run_for_job(
-        job_def=defs.get_job_def("__ASSET_JOB"),
+        job_def=defs.resolve_job_def("__ASSET_JOB"),
         asset_selection={AssetKey("glows_l1a_de")},
     )
     # 2. Transition run to status = started.

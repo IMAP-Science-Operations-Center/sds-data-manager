@@ -396,9 +396,12 @@ class IMAPJobHandler:
 
     def _check_for_running_dependencies(self, context):
         """Check if anything upstream of this file is currently running."""
+        # Imported locally to avoid a circular import
+        from sds_data_manager.orchestration.imap_dagster import defs  # noqa: PLC0415
+
         # Get all ancestral upstream assets.
         input_set = set(
-            context.repository_def.asset_graph.get_ancestor_asset_keys(
+            defs.get_repository_def().asset_graph.get_ancestor_asset_keys(
                 self.job_config.outputs[0].to_dagster_asset()
             )
         )
