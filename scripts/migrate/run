@@ -15,6 +15,10 @@ INTERACTIVE=0
 # modify the DB rows. Run in stages - do not enable both at once.
 COPY_FILES=0
 MODIFY_ROWS=0
+# Force overwriting of target cdf/pkts file(s) if they exist?
+OVERWRITE=0
+# Max cdf/pkts files to process in this batch (0 for all)
+MAX_FILES=1000
 
 ROLE_NAME=s3-transition-runner
 PROFILE_NAME=s3-transition-runner
@@ -55,13 +59,45 @@ if [ -z "$(aws iam get-instance-profile --instance-profile-name "$PROFILE_NAME" 
 fi
 
 # --- Key pair ---
-if ! aws ec2 describe-key-pairs --key-names "$KEY_NAME" >/dev/null 2>&1; then
+# Create the AWS key pair and save the private key locally with tight perms.
+create_key_pair() {
   aws ec2 create-key-pair --key-name "$KEY_NAME" --query 'KeyMaterial' --output text > "$KEY_FILE"
   chmod 400 "$KEY_FILE"
-elif [ ! -f "$KEY_FILE" ]; then
-  echo "ERROR: key pair '$KEY_NAME' exists in AWS but local '$KEY_FILE' is missing." >&2
-  echo "       Delete the key pair (aws ec2 delete-key-pair --key-name $KEY_NAME) and re-run, or restore the .pem." >&2
-  exit 1
+}
+
+# The instance is ephemeral, but the AWS key pair and the local .pem persist
+# between runs. A fresh instance bakes in the AWS-stored public key, so the
+# local .pem must still be its matching private half. Reuse the pair only if
+# the fingerprints match; on any drift, regenerate - otherwise SSH fails on
+# every attempt, masked as an endless "Waiting for SSH ..." loop.
+if ! aws ec2 describe-key-pairs --key-names "$KEY_NAME" >/dev/null 2>&1; then
+  echo "Key pair '$KEY_NAME' not found in AWS; creating it."
+  create_key_pair
+else
+  regenerate=0
+  if [ ! -f "$KEY_FILE" ]; then
+    echo "Key pair '$KEY_NAME' exists in AWS but local '$KEY_FILE' is missing; regenerating."
+    regenerate=1
+  else
+    aws_fp=$(aws ec2 describe-key-pairs --key-names "$KEY_NAME" \
+      --query 'KeyPairs[0].KeyFingerprint' --output text)
+    # EC2 CreateKeyPair fingerprint = SHA-1 of the DER (PKCS#8) private key.
+    local_fp=$(openssl pkcs8 -in "$KEY_FILE" -nocrypt -topk8 -outform DER 2>/dev/null \
+      | openssl sha1 -c 2>/dev/null | awk '{print $NF}')
+    if [ -z "$local_fp" ]; then
+      echo "WARNING: could not compute local fingerprint for '$KEY_FILE'; skipping match check." >&2
+    elif [ "$aws_fp" != "$local_fp" ]; then
+      echo "Local '$KEY_FILE' does not match AWS key pair '$KEY_NAME'; regenerating." >&2
+      echo "  AWS:   $aws_fp" >&2
+      echo "  local: $local_fp" >&2
+      regenerate=1
+    fi
+  fi
+  if [ "$regenerate" = 1 ]; then
+    aws ec2 delete-key-pair --key-name "$KEY_NAME"
+    rm -f "$KEY_FILE"
+    create_key_pair
+  fi
 fi
 # List keys
 aws ec2 describe-key-pairs --query 'KeyPairs[].KeyName' --output text
@@ -114,11 +150,25 @@ SSH_OPTS=(-i "$KEY_FILE"
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null)
 
-# SSH may not be ready the instant the instance is "running"; wait for it.
-until ssh "${SSH_OPTS[@]}" -o ConnectTimeout=5 ec2-user@"$EC2_IP" true 2>/dev/null; do
+# SSH may not be ready the instant the instance is "running"; wait for it, but
+# bound the wait so a real failure (e.g. a key mismatch) surfaces instead of
+# looping forever. On timeout, retry once WITHOUT hiding stderr so the actual
+# SSH error (e.g. "Permission denied (publickey)") is visible.
+ssh_ready=0
+for _ in $(seq 1 24); do
+  if ssh "${SSH_OPTS[@]}" -o ConnectTimeout=5 ec2-user@"$EC2_IP" true 2>/dev/null; then
+    ssh_ready=1
+    break
+  fi
   echo "Waiting for SSH on $EC2_IP ..."
   sleep 5
 done
+
+if [ "$ssh_ready" != 1 ]; then
+  echo "ERROR: SSH to $EC2_IP did not succeed after ~2 minutes. Last attempt:" >&2
+  ssh "${SSH_OPTS[@]}" -o ConnectTimeout=5 ec2-user@"$EC2_IP" true || true
+  exit 1
+fi
 
 # Copy the migration scripts up to the instance.
 scp "${SSH_OPTS[@]}" run_remote.sh migrate.py ec2-user@"$EC2_IP":~/
@@ -132,6 +182,6 @@ fi
 
 # Run the transition script on the instance.
 ssh "${SSH_OPTS[@]}" ec2-user@"$EC2_IP" \
-  "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION S3_BUCKET=$AWS_BUCKET SECRET_NAME=$SECRET_NAME COPY_FILES=$COPY_FILES MODIFY_ROWS=$MODIFY_ROWS bash ~/run_remote.sh"
+  "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION S3_BUCKET=$AWS_BUCKET SECRET_NAME=$SECRET_NAME COPY_FILES=$COPY_FILES MODIFY_ROWS=$MODIFY_ROWS OVERWRITE=$OVERWRITE MAX_FILES=$MAX_FILES bash ~/run_remote.sh"
 
 # Teardown happens in cleanup() via the EXIT trap.

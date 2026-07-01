@@ -12,6 +12,8 @@ export SECRET_NAME="${SECRET_NAME:-sdp-database-cred}"
 # Passed through to migrate.py.
 export COPY_FILES="${COPY_FILES:-0}"
 export MODIFY_ROWS="${MODIFY_ROWS:-0}"
+export OVERWRITE="${OVERWRITE:-0}"
+export MAX_FILES="${MAX_FILES:-0}"
 
 # t3 instances uses tmpdir as half of available RAM - not nearly enough for CDF files
 export TMPDIR="$HOME/tmp"
