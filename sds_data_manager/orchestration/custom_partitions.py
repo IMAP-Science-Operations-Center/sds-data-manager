@@ -262,7 +262,7 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
 # Run daily (24 hours = 86400 seconds)
 # TODO: update to run daily or weekly or at specified time
 # based on progressive discussion in the future.
-@sensor(minimum_interval_seconds=86400)
+@sensor(minimum_interval_seconds=86)
 def add_cadence_map_partitions(context: SensorEvaluationContext):
     """Create missing cadence partitions daily.
 
@@ -271,22 +271,22 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
     """
     added_any = False
 
-    # Calculate partitions based on current time and compare
-    # against existing partitions in dagster.
+    # Calculate the currently active windows for all cadences.
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    progressive_partition_names = get_progressive_map_partition_names(current_time)
+
+    # Compare against existing partitions in dagster.
     for cadence_str, partition_def in CADENCE_PARTITION_DEFS.items():
         existing_partitions = set(
             context.instance.get_dynamic_partitions(partition_def.name)
         )
 
-        # If normal cadence job, skip adding partitions that
-        # already exist.
-        # TODO: If progressive map, retrigger for all valid progressive map partitions
-        # based on current time. Eg. call this instead
-        #   get_progressive_map_partition_names()
+        prefix = f"cadence_{cadence_str}_"
         missing_partitions = [
             partition_name
-            for partition_name in get_progressive_map_partition_names(cadence_str)
-            if partition_name not in existing_partitions
+            for partition_name in progressive_partition_names
+            if partition_name.startswith(prefix)
+            and partition_name not in existing_partitions
         ]
         if not missing_partitions:
             continue
@@ -314,4 +314,5 @@ sensors = [
     add_daily_partitions,
     add_idex_10_day_partitions,
     add_idex_30_day_partitions,
+    add_cadence_map_partitions,
 ]
