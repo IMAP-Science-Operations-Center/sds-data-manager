@@ -54,6 +54,7 @@ for potential_job in all_jobs:
     source, data_type, descriptor = potential_job
 
     if data_type in VALID_DATALEVELS:
+        # TODO remove this check once the rest of this PR is setup
         if (
             ("3mo" not in descriptor)
             and ("6mo" not in descriptor)
