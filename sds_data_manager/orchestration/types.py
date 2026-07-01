@@ -495,3 +495,171 @@ class ProcessingJobType:
     POINTING = "pointing"
     CADENCE = "cadence"
     POINTING_ATTITUDE = "pointing_attitude"
+
+
+@dataclass(frozen=True)
+class MapWindow:
+    """Represent an ENA map cadence window with explicit date range.
+
+    Parameters
+    ----------
+    cadence: str
+        cadence string, e.g. "3mo", "6mo", "1yr"
+    start: datetime.datetime
+        start datetime for the window, e.g. "2024-01-01T00:00:00"
+    end: datetime.datetime
+        end datetime for the window, e.g. "2024-04-01T00:00:00"
+    """
+
+    cadence: str
+    start: datetime.datetime
+    end: datetime.datetime
+
+    def to_partition_name(self) -> str:
+        """Convert this window to a Dagster partition key string."""
+        start_str = self.start.strftime("%Y-%m-%dT%H:%M:%S")
+        end_str = self.end.strftime("%Y-%m-%dT%H:%M:%S")
+        return f"cadence_{self.cadence}_{start_str}_to_{end_str}"
+
+
+@dataclass(frozen=True)
+class WindowBoundary:
+    """A (month, day) boundary point for a map window.
+
+    Parameters
+    ----------
+    month: int
+        Month of the boundary (1-12). Eg. 1 for January, etc.
+    day: int
+        Day of the month (1-31, depending on month)
+    """
+
+    month: int
+    day: int
+
+    def to_datetime(self, year: int) -> datetime.datetime:
+        """Convert to a datetime for the given year."""
+        return datetime.datetime(
+            year, self.month, self.day, tzinfo=datetime.timezone.utc
+        )
+
+
+class BaseENAMapPartition:
+    """Base class for defining ENA map partition windows.
+
+    This class provides common utilities for map jobs to determine the
+    current map window or retrieve all windows for a given cadence. Map
+    windows are used to construct Dagster cadence-based partition names.
+
+    It also provides methods to get all windows for a cadence or determine
+    the active window based on the current time. These allow the
+    Dagster orchestration code to dynamically determine which map
+    partition name to use when starting a map job.
+    """
+
+    cadence: ClassVar[str]
+    # Define the map windows for the cadence using WindowBoundary.
+    boundaries: ClassVar[tuple[WindowBoundary, ...]]
+
+    def __init__(self, current_time: datetime.datetime):
+        """Initialize the cadence period with the current time."""
+        self.current_time = current_time
+
+    def get_windows(self) -> list[MapWindow]:
+        """Build all configured windows for the cadence type.
+
+        Based on the current time's year, generate cadence windows
+        for the cadence. Eg.
+            - For 3mo cadence, it will generate 4 windows:
+                - Jan 17 to Apr 18
+                - Apr 18 to Jul 18
+                - Jul 18 to Oct 17
+                - Oct 17 to Jan 17 of the next year
+            - For 6mo cadence, it will generate 2 windows:
+                - Jan 17 to Jul 18
+                - Jul 18 to Jan 17 of the next year
+            - For 1yr cadence, it will generate 1 window:
+                - Jan 17 to Jan 17 of the next year
+        """
+        windows: list[MapWindow] = []
+        year = self.current_time.year
+
+        for i in range(len(self.boundaries) - 1):
+            start_boundary = self.boundaries[i]
+            end_boundary = self.boundaries[i + 1]
+
+            # Handle year rollover (e.g., Oct -> Jan means end is next year)
+            start_year = year
+            end_year = year if end_boundary.month >= start_boundary.month else year + 1
+
+            windows.append(
+                MapWindow(
+                    cadence=self.cadence,
+                    start=start_boundary.to_datetime(start_year),
+                    end=end_boundary.to_datetime(end_year),
+                )
+            )
+        return windows
+
+    def get_current_window(self) -> MapWindow | None:
+        """Return the active map window for current_time.
+
+        Active window is defined relative to the current time.
+        For example, if current time is June 1, 2025 and cadence
+        is 3mo, the active window would be the one that starts
+        on Apr 18, 2025 and ends on Jul 18, 2025. Similarly for
+        6mo or 1yr cadence.
+        """
+        for window in self.get_windows():
+            if window.start <= self.current_time < window.end:
+                return window
+        return None
+
+
+class Map3MoPartition(BaseENAMapPartition):
+    """3-month map partitions."""
+
+    cadence: ClassVar[str] = "3mo"
+    # These boundaries are used to construct the 3-month maps windows:
+    #     First partition can be 91 days(or 92 days on leap year).
+    #     "cadence_3mo_{year}-01-17T00:00:00_to_{year}-04-18T00:00:00",
+    #     Next two partition are always 91 days.
+    #     "cadence_3mo_{year}-04-18T00:00:00_to_{year}-07-18T00:00:00",
+    #     "cadence_3mo_{year}-07-18T00:00:00_to_{year}-10-17T00:00:00",
+    #     Last partition is always 92 days.
+    #     "cadence_3mo_{year}-10-17T00:00:00_to_{year+1}-01-17T00:00:00
+    boundaries: ClassVar[tuple[WindowBoundary, ...]] = (
+        WindowBoundary(1, 17),  # Jan 17
+        WindowBoundary(4, 18),  # Apr 18
+        WindowBoundary(7, 18),  # Jul 18
+        WindowBoundary(10, 17),  # Oct 17
+        WindowBoundary(1, 17),  # Jan 17 (next year - marks end of last window)
+    )
+
+
+class Map6MoPartition(BaseENAMapPartition):
+    """6-month map partitions."""
+
+    cadence: ClassVar[str] = "6mo"
+    # These boundaries are used to construct the 6-month maps windows:
+    #     First partition can be 182 days(or 183 days on leap year).
+    #     "cadence_6mo_{year}-01-17T00:00:00_to_{year}-07-18T00:00:00",
+    #     Last partition is always 183 days.
+    #     "cadence_6mo_{year}-07-18T00:00:00_to_{year+1}-01-17T00:00:00
+    boundaries: ClassVar[tuple[WindowBoundary, ...]] = (
+        WindowBoundary(1, 17),  # Jan 17
+        WindowBoundary(7, 18),  # Jul 18
+        WindowBoundary(1, 17),  # Jan 17 (next year)
+    )
+
+
+class Map1YrPartition(BaseENAMapPartition):
+    """1-year map partitions."""
+
+    cadence: ClassVar[str] = "1yr"
+    # This boundary is used to construct the 1-year map window:
+    #     "cadence_1yr_{year}-01-17T00:00:00_to_{year+1}-01-17T00:00:00
+    boundaries: ClassVar[tuple[WindowBoundary, ...]] = (
+        WindowBoundary(1, 17),  # Jan 17
+        WindowBoundary(1, 17),  # Jan 17 (next year)
+    )

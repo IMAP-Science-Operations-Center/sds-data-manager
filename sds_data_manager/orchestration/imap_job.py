@@ -96,12 +96,7 @@ partition_map = {
     # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
     # maps to exactly 30 days. If this changes, this logic will need update.
     "30d": custom_partitions.idex30_partitions,
-    # TODO: add cadence custom partition definition and update to use those
-    # later
-    "3mo": custom_partitions.idex30_partitions,
-    "6mo": custom_partitions.idex30_partitions,
-    "1yr": custom_partitions.idex30_partitions,
-}
+} | custom_partitions.CADENCE_PARTITION_DEFS
 
 
 class MissingDependenciesError(Exception):
