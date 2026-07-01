@@ -262,7 +262,7 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
 # Run daily (24 hours = 86400 seconds)
 # TODO: update to run daily or weekly or at specified time
 # based on progressive discussion in the future.
-@sensor(minimum_interval_seconds=86)
+@sensor(minimum_interval_seconds=86400)
 def add_cadence_map_partitions(context: SensorEvaluationContext):
     """Create missing cadence partitions daily.
 
