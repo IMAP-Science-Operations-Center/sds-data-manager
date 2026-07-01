@@ -1,6 +1,7 @@
 """Reprocessing logic."""
 
 import datetime
+import hashlib
 import json
 import os
 
@@ -112,9 +113,12 @@ def process_single_message(
     context.log.info(
         f"Reprocessing {output_asset_keys} across partitions: {partition_keys}"
     )
-
+    # Generate an 8-digit hash of the message id to keep backfill run ids unique.
+    message_id_hash = hashlib.sha256(message["MessageId"].encode("utf-8")).hexdigest()[
+        :8
+    ]
     backfill = PartitionBackfill.from_asset_partitions(
-        backfill_id=f"reprocess-{instrument}-{message['MessageId']}",
+        backfill_id=f"reprocess-{instrument}-{message_id_hash}",
         asset_graph=context.repository_def.asset_graph,
         partition_names=partition_keys,
         asset_selection=output_asset_keys,
