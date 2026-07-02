@@ -49,6 +49,7 @@ def remap_parents(dataset, basename_map: dict[str, str]):
     single-element ``Parents`` to a scalar string.
     """
     parents = dataset.attrs.get("Parents")
+    logger.info(f"Parents: {parents}")
     if parents is None:
         return
     if isinstance(parents, str):
@@ -78,8 +79,10 @@ def upload_cdf(
     if not overwrite:
         try:
             client.head_object(Bucket=bucket, Key=dst_key)
-        except client.exceptions.ClientError:
-            pass
+        except client.exceptions.ClientError as e:
+            code = e.response.get("Error", {}).get("Code")
+            if code not in ("404", "NoSuchKey", "NotFound"):
+                raise
         else:
             logger.info(f"Target exists, leaving untouched: s3://{bucket}/{dst_key}")
             return
@@ -208,9 +211,11 @@ def migrate(  # noqa: PLR0912, PLR0915
     bucket = os.getenv("S3_BUCKET")
     if not bucket:
         raise ValueError("S3_BUCKET environment variable is not set")
-    logger.info(f"Listing objects in s3://{bucket}/imap/ ...")
-    s3_keys = get_s3_keys(bucket)
-    logger.info(f"Found {len(s3_keys)} objects in the bucket")
+    s3_keys: set[str] = set()
+    if copy_files:
+        logger.info(f"Listing objects in s3://{bucket}/imap/ ...")
+        s3_keys = get_s3_keys(bucket)
+        logger.info(f"Found {len(s3_keys)} objects in the bucket")
 
     with db.Session() as session:
         count = session.query(models.ScienceFiles).count()
@@ -255,7 +260,7 @@ def migrate(  # noqa: PLR0912, PLR0915
             if f"{DEST_PREFIX}{dst_path}" in existing_dsts:
                 continue
             path_mapping[(old_file_path, old_version)] = (new_file_path, new_version)
-            if max_files != 0 and len(path_mapping) >= max_files:
+            if not modify_rows and max_files != 0 and len(path_mapping) >= max_files:
                 break
 
         if REVERSE:
