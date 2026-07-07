@@ -5,7 +5,6 @@ import json
 from dagster import (
     RunRequest,
     SensorEvaluationContext,
-    SensorResult,
     SkipReason,
     sensor,
 )
@@ -14,10 +13,15 @@ from sds_data_manager.orchestration import (
     imap_job,
 )
 from sds_data_manager.orchestration.custom_partitions import CADENCE_PARTITION_DEFS
+from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
+from sds_data_manager.orchestration.maps_utils import _CADENCE_TYPES
+
+CADENCE_PATTERN = rf"{'|'.join([desc for desc in _CADENCE_TYPES])}"
 
 
-# TODO register all map jobs OR in JobBuilderRegistry.get_builder return map jobs if
-#   descriptor indicates a map job e.g. "3mo".
+@JobBuilderRegistry.register_descriptor_pattern("ultra", "l2", CADENCE_PATTERN)
+@JobBuilderRegistry.register_descriptor_pattern("hi", "l2", CADENCE_PATTERN)
+@JobBuilderRegistry.register_descriptor_pattern("lo", "l2", CADENCE_PATTERN)
 class L2MapJob(imap_job.IMAPJobHandler):
     """Overriding parts of the Hi processing pipeline."""
 
@@ -67,8 +71,8 @@ class L2MapJob(imap_job.IMAPJobHandler):
                 RunRequest(run_key=partition_name, partition_key=partition_name)
                 for partition_name in sorted(new_partitions)
             ]
+            yield run_requests
             # Update the curser to include the new partitions that have been seen.
-            return SensorResult(
-                run_requests=run_requests,
-                cursor=json.dumps(sorted(seen_partitions | new_partitions)),
-            )
+            context.update_cursor(json.dumps(sorted(seen_partitions | new_partitions)))
+
+        return _sensor

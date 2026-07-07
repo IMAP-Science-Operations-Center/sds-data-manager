@@ -54,39 +54,29 @@ for potential_job in all_jobs:
     source, data_type, descriptor = potential_job
 
     if data_type in VALID_DATALEVELS:
-        # TODO remove this check once the rest of this PR is setup
-        if (
-            ("3mo" not in descriptor)
-            and ("6mo" not in descriptor)
-            and ("1yr" not in descriptor)
-        ):  # Skip maps for now
-            job = JobBuilderRegistry.get_builder(
-                dependency_config._config[potential_job]
-            )
+        job = JobBuilderRegistry.get_builder(dependency_config._config[potential_job])
 
-            if job.job_config.to_dagster_name() not in unique_job_names:
-                job_handlers.append(job)
-                unique_job_names.append(job.job_config.to_dagster_name())
+        if job.job_config.to_dagster_name() not in unique_job_names:
+            job_handlers.append(job)
+            unique_job_names.append(job.job_config.to_dagster_name())
 
-            # Finally, check for inputs that do not have a corresponding output.
-            for input in inputs_list:
-                input_name = input.to_dagster_name()
-                if (input_name not in all_outputs) and (
-                    input_name not in unique_job_names
-                ):
-                    if "_ancillary_" in input_name:
-                        continue
-                    elif "spice" in input_name:
-                        continue
-                    elif "spin" in input_name:
-                        continue
-                    elif "repoint" in input_name:
-                        continue
-                    file_handler = FileBuilderRegistry.get_builder(
-                        input, job.partitions_def
-                    )
-                    file_handlers.append(file_handler)
-                    unique_job_names.append(input_name)
+        # Finally, check for inputs that do not have a corresponding output.
+        for input in inputs_list:
+            input_name = input.to_dagster_name()
+            if (input_name not in all_outputs) and (input_name not in unique_job_names):
+                if "_ancillary_" in input_name:
+                    continue
+                elif "spice" in input_name:
+                    continue
+                elif "spin" in input_name:
+                    continue
+                elif "repoint" in input_name:
+                    continue
+                file_handler = FileBuilderRegistry.get_builder(
+                    input, job.partitions_def
+                )
+                file_handlers.append(file_handler)
+                unique_job_names.append(input_name)
 
 # store in assets list
 assets_to_build = job_handlers + file_handlers
