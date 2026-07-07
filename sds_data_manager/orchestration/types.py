@@ -519,7 +519,7 @@ class MapWindow:
         """Convert this window to a Dagster partition key string."""
         start_str = self.start.strftime("%Y-%m-%dT%H:%M:%S")
         end_str = self.end.strftime("%Y-%m-%dT%H:%M:%S")
-        return f"cadence_{self.cadence}_{start_str}_to_{end_str}"
+        return f"cadence-{self.cadence}_{start_str}_to_{end_str}"
 
 
 @dataclass(frozen=True)

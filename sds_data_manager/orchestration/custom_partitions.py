@@ -262,7 +262,7 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
 # Run daily (24 hours = 86400 seconds)
 # TODO: update to run daily or weekly or at specified time
 # based on progressive discussion in the future.
-@sensor(minimum_interval_seconds=86400)
+@sensor(minimum_interval_seconds=86)
 def add_cadence_map_partitions(context: SensorEvaluationContext):
     """Create missing cadence partitions daily.
 
@@ -272,6 +272,9 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
     added_any = False
 
     # Calculate the currently active windows for all cadences.
+    # TODO this only registers cadence partitions if they are currently active.
+    #  We may want to register all past cadence partitions as well e.g. if we have to
+    #   redeploy we will need to register outdated partitions and run them.
     current_time = datetime.datetime.now(datetime.timezone.utc)
     progressive_partition_names = get_progressive_map_partition_names(current_time)
 
@@ -280,8 +283,9 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
         existing_partitions = set(
             context.instance.get_dynamic_partitions(partition_def.name)
         )
-
-        prefix = f"cadence_{cadence_str}_"
+        context.log.info(f"Existing cadence partitions: {existing_partitions}")
+        context.log.info(f"All partitions: {progressive_partition_names}")
+        prefix = f"cadence-{cadence_str}_"
         missing_partitions = [
             partition_name
             for partition_name in progressive_partition_names

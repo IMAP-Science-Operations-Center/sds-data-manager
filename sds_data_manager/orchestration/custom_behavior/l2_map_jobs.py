@@ -64,15 +64,12 @@ class L2MapJob(imap_job.IMAPJobHandler):
             # Get the new partitions that have been added since the last sensor tick.
             new_partitions = existing_partitions - seen_partitions
             if not new_partitions:
-                return SkipReason("No new cadence partitions to process")
+                yield SkipReason("No new cadence partitions to process")
+                return
 
-            # Submit a run request for each new partition.
-            run_requests = [
-                RunRequest(run_key=partition_name, partition_key=partition_name)
-                for partition_name in sorted(new_partitions)
-            ]
-            yield run_requests
-            # Update the curser to include the new partitions that have been seen.
+            for partition_name in sorted(new_partitions):
+                yield RunRequest(run_key=partition_name, partition_key=partition_name)
+
             context.update_cursor(json.dumps(sorted(seen_partitions | new_partitions)))
 
         return _sensor
