@@ -18,17 +18,18 @@ _CADENCE_TYPES: dict[str, type[BaseENAMapPartition]] = {
 }
 
 DEFAULT_MAPS_TIME = datetime.now(tz=timezone.utc)
+FIRST_MAP_START_DATE = datetime(2026, 1, 17, tzinfo=timezone.utc)
 
 
-def get_map_partition_to_create(
+def get_map_partition_names(
     cadence_str: str,
+    start_time: datetime = FIRST_MAP_START_DATE,
     current_time: datetime = DEFAULT_MAPS_TIME,
 ) -> list[str]:
-    """Return the most recently closed partition for a cadence.
+    """Return closed partitions for a cadence.
 
-    Use recently closed partition to create Dagster
-    partition if it does not already exist. Creating Dagster
-    partition kicks off the map job using that partition's date range.
+    Find all closed partition since the first map start date to create Dagster
+    partition if it does not already exist.
     """
     cadence_type = _CADENCE_TYPES.get(cadence_str)
     if cadence_type is None:
@@ -37,24 +38,17 @@ def get_map_partition_to_create(
             f"Valid cadences are: {list(_CADENCE_TYPES.keys())}"
         )
 
-    # Get all the windows
-    windows = cadence_type(current_time).get_windows()
-
+    # Get all the windows since the first map start date for the cadence.
+    windows = cadence_type(current_time).get_windows_since(start_time)
+    print(f"Found {len(windows)} windows for {cadence_str}")
     # Only look for past windows.
     closed_windows = [window for window in windows if window.end <= current_time]
-
+    print(f"Found {len(closed_windows)} closed windows for {cadence_str}")
     if not closed_windows:
         return []
 
-    # Get the most recently closed window, which is the one
-    # we want to create a partition for.
-    latest_closed = max(
-        closed_windows,
-        key=lambda window: window.end,
-    )
-
-    # Return the partition name
-    return [latest_closed.to_partition_name()]
+    # Return all closed partition names
+    return [window.to_partition_name() for window in closed_windows]
 
 
 def get_progressive_map_partition_names(

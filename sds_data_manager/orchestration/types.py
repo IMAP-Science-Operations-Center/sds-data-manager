@@ -565,7 +565,7 @@ class BaseENAMapPartition:
         """Initialize the cadence period with the current time."""
         self.current_time = current_time
 
-    def get_windows(self) -> list[MapWindow]:
+    def get_windows(self, year: int | None = None) -> list[MapWindow]:
         """Build all configured windows for the cadence type.
 
         Based on the current time's year, generate cadence windows
@@ -582,7 +582,7 @@ class BaseENAMapPartition:
                 - Jan 17 to Jan 17 of the next year
         """
         windows: list[MapWindow] = []
-        year = self.current_time.year
+        year = self.current_time.year if year is None else year
 
         for i in range(len(self.boundaries) - 1):
             start_boundary = self.boundaries[i]
@@ -599,6 +599,14 @@ class BaseENAMapPartition:
                     end=end_boundary.to_datetime(end_year),
                 )
             )
+        return windows
+
+    def get_windows_since(self, since_time: datetime.datetime) -> list[MapWindow]:
+        """Return all windows from the given time to current time."""
+        windows: list[MapWindow] = []
+        for year in range(since_time.year, self.current_time.year + 1):
+            windows.extend(self.get_windows(year))
+
         return windows
 
     def get_current_window(self) -> MapWindow | None:
