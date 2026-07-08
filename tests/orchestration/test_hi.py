@@ -102,9 +102,8 @@ def test_hi_goodtimes_registered(dagster_job_name):
     job = _hi_goodtimes_job(dagster_job_name)
     assert isinstance(job, HiGoodtimesJob)
 
-
 def test_hi_goodtimes_waits_when_future_pointing_unknown(
-    mock_db_session, ephemeral_instance
+    mock_db_session, pointing_table_entries, ephemeral_instance
 ):
     """Skip when there aren't enough future neighbors and more may still arrive."""
     job = _hi_goodtimes_job(FORTYFIVE_SENSOR_GOODTIMES_JOB)
@@ -128,7 +127,7 @@ def test_hi_goodtimes_waits_when_future_pointing_unknown(
 
 
 def test_hi_goodtimes_proceeds_when_no_more_data_expected(
-    mock_db_session, ephemeral_instance
+    mock_db_session, pointing_table_entries, ephemeral_instance
 ):
     """Proceed once PointingTable confirms Hi has no more future data to add."""
     job = _hi_goodtimes_job(FORTYFIVE_SENSOR_GOODTIMES_JOB)
