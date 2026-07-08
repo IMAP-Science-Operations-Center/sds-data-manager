@@ -14,36 +14,87 @@ from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegist
 HI_GOODTIMES_NUM_NEAREST_REPOINTS = 8
 
 
-@JobBuilderRegistry.register("hi", "l1b", "45-sensorgoodtimes")
-@JobBuilderRegistry.register("hi", "l1b", "90-sensorgoodtimes")
+@JobBuilderRegistry.register("hi", "l1b", "45sensor-goodtimes")
+@JobBuilderRegistry.register("hi", "l1b", "90sensor-goodtimes")
 class HiGoodtimesJob(imap_job.IMAPJobHandler):
     """Overriding parts of the Hi processing pipeline."""
 
     # Override this function from IMAPJobHandler
     def get_science_files_inputs(self, context, target_start, target_end):
         """Override the behavior of IMAPJobHander.get_science_files_inputs."""
-        science_processing_inputs = []
-        science_files = []
-        with db.Session() as session:
-            parts = context.partition_key.split("_")
-            if "repoint" in parts[0]:
-                target_pointing_number = int(parts[0][7:])
-            science_processing_inputs.extend(
-                super().get_science_files_inputs(context, target_start, target_end)
-            )
+        parts = context.partition_key.split("_")
+        target_pointing_number = int(parts[0][7:])
 
+        science_processing_inputs = super().get_science_files_inputs(
+            context, target_start, target_end
+        )
+
+        with db.Session() as session:
             for input in self.job_config.science_inputs:
                 if "-de" not in input.descriptor:
                     continue
+
                 repoint_list = self.get_n_nearest_repoints(
                     context, session, input, target_pointing_number
                 )
+                # A neighboring repoint's L1B DE job is still INPROGRESS.
+                # Wait for it to resolve rather than using a stale file.
+                if repoint_list is None:
+                    raise imap_job.MissingDependenciesError(
+                        f"Hi Goodtimes: skipping repoint {target_pointing_number} "
+                        "- a neighboring repoint's L1B DE job is in progress."
+                    )
+
+                num_future = np.sum(np.array(repoint_list) > target_pointing_number)
+                min_future_repoints = HI_GOODTIMES_NUM_NEAREST_REPOINTS // 2
+                if num_future < min_future_repoints:
+                    # Fewer than half of our nearest window are future
+                    # pointings. That's fine to proceed with if the pointing
+                    # at the edge of our window already exists in
+                    # PointingTable - its existence there without a
+                    # corresponding Hi L1B DE means Hi simply has no data for
+                    # it, not that we haven't waited long enough, so our
+                    # nearest set won't change no matter how long we wait.
+                    # But if that pointing doesn't exist yet, the picture is
+                    # still incomplete: more pointings - and likely more Hi
+                    # L1B DE files - will show up later and change our
+                    # nearest set. Hold off and let the sensor retrigger this
+                    # job once that data has filled in.
+                    required_future_pointing = (
+                        target_pointing_number + HI_GOODTIMES_NUM_NEAREST_REPOINTS
+                    )
+                    if not self._check_pointing_exists(
+                        session, required_future_pointing
+                    ):
+                        raise imap_job.MissingDependenciesError(
+                            f"Hi Goodtimes: skipping repoint "
+                            f"{target_pointing_number} - pointing "
+                            f"{required_future_pointing} does not exist yet, "
+                            "waiting for more data to fill in."
+                        )
+
+                if not repoint_list:
+                    continue
+
                 metadata_list = input.get_all_files_by_repoint_numbers(
                     context, repoint_list
                 )
-                if metadata_list is None:
-                    raise imap_job.MissingDependenciesError(
-                        f"Hi Goodtimes: skipping repoint {target_pointing_number}"
+                science_files = []
+                for metadata in metadata_list:
+                    if "file_names" in metadata:
+                        # Dagster wraps metadata in a MetadataValue object
+                        file_names = metadata["file_names"].value
+                        # Handle both single strings and lists of files safely
+                        if isinstance(file_names, str):
+                            file_names = [file_names]
+                        science_files.extend(file_names)
+
+                if science_files:
+                    context.log.info(
+                        f"Hi Goodtimes adding neighboring L1B DE files: {science_files}"
+                    )
+                    science_processing_inputs.append(
+                        processing_input.ScienceInput(*list(set(science_files)))
                     )
 
             for metadata in metadata_list:
