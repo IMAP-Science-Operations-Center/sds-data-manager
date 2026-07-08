@@ -15,7 +15,7 @@ from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import config
 from sds_data_manager.orchestration.maps_utils import (
-    get_progressive_map_partition_names,
+    get_map_partition_to_create,
 )
 
 IDEX_10_DAY_RANGES_PATH = (
@@ -275,16 +275,18 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
     # TODO this only registers cadence partitions if they are currently active.
     #  We may want to register all past cadence partitions as well e.g. if we have to
     #   redeploy we will need to register outdated partitions and run them.
-    current_time = datetime.datetime.now(datetime.timezone.utc)
-    progressive_partition_names = get_progressive_map_partition_names(current_time)
 
     # Compare against existing partitions in dagster.
     for cadence_str, partition_def in CADENCE_PARTITION_DEFS.items():
         existing_partitions = set(
             context.instance.get_dynamic_partitions(partition_def.name)
         )
+        # TODO switch to get_progressive_map_partition_names for progressive maps.
+        progressive_partition_names = get_map_partition_to_create(cadence_str)
+
         context.log.info(f"Existing cadence partitions: {existing_partitions}")
         context.log.info(f"All partitions: {progressive_partition_names}")
+
         prefix = f"cadence-{cadence_str}_"
         missing_partitions = [
             partition_name

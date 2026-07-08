@@ -46,6 +46,7 @@ class L2MapJob(imap_job.IMAPJobHandler):
         @sensor(
             name=sensor_name,
             job=self.dagster_job,
+            # TODO should we wait longer for maps?
             minimum_interval_seconds=self.sensor_run_frequency,
         )
         def _sensor(context: SensorEvaluationContext):
