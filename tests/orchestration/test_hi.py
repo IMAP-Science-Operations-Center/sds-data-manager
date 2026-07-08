@@ -25,21 +25,17 @@ from sds_data_manager.orchestration.imap_dagster import job_handlers
 
 TARGET_REPOINT = 3
 TARGET_PARTITION = "repoint3_2026-01-03T00:00:00_to_2026-01-03T23:59:59"
+FORTYFIVE_SENSOR_GOODTIMES_JOB = "hi_l1b_45sensorgoodtimes_processing_job"
+NINETY_SENSOR_GOODTIMES_JOB = "hi_l1b_90sensorgoodtimes_processing_job"
 
 
-def _hi_goodtimes_job():
-    """Look up the registered Hi Goodtimes job handler."""
+def _hi_goodtimes_job(dagster_job_name: str):
+    """Look up the registered Hi Goodtimes job handler by Dagster job name."""
     job = next(
-        (
-            j
-            for j in job_handlers
-            if j.dagster_job_name == "hi_l1b_45sensorgoodtimes_processing_job"
-        ),
+        (j for j in job_handlers if j.dagster_job_name == dagster_job_name),
         None,
     )
-    assert job is not None, (
-        "hi_l1b_45sensorgoodtimes_processing_job was not found in job_handlers"
-    )
+    assert job is not None, f"{dagster_job_name} was not found in job_handlers"
     return job
 
 
@@ -92,7 +88,10 @@ def _materialize_own_pointing_deps(instance, repoint: int):
     )
 
 
-def test_hi_goodtimes_registered():
+@pytest.mark.parametrize(
+    "dagster_job_name", [FORTYFIVE_SENSOR_GOODTIMES_JOB, NINETY_SENSOR_GOODTIMES_JOB]
+)
+def test_hi_goodtimes_registered(dagster_job_name):
     """The registry keys must match the YAML descriptors exactly.
 
     Regression test for a typo ("45-sensorgoodtimes"/"90-sensorgoodtimes" instead
@@ -100,7 +99,7 @@ def test_hi_goodtimes_registered():
     override. Without it, Goodtimes falls back to the generic IMAPJobHandler and
     runs with only its own repoint's DE file, never checking neighbors.
     """
-    job = _hi_goodtimes_job()
+    job = _hi_goodtimes_job(dagster_job_name)
     assert isinstance(job, HiGoodtimesJob)
 
 
@@ -108,7 +107,7 @@ def test_hi_goodtimes_waits_when_future_pointing_unknown(
     mock_db_session, ephemeral_instance
 ):
     """Skip when there aren't enough future neighbors and more may still arrive."""
-    job = _hi_goodtimes_job()
+    job = _hi_goodtimes_job(FORTYFIVE_SENSOR_GOODTIMES_JOB)
 
     _materialize_own_pointing_deps(ephemeral_instance, TARGET_REPOINT)
     # Only past neighbors have DE so far, so none of the nearest repoints found
@@ -132,7 +131,7 @@ def test_hi_goodtimes_proceeds_when_no_more_data_expected(
     mock_db_session, ephemeral_instance
 ):
     """Proceed once PointingTable confirms Hi has no more future data to add."""
-    job = _hi_goodtimes_job()
+    job = _hi_goodtimes_job(FORTYFIVE_SENSOR_GOODTIMES_JOB)
 
     _materialize_own_pointing_deps(ephemeral_instance, TARGET_REPOINT)
     _materialize(ephemeral_instance, "hi_l1b_45sensorde", 1, _de_filename(1))
@@ -176,7 +175,7 @@ def test_hi_goodtimes_waits_for_inprogress_neighbor(
     (checking metadata_list, which is never None, instead of repoint_list),
     which crashed with a TypeError instead of raising MissingDependenciesError.
     """
-    job = _hi_goodtimes_job()
+    job = _hi_goodtimes_job(FORTYFIVE_SENSOR_GOODTIMES_JOB)
 
     _materialize_own_pointing_deps(ephemeral_instance, TARGET_REPOINT)
     _materialize(ephemeral_instance, "hi_l1b_45sensorde", 1, _de_filename(1))
