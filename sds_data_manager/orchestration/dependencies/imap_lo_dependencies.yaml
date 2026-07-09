@@ -481,3 +481,6 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-ena-h-hf-sp-ram-hae-6deg-1yr
+    - source: lo
+      data_type: l3
+      descriptor: l090-ena-h-sf-sp-ram-hae-6deg-1yr

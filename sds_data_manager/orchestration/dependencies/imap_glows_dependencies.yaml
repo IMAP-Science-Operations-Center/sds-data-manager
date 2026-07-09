@@ -153,3 +153,24 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l3b
       descriptor: ion-rate-profile
+    - source: glows
+      data_type: l3c
+      descriptor: sw-profile
+    - source: glows
+      data_type: l3d
+      descriptor: solar-hist
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-hi-45
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-hi-90
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-lo
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-ul-sf
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-ul-hf
