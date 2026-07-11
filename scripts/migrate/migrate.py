@@ -113,7 +113,7 @@ def upload_cdf(
     remap_parents(dataset, basename_map)
 
     # Making guarantees about spdf conformance on existing files is out of scope
-    written = Path(write_cdf(dataset, istp=True, terminate_on_warning=False))
+    written = Path(write_cdf(dataset, istp=False, terminate_on_warning=False))
     try:
         client.upload_file(str(written), bucket, dst_key)
     finally:
