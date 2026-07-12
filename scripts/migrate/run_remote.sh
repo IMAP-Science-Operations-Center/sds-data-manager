@@ -3,10 +3,10 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Config (dev account 449431850278)
+# Config (dev account 593025701104)
 # ---------------------------------------------------------------------------
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-west-2}"
-export S3_BUCKET="${S3_BUCKET:-sds-data-449431850278}"
+export S3_BUCKET="${S3_BUCKET:-sds-data-593025701104}"
 export SECRET_NAME="${SECRET_NAME:-sdp-database-cred}"
 
 # Passed through to migrate.py.
