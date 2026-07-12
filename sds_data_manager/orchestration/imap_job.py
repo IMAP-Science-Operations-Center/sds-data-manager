@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -862,8 +863,10 @@ class IMAPJobHandler:
                        Missing {dep_name} in range {target_start!s} to {target_end!s}"""
                 )
             if science_files:
+                pattern = re.compile(r'v(\d{3})\.cdf$')
+                renamed_science_files = [pattern.sub(r'v001.0\1.cdf', file) for file in science_files]
                 science_processing_inputs.append(
-                    processing_input.ScienceInput(*list(set(science_files)))
+                    processing_input.ScienceInput(*list(set(renamed_science_files)))
                 )
 
         if not science_processing_inputs:
@@ -893,6 +896,7 @@ class IMAPJobHandler:
         # Get Science files
         science_files = self.get_science_files_inputs(context, target_start, target_end)
         for inputs in science_files:
+            # ADD SOMETHING HERE TO ADD IN THE MAJOR VERSION NUMBER
             processing_inputs.add(inputs)
 
         # Get Ancillary files
