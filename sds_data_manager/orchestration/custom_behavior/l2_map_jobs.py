@@ -27,6 +27,11 @@ class L2MapJob(imap_job.IMAPJobHandler):
 
     # TODO do we need to override any other functions?
 
+    def __init__(self, job):
+        """Initialize the handler, then override the sensor run frequency."""
+        super().__init__(job)
+        self.sensor_run_frequency = 3600  # Run the sensor every hour
+
     # Override the sensor to kickoff jobs not based on upstream files but whether there
     # are new partitions registered by add_cadence_map_partitions sensor.
     def build_sensor(self):
