@@ -646,11 +646,14 @@ class IMAPJobHandler:
                 trigger_ranges = spice.get_growing_kernel_trigger_ranges(
                     session, dependency.source, new_files
                 )
+                partition_set = set()
                 for min_dt, max_dt in trigger_ranges:
-                    partitions = dagster_utilities.get_affected_partitions(
-                        context, self.partitions_def, min_dt, max_dt
+                    partition_set.update(
+                        dagster_utilities.get_affected_partitions(
+                            context, self.partitions_def, min_dt, max_dt
+                        )
                     )
-                    partitions_to_run.extend(partitions)
+                partitions_to_run.extend(list(partition_set))
             else:
                 for file in new_files:
                     min_dt = getattr(file, datetime_start_column)
