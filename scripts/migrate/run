@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-export AWS_PROFILE=imap-dev
+export AWS_PROFILE=default
 export AWS_DEFAULT_REGION=us-west-2
-export AWS_ACCOUNT=449431850278
+export AWS_ACCOUNT=593025701104
 export AWS_BUCKET=sds-data-$AWS_ACCOUNT
 export SECRET_NAME=sdp-database-cred
 
@@ -13,12 +13,12 @@ INTERACTIVE=0
 
 # Passed through to migrate.py. Set to 1 to copy files on S3, and/or to 1 to
 # modify the DB rows. Run in stages - do not enable both at once.
-COPY_FILES=0
+COPY_FILES=1
 MODIFY_ROWS=0
 # Force overwriting of target cdf/pkts file(s) if they exist?
 OVERWRITE=0
 # Max cdf/pkts files to process in this batch (0 for all)
-MAX_FILES=1000
+MAX_FILES=0
 
 ROLE_NAME=s3-transition-runner
 PROFILE_NAME=s3-transition-runner
@@ -109,14 +109,33 @@ IID=$(aws ec2 describe-instances \
 
 if [ "$IID" = "None" ] || [ -z "$IID" ]; then
   AMI=$(aws ssm get-parameter \
-    --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
+    --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64 \
     --query Parameter.Value --output text)
+
+  # Retrieve default VPC ID to create the security group
+  DEFAULT_VPC=$(aws ec2 describe-vpcs --query "Vpcs[?IsDefault].VpcId" --output text)
+
+  SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=s3-transition-sg --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || true)
+  if [ "$SG_ID" = "None" ] || [ -z "$SG_ID" ]; then
+      echo "Creating security group s3-transition-sg..."
+      SG_ID=$(aws ec2 create-security-group \
+          --group-name s3-transition-sg \
+          --description "SG for s3 transition EC2 instance" \
+          --vpc-id "$DEFAULT_VPC" \
+          --query 'GroupId' --output text)
+      aws ec2 authorize-security-group-ingress \
+          --group-id "$SG_ID" \
+          --protocol tcp \
+          --port 22 \
+          --cidr 0.0.0.0/0
+  fi
 
   IID=$(aws ec2 run-instances \
     --image-id "$AMI" \
-    --instance-type t3.large \
+    --instance-type m9g.48xlarge \
     --iam-instance-profile Name="$PROFILE_NAME" \
-    --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":10}}]' \
+    --security-group-ids "$SG_ID" \
+    --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":1024}}]' \
     --associate-public-ip-address \
     --key-name "$KEY_NAME" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_TAG}]" \
