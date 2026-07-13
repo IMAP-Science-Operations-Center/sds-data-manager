@@ -27,8 +27,10 @@ def test_get_or_allocate_eip():
 
 
 @mock_ec2
-def test_assign_elastic_ip(caplog):
+def test_assign_elastic_ip(caplog, monkeypatch):
     """Test the assign_elastic_ip function."""
+    monkeypatch.setenv("ASG_NAME", "test-ialirt-asg")
+
     # Mock EC2 client
     ec2_client = boto3.client("ec2", region_name="us-west-2")
 
@@ -37,6 +39,10 @@ def test_assign_elastic_ip(caplog):
         ImageId="ami-0abcdef1234567890", InstanceType="t2.micro", MinCount=1, MaxCount=1
     )
     instance_id = instance_response["Instances"][0]["InstanceId"]
+    ec2_client.create_tags(
+        Resources=[instance_id],
+        Tags=[{"Key": "aws:autoscaling:groupName", "Value": "test-ialirt-asg"}],
+    )
 
     # Allocate a new EIP and get the AllocationId
     eip_response = ec2_client.allocate_address(Domain="vpc")
@@ -51,8 +57,39 @@ def test_assign_elastic_ip(caplog):
 
 
 @mock_ec2
-def test_assign_elastic_ip_disassociate(caplog):
+def test_assign_elastic_ip_skips_other_asg(caplog, monkeypatch):
+    """Instances outside the I-ALiRT ASG must not get the EIP reassigned."""
+    monkeypatch.setenv("ASG_NAME", "test-ialirt-asg")
+
+    ec2_client = boto3.client("ec2", region_name="us-west-2")
+
+    instance_response = ec2_client.run_instances(
+        ImageId="ami-0abcdef1234567890", InstanceType="t2.micro", MinCount=1, MaxCount=1
+    )
+    instance_id = instance_response["Instances"][0]["InstanceId"]
+    ec2_client.create_tags(
+        Resources=[instance_id],
+        Tags=[{"Key": "aws:autoscaling:groupName", "Value": "some-other-asg"}],
+    )
+
+    eip_response = ec2_client.allocate_address(Domain="vpc")
+    eip_allocation_id = eip_response["AllocationId"]
+
+    with caplog.at_level("INFO"):
+        assign_elastic_ip(instance_id, eip_allocation_id, "deploy")
+        assert "skipping EIP assignment" in caplog.text
+
+    addresses = ec2_client.describe_addresses(AllocationIds=[eip_allocation_id])[
+        "Addresses"
+    ]
+    assert "AssociationId" not in addresses[0]
+
+
+@mock_ec2
+def test_assign_elastic_ip_disassociate(caplog, monkeypatch):
     """Test the Elastic IP disassociation functionality."""
+    monkeypatch.setenv("ASG_NAME", "test-ialirt-asg")
+
     # Mock EC2 client
     ec2_client = boto3.client("ec2", region_name="us-west-2")
 
@@ -61,6 +98,10 @@ def test_assign_elastic_ip_disassociate(caplog):
         ImageId="ami-0abcdef1234567890", InstanceType="t2.micro", MinCount=1, MaxCount=1
     )
     instance_id_1 = instance_response["Instances"][0]["InstanceId"]
+    ec2_client.create_tags(
+        Resources=[instance_id_1],
+        Tags=[{"Key": "aws:autoscaling:groupName", "Value": "test-ialirt-asg"}],
+    )
 
     # Create another mock EC2 instance for disassociation
     instance_response_2 = ec2_client.run_instances(
@@ -72,7 +113,8 @@ def test_assign_elastic_ip_disassociate(caplog):
     eip_response = ec2_client.allocate_address(Domain="vpc")
     eip_allocation_id = eip_response["AllocationId"]
 
-    # Associate the EIP with the second instance
+    # Associate the EIP with the second instance (simulates another
+    # instance, e.g. an unrelated one, holding the I-ALiRT EIP)
     ec2_client.associate_address(
         InstanceId=instance_id_2, AllocationId=eip_allocation_id
     )

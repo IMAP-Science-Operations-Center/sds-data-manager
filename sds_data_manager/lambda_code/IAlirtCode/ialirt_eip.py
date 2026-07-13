@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 
 import boto3
 
@@ -58,10 +59,20 @@ def assign_elastic_ip(instance_id: str, eip_allocation_id: str, eventtype: str):
     ec2_description = ec2.describe_instances(InstanceIds=[instance_id])
     logger.info("eventtype%s", eventtype)
 
-    if (
-        ec2_description["Reservations"][0]["Instances"][0]["PublicIpAddress"]
-        == eip_description["Addresses"][0]["PublicIp"]
-    ):
+    instance = ec2_description["Reservations"][0]["Instances"][0]
+    tags = {tag["Key"]: tag["Value"] for tag in instance.get("Tags", [])}
+    expected_asg = os.environ.get("ASG_NAME", "")
+    if tags.get("aws:autoscaling:groupName") != expected_asg:
+        logger.info(
+            "Instance %s belongs to ASG %r, not the I-ALiRT ASG (%r); "
+            "skipping EIP assignment.",
+            instance_id,
+            tags.get("aws:autoscaling:groupName"),
+            expected_asg,
+        )
+        return
+
+    if instance["PublicIpAddress"] == eip_description["Addresses"][0]["PublicIp"]:
         logger.info("Elastic IP is already associated with this instance.")
         return
     elif "AssociationId" in eip_description["Addresses"][0]:
