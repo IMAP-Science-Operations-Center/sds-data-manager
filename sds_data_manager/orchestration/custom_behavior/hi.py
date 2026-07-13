@@ -1,7 +1,8 @@
 """Override behavior for HI processing."""
 
-import numpy as np
 import re
+
+import numpy as np
 from dagster import AssetExecutionContext
 from imap_data_access import processing_input
 
@@ -71,8 +72,10 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
                 )
 
         if science_files:
-            pattern = re.compile(r'v(\d{3})\.cdf$')
-            renamed_science_files = [pattern.sub(r'v001.0\1.cdf', file) for file in science_files]
+            pattern = re.compile(r"v(\d{3})\.cdf$")
+            renamed_science_files = [
+                pattern.sub(r"v001.0\1.cdf", file) for file in science_files
+            ]
             science_processing_inputs.append(
                 processing_input.ScienceInput(*list(set(renamed_science_files)))
             )

@@ -163,15 +163,18 @@ def get_s3_keys(bucket, prefix="imap/"):
         keys.update(obj["Key"] for obj in page.get("Contents", []))
     return keys
 
+
 def get_existing_new_files(bucket, prefix="imap/"):
     """Return the set of all object keys in ``bucket`` under ``prefix``."""
     client = boto3.client("s3")
     paginator = client.get_paginator("list_objects_v2")
     keys = set()
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-        
-        keys.update(obj["Key"] for obj in page.get("Contents", []) if "v001.0" in obj["Key"])
+        keys.update(
+            obj["Key"] for obj in page.get("Contents", []) if "v001.0" in obj["Key"]
+        )
     return keys
+
 
 def compute_paths(row, data_dir):
     """Return ``(old_path, old_version, new_path, new_version)`` for a DB row.
@@ -278,7 +281,7 @@ def migrate(  # noqa: PLR0912, PLR0915
         else:
             rename_map = dict(path_mapping)
 
-        #for (src_path, _), (dst_path, _) in rename_map.items():
+        # for (src_path, _), (dst_path, _) in rename_map.items():
         #    logger.info(f"Mapping {src_path} -> {dst_path}")
 
         dst_paths = list(rename_map.values())
