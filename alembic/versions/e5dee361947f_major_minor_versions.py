@@ -26,9 +26,9 @@ def upgrade() -> None:
 
     # Process tables with string version
     for table in TABLES_WITH_VERSION_STRING:
-        # 1. Add new columns as nullable first
-        op.add_column(table, sa.Column('major_version', sa.Integer(), nullable=True))
-        op.add_column(table, sa.Column('minor_version', sa.Integer(), nullable=True))
+        # 1. Add new columns as nullable first if they are missing
+        op.execute(sa.text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS major_version INTEGER"))
+        op.execute(sa.text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS minor_version INTEGER"))
 
         # 2. Convert version "v001" → 1 and populate minor_version
         op.execute(
