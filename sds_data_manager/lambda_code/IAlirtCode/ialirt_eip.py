@@ -61,7 +61,12 @@ def assign_elastic_ip(instance_id: str, eip_allocation_id: str, eventtype: str):
 
     instance = ec2_description["Reservations"][0]["Instances"][0]
     tags = {tag["Key"]: tag["Value"] for tag in instance.get("Tags", [])}
-    expected_asg = os.environ.get("ASG_NAME", "")
+    expected_asg = os.environ.get("ASG_NAME")
+    if not expected_asg:
+        logger.error(
+            "ASG_NAME environment variable is not set; skipping EIP assignment."
+        )
+        return
     if tags.get("aws:autoscaling:groupName") != expected_asg:
         logger.info(
             "Instance %s belongs to ASG %r, not the I-ALiRT ASG (%r); "
