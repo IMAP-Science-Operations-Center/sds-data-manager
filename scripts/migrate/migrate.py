@@ -278,8 +278,8 @@ def migrate(  # noqa: PLR0912, PLR0915
         else:
             rename_map = dict(path_mapping)
 
-        for (src_path, _), (dst_path, _) in rename_map.items():
-            logger.info(f"Mapping {src_path} -> {dst_path}")
+        #for (src_path, _), (dst_path, _) in rename_map.items():
+        #    logger.info(f"Mapping {src_path} -> {dst_path}")
 
         dst_paths = list(rename_map.values())
         assert len(set(dst_paths)) == len(dst_paths), "Duplicates in dst_paths!"
