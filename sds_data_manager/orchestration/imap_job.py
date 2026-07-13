@@ -849,8 +849,10 @@ class IMAPJobHandler:
                        Missing {dep_name} in range {target_start!s} to {target_end!s}"""
                 )
             if science_files:
-                pattern = re.compile(r'v(\d{3})\.cdf$')
-                renamed_science_files = [pattern.sub(r'v001.0\1.cdf', file) for file in science_files]
+                pattern = re.compile(r"v(\d{3})\.cdf$")
+                renamed_science_files = [
+                    pattern.sub(r"v001.0\1.cdf", file) for file in science_files
+                ]
                 science_processing_inputs.append(
                     processing_input.ScienceInput(*list(set(renamed_science_files)))
                 )
