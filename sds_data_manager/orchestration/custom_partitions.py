@@ -25,8 +25,6 @@ IDEX_30_DAY_RANGES_PATH = (
     "sds_data_manager/lambda_code/SDSCode/utils/idex_30_day_CDF_names.csv"
 )
 
-MISSION_START_TIME = "2026-04-01T00:00:00"
-
 cadence_3mo_partitions = DynamicPartitionsDefinition(name="cadence_3mo_partitions")
 cadence_6mo_partitions = DynamicPartitionsDefinition(name="cadence_6mo_partitions")
 cadence_1yr_partitions = DynamicPartitionsDefinition(name="cadence_1yr_partitions")

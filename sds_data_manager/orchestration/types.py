@@ -588,9 +588,15 @@ class BaseENAMapPartition:
             start_boundary = self.boundaries[i]
             end_boundary = self.boundaries[i + 1]
 
-            # Handle year rollover (e.g., Oct -> Jan means end is next year)
+            # Handle year rollover. A window rolls into the next year if the end
+            # boundary falls at or before the start boundary within the calendar
+            # year (e.g., Oct -> Jan). Equality (e.g., Jan 17 -> Jan 17 for the
+            # 1yr cadence) also means "next year", since a window can never be
+            # zero-length.
             start_year = year
-            end_year = year if end_boundary.month >= start_boundary.month else year + 1
+            start_point = (start_boundary.month, start_boundary.day)
+            end_point = (end_boundary.month, end_boundary.day)
+            end_year = year if end_point > start_point else year + 1
 
             windows.append(
                 MapWindow(
