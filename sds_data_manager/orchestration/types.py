@@ -602,7 +602,7 @@ class BaseENAMapPartition:
         return windows
 
     def get_windows_since(self, since_time: datetime.datetime) -> list[MapWindow]:
-        """Return all windows from the given time to current time."""
+        """Return all windows since the given time through the current year."""
         windows: list[MapWindow] = []
         for year in range(since_time.year, self.current_time.year + 1):
             windows.extend(self.get_windows(year))

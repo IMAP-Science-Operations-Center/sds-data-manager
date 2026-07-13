@@ -25,11 +25,13 @@ def get_map_partition_names(
     cadence_str: str,
     start_time: datetime = FIRST_MAP_START_DATE,
     current_time: datetime = DEFAULT_MAPS_TIME,
+    include_open: bool = False,
 ) -> list[str]:
-    """Return closed partitions for a cadence.
+    """Return current and past partition names.
 
     Find all closed partition since the first map start date to create Dagster
-    partition if it does not already exist.
+    partition if it does not already exist. If include_open is True, then also return
+    partition names for the current open window for the cadence.
     """
     cadence_type = _CADENCE_TYPES.get(cadence_str)
     if cadence_type is None:
@@ -40,15 +42,20 @@ def get_map_partition_names(
 
     # Get all the windows since the first map start date for the cadence.
     windows = cadence_type(current_time).get_windows_since(start_time)
-    print(f"Found {len(windows)} windows for {cadence_str}")
-    # Only look for past windows.
-    closed_windows = [window for window in windows if window.end <= current_time]
-    print(f"Found {len(closed_windows)} closed windows for {cadence_str}")
-    if not closed_windows:
+    if include_open:
+        # Look for past and present windows
+        selected_windows = [
+            window for window in windows if window.start <= current_time
+        ]
+    else:
+        # Only look for past windows.
+        selected_windows = [window for window in windows if window.end <= current_time]
+
+    if not selected_windows:
         return []
 
     # Return all closed partition names
-    return [window.to_partition_name() for window in closed_windows]
+    return [window.to_partition_name() for window in selected_windows]
 
 
 def get_progressive_map_partition_names(

@@ -271,17 +271,15 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
     """
     added_any = False
 
-    # Calculate the currently active windows for all cadences.
-    # TODO this only registers cadence partitions if they are currently active.
-    #  We may want to register all past cadence partitions as well e.g. if we have to
-    #   redeploy we will need to register outdated partitions and run them.
-
     # Compare against existing partitions in dagster.
     for cadence_str, partition_def in CADENCE_PARTITION_DEFS.items():
         existing_partitions = set(
             context.instance.get_dynamic_partitions(partition_def.name)
         )
-        # TODO switch to get_progressive_map_partition_names for progressive maps.
+        # TODO: Set include_open=True once progressive maps are needed.
+        #   Doing so will require creating a sensor that runs on the same cadence
+        #   as map updates, and that sensor will need to call
+        #   get_progressive_map_partition_names() to fetch the currently active maps.
         progressive_partition_names = get_map_partition_names(cadence_str)
 
         context.log.info(f"Existing cadence partitions: {existing_partitions}")
