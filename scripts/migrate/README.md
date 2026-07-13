@@ -125,7 +125,7 @@ bash run        # or ./run
 - Inspect s3 bucket in a separate terminal to monitor file copy progress.
 
   ```bash
-  aws s3 ls s3://sds-data-449431850278/renamed/ --recursive --summarize --human-readable
+  aws s3 ls s3://sds-data-593025701104/renamed/ --recursive --summarize --human-readable
   ```
 
 - Set `INTERACTIVE=1` to provision the instance and drop into an SSH shell
