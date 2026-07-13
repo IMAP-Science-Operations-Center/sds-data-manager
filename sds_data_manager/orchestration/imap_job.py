@@ -896,7 +896,8 @@ class IMAPJobHandler:
         # Get Science files
         science_files = self.get_science_files_inputs(context, target_start, target_end)
         for inputs in science_files:
-            # ADD SOMETHING HERE TO ADD IN THE MAJOR VERSION NUMBER
+            # TODO: ADD IN THE MAJOR VERSION NUMBER HANDLING WHEN CONSTRUCTING
+            # ProcessingInputs.
             processing_inputs.add(inputs)
 
         # Get Ancillary files

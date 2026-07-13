@@ -46,14 +46,14 @@ def upgrade() -> None:
         # 4. Drop old version column
         op.drop_column(table, 'version')
 
-        # 5. Add check constraints
+        # 5. Add check constraints (names must be unique per schema in Postgres)
         op.create_check_constraint(
-            "ck_major_version_max_999",
+            f"ck_{table}_major_version_max_999",
             table,
             "major_version >= 0 AND major_version <= 999",
         )
         op.create_check_constraint(
-            "ck_minor_version_max_9999",
+            f"ck_{table}_minor_version_max_9999",
             table,
             "minor_version >= 0 AND minor_version <= 9999",
         )
@@ -68,8 +68,8 @@ def downgrade() -> None:
     # Process tables that should have string version
     for table in TABLES_WITH_VERSION_STRING:
         # 1. Drop check constraints first
-        op.drop_constraint("ck_major_version_max_999", table, type_="check")
-        op.drop_constraint("ck_minor_version_max_9999", table, type_="check")
+        op.drop_constraint(f"ck_{table}_major_version_max_999", table, type_="check")
+        op.drop_constraint(f"ck_{table}_minor_version_max_9999", table, type_="check")
 
         # 2. Add back version column as VARCHAR
         op.add_column(table, sa.Column('version', sa.VARCHAR(length=4), nullable=True))

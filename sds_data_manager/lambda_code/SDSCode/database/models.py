@@ -121,14 +121,8 @@ class ProcessingJob(Base):
             unique=True,
             postgresql_where=and_(status.in_(["INPROGRESS", "SUCCEEDED"])),
         ),
-        CheckConstraint(
-            "major_version >= 0 AND major_version <= 999",
-            name="ck_major_version_max_999",
-        ),
-        CheckConstraint(
-            "minor_version >= 0 AND minor_version <= 9999",
-            name="ck_minor_version_max_9999",
-        ),
+        CheckConstraint("major_version >= 0 AND major_version <= 999"),
+        CheckConstraint("minor_version >= 0 AND minor_version <= 9999"),
     )
 
     def to_dict(self):
@@ -181,14 +175,8 @@ class ScienceFileBase:
     released = Column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
-        CheckConstraint(
-            "major_version >= 0 AND major_version <= 999",
-            name="ck_major_version_max_999",
-        ),
-        CheckConstraint(
-            "minor_version >= 0 AND minor_version <= 9999",
-            name="ck_minor_version_max_9999",
-        ),
+        CheckConstraint("major_version >= 0 AND major_version <= 999"),
+        CheckConstraint("minor_version >= 0 AND minor_version <= 9999"),
     )
 
 
@@ -360,12 +348,6 @@ class IDEXL0Files(Base):
     ingestion_date = Column(DateTime(timezone=True))
 
     __table_args__ = (
-        CheckConstraint(
-            "major_version >= 0 AND major_version <= 999",
-            name="ck_major_version_max_999",
-        ),
-        CheckConstraint(
-            "minor_version >= 0 AND minor_version <= 9999",
-            name="ck_minor_version_max_9999",
-        ),
+        CheckConstraint("major_version >= 0 AND major_version <= 999"),
+        CheckConstraint("minor_version >= 0 AND minor_version <= 9999"),
     )

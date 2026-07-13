@@ -16,8 +16,8 @@ from imap_processing.cdf.utils import write_cdf as _write_cdf
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 
-# Destination prefix for copied files
-DEST_PREFIX: str = ""
+# Destination prefix for copied files (e.g. "renamed/")
+DEST_PREFIX: str = os.getenv("DEST_PREFIX", "renamed/")
 # Reverse the sense of `old` vs `new` paths? (for testing on dev)
 REVERSE: bool = False
 # Write a dummy CDF instead of a real one to make the script go fast (for testing)
