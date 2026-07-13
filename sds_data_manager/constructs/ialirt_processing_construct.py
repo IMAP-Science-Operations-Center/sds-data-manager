@@ -275,6 +275,7 @@ class IalirtProcessing(Construct):
 
     def create_lambda_function(
         self,
+        asg_name: str,
     ) -> lambda_alpha_.PythonFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -303,6 +304,7 @@ class IalirtProcessing(Construct):
             timeout=Duration.minutes(1),
             memory_size=1000,
             role=lambda_role,
+            environment={"ASG_NAME": asg_name},
         )
 
         # The resource is deleted when the stack is deleted.
@@ -334,7 +336,9 @@ class IalirtProcessing(Construct):
         )
 
         auto_scaling_group.apply_removal_policy(RemovalPolicy.DESTROY)
-        eip_lambda = self.create_lambda_function()
+        eip_lambda = self.create_lambda_function(
+            auto_scaling_group.auto_scaling_group_name
+        )
         self.create_autoscaling_event_rule(eip_lambda, auto_scaling_group)
 
         # Attach the AmazonSSMManagedInstanceCore policy for SSM access
