@@ -163,6 +163,15 @@ def get_s3_keys(bucket, prefix="imap/"):
         keys.update(obj["Key"] for obj in page.get("Contents", []))
     return keys
 
+def get_existing_new_files(bucket, prefix="imap/"):
+    """Return the set of all object keys in ``bucket`` under ``prefix``."""
+    client = boto3.client("s3")
+    paginator = client.get_paginator("list_objects_v2")
+    keys = set()
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        
+        keys.update(obj["Key"] if "v001.0" in obj["Key"] else [] for obj in page.get("Contents", []))
+    return keys
 
 def compute_paths(row, data_dir):
     """Return ``(old_path, old_version, new_path, new_version)`` for a DB row.
@@ -236,7 +245,7 @@ def migrate(  # noqa: PLR0912, PLR0915
         # and not force-overwriting (overwrite deliberately re-copies existing).
         existing_dsts: set[str] = set()
         if copy_files and not overwrite:
-            existing_dsts = get_s3_keys(bucket, prefix=DEST_PREFIX)
+            existing_dsts = get_existing_new_files(bucket, prefix=DEST_PREFIX)
             logger.info(f"Found {len(existing_dsts)} objects under {DEST_PREFIX}")
 
         # Candidate CDF/PKTS rows, deterministically ordered so the "next N not
