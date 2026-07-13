@@ -170,7 +170,7 @@ def get_existing_new_files(bucket, prefix="imap/"):
     keys = set()
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         
-        keys.update(obj["Key"] if "v001.0" in obj["Key"] else [] for obj in page.get("Contents", []))
+        keys.update(obj["Key"] for obj in page.get("Contents", []) if "v001.0" in obj["Key"])
     return keys
 
 def compute_paths(row, data_dir):
