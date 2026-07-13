@@ -17,7 +17,7 @@ from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 
 # Destination prefix for copied files
-DEST_PREFIX: str = "renamed/"
+DEST_PREFIX: str = ""
 # Reverse the sense of `old` vs `new` paths? (for testing on dev)
 REVERSE: bool = False
 # Write a dummy CDF instead of a real one to make the script go fast (for testing)
