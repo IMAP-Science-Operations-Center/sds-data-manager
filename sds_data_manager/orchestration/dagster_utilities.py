@@ -42,8 +42,13 @@ def _existing_asset(
         # Extract the previous file list from the metadata
         last_metadata = records[0].asset_materialization.metadata
         last_files_used = last_metadata.get("file_names").value
-        last_major_version = int(last_metadata.get("major_version").value)
-        last_minor_version = int(last_metadata.get("minor_version").value)
+        # Backwards-compatible fallback: pre-existing materializations may not
+        # have major_version/minor_version (only the legacy `version` field).
+        # Default to 0 so any valid version triggers re-materialization.
+        major_meta = last_metadata.get("major_version")
+        minor_meta = last_metadata.get("minor_version")
+        last_major_version = int(getattr(major_meta, "value", None) or 0)
+        last_minor_version = int(getattr(minor_meta, "value", None) or 0)
         if current_version < Version(last_major_version, last_minor_version):
             # We are trying to add an older version, a better one already exists
             return True
