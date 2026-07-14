@@ -19,6 +19,7 @@ from dagster import (
     DagsterRunStatus,
     EventRecordsFilter,
     Failure,
+    RetryRequested,
     RunRequest,
     RunsFilter,
     SensorEvaluationContext,
@@ -194,14 +195,13 @@ class IMAPJobHandler:
         5) Wait for the output files,
            and materialize them as we see them in the database.
         """
-        # TODO: Is this needed if we only check every few minutes?
         # Before doing anything, check if any of the dependencies are currently
         # running or about to run.
-        #
         # If so, let us try again in 5 minutes.
-        # dependencies_running = self._check_for_running_dependencies()
-        # if dependencies_running:
-        #    raise RetryRequested(max_retries=10, seconds_to_wait=600)
+        dependencies_running = self._check_for_running_dependencies(context)
+        if dependencies_running:
+            context.log.info("Retrying job in 5 minutes.")
+            raise RetryRequested(max_retries=10, seconds_to_wait=300)
 
         # Figure out what time window this specific run is responsible for
         target_partition = context.partition_key
@@ -396,7 +396,15 @@ class IMAPJobHandler:
 
     def _check_for_running_dependencies(self, context):
         """Check if anything upstream of this file is currently running."""
-        input_set = set([dep.to_dagster_asset() for dep in self.job_config.inputs])
+        # Imported locally to avoid a circular import
+        from sds_data_manager.orchestration.imap_dagster import defs  # noqa: PLC0415
+
+        # Get all ancestral upstream assets.
+        input_set = set(
+            defs.get_repository_def().asset_graph.get_ancestor_asset_keys(
+                self.job_config.outputs[0].to_dagster_asset()
+            )
+        )
         in_flight_runs = context.instance.get_runs(
             filters=RunsFilter(
                 statuses=[
@@ -408,10 +416,15 @@ class IMAPJobHandler:
         )
         conflict_found = False
         for run in in_flight_runs:
-            if run.asset_selection and input_set.intersection(run.assest_selection):
-                conflict_found = True
-                context.log.info(f"Dependency found in active run: {run.run_id}")
-                break
+            if run.asset_selection:
+                overlap = input_set.intersection(run.asset_selection)
+                if overlap:
+                    conflict_found = True
+                    context.log.info(
+                        f"Upstream job in progress {run.run_id}: {overlap}"
+                    )
+                    break
+
         return conflict_found
 
     def _get_overlapping_target_partitions(
