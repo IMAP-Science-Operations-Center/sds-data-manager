@@ -66,6 +66,18 @@ def _de_filename(repoint: int) -> str:
     return f"imap_hi_l1b_45sensor-de_2026010{repoint}-repoint{repoint:05d}_v001.cdf"
 
 
+def _renamed_de_filename(repoint: int) -> str:
+    """Return the `_de_filename` name after HiGoodtimesJob's version renaming.
+
+    HiGoodtimesJob applies the same legacy-version-renaming regex as
+    IMAPJobHandler.get_science_files_inputs (see hi.py), which rewrites the
+    legacy single-number `vXXX.cdf` suffix into the `vMMM.mmmm.cdf` form.
+    """
+    return (
+        f"imap_hi_l1b_45sensor-de_2026010{repoint}-repoint{repoint:05d}_v001.0001.cdf"
+    )
+
+
 def _materialize_own_pointing_deps(instance, repoint: int):
     """Materialize the diagfee/DE/hk files the base class needs for its own repoint.
 
@@ -162,8 +174,8 @@ def test_hi_goodtimes_proceeds_when_no_more_data_expected(
         for f in science_input.filename_list
         if "45sensor-de" in f
     }
-    assert _de_filename(1) in neighbor_files
-    assert _de_filename(2) in neighbor_files
+    assert _renamed_de_filename(1) in neighbor_files
+    assert _renamed_de_filename(2) in neighbor_files
 
 
 def test_hi_goodtimes_waits_for_inprogress_neighbor(
