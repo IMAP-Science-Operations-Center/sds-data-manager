@@ -20,7 +20,7 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
     """Overriding parts of the Hi processing pipeline."""
 
     # Override this function from IMAPJobHandler
-    def get_science_files_inputs(self, context, target_start, target_end):
+    def get_science_files_inputs(self, context, target_start, target_end):  # noqa: PLR0912
         """Override the behavior of IMAPJobHander.get_science_files_inputs."""
         parts = context.partition_key.split("_")
         target_pointing_number = int(parts[0][7:])
