@@ -102,6 +102,7 @@ def test_hi_goodtimes_registered(dagster_job_name):
     job = _hi_goodtimes_job(dagster_job_name)
     assert isinstance(job, HiGoodtimesJob)
 
+
 def test_hi_goodtimes_waits_when_future_pointing_unknown(
     mock_db_session, pointing_table_entries, ephemeral_instance
 ):
