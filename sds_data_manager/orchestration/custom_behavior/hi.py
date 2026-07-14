@@ -20,8 +20,8 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
     """Overriding parts of the Hi processing pipeline."""
 
     # Override this function from IMAPJobHandler
-    def get_science_files_inputs(self, context, target_start, target_end):  # noqa: PLR0912
-        """Override the behavior of IMAPJobHander.get_science_files_inputs."""
+    def get_science_files_inputs(self, context, target_start, target_end):
+        """Override the behavior of IMAPJobHandler.get_science_files_inputs."""
         parts = context.partition_key.split("_")
         target_pointing_number = int(parts[0][7:])
 
@@ -79,7 +79,7 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
                 metadata_list = input.get_all_files_by_repoint_numbers(
                     context, repoint_list
                 )
-                science_files = []
+                neighbor_files = []
                 for metadata in metadata_list:
                     if "file_names" in metadata:
                         # Dagster wraps metadata in a MetadataValue object
@@ -87,51 +87,27 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
                         # Handle both single strings and lists of files safely
                         if isinstance(file_names, str):
                             file_names = [file_names]
-                        science_files.extend(file_names)
+                        neighbor_files.extend(file_names)
 
-                if science_files:
+                if neighbor_files:
+                    # Apply the same version-renaming strategy as
+                    # IMAPJobHandler.get_science_files_inputs so neighboring
+                    # files are named consistently with the base science
+                    # inputs. This implementation will leave filenames with the
+                    # new versioning convention unaltered.
+                    pattern = re.compile(r"v(\d{3})\.cdf$")
+                    renamed_neighbor_files = [
+                        pattern.sub(r"v001.0\1.cdf", file) for file in neighbor_files
+                    ]
                     context.log.info(
-                        f"Hi Goodtimes adding neighboring L1B DE files: {science_files}"
+                        "Hi Goodtimes adding neighboring L1B DE files: "
+                        f"{renamed_neighbor_files}"
                     )
                     science_processing_inputs.append(
-                        processing_input.ScienceInput(*list(set(science_files)))
-                    )
-
-            for metadata in metadata_list:
-                if "file_names" in metadata:
-                    # Dagster wraps metadata in a MetadataValue object
-                    file_names = metadata["file_names"].value
-                    # Handle both single strings and lists of files safely
-                    if isinstance(file_names, str):
-                        file_names = [file_names]
-                    if file_names:
-                        context.log.info(
-                            f"The file names of the matching partition: {file_names}"
+                        processing_input.ScienceInput(
+                            *list(set(renamed_neighbor_files))
                         )
-                    science_files.extend(file_names)
-
-        num_future = np.sum(np.array(repoint_list) > target_pointing_number)
-        min_future_repoints = HI_GOODTIMES_NUM_NEAREST_REPOINTS // 2
-        if num_future < min_future_repoints:
-            required_future_pointing = (
-                target_pointing_number + HI_GOODTIMES_NUM_NEAREST_REPOINTS
-            )
-            if not self._check_pointing_exists(session, required_future_pointing):
-                raise imap_job.MissingDependenciesError(
-                    f"""Hi Goodtimes: skipping repoint {target_pointing_number} -
-                        pointing {required_future_pointing} does not exist yet"""
-                )
-
-        if science_files:
-            pattern = re.compile(r"v(\d{3})\.cdf$")
-            renamed_science_files = [
-                pattern.sub(r"v001.0\1.cdf", file) for file in science_files
-            ]
-            science_processing_inputs.append(
-                processing_input.ScienceInput(*list(set(renamed_science_files)))
-            )
-
-        context.log.info(f"Hi Goodtimes adding L1B DE files: {science_files}")
+                    )
 
         return science_processing_inputs
 
