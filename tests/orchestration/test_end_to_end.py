@@ -54,7 +54,6 @@ def test_glows_l1a_end_to_end(
             partition="repoint2_2026-01-02T00:00:00_to_2026-01-02T23:59:59",
             description="Mocked arrival of L0 science file for testing.",
             metadata={
-                "file_names": ["imap_glows_l0_raw_20260102-repoint00002_v001.pkts"],
                 "file_names": [
                     "imap_glows_l0_raw_20260102-repoint00002_v000.0001.pkts"
                 ],
