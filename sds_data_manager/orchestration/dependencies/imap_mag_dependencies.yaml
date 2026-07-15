@@ -411,3 +411,7 @@
       data_type: l2
       descriptor: norm-rtn
       major_version: 1
+    - source: mag
+      data_type: l2
+      descriptor: norm-gsm
+      major_version: 1
