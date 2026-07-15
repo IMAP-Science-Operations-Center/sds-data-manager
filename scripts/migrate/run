@@ -1,0 +1,206 @@
+#!/bin/bash
+set -euo pipefail
+
+export AWS_PROFILE=default
+export AWS_DEFAULT_REGION=us-west-2
+export AWS_ACCOUNT=593025701104
+export AWS_BUCKET=sds-data-$AWS_ACCOUNT
+export SECRET_NAME=sdp-database-cred
+
+# Set to 1 to drop into an interactive SSH shell on the instance; set to 0
+# for fully-automated mode that runs the migration script remotely.
+INTERACTIVE=0
+
+# Passed through to migrate.py. Set to 1 to copy files on S3, and/or to 1 to
+# modify the DB rows. Run in stages - do not enable both at once.
+COPY_FILES=1
+MODIFY_ROWS=0
+# Force overwriting of target cdf/pkts file(s) if they exist?
+OVERWRITE=0
+# Max cdf/pkts files to process in this batch (0 for all)
+MAX_FILES=0
+
+ROLE_NAME=s3-transition-runner
+PROFILE_NAME=s3-transition-runner
+KEY_NAME=s3-transition-key
+KEY_FILE=s3-transition-key.pem
+INSTANCE_TAG=s3-transition
+
+# Function to tear down the instance (and the SG rule) on exit
+cleanup() {
+  if [ -n "${RDS_SG:-}" ] && [ -n "${EC2_IP:-}" ]; then
+    aws ec2 revoke-security-group-ingress --group-id "$RDS_SG" \
+      --protocol tcp --port 5432 --cidr "$EC2_IP/32" 2>/dev/null || true
+  fi
+  if [ -n "${IID:-}" ]; then
+    aws ec2 terminate-instances --instance-ids "$IID"
+  fi
+}
+
+# --- IAM role ---
+if ! aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
+  aws iam create-role --role-name "$ROLE_NAME" --assume-role-policy-document file://ec2-trust.json
+fi
+
+# Render the permissions policy template, substituting the account/bucket/region
+# from the variables above so they are not hardcoded in ec2-perms.json.
+PERMS_FILE=$(mktemp)
+envsubst '$AWS_BUCKET $AWS_ACCOUNT $AWS_DEFAULT_REGION' < ec2-perms.json > "$PERMS_FILE"
+aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name s3-transition-perms --policy-document "file://$PERMS_FILE"
+rm -f "$PERMS_FILE"
+
+if ! aws iam get-instance-profile --instance-profile-name "$PROFILE_NAME" >/dev/null 2>&1; then
+  aws iam create-instance-profile --instance-profile-name "$PROFILE_NAME"
+fi
+
+if [ -z "$(aws iam get-instance-profile --instance-profile-name "$PROFILE_NAME" \
+    --query "InstanceProfile.Roles[?RoleName=='$ROLE_NAME'].RoleName" --output text)" ]; then
+  aws iam add-role-to-instance-profile --instance-profile-name "$PROFILE_NAME" --role-name "$ROLE_NAME"
+fi
+
+# --- Key pair ---
+# Create the AWS key pair and save the private key locally with tight perms.
+create_key_pair() {
+  aws ec2 create-key-pair --key-name "$KEY_NAME" --query 'KeyMaterial' --output text > "$KEY_FILE"
+  chmod 400 "$KEY_FILE"
+}
+
+# The instance is ephemeral, but the AWS key pair and the local .pem persist
+# between runs. A fresh instance bakes in the AWS-stored public key, so the
+# local .pem must still be its matching private half. Reuse the pair only if
+# the fingerprints match; on any drift, regenerate - otherwise SSH fails on
+# every attempt, masked as an endless "Waiting for SSH ..." loop.
+if ! aws ec2 describe-key-pairs --key-names "$KEY_NAME" >/dev/null 2>&1; then
+  echo "Key pair '$KEY_NAME' not found in AWS; creating it."
+  create_key_pair
+else
+  regenerate=0
+  if [ ! -f "$KEY_FILE" ]; then
+    echo "Key pair '$KEY_NAME' exists in AWS but local '$KEY_FILE' is missing; regenerating."
+    regenerate=1
+  else
+    aws_fp=$(aws ec2 describe-key-pairs --key-names "$KEY_NAME" \
+      --query 'KeyPairs[0].KeyFingerprint' --output text)
+    # EC2 CreateKeyPair fingerprint = SHA-1 of the DER (PKCS#8) private key.
+    local_fp=$(openssl pkcs8 -in "$KEY_FILE" -nocrypt -topk8 -outform DER 2>/dev/null \
+      | openssl sha1 -c 2>/dev/null | awk '{print $NF}')
+    if [ -z "$local_fp" ]; then
+      echo "WARNING: could not compute local fingerprint for '$KEY_FILE'; skipping match check." >&2
+    elif [ "$aws_fp" != "$local_fp" ]; then
+      echo "Local '$KEY_FILE' does not match AWS key pair '$KEY_NAME'; regenerating." >&2
+      echo "  AWS:   $aws_fp" >&2
+      echo "  local: $local_fp" >&2
+      regenerate=1
+    fi
+  fi
+  if [ "$regenerate" = 1 ]; then
+    aws ec2 delete-key-pair --key-name "$KEY_NAME"
+    rm -f "$KEY_FILE"
+    create_key_pair
+  fi
+fi
+# List keys
+aws ec2 describe-key-pairs --query 'KeyPairs[].KeyName' --output text
+
+# --- EC2 instance (reuse an existing one if it is still up) ---
+IID=$(aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=$INSTANCE_TAG" "Name=instance-state-name,Values=pending,running" \
+  --query 'Reservations[0].Instances[0].InstanceId' --output text)
+
+if [ "$IID" = "None" ] || [ -z "$IID" ]; then
+  AMI=$(aws ssm get-parameter \
+    --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64 \
+    --query Parameter.Value --output text)
+
+  # Retrieve default VPC ID to create the security group
+  DEFAULT_VPC=$(aws ec2 describe-vpcs --query "Vpcs[?IsDefault].VpcId" --output text)
+
+  SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=s3-transition-sg --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || true)
+  if [ "$SG_ID" = "None" ] || [ -z "$SG_ID" ]; then
+      echo "Creating security group s3-transition-sg..."
+      SG_ID=$(aws ec2 create-security-group \
+          --group-name s3-transition-sg \
+          --description "SG for s3 transition EC2 instance" \
+          --vpc-id "$DEFAULT_VPC" \
+          --query 'GroupId' --output text)
+      aws ec2 authorize-security-group-ingress \
+          --group-id "$SG_ID" \
+          --protocol tcp \
+          --port 22 \
+          --cidr 0.0.0.0/0
+  fi
+
+  IID=$(aws ec2 run-instances \
+    --image-id "$AMI" \
+    --instance-type m9g.48xlarge \
+    --iam-instance-profile Name="$PROFILE_NAME" \
+    --security-group-ids "$SG_ID" \
+    --block-device-mappings '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeSize":1024}}]' \
+    --associate-public-ip-address \
+    --key-name "$KEY_NAME" \
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_TAG}]" \
+    --query 'Instances[0].InstanceId' --output text)
+fi
+echo "Instance: $IID"
+
+# Ensure the instance is cleaned up on any exit.
+trap cleanup EXIT
+
+# Wait until the instance is running so it has a public IP.
+aws ec2 wait instance-running --instance-ids "$IID"
+
+# Grab the instance's Public IP
+EC2_IP=$(aws ec2 describe-instances --instance-ids "$IID" \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+echo "$EC2_IP"
+
+# Find the RDS security group id
+RDS_SG=$(aws ec2 describe-security-groups \
+    --filters Name=group-name,Values='SDCStack-RdsSecurityGroup*' \
+    --query 'SecurityGroups[0].GroupId' --output text)
+
+# Authorize ingress (ignore error if the rule already exists).
+aws ec2 authorize-security-group-ingress --group-id "$RDS_SG" \
+  --protocol tcp --port 5432 --cidr "$EC2_IP/32" 2>/dev/null || true
+
+# Ephemeral instances reuse public IPs, so skip host-key checking to avoid
+# "REMOTE HOST IDENTIFICATION HAS CHANGED" failures on re-runs.
+SSH_OPTS=(-i "$KEY_FILE"
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null)
+
+# SSH may not be ready the instant the instance is "running"; wait for it, but
+# bound the wait so a real failure (e.g. a key mismatch) surfaces instead of
+# looping forever. On timeout, retry once WITHOUT hiding stderr so the actual
+# SSH error (e.g. "Permission denied (publickey)") is visible.
+ssh_ready=0
+for _ in $(seq 1 24); do
+  if ssh "${SSH_OPTS[@]}" -o ConnectTimeout=5 ec2-user@"$EC2_IP" true 2>/dev/null; then
+    ssh_ready=1
+    break
+  fi
+  echo "Waiting for SSH on $EC2_IP ..."
+  sleep 5
+done
+
+if [ "$ssh_ready" != 1 ]; then
+  echo "ERROR: SSH to $EC2_IP did not succeed after ~2 minutes. Last attempt:" >&2
+  ssh "${SSH_OPTS[@]}" -o ConnectTimeout=5 ec2-user@"$EC2_IP" true || true
+  exit 1
+fi
+
+# Copy the migration scripts up to the instance.
+scp "${SSH_OPTS[@]}" run_remote.sh migrate.py ec2-user@"$EC2_IP":~/
+
+if [ "${INTERACTIVE:-0}" = 1 ]; then
+  echo "Interactive mode: opening a shell on $EC2_IP (instance is torn down on exit)."
+  echo "  Run the migration manually with: bash ~/run_remote.sh"
+  ssh "${SSH_OPTS[@]}" ec2-user@"$EC2_IP"
+  exit 0
+fi
+
+# Run the transition script on the instance.
+ssh "${SSH_OPTS[@]}" ec2-user@"$EC2_IP" \
+  "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION S3_BUCKET=$AWS_BUCKET SECRET_NAME=$SECRET_NAME COPY_FILES=$COPY_FILES MODIFY_ROWS=$MODIFY_ROWS OVERWRITE=$OVERWRITE MAX_FILES=$MAX_FILES bash ~/run_remote.sh"
+
+# Teardown happens in cleanup() via the EXIT trap.

@@ -21,7 +21,8 @@ def _populate_processing_table(session):
             data_level="l1b",
             descriptor="de",
             start_date=datetime(2010, 1, 1),
-            version="v001",
+            major_version=0,
+            minor_version=1,
             job_definition="lo-definition",
             job_log_stream_id="lo-log-stream-id",
             container_image="lo-container-image",
@@ -35,7 +36,8 @@ def _populate_processing_table(session):
             data_level="l1b",
             descriptor="sci",
             start_date=datetime(2010, 1, 2),
-            version="v001",
+            major_version=0,
+            minor_version=1,
         ),
     ]
 
@@ -55,7 +57,6 @@ def test_batch_job_query_api(session):
             "data_level": "l1b",
             "descriptor": "de",
             "start_date": "20100101",
-            "version": "v001",
         }
     }
     response = batch_job_query_api.lambda_handler(event, None)
@@ -124,7 +125,8 @@ def test_batch_job_query_api_local_command():
         data_level="l1b",
         descriptor="de",
         start_date=datetime(2010, 1, 1),
-        version="v001",
+        major_version=0,
+        minor_version=1,
         job_definition="lo-definition",
         job_log_stream_id="lo-log-stream-id",
         container_image="lo-container-image",

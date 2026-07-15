@@ -184,6 +184,7 @@ class DependencyConfigReader:
                                 dependency_query_time_range=upstream.get(
                                     "date_range", []
                                 ),
+                                major_version=upstream.get("major_version"),
                             )
                         )
                     job_outputs_list = []
@@ -200,6 +201,7 @@ class DependencyConfigReader:
                                 dependency_query_time_range=output.get(
                                     "date_range", []
                                 ),
+                                major_version=output.get("major_version"),
                             )
                         )
 

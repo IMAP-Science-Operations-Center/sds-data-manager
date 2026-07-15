@@ -77,7 +77,7 @@ def test_input_parameters_missing(mock_is_authenticated):
 def test_auth_path_unreleased_file_access(session, s3_client):
     """Test that authenticated paths can access unreleased files."""
     # Create an unreleased file in the database
-    filepath = "test/file/path/imap_hit_l0_raw_20210101_v001.pkts"
+    filepath = "test/file/path/imap_hit_l0_raw_20210101_v001.0001.pkts"
     s3_path = filepath  # For simplicity, use the same path for S3 and database
 
     # Add the file to S3
@@ -94,7 +94,8 @@ def test_auth_path_unreleased_file_access(session, s3_client):
         "data_level": "l0",
         "descriptor": "raw",
         "start_date": datetime.datetime.strptime("20210101", "%Y%m%d"),
-        "version": "v001",
+        "major_version": 1,
+        "minor_version": 1,
         "extension": "pkts",
         "ingestion_date": datetime.datetime.strptime(
             "2021-01-01 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"

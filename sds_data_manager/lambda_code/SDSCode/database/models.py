@@ -10,6 +10,7 @@ import imap_data_access
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     Float,
@@ -82,7 +83,9 @@ class ProcessingJob(Base):
     data_level = Column(DATA_LEVELS, nullable=False)
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
-    version = Column(String(8), nullable=False)
+    # vMMM.mmmm
+    major_version = Column(Integer, nullable=False, default=1)
+    minor_version = Column(Integer, nullable=False, default=1)
     repointing = Column(Integer, nullable=True)
     # TODO:
     #  Didn't make it required field yet. Revisit this
@@ -118,6 +121,8 @@ class ProcessingJob(Base):
             unique=True,
             postgresql_where=and_(status.in_(["INPROGRESS", "SUCCEEDED"])),
         ),
+        CheckConstraint("major_version >= 0 AND major_version <= 999"),
+        CheckConstraint("minor_version >= 0 AND minor_version <= 9999"),
     )
 
     def to_dict(self):
@@ -128,7 +133,8 @@ class ProcessingJob(Base):
             "data_level": str(self.data_level),
             "descriptor": self.descriptor,
             "start_date": self.start_date.isoformat() if self.start_date else None,
-            "version": self.version,
+            "major_version": self.major_version,
+            "minor_version": self.minor_version,
             "repointing": self.repointing,
             "dependency_hash": self.dependency_hash if self.dependency_hash else None,
             # These parameters could be None when the batch job is in progress
@@ -160,11 +166,18 @@ class ScienceFileBase:
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
     repointing = Column(Integer, nullable=True)
-    version = Column(String(4), nullable=False)  # vXXX
+    # vMMM.mmmm
+    major_version = Column(Integer, nullable=False, default=1)
+    minor_version = Column(Integer, nullable=False, default=1)
     ingestion_date = Column(DateTime(timezone=True))
     cr = Column(Integer, nullable=True)
     crid = Column(String, nullable=True)
     released = Column(Boolean, nullable=False, default=False)
+
+    __table_args__ = (
+        CheckConstraint("major_version >= 0 AND major_version <= 999"),
+        CheckConstraint("minor_version >= 0 AND minor_version <= 9999"),
+    )
 
 
 class ScienceFiles(ScienceFileBase, Base):
@@ -329,5 +342,12 @@ class IDEXL0Files(Base):
     # in two different ten day chunks. These start_date are defined by IDEX team due to
     # above reasons.
     start_date = Column(DateTime, nullable=False, primary_key=True)
-    version = Column(String(4), nullable=False, primary_key=True)  # vXXX
+    # vMMM.mmmm
+    major_version = Column(Integer, nullable=False, primary_key=True, default=1)
+    minor_version = Column(Integer, nullable=False, primary_key=True, default=1)
     ingestion_date = Column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint("major_version >= 0 AND major_version <= 999"),
+        CheckConstraint("minor_version >= 0 AND minor_version <= 9999"),
+    )
