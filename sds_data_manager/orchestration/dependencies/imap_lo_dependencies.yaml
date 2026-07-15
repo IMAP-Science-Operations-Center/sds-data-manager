@@ -159,10 +159,6 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       major_version: 1
     - source: lo
       data_type: l1b
-      descriptor: instrument-status-summary
-      major_version: 1
-    - source: lo
-      data_type: l1b
       descriptor: nhk
       major_version: 1
     - source: lo
