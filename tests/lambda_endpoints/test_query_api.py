@@ -53,6 +53,7 @@ def expected_response():
                 "repointing": None,
                 "major_version": 1,
                 "minor_version": 1,
+                "version": "v001.0001",
                 "extension": "pkts",
                 "ingestion_date": "20251107 10:13:12",
                 "cr": None,

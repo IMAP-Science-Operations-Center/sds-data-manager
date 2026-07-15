@@ -196,6 +196,10 @@ def _format_search_results(search_results):
 
     """
     for result in search_results:
+        if "major_version" in result and "minor_version" in result:
+            result["version"] = (
+                f"v{result['major_version']:03d}.{result['minor_version']:04d}"
+            )
         result["start_date"] = result["start_date"].strftime("%Y%m%d")
         if result.get("end_date"):
             result["end_date"] = result["end_date"].strftime("%Y%m%d")
