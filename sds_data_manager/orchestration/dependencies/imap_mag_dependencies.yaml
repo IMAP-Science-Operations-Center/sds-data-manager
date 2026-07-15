@@ -146,6 +146,10 @@
       # opens with a gap (MAG SDC Data Validation 4.3.3 time inheritance;
       # imap_processing issue 2925). [past, future] days (past is negative);
       # the next day is not needed.
+      # NOTE: do not merge yet - the orchestration does not currently apply
+      # date_range when selecting input files (needs custom_behavior support,
+      # like hi.py), and the trigger sensor's range parser does not handle
+      # negative values like "-1d".
       date_range: ["-1d", "0d"]
     - source: mag
       data_type: l1b
@@ -177,6 +181,10 @@
       # opens with a gap (MAG SDC Data Validation 4.3.3 time inheritance;
       # imap_processing issue 2925). [past, future] days (past is negative);
       # the next day is not needed.
+      # NOTE: do not merge yet - the orchestration does not currently apply
+      # date_range when selecting input files (needs custom_behavior support,
+      # like hi.py), and the trigger sensor's range parser does not handle
+      # negative values like "-1d".
       date_range: ["-1d", "0d"]
     - source: mag
       data_type: l1b
