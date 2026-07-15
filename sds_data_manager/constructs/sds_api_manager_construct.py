@@ -181,7 +181,7 @@ class SdsApiManager(Construct):
             code=code,
             handler="SDSCode.api_lambdas.query_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
-            timeout=cdk.Duration.minutes(1),
+            timeout=cdk.Duration.minutes(3),
             memory_size=1000,
             allow_public_subnet=True,
             vpc=vpc,
