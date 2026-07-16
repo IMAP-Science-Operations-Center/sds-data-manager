@@ -34,6 +34,7 @@
     - source: spacecraft
       data_type: l1a
       descriptor: pointing-attitude
+      major_version: 1
 
 
 (l1a, quaternions):
@@ -54,3 +55,4 @@
     - source: spacecraft
       data_type: l1a
       descriptor: quaternions
+      major_version: 1

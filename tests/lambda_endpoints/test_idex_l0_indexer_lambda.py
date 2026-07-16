@@ -19,7 +19,7 @@ from tests.lambda_endpoints.test_spice_indexer_lambda import (
     put_local_file_in_bucket,
 )
 
-IDEX_L0_TEST_FILE = "imap/idex/l0/2024/01/imap_idex_l0_raw_20240101_v001.pkts"
+IDEX_L0_TEST_FILE = "imap/idex/l0/2024/01/imap_idex_l0_raw_20240101_v001.0001.pkts"
 
 
 @pytest.fixture
@@ -106,9 +106,10 @@ def test_s3_sci_event(session, s3_client, events_client, setup_data):
     assert len(result) == 1
     assert (
         result[0].file_path
-        == "imap/idex/l0/2024/01/imap_idex_l0_raw_20240101_v001.pkts"
+        == "imap/idex/l0/2024/01/imap_idex_l0_raw_20240101_v001.0001.pkts"
     )
-    assert result[0].version == "v001"
+    assert result[0].major_version == 1
+    assert result[0].minor_version == 1
     assert result[0].start_date == datetime.datetime(2025, 3, 31, 0, 0)
 
 

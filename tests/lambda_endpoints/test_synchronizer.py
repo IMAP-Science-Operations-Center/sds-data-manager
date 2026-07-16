@@ -16,7 +16,7 @@ def test_synchronizer_extra_s3(session, s3_client):
     """An s3 file not in the database already, gets added as expected."""
     cleanup_bucket(s3_client)
 
-    filepath = "imap/hit/l0/2025/11/imap_hit_l0_raw_20251107_v001.pkts"
+    filepath = "imap/hit/l0/2025/11/imap_hit_l0_raw_20251107_v001.0001.pkts"
     s3_client.put_object(Bucket="test-data-bucket", Key=filepath, Body=b"")
 
     with session.begin():
@@ -35,21 +35,23 @@ def test_synchronizer_extra_s3(session, s3_client):
     assert item.data_level == "l0"
     assert item.descriptor == "raw"
     assert item.start_date == datetime.datetime(2025, 11, 7)
-    assert item.version == "v001"
+    assert item.major_version == 1
+    assert item.minor_version == 1
     assert item.extension == "pkts"
 
 
 def test_synchronizer_extra_db(session, s3_client):
     """A database entry gets removed if it isn't in s3."""
     cleanup_bucket(s3_client)
-    filepath = "imap/hit/l0/2025/11/imap_hit_l0_raw_20251107_v001.pkts"
+    filepath = "imap/hit/l0/2025/11/imap_hit_l0_raw_20251107_v001.0001.pkts"
     metadata_params = {
         "file_path": filepath,
         "instrument": "hit",
         "data_level": "l0",
         "descriptor": "raw",
         "start_date": datetime.datetime.strptime("20251107", "%Y%m%d"),
-        "version": "v001",
+        "major_version": 1,
+        "minor_version": 1,
         "extension": "pkts",
         "ingestion_date": datetime.datetime.strptime(
             "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"

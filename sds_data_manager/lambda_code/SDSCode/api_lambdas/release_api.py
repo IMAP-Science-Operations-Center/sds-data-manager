@@ -108,7 +108,11 @@ def validate_query_params(event):
 def query_latest_science_files(
     session, instrument, start_date, end_date, science_files_to_exclude=None
 ):
-    """Query for the latest-version science file paths matching given criteria."""
+    """Query for the latest-version science file paths matching given criteria.
+
+    Latest version is determined by finding the maximum major_version, then
+    within that, the maximum minor_version for each unique file grouping.
+    """
     science_table = models.ScienceFiles
 
     # Check if any file in the range has a non-null repointing
@@ -125,14 +129,15 @@ def query_latest_science_files(
     )
 
     if has_repointing:
-        max_ver_subq = (
+        # Find max major_version for each file group
+        max_major_subq = (
             session.query(
                 science_table.instrument,
                 science_table.data_level,
                 science_table.descriptor,
                 science_table.start_date,
                 science_table.repointing,
-                func.max(science_table.version).label("max_version"),
+                func.max(science_table.major_version).label("max_major"),
             )
             .group_by(
                 science_table.instrument,
@@ -143,16 +148,49 @@ def query_latest_science_files(
             )
             .subquery()
         )
+
+        # Within max major_version, find max minor_version
+        max_minor_subq = (
+            session.query(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.repointing,
+                science_table.major_version,
+                func.max(science_table.minor_version).label("max_minor"),
+            )
+            .join(
+                max_major_subq,
+                (science_table.instrument == max_major_subq.c.instrument)
+                & (science_table.data_level == max_major_subq.c.data_level)
+                & (science_table.descriptor == max_major_subq.c.descriptor)
+                & (science_table.start_date == max_major_subq.c.start_date)
+                & (science_table.repointing == max_major_subq.c.repointing)
+                & (science_table.major_version == max_major_subq.c.max_major),
+            )
+            .group_by(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.repointing,
+                science_table.major_version,
+            )
+            .subquery()
+        )
+
         latest_science_files = (
             session.query(science_table)
             .join(
-                max_ver_subq,
-                (science_table.instrument == max_ver_subq.c.instrument)
-                & (science_table.data_level == max_ver_subq.c.data_level)
-                & (science_table.descriptor == max_ver_subq.c.descriptor)
-                & (science_table.start_date == max_ver_subq.c.start_date)
-                & (science_table.repointing == max_ver_subq.c.repointing)
-                & (science_table.version == max_ver_subq.c.max_version),
+                max_minor_subq,
+                (science_table.instrument == max_minor_subq.c.instrument)
+                & (science_table.data_level == max_minor_subq.c.data_level)
+                & (science_table.descriptor == max_minor_subq.c.descriptor)
+                & (science_table.start_date == max_minor_subq.c.start_date)
+                & (science_table.repointing == max_minor_subq.c.repointing)
+                & (science_table.major_version == max_minor_subq.c.major_version)
+                & (science_table.minor_version == max_minor_subq.c.max_minor),
             )
             .filter(
                 science_table.instrument == instrument,
@@ -161,13 +199,14 @@ def query_latest_science_files(
             )
         )
     else:
-        max_ver_subq = (
+        # Find max major_version for each file group
+        max_major_subq = (
             session.query(
                 science_table.instrument,
                 science_table.data_level,
                 science_table.descriptor,
                 science_table.start_date,
-                func.max(science_table.version).label("max_version"),
+                func.max(science_table.major_version).label("max_major"),
             )
             .group_by(
                 science_table.instrument,
@@ -177,15 +216,45 @@ def query_latest_science_files(
             )
             .subquery()
         )
+
+        # Within max major_version, find max minor_version
+        max_minor_subq = (
+            session.query(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.major_version,
+                func.max(science_table.minor_version).label("max_minor"),
+            )
+            .join(
+                max_major_subq,
+                (science_table.instrument == max_major_subq.c.instrument)
+                & (science_table.data_level == max_major_subq.c.data_level)
+                & (science_table.descriptor == max_major_subq.c.descriptor)
+                & (science_table.start_date == max_major_subq.c.start_date)
+                & (science_table.major_version == max_major_subq.c.max_major),
+            )
+            .group_by(
+                science_table.instrument,
+                science_table.data_level,
+                science_table.descriptor,
+                science_table.start_date,
+                science_table.major_version,
+            )
+            .subquery()
+        )
+
         latest_science_files = (
             session.query(science_table)
             .join(
-                max_ver_subq,
-                (science_table.instrument == max_ver_subq.c.instrument)
-                & (science_table.data_level == max_ver_subq.c.data_level)
-                & (science_table.descriptor == max_ver_subq.c.descriptor)
-                & (science_table.start_date == max_ver_subq.c.start_date)
-                & (science_table.version == max_ver_subq.c.max_version),
+                max_minor_subq,
+                (science_table.instrument == max_minor_subq.c.instrument)
+                & (science_table.data_level == max_minor_subq.c.data_level)
+                & (science_table.descriptor == max_minor_subq.c.descriptor)
+                & (science_table.start_date == max_minor_subq.c.start_date)
+                & (science_table.major_version == max_minor_subq.c.major_version)
+                & (science_table.minor_version == max_minor_subq.c.max_minor),
             )
             .filter(
                 science_table.instrument == instrument,
@@ -307,23 +376,24 @@ def get_latest_ancillary_files(
         ),
     )
 
-    # Combine
-    combined = union_all(with_end_date_query, no_end_date_query).order_by(
-        text("file_path")
-    )
+    # Combine — ORDER BY positional index works across all DB backends for UNION ALL
+    combined = union_all(with_end_date_query, no_end_date_query).order_by(text("1"))
+
+    latest_ancillary_files = [row[0] for row in session.execute(combined).fetchall()]
 
     # Now exclude any files in the exclude list
     if ancillary_files_to_exclude:
-        combined = combined.where(~combined.c.file_path.in_(ancillary_files_to_exclude))
+        latest_ancillary_files = [
+            p for p in latest_ancillary_files if p not in ancillary_files_to_exclude
+        ]
 
-    ancillary_file_paths = [row[0] for row in session.execute(combined).fetchall()]
-    if not ancillary_file_paths:
+    if not latest_ancillary_files:
         logger.info(f"Found 0 ancillary file(s) for instrument={instrument}")
         return []
 
     results = list(
         session.query(models.AncillaryFiles).filter(
-            models.AncillaryFiles.file_path.in_(ancillary_file_paths)
+            models.AncillaryFiles.file_path.in_(latest_ancillary_files)
         )
     )
     logger.info(f"Found {len(results)} ancillary file(s) for instrument={instrument}")
@@ -381,9 +451,10 @@ def release_type_handler(query_params):
     start_date = datetime.datetime.strptime(query_params["start_date"], "%Y%m%d")
     end_date = datetime.datetime.strptime(query_params["end_date"], "%Y%m%d")
     exclude_file = query_params.get("exclude_file", None)
+    release_number = int(query_params["release_number"])
+    instrument = query_params["instrument"]
 
     with db.Session() as session:
-        # Query for withhold files to exclude from release.
         science_files_to_exclude = []
         ancillary_files_to_exclude = []
 
@@ -394,7 +465,7 @@ def release_type_handler(query_params):
 
         science_files_to_update = query_latest_science_files(
             session,
-            query_params["instrument"],
+            instrument,
             start_date,
             end_date,
             science_files_to_exclude=science_files_to_exclude,
@@ -402,18 +473,38 @@ def release_type_handler(query_params):
 
         ancillary_files_to_update = get_latest_ancillary_files(
             session,
-            query_params["instrument"],
+            instrument,
             start_date,
             end_date,
             ancillary_files_to_exclude=ancillary_files_to_exclude,
         )
 
-        # Directly update ORM objects
+        if not science_files_to_update and not ancillary_files_to_update:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    "No files to release for the specified "
+                    f"{instrument}, {start_date} to {end_date}, and "
+                    f"{release_number}."
+                ),
+            }
+
         for obj in science_files_to_update:
             obj.released = True
+
         for obj in ancillary_files_to_update:
             obj.released = True
+
         session.commit()
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps(
+                f"Successfully released "
+                f"{len(science_files_to_update)} science files and "
+                f"{len(ancillary_files_to_update)} ancillary files."
+            ),
+        }
 
 
 def early_release_type_handler(query_params):
@@ -421,6 +512,12 @@ def early_release_type_handler(query_params):
     manifest_file = query_params["manifest_file"]
 
     science_files, ancillary_files = download_read_file(manifest_file)
+
+    if not science_files and not ancillary_files:
+        return {
+            "statusCode": 400,
+            "body": json.dumps("No files found in the manifest file."),
+        }
 
     with db.Session() as session:
         if science_files:
@@ -442,8 +539,7 @@ def early_release_type_handler(query_params):
         session.commit()
 
     logger.info(
-        f"Early released "
-        f"{len(science_files)} science files and "
+        f"Early released {len(science_files)} science files and "
         f"{len(ancillary_files)} ancillary files."
     )
 
@@ -462,6 +558,14 @@ def unrelease_type_handler(query_params):
     manifest_file = query_params["manifest_file"]
 
     science_files, ancillary_files = download_read_file(manifest_file)
+
+    if not science_files and not ancillary_files:
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                "The manifest file does not contain any science or ancillary files."
+            ),
+        }
 
     with db.Session() as session:
         if science_files:
@@ -483,8 +587,7 @@ def unrelease_type_handler(query_params):
         session.commit()
 
     logger.info(
-        f"Unreleased "
-        f"{len(science_files)} science files and "
+        f"Unreleased {len(science_files)} science files and "
         f"{len(ancillary_files)} ancillary files."
     )
 
@@ -496,6 +599,15 @@ def unrelease_type_handler(query_params):
             f"{len(ancillary_files)} ancillary files."
         ),
     }
+
+
+def reprocess_type_handler(query_params):
+    """Reprocess for data release.
+
+    NOTE: This may not be needed. If not needed, remove support
+    at imap-data-access before removing this.
+    """
+    return {"statusCode": 200, "body": "Reprocess for data release not supported yet."}
 
 
 def lambda_handler(event, context):
@@ -537,14 +649,19 @@ def lambda_handler(event, context):
     release_type = query_validation["data"]["release_type"]
     query_params = query_validation["data"]["query_params"]
 
-    if release_type == "release":
-        release_type_handler(query_params)
-    elif release_type == "early-release":
-        early_release_type_handler(query_params)
-    elif release_type == "unrelease":
-        unrelease_type_handler(query_params)
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps(f"Successful {release_type} "),
+    handler_map = {
+        "release": release_type_handler,
+        "early-release": early_release_type_handler,
+        "unrelease": unrelease_type_handler,
+        "reprocess": reprocess_type_handler,
     }
+
+    handler = handler_map.get(release_type)
+
+    if handler is None:
+        return {
+            "statusCode": 400,
+            "body": json.dumps(f"Invalid release type: {release_type}"),
+        }
+
+    return handler(query_params)

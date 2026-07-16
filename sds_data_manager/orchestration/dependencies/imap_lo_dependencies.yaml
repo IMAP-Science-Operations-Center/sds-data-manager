@@ -94,21 +94,35 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1a
       descriptor: histogram
+      major_version: 1
     - source: lo
       data_type: l1a
       descriptor: nhk
+      major_version: 1
     - source: lo
       data_type: l1a
       descriptor: shk
+      major_version: 1
     - source: lo
       data_type: l1a
       descriptor: spin
+      major_version: 1
     - source: lo
       data_type: l1a
       descriptor: star
+      major_version: 1
     - source: lo
       data_type: l1a
       descriptor: de
+      major_version: 1
+    - source: lo
+      data_type: l1a
+      descriptor: pcc
+      major_version: 1
+    - source: lo
+      data_type: l1b
+      descriptor: instrument-status-summary
+      major_version: 1
 
 # ======== Level L1B ========
 
@@ -138,24 +152,27 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: histrates
+      major_version: 1
     - source: lo
       data_type: l1b
       descriptor: monitorrates
-    - source: lo
-      data_type: l1b
-      descriptor: instrument-status-summary
+      major_version: 1
     - source: lo
       data_type: l1b
       descriptor: nhk
+      major_version: 1
     - source: lo
       data_type: l1b
       descriptor: shk
+      major_version: 1
     - source: lo
       data_type: l1b
       descriptor: goodtimes
+      major_version: 1
     - source: lo
       data_type: l1b
       descriptor: bgrates
+      major_version: 1
 
 (l1b, badtimes):
   partition: repoint
@@ -174,6 +191,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: badtimes
+      major_version: 1
 
 (l1b, de):
   partition: repoint
@@ -204,6 +222,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: de
+      major_version: 1
 
 (l1b, derates):
   partition: repoint
@@ -231,6 +250,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: derates
+      major_version: 1
 
 (l1b, prostar):
   partition: repoint
@@ -254,6 +274,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: prostar
+      major_version: 1
 
 (l1c, pset):
   partition: repoint
@@ -284,6 +305,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1c
       descriptor: pset
+      major_version: 1
 
 (l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -295,6 +317,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l2
       descriptor: l090-ena-h-hf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l2, l090-ena-h-hk-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -306,6 +329,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l2
       descriptor: l090-ena-h-hk-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l2, l090-ena-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -317,6 +341,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l2
       descriptor: l090-ena-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l2, l090-ena-o-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -328,6 +353,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l2
       descriptor: l090-ena-o-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l2, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -339,6 +365,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l2
       descriptor: l090-isn-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l2, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -350,6 +377,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l2
       descriptor: l090-isn-o-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l2, t090-ena-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -360,6 +388,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l2
       descriptor: t090-ena-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l2, t090-isn-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -370,6 +399,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l2
       descriptor: t090-isn-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -382,6 +412,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l2
       descriptor: t090-isn-o-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -393,6 +424,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-isn-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -404,6 +436,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-isn-o-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, l090-spx-h-hf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -415,6 +448,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-spx-h-hf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, l090-spx-h-hf-sp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -426,6 +460,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-spx-h-hf-sp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, l090-spx-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -437,6 +472,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-spx-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, l090-spx-h-sf-sp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -448,6 +484,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-spx-h-sf-sp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -459,6 +496,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -470,6 +508,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, all-maps):
   partition: daily
@@ -481,3 +520,8 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l3
       descriptor: l090-ena-h-hf-sp-ram-hae-6deg-1yr
+      major_version: 1
+    - source: lo
+      data_type: l3
+      descriptor: l090-ena-h-sf-sp-ram-hae-6deg-1yr
+      major_version: 1

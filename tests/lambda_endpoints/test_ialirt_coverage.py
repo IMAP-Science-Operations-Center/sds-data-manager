@@ -23,6 +23,7 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage import (
 )
 
 
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.get_latest_outage_file")
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.format_coverage_summary"
 )
@@ -40,22 +41,24 @@ def test_lambda_handler(
     mock_furnsh,
     mock_generate_coverage,
     mock_format_coverage_summary,
+    mock_get_latest_outage_file,
     s3_client,
+    tmp_path,
 ):
     """Test the lambda_handler function."""
     bucket = "test-data-bucket"
     region = "us-west-2"
 
-    s3_client.put_object(
-        Bucket=bucket,
-        Key="imap_ialirt_outages_20260922_v001.json",
-        Body=json.dumps(
+    outage_file = tmp_path / "imap_ialirt_outages_20260922_v001.json"
+    outage_file.write_text(
+        json.dumps(
             {
                 "Kiel": [["2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00.00Z"]],
                 "DSS-75": [["2026-09-25T08:00:00.00Z", "2026-09-25T09:30:00.00Z"]],
             }
-        ),
+        )
     )
+    mock_get_latest_outage_file.return_value = outage_file
 
     mock_response = MagicMock()
     mock_response.json.return_value = ["de440.bsp", "pck00011.tpc"]

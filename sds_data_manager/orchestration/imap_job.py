@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +20,7 @@ from dagster import (
     DagsterRunStatus,
     EventRecordsFilter,
     Failure,
+    RetryRequested,
     RunRequest,
     RunsFilter,
     SensorEvaluationContext,
@@ -28,6 +30,7 @@ from dagster import (
     sensor,
 )
 from imap_data_access import VALID_DATALEVELS, DependencyFilePath, processing_input
+from imap_data_access.file_validation import Version
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 
@@ -43,6 +46,7 @@ from sds_data_manager.orchestration import (
     spin,
 )
 from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
+from sds_data_manager.orchestration.dependency import DependencyConfigReader
 from sds_data_manager.orchestration.types import DependencyNode, ProcessingJobNode
 
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
@@ -138,7 +142,7 @@ class IMAPJobHandler:
         self.sensor_run_frequency = config.sensor_schedules.get(
             self.job_config.data_type, 600
         )
-
+        self.dependency_config_reader = DependencyConfigReader()
         outputs_for_job = [x.to_dagster_asset() for x in self.job_config.outputs]
         self.dagster_job_name = f"{self.job_config.to_dagster_name()}_processing_job"
         self.dagster_job = define_asset_job(
@@ -194,16 +198,15 @@ class IMAPJobHandler:
         4) Submit the job
         5) Wait for the output files,
            and materialize them as we see them in the database.
+
         """
-        # TODO: Is this needed if we only check every few minutes?
         # Before doing anything, check if any of the dependencies are currently
         # running or about to run.
-        #
         # If so, let us try again in 5 minutes.
-        # dependencies_running = self._check_for_running_dependencies()
-        # if dependencies_running:
-        #    raise RetryRequested(max_retries=10, seconds_to_wait=600)
-
+        dependencies_running = self._check_for_running_dependencies(context)
+        if dependencies_running:
+            context.log.info("Retrying job in 5 minutes.")
+            raise RetryRequested(max_retries=10, seconds_to_wait=300)
         # Figure out what time window this specific run is responsible for
         target_partition = context.partition_key
         target_start, target_end = dagster_utilities.parse_dates_from_partition_key(
@@ -232,20 +235,18 @@ class IMAPJobHandler:
             context.log.info(
                 f"Using the following dependencies: {dependency_inputs.serialize()}"
             )
-
             # We have the dependencies, lets try to submit the job!
-            job_version = self._determine_job_version(
+            output_versions = self._determine_output_versions(
                 session=session,
                 start_date=target_start,
-                current_dependencies=dependency_inputs.serialize(),
                 repointing=target_pointing_number,
             )
-            context.log.info(f"Job Version to Use: {job_version}")
+            context.log.info(f"Job Versions to Use: {output_versions}")
 
             submit_response = self.try_to_submit_job(
                 session,
                 target_start,
-                job_version,
+                output_versions,
                 dependency_inputs.serialize(),
                 repoint=target_pointing_number,
             )
@@ -268,7 +269,7 @@ class IMAPJobHandler:
                 output_files = self.find_outputs(
                     context,
                     session,
-                    job_version=job_version,
+                    output_versions=output_versions,
                     start_date=target_start,
                     repointing=target_pointing_number,
                     inputs=dependency_inputs.serialize(),
@@ -317,12 +318,16 @@ class IMAPJobHandler:
                     models.ProcessingJob.start_date == job_info["start_date"],
                     models.ProcessingJob.repointing == job_info["repointing"],
                     models.ProcessingJob.dependency_hash == job_info["dependency_hash"],
-                    models.ProcessingJob.version == job_info["version"],
+                    models.ProcessingJob.major_version == job_info["major_version"],
+                    models.ProcessingJob.minor_version == job_info["minor_version"],
                     models.ProcessingJob.status.in_(
                         [models.Status.FAILED.value, models.Status.SUCCEEDED.value]
                     ),
                 )
-                .order_by(models.ProcessingJob.version.desc())
+                .order_by(
+                    models.ProcessingJob.major_version.desc(),
+                    models.ProcessingJob.minor_version.desc(),
+                )
                 .first()
             )
             if not job_completed:
@@ -337,7 +342,7 @@ class IMAPJobHandler:
         self,
         context,
         session: db.Session,
-        job_version: str | None = None,
+        output_versions: dict | None = None,
         start_date: datetime.datetime | None = None,
         repointing: int | None = None,
         inputs: dict | None = None,
@@ -356,8 +361,15 @@ class IMAPJobHandler:
                 models.ScienceFiles.data_level == output.data_type,
                 models.ScienceFiles.descriptor == output.descriptor,
             ]
-            if job_version:
-                filters.append(models.ScienceFiles.version == job_version)
+            if output_versions is not None:
+                if output.descriptor in output_versions.keys():
+                    versions = output_versions[output.descriptor]
+                    filters.append(
+                        models.ScienceFiles.major_version == versions["major_version"]
+                    )
+                    filters.append(
+                        models.ScienceFiles.minor_version == versions["minor_version"]
+                    )
             if repointing is not None:
                 filters.append(models.ScienceFiles.repointing == int(repointing))
             if start_date is not None:
@@ -372,7 +384,8 @@ class IMAPJobHandler:
                 .order_by(
                     models.ScienceFiles.start_date,
                     models.ScienceFiles.repointing,
-                    models.ScienceFiles.version.desc(),
+                    models.ScienceFiles.major_version.desc(),
+                    models.ScienceFiles.minor_version.desc(),
                 )
                 .first()
             )
@@ -387,7 +400,7 @@ class IMAPJobHandler:
                     output.to_dagster_asset(),
                     context.partition_key,
                     [os.path.basename(created_file.file_path)],
-                    str(int(created_file.version[1:])),
+                    Version(created_file.major_version, created_file.minor_version),
                     "science",
                     inputs=inputs,
                 )
@@ -397,7 +410,15 @@ class IMAPJobHandler:
 
     def _check_for_running_dependencies(self, context):
         """Check if anything upstream of this file is currently running."""
-        input_set = set([dep.to_dagster_asset() for dep in self.job_config.inputs])
+        # Imported locally to avoid a circular import
+        from sds_data_manager.orchestration.imap_dagster import defs  # noqa: PLC0415
+
+        # Get all ancestral upstream assets.
+        input_set = set(
+            defs.get_repository_def().asset_graph.get_ancestor_asset_keys(
+                self.job_config.outputs[0].to_dagster_asset()
+            )
+        )
         in_flight_runs = context.instance.get_runs(
             filters=RunsFilter(
                 statuses=[
@@ -409,10 +430,15 @@ class IMAPJobHandler:
         )
         conflict_found = False
         for run in in_flight_runs:
-            if run.asset_selection and input_set.intersection(run.assest_selection):
-                conflict_found = True
-                context.log.info(f"Dependency found in active run: {run.run_id}")
-                break
+            if run.asset_selection:
+                overlap = input_set.intersection(run.asset_selection)
+                if overlap:
+                    conflict_found = True
+                    context.log.info(
+                        f"Upstream job in progress {run.run_id}: {overlap}"
+                    )
+                    break
+
         return conflict_found
 
     def _get_overlapping_target_partitions(
@@ -633,6 +659,25 @@ class IMAPJobHandler:
                     datetime.datetime.fromisoformat(config.MISSION_END_TIME),
                 )
                 partitions_to_run.extend(partitions)
+            elif dependency.source in spice.GROWING_KERNEL_TYPES:
+                # Attitude history and pointing attitude kernels grow over time
+                # (new segments are appended to the same file series). Using
+                # each new file's full min/max coverage here would re-trigger
+                # reprocessing of the entire kernel span on every delivery.
+                # Instead, narrow the range down to only the coverage that is
+                # actually new. See spice.get_growing_kernel_trigger_ranges for
+                # the full rules.
+                trigger_ranges = spice.get_growing_kernel_trigger_ranges(
+                    session, dependency.source, new_files
+                )
+                partition_set = set()
+                for min_dt, max_dt in trigger_ranges:
+                    partition_set.update(
+                        dagster_utilities.get_affected_partitions(
+                            context, self.partitions_def, min_dt, max_dt
+                        )
+                    )
+                partitions_to_run.extend(list(partition_set))
             else:
                 for file in new_files:
                     min_dt = getattr(file, datetime_start_column)
@@ -846,8 +891,12 @@ class IMAPJobHandler:
                        Missing {dep_name} in range {target_start!s} to {target_end!s}"""
                 )
             if science_files:
+                pattern = re.compile(r"v(\d{3})\.cdf$")
+                renamed_science_files = [
+                    pattern.sub(r"v001.0\1.cdf", file) for file in science_files
+                ]
                 science_processing_inputs.append(
-                    processing_input.ScienceInput(*list(set(science_files)))
+                    processing_input.ScienceInput(*list(set(renamed_science_files)))
                 )
 
         if not science_processing_inputs and self.job_config.science_inputs:
@@ -877,6 +926,8 @@ class IMAPJobHandler:
         # Get Science files
         science_files = self.get_science_files_inputs(context, target_start, target_end)
         for inputs in science_files:
+            # TODO: ADD IN THE MAJOR VERSION NUMBER HANDLING WHEN CONSTRUCTING
+            # ProcessingInputs.
             processing_inputs.add(inputs)
 
         # Get Ancillary files
@@ -908,37 +959,33 @@ class IMAPJobHandler:
 
         return processing_inputs
 
-    def _determine_job_version(
+    def _determine_output_versions(
         self,
         session: db.Session,
         start_date: datetime,
-        current_dependencies: str,
         repointing: int | None = None,
-    ) -> str:
-        """Return the maximum existing file version in the pipeline increased by one.
+    ) -> dict[str, dict[str, int]]:
+        """Determine the major and minor version to use for each output product.
+
+        The major version for each output comes directly from the dependency
+        config and is not bumped here. The minor version is the maximum minor
+        version already seen in the pipeline for this job, increased by one.
 
         Parameters
         ----------
         session : orm session
             Database session.
-        instrument : str
-            Instrument.
-        data_level : str
-            Data level.
-        descriptor : str
-            Data descriptor.
         start_date : datetime
             Start date.
-        current_dependencies : str
-            Serialized dependencies for the current job.
         repointing : int, optional
             Repointing number. Versions are tracked independently per repointing so
-            that multiple repoints on the same day each start at v001.
+            that multiple repoints on the same day each start at minor version 1.
 
         Returns
         -------
-        str
-            The highest version number.
+        dict
+            Dictionary keyed by output descriptor, where each value is a dict
+            with "major_version" and "minor_version" keys.
         """
 
         def filter_conditions(table):
@@ -958,87 +1005,107 @@ class IMAPJobHandler:
                 )
             return conditions
 
-        # Step 1: query to get the max version from the processing jobs table
-        max_version_record = (
+        # Get the output nodes for the job
+        job_node = (
+            self.job_config.source,
+            self.job_config.data_type,
+            self.job_config.descriptor,
+        )
+        outputs = self.dependency_config_reader.config[job_node].outputs
+
+        # Step 1: Query the processing jobs table for the most recent minor
+        # version for this instrument/data_level/descriptor/start_date/repointing.
+        # TODO calculate each output products minor versions independently.
+        max_minor_version_record = (
             session.query(models.ProcessingJob)
             .filter(*filter_conditions(models.ProcessingJob))
-            .order_by(models.ProcessingJob.version.desc())
+            .order_by(models.ProcessingJob.minor_version.desc())
             .first()
         )
-        if max_version_record:
-            max_version_processing = max_version_record.version
-            # Step 2: If there is a job already in progress, determine whether
-            # the current job is a duplicate of the in-progress job by checking the
-            # dependency file hash. If the hashes are different, then we know the
-            # dependencies have changed and we should bump the version number and c
-            # continue with processing.
-            if max_version_record.status == models.Status.INPROGRESS:
-                command = max_version_record.container_command
-                if self._dependency_hash(current_dependencies) in command:
-                    # Return the current max version and this job will not proceed if
-                    # everything else is the same.
-                    return max_version_processing
-                else:
-                    # Dependencies have changed, so bump the version number.
-                    logger.info(
-                        f"Job with id: {max_version_record.id} is in progress, but the "
-                        f"dependencies have changed. Bumping version number."
-                    )
-                    return f"v{int(max_version_processing[1:]) + 1:03d}"
-
+        in_progress = False
+        if max_minor_version_record:
+            minor_version_processing_table = max_minor_version_record.minor_version
+            # Step 2: If a job for this exact key is already in progress, flag it
+            # so we fall back to the processing-jobs version below instead of the
+            # science files version. The minor version itself is still bumped by
+            # the shared "+ 1" logic in Step 5; try_to_submit_job() is what
+            # actually prevents duplicate jobs from running.
+            if max_minor_version_record.status == models.Status.INPROGRESS:
+                logger.info(
+                    f"Job with id: {max_minor_version_record.id} is in progress, but "
+                    f"the dependencies have changed. Bumping version number."
+                )
+                in_progress = True
         else:
-            max_version_processing = None
-        # Step 3: If the descriptor is "all", only use the max version from the
-        # processing job table.
-        # The ScienceFiles table does not have descriptors of "all" since the
-        # products produced will have their own specific descriptors.
-        if "all" in self.job_config.descriptor:
-            return (
-                f"v{int(max_version_processing[1:]) + 1:03d}"
-                if max_version_processing
-                else "v001"
-            )
+            minor_version_processing_table = None
 
-        # Step 4: Get the max version from the science files table.
-        max_version_sci = (
-            session.query(func.max(models.ScienceFiles.version)).filter(
-                *filter_conditions(models.ScienceFiles)
-            )
-        ).scalar()
-
-        # Step 5: By default, use the max version from the science files
-        # table unless it is a spacecraft "pointing-attitude" job. If a so,
-        # then use the max version from the processing jobs table.
-        # If the job is a spacecraft pointing-attitude job,
-        # it will produce a SPICE kernel and not a science file.
-        # There is no way to determine the filename of the kernel that will
-        # be produced, so we rely on the max version from the processing jobs table.
-        if (
+        # Spacecraft pointing-attitude jobs produce a SPICE kernel rather than a
+        # science file, so there's no science files row to compare against —
+        # we always need to fall back to the processing-jobs table for these.
+        is_spacecraft_job = (
             self.job_config.source == "spacecraft"
             and self.job_config.descriptor == "pointing-attitude"
-        ):
-            max_version = max_version_processing
+        )
+
+        # Step 3: If the descriptor is "all", only use the max version from the
+        # processing job table. The ScienceFiles table does not have descriptors
+        # of "all", since the products produced will have their own specific
+        # descriptors. Also use the processing-jobs version if this is a
+        # spacecraft pointing-attitude job, or if a matching job is in progress.
+        if "all" in self.job_config.descriptor or is_spacecraft_job or in_progress:
+            current_minor_version = minor_version_processing_table
         else:
-            max_version = max_version_sci
+            # Step 4: Otherwise, get the max minor version from the science
+            # files table.
+            max_minor_version_sci_table = (
+                session.query(func.max(models.ScienceFiles.minor_version)).filter(
+                    *filter_conditions(models.ScienceFiles)
+                )
+            ).scalar()
 
-        # Bump the version number. "V001" will be returned if max_version is None.
-        return f"v{int(max_version[1:]) + 1:03d}" if max_version else "v001"
+            current_minor_version = max_minor_version_sci_table
 
-    def _dependency_hash(self, serialized_dependencies: str):
+        # Step 5: Bump the minor version by one (starting at 1 if no prior
+        # version exists). Each output's major version comes directly from the
+        # dependency config and is not bumped.
+        minor_version = (
+            current_minor_version + 1 if current_minor_version is not None else 1
+        )
+        output_versions = {}
+        for output in outputs:
+            output_versions[output.descriptor] = {
+                "minor_version": minor_version,
+                "major_version": output.major_version,
+            }
+
+        return output_versions
+
+    def _dependency_hash(
+        self, serialized_dependencies: str, output_versions: dict[str, dict[str, int]]
+    ) -> str:
         """Generate a hash for the serialized dependencies.
 
-        This is a unique ID for a particular run. Dagster will refuse to run a job with
-        the same dependency_hash.
+        This is a unique ID for a particular run. This is a unique ID for a particular
+        run. Dagster will refuse to run a job with the same dependency_hash. It is
+        derived from the upstream dependencies, the container image hash, and the
+        output products' major version numbers. Minor versions are excluded because
+        they only change with a dependency update, major version bump, or code change —
+        whereas major versions can change independent of those, so excluding minor lets
+        us reprocess when only the major version has been bumped.
 
         Parameters
         ----------
         serialized_dependencies : str
             The serialized dependencies string.
+        output_versions : dict[str, dict[str, int]]
+            A dictionary of major and minor version numbers for each output descriptor.
 
         Returns
         -------
         str
-            The first 8 characters of the SHA-256 hash of the serialized dependencies.
+            The first 8 characters of the SHA-256 hash of the serialized dependencies,
+            container image digest, and output products and their major versions
+             numbers
         """
         # We need to pull out the individual files and put them in alphabetical order
         dependencies = json.loads(serialized_dependencies)
@@ -1051,11 +1118,38 @@ class IMAPJobHandler:
                     # difference to processing.
                     non_sclk_deps.append(file)
         # Append the image_digest
-        sorted_files = sorted(list(set(non_sclk_deps)))
-        sorted_files.append(self._get_container_image_digest())
-        joined_string = "|".join(sorted_files)
+        dependency_strings = sorted(list(set(non_sclk_deps)))
+        dependency_strings.append(self._get_container_image_digest())
+        # Append a string of each output descriptor and its major version, sorted
+        # alphabetically by descriptor
+        # e.g. 'burst-magi:1,burst-mago:1,burst-raw:1,norm-magi:1,norm-mago:1'
+        version_string = ",".join(
+            sorted(
+                [
+                    f"{desc}:{val['major_version']}"
+                    for desc, val in output_versions.items()
+                ]
+            )
+        )
+        dependency_strings.append(version_string)
+        joined_string = "|".join(dependency_strings)
 
-        return hashlib.sha256(joined_string.encode("utf-8")).hexdigest()[:8]
+        return self._get_sha256_descriptor(joined_string)
+
+    def _get_sha256_descriptor(self, input_string: str) -> str:
+        """Generate an 8-digit hash descriptor label for a given input string.
+
+        Parameters
+        ----------
+        input_string : str
+            The input string to hash.
+
+        Returns
+        -------
+        str
+            The first 8 characters of the SHA-256 hash of the input string.
+        """
+        return hashlib.sha256(input_string.encode("utf-8")).hexdigest()[:8]
 
     def _get_container_image_digest(self):
         """Get the container image digest.
@@ -1119,7 +1213,7 @@ class IMAPJobHandler:
         self,
         session: db.Session,
         start_date: datetime.datetime,
-        version: str,
+        output_versions: dict,
         serialized_dependencies: str,
         repoint: int | None = None,
     ):
@@ -1129,12 +1223,11 @@ class IMAPJobHandler:
         ----------
         session : orm session
             Database session.
-        job_info : dict
-            Dictionary containing components with dates and versions appended.
-        start_date : str
+        start_date : datetime.datetime
             Start date of the data in the format 'YYYYMMDD'.
-        version : str
-            Version of the job.
+        output_versions : dict
+            Dictionary keyed by output descriptor, where each value is a dict with
+             "major_version" and "minor_version" keys.
         serialized_dependencies : str
             The serialized ProcessingInputCollection of the upstream
             dependencies.
@@ -1142,9 +1235,14 @@ class IMAPJobHandler:
             The repointing number for the job, if applicable. Default is None. Should
             be just an integer, no "repoint" prefix.
         """
-        # Serialize the upstream dependencies and write them to a JSON file. The Imap
-        # processing code will read the JSON file and deserialize the dependencies.
-        # This is to avoid passing a large string through the batch job command line.
+        # This job may produce multiple outputs, each with its own major/minor
+        # version (see output_versions). Take the max major and max minor version
+        # across all outputs to use as a single label for the dependency file name
+        # and the processing job table row. The actual output product files will
+        # each use their own specific version from the output_versions dictionary,
+        # not this combined max.
+        max_major_version = max([v["major_version"] for v in output_versions.values()])
+        max_minor_version = max([v["minor_version"] for v in output_versions.values()])
 
         # Calculate the dependency hash, if dependencies
         # change, the hash changes. Combined with the unique constraint on
@@ -1152,22 +1250,37 @@ class IMAPJobHandler:
         # same deps + same digest = IntegrityError = job skipped
         # For a given instrument, data_level, start_date ect. If either the deps change
         # or the image changes then a new job is allowed with a bumped version number.
-
         start_date_str = start_date.strftime("%Y%m%d")
-        dep_hash = self._dependency_hash(serialized_dependencies)
-        dep_descriptor = f"{self.job_config.descriptor}-{dep_hash}"
+
+        # Combine the per-output version info and the upstream dependencies into a
+        # single JSON payload. This is written to a dependency file and uploaded;
+        # the Imap processing code reads the file and deserializes it, rather than
+        # passing a large string through the batch job command line.
+        serialized_processing_info = json.dumps(
+            {
+                "dependency": json.loads(serialized_dependencies),
+                "version": output_versions,
+            }
+        )
+        # Add the dependency hash and version hash to the dependency file name to ensure
+        # uniqueness. The dependency hash is based on the upstream dependencies and the
+        # container image digest. The version hash is based on the output versions.
+        dep_hash = self._dependency_hash(serialized_dependencies, output_versions)
+        version_hash = self._get_sha256_descriptor(json.dumps(output_versions))
+        dep_descriptor = f"{self.job_config.descriptor}-{dep_hash}-{version_hash}"
         dependency_file = DependencyFilePath.generate_from_inputs(
             instrument=self.job_config.source,
             data_level=self.job_config.data_type,
             descriptor=dep_descriptor,
             start_time=start_date_str,
-            version=version,
+            major_version=max_major_version,
+            minor_version=max_minor_version,
             extension="json",
             repointing=repoint,
         )
         dependency_file_path = dependency_file.construct_path()
         response = self.upload_dependency_file(
-            dependency_file_path, serialized_dependencies
+            dependency_file_path, serialized_processing_info
         )
         # If response is None,
         # the upload failed and we should skip submitting the job.
@@ -1185,8 +1298,6 @@ class IMAPJobHandler:
             self.job_config.descriptor,
             "--start-date",
             start_date_str,
-            "--version",
-            version,
             "--dependency",
             dependency_file_path.name,
             "--upload-to-sdc",
@@ -1211,7 +1322,10 @@ class IMAPJobHandler:
         already_failed_job = (
             session.query(models.ProcessingJob)
             .filter(*conditions)
-            .order_by(models.ProcessingJob.version.desc())
+            .order_by(
+                models.ProcessingJob.major_version.desc(),
+                models.ProcessingJob.minor_version.desc(),
+            )
             .first()
         )
         if already_failed_job:
@@ -1243,7 +1357,8 @@ class IMAPJobHandler:
             data_level=self.job_config.data_type,
             descriptor=self.job_config.descriptor,
             start_date=datetime.datetime.strptime(start_date_str, "%Y%m%d"),
-            version=version,
+            major_version=max_major_version,
+            minor_version=max_minor_version,
             repointing=repoint,
             dependency_hash=dep_hash,
             container_command=" ".join(batch_command),
