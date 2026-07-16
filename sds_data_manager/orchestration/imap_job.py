@@ -92,6 +92,7 @@ priority_levels = {
 partition_map = {
     "daily": custom_partitions.daily_partitions,
     "repoint": custom_partitions.repoint_partitions,
+    "pointing_attitude": custom_partitions.pointing_attitude_partitions,
     "10d": custom_partitions.idex10_partitions,
     # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
     # maps to exactly 30 days. If this changes, this logic will need update.
@@ -545,6 +546,16 @@ class IMAPJobHandler:
                         models.AncillaryFiles.instrument,
                         models.AncillaryFiles.descriptor,
                     )
+                elif dependency.data_type == "repoint":
+                    # New repoint inputs — RepointFiles only has end_date, no start_date
+                    target_partitions = self.trigger_from_new_non_science_inputs(
+                        context,
+                        dependency,
+                        new_cursors,
+                        models.RepointFiles,
+                        datetime_start_column="end_date",
+                        datetime_end_column="end_date",
+                    )
                 # Now we loop through each partition that we received new data for, and
                 # determine if we need to start it again.
                 for target_partition in target_partitions:
@@ -888,8 +899,8 @@ class IMAPJobHandler:
                     processing_input.ScienceInput(*list(set(renamed_science_files)))
                 )
 
-        if not science_processing_inputs:
-            # Return right away if we have zero science files.
+        if not science_processing_inputs and self.job_config.science_inputs:
+            # Science inputs were configured but none were found.
             raise MissingDependenciesError(
                 "No science files were discovered. "
                 "All jobs require at least one science file."
