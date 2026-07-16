@@ -72,6 +72,7 @@ l3a_spice_common: &l3a_spice_common
     - source: swapi
       data_type: l1a
       descriptor: hk
+      major_version: 1
 
 (l1, sci):
   partition: daily
@@ -94,6 +95,7 @@ l3a_spice_common: &l3a_spice_common
     - source: swapi
       data_type: l1
       descriptor: sci
+      major_version: 1
 
 (l2, sci):
   partition: daily
@@ -111,6 +113,7 @@ l3a_spice_common: &l3a_spice_common
     - source: swapi
       data_type: l2
       descriptor: sci
+      major_version: 1
 
 (l3a, alpha-sw):
   partition: daily
@@ -151,6 +154,7 @@ l3a_spice_common: &l3a_spice_common
     - source: swapi
       data_type: l3a
       descriptor: alpha-sw
+      major_version: 1
 
 (l3a, proton-sw):
   partition: daily
@@ -183,6 +187,7 @@ l3a_spice_common: &l3a_spice_common
     - source: swapi
       data_type: l3a
       descriptor: proton-sw
+      major_version: 1
 
 (l3a, pui-he):
   partition: daily
@@ -212,6 +217,7 @@ l3a_spice_common: &l3a_spice_common
     - source: swapi
       data_type: l3a
       descriptor: pui-he
+      major_version: 1
 
 (l3b, combined):
   partition: daily
@@ -229,3 +235,4 @@ l3a_spice_common: &l3a_spice_common
     - source: swapi
       data_type: l3b
       descriptor: combined
+      major_version: 1

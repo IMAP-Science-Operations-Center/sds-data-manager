@@ -28,15 +28,19 @@ spice_basics: &spice_basics
     - source: idex
       data_type: l1a
       descriptor: sci-10days
+      major_version: 1
     - source: idex
       data_type: l1a
       descriptor: catlst-10days
+      major_version: 1
     - source: idex
       data_type: l1b
       descriptor: catlst-10days
+      major_version: 1
     - source: idex
       data_type: l1a
       descriptor: msg-10days
+      major_version: 1
 
 (l1b, msg-10days):
   partition: 10d
@@ -48,6 +52,7 @@ spice_basics: &spice_basics
     - source: idex
       data_type: l1b
       descriptor: msg-10days
+      major_version: 1
 
 (l1b, sci-10days):
   partition: 10d
@@ -81,6 +86,7 @@ spice_basics: &spice_basics
     - source: idex
       data_type: l1b
       descriptor: sci-10days
+      major_version: 1
 
 (l2a, sci-10days):
   partition: 10d
@@ -98,6 +104,7 @@ spice_basics: &spice_basics
     - source: idex
       data_type: l2a
       descriptor: sci-10days
+      major_version: 1
 
 (l2b, all-30days):
   partition: 30d
@@ -115,6 +122,8 @@ spice_basics: &spice_basics
     - source: idex
       data_type: l2b
       descriptor: sci-1mo
+      major_version: 1
     - source: idex
       data_type: l2c
       descriptor: rectangular-map-1mo
+      major_version: 1

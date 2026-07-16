@@ -21,7 +21,8 @@ def test_batch_job_event(session, events_client):
         "data_level": "l1",
         "descriptor": "sci-1min",
         "start_date": datetime.strptime("20230724", "%Y%m%d"),
-        "version": "v001",
+        "major_version": 1,
+        "minor_version": 1,
     }
     processing_job = models.ProcessingJob(**job_params)
     session.add(processing_job)
@@ -92,7 +93,8 @@ def test_batch_job_event(session, events_client):
     query = select(models.ProcessingJob.__table__).where(
         models.ProcessingJob.instrument == job_params["instrument"],
         models.ProcessingJob.data_level == job_params["data_level"],
-        models.ProcessingJob.version == job_params["version"],
+        models.ProcessingJob.major_version == job_params["major_version"],
+        models.ProcessingJob.minor_version == job_params["minor_version"],
     )
 
     processing_job = session.execute(query).first()
@@ -119,7 +121,8 @@ def test_batch_job_event(session, events_client):
     query = select(models.ProcessingJob.__table__).where(
         models.ProcessingJob.instrument == job_params["instrument"],
         models.ProcessingJob.data_level == job_params["data_level"],
-        models.ProcessingJob.version == job_params["version"],
+        models.ProcessingJob.major_version == job_params["major_version"],
+        models.ProcessingJob.minor_version == job_params["minor_version"],
     )
 
     processing_job = session.execute(query).first()
@@ -129,7 +132,7 @@ def test_batch_job_event(session, events_client):
 
 def test_s3_sci_event(session, s3_client, events_client):
     """Test s3 event."""
-    filepath = "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"
+    filepath = "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.0001.pkts"
     s3_client.put_object(
         Bucket="test-data-bucket",
         Key=filepath,
@@ -157,17 +160,19 @@ def test_s3_sci_event(session, s3_client, events_client):
     assert len(result) == 1
     assert (
         result[0].file_path
-        == "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"
+        == "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.0001.pkts"
     )
     assert result[0].data_level == "l0"
     assert result[0].instrument == "hit"
     assert result[0].extension == "pkts"
+    assert result[0].major_version == 1
+    assert result[0].minor_version == 1
 
 
 def test_s3_cr_event(session, s3_client, events_client):
     """Test s3 event."""
     filepath = (
-        "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.cdf"
+        "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.0001.cdf"
     )
     s3_client.put_object(
         Bucket="test-data-bucket",
@@ -194,14 +199,15 @@ def test_s3_cr_event(session, s3_client, events_client):
     # Check that data was written to database by lambda
     result = session.query(models.ScienceFiles).all()
     assert len(result) == 1
-    assert (
-        result[0].file_path
-        == "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.cdf"
+    assert result[0].file_path == (
+        "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.0001.cdf"
     )
     assert result[0].data_level == "l3a"
     assert result[0].instrument == "glows"
     assert result[0].extension == "cdf"
     assert result[0].cr == 2025
+    assert result[0].major_version == 1
+    assert result[0].minor_version == 1
 
 
 def test_s3_anc_event(session, s3_client, events_client):
@@ -247,7 +253,7 @@ def test_unknown_event(session):
 
 def test_send_lambda_put_event(events_client):
     """Test the ``send_event_from_indexer`` function."""
-    filename = "imap_swapi_l1_sci-1min_20230724_v001.cdf"
+    filename = "imap_swapi_l1_sci-1min_20230724_v001.0001.cdf"
     file_obj = ScienceFilePath(filename)
 
     result = send_event_from_indexer(file_obj)
@@ -303,7 +309,7 @@ def test_s3_release_event(session, s3_client):
 def test_s3_quicklook_event(session, s3_client, events_client):
     """Test s3 event for quicklook files."""
     # Use a clearly identifiable quicklook file pattern
-    filename = "imap_hit_l2_ql-survey_20240101_v001.png"
+    filename = "imap_hit_l2_ql-survey_20240101_v001.0001.png"
     filepath = f"imap/hit/l2/ql/2024/01/{filename}"
 
     s3_client.put_object(
@@ -336,6 +342,8 @@ def test_s3_quicklook_event(session, s3_client, events_client):
     assert result[0].file_path == filepath
     assert result[0].data_level == "l2"
     assert result[0].instrument == "hit"
+    assert result[0].major_version == 1
+    assert result[0].minor_version == 1
     assert result[0].extension == "png"
     assert result[0].descriptor == "ql-survey"
 
@@ -343,7 +351,7 @@ def test_s3_quicklook_event(session, s3_client, events_client):
 def test_idex_l0_event(session, s3_client, events_client):
     """Test s3 event for idex l0 files."""
     # Use a clearly identifiable IDEX L0 file pattern
-    filename = "imap_idex_l0_raw_20250101_v001.pkts"
+    filename = "imap_idex_l0_raw_20250101_v001.0001.pkts"
     filepath = f"imap/idex/l0/{filename}"
 
     s3_client.put_object(
@@ -371,6 +379,7 @@ def test_idex_l0_event(session, s3_client, events_client):
     assert returned_value["statusCode"] == 200
     assert returned_value["body"] == (
         "Received an IDEX L0 file"
-        " imap_idex_l0_raw_20250101_v001.pkts. This file will be indexed in a separate "
+        " imap_idex_l0_raw_20250101_v001.0001.pkts. This file will "
+        "be indexed in a separate "
         "lambda. See idex-l0-file-indexer lambda for details."
     )

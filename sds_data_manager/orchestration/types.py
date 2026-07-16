@@ -269,6 +269,7 @@ class DependencyNode(Node):
     required: bool = True
     trigger_job: bool = True
     dependency_query_time_range: list = field(default_factory=list)
+    major_version: int = 1
 
     def __post_init__(self):
         """Validate all fields on construction."""

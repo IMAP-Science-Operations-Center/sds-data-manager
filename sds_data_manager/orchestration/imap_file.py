@@ -10,6 +10,7 @@ from dagster import (
     SensorResult,
     sensor,
 )
+from imap_data_access.file_validation import Version
 from sqlalchemy import select
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
@@ -72,7 +73,8 @@ class IMAPScienceFileHandler:
                 .order_by(
                     models.ScienceFiles.start_date,
                     models.ScienceFiles.repointing,
-                    models.ScienceFiles.version.desc(),
+                    models.ScienceFiles.major_version.desc(),
+                    models.ScienceFiles.minor_version.desc(),
                 )
             )
 
@@ -127,7 +129,7 @@ class IMAPScienceFileHandler:
                             self.job_config.to_dagster_asset(),
                             partition,
                             [os.path.basename(record.file_path)],
-                            str(int(record.version[1:])),
+                            Version(record.major_version, record.minor_version),
                             "science",
                         )
                         if materialization:
