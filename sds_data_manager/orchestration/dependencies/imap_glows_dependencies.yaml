@@ -160,3 +160,67 @@ hist_spice: &hist_spice
       data_type: l3b
       descriptor: ion-rate-profile
       major_version: 1
+    - source: glows
+      data_type: l3c
+      descriptor: sw-profile
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: l3b-archive
+    - source: glows
+      data_type: l3d
+      descriptor: solar-hist
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: uv-anis
+    - source: glows
+      data_type: ancillary
+      descriptor: lya
+    - source: glows
+      data_type: ancillary
+      descriptor: e-dens
+    - source: glows
+      data_type: ancillary
+      descriptor: p-dens
+    - source: glows
+      data_type: ancillary
+      descriptor: speed
+    - source: glows
+      data_type: ancillary
+      descriptor: phion
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-hi-45
+      major_version: 1
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-hi-90
+      major_version: 1
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-lo
+      major_version: 1
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-ul-sf
+      major_version: 1
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-ul-hf
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-hi-45-raw
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-hi-90-raw
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-lo-raw
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-ul-sf-raw
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-ul-hf-raw

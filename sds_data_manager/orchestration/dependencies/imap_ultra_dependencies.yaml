@@ -2227,6 +2227,57 @@ de_inputs_90sensor: &de_inputs_90sensor
   outputs:
     - source: ultra
       data_type: l3
+      descriptor: u45-ena-h-hf-sp-full-hae-2deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-sf-sp-full-hae-2deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-hf-sp-full-hae-4deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-sf-sp-full-hae-4deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-hf-sp-full-hae-6deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-sf-sp-full-hae-6deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-hf-sp-full-hae-2deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-sf-sp-full-hae-2deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-hf-sp-full-hae-4deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-sf-sp-full-hae-4deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-hf-sp-full-hae-6deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-sf-sp-full-hae-6deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-hf-sp-full-hae-2deg-1yr
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-sf-sp-full-hae-2deg-1yr
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-hf-sp-full-hae-4deg-1yr
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-sf-sp-full-hae-4deg-1yr
+    - source: ultra
+      data_type: l3
+      descriptor: u45-ena-h-hf-sp-full-hae-6deg-1yr
+    - source: ultra
+      data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-6deg-1yr
       major_version: 1
 
@@ -2237,6 +2288,57 @@ de_inputs_90sensor: &de_inputs_90sensor
       data_type: repoint
       descriptor: historical
   outputs:
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-hf-sp-full-hae-2deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-sf-sp-full-hae-2deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-hf-sp-full-hae-4deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-sf-sp-full-hae-4deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-hf-sp-full-hae-6deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-sf-sp-full-hae-6deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-hf-sp-full-hae-2deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-sf-sp-full-hae-2deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-hf-sp-full-hae-4deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-sf-sp-full-hae-4deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-hf-sp-full-hae-6deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-sf-sp-full-hae-6deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-hf-sp-full-hae-2deg-1yr
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-sf-sp-full-hae-2deg-1yr
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-hf-sp-full-hae-4deg-1yr
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-sf-sp-full-hae-4deg-1yr
+    - source: ultra
+      data_type: l3
+      descriptor: u90-ena-h-hf-sp-full-hae-6deg-1yr
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-6deg-1yr
@@ -2251,6 +2353,30 @@ de_inputs_90sensor: &de_inputs_90sensor
   outputs:
     - source: ultra
       data_type: l3
+      descriptor: ulc-ena-h-hf-sp-full-hae-2deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-sp-full-hae-4deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-sp-full-hae-6deg-3mo
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-sp-full-hae-2deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-sp-full-hae-4deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-sp-full-hae-6deg-6mo
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-sp-full-hae-2deg-1yr
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-sp-full-hae-4deg-1yr
+    - source: ultra
+      data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-6deg-1yr
       major_version: 1
 
@@ -2261,6 +2387,38 @@ de_inputs_90sensor: &de_inputs_90sensor
       data_type: repoint
       descriptor: historical
   outputs:
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-nsp-full-hae-2deg-3mo
+      major_version: 1
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-nsp-full-hae-4deg-3mo
+      major_version: 1
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-nsp-full-hae-6deg-3mo
+      major_version: 1
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-nsp-full-hae-2deg-6mo
+      major_version: 1
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-nsp-full-hae-4deg-6mo
+      major_version: 1
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-nsp-full-hae-6deg-6mo
+      major_version: 1
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-nsp-full-hae-2deg-1yr
+      major_version: 1
+    - source: ultra
+      data_type: l3
+      descriptor: ulc-ena-h-hf-nsp-full-hae-4deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-6deg-1yr

@@ -1093,7 +1093,91 @@ sensor90_l1c_pset: &sensor90_l1c_pset
   outputs:
     - source: hi
       data_type: l3
-      descriptor: h90-spx-h-hf-sp-full-hae-6deg-6mo
+      descriptor: h45-ena-h-sf-sp-ram-hae-4deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h45-ena-h-sf-sp-anti-hae-4deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-sf-sp-ram-hae-4deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-sf-sp-anti-hae-4deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-sf-sp-full-hae-4deg-6mo
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h45-ena-h-sf-sp-ram-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h45-ena-h-sf-sp-anti-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-sf-sp-ram-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-sf-sp-anti-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-sf-sp-full-hae-6deg-6mo
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h45-ena-h-hf-sp-ram-hae-4deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h45-ena-h-hf-sp-anti-hae-4deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-hf-sp-ram-hae-4deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-hf-sp-anti-hae-4deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h45-ena-h-hf-sp-full-hae-4deg-6mo
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-hf-sp-full-hae-4deg-6mo
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h45-ena-h-hf-sp-ram-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h45-ena-h-hf-sp-anti-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-hf-sp-ram-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-hf-sp-anti-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h45-ena-h-hf-sp-full-hae-6deg-6mo
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: h90-ena-h-hf-sp-full-hae-6deg-6mo
       major_version: 1
 
 (l3, hic-maps):
@@ -1106,4 +1190,16 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: hic-ena-h-hf-nsp-full-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: hic-ena-h-hf-sp-full-hae-6deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: hic-ena-h-hf-nsp-full-hae-4deg-1yr
+      major_version: 1
+    - source: hi
+      data_type: l3
+      descriptor: hic-ena-h-hf-sp-full-hae-4deg-1yr
       major_version: 1
