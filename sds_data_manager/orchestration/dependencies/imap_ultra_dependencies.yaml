@@ -359,7 +359,51 @@ de_inputs_90sensor: &de_inputs_90sensor
   outputs:
     - source: ultra
       data_type: l1a
+      descriptor: 45sensor-aux
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-rates
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-energy-rates
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-energy-spectra
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-histogram-ena-phxtof-hi-ang
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-histogram-ena-phxtof-hi-nrg
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-histogram-ena-phxtof-hi-time
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-histogram-ena-extof-hi-ang
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-histogram-ion-extof-hi-nrg
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-histogram-ion-extof-hi-time
+      major_version: 1
+    - source: ultra
+      data_type: l1a
       descriptor: 45sensor-de
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-energy-de
       major_version: 1
     - source: ultra
       data_type: l1a
@@ -379,7 +423,35 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
     - source: ultra
       data_type: l1a
-      descriptor: 45sensor-aux
+      descriptor: 45sensor-macroschecksum
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-alarm
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-memchecksum
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-memdump
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-status
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-bootstatus
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-macrodump
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-monitorlimits
       major_version: 1
     - source: ultra
       data_type: l1a
@@ -387,15 +459,67 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
     - source: ultra
       data_type: l1a
-      descriptor: 45sensor-rates
+      descriptor: 45sensor-scauto
       major_version: 1
     - source: ultra
-      data_type: l1b
-      descriptor: 45sensor-status
+      data_type: l1a
+      descriptor: 45sensor-imgparams
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-cmdtext
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 45sensor-cmdecho
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-aux
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-rates
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-energy-rates
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-energy-spectra
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-histogram-ena-phxtof-hi-ang
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-histogram-ena-phxtof-hi-nrg
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-histogram-ena-phxtof-hi-time
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-histogram-ena-extof-hi-ang
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-histogram-ion-extof-hi-nrg
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-histogram-ion-extof-hi-time
       major_version: 1
     - source: ultra
       data_type: l1a
       descriptor: 90sensor-de
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-energy-de
       major_version: 1
     - source: ultra
       data_type: l1a
@@ -415,7 +539,35 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
     - source: ultra
       data_type: l1a
-      descriptor: 90sensor-aux
+      descriptor: 90sensor-macroschecksum
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-alarm
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-memchecksum
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-memdump
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-status
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-bootstatus
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-macrodump
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-monitorlimits
       major_version: 1
     - source: ultra
       data_type: l1a
@@ -423,11 +575,203 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
     - source: ultra
       data_type: l1a
+      descriptor: 90sensor-scauto
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-imgparams
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-cmdtext
+      major_version: 1
+    - source: ultra
+      data_type: l1a
+      descriptor: 90sensor-cmdecho
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-aux
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-rates
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-energy-rates
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-energy-spectra
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-histogram-ena-phxtof-hi-ang
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-histogram-ena-phxtof-hi-nrg
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-histogram-ena-phxtof-hi-time
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-histogram-ena-extof-hi-ang
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-histogram-ion-extof-hi-nrg
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-histogram-ion-extof-hi-time
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-macroschecksum
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-alarm
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-memchecksum
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-memdump
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-status
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-bootstatus
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-macrodump
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-monitorlimits
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-params
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-scauto
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-imgparams
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-cmdtext
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 45sensor-cmdecho
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-aux
+      major_version: 1
+    - source: ultra
+      data_type: l1b
       descriptor: 90sensor-rates
       major_version: 1
     - source: ultra
       data_type: l1b
+      descriptor: 90sensor-energy-rates
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-energy-spectra
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-histogram-ena-phxtof-hi-ang
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-histogram-ena-phxtof-hi-nrg
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-histogram-ena-phxtof-hi-time
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-histogram-ena-extof-hi-ang
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-histogram-ion-extof-hi-nrg
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-histogram-ion-extof-hi-time
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-macroschecksum
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-alarm
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-memchecksum
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-memdump
+      major_version: 1
+    - source: ultra
+      data_type: l1b
       descriptor: 90sensor-status
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-bootstatus
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-macrodump
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-monitorlimits
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-params
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-scauto
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-imgparams
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-cmdtext
+      major_version: 1
+    - source: ultra
+      data_type: l1b
+      descriptor: 90sensor-cmdecho
       major_version: 1
 
 

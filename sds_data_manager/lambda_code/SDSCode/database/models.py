@@ -25,7 +25,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SqlEnum,
 )
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, declared_attr
 
 # Instrument name Enums for the ScienceFiles table
 INSTRUMENTS = SqlEnum(
@@ -174,10 +174,24 @@ class ScienceFileBase:
     crid = Column(String, nullable=True)
     released = Column(Boolean, nullable=False, default=False)
 
-    __table_args__ = (
-        CheckConstraint("major_version >= 0 AND major_version <= 999"),
-        CheckConstraint("minor_version >= 0 AND minor_version <= 9999"),
-    )
+    @declared_attr
+    def __table_args__(cls):  # noqa: N805
+        """Build table args with a version index named per subclass."""
+        return (
+            Index(
+                # separate name for index for each subclass
+                f"idx_{cls.__tablename__}_version",
+                "instrument",
+                "data_level",
+                "descriptor",
+                "start_date",
+                "repointing",
+                "major_version",
+                "minor_version",
+            ),
+            CheckConstraint("major_version >= 0 AND major_version <= 999"),
+            CheckConstraint("minor_version >= 0 AND minor_version <= 9999"),
+        )
 
 
 class ScienceFiles(ScienceFileBase, Base):

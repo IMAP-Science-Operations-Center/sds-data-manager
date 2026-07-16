@@ -115,6 +115,14 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       data_type: l1a
       descriptor: de
       major_version: 1
+    - source: lo
+      data_type: l1a
+      descriptor: pcc
+      major_version: 1
+    - source: lo
+      data_type: l1b
+      descriptor: instrument-status-summary
+      major_version: 1
 
 # ======== Level L1B ========
 
@@ -148,10 +156,6 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: monitorrates
-      major_version: 1
-    - source: lo
-      data_type: l1b
-      descriptor: instrument-status-summary
       major_version: 1
     - source: lo
       data_type: l1b

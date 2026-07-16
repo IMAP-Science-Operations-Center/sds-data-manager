@@ -344,6 +344,10 @@
       data_type: l2
       descriptor: burst-rtn
       major_version: 1
+    - source: mag
+      data_type: l2
+      descriptor: burst-gsm
+      major_version: 1
 
 (l2, norm-srf):
   partition: daily
@@ -410,4 +414,8 @@
     - source: mag
       data_type: l2
       descriptor: norm-rtn
+      major_version: 1
+    - source: mag
+      data_type: l2
+      descriptor: norm-gsm
       major_version: 1

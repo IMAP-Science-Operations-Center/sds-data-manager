@@ -38,6 +38,10 @@ l0_data: &l0_data
       data_type: l1a
       descriptor: direct-events
       major_version: 1
+    - source: hit
+      data_type: l1a
+      descriptor: hk
+      major_version: 1
 
 (l1b, hk):
   partition: daily
