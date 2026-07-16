@@ -26,12 +26,19 @@ class JobBuilderRegistry:
     def register_descriptor_pattern(
         cls, source: str, data_type: str, descriptor_pattern: str
     ):
-        """Register a job builder for all nodes whose descriptor matches the pattern."""
-        reader = DependencyConfigReader()
+        """Register builders for descriptors matching a regex within one source/type.
+
+        This expands a broad descriptor pattern (for example cadence fragments like
+        ``3mo``) into concrete registry keys by scanning dependency config descriptors.
+        Source and data_type must still match exactly.
+        """
+        reader = getattr(cls, "_dependency_reader", None) or DependencyConfigReader()
+        cls._dependency_reader = reader
 
         def wrapper(wrapped_class):
             matches = False
             for node_source, node_type, descriptor in reader.config.keys():
+                # Pattern-match only the descriptor, but keep source/type strict.
                 if (
                     re.search(descriptor_pattern, descriptor)
                     and node_source == source

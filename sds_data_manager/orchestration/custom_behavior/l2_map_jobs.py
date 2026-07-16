@@ -30,7 +30,7 @@ class L2MapJob(imap_job.IMAPJobHandler):
     def __init__(self, job):
         """Initialize the handler, then override the sensor run frequency."""
         super().__init__(job)
-        self.sensor_run_frequency = 3600  # Run the sensor every hour
+        self.sensor_run_frequency = 43200  # Run the sensor every 12 hours
 
     # Override the sensor to kickoff jobs not based on upstream files but whether there
     # are new partitions registered by add_cadence_map_partitions sensor.
@@ -42,9 +42,7 @@ class L2MapJob(imap_job.IMAPJobHandler):
         This job simply alerts the asset if there is the *potential* to start.
 
         1) Check for any new partitions since last sensor tick.
-        2) For any new partitions, check if the job has already been run for that
-         partition.
-        3) If the job has not been run for that partition, yield a RunRequest
+        2) Yield a RunRequest for each new partition key.
         """
         sensor_name = f"{self.job_config.to_dagster_name()}_kickoff_sensor"
 
