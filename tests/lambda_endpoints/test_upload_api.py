@@ -75,6 +75,22 @@ def test_science_file_upload(s3_client, science_file):
     assert response["statusCode"] == 409
 
 
+def test_legacy_science_file_upload_rejected(s3_client, legacy_science_file):
+    """Test that science files using the legacy vXXX version format are rejected."""
+    event = {
+        "version": "2.0",
+        "routeKey": "$default",
+        "rawPath": "/",
+        "pathParameters": {"proxy": legacy_science_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
+    }
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 400
+    assert "vMMM.mmmm" in response["body"]
+
+
 def test_ancillary_file_upload(s3_client, ancillary_file):
     """Test ancillary files being uploaded."""
     event = {

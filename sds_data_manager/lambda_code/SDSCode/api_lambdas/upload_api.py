@@ -177,6 +177,27 @@ def lambda_handler(event, context):
                 ),
             }
 
+    # Reject science files that don't match the new file format. Science files
+    # must use the new version format (vMMM.mmmm); the legacy vXXX format is no
+    # longer accepted for upload. We check the exact type so quicklook and
+    # dependency files (subclasses of ScienceFilePath) are not affected.
+    if (
+        type(file_obj) is imap_data_access.file_validation.ScienceFilePath
+        and file_obj.major_version is None
+    ):
+        logger.error(
+            f"Upload denied: science file {filename} uses the legacy vXXX "
+            f"version format, which is no longer accepted."
+        )
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                f"error: {filename} uses the legacy vXXX version format. "
+                "Science files must use the new file format with a version "
+                "of the form vMMM.mmmm."
+            ),
+        }
+
     s3_key_path = file_obj.construct_path()
     # Strip off the data directory to get the upload path + name
     # Must be posix style for the URL
