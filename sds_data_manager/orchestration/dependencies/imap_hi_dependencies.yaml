@@ -125,11 +125,15 @@ sensor45_l1c_pset: &sensor45_l1c_pset
   - source: hi
     data_type: l1c
     descriptor: 45sensor-pset
+    trigger_job: false
+    required: false
 
 sensor90_l1c_pset: &sensor90_l1c_pset
   - source: hi
     data_type: l1c
     descriptor: 90sensor-pset
+    trigger_job: false
+    required: false
 
 # ======== Product-Specific Dependencies ========
 (l1a, all):
