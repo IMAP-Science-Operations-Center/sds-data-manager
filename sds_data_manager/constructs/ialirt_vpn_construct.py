@@ -29,8 +29,9 @@ class IalirtVpnConstruct(Construct):
             The Virtual Private Gateway to attach the VPN connections to.
         psk : str
             Pre-shared key for IKE authentication. Pass a CDK token from
-            ``secret_value_from_json(...).to_string()`` so the value is resolved
-            by CloudFormation at deploy time and never appears in the template.
+            ``secret_value_from_json(...).unsafe_unwrap()`` so the value is
+            resolved by CloudFormation at deploy time and never appears in
+            the template.
         wash_ip : str
             NOAA border router public IP at McLean, VA (WASH), retrieved from SSM.
         denv_ip : str

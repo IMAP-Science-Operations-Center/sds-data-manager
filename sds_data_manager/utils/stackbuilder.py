@@ -445,7 +445,7 @@ def build_sds(
             ialirt_stack, "NoaaVpnPsk", "noaa-vpn-psk"
         )
         .secret_value_from_json("psk")
-        .to_string()
+        .unsafe_unwrap()
     )
 
     # Retrieve NOAA's border router IPs from SSM Parameter Store.
@@ -469,8 +469,6 @@ def build_sds(
         wash_ip=noaa_wash_ip,
         denv_ip=noaa_denv_ip,
     )
-
-
 
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(
         scope=sdc_stack,
