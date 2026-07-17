@@ -359,7 +359,12 @@ def generate_and_upload_30_days(
     outages = {"Kiel": [("2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00.00Z")]}
     dsn = {"DSS-55": [("2026-09-22T08:00:00.00Z", "2026-09-22T09:00:00.00Z")]}
     """
-    today = start_date or datetime.now(timezone.utc)
+    if start_date is None:
+        today = datetime.now(timezone.utc)
+    else:
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=timezone.utc)
+        today = start_date.astimezone(timezone.utc)
 
     for i in range(30):
         day = today + timedelta(days=i)
