@@ -1,5 +1,6 @@
 """Override behavior for l2 Map processing."""
 
+import datetime
 import json
 
 from dagster import (
@@ -67,12 +68,28 @@ class L2MapJob(imap_job.IMAPJobHandler):
             )
             # Get the new partitions that have been added since the last sensor tick.
             new_partitions = existing_partitions - seen_partitions
+            context.log.info(
+                "Cadence sensor state for %s: existing=%d, seen=%d, new=%d",
+                self.job_config.to_dagster_name(),
+                len(existing_partitions),
+                len(seen_partitions),
+                len(new_partitions),
+            )
             if not new_partitions:
                 yield SkipReason("No new cadence partitions to process")
                 return
 
             for partition_name in sorted(new_partitions):
-                yield RunRequest(run_key=partition_name, partition_key=partition_name)
+                # Create a unique suffix for this sensor trigger
+                job_suffix = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                run_key = "_".join(
+                    [
+                        self.job_config.to_dagster_name(),
+                        partition_name,
+                        job_suffix,
+                    ]
+                )
+                yield RunRequest(run_key=run_key, partition_key=partition_name)
 
             context.update_cursor(json.dumps(sorted(seen_partitions | new_partitions)))
 
