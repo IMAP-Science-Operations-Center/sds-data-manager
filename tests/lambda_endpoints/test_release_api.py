@@ -238,20 +238,20 @@ def test_release_ancillary_files_in_date_range(session):
     )
     session.commit()
 
-    result = release_api.get_latest_ancillary_files(
+    query = release_api.build_latest_ancillary_query(
         session,
         instrument="codice",
         start_date=datetime.datetime.strptime("20260403", "%Y%m%d"),
         end_date=datetime.datetime.strptime("20260430", "%Y%m%d"),
     )
+    result = [row[0] for row in query.all()]
     expected_ancillary_files = [
         "imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_20260403_v001.json",
         "imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_v002.json",
     ]
     assert len(result) == 2, f"Expected 2 ancillary files, got {len(result)}"
-    assert sorted([f.file_path for f in result]) == expected_ancillary_files, (
-        f"Expected ancillary files {expected_ancillary_files}, "
-        f"got {[f.file_path for f in result]}"
+    assert sorted(result) == expected_ancillary_files, (
+        f"Expected ancillary files {expected_ancillary_files}, got {result}"
     )
 
 
@@ -541,98 +541,3 @@ def test_unrelease_all_files_in_date_range(mock_download_read_file, session):
         "Out-of-range file must remain released"
     )
 
-
-# ---------------------------------------------------------------------------
-#  repoint files for a single day
-# ---------------------------------------------------------------------------
-
-
-def test_release_repoint_files_date_range(session):
-    """Test multiple repoint files for a single day."""
-    # April 7th, Hi has three repoint files with different repointing and major
-    # /minor versions
-    files = [
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.0003.cdf", 209, 1, 3),
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00210_v001.0001.cdf", 210, 1, 1),
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.0001.cdf", 211, 1, 1),
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.0002.cdf", 211, 1, 2),
-    ]
-    for file_path, repointing, major_ver, minor_ver in files:
-        session.add(
-            models.ScienceFiles(
-                file_path=file_path,
-                instrument="hi",
-                data_level="l1a",
-                descriptor="45sensor-hk",
-                start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-                repointing=repointing,
-                major_version=major_ver,
-                minor_version=minor_ver,
-                extension="cdf",
-                released=False,
-                ingestion_date=datetime.datetime(2026, 4, 8, 0, 0, 0),
-            )
-        )
-    session.commit()
-
-    # Query for all files on this date
-    results = release_api.query_latest_science_files(
-        session,
-        instrument="hi",
-        start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-        end_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-    )
-    file_paths = sorted([obj.file_path for obj in results])
-    assert file_paths == [
-        "imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.0003.cdf",
-        "imap_hi_l1a_45sensor-hk_20260407-repoint00210_v001.0001.cdf",
-        "imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.0002.cdf",
-    ], f"Expected all repoint files, got: {file_paths}"
-
-    # Query non-repoint files
-    files = [
-        ("imap_swapi_l1_sci_20260407_v002.0002.cdf", "20260407", 2, 2),
-        ("imap_swapi_l1_sci_20260407_v001.0002.cdf", "20260407", 1, 2),
-        ("imap_swapi_l1_sci_20260407_v001.0001.cdf", "20260407", 1, 1),
-        ("imap_swapi_l1_sci_20260408_v001.0001.cdf", "20260408", 1, 1),
-        ("imap_swapi_l1_sci_20260408_v001.0002.cdf", "20260408", 1, 2),
-    ]
-    for file_path, start_date, major_ver, minor_ver in files:
-        session.add(
-            models.ScienceFiles(
-                file_path=file_path,
-                instrument="swapi",
-                data_level="l1",
-                descriptor="sci",
-                start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
-                repointing=None,
-                major_version=major_ver,
-                minor_version=minor_ver,
-                extension="cdf",
-                released=False,
-                ingestion_date=datetime.datetime(2026, 4, 8, 0, 0, 0),
-            )
-        )
-    session.commit()
-
-    latest_non_repoint_files = release_api.query_latest_science_files(
-        session,
-        instrument="swapi",
-        start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-        end_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-    )
-    file_paths = sorted([obj.file_path for obj in latest_non_repoint_files])
-    assert file_paths == [
-        "imap_swapi_l1_sci_20260407_v002.0002.cdf",
-    ], f"Expected only the latest non-repoint file, got: {file_paths}"
-
-    latest_non_repoint_files = release_api.query_latest_science_files(
-        session,
-        instrument="swapi",
-        start_date=datetime.datetime.strptime("20260408", "%Y%m%d"),
-        end_date=datetime.datetime.strptime("20260408", "%Y%m%d"),
-    )
-    file_paths = sorted([obj.file_path for obj in latest_non_repoint_files])
-    assert file_paths == [
-        "imap_swapi_l1_sci_20260408_v001.0002.cdf",
-    ], f"Expected only the latest non-repoint file, got: {file_paths}"

@@ -11,11 +11,12 @@ from imap_data_access.file_validation import (
     ScienceFilePath,
     generate_imap_file_path,
 )
-from sqlalchemy import func, or_, text, union_all
+from sqlalchemy import func, or_, union_all
 
 from ..database import database as db
 from ..database import models
 from ..spice_utilities import download_from_s3
+from .latest_version_query import build_latest_version_query
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -105,182 +106,16 @@ def validate_query_params(event):
     }
 
 
-def query_latest_science_files(
-    session, instrument, start_date, end_date, science_files_to_exclude=None
-):
-    """Query for the latest-version science file paths matching given criteria.
-
-    Latest version is determined by finding the maximum major_version, then
-    within that, the maximum minor_version for each unique file grouping.
-    """
-    science_table = models.ScienceFiles
-
-    # Check if any file in the range has a non-null repointing
-    has_repointing = (
-        session.query(science_table)
-        .filter(
-            science_table.instrument == instrument,
-            science_table.start_date >= start_date,
-            science_table.start_date <= end_date,
-            science_table.repointing.isnot(None),
-        )
-        .first()
-        is not None
-    )
-
-    if has_repointing:
-        # Find max major_version for each file group
-        max_major_subq = (
-            session.query(
-                science_table.instrument,
-                science_table.data_level,
-                science_table.descriptor,
-                science_table.start_date,
-                science_table.repointing,
-                func.max(science_table.major_version).label("max_major"),
-            )
-            .group_by(
-                science_table.instrument,
-                science_table.data_level,
-                science_table.descriptor,
-                science_table.start_date,
-                science_table.repointing,
-            )
-            .subquery()
-        )
-
-        # Within max major_version, find max minor_version
-        max_minor_subq = (
-            session.query(
-                science_table.instrument,
-                science_table.data_level,
-                science_table.descriptor,
-                science_table.start_date,
-                science_table.repointing,
-                science_table.major_version,
-                func.max(science_table.minor_version).label("max_minor"),
-            )
-            .join(
-                max_major_subq,
-                (science_table.instrument == max_major_subq.c.instrument)
-                & (science_table.data_level == max_major_subq.c.data_level)
-                & (science_table.descriptor == max_major_subq.c.descriptor)
-                & (science_table.start_date == max_major_subq.c.start_date)
-                & (science_table.repointing == max_major_subq.c.repointing)
-                & (science_table.major_version == max_major_subq.c.max_major),
-            )
-            .group_by(
-                science_table.instrument,
-                science_table.data_level,
-                science_table.descriptor,
-                science_table.start_date,
-                science_table.repointing,
-                science_table.major_version,
-            )
-            .subquery()
-        )
-
-        latest_science_files = (
-            session.query(science_table)
-            .join(
-                max_minor_subq,
-                (science_table.instrument == max_minor_subq.c.instrument)
-                & (science_table.data_level == max_minor_subq.c.data_level)
-                & (science_table.descriptor == max_minor_subq.c.descriptor)
-                & (science_table.start_date == max_minor_subq.c.start_date)
-                & (science_table.repointing == max_minor_subq.c.repointing)
-                & (science_table.major_version == max_minor_subq.c.major_version)
-                & (science_table.minor_version == max_minor_subq.c.max_minor),
-            )
-            .filter(
-                science_table.instrument == instrument,
-                science_table.start_date >= start_date,
-                science_table.start_date <= end_date,
-            )
-        )
-    else:
-        # Find max major_version for each file group
-        max_major_subq = (
-            session.query(
-                science_table.instrument,
-                science_table.data_level,
-                science_table.descriptor,
-                science_table.start_date,
-                func.max(science_table.major_version).label("max_major"),
-            )
-            .group_by(
-                science_table.instrument,
-                science_table.data_level,
-                science_table.descriptor,
-                science_table.start_date,
-            )
-            .subquery()
-        )
-
-        # Within max major_version, find max minor_version
-        max_minor_subq = (
-            session.query(
-                science_table.instrument,
-                science_table.data_level,
-                science_table.descriptor,
-                science_table.start_date,
-                science_table.major_version,
-                func.max(science_table.minor_version).label("max_minor"),
-            )
-            .join(
-                max_major_subq,
-                (science_table.instrument == max_major_subq.c.instrument)
-                & (science_table.data_level == max_major_subq.c.data_level)
-                & (science_table.descriptor == max_major_subq.c.descriptor)
-                & (science_table.start_date == max_major_subq.c.start_date)
-                & (science_table.major_version == max_major_subq.c.max_major),
-            )
-            .group_by(
-                science_table.instrument,
-                science_table.data_level,
-                science_table.descriptor,
-                science_table.start_date,
-                science_table.major_version,
-            )
-            .subquery()
-        )
-
-        latest_science_files = (
-            session.query(science_table)
-            .join(
-                max_minor_subq,
-                (science_table.instrument == max_minor_subq.c.instrument)
-                & (science_table.data_level == max_minor_subq.c.data_level)
-                & (science_table.descriptor == max_minor_subq.c.descriptor)
-                & (science_table.start_date == max_minor_subq.c.start_date)
-                & (science_table.major_version == max_minor_subq.c.major_version)
-                & (science_table.minor_version == max_minor_subq.c.max_minor),
-            )
-            .filter(
-                science_table.instrument == instrument,
-                science_table.start_date >= start_date,
-                science_table.start_date <= end_date,
-            )
-        )
-    if science_files_to_exclude:
-        latest_science_files = latest_science_files.filter(
-            ~science_table.file_path.in_(science_files_to_exclude)
-        )
-    results = list(latest_science_files)
-    logger.info(f"Found {len(results)} science file(s) for instrument={instrument}")
-    return results
-
-
-def get_latest_ancillary_files(
+def build_latest_ancillary_query(
     session,
     instrument: str,
     start_date: datetime.datetime,
     end_date: datetime.datetime,
     ancillary_files_to_exclude: list | None = None,
-) -> list:
-    """Get latest-version ancillary files for an instrument over a date range.
+):
+    """Build a query for latest-version ancillary file_paths over a date range.
 
-    The function retrieves files in two groups based on overlap with date range:
+    The function selects files in two groups based on overlap with date range:
 
         Files with explicit end_date in their filename:
             overlaps if start_date <= query_end AND end_date >= query_start
@@ -305,8 +140,9 @@ def get_latest_ancillary_files(
 
     Returns
     -------
-    list
-        List of file paths ordered by file_path.
+    Query
+        A query of a single file_path column, for use as an `.in_()`
+        subquery so a large release stays a single UPDATE statement.
     """
     ancillary_table = models.AncillaryFiles
 
@@ -376,28 +212,13 @@ def get_latest_ancillary_files(
         ),
     )
 
-    # Combine — ORDER BY positional index works across all DB backends for UNION ALL
-    combined = union_all(with_end_date_query, no_end_date_query).order_by(text("1"))
+    combined = union_all(with_end_date_query, no_end_date_query).subquery()
+    file_path_col = combined.c[0]
 
-    latest_ancillary_files = [row[0] for row in session.execute(combined).fetchall()]
-
-    # Now exclude any files in the exclude list
+    query = session.query(file_path_col)
     if ancillary_files_to_exclude:
-        latest_ancillary_files = [
-            p for p in latest_ancillary_files if p not in ancillary_files_to_exclude
-        ]
-
-    if not latest_ancillary_files:
-        logger.info(f"Found 0 ancillary file(s) for instrument={instrument}")
-        return []
-
-    results = list(
-        session.query(models.AncillaryFiles).filter(
-            models.AncillaryFiles.file_path.in_(latest_ancillary_files)
-        )
-    )
-    logger.info(f"Found {len(results)} ancillary file(s) for instrument={instrument}")
-    return results
+        query = query.filter(file_path_col.notin_(ancillary_files_to_exclude))
+    return query
 
 
 def download_read_file(exception_list_file_path):
@@ -463,23 +284,50 @@ def release_type_handler(query_params):
                 exclude_file
             )
 
-        science_files_to_update = query_latest_science_files(
-            session,
-            instrument,
-            start_date,
-            end_date,
-            science_files_to_exclude=science_files_to_exclude,
+        sci = models.ScienceFiles.__table__.c
+        latest = build_latest_version_query(
+            filters=[
+                sci.instrument == instrument,
+                sci.start_date >= start_date,
+                sci.start_date <= end_date,
+            ],
+        )
+        if science_files_to_exclude:
+            # Exclude after ranking so removing a file does not promote an older
+            # version into its place.
+            latest = latest.where(
+                latest.selected_columns.file_path.notin_(science_files_to_exclude)
+            )
+
+        science_file_paths = latest.with_only_columns(latest.selected_columns.file_path)
+        science_files_released = (
+            session.query(models.ScienceFiles)
+            .filter(models.ScienceFiles.file_path.in_(science_file_paths))
+            .update(
+                {models.ScienceFiles.released: True},
+                synchronize_session=False,
+            )
         )
 
-        ancillary_files_to_update = get_latest_ancillary_files(
+        ancillary_paths = build_latest_ancillary_query(
             session,
             instrument,
             start_date,
             end_date,
             ancillary_files_to_exclude=ancillary_files_to_exclude,
         )
+        ancillary_files_released = (
+            session.query(models.AncillaryFiles)
+            .filter(models.AncillaryFiles.file_path.in_(ancillary_paths))
+            .update(
+                {models.AncillaryFiles.released: True},
+                synchronize_session=False,
+            )
+        )
 
-        if not science_files_to_update and not ancillary_files_to_update:
+        if not science_files_released and not ancillary_files_released:
+            # Nothing matched, so the UPDATEs above were no-ops; returning without
+            # a commit rolls back the empty transaction.
             return {
                 "statusCode": 400,
                 "body": json.dumps(
@@ -489,20 +337,14 @@ def release_type_handler(query_params):
                 ),
             }
 
-        for obj in science_files_to_update:
-            obj.released = True
-
-        for obj in ancillary_files_to_update:
-            obj.released = True
-
         session.commit()
 
         return {
             "statusCode": 200,
             "body": json.dumps(
                 f"Successfully released "
-                f"{len(science_files_to_update)} science files and "
-                f"{len(ancillary_files_to_update)} ancillary files."
+                f"{science_files_released} science files and "
+                f"{ancillary_files_released} ancillary files."
             ),
         }
 

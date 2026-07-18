@@ -154,6 +154,16 @@ class ProcessingJob(Base):
         }
 
 
+# Columns identifying one logical CDF file; its rows differ only by version.
+FILE_ID_COLUMNS = (
+    "instrument",
+    "data_level",
+    "descriptor",
+    "start_date",
+    "repointing",
+)
+
+
 class ScienceFileBase:
     """Base class for ScienceFiles and QuicklookFiles tables.
 
@@ -181,11 +191,7 @@ class ScienceFileBase:
             Index(
                 # separate name for index for each subclass
                 f"idx_{cls.__tablename__}_version",
-                "instrument",
-                "data_level",
-                "descriptor",
-                "start_date",
-                "repointing",
+                *FILE_ID_COLUMNS,
                 "major_version",
                 "minor_version",
             ),
