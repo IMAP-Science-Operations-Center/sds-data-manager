@@ -510,6 +510,7 @@ def build_sds(
         "IalirtTransitGatewayRouteTable",
         transit_gateway_id=ialirt_transit_gateway.attr_id,
     )
+    tgw_route_table_id = ialirt_tgw_route_table.attr_transit_gateway_route_table_id
 
     # VPC's connection to the Transit Gateway will use our route table to
     # look up where to send traffic.
@@ -517,7 +518,7 @@ def build_sds(
         ialirt_stack,
         "IalirtTgwRouteTableAssociationVpc",
         transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
-        transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+        transit_gateway_route_table_id=tgw_route_table_id,
     )
 
     # Add the VPC's address range to our route table, so any other
@@ -527,7 +528,7 @@ def build_sds(
         ialirt_stack,
         "IalirtTgwRouteTablePropagationVpc",
         transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
-        transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+        transit_gateway_route_table_id=tgw_route_table_id,
     )
 
     # AWS::EC2::VPNConnection does not expose its Transit Gateway attachment
@@ -564,14 +565,13 @@ def build_sds(
             "TransitGatewayAttachments.0.TransitGatewayAttachmentId"
         )
 
-        # Add the transit gateway attachments to the route table.
-
-        # Use this table to decide where to forward the traffic you receive.
+        # Add this VPN attachment to the route table, so it's used to
+        # decide where to forward the traffic it receives.
         ec2.CfnTransitGatewayRouteTableAssociation(
             ialirt_stack,
             f"IalirtTgwRouteTableAssociationVpn{site}",
             transit_gateway_attachment_id=vpn_attachment_id,
-            transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+            transit_gateway_route_table_id=tgw_route_table_id,
         )
         # Installs NOAA's routes into the table so the VPC attachment can
         # find its way back to NOAA on the return path.
@@ -579,7 +579,7 @@ def build_sds(
             ialirt_stack,
             f"IalirtTgwRouteTablePropagationVpn{site}",
             transit_gateway_attachment_id=vpn_attachment_id,
-            transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+            transit_gateway_route_table_id=tgw_route_table_id,
         )
 
     # Static route: send traffic for I-ALiRT EC2's Elastic IP into the VPC
@@ -588,7 +588,7 @@ def build_sds(
         ialirt_stack,
         "IalirtTgwDefaultRouteToVpc",
         destination_cidr_block="0.0.0.0/0",
-        transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+        transit_gateway_route_table_id=tgw_route_table_id,
         transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
     )
 
@@ -613,26 +613,21 @@ def build_sds(
     # This covers NOAA's real internal prefixes without needing to know
     # them in advance, since NOAA's ICD networks are already private
     # address space.
-    for cidr in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"):
-        cidr_suffix = cidr.split("/")[0].replace(".", "")
-        for i, subnet in enumerate(networking.vpc.private_subnets):
-            return_route = ec2.CfnRoute(
-                ialirt_stack,
-                f"IalirtPrivateSubnet{i}ReturnRoute{cidr_suffix}",
-                route_table_id=subnet.route_table.route_table_id,
-                destination_cidr_block=cidr,
-                transit_gateway_id=ialirt_transit_gateway.attr_id,
-            )
-            return_route.add_dependency(ialirt_vpc_attachment)
-        for i, subnet in enumerate(networking.vpc.public_subnets):
-            public_return_route = ec2.CfnRoute(
-                ialirt_stack,
-                f"IalirtPublicSubnet{i}ReturnRoute{cidr_suffix}",
-                route_table_id=subnet.route_table.route_table_id,
-                destination_cidr_block=cidr,
-                transit_gateway_id=ialirt_transit_gateway.attr_id,
-            )
-            public_return_route.add_dependency(ialirt_vpc_attachment)
+    def _add_return_routes(subnet_group: str, subnets: list) -> None:
+        for cidr in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"):
+            cidr_suffix = cidr.split("/")[0].replace(".", "")
+            for i, subnet in enumerate(subnets):
+                route = ec2.CfnRoute(
+                    ialirt_stack,
+                    f"Ialirt{subnet_group}Subnet{i}ReturnRoute{cidr_suffix}",
+                    route_table_id=subnet.route_table.route_table_id,
+                    destination_cidr_block=cidr,
+                    transit_gateway_id=ialirt_transit_gateway.attr_id,
+                )
+                route.add_dependency(ialirt_vpc_attachment)
+
+    _add_return_routes("Private", networking.vpc.private_subnets)
+    _add_return_routes("Public", networking.vpc.public_subnets)
 
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(
         scope=sdc_stack,
