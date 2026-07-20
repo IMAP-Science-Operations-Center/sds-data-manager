@@ -14,8 +14,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# Kernel types whose coverage grows by appending segments to the same file
-# series over time.
+# These kernels are delivered as append-only time series: newer files either
+# extend an existing coverage window or replace it with a higher version of the
+# same window, so downstream triggering should be narrowed to genuinely new
+# coverage where possible.
 GROWING_KERNEL_TYPES = (
     "attitude_history",
     "pointing_attitude",
