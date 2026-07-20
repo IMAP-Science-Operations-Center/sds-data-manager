@@ -592,6 +592,48 @@ def build_sds(
         transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
     )
 
+    # The private subnets' route tables only have a default 0.0.0.0/0 -> NAT
+    # Gateway route. BGP routes learned from the NOAA VPN connections are
+    # only propagated into the TGW's own route table (above), never
+    # automatically into the VPC's subnet route tables the way a VGW would.
+    # So once the NAT Gateway un-NATs a reply destined for NOAA's real
+    # (private) address, the private subnets have no route back through the
+    # TGW for it - it falls through to the NAT Gateway default and dead-ends
+    # trying to send a private address out to the public internet.
+    #
+    # The NAT Gateway itself lives in a public subnet, and routes its own
+    # un-NAT'd reply traffic using that public subnet's route table - not
+    # the private subnets'. So the same fix is needed there too, or the
+    # NAT Gateway's reply falls through to the public subnet's own
+    # 0.0.0.0/0 -> Internet Gateway default instead of back to the TGW.
+    #
+    # Add explicit routes for RFC1918 space, in both the private and public
+    # subnets, so any private-address traffic prefers the TGW (a longer
+    # prefix match than 0.0.0.0/0) over the NAT Gateway/Internet Gateway.
+    # This covers NOAA's real internal prefixes without needing to know
+    # them in advance, since NOAA's ICD networks are already private
+    # address space.
+    for cidr in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"):
+        cidr_suffix = cidr.split("/")[0].replace(".", "")
+        for i, subnet in enumerate(networking.vpc.private_subnets):
+            return_route = ec2.CfnRoute(
+                ialirt_stack,
+                f"IalirtPrivateSubnet{i}ReturnRoute{cidr_suffix}",
+                route_table_id=subnet.route_table.route_table_id,
+                destination_cidr_block=cidr,
+                transit_gateway_id=ialirt_transit_gateway.attr_id,
+            )
+            return_route.add_dependency(ialirt_vpc_attachment)
+        for i, subnet in enumerate(networking.vpc.public_subnets):
+            public_return_route = ec2.CfnRoute(
+                ialirt_stack,
+                f"IalirtPublicSubnet{i}ReturnRoute{cidr_suffix}",
+                route_table_id=subnet.route_table.route_table_id,
+                destination_cidr_block=cidr,
+                transit_gateway_id=ialirt_transit_gateway.attr_id,
+            )
+            public_return_route.add_dependency(ialirt_vpc_attachment)
+
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(
         scope=sdc_stack,
         construct_id="ReprocessingTools",
