@@ -300,6 +300,9 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: bgrates
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
 
 # ======== Level L2 ========
   outputs:
