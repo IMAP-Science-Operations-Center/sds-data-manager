@@ -24,12 +24,20 @@ _TABLE_MODELS = {
     "quicklook": models.QuicklookFiles,
 }
 
-# Valid query parameters per table: its columns (minus "id"), plus "end_date"
-# for every table but "ancillary", plus the ingestion date range params.
+# Valid query parameters include...
+#   all table columns
+# + ingestion_start_date/ingestion_end_date,
+# + "end_date" for tables with a start_date but no end_date
+#   (science/quicklook have start_date only; ancillary has both, spice has neither).
 _VALID_PARAMETERS = {
     table: [
-        *(column.key for column in model.__table__.columns if column.key != "id"),
-        *(["end_date"] if table != "ancillary" else []),
+        *model.__table__.c.keys(),
+        *(
+            ["end_date"]
+            if "start_date" in model.__table__.c
+            and "end_date" not in model.__table__.c
+            else []
+        ),
         "ingestion_start_date",
         "ingestion_end_date",
     ]

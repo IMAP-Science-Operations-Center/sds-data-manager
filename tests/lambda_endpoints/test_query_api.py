@@ -270,6 +270,21 @@ def test_invalid_query(session):
     assert param_not_valid_in_response(returned_query["body"], "size", "science")
 
 
+def test_end_date_not_valid_for_spice(session):
+    """spice has no start_date, so the synthetic end_date param is rejected (400).
+
+    Regression test: end_date used to be offered for every non-ancillary table
+    and was implemented as a `start_date <=` filter, so ?table=spice&end_date=...
+    raised AttributeError (500) instead of a clean validation error.
+    """
+    event = {"queryStringParameters": {"table": "spice", "end_date": "20250101"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 400
+    assert param_not_valid_in_response(returned_query["body"], "end_date", "spice")
+
+
 def _populate_test_data_ancillary_table(session):
     """Put a filepath into the test data for the ancillary table."""
     filepath = "test/ancillary/file/path/imap_mag_test_20210101_v001.csv"
