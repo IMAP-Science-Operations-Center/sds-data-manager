@@ -10,6 +10,7 @@ from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_rds as rds
 from aws_cdk import aws_secretsmanager as secretsmanager
 from aws_cdk import aws_ssm as ssm
+from aws_cdk import custom_resources as cr
 
 from sds_data_manager.constructs import (
     api_gateway_construct,
@@ -461,13 +462,134 @@ def build_sds(
         ialirt_stack, "/ialirt/noaa-vpn/denv-ip"
     )
 
-    ialirt_vpn_construct.IalirtVpnConstruct(
+    # Create a Transit Gateway (TGW) to terminate the IPSec tunnel from NOAA.
+    #
+    # A Virtual Private Gateway can't route decrypted VPN traffic to a NAT
+    # Gateway, but I-ALiRT needs a NAT Gateway so NOAA's traffic reaches a
+    # stable Elastic IP instead of an EC2 private IP that changes whenever
+    # the Auto Scaling Group replaces the instance. A TGW VPC attachment's
+    # traffic can be routed to a NAT Gateway, so we use a TGW instead.
+    ialirt_transit_gateway = ec2.CfnTransitGateway(
+        ialirt_stack,
+        "IalirtTransitGateway",
+        # ASN is BGP's identifier for a distinct network/routing domain —
+        # how two BGP peers identify themselves and each other.
+        # Default ASN, but stated explicitly here.
+        amazon_side_asn=64512,
+        # Use our own route table below instead of TGW's hidden default one.
+        default_route_table_association="disable",
+        default_route_table_propagation="disable",
+        description="I-ALiRT TGW for NOAA VPN",
+    )
+
+    # Attach the VPC to the TGW via the private subnets, whose route tables
+    # already have 0.0.0.0/0 -> NAT Gateway — so traffic arriving via the TGW
+    # attachment gets forwarded there automatically. The NAT Gateway then
+    # sends it out to the internet, where it reaches I-ALiRT's own Elastic
+    # IP the same way every other partner's traffic already does.
+    ialirt_vpc_attachment = ec2.CfnTransitGatewayVpcAttachment(
+        ialirt_stack,
+        "IalirtTransitGatewayVpcAttachment",
+        transit_gateway_id=ialirt_transit_gateway.attr_id,
+        vpc_id=networking.vpc.vpc_id,
+        subnet_ids=[subnet.subnet_id for subnet in networking.vpc.private_subnets],
+    )
+
+    ialirt_vpn = ialirt_vpn_construct.IalirtVpnConstruct(
         scope=ialirt_stack,
         construct_id="IalirtVpn",
-        vpn_gateway=networking.vpn_gateway,
+        transit_gateway_id=ialirt_transit_gateway.attr_id,
         psk=noaa_vpn_psk,
         wash_ip=noaa_wash_ip,
         denv_ip=noaa_denv_ip,
+    )
+
+    # Create a TGW route table.
+    ialirt_tgw_route_table = ec2.CfnTransitGatewayRouteTable(
+        ialirt_stack,
+        "IalirtTransitGatewayRouteTable",
+        transit_gateway_id=ialirt_transit_gateway.attr_id,
+    )
+
+    # VPC's connection to the Transit Gateway will use our route table to
+    # look up where to send traffic.
+    ec2.CfnTransitGatewayRouteTableAssociation(
+        ialirt_stack,
+        "IalirtTgwRouteTableAssociationVpc",
+        transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
+        transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+    )
+
+    # Add the VPC's address range to our route table, so any other
+    # attachment using this table (e.g. the NOAA VPN connections) can route
+    # traffic destined for the VPC here.
+    ec2.CfnTransitGatewayRouteTablePropagation(
+        ialirt_stack,
+        "IalirtTgwRouteTablePropagationVpc",
+        transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
+        transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+    )
+
+    # AWS::EC2::VPNConnection does not expose its Transit Gateway attachment
+    # ID as a CloudFormation attribute, so look it up via a custom resource
+    # that calls ec2:DescribeTransitGatewayAttachments, filtered to the VPN
+    # connection's resource ID.
+    for site, vpn_connection in ialirt_vpn.vpn_connections.items():
+        describe_vpn_attachment = cr.AwsSdkCall(
+            service="EC2",
+            action="describeTransitGatewayAttachments",
+            parameters={
+                "Filters": [
+                    {
+                        "Name": "resource-id",
+                        "Values": [vpn_connection.attr_vpn_connection_id],
+                    },
+                    {"Name": "resource-type", "Values": ["vpn"]},
+                ]
+            },
+            physical_resource_id=cr.PhysicalResourceId.of(
+                f"IalirtVpnTgwAttachmentLookup{site}"
+            ),
+        )
+        vpn_attachment_lookup = cr.AwsCustomResource(
+            ialirt_stack,
+            f"IalirtVpnTgwAttachmentLookup{site}",
+            on_create=describe_vpn_attachment,
+            on_update=describe_vpn_attachment,
+            policy=cr.AwsCustomResourcePolicy.from_sdk_calls(
+                resources=cr.AwsCustomResourcePolicy.ANY_RESOURCE
+            ),
+        )
+        vpn_attachment_id = vpn_attachment_lookup.get_response_field(
+            "TransitGatewayAttachments.0.TransitGatewayAttachmentId"
+        )
+
+        # Add the transit gateway attachments to the route table.
+
+        # Use this table to decide where to forward the traffic you receive.
+        ec2.CfnTransitGatewayRouteTableAssociation(
+            ialirt_stack,
+            f"IalirtTgwRouteTableAssociationVpn{site}",
+            transit_gateway_attachment_id=vpn_attachment_id,
+            transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+        )
+        # Installs NOAA's routes into the table so the VPC attachment can
+        # find its way back to NOAA on the return path.
+        ec2.CfnTransitGatewayRouteTablePropagation(
+            ialirt_stack,
+            f"IalirtTgwRouteTablePropagationVpn{site}",
+            transit_gateway_attachment_id=vpn_attachment_id,
+            transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+        )
+
+    # Static route: send traffic for I-ALiRT EC2's Elastic IP into the VPC
+    # attachment, where the NAT Gateway forwards it to the public internet.
+    ec2.CfnTransitGatewayRoute(
+        ialirt_stack,
+        "IalirtTgwDefaultRouteToVpc",
+        destination_cidr_block="0.0.0.0/0",
+        transit_gateway_route_table_id=ialirt_tgw_route_table.attr_transit_gateway_route_table_id,
+        transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
     )
 
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(

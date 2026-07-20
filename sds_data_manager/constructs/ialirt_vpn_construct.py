@@ -11,7 +11,7 @@ class IalirtVpnConstruct(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        vpn_gateway: ec2.CfnVPNGateway,
+        transit_gateway_id: str,
         psk: str,
         wash_ip: str,
         denv_ip: str,
@@ -25,8 +25,13 @@ class IalirtVpnConstruct(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        vpn_gateway : ec2.CfnVPNGateway
-            The Virtual Private Gateway to attach the VPN connections to.
+        transit_gateway_id : str
+            The Transit Gateway to attach the VPN connections to. A Transit
+            Gateway is used (rather than a Virtual Private Gateway) because a
+            VGW cannot route decrypted VPN traffic to a NAT Gateway, and a NAT
+            Gateway is required so NOAA's traffic reaches I-ALiRT via its
+            stable Elastic IP instead of an EC2 private IP that changes
+            whenever the Auto Scaling Group replaces the instance.
         psk : str
             Pre-shared key for IKE authentication. Pass a CDK token from
             ``secret_value_from_json(...).unsafe_unwrap()`` so the value is
@@ -106,9 +111,13 @@ class IalirtVpnConstruct(Construct):
         # Every AWS Site-to-Site VPN connection automatically provisions
         # two auto-assigned tunnel IPs.
         # These LASP IKE Gateways must be given to NOAA.
+        self.vpn_connections: dict[str, ec2.CfnVPNConnection] = {}
         for site, ip in {"WASH": wash_ip, "DENV": denv_ip}.items():
             # AWS needs to know the router's public IP and ASN to establish the tunnel.
-            # bgp_asn=64583 is NOAA's ASN per the ICD.
+            # bgp_asn=64583 is NOAA's ASN per the ICD. This must match the ASN
+            # configured on NOAA's actual router — AWS silently rejects the BGP
+            # session (not the tunnel itself) if the peer AS doesn't match what's
+            # registered here.
             cgw = ec2.CfnCustomerGateway(
                 self,
                 f"NoaaCustomerGateway{site}",
@@ -117,17 +126,18 @@ class IalirtVpnConstruct(Construct):
                 type="ipsec.1",
             )
 
-            # Create the VPN connection between our Virtual Private Gateway (VGW)
-            # and NOAA's customer gateway. Each connection gets two tunnels by default
-            # (AWS requirement for redundancy) — both use the same crypto settings.
-            # BGP is used (static_routes_only=False) so that if one site (WASH or DENV)
-            # goes down, BGP automatically reroutes traffic through the other.
-            # Data flows one way: NOAA sends to us. We do not send to NOAA.
-            ec2.CfnVPNConnection(
+            # Create the VPN connection between our Transit Gateway (TGW) and
+            # NOAA's customer gateway. Each connection gets two tunnels by
+            # default (AWS requirement for redundancy) — both use the same
+            # crypto settings. BGP is used (static_routes_only=False) so that
+            # if one site (WASH or DENV) goes down, BGP automatically reroutes
+            # traffic through the other. Data flows one way: NOAA sends to us.
+            # We do not send to NOAA.
+            self.vpn_connections[site] = ec2.CfnVPNConnection(
                 self,
                 f"NoaaVpnConnection{site}",
                 customer_gateway_id=cgw.ref,
-                vpn_gateway_id=vpn_gateway.ref,
+                transit_gateway_id=transit_gateway_id,
                 type="ipsec.1",
                 static_routes_only=False,
                 vpn_tunnel_options_specifications=[tunnel, tunnel],
