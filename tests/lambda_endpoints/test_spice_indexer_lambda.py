@@ -466,23 +466,14 @@ def test_send_spice_event_filters_kernel_types(events_client):
             "attitude_history",
             "pointing_attitude",
             "ephemeris_reconstructed",
+            "attitude_predict",
+            "ephemeris_predict",
         ):
             result = spice_indexer.send_spice_event(
                 Mock(spice_metadata={"type": kernel_type}),
                 "imap/spice/test/file",
             )
             assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
-
-        for kernel_type in (
-            "attitude_predict",
-            "ephemeris_predict",
-            "ephemeris_predicted",
-        ):
-            result = spice_indexer.send_spice_event(
-                Mock(spice_metadata={"type": kernel_type}),
-                "imap/spice/test/file",
-            )
-            assert result is None
 
 
 @patch(
