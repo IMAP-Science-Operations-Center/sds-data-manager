@@ -22,6 +22,8 @@ GROWING_KERNEL_TYPES = (
     "ephemeris_reconstructed",
 )
 # Kernel types that we don't want to trigger processing.
+# Predicted ephemeris appears as `ephemeris_predicted` in dependency YAML and
+# as `ephemeris_predict` in indexed SPICE metadata, so guard against both.
 NON_TRIGGERING_KERNEL_TYPES = (
     "attitude_predict",
     "ephemeris_predict",
