@@ -438,11 +438,11 @@ def build_sds(
     )
 
     # Retrieve the NOAA VPN pre-shared key from Secrets Manager.
-    # Store the PSK under the key "psk" in a secret named "noaa-vpn-psk"
-    # before deploying this stack.
+    # Store the PSK under the key "psk" in a secret named
+    # "/ialirt/noaa/noaa-vpn-psk" before deploying this stack.
     noaa_vpn_psk = (
         secretsmanager.Secret.from_secret_name_v2(
-            ialirt_stack, "NoaaVpnPsk", "noaa-vpn-psk"
+            ialirt_stack, "NoaaVpnPsk", "/ialirt/noaa/noaa-vpn-psk"
         )
         .secret_value_from_json("psk")
         .unsafe_unwrap()
