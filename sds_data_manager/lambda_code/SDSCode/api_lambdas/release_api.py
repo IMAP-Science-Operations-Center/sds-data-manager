@@ -11,7 +11,7 @@ from imap_data_access.file_validation import (
     ScienceFilePath,
     generate_imap_file_path,
 )
-from sqlalchemy import func, or_, union_all
+from sqlalchemy import func, or_, text, union_all
 
 from ..database import database as db
 from ..database import models
@@ -106,16 +106,16 @@ def validate_query_params(event):
     }
 
 
-def build_latest_ancillary_query(
+def get_latest_ancillary_files(
     session,
     instrument: str,
     start_date: datetime.datetime,
     end_date: datetime.datetime,
     ancillary_files_to_exclude: list | None = None,
-):
-    """Build a query for latest-version ancillary file_paths over a date range.
+) -> list:
+    """Get latest-version ancillary files for an instrument over a date range.
 
-    The function selects files in two groups based on overlap with date range:
+    The function retrieves files in two groups based on overlap with date range:
 
         Files with explicit end_date in their filename:
             overlaps if start_date <= query_end AND end_date >= query_start
@@ -140,9 +140,8 @@ def build_latest_ancillary_query(
 
     Returns
     -------
-    Query
-        A query of a single file_path column, for use as an `.in_()`
-        subquery so a large release stays a single UPDATE statement.
+    list
+        List of file paths ordered by file_path.
     """
     ancillary_table = models.AncillaryFiles
 
@@ -212,13 +211,28 @@ def build_latest_ancillary_query(
         ),
     )
 
-    combined = union_all(with_end_date_query, no_end_date_query).subquery()
-    file_path_col = combined.c[0]
+    # Combine — ORDER BY positional index works across all DB backends for UNION ALL
+    combined = union_all(with_end_date_query, no_end_date_query).order_by(text("1"))
 
-    query = session.query(file_path_col)
+    latest_ancillary_files = [row[0] for row in session.execute(combined).fetchall()]
+
+    # Now exclude any files in the exclude list
     if ancillary_files_to_exclude:
-        query = query.filter(file_path_col.notin_(ancillary_files_to_exclude))
-    return query
+        latest_ancillary_files = [
+            p for p in latest_ancillary_files if p not in ancillary_files_to_exclude
+        ]
+
+    if not latest_ancillary_files:
+        logger.info(f"Found 0 ancillary file(s) for instrument={instrument}")
+        return []
+
+    results = list(
+        session.query(models.AncillaryFiles).filter(
+            models.AncillaryFiles.file_path.in_(latest_ancillary_files)
+        )
+    )
+    logger.info(f"Found {len(results)} ancillary file(s) for instrument={instrument}")
+    return results
 
 
 def download_read_file(exception_list_file_path):
@@ -309,25 +323,17 @@ def release_type_handler(query_params):
             )
         )
 
-        ancillary_paths = build_latest_ancillary_query(
+        ancillary_files_to_update = get_latest_ancillary_files(
             session,
             instrument,
             start_date,
             end_date,
             ancillary_files_to_exclude=ancillary_files_to_exclude,
         )
-        ancillary_files_released = (
-            session.query(models.AncillaryFiles)
-            .filter(models.AncillaryFiles.file_path.in_(ancillary_paths))
-            .update(
-                {models.AncillaryFiles.released: True},
-                synchronize_session=False,
-            )
-        )
 
-        if not science_files_released and not ancillary_files_released:
-            # Nothing matched, so the UPDATEs above were no-ops; returning without
-            # a commit rolls back the empty transaction.
+        if not science_files_released and not ancillary_files_to_update:
+            # Nothing matched, so the science UPDATE above was a no-op; returning
+            # without a commit rolls back the empty transaction.
             return {
                 "statusCode": 400,
                 "body": json.dumps(
@@ -337,6 +343,9 @@ def release_type_handler(query_params):
                 ),
             }
 
+        for obj in ancillary_files_to_update:
+            obj.released = True
+
         session.commit()
 
         return {
@@ -344,7 +353,7 @@ def release_type_handler(query_params):
             "body": json.dumps(
                 f"Successfully released "
                 f"{science_files_released} science files and "
-                f"{ancillary_files_released} ancillary files."
+                f"{len(ancillary_files_to_update)} ancillary files."
             ),
         }
 

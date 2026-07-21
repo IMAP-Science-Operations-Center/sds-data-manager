@@ -238,20 +238,20 @@ def test_release_ancillary_files_in_date_range(session):
     )
     session.commit()
 
-    query = release_api.build_latest_ancillary_query(
+    result = release_api.get_latest_ancillary_files(
         session,
         instrument="codice",
         start_date=datetime.datetime.strptime("20260403", "%Y%m%d"),
         end_date=datetime.datetime.strptime("20260430", "%Y%m%d"),
     )
-    result = [row[0] for row in query.all()]
     expected_ancillary_files = [
         "imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_20260403_v001.json",
         "imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_v002.json",
     ]
     assert len(result) == 2, f"Expected 2 ancillary files, got {len(result)}"
-    assert sorted(result) == expected_ancillary_files, (
-        f"Expected ancillary files {expected_ancillary_files}, got {result}"
+    assert sorted([f.file_path for f in result]) == expected_ancillary_files, (
+        f"Expected ancillary files {expected_ancillary_files}, "
+        f"got {[f.file_path for f in result]}"
     )
 
 
