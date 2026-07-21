@@ -285,6 +285,17 @@ def test_end_date_not_valid_for_spice(session):
     assert param_not_valid_in_response(returned_query["body"], "end_date", "spice")
 
 
+def test_invalid_table_returns_400(session):
+    """An unknown `table` value returns a 400.
+    """
+    event = {"queryStringParameters": {"table": "not_a_real_table"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 400
+    assert "not_a_real_table" in returned_query["body"]
+
+
 def _populate_test_data_ancillary_table(session):
     """Put a filepath into the test data for the ancillary table."""
     filepath = "test/ancillary/file/path/imap_mag_test_20210101_v001.csv"
