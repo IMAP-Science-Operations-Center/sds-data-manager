@@ -216,6 +216,15 @@ def lambda_handler(event, context):
     query_table = query_params.pop("table", "science")
     logger.info(f"Querying table: {query_table}")
 
+    if query_table not in _TABLE_MODELS:
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                f"{query_table} is not a valid table. "
+                f"Valid tables are: {list(_TABLE_MODELS)}"
+            ),
+        }
+
     model = _TABLE_MODELS[query_table]
     table_columns = model.__table__.c
 
