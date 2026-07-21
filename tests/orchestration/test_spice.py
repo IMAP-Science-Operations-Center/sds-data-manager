@@ -20,7 +20,7 @@ def _query_times(dependencies, start_date, end_date):
 
     def fake_lambda_handler(event, context):
         captured.update(event["queryStringParameters"])
-        return {"statusCode": 200, "body": "[]"}
+        return {"statusCode": 200, "body": '["imap_2025_118_2025_120_001.ah.bc"]'}
 
     with patch.object(
         spice.spice_metakernel_api, "lambda_handler", side_effect=fake_lambda_handler
