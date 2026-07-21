@@ -201,8 +201,8 @@ def _convert_input_times_to_j2000(start_date_str, end_date_str):
         start_date = spiceypy.datetime2et(start_date_datetime)
         end_date = spiceypy.datetime2et(end_date_datetime)
     except (TypeError, ValueError):
-        start_date = int(start_date_str)
-        end_date = int(end_date_str)
+        start_date = float(start_date_str)
+        end_date = float(end_date_str)
     return start_date, end_date
 
 
@@ -264,7 +264,7 @@ def lambda_handler(event, context):
 
 
 def _metakernel_builder(
-    start_time: int, end_time: int, file_types: list | None = None
+    start_time: float, end_time: float, file_types: list | None = None
 ) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
     # Create the Metakernel class
