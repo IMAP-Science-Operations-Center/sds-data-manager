@@ -34,6 +34,16 @@ def _seconds_since_j2000(dt: datetime.datetime) -> float:
 
     Full time-of-day precision is preserved, unlike a `%Y%m%d`-string-based
     conversion, which would round down to day boundaries.
+
+    Parameters
+    ----------
+    dt : datetime.datetime
+        The datetime to convert. Assumed to be UTC if not timezone-aware.
+
+    Returns
+    -------
+    float
+        Approximate SPICE ephemeris time: seconds past the J2000 epoch.
     """
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=datetime.timezone.utc)
