@@ -74,6 +74,7 @@ lo_90_pset: &lo_90_pset
     data_type: l1c
     descriptor: pset
     trigger_job: false
+    required: false
 
 lo_esa_fit_factors: &lo_esa_fit_factors
   - source: lo
@@ -299,6 +300,9 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: bgrates
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
 
 # ======== Level L2 ========
   outputs:

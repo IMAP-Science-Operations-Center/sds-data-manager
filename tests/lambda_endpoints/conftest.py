@@ -76,6 +76,12 @@ def science_file():
 
 
 @pytest.fixture(scope="module")
+def legacy_science_file():
+    """Path to a science file using the legacy vXXX version format."""
+    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v001.cdf"
+
+
+@pytest.fixture(scope="module")
 def dependency_file():
     """Path to a valid dependency file."""
     return (
