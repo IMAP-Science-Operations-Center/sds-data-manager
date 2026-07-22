@@ -47,6 +47,11 @@ def upgrade_file(
                 f"_v{old_version}", f"_v{new_version}"
             )
 
+        if "File_naming_convention" in cdf.attrs:
+            cdf.attrs["File_naming_convention"] = (
+                "source_descriptor_datatype_yyyyMMdd_vNNN.NNNN"
+            )
+
         if "Parents" in cdf.attrs:
             parents = [str(p) for p in cdf.attrs["Parents"]]
             cdf.attrs["Parents"] = [make_new_file_name(p, major) for p in parents]
