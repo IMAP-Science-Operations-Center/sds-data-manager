@@ -3,6 +3,7 @@
 import datetime
 import json
 import logging
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
@@ -264,7 +265,7 @@ def lambda_handler(event, context):
 
 
 def _metakernel_builder(
-    start_time: float, end_time: float, file_types: list | None = None
+    start_time: float, end_time: float, file_types: Collection[str] | None = None
 ) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
     # Create the Metakernel class

@@ -40,16 +40,16 @@ def test_seconds_since_j2000_matches_authoritative_spiceypy_conversion():
     kernel *only* to independently verify the hardcoded epoch is correct, not
     because production code needs it.
     """
-    spiceypy.furnsh(str(TEST_LSK_PATH))
-    dt = datetime.datetime(2025, 6, 1, 14, 32, 10, tzinfo=datetime.timezone.utc)
+    with spiceypy.KernelPool([str(TEST_LSK_PATH)]):
+        dt = datetime.datetime(2025, 6, 1, 14, 32, 10, tzinfo=datetime.timezone.utc)
 
-    # Tolerance covers the leap seconds added since the J2000 epoch (2000)
-    # that this simplified conversion doesn't account for (5, as of
-    # 2017-01-01) - negligible for identifying which SPICE kernels cover a
-    # given time range.
-    assert spice._seconds_since_j2000(dt) == pytest.approx(
-        spiceypy.datetime2et(dt), abs=6
-    )
+        # Tolerance covers the leap seconds added since the J2000 epoch (2000)
+        # that this simplified conversion doesn't account for (5, as of
+        # 2017-01-01) - negligible for identifying which SPICE kernels cover a
+        # given time range.
+        assert spice._seconds_since_j2000(dt) == pytest.approx(
+            spiceypy.datetime2et(dt), abs=6
+        )
 
 
 def test_preserves_sub_day_precision_within_same_calendar_day():
