@@ -232,6 +232,7 @@ l0_data: &l0_data
     - source: mag
       data_type: l2
       descriptor: norm-dsrf
+      required: false
       trigger_job: false
   outputs:
     - source: hit

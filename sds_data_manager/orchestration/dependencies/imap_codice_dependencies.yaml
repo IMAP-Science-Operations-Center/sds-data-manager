@@ -437,6 +437,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
     - source: mag
       data_type: l2
       descriptor: norm-dsrf
+      required: false
       trigger_job: false
     - source: codice
       data_type: l2
