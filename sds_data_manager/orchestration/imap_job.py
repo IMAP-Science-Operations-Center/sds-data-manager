@@ -631,7 +631,11 @@ class IMAPJobHandler:
             if new_files:
                 latest_ingestion_date = max(f.ingestion_date for f in new_files)
 
-            if cursor_str == config.MISSION_START_TIME:
+            if dependency.source in spice.NON_TRIGGERING_KERNEL_TYPES:
+                context.log.info(
+                    f"Skipping trigger evaluation for {dependency.source}."
+                )
+            elif cursor_str == config.MISSION_START_TIME:
                 # Just process everything, don't bother looping through all new files.
                 partitions = dagster_utilities.get_affected_partitions(
                     context,

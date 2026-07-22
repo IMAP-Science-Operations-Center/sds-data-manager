@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
@@ -454,6 +454,26 @@ def test_send_spice_event(session, events_client, s3_client):
     }
     with pytest.raises(ValueError, match="Error downloading file"):
         spice_indexer.lambda_handler(event, None)
+
+
+def test_send_spice_event_filters_kernel_types(events_client):
+    """Only reconstructed/current coverage kernels should emit events."""
+    with patch(
+        "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.boto3.client",
+        return_value=events_client,
+    ):
+        for kernel_type in (
+            "attitude_history",
+            "pointing_attitude",
+            "ephemeris_reconstructed",
+            "attitude_predict",
+            "ephemeris_predict",
+        ):
+            result = spice_indexer.send_spice_event(
+                Mock(spice_metadata={"type": kernel_type}),
+                "imap/spice/test/file",
+            )
+            assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
 @patch(
