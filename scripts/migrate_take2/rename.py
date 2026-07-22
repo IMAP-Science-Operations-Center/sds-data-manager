@@ -49,7 +49,7 @@ def upgrade_file(
 
         if "File_naming_convention" in cdf.attrs:
             cdf.attrs["File_naming_convention"] = (
-                "source_descriptor_datatype_yyyyMMdd_vNNN.NNNN"
+                "source_descriptor_datatype_yyyyMMdd_vMMM.mmmm"
             )
 
         if "Parents" in cdf.attrs:
