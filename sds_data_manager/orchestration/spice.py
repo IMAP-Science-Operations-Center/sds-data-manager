@@ -50,6 +50,25 @@ def _seconds_since_j2000(dt: datetime.datetime) -> float:
     return (dt - _TTJ2000_EPOCH_UTC).total_seconds()
 
 
+# These kernels are delivered as append-only time series: newer files either
+# extend an existing coverage window or replace it with a higher version of the
+# same window, so downstream triggering should be narrowed to genuinely new
+# coverage where possible.
+GROWING_KERNEL_TYPES = (
+    "attitude_history",
+    "pointing_attitude",
+    "ephemeris_reconstructed",
+)
+# Kernel types that we don't want to trigger processing.
+# Predicted ephemeris appears as `ephemeris_predicted` in dependency YAML and
+# as `ephemeris_predict` in indexed SPICE metadata, so guard against both.
+NON_TRIGGERING_KERNEL_TYPES = (
+    "attitude_predict",
+    "ephemeris_predict",
+    "ephemeris_predicted",
+)
+
+
 def check_requested_kernels(combined_kernel_sources, metakernel_files):
     """Check if all requested kernels are present in the metakernel files.
 
@@ -215,7 +234,14 @@ def _parse_interval_list(
     if not raw_intervals:
         return []
     return [
-        [datetime.datetime.fromisoformat(start), datetime.datetime.fromisoformat(end)]
+        [
+            start
+            if isinstance(start, datetime.datetime)
+            else datetime.datetime.fromisoformat(start),
+            end
+            if isinstance(end, datetime.datetime)
+            else datetime.datetime.fromisoformat(end),
+        ]
         for start, end in raw_intervals
     ]
 
@@ -285,15 +311,6 @@ def subtract_intervals(
             # leftover, e.g. brand new segments appended past old_end.
             leftover.append([cursor, new_end])
     return leftover
-
-
-# Kernel types whose coverage grows by appending segments to the same file
-# series over time (attitude_history: MOC-delivered AH kernels; pointing_attitude:
-# the DPS kernel produced by the spacecraft l1a pointing-attitude job). Both use
-# the same start-date_end-date_version filename convention and the same
-# ingestion-time SPICE segment decomposition, so the same trigger-range rules
-# apply to both.
-GROWING_KERNEL_TYPES = ("attitude_history", "pointing_attitude")
 
 
 def get_growing_kernel_trigger_ranges(
