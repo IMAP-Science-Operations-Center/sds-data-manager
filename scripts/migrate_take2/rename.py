@@ -1,14 +1,24 @@
 # ruff: noqa
 
 import logging
+import multiprocessing as mp
 import os
 import re
 import tempfile
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import boto3
 from botocore.exceptions import ClientError
-from spacepy.pycdf import CDF
+
+# NB: spacepy is imported lazily (inside `upgrade_file`), never at module top.
+# `import spacepy` bootstraps a per-user config file ($SPACEPY/.spacepy/spacepy.rc)
+# via a non-atomic read-modify-write. Under the `spawn` pool every worker imports
+# the module fresh, and concurrent bootstraps race on that shared file -- one
+# worker's partial write is another's corrupt read, crashing with
+# `UnboundLocalError: nextsec` -> BrokenProcessPool. Deferring the import lets
+# `_init_worker` point each worker at its own $SPACEPY dir first, so there is no
+# shared config file to race on.
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -35,6 +45,11 @@ def upgrade_file(
 
     new_name = make_new_file_name(original_file.name, major)
     out_path = Path(working_dir) / new_name
+
+    # Lazy import: see the note at the top of this module. In the pool this runs
+    # after `_init_worker` has isolated $SPACEPY; standalone/sequential callers
+    # just import it here in-process (no concurrency, no race).
+    from spacepy.pycdf import CDF
 
     with CDF(str(out_path), masterpath=str(original_file)) as cdf:
         # `Data_version` is stored without the leading `v`.
@@ -70,6 +85,44 @@ def list_keys(bucket: str, prefix: str) -> list[str]:
     return keys
 
 
+# --- worker pool -----------------------------------------------------------
+# Per-process state. We deliberately do NOT pickle a boto3 client (or anything
+# holding native/OpenSSL handles) across the process boundary: each worker
+# builds its own in `_init_worker`. Combined with the `spawn` start method (see
+# `rename`), this guarantees no half-initialized C-library state -- libcdf or
+# boto3's SSL sockets -- is inherited across a fork, which is the actual cause
+# of the intermittent "spacepy crashing under multiprocessing" segfaults.
+_WORKER: dict = {}
+
+
+def _init_worker(src_bucket: str, dst_bucket: str, major: int) -> None:
+    """Set up per-process state for the rename pool."""
+    # Give this worker its own spacepy config dir *before* spacepy is ever
+    # imported, so the workers never share (and race on) a single
+    # ~/.spacepy/spacepy.rc. spacepy reads $SPACEPY/.spacepy/spacepy.rc; a unique
+    # per-process dir makes the config bootstrap contention-free. Importing
+    # spacepy here (single-threaded within this worker) bootstraps it once.
+    spacepy_home = tempfile.mkdtemp(prefix=f"spacepy-{os.getpid()}-")
+    os.environ["SPACEPY"] = spacepy_home
+    import spacepy.pycdf  # noqa: F401  (force the isolated config bootstrap now)
+
+    _WORKER["client"] = boto3.client("s3")
+    _WORKER["src_bucket"] = src_bucket
+    _WORKER["dst_bucket"] = dst_bucket
+    _WORKER["major"] = major
+
+
+def _process_one_worker(task: tuple[str, str]) -> tuple[str, str, str | None]:
+    """Rename one object using this worker's own client (pool entry point)."""
+    return _process_one(
+        _WORKER["client"],
+        _WORKER["src_bucket"],
+        _WORKER["dst_bucket"],
+        task,
+        _WORKER["major"],
+    )
+
+
 def _process_one(
     client, src_bucket: str, dst_bucket: str, task: tuple[str, str], major: int
 ) -> tuple[str, str, str | None]:
@@ -102,6 +155,7 @@ def rename(
     prefix: str = "imap/",
     overwrite: bool = False,
     max_files: int = 0,
+    max_workers: int = 0,
     dry_run: bool = False,
     major: int = MAJOR_VERSION,
 ):
@@ -163,20 +217,42 @@ def rename(
         logger.info(f"Dry run: {len(tasks)} files would be renamed (nothing written)")
         return
 
-    # spacepy/pycdf misbehaves under multiprocessing, so process sequentially.
-    logger.info(f"Processing {len(tasks)} files")
-    client = boto3.client("s3")
+    # Each file downloads, rewrites and re-uploads a CDF (I/O heavy), so fan the
+    # work across processes. A `spawn` context gives every worker a clean
+    # interpreter that imports spacepy/boto3 fresh -- nothing native is inherited
+    # across a fork, which is what made spacepy segfault under multiprocessing.
+    workers = max_workers if max_workers > 0 else (os.cpu_count() or 1)
+    workers = max(1, min(workers, len(tasks)))
     ok = fail = 0
-    for task in tasks:
-        src_key, dst_key, err = _process_one(
-            client, src_bucket, dst_bucket, task, major
+
+    if workers == 1:
+        # Single worker: stay in-process, no pool overhead.
+        logger.info(f"Processing {len(tasks)} files sequentially")
+        client = boto3.client("s3")
+        results = (
+            _process_one(client, src_bucket, dst_bucket, task, major) for task in tasks
         )
-        if err:
-            fail += 1
-            logger.info(f"FAIL {src_key} -> {dst_key}: {err}")
-        else:
-            ok += 1
-            logger.info(f"OK   {src_key} -> {dst_key}")
+    else:
+        logger.info(f"Processing {len(tasks)} files across {workers} workers")
+        executor = ProcessPoolExecutor(
+            max_workers=workers,
+            mp_context=mp.get_context("spawn"),
+            initializer=_init_worker,
+            initargs=(src_bucket, dst_bucket, major),
+        )
+        results = executor.map(_process_one_worker, tasks)
+
+    try:
+        for src_key, dst_key, err in results:
+            if err:
+                fail += 1
+                logger.info(f"FAIL {src_key} -> {dst_key}: {err}")
+            else:
+                ok += 1
+                logger.info(f"OK   {src_key} -> {dst_key}")
+    finally:
+        if workers != 1:
+            executor.shutdown()
     logger.info(f"Done: {ok} succeeded, {fail} failed")
 
 
@@ -191,5 +267,6 @@ if __name__ == "__main__":
         prefix=os.getenv("SRC_PREFIX", "imap/"),
         overwrite=os.getenv("OVERWRITE", "0") == "1",
         max_files=int(os.getenv("MAX_FILES", "0")),
+        max_workers=int(os.getenv("MAX_WORKERS", "0")),
         dry_run=os.getenv("DRY_RUN", "0") == "1",
     )

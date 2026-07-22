@@ -27,10 +27,7 @@ MAX_FILES="${MAX_FILES:-1000}"
 DRY_RUN="${DRY_RUN:-1}"
 
 # Max workers, 0 for all available cores
-# 0 currently causes a crash in specepy similar to
-# https://github.com/spacepy/spacepy/issues/812
-# so setting this to 1.
-MAX_WORKERS=1
+MAX_WORKERS=0
 
 ROLE_NAME=s3-transition-runner
 PROFILE_NAME=s3-transition-runner
