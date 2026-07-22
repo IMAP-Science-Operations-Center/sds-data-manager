@@ -9,8 +9,9 @@ export SRC_BUCKET=sds-data-449431850278
 export DST_BUCKET=deprecated-data-archive-dev
 # Key prefix (relative to the bucket root) to read source files from.
 # Override from the environment to run several copies concurrently, one per
-# prefix, e.g.  SRC_PREFIX=imap/lo bash run
-export SRC_PREFIX="${SRC_PREFIX:-imap/mag}"
+# prefix, e.g.  SRC_PREFIX=imap/lo/ bash run
+# The prefix MUST end with "/"
+export SRC_PREFIX="${SRC_PREFIX:-imap/mag/}"
 
 # Set to 1 to drop into an interactive SSH shell on the instance; set to 0
 # for fully-automated mode that runs the rename script remotely.

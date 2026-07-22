@@ -109,6 +109,14 @@ def rename(
     if dst_bucket == src_bucket:
         raise ValueError("dst_bucket must differ from src_bucket")
 
+    # S3 prefixes match by raw string
+    # Let the caller explicitly choose "imap/hi/" vs "imap/hit/" to avoid confusion
+    if not prefix.endswith("/"):
+        raise ValueError(
+            f"prefix must end with '/' to keep shards disjoint (got {prefix!r}); "
+            f"did you mean {prefix + '/'!r}?"
+        )
+
     logger.info(f"Listing s3://{src_bucket}/{prefix} ...")
     src_keys = sorted(list_keys(src_bucket, prefix))
     logger.info(f"Found {len(src_keys)} source objects")

@@ -94,9 +94,9 @@ be overridden from the environment, so **do not edit `run` in place** for this â
 pass them on the command line instead:
 
 ```bash
-DRY_RUN=0 SRC_PREFIX=imap/lo   bash run     # terminal 1
-DRY_RUN=0 SRC_PREFIX=imap/mag  bash run     # terminal 2
-DRY_RUN=0 SRC_PREFIX=imap/swe  bash run     # terminal 3
+DRY_RUN=0 SRC_PREFIX=imap/lo/   bash run     # terminal 1
+DRY_RUN=0 SRC_PREFIX=imap/mag/  bash run     # terminal 2
+DRY_RUN=0 SRC_PREFIX=imap/swe/  bash run     # terminal 3
 ```
 
 Note the default is `DRY_RUN=1`, which only prints the `old -> new` mapping and
@@ -111,6 +111,7 @@ avoids a first-run creation race on those.
 
 Caveats:
 
+- `SRC_PREFIX` **must end with `/`.
 - Give every terminal a **different** `SRC_PREFIX`. Two runs with the same
   prefix resolve to the same instance name and will collide.
 - Each shard launches its own `m9g.48xlarge`, so N terminals = N instances
