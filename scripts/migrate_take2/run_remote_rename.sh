@@ -25,35 +25,6 @@ export TMPDIR="$HOME/tmp"
 mkdir -p "$TMPDIR"
 
 # ---------------------------------------------------------------------------
-# NASA CDF C library (required by spacepy.pycdf)
-# ---------------------------------------------------------------------------
-# spacepy talks to the NASA CDF C library, which has no pip wheel, so build it
-# once from source and expose it via the standard definitions.B env script.
-sudo dnf install -y git gcc gcc-gfortran make tar gzip >/dev/null
-
-# Bump CDF_VER if the URL below 404s (see spdf.gsfc.nasa.gov/pub/software/cdf).
-CDF_VER="${CDF_VER:-cdf39_1}"
-CDF_PREFIX="$HOME/cdf"
-if [ ! -e "$CDF_PREFIX/lib/libcdf.so" ]; then
-  echo "Building NASA CDF library ($CDF_VER) ..."
-  tmp_cdf="$(mktemp -d)"
-  curl -LsSf \
-    "https://spdf.gsfc.nasa.gov/pub/software/cdf/dist/${CDF_VER}/unix/${CDF_VER}-dist-cdf.tar.gz" \
-    -o "$tmp_cdf/cdf.tar.gz"
-  tar xzf "$tmp_cdf/cdf.tar.gz" -C "$tmp_cdf"
-  make -C "$tmp_cdf/${CDF_VER}-dist" OS=linux ENV=gnu CURSES=no SHARED=yes all
-  make -C "$tmp_cdf/${CDF_VER}-dist" INSTALLDIR="$CDF_PREFIX" install
-  rm -rf "$tmp_cdf"
-fi
-# definitions.B (Bourne-shell flavor) exports CDF_BASE/CDF_INC/CDF_LIB and adds
-# the library to LD_LIBRARY_PATH; spacepy finds libcdf via CDF_LIB. It appends
-# to LD_LIBRARY_PATH/MANPATH without first defining them, which trips `set -u`,
-# so relax nounset just for the source.
-set +u
-source "$CDF_PREFIX/bin/definitions.B"
-set -u
-
-# ---------------------------------------------------------------------------
 # uv + python deps
 # ---------------------------------------------------------------------------
 if ! command -v uv >/dev/null 2>&1; then
