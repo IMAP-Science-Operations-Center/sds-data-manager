@@ -19,11 +19,13 @@ class _FrozenDatetime(datetime.datetime):
 def test_add_idex_10_day_partitions():
     """Check that add_idex_10_day_partitions adds the correct partitions."""
     with instance_for_test() as instance:
+        # Mock existing partitions
         instance.add_dynamic_partitions(
             "idex_10_day_partitions",
             ["idex10_2025-09-27T00:00:00_to_2025-10-07T00:00:00"],
         )
         context = build_sensor_context(instance=instance)
+        # Trigger the sensor. This should add more partitions.
         sensor_result = custom_partitions.add_idex_10_day_partitions(context)
 
     new_partitions = sensor_result.dynamic_partitions_requests[0].partition_keys
@@ -38,11 +40,13 @@ def test_add_idex_10_day_partitions():
 def test_add_idex_30_day_partitions():
     """Check that add_idex_30_day_partitions adds the correct partitions."""
     with instance_for_test() as instance:
+        # Mock existing partitions
         instance.add_dynamic_partitions(
             "idex_30_day_partitions",
             ["idex30_2025-09-27T00:00:00_to_2025-10-07T00:00:00"],
         )
         context = build_sensor_context(instance=instance)
+        # Trigger the sensor. This should add more partitions.
         sensor_result = custom_partitions.add_idex_30_day_partitions(context)
 
     new_partitions = sensor_result.dynamic_partitions_requests[0].partition_keys
