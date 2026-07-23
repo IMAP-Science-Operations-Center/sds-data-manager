@@ -219,11 +219,8 @@ class IMAPJobHandler:
                 dependency_inputs = self.get_dependencies(
                     session, context, target_start, target_end
                 )
-
-                if not dependency_inputs:
-                    return SkipReason("Dependency inputs were missing.")
-
             except MissingDependenciesError as e:
+                context.log.info(f"Skipping job: {e}")
                 return SkipReason(str(e))
 
             context.log.info(
@@ -840,8 +837,10 @@ class IMAPJobHandler:
         )
         if not spice_files and self.job_config.spice_inputs:
             # If no SPICE files are returned, but there are SPICE inputs, raise failure
-            raise MissingDependenciesError(f"""Missing SPICE files between
-                                           {target_start} and {target_end}""")
+            raise MissingDependenciesError(
+                f"Missing SPICE files ({', '.join(self.job_config.spice_types)}) "
+                f"between {target_start} and {target_end}"
+            )
 
         return spice_files
 
@@ -879,9 +878,9 @@ class IMAPJobHandler:
                        Missing {dep_name} in range {target_start!s} to {target_end!s}"""
                 )
             if science_files:
-                pattern = re.compile(r"v(\d{3})\.cdf$")
+                pattern = re.compile(r"v(\d{3})\.(cdf|pkts)$")
                 renamed_science_files = [
-                    pattern.sub(r"v001.0\1.cdf", file) for file in science_files
+                    pattern.sub(r"v001.0\1.\2", file) for file in science_files
                 ]
                 science_processing_inputs.append(
                     processing_input.ScienceInput(*list(set(renamed_science_files)))
@@ -890,8 +889,8 @@ class IMAPJobHandler:
         if not science_processing_inputs:
             # Return right away if we have zero science files.
             raise MissingDependenciesError(
-                "No science files were discovered. "
-                "All jobs require at least one science file."
+                f"No science files were discovered between {target_start} and "
+                f"{target_end}. All jobs require at least one science file."
             )
 
         return science_processing_inputs
