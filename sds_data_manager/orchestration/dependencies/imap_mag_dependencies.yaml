@@ -277,6 +277,18 @@
       data_type: l1d
       descriptor: burst-rtn
       major_version: 1
+    - source: mag
+      data_type: l1d
+      descriptor: spin-offsets
+      major_version: 1
+    - source: mag
+      data_type: l1d
+      descriptor: gradiometry-offsets-norm
+      major_version: 1
+    - source: mag
+      data_type: l1d
+      descriptor: gradiometry-offsets-burst
+      major_version: 1
 
 (l2, burst-srf):
   partition: daily
