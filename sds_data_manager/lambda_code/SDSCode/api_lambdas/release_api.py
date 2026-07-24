@@ -355,10 +355,10 @@ def release_type_handler(query_params):
         # because library will make lambda layer exceed its size limit.
         all_lines = manifest_path.read_text(encoding="utf-8").splitlines()
         for line in all_lines:
-            if parse_manifest_line(line) is None:
+            if (parsed_line := parse_manifest_line(line)) is None:
                 continue  # Skip comment, empty, or header lines
 
-            _, data_type, _, release_flag = parse_manifest_line(line)
+            _, data_type, _, release_flag = parsed_line
             # If row is to exclude, skip release process.
             if not release_flag:
                 continue
