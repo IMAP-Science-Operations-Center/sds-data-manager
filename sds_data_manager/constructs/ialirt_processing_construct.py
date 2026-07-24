@@ -107,6 +107,10 @@ class IalirtProcessing(Construct):
                 "params": ["kiel"],
                 "ports": [7564],
             },
+            "noaa": {
+                "params": ["noaa"],
+                "ports": [7565],
+            },
             "uksa": {
                 "params": ["uksa"],
                 "ports": [7566, 7567],
