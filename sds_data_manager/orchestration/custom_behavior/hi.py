@@ -95,9 +95,9 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
                     # files are named consistently with the base science
                     # inputs. This implementation will leave filenames with the
                     # new versioning convention unaltered.
-                    pattern = re.compile(r"v(\d{3})\.cdf$")
+                    pattern = re.compile(r"v(\d{3})\.(cdf|pkts)$")
                     renamed_neighbor_files = [
-                        pattern.sub(r"v001.0\1.cdf", file) for file in neighbor_files
+                        pattern.sub(r"v001.0\1.\2", file) for file in neighbor_files
                     ]
                     context.log.info(
                         "Hi Goodtimes adding neighboring L1B DE files: "
