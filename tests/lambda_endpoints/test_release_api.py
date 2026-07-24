@@ -308,7 +308,7 @@ def test_ancillary_release_with_wildcard(mock_download_file, session, tmp_path):
         start_date="20260505",
     )
 
-    file_content = """swe, ancillary, *, true"""
+    file_content = """swe, ancillary, all, true"""
     manifest_path = tmp_path / "imap_swe_release_20260401_20260430_v001.txt"
     manifest_path.write_text(file_content, encoding="utf-8")
     mock_download_file.return_value = manifest_path
@@ -400,7 +400,7 @@ def test_latest_science_release(session):
         session,
         start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
         end_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-        line="hi, l1a, *, true",
+        line="hi, l1a, all, true",
     )
     file_paths = sorted([obj.file_path for obj in results])
     assert file_paths == [
@@ -441,7 +441,7 @@ def test_latest_science_release(session):
         session,
         start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
         end_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-        line="swapi,*,*,true",
+        line="swapi,all,all,true",
     )
     file_paths = sorted([obj.file_path for obj in latest_non_repoint_files])
     assert file_paths == [

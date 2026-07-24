@@ -154,10 +154,10 @@ def latest_ancillary_release(
     ancillary_table = models.AncillaryFiles
     instrument, data_type, descriptor, _ = parse_manifest_line(line)
     # Scenarios:
-    # hit, *, *, true, -- release all ancillary files
-    # hit, ancillary, *, true -- release all ancillary descriptors
+    # hit, all, all, true, -- release all ancillary files
+    # hit, ancillary, all, true -- release all ancillary descriptors
     # hit, ancillary, x-descriptor, true - release only specified
-    if data_type == "*" or descriptor == "*":
+    if data_type == "all" or descriptor == "all":
         filters = [ancillary_table.instrument == instrument]
     else:
         filters = [
@@ -262,15 +262,15 @@ def latest_science_release(session, start_date, end_date, line):
     instrument, data_type, descriptor, _ = parse_manifest_line(line)
 
     # Construct query logic based on different scenarios:
-    # 1. hit, *, *, true -- release all data levels
-    if data_type == "*":
+    # 1. hit, all, all, true -- release all data levels
+    if data_type == "all":
         query = [
             sci.instrument == instrument,
             sci.start_date >= start_date,
             sci.start_date <= end_date,
         ]
-    # 2. hit, l1a, *, true -- release all descriptor for given level
-    elif descriptor == "*":
+    # 2. hit, l1a, all, true -- release all descriptor for given level
+    elif descriptor == "all":
         query = [
             sci.instrument == instrument,
             sci.data_level == data_type,
@@ -363,10 +363,10 @@ def release_type_handler(query_params):
             if not release_flag:
                 continue
 
-            if data_type == "*":
+            if data_type == "all":
                 # Release all data for given instrument for the date
                 # range, including both ancillary and all data levels.
-                # Eg. hit, *, *, true
+                # Eg. hit, all, all, true
                 latest_science_release(
                     session=session, start_date=start_date, end_date=end_date, line=line
                 )
