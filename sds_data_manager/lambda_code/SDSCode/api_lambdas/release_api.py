@@ -61,27 +61,9 @@ def validate_query_params(event):
             ),
         }
 
-    if release_type == "release" and "release_number" not in query_params:
-        return {
-            "statusCode": 400,
-            "body": json.dumps(
-                "'release_number' query parameter is required when "
-                "'release_type' is 'release'. Please provide a release_number "
-                "indicating which release batch to apply. For example, "
-                "withhold files with 'release_number=1' will be included in "
-                "the first release batch, 'release_number=2' in the second, "
-                "and so on."
-            ),
-        }
-
     valid_parameters = [
-        "instrument",
-        "start_date",
-        "end_date",
         "release_type",
-        "exclude_file",
         "manifest_file",
-        "release_number",
     ]
 
     for param in query_params:
@@ -118,6 +100,13 @@ def parse_manifest_line(line: str):
         ``None`` if the line does not contain exactly four comma-separated
         fields.
     """
+    # Skip comment or empty lines
+    if line.startswith("#") or line.strip() == "":
+        return None
+    # Skip Header
+    if line.startswith("instrument,"):
+        return None
+
     parts = [item.strip() for item in line.split(",")]
     if len(parts) != 4:
         raise ValueError(
@@ -366,12 +355,8 @@ def release_type_handler(query_params):
         # because library will make lambda layer exceed its size limit.
         all_lines = manifest_path.read_text(encoding="utf-8").splitlines()
         for line in all_lines:
-            # Skip comment or empty lines
-            if line.startswith("#") or line.strip() == "":
-                continue
-            # Skip Header
-            if line.startswith("instrument,"):
-                continue
+            if parse_manifest_line(line) is None:
+                continue  # Skip comment, empty, or header lines
 
             _, data_type, _, release_flag = parse_manifest_line(line)
             # If row is to exclude, skip release process.

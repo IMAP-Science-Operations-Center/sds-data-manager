@@ -121,11 +121,7 @@ def test_science_release(mock_download_file, session, tmp_path):
     mock_download_file.return_value = manifest_path
 
     params = {
-        "instrument": "hit",
-        "start_date": "20250101",
-        "end_date": "20250131",
         "release_type": "release",
-        "release_number": "1",
         "manifest_file": "imap_hit_release_20250101_20250131_v001.txt",
     }
     result = release_api.lambda_handler(
@@ -256,11 +252,7 @@ def test_ancillary_release(mock_download_file, session, tmp_path):
     mock_download_file.return_value = manifest_path
 
     params = {
-        "instrument": "swe",
-        "start_date": "20260401",
-        "end_date": "20260430",
         "release_type": "release",
-        "release_number": "1",
         "manifest_file": "s3://dummy-bucket/imap_swe_release_20260401_20260430_v001.txt",
     }
     result = release_api.lambda_handler(event=_build_event(params), context={})
@@ -323,11 +315,7 @@ def test_ancillary_release_with_wildcard(mock_download_file, session, tmp_path):
 
     # No exclude file provided
     params = {
-        "instrument": "swe",
-        "start_date": "20260401",
-        "end_date": "20260430",
         "release_type": "release",
-        "release_number": "1",
         "manifest_file": "s3://dummy-bucket/imap_swe_release_20260401_20260430_v001.txt",
     }
     result = release_api.lambda_handler(event=_build_event(params), context={})
