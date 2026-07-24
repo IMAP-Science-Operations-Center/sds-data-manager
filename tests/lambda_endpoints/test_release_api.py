@@ -136,15 +136,14 @@ def test_science_release(mock_download_file, session, tmp_path):
     assert result["statusCode"] == 200
 
     rows = {r.file_path: r.released for r in session.query(models.ScienceFiles).all()}
-    print(rows)
     assert rows["imap/hit/l0/imap_hit_l0_hk_20250110_v001.0000.pkts"] is False, (
-        "Excluded in-range file should not be released"
-    )
-    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.0000.pkts"] is True, (
-        "Non-excluded in-range file should be released"
+        "HK descriptor file should remain unreleased"
     )
     assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v001.0000.pkts"] is False, (
-        "Out-of-range file must stay unreleased"
+        "HK descriptor file should remain unreleased"
+    )
+    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.0000.pkts"] is True, (
+        "Sci descriptor file should be released"
     )
 
 
@@ -350,8 +349,7 @@ def test_ancillary_release_with_wildcard(mock_download_file, session, tmp_path):
     ), "Out-of-range file must not be released"
 
 
-@patch("sds_data_manager.lambda_code.SDSCode.api_lambdas.release_api.download_file")
-def test_early_release(mock_download_file, session):
+def test_early_release():
     result = release_api.lambda_handler(
         event=_build_event(
             {
@@ -362,12 +360,11 @@ def test_early_release(mock_download_file, session):
         context={},
     )
 
-    assert result["statusCode"] == 200
+    assert result["statusCode"] == 501
     assert result["body"] == "Early release operation not supported yet."
 
 
-@patch("sds_data_manager.lambda_code.SDSCode.api_lambdas.release_api.download_file")
-def test_unrelease_all_files_in_date_range(mock_download_file, session):
+def test_unrelease_all_files_in_date_range():
     result = release_api.lambda_handler(
         event=_build_event(
             {
@@ -378,7 +375,7 @@ def test_unrelease_all_files_in_date_range(mock_download_file, session):
         context={},
     )
 
-    assert result["statusCode"] == 200
+    assert result["statusCode"] == 501
     assert result["body"] == "Unrelease operation not supported yet."
 
 
@@ -426,20 +423,21 @@ def test_latest_science_release(session):
 
     # Query non-repoint files
     files = [
-        ("imap_swapi_l1_sci_20260407_v002.0002.cdf", "20260407", 2, 2),
-        ("imap_swapi_l1_sci_20260407_v001.0002.cdf", "20260407", 1, 2),
-        ("imap_swapi_l1_sci_20260407_v001.0001.cdf", "20260407", 1, 1),
-        ("imap_swapi_l1_sci_20260408_v001.0001.cdf", "20260408", 1, 1),
-        ("imap_swapi_l1_sci_20260408_v001.0002.cdf", "20260408", 1, 2),
-        ("imap_swapi_l1a_hk_20260408_v001.0001.cdf", "20260408", 1, 1),
+        ("imap_swapi_l1_sci_20260407_v002.0002.cdf", "sci", "20260407", 2, 2),
+        ("imap_swapi_l1_sci_20260407_v001.0002.cdf", "sci", "20260407", 1, 2),
+        ("imap_swapi_l1_sci_20260407_v001.0001.cdf", "sci", "20260407", 1, 1),
+        ("imap_swapi_l1_sci_20260408_v001.0001.cdf", "sci", "20260408", 1, 1),
+        ("imap_swapi_l1_sci_20260408_v001.0002.cdf", "sci", "20260408", 1, 2),
+        # HK is used to see if it gets excluded properly in later step
+        ("imap_swapi_l1a_hk_20260408_v001.0001.cdf", "hk", "20260408", 1, 1),
     ]
-    for file_path, start_date, major_ver, minor_ver in files:
+    for file_path, descriptor, start_date, major_ver, minor_ver in files:
         session.add(
             models.ScienceFiles(
                 file_path=file_path,
                 instrument="swapi",
                 data_level="l1",
-                descriptor="sci",
+                descriptor=descriptor,
                 start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
                 repointing=None,
                 major_version=major_ver,
@@ -462,6 +460,8 @@ def test_latest_science_release(session):
         "imap_swapi_l1_sci_20260407_v002.0002.cdf",
     ], f"Expected only the latest non-repoint file, got: {file_paths}"
 
+    # In this release query, we only ask for latest sci files on April 8th,
+    # so the HK file should be excluded and should not be returned.
     latest_non_repoint_files = release_api.latest_science_release(
         session,
         start_date=datetime.datetime.strptime("20260408", "%Y%m%d"),

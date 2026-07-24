@@ -103,6 +103,31 @@ def validate_query_params(event):
     }
 
 
+def parse_manifest_line(line: str):
+    """Parse a release manifest line into parts.
+
+    Parameters
+    ----------
+    line : str
+        A single non-empty manifest line.
+
+    Returns
+    -------
+    tuple[str, str, str, bool] | None
+        Parsed ``(instrument, data_type, descriptor, release_flag)`` or
+        ``None`` if the line does not contain exactly four comma-separated
+        fields.
+    """
+    parts = [item.strip() for item in line.split(",")]
+    if len(parts) != 4:
+        raise ValueError(
+            f"Manifest line must contain exactly four comma-separated fields: {line}"
+        )
+
+    instrument, data_type, descriptor, release_flag = parts
+    return instrument, data_type, descriptor, release_flag.lower() == "true"
+
+
 def latest_ancillary_release(
     session,
     start_date: datetime.datetime,
@@ -125,8 +150,6 @@ def latest_ancillary_release(
     ----------
     session : orm session
         Database session.
-    instrument : str
-        Instrument name.
     start_date : datetime.datetime
         Start of query date range.
     end_date : datetime.datetime
@@ -136,12 +159,11 @@ def latest_ancillary_release(
 
     Returns
     -------
-    Query
-        A query of a single file_path column, for use as an `.in_()`
-        subquery so a large release stays a single UPDATE statement.
+    list
+        A list of the latest version ancillary files released.
     """
     ancillary_table = models.AncillaryFiles
-    instrument, data_type, descriptor, _ = (item.strip() for item in line.split(","))
+    instrument, data_type, descriptor, _ = parse_manifest_line(line)
     # Scenarios:
     # hit, *, *, true, -- release all ancillary files
     # hit, ancillary, *, true -- release all ancillary descriptors
@@ -229,9 +251,26 @@ def latest_ancillary_release(
 
 
 def latest_science_release(session, start_date, end_date, line):
-    """Set the released flag to True for latest-version science files."""
+    """Set the released flag to True for latest-version science files.
+
+    Parameters
+    ----------
+    session : orm session
+        Database session.
+    start_date : datetime.datetime
+        Start of query date range.
+    end_date : datetime.datetime
+        End of query date range.
+    line : str
+        Manifest line describing the science release selection.
+
+    Returns
+    -------
+    list
+        A list of the latest version science files released.
+    """
     sci = models.ScienceFiles.__table__.c
-    instrument, data_type, descriptor, _ = (item.strip() for item in line.split(","))
+    instrument, data_type, descriptor, _ = parse_manifest_line(line)
 
     # Construct query logic based on different scenarios:
     # 1. hit, *, *, true -- release all data levels
@@ -319,7 +358,7 @@ def release_type_handler(query_params):
     with db.Session() as session:
         manifest_path = download_file(manifest_file)
 
-        manifest_file_obj = generate_imap_file_path(manifest_path.name)
+        manifest_file_obj = generate_imap_file_path(manifest_file)
         start_date = datetime.datetime.strptime(manifest_file_obj.start_date, "%Y%m%d")
         end_date = datetime.datetime.strptime(manifest_file_obj.end_date, "%Y%m%d")
 
@@ -334,8 +373,7 @@ def release_type_handler(query_params):
             if line.startswith("instrument,"):
                 continue
 
-            _, data_type, _, release_flag = (item.strip() for item in line.split(","))
-            release_flag = release_flag == "true"
+            _, data_type, _, release_flag = parse_manifest_line(line)
             # If row is to exclude, skip release process.
             if not release_flag:
                 continue
@@ -360,18 +398,20 @@ def release_type_handler(query_params):
 
         return {
             "statusCode": 200,
-            "body": json.dumps("Successfully released "),
+            "body": json.dumps(
+                f"Successfully released data per specification in {manifest_file}"
+            ),
         }
 
 
 def early_release_type_handler(query_params):
     """Handle early-release requests using manifest file."""
-    return {"statusCode": 200, "body": "Early release operation not supported yet."}
+    return {"statusCode": 501, "body": "Early release operation not supported yet."}
 
 
 def unrelease_type_handler(query_params):
     """Handle unrelease requests using manifest file."""
-    return {"statusCode": 200, "body": "Unrelease operation not supported yet."}
+    return {"statusCode": 501, "body": "Unrelease operation not supported yet."}
 
 
 def reprocess_type_handler(query_params):
@@ -380,7 +420,7 @@ def reprocess_type_handler(query_params):
     NOTE: This may not be needed. If not needed, remove support
     at imap-data-access before removing this.
     """
-    return {"statusCode": 200, "body": "Reprocess for data release not supported yet."}
+    return {"statusCode": 501, "body": "Reprocess for data release not supported yet."}
 
 
 def lambda_handler(event, context):
