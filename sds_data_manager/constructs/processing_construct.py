@@ -138,11 +138,15 @@ class ProcessingConstruct(Construct):
             # fargate_cpu_architecture=ecs.CpuArchitecture.ARM64,
             # fargate_operating_system_family=ecs.OperatingSystemFamily.LINUX
         )
-
+        # Mag l1d jobs need a longer timeout
+        if "mag" in job_name:
+            timeout = cdk.Duration.hours(4)
+        else:
+            timeout = cdk.Duration.hours(3)
         batch.EcsJobDefinition(
             self,
             f"ProcessingJob-{job_name}",
             job_definition_name=f"ProcessingJob-{job_name}",
             container=container_definition,
-            timeout=cdk.Duration.hours(3),
+            timeout=timeout,
         )
