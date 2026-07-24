@@ -380,6 +380,37 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       descriptor: l090-ena-o-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
 
+(l2, l090-enansnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs:
+    - *spice_basic
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: l1b
+      descriptor: de
+    - source: lo
+      data_type: l1b
+      descriptor: nhk
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
+    - source: lo
+      data_type: l1b
+      descriptor: goodtimes
+    - source: lo
+      data_type: l1b
+      descriptor: bgrates
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-enansnbs-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
 (l2, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
   inputs:
