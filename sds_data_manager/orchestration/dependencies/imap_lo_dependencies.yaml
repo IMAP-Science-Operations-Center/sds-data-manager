@@ -431,16 +431,15 @@ lo_esa_fit_factors: &lo_esa_fit_factors
   inputs:
     - *spice_l2
     - *lo_90_pset
-
-# ======== Level L3 ========
   outputs:
     - source: lo
       data_type: l2
       descriptor: t090-isn-o-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
 
+# ======== Level L3 ========
 (l3, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: lo
       data_type: l2
@@ -452,7 +451,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       major_version: 1
 
 (l3, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: lo
       data_type: l2
@@ -464,7 +463,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       major_version: 1
 
 (l3, l090-spx-h-hf-nsp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: lo
       data_type: l2
@@ -476,7 +475,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       major_version: 1
 
 (l3, l090-spx-h-hf-sp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: lo
       data_type: l3
@@ -488,7 +487,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       major_version: 1
 
 (l3, l090-spx-h-sf-nsp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: lo
       data_type: l2
@@ -500,7 +499,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       major_version: 1
 
 (l3, l090-spx-h-sf-sp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: lo
       data_type: l3
@@ -512,7 +511,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       major_version: 1
 
 (l3, l090-spxnbs-h-hk-nsp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: lo
       data_type: l2
@@ -524,7 +523,7 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       major_version: 1
 
 (l3, l090-spxnbs-h-sf-nsp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: lo
       data_type: l2

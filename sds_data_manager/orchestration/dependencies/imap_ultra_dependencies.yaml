@@ -1850,7 +1850,7 @@ de_inputs_90sensor: &de_inputs_90sensor
 # ======== L3 Products ========
 
 (l3, u45-spx-h-hf-sp-full-hae-2deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -1865,7 +1865,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-2deg-3mo):
-  partition: 3mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -1880,7 +1880,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-2deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -1895,7 +1895,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-4deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -1910,7 +1910,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-4deg-3mo):
-  partition: 3mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -1925,7 +1925,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-4deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -1940,7 +1940,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -1955,7 +1955,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-6deg-3mo):
-  partition: 3mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -1970,7 +1970,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-6deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -1985,7 +1985,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-2deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2000,7 +2000,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-2deg-3mo):
-  partition: 3mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2015,7 +2015,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-2deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2030,7 +2030,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-4deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2045,7 +2045,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-4deg-3mo):
-  partition: 3mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2060,7 +2060,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-4deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2075,7 +2075,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2090,7 +2090,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-6deg-3mo):
-  partition: 3mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2105,7 +2105,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-6deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2120,7 +2120,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-2deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2135,7 +2135,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-2deg-3mo):
-  partition: 3mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2150,7 +2150,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-2deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2165,7 +2165,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-4deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2180,7 +2180,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-4deg-3mo):
-  partition: 3mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2195,7 +2195,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-4deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2210,7 +2210,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2225,7 +2225,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-6deg-3mo):
-  partition: 3mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3
@@ -2240,7 +2240,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-6deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: ultra
       data_type: l3

@@ -908,16 +908,15 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - *spice_l2
     - *ancillary_90sensor_l2
     - *sensor90_l1c_pset
-
-# L3 Products - 45sensor
   outputs:
     - source: hi
       data_type: l2
       descriptor: h90-ena-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
 
+# L3 Products - 45sensor
 (l3, h45-spx-h-hf-sp-anti-hae-4deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -929,7 +928,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h45-spx-h-hf-sp-anti-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -941,7 +940,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h45-spx-h-hf-sp-full-hae-4deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -953,7 +952,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h45-spx-h-hf-sp-full-hae-6deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -965,7 +964,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h45-spx-h-hf-sp-ram-hae-4deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -977,21 +976,20 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h45-spx-h-hf-sp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-hf-sp-ram-hae-6deg-1yr
-
-# L3 Products - Spectral Index - 90sensor
   outputs:
     - source: hi
       data_type: l3
       descriptor: h45-spx-h-hf-sp-ram-hae-6deg-1yr
       major_version: 1
 
+# L3 Products - Spectral Index - 90sensor
 (l3, h90-spx-h-hf-sp-anti-hae-4deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -1003,7 +1001,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h90-spx-h-hf-sp-anti-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -1015,7 +1013,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h90-spx-h-hf-sp-full-hae-4deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -1027,7 +1025,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h90-spx-h-hf-sp-full-hae-6deg-6mo):
-  partition: 6mo
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -1039,7 +1037,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h90-spx-h-hf-sp-ram-hae-4deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -1051,21 +1049,20 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, h90-spx-h-hf-sp-ram-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-hf-sp-ram-hae-6deg-1yr
-
-# L3 products - hic
   outputs:
     - source: hi
       data_type: l3
       descriptor: h90-spx-h-hf-sp-ram-hae-6deg-1yr
       major_version: 1
 
+# L3 products - hic
 (l3, hic-spx-h-hf-sp-full-hae-4deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
@@ -1077,7 +1074,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
       major_version: 1
 
 (l3, hic-spx-h-hf-sp-full-hae-6deg-1yr):
-  partition: 1yr
+  partition: daily
   inputs:
     - source: hi
       data_type: l3
