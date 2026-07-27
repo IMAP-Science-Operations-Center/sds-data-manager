@@ -236,6 +236,7 @@ def latest_ancillary_release(
         {models.AncillaryFiles.released: True},
         synchronize_session=False,
     )
+    logger.info(f"Released {len(release_rows)} ancillary files")
     return release_rows
 
 
@@ -300,6 +301,7 @@ def latest_science_release(session, start_date, end_date, line):
         {models.ScienceFiles.released: True},
         synchronize_session=False,
     )
+    logger.info(f"Released {len(release_rows)} science files")
     return release_rows
 
 
@@ -362,7 +364,7 @@ def release_type_handler(query_params):
             # If row is to exclude, skip release process.
             if not release_flag:
                 continue
-
+            logger.info(f"Releasing files for line: {line}")
             if data_type == "all":
                 # Release all data for given instrument for the date
                 # range, including both ancillary and all data levels.
@@ -374,7 +376,6 @@ def release_type_handler(query_params):
             elif data_type == "ancillary":
                 latest_ancillary_release(session, start_date, end_date, line)
             else:
-                logger.info(f"Releasing science files for line: {line}")
                 latest_science_release(
                     session=session, start_date=start_date, end_date=end_date, line=line
                 )
