@@ -1,37 +1,49 @@
 #!/bin/bash
 set -euo pipefail
 
-export AWS_PROFILE=default
+export AWS_PROFILE=imap-dev
 export AWS_DEFAULT_REGION=us-west-2
-export AWS_ACCOUNT=593025701104
-export AWS_BUCKET=sds-data-$AWS_ACCOUNT
-export SECRET_NAME=sdp-database-cred
+
+# Source (read) and destination (write) S3 buckets for the rename.
+export SRC_BUCKET=sds-data-449431850278
+export DST_BUCKET=deprecated-data-archive-dev
+# Key prefix (relative to the bucket root) to read source files from.
+# Override from the environment to run several copies concurrently, one per
+# prefix, e.g.  SRC_PREFIX=imap/lo/ bash run
+# The prefix MUST end with "/"
+export SRC_PREFIX="${SRC_PREFIX:-imap/mag/}"
 
 # Set to 1 to drop into an interactive SSH shell on the instance; set to 0
-# for fully-automated mode that runs the migration script remotely.
+# for fully-automated mode that runs the rename script remotely.
 INTERACTIVE=0
 
-# Passed through to migrate.py. Set to 1 to copy files on S3, and/or to 1 to
-# modify the DB rows. Run in stages - do not enable both at once.
-COPY_FILES=1
-MODIFY_ROWS=0
-# Force overwriting of target cdf/pkts file(s) if they exist?
+# Passed through to rename.py. MAX_FILES and DRY_RUN can be overridden from the
+# environment (like SRC_PREFIX), e.g.  DRY_RUN=0 MAX_FILES=500 bash run
+# Force overwriting of target file(s) if they already exist in DST_BUCKET?
 OVERWRITE=0
-# Max cdf/pkts files to process in this batch (0 for all)
-MAX_FILES=0
+# Max files to process in this batch (0 for all).
+MAX_FILES="${MAX_FILES:-1000}"
+# List the planned renames without writing anything?
+DRY_RUN="${DRY_RUN:-1}"
+
+# Max workers, 0 for all available cores
+MAX_WORKERS=0
 
 ROLE_NAME=s3-transition-runner
 PROFILE_NAME=s3-transition-runner
 KEY_NAME=s3-transition-key
 KEY_FILE=s3-transition-key.pem
-INSTANCE_TAG=s3-transition
 
-# Function to tear down the instance (and the SG rule) on exit
+# Derive a unique, tag-safe instance name from SRC_PREFIX so that multiple
+# copies of this script (one per prefix) each get their own instance, their
+# own $HOME on that instance, and a teardown that only kills their own box.
+# The IAM role/profile, key pair, and security group above are intentionally
+# NOT parametrized - they are shared and only ever created-if-missing.
+PREFIX_SLUG=$(echo "$SRC_PREFIX" | tr -c 'A-Za-z0-9' '-' | sed 's/^-*//; s/-*$//')
+INSTANCE_TAG=s3-transition-$PREFIX_SLUG
+
+# Function to tear down the instance on exit
 cleanup() {
-  if [ -n "${RDS_SG:-}" ] && [ -n "${EC2_IP:-}" ]; then
-    aws ec2 revoke-security-group-ingress --group-id "$RDS_SG" \
-      --protocol tcp --port 5432 --cidr "$EC2_IP/32" 2>/dev/null || true
-  fi
   if [ -n "${IID:-}" ]; then
     aws ec2 terminate-instances --instance-ids "$IID"
   fi
@@ -42,10 +54,10 @@ if ! aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
   aws iam create-role --role-name "$ROLE_NAME" --assume-role-policy-document file://ec2-trust.json
 fi
 
-# Render the permissions policy template, substituting the account/bucket/region
-# from the variables above so they are not hardcoded in ec2-perms.json.
+# Render the permissions policy template, substituting the source/destination
+# buckets from the variables above so they are not hardcoded in ec2-perms.json.
 PERMS_FILE=$(mktemp)
-envsubst '$AWS_BUCKET $AWS_ACCOUNT $AWS_DEFAULT_REGION' < ec2-perms.json > "$PERMS_FILE"
+envsubst '$SRC_BUCKET $DST_BUCKET' < ec2-perms.json > "$PERMS_FILE"
 aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name s3-transition-perms --policy-document "file://$PERMS_FILE"
 rm -f "$PERMS_FILE"
 
@@ -154,15 +166,6 @@ EC2_IP=$(aws ec2 describe-instances --instance-ids "$IID" \
   --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 echo "$EC2_IP"
 
-# Find the RDS security group id
-RDS_SG=$(aws ec2 describe-security-groups \
-    --filters Name=group-name,Values='SDCStack-RdsSecurityGroup*' \
-    --query 'SecurityGroups[0].GroupId' --output text)
-
-# Authorize ingress (ignore error if the rule already exists).
-aws ec2 authorize-security-group-ingress --group-id "$RDS_SG" \
-  --protocol tcp --port 5432 --cidr "$EC2_IP/32" 2>/dev/null || true
-
 # Ephemeral instances reuse public IPs, so skip host-key checking to avoid
 # "REMOTE HOST IDENTIFICATION HAS CHANGED" failures on re-runs.
 SSH_OPTS=(-i "$KEY_FILE"
@@ -189,18 +192,18 @@ if [ "$ssh_ready" != 1 ]; then
   exit 1
 fi
 
-# Copy the migration scripts up to the instance.
-scp "${SSH_OPTS[@]}" run_remote.sh migrate.py ec2-user@"$EC2_IP":~/
+# Copy the rename scripts up to the instance.
+scp "${SSH_OPTS[@]}" run_remote_rename.sh rename.py ec2-user@"$EC2_IP":~/
 
 if [ "${INTERACTIVE:-0}" = 1 ]; then
   echo "Interactive mode: opening a shell on $EC2_IP (instance is torn down on exit)."
-  echo "  Run the migration manually with: bash ~/run_remote.sh"
+  echo "  Run the rename manually with: bash ~/run_remote_rename.sh"
   ssh "${SSH_OPTS[@]}" ec2-user@"$EC2_IP"
   exit 0
 fi
 
-# Run the transition script on the instance.
+# Run the rename script on the instance.
 ssh "${SSH_OPTS[@]}" ec2-user@"$EC2_IP" \
-  "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION S3_BUCKET=$AWS_BUCKET SECRET_NAME=$SECRET_NAME COPY_FILES=$COPY_FILES MODIFY_ROWS=$MODIFY_ROWS OVERWRITE=$OVERWRITE MAX_FILES=$MAX_FILES bash ~/run_remote.sh"
+  "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION SRC_BUCKET=$SRC_BUCKET DST_BUCKET=$DST_BUCKET SRC_PREFIX=$SRC_PREFIX OVERWRITE=$OVERWRITE MAX_FILES=$MAX_FILES DRY_RUN=$DRY_RUN bash ~/run_remote_rename.sh"
 
 # Teardown happens in cleanup() via the EXIT trap.
