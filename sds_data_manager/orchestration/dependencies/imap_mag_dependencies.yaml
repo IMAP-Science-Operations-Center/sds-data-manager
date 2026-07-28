@@ -134,6 +134,10 @@
       descriptor: norm-mago
       major_version: 1
 
+# custom_behavior/mag.py also delivers the previous day's L1C to this job
+# (MAG SDC Data Validation 4.3.3 time inheritance; imap_processing issue
+# 2925). It is not declared as an input here because that would put a
+# self-cycle in the Dagster asset graph.
 (l1c, norm-magi):
   partition: daily
   inputs:
@@ -141,19 +145,6 @@
       data_type: l1b
       descriptor: norm-magi
       required: false
-      # Also pull the previous day's normal-mode L1B so L1C can continue the
-      # previous day's timeline across the day boundary when the current day
-      # opens with a gap (MAG SDC Data Validation 4.3.3 time inheritance;
-      # imap_processing issue 2925). [past, future] days (past is negative);
-      # the next day is not needed.
-      # NOTE: do not merge yet - the orchestration does not currently apply
-      # date_range when selecting input files (needs custom_behavior support,
-      # like hi.py), and the trigger sensor's range parser does not handle
-      # negative values like "-1d". ALSO superseded: per MAG review the
-      # delivered input must be the previous day's L1C, not norm L1B
-      # (imap_processing PR 3323); this entry is a placeholder until the
-      # orchestration design lands.
-      date_range: ["-1d", "0d"]
     - source: mag
       data_type: l1b
       descriptor: burst-magi
@@ -172,6 +163,10 @@
       descriptor: norm-magi
       major_version: 1
 
+# custom_behavior/mag.py also delivers the previous day's L1C to this job
+# (MAG SDC Data Validation 4.3.3 time inheritance; imap_processing issue
+# 2925). It is not declared as an input here because that would put a
+# self-cycle in the Dagster asset graph.
 (l1c, norm-mago):
   partition: daily
   inputs:
@@ -179,19 +174,6 @@
       data_type: l1b
       descriptor: norm-mago
       required: false
-      # Also pull the previous day's normal-mode L1B so L1C can continue the
-      # previous day's timeline across the day boundary when the current day
-      # opens with a gap (MAG SDC Data Validation 4.3.3 time inheritance;
-      # imap_processing issue 2925). [past, future] days (past is negative);
-      # the next day is not needed.
-      # NOTE: do not merge yet - the orchestration does not currently apply
-      # date_range when selecting input files (needs custom_behavior support,
-      # like hi.py), and the trigger sensor's range parser does not handle
-      # negative values like "-1d". ALSO superseded: per MAG review the
-      # delivered input must be the previous day's L1C, not norm L1B
-      # (imap_processing PR 3323); this entry is a placeholder until the
-      # orchestration design lands.
-      date_range: ["-1d", "0d"]
     - source: mag
       data_type: l1b
       descriptor: burst-mago
