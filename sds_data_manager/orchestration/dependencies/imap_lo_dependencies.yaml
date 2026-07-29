@@ -51,6 +51,25 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     data_type: ancillary
     descriptor: esa-eta-fit-factors
 
+lo_l2_map_inputs: &lo_l2_map_inputs
+  - *spice_common
+  - *lo_esa_fit_factors
+  - source: spin
+    data_type: spin
+    descriptor: historical
+  - source: repoint
+    data_type: repoint
+    descriptor: historical
+  - source: lo
+    data_type: l1b
+    descriptor: histrates
+  - source: lo
+    data_type: l1b
+    descriptor: goodtimes
+  - source: lo
+    data_type: l1b
+    descriptor: bgrates
+
 # ======== Product-Specific Dependencies ========
 
 # ======== Level L1A ========
@@ -302,209 +321,370 @@ lo_esa_fit_factors: &lo_esa_fit_factors
 
 # ======== Level L2 ========
 
-(l2, all-maps-6mo):
+(l2, l075-enansnbs-h-sf-nsp-ram-hae-6deg-6mo):
   partition: 6mo
-  inputs:
-    - *spice_common
-    - *lo_esa_fit_factors
-    - source: spin
-      data_type: spin
-      descriptor: historical
-    - source: repoint
-      data_type: repoint
-      descriptor: historical
-    - source: lo
-      data_type: l1b
-      descriptor: histrates
-    - source: lo
-      data_type: l1b
-      descriptor: goodtimes
-    - source: lo
-      data_type: l1b
-      descriptor: bgrates
+  inputs: *lo_l2_map_inputs
   outputs:
     - source: lo
       data_type: l2
       descriptor: l075-enansnbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l075-enasnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l075-enasnbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l075-enasbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l075-enasbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l075-enasbs-h-hf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l075-enasbs-h-hf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l090-enansnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enansnbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l090-enasnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enasnbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l090-enasbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enasbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l090-enasbs-h-hf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enasbs-h-hf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l105-enansnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l105-enansnbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l105-enasnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l105-enasnbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l105-enasbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l105-enasbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l105-enasbs-h-hf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l105-enasbs-h-hf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l075-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l075-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l075-enasnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l075-enasnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l075-enasbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l075-enasbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l075-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l075-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l090-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l090-enasnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enasnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l090-enasbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enasbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l090-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l105-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l105-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l105-enasnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l105-enasnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l105-enasbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l105-enasbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, l105-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l105-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, ilo-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: ilo-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, ilo-enasnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: ilo-enasnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, ilo-enasbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: ilo-enasbsMsk-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
+
+(l2, ilo-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: ilo-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
       major_version: 1
 
-(l2, all-maps-1yr):
+(l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
-  inputs:
-    - *spice_common
-    - *lo_esa_fit_factors
-    - source: spin
-      data_type: spin
-      descriptor: historical
-    - source: repoint
-      data_type: repoint
-      descriptor: historical
-    - source: lo
-      data_type: l1b
-      descriptor: histrates
-    - source: lo
-      data_type: l1b
-      descriptor: goodtimes
-    - source: lo
-      data_type: l1b
-      descriptor: bgrates
+  inputs: *lo_l2_map_inputs
   outputs:
     - source: lo
       data_type: l2
       descriptor: l090-ena-h-hf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, l090-ena-h-hk-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-ena-h-hk-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, l090-ena-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-ena-h-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, l090-ena-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-ena-o-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, l090-enanbs-h-hk-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enanbs-h-hk-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enanbs-h-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, l090-enanbs-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enanbs-o-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, l090-enansnbs-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-enansnbs-h-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-isn-h-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, l090-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: l090-isn-o-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, t090-ena-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: t090-ena-h-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, t090-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: t090-isn-h-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
+
+(l2, t090-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
     - source: lo
       data_type: l2
       descriptor: t090-isn-o-sf-nsp-ram-hae-6deg-1yr
