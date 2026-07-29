@@ -176,10 +176,14 @@ def build_noaa_vpn_tgw(
         transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
     )
 
-    # If it's a private address (10.x, 172.16-31.x, 192.168.x),
-    # go back through the TGW instead of the public internet.
+    # If it's a private address (10.x, 172.16-31.x, 192.168.x) or the VPN
+    # tunnel's own link-local inside address (169.254.x), go back through
+    # the TGW instead of the public internet. The link-local range is
+    # needed because NAT Gateway restores the tunnel's own link-local
+    # inside IP as the destination when un-NATting return traffic,
+    # regardless of what prefix is advertised to AWS via BGP.
     def _add_return_routes(subnet_group: str, subnets: list) -> None:
-        for cidr in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"):
+        for cidr in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16"):
             cidr_suffix = cidr.split("/")[0].replace(".", "")
             for i, subnet in enumerate(subnets):
                 route = ec2.CfnRoute(
