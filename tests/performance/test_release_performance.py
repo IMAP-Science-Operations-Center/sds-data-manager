@@ -39,29 +39,17 @@ def unreleased_data():
     return rows
 
 
-def _event(params):
-    """Build a release API Gateway event with a non-read API key scope."""
-    return {
-        "queryStringParameters": params,
-        "requestContext": {
-            "authorizer": {"lambda": {"apiKey": "test-key", "scope": "full"}}
-        },
-    }
-
-
 def test_release_query_performance(time_constrained_sqlite_session, unreleased_data):
     """Releasing latest versions over ~2 years of data completes within budget."""
     session = time_constrained_sqlite_session
     session.bulk_insert_mappings(ScienceFiles, unreleased_data)
     session.commit()
 
-    params = {
-        "instrument": "hit",
-        "start_date": "20000101",
-        "end_date": "20991231",
-        "release_type": "release",
-        "release_number": "1",
-    }
-    response = release_api.lambda_handler(event=_event(params), context={})
+    released = release_api.latest_science_release(
+        session,
+        start_date=datetime.datetime(2000, 1, 1),
+        end_date=datetime.datetime(2099, 12, 31),
+        line="hit,l1a,count,true",
+    )
 
-    assert response["statusCode"] == 200
+    assert len(released) == DAYS

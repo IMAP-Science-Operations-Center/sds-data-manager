@@ -66,9 +66,13 @@ def lambda_handler(event, context):
                 return response
             try:
                 if param == "start_time":
-                    query = query.where(models.SPICEFiles.max_date_j2000 >= int(value))
+                    query = query.where(
+                        models.SPICEFiles.max_date_j2000 >= float(value)
+                    )
                 elif param == "end_time":
-                    query = query.where(models.SPICEFiles.min_date_j2000 <= int(value))
+                    query = query.where(
+                        models.SPICEFiles.min_date_j2000 <= float(value)
+                    )
                 elif param == "type":
                     query = query.where(models.SPICEFiles.kernel_type == value)
                 elif param == "file_name":

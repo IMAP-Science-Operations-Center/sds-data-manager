@@ -54,6 +54,15 @@ DEPENDENCY_DIRECTIONS = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direc
 # instrument's data. It's nice to have but not necessary.
 DEPENDENCY_RELATIONSHIPS = SqlEnum("SOFT", "HARD", name="dependency_relationship")
 
+# Columns identifying one logical CDF file; its rows differ only by version.
+FILE_ID_COLUMNS = (
+    "instrument",
+    "data_level",
+    "descriptor",
+    "start_date",
+    "repointing",
+)
+
 
 class Status(Enum):
     """Enum to store the status."""
@@ -152,16 +161,6 @@ class ProcessingJob(Base):
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "stopped_at": self.stopped_at.isoformat() if self.stopped_at else None,
         }
-
-
-# Columns identifying one logical CDF file; its rows differ only by version.
-FILE_ID_COLUMNS = (
-    "instrument",
-    "data_level",
-    "descriptor",
-    "start_date",
-    "repointing",
-)
 
 
 class ScienceFileBase:

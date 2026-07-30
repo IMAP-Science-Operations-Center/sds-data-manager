@@ -7,8 +7,7 @@ from enum import StrEnum
 
 from sqlalchemy import func, select
 
-from ..api_lambdas.utils import is_authenticated_user
-from ..api_lambdas.latest_version_query import build_latest_version_query
+from ..api_lambdas.utils import build_latest_version_query, is_authenticated_user
 from ..database import database as db
 from ..database import models
 

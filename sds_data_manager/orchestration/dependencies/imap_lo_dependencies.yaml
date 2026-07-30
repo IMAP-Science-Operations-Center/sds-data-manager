@@ -33,7 +33,6 @@ spice_common: &spice_common
   - source: attitude_history
     data_type: spice
     descriptor: historical
-    trigger_job: false
   - source: ephemeris_reconstructed
     data_type: spice
     descriptor: historical
@@ -122,6 +121,14 @@ lo_esa_fit_factors: &lo_esa_fit_factors
       major_version: 1
     - source: lo
       data_type: l1b
+      descriptor: nhk
+      major_version: 1
+    - source: lo
+      data_type: l1b
+      descriptor: shk
+      major_version: 1
+    - source: lo
+      data_type: l1b
       descriptor: instrument-status-summary
       major_version: 1
 
@@ -157,22 +164,6 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: monitorrates
-      major_version: 1
-    - source: lo
-      data_type: l1b
-      descriptor: nhk
-      major_version: 1
-    - source: lo
-      data_type: l1b
-      descriptor: shk
-      major_version: 1
-    - source: lo
-      data_type: l1b
-      descriptor: goodtimes
-      major_version: 1
-    - source: lo
-      data_type: l1b
-      descriptor: bgrates
       major_version: 1
 
 (l1b, badtimes):
@@ -269,14 +260,43 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: nhk
-
-# ======== Level L1C ========
   outputs:
     - source: lo
       data_type: l1b
       descriptor: prostar
       major_version: 1
 
+(l1b, goodtimes):
+  partition: repoint
+  inputs:
+    - *spice_basic
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
+    - source: lo
+      data_type: l1b
+      descriptor: de
+    - source: lo
+      data_type: l1b
+      descriptor: nhk
+    - source: lo
+      data_type: ancillary
+      descriptor: bg-rates-anti-ram-overrides
+      required: false
+  outputs:
+    - source: lo
+      data_type: l1b
+      descriptor: goodtimes
+      major_version: 1
+    - source: lo
+      data_type: l1b
+      descriptor: bgrates
+      major_version: 1
+
+# ======== Level L1C ========
 (l1c, pset):
   partition: repoint
   inputs:
@@ -300,12 +320,40 @@ lo_esa_fit_factors: &lo_esa_fit_factors
     - source: lo
       data_type: l1b
       descriptor: bgrates
-
-# ======== Level L2 ========
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
   outputs:
     - source: lo
       data_type: l1c
       descriptor: pset
+      major_version: 1
+
+# ======== Level L2 ========
+
+(l2, l090-enansnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  partition: 6mo
+  inputs:
+    - *spice_common
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
+    - source: lo
+      data_type: l1b
+      descriptor: goodtimes
+    - source: lo
+      data_type: l1b
+      descriptor: bgrates
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l090-enansnbs-h-sf-nsp-ram-hae-6deg-6mo
       major_version: 1
 
 (l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr):

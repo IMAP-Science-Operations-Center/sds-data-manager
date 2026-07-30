@@ -42,7 +42,6 @@ spice_l1b_de: &spice_l1b_de
   - source: attitude_history
     data_type: spice
     descriptor: historical
-    trigger_job: false
   - source: imap_frames
     data_type: spice
     descriptor: historical
@@ -58,7 +57,6 @@ spice_l1b_de: &spice_l1b_de
   - source: pointing_attitude
     data_type: spice
     descriptor: historical
-    trigger_job: false
   - source: repoint
     data_type: repoint
     descriptor: historical
@@ -91,7 +89,6 @@ spice_l1c_common: &spice_l1c_common
   - source: attitude_history
     data_type: spice
     descriptor: historical
-    trigger_job: false
   - source: imap_frames
     data_type: spice
     descriptor: historical
@@ -107,7 +104,6 @@ spice_l1c_common: &spice_l1c_common
   - source: pointing_attitude
     data_type: spice
     descriptor: historical
-    trigger_job: false
   - source: spin
     data_type: spin
     descriptor: historical
@@ -134,7 +130,6 @@ spice_l1c_spacecraft: &spice_l1c_spacecraft
   - source: pointing_attitude
     data_type: spice
     descriptor: historical
-    trigger_job: false
   - source: science_frames
     data_type: spice
     descriptor: historical
@@ -146,7 +141,6 @@ spice_l1c_spacecraft: &spice_l1c_spacecraft
   - source: attitude_history
     data_type: spice
     descriptor: historical
-    trigger_job: false
   - source: ephemeris_reconstructed
     data_type: spice
     descriptor: historical
@@ -173,7 +167,6 @@ spice_l2: &spice_l2
   - source: pointing_attitude
     data_type: spice
     descriptor: historical
-    trigger_job: false
   - source: imap_frames
     data_type: spice
     descriptor: historical
@@ -892,7 +885,6 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: pointing_attitude
       data_type: spice
       descriptor: historical
-      trigger_job: false
     - source: ephemeris_reconstructed
       data_type: spice
       descriptor: historical
@@ -1055,7 +1047,6 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: pointing_attitude
       data_type: spice
       descriptor: historical
-      trigger_job: false
     - source: ephemeris_reconstructed
       data_type: spice
       descriptor: historical
@@ -2264,54 +2255,71 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-2deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-2deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-4deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-4deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-6deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-6deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-2deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-2deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-4deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-4deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-6deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-6deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-2deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-2deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-4deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-4deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-6deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-6deg-1yr
@@ -2327,54 +2335,71 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-2deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-2deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-4deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-4deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-6deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-6deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-2deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-2deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-4deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-4deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-6deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-6deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-2deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-2deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-4deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-4deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-6deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-6deg-1yr
@@ -2390,27 +2415,35 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-2deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-4deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-6deg-3mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-2deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-4deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-6deg-6mo
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-2deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-4deg-1yr
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-6deg-1yr
