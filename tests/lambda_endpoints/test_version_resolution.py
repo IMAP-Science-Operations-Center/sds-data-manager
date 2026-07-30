@@ -1,5 +1,4 @@
-"""Tests for the latest version resolution query builder.
-"""
+"""Tests for the latest version resolution query builder."""
 
 import datetime
 import json
@@ -110,8 +109,7 @@ def test_repointing_defines_series_with_null_safe_grouping(session):
 
 
 def test_start_date_partitions_series_and_prefilters(session):
-    """Each start_date is its own series, and a date range drops whole days.
-    """
+    """Each start_date is its own series, and a date range drops whole days."""
     for start_date, major, minor in [
         ("20260407", 1, 1),
         ("20260407", 1, 2),

@@ -271,7 +271,7 @@ def test_invalid_query(session):
 
 
 def test_end_date_not_valid_for_spice(session):
-    """spice has no start_date, so the synthetic end_date param is rejected (400).
+    """Spice has no start_date, so the synthetic end_date param is rejected (400).
 
     Regression test: end_date used to be offered for every non-ancillary table
     and was implemented as a `start_date <=` filter, so ?table=spice&end_date=...
@@ -286,8 +286,7 @@ def test_end_date_not_valid_for_spice(session):
 
 
 def test_invalid_table_returns_400(session):
-    """An unknown `table` value returns a 400.
-    """
+    """An unknown `table` value returns a 400."""
     event = {"queryStringParameters": {"table": "not_a_real_table"}}
 
     returned_query = query_api.lambda_handler(event=event, context={})

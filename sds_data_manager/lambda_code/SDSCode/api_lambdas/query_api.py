@@ -33,8 +33,7 @@ _VALID_PARAMETERS = {
         *model.__table__.c.keys(),
         *(
             ["end_date"]
-            if "start_date" in model.__table__.c
-            and "end_date" not in model.__table__.c
+            if "start_date" in model.__table__.c and "end_date" not in model.__table__.c
             else []
         ),
         "ingestion_start_date",
