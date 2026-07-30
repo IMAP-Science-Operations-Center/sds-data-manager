@@ -69,7 +69,10 @@ def upgrade_file(
 
         if "Parents" in cdf.attrs:
             parents = [str(p) for p in cdf.attrs["Parents"]]
-            cdf.attrs["Parents"] = [make_new_file_name(p, major) for p in parents]
+            cdf.attrs["Parents"] = [
+                make_new_file_name(p, major) if _OLD_SCIENCE_RE.match(p) else p
+                for p in parents
+            ]
 
     return out_path
 
