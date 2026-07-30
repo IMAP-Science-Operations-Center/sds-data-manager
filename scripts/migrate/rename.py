@@ -33,6 +33,7 @@ _OLD_SCIENCE_RE = re.compile(
     r"^imap_[a-z0-9]+_l\d[a-z]?_[a-zA-Z0-9-]+_\d{8}(?:-repoint\d+)?_v\d{3}\.(cdf|pkts)$"
 )
 
+
 def make_new_file_name(name: str, major: int = MAJOR_VERSION) -> str:
     replacement = r"_v%03d.0\1.\2" % major
     return _OLD_SUFFIX_RE.sub(replacement, name)
