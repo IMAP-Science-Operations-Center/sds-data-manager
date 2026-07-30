@@ -32,7 +32,6 @@ hist_spice: &hist_spice
   - source: pointing_attitude
     data_type: spice
     descriptor: historical
-    trigger_job: false
 
 # ======== Product-specific dependencies ===========
 (l1a, all):

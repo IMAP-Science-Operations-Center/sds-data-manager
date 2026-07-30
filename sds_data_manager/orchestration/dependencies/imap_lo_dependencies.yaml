@@ -33,7 +33,6 @@ spice_common: &spice_common
   - source: attitude_history
     data_type: spice
     descriptor: historical
-    trigger_job: false
   - source: ephemeris_reconstructed
     data_type: spice
     descriptor: historical
