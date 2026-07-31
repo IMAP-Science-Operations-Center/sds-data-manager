@@ -15,6 +15,7 @@ import requests
 from botocore.exceptions import ClientError
 from dagster import (
     AssetExecutionContext,
+    AssetObservation,
     AssetOut,
     DagsterEventType,
     DagsterRunStatus,
@@ -24,7 +25,6 @@ from dagster import (
     RunRequest,
     RunsFilter,
     SensorEvaluationContext,
-    SkipReason,
     define_asset_job,
     multi_asset,
     sensor,
@@ -126,7 +126,7 @@ class IMAPJobHandler:
         job : ProcessingJobNode
             The job node to process.
         """
-        self.BATCH_JOB_TIMEOUT_SECONDS = 3600  # 1 hour, can be adjusted as needed.
+        self.BATCH_JOB_TIMEOUT_SECONDS = 18000  # 5 hours
         self.WAIT_TIME_AFTER_BATCH_SECONDS = (
             60  # time to wait after a batch job completes to search for files.
         )
@@ -221,7 +221,16 @@ class IMAPJobHandler:
                 )
             except MissingDependenciesError as e:
                 context.log.info(f"Skipping job: {e}")
-                return SkipReason(str(e))
+                for output in self.job_config.outputs:
+                    yield AssetObservation(
+                        asset_key=output.to_dagster_asset(),
+                        partition=context.partition_key,
+                        metadata={
+                            "status": "Skipped - Missing Dependencies",
+                            "missing_files": str(e),
+                        },
+                    )
+                return
 
             context.log.info(
                 f"Using the following dependencies: {dependency_inputs.serialize()}"
@@ -1292,35 +1301,6 @@ class IMAPJobHandler:
 
         if repoint is not None:
             batch_command.extend(["--repointing", f"repoint{repoint:05d}"])
-
-        # We will check here if this job has already failed with these
-        # exact dependencies
-        conditions = [
-            models.ProcessingJob.instrument == self.job_config.source,
-            models.ProcessingJob.data_level == self.job_config.data_type,
-            models.ProcessingJob.descriptor == self.job_config.descriptor,
-            models.ProcessingJob.dependency_hash == dep_hash,
-            models.ProcessingJob.start_date == start_date.date(),
-        ]
-        conditions.append(models.ProcessingJob.status.in_([models.Status.FAILED.value]))
-        if repoint is not None:
-            conditions.append(models.ProcessingJob.repointing == repoint)
-
-        already_failed_job = (
-            session.query(models.ProcessingJob)
-            .filter(*conditions)
-            .order_by(
-                models.ProcessingJob.major_version.desc(),
-                models.ProcessingJob.minor_version.desc(),
-            )
-            .first()
-        )
-        if already_failed_job:
-            return BatchJobSubmit(
-                status="failed",
-                message="""This exact job has been submitted previously,
-                           and has already failed. No need to run it again.""",
-            )
 
         # Get the necessary AWS information
         # NOTE: These are here for easier mocking in tests rather than at the
