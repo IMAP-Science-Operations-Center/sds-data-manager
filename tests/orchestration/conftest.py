@@ -139,9 +139,38 @@ def batch_client():
 
     # Mock describe_job_definitions to return a valid job definition
     mock_batch_client.describe_job_definitions.side_effect = get_job_definition
-    with (
-        patch.object(imap_job, "BATCH_CLIENT", mock_batch_client),
+
+    def return_job_info(
+        jobName,  # noqa: N803
+        jobQueue,  # noqa: N803
+        jobDefinition,  # noqa: N803
+        containerOverrides,  # noqa: N803
+        retryStrategy,  # noqa: N803
     ):
+        return {
+            "jobId": "mock-test-job-id-123",
+            "jobName": jobName,
+            "jobDefinition": jobDefinition,
+            "jobQueue": jobQueue,
+        }
+
+    # Mock submit_job to safely return a dummy job ID
+    mock_batch_client.submit_job.side_effect = return_job_info
+
+    # Mock describe_jobs
+    mock_batch_client.describe_jobs.return_value = {
+        "jobs": [
+            {
+                "jobId": "mock-test-job-id-123",
+                "status": "SUCCEEDED",
+                "stoppedAt": 1480460816500,
+                "container": {"logStreamName": "mock/log/stream/123"},
+                "jobDefinition": "testDef",
+            }
+        ]
+    }
+
+    with patch.object(imap_job, "BATCH_CLIENT", mock_batch_client):
         yield mock_batch_client
 
 

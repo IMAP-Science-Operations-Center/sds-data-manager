@@ -65,6 +65,9 @@ BATCH_JOB_RETRY_STRATEGY = {
 }
 # Create an sqs client
 SQS_CLIENT = boto3.client("sqs", region_name="us-west-2")
+# Create a client to access Cloudwatch
+LOGS_CLIENT = boto3.client("logs", region_name="us-west-2")
+LOG_GROUP_NAME = "/aws/batch/job"
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -113,6 +116,7 @@ class BatchJobSubmit:
     message: str
     # the ProcessingJob information as a dictionary.
     job: dict | None = None
+    response: dict | None = None
 
 
 class IMAPJobHandler:
@@ -249,14 +253,16 @@ class IMAPJobHandler:
 
             if submit_response.status == "submitted":
                 batch_status = self.wait_for_batch_job(
+                    context,
                     session,
-                    submit_response.job,
+                    submit_response.response,
                     batch_job_timeout,
                     time_to_wait_after_batch_query,
                 )
                 time.sleep(
                     time_to_wait_after_batch_query
                 )  # Give the indexer time to pick up the files
+
                 output_files = self.find_outputs(
                     context,
                     session,
@@ -270,13 +276,6 @@ class IMAPJobHandler:
                 if batch_status == models.Status.FAILED.value:
                     raise Failure(
                         description="Batch Job Failure. View logs for details."
-                    )
-                if batch_status is None:
-                    raise Failure(
-                        description=f"""Timeout Error.
-                                        Dagster has waited {batch_job_timeout}
-                                        seconds for the job to complete,
-                                        and it did not finish."""
                     )
             elif submit_response.status == "skipped":
                 # If we skipped the job, let us materialize any previous outputs
@@ -295,39 +294,99 @@ class IMAPJobHandler:
                 raise Failure(description=submit_response.message)
 
     def wait_for_batch_job(
-        self, session: db.Session, job_info: dict, timeout: int, wait_time: int
+        self,
+        context,
+        session: db.Session,
+        job_response: dict,
+        timeout: int,
+        wait_time: int,
     ):
         """Wait for a Batch job to complete, and return the status."""
+        final_status = models.Status.FAILED
         timeout_start = time.time()
         while time.time() < timeout_start + timeout:
-            job_completed = (
-                session.query(models.ProcessingJob)
-                .filter(
-                    models.ProcessingJob.instrument == job_info["instrument"],
-                    models.ProcessingJob.data_level == job_info["data_level"],
-                    models.ProcessingJob.descriptor == job_info["descriptor"],
-                    models.ProcessingJob.start_date == job_info["start_date"],
-                    models.ProcessingJob.repointing == job_info["repointing"],
-                    models.ProcessingJob.dependency_hash == job_info["dependency_hash"],
-                    models.ProcessingJob.major_version == job_info["major_version"],
-                    models.ProcessingJob.minor_version == job_info["minor_version"],
-                    models.ProcessingJob.status.in_(
-                        [models.Status.FAILED.value, models.Status.SUCCEEDED.value]
-                    ),
-                )
-                .order_by(
-                    models.ProcessingJob.major_version.desc(),
-                    models.ProcessingJob.minor_version.desc(),
-                )
-                .first()
-            )
-            if not job_completed:
-                time.sleep(wait_time)
+            # We injected our table ID into the job name
+            job_database_id = job_response["jobName"].split("-")[-1]
+            describe_response = BATCH_CLIENT.describe_jobs(jobs=[job_response["jobId"]])
+            if not describe_response.get("jobs"):
+                context.log.info("Job not found. It may have been deleted.")
+                break
+            job_info = describe_response["jobs"][0]
+            if job_info["status"] == "SUCCEEDED":
+                final_status = models.Status.SUCCEEDED
+                break
+            elif job_info["status"] == "FAILED":
+                break
             else:
-                return job_completed.status.name
+                time.sleep(wait_time)
+                continue
 
-        # If we time out, return nothing
-        return
+        # Print out some logs
+        container_info = job_info.get("container", {})
+        log_stream_name = container_info.get("logStreamName")
+        if log_stream_name:
+            context.log.info(
+                f"\nFetching the last 100 lines from log stream: {log_stream_name}"
+            )
+            try:
+                # Fetch the latest 100 log events
+                log_response = LOGS_CLIENT.get_log_events(
+                    logGroupName=LOG_GROUP_NAME,
+                    logStreamName=log_stream_name,
+                    limit=100,
+                    startFromHead=False,
+                )
+
+                events = log_response.get("events", [])
+
+                if not events:
+                    context.log.info("No logs found in the stream.")
+                else:
+                    context.log.info("-" * 40)
+                    for event in events:
+                        context.log.info(event["message"])
+                    context.log.info("-" * 40)
+
+            except Exception as e:
+                context.log.info(f"Failed to fetch logs: {e}")
+        else:
+            context.log.info(
+                "No logStreamName found. "
+                "The job may have failed before the container could start."
+            )
+
+        # Gather information about start/stop timing
+        started_at_timestamp = job_info.get("startedAt", job_info.get("createdAt"))
+        stopped_at_timestamp = job_info.get("stoppedAt")
+        started_at = (
+            datetime.datetime.fromtimestamp(
+                started_at_timestamp / 1000, tz=datetime.timezone.utc
+            )
+            if started_at_timestamp is not None
+            else None
+        )
+        stopped_at = (
+            datetime.datetime.fromtimestamp(
+                stopped_at_timestamp / 1000, tz=datetime.timezone.utc
+            )
+            if stopped_at_timestamp is not None
+            else None
+        )
+
+        # Fetch the row in the database
+        job = session.get(models.ProcessingJob, job_database_id)
+
+        # Make updates to the database table
+        job.status = final_status
+        job.job_definition = job_info["jobDefinition"]
+        job.job_log_stream_id = log_stream_name
+        job.container_image = container_info.get("image", "")
+        job.started_at = started_at
+        job.stopped_at = stopped_at
+        session.commit()
+
+        # Return either Success or Failure
+        return final_status
 
     def find_outputs(
         self,
@@ -1378,7 +1437,7 @@ class IMAPJobHandler:
         )
         job_queue = "ProcessingJobQueue"
 
-        BATCH_CLIENT.submit_job(
+        response = BATCH_CLIENT.submit_job(
             jobName=job_name,
             jobQueue=job_queue,
             jobDefinition=job_definition,
@@ -1387,11 +1446,13 @@ class IMAPJobHandler:
             },
             retryStrategy=BATCH_JOB_RETRY_STRATEGY,
         )
+
         logger.info(f"Submitted job {job_name} with this command: {batch_command}")
         return BatchJobSubmit(
             status="submitted",
             message="Job submitted successfully.",
             job=processing_job.to_dict(),
+            response=response,
         )
 
     def upload_dependency_file(
