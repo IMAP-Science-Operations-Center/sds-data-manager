@@ -93,7 +93,7 @@ class IalirtProcessing(Construct):
         partner_config = {
             "lasp": {  # used for testing only
                 "params": ["lasp"],
-                "ports": [7526, 7563, 7564, 7565, 7566, 7567, 7568],
+                "ports": [7526, 7563, 7564, 7565, 7566, 7567, 7568, 7569],
             },
             "bluenet": {  # tlm relay
                 "params": ["bluenet"],
