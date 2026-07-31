@@ -119,6 +119,10 @@ class IalirtProcessing(Construct):
                 "params": ["sansa-1", "sansa-2"],
                 "ports": [7568],
             },
+            "mopra": {
+                "params": ["mopra"],
+                "ports": [7569],
+            },
         }
 
         for partner, config in partner_config.items():
