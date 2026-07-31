@@ -231,7 +231,7 @@ class IMAPJobHandler:
                             "missing_files": str(e),
                         },
                     )
-                return SkipReason(str(e))
+                return
 
             context.log.info(
                 f"Using the following dependencies: {dependency_inputs.serialize()}"
