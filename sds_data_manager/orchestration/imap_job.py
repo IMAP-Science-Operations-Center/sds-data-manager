@@ -25,7 +25,6 @@ from dagster import (
     RunRequest,
     RunsFilter,
     SensorEvaluationContext,
-    SkipReason,
     define_asset_job,
     multi_asset,
     sensor,
