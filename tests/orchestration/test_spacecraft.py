@@ -14,6 +14,8 @@ import datetime
 import imap_data_access
 import pytest
 from dagster import (
+    AssetObservation,
+    Failure,
     build_asset_context,
     build_sensor_context,
 )
@@ -135,10 +137,10 @@ def test_spacecraft_l1a_no_spice(mock_db_session, ephemeral_instance):
         )
     )
 
-    # Verify nothing has happened still, because SPICE is still missing.
+    # Verify that we have only returned an asset observation
     yielded_files = list(spacecraft_l1a_job.run_job(context, 1, 1))
-    assert len(yielded_files) == 0
     assert len(mock_db_session.query(models.ProcessingJob).all()) == 0
+    assert isinstance(yielded_files[0], AssetObservation)
 
 
 def test_spacecraft_l1a_submits(

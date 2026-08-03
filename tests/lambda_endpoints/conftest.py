@@ -8,16 +8,13 @@ from unittest.mock import Mock, patch
 import boto3
 import pytest
 from moto import mock_ecr, mock_events, mock_s3
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
-from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import (
-    Base,
     SPICEFiles,
 )
 from sds_data_manager.orchestration import imap_job
+from tests.conftest import in_memory_session
 
 BUCKET_NAME = "test-data-bucket"
 
@@ -209,26 +206,9 @@ POSTGRES_AVAILABLE = False
 #       get a new database session and start fresh each time.
 @pytest.fixture
 def session():
-    """Create a test postgres database engine."""
-    with patch.object(db, "Session") as mock_session:
-        connection = "sqlite:///:memory:"
-        engine = create_engine(connection)
-
-        # Create the tables and session
-        Base.metadata.create_all(engine)
-
-        with sessionmaker(bind=engine)() as session:
-            # Attach this session to the mocked module's Session call
-            mock_session.return_value = session
-
-            # Provide the session to the tests
-            yield session
-
-            # Cleanup after the test
-            session.rollback()
-            session.close()
-            # Drop tables to ensure clean state for next test
-            Base.metadata.drop_all(engine)
+    """Create a test database session (in-memory SQLite)."""
+    with in_memory_session() as session:
+        yield session
 
 
 def _static_spice_files(session):
