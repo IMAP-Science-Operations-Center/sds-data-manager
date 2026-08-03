@@ -97,7 +97,7 @@ def test_glows_l1a_end_to_end(
     # So nothing is returned
     yielded_files = list(glows_l1a_job.run_job(context, 1, 1))
     assert len(mock_db_session.query(models.ProcessingJob).all()) == 1
-    assert len(list(yielded_files)) == 0
+    assert len(yielded_files) == 0
 
     # TEST 4: Run the job again.
     # We expect it to simply exit,

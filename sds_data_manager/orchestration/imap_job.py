@@ -282,7 +282,7 @@ class IMAPJobHandler:
                 )
                 for f in output_files:
                     yield f
-                if batch_status == models.Status.FAILED.value:
+                if batch_status == models.Status.FAILED:
                     raise Failure(
                         description="Batch Job Failure. View logs for details."
                     )
