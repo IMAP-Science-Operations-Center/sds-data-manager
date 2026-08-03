@@ -172,10 +172,10 @@ def batch_client():
     mock_logs_client = Mock()
     mock_logs_client.get_log_events.return_value = {"events": []}
     with (
-         patch.object(imap_job, "BATCH_CLIENT", mock_batch_client),
-         patch.object(imap_job, "LOGS_CLIENT", mock_logs_client),
+        patch.object(imap_job, "BATCH_CLIENT", mock_batch_client),
+        patch.object(imap_job, "LOGS_CLIENT", mock_logs_client),
     ):
-         yield mock_batch_client
+        yield mock_batch_client
 
 
 @pytest.fixture

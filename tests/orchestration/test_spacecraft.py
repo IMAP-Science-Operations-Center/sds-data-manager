@@ -15,7 +15,6 @@ import imap_data_access
 import pytest
 from dagster import (
     AssetObservation,
-    Failure,
     build_asset_context,
     build_sensor_context,
 )
