@@ -11,22 +11,22 @@ VALID_CADENCE_STRS = ["1mo", "3mo", "6mo", "1yr"]
 FIRST_MAP_START_DATE = datetime.datetime(2026, 1, 17, tzinfo=datetime.timezone.utc)
 
 sensor_schedules = {
-    "l0": 900,
-    "l1": 900,
-    "l1a": 900,
-    "l1b": 900,
-    "l1c": 900,
-    "l1d": 900,
-    "l2": 900,
-    "l2a": 900,
-    "l2b": 900,
-    "l2c": 900,
-    "l2d": 900,
-    "l3": 900,
-    "l3a": 900,
-    "l3b": 900,
-    "l3c": 900,
-    "l3d": 900,
+    "l0": 300,
+    "l1": 300,
+    "l1a": 300,
+    "l1b": 300,
+    "l1c": 300,
+    "l1d": 300,
+    "l2": 300,
+    "l2a": 300,
+    "l2b": 300,
+    "l2c": 300,
+    "l2d": 300,
+    "l3": 300,
+    "l3a": 300,
+    "l3b": 300,
+    "l3c": 300,
+    "l3d": 300,
 }
 
 

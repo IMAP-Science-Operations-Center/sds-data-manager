@@ -54,6 +54,15 @@ DEPENDENCY_DIRECTIONS = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direc
 # instrument's data. It's nice to have but not necessary.
 DEPENDENCY_RELATIONSHIPS = SqlEnum("SOFT", "HARD", name="dependency_relationship")
 
+# Columns identifying one logical CDF file; its rows differ only by version.
+FILE_ID_COLUMNS = (
+    "instrument",
+    "data_level",
+    "descriptor",
+    "start_date",
+    "repointing",
+)
+
 
 class Status(Enum):
     """Enum to store the status."""
@@ -181,11 +190,7 @@ class ScienceFileBase:
             Index(
                 # separate name for index for each subclass
                 f"idx_{cls.__tablename__}_version",
-                "instrument",
-                "data_level",
-                "descriptor",
-                "start_date",
-                "repointing",
+                *FILE_ID_COLUMNS,
                 "major_version",
                 "minor_version",
             ),

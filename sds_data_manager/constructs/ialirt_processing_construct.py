@@ -93,7 +93,7 @@ class IalirtProcessing(Construct):
         partner_config = {
             "lasp": {  # used for testing only
                 "params": ["lasp"],
-                "ports": [7526, 7563, 7564, 7565, 7566, 7567, 7568],
+                "ports": [7526, 7563, 7564, 7565, 7566, 7567, 7568, 7569],
             },
             "bluenet": {  # tlm relay
                 "params": ["bluenet"],
@@ -107,6 +107,10 @@ class IalirtProcessing(Construct):
                 "params": ["kiel"],
                 "ports": [7564],
             },
+            "noaa": {
+                "params": ["noaa"],
+                "ports": [7565],
+            },
             "uksa": {
                 "params": ["uksa"],
                 "ports": [7566, 7567],
@@ -114,6 +118,10 @@ class IalirtProcessing(Construct):
             "sansa": {
                 "params": ["sansa-1", "sansa-2"],
                 "ports": [7568],
+            },
+            "mopra": {
+                "params": ["mopra"],
+                "ports": [7569],
             },
         }
 
