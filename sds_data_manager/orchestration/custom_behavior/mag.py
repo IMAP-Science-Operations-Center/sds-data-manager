@@ -22,9 +22,9 @@ class MagL1CJob(imap_job.IMAPJobHandler):
     would feed a reprocessing run its own earlier output. The file is fetched
     here at input-collection time instead. If the previous day's L1C does not
     exist (or its job has not finished), processing proceeds with the current
-    day alone. Reprocessing backfills run unordered, so a reprocessed day can
-    inherit the previous generation's L1C from the day before; reprocess in
-    date order when regenerated timeline continuity matters.
+    day alone. Reprocessing runs are not ordered by date, so a reprocessed
+    day can inherit the previous generation's L1C from the day before;
+    reprocess in date order when regenerated timeline continuity matters.
     """
 
     def get_science_files_inputs(self, context, target_start, target_end):
@@ -40,9 +40,10 @@ class MagL1CJob(imap_job.IMAPJobHandler):
             required=False,
             trigger_job=False,
         )
-        # The strict partition-overlap check in get_all_files_in_time_range
-        # cannot match the current day's own partition, which starts exactly at
-        # target_start.
+        # The query window ends at target_start so that the strict overlap
+        # check in get_all_files_in_time_range cannot match the current day's
+        # own partition, which starts exactly at target_start. The job never
+        # receives its own output as input.
         metadata_list = previous_day_l1c.get_all_files_in_time_range(
             context, target_start - datetime.timedelta(days=1), target_start
         )
