@@ -59,8 +59,8 @@ def lambda_handler(event, context):
     """
     logger.debug("SPICE Query Event: " + json.dumps(event, indent=2))
 
-    # Initialize statusCode to 400
-    statusCode = 400
+    # Initialize status_code to 400
+    status_code = 400
 
     query_params = event.get("queryStringParameters", {})
     table_type = query_params.get("type", "kernels")
@@ -73,8 +73,8 @@ def lambda_handler(event, context):
         try:
             query_params = _remap_to_non_spice_params(query_params)
         except ValueError:
-            errorMessage = "Expected start/end times in ET."
-            return non_spice_table_api.get_json_response(statusCode, errorMessage)
+            err_msg = "Expected start/end times in ET."
+            return non_spice_table_api.get_json_response(status_code, err_msg)
 
         return non_spice_table_api.lambda_handler(
             {
@@ -105,11 +105,12 @@ def lambda_handler(event, context):
         for param, value in query_params.items():
             # confirm that the query parameter is valid
             if param not in valid_parameters:
-                errorMessage = f"{param} is not a valid query parameter. Valid query parameters are: {valid_parameters}"
-                response = non_spice_table_api.get_json_response(
-                    statusCode, errorMessage
+                err_msg = (
+                    f"{param} is not a valid query parameter. "
+                    f"Valid query parameters are: {valid_parameters}"
                 )
-                logger.debug(errorMessage)
+                response = non_spice_table_api.get_json_response(status_code, err_msg)
+                logger.debug(err_msg)
                 return response
             try:
                 if param == "start_time":
@@ -155,15 +156,13 @@ def lambda_handler(event, context):
                     parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
                     query = query.where(models.SPICEFiles.ingestion_date <= parsed_date)
             except ValueError:
-                errorMessage = f"Invalid value for {param}: {value}"
-                response = non_spice_table_api.get_json_response(
-                    statusCode, errorMessage
-                )
-                logger.debug(errorMessage)
+                err_msg = f"Invalid value for {param}: {value}"
+                response = non_spice_table_api.get_json_response(status_code, err_msg)
+                logger.debug(err_msg)
                 return response
 
-        # If we got this far, reset statusCode to 200
-        statusCode = 200
+        # If we got this far, reset status_code to 200
+        status_code = 200
 
         search_results = session.execute(query).scalars().all()
 
@@ -176,7 +175,7 @@ def lambda_handler(event, context):
             str(search_results),
         )
 
-        return non_spice_table_api.get_json_response(statusCode, search_results)
+        return non_spice_table_api.get_json_response(status_code, search_results)
 
 
 def _remap_to_non_spice_params(query_params: dict) -> dict:

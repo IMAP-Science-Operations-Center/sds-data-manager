@@ -122,7 +122,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
                 logger.debug(err_msg)
                 return response
 
-        # Reset statusCode to 200 if we got this far
+        # Reset status_code to 200 if we got this far
         status_code = 200
         search_results = session.execute(query).scalars().all()
         # format the search results into a list of dictionaries
