@@ -48,34 +48,29 @@ class MagL1CJob(imap_job.IMAPJobHandler):
             context, target_start - datetime.timedelta(days=1), target_start
         )
 
-        previous_day_files = []
-        for metadata in metadata_list:
-            if "file_names" in metadata:
-                # Dagster wraps metadata in a MetadataValue object
-                file_names = metadata["file_names"].value
-                # Handle both single strings and lists of files safely
-                if isinstance(file_names, str):
-                    file_names = [file_names]
-                previous_day_files.extend(file_names)
-
-        if not previous_day_files:
+        if not metadata_list:
             context.log.info(
                 "No previous day L1C found; MAG L1C processes this day alone."
             )
             return science_processing_inputs
 
+        # get_all_files_in_time_range returns the latest materialization of
+        # each overlapping partition, and this one-day window can only overlap
+        # the previous day's partition, so there is exactly one entry. Science
+        # materializations carry a single file in file_names (find_outputs),
+        # wrapped in a Dagster MetadataValue.
+        previous_day_file = metadata_list[0]["file_names"].value[0]
+
         # Apply the same version-renaming strategy as
         # IMAPJobHandler.get_science_files_inputs so the previous day's file is
         # named consistently with the base science inputs.
         pattern = re.compile(r"v(\d{3})\.(cdf|pkts)$")
-        renamed_previous_day_files = [
-            pattern.sub(r"v001.0\1.\2", file) for file in previous_day_files
-        ]
+        renamed_previous_day_file = pattern.sub(r"v001.0\1.\2", previous_day_file)
         context.log.info(
-            f"MAG L1C adding the previous day's L1C: {renamed_previous_day_files}"
+            f"MAG L1C adding the previous day's L1C: {renamed_previous_day_file}"
         )
         science_processing_inputs.append(
-            processing_input.ScienceInput(*list(set(renamed_previous_day_files)))
+            processing_input.ScienceInput(renamed_previous_day_file)
         )
 
         return science_processing_inputs
