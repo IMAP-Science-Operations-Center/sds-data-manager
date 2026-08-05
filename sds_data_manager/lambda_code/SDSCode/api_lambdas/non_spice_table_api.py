@@ -13,6 +13,16 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def get_json_response(
+    statusCode, body_str, headers={"Content-Type": "application/json"}
+):
+    return {
+        "statusCode": statusCode,
+        "headers": headers,
+        "body": json.dumps(body_str),
+    }
+
+
 def lambda_handler(event, context):  # noqa: PLR0912
     """Handle API requests for the non-SPICE data.
 
@@ -22,6 +32,8 @@ def lambda_handler(event, context):  # noqa: PLR0912
         "Spin/Repoint/small-forces Query Event: " + json.dumps(event, indent=2)
     )
 
+    # Initialize statusCode to 400
+    statusCode = 400
     raw_path = event.get("rawPath", "")
     if "spin" in raw_path:
         table = SpinFiles
@@ -30,13 +42,9 @@ def lambda_handler(event, context):  # noqa: PLR0912
     elif "small-forces" in raw_path:
         table = SmallForcesFile
     else:
-        response = {
-            "statusCode": 400,
-            "body": json.dumps(
-                "Invalid path. Path must contain either 'spin' or 'repoint'."
-            ),
-        }
-        logger.debug("Invalid path, must contain either 'spin' or 'repoint'.")
+        errorMessage = "Invalid path, path must contain either 'spin' or 'repoint'."
+        response = get_json_response(statusCode, errorMessage)
+        logger.debug(errorMessage)
         return response
 
     # add session, pick model like in indexer and add query to filter_as
@@ -59,17 +67,9 @@ def lambda_handler(event, context):  # noqa: PLR0912
         for param, value in query_params.items():
             # confirm that the query parameter is valid
             if param not in valid_parameters:
-                response = {
-                    "statusCode": 400,
-                    "body": json.dumps(
-                        f"{param} is not a valid query parameter. "
-                        + f"Valid query parameters are: {valid_parameters}"
-                    ),
-                }
-                logger.debug(
-                    f"Received an invalid query parameter [{param}],"
-                    " valid options are: {valid_parameters}"
-                )
+                errorMessage = f"{param} is not a valid query parameter. Valid query parameters are: {valid_parameters}"
+                response = get_json_response(statusCode, errorMessage)
+                logger.debug(errorMessage)
                 return response
             try:
                 if param == "start_date" and table != RepointFiles:
@@ -113,13 +113,13 @@ def lambda_handler(event, context):  # noqa: PLR0912
                     parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
                     query = query.where(table.ingestion_date <= parsed_date)
             except ValueError:
-                response = {
-                    "statusCode": 400,
-                    "body": json.dumps(f"Invalid value for {param}: {value}"),
-                }
-                logger.debug(f"Invalid value for {param}: {value}")
+                errorMessage = f"Invalid value for {param}: {value}"
+                response = get_json_response(statusCode, errorMessage)
+                logger.debug(errorMessage)
                 return response
 
+        # Reset statusCode to 200 if we got this far
+        statusCode = 200
         search_results = session.execute(query).scalars().all()
         # format the search results into a list of dictionaries
         if table == RepointFiles:
@@ -135,7 +135,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
                 }
                 for result in search_results
             ]
-            return {"statusCode": 200, "body": json.dumps(search_results)}
+            return get_json_response(statusCode, search_results)
 
         # Spin or small-forces files have a start_date field
         search_results = [
@@ -148,4 +148,4 @@ def lambda_handler(event, context):  # noqa: PLR0912
             }
             for result in search_results
         ]
-        return {"statusCode": 200, "body": json.dumps(search_results)}
+        return get_json_response(statusCode, search_results)
