@@ -122,10 +122,9 @@ jobs:
           poetry run cdk deploy $STACKS --context account_name=$ACCOUNT_NAME --require-approval never
 
       # ----------------------------------------------------
-      # Force ECS redeploy of Dagster daemon + webserver (prod only)
+      # Force ECS redeploy of Dagster daemon + webserver
       # ----------------------------------------------------
       - name: Force new ECS deployment for Dagster
-        if: env.is_prod == 'true'
         run: |
           CLUSTER=$(aws ecs list-clusters --region us-west-2 \
             --query "clusterArns[?contains(@, 'DagsterCluster')]" --output text)
