@@ -24,7 +24,52 @@ def get_json_response(status_code, body_str, headers=None):
     }
 
 
-def lambda_handler(event, context):  # noqa: PLR0912
+def _get_query(table, query, param, value):
+    if param == "start_date" and table != RepointFiles:
+        # Besides repoint table, others have a start_date field
+        # This parameter can be ignore for the repointing table
+        # because those files have all start dates in every file.
+        parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+        query = query.where(table.start_date >= parsed_date)
+    elif param == "end_date":
+        parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+        query = query.where(table.end_date <= parsed_date)
+    elif param == "file_path":
+        query = query.where(table.file_path == value)
+    elif param == "latest" and value.lower() == "true":
+        # TODO: fix this logic
+        # Make a subquery that gives latest spin file
+        row_number = (
+            func.row_number()
+            .over(
+                partition_by=(table.start_date, table.end_date),
+                order_by=desc(table.version),
+            )
+            .label("row_num")
+        )
+
+        # Use a subquery to select only rows where row_num == 1
+        # (latest version)
+        subquery = select(
+            table.file_path,
+            table.start_date,
+            table.end_date,
+            table.version,
+            table.ingestion_date,
+            row_number,
+        )
+        query = select(subquery).where(subquery.c.row_num == 1)
+    elif param == "start_ingest_date":
+        parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+        query = query.where(table.ingestion_date >= parsed_date)
+    elif param == "end_ingest_date":
+        parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+        query = query.where(table.ingestion_date <= parsed_date)
+
+    return query
+
+
+def lambda_handler(event, context):
     """Handle API requests for the non-SPICE data.
 
     Non-SPICE data such as spin, repoint and small-forces.
@@ -76,46 +121,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
                 logger.debug(err_msg)
                 return response
             try:
-                if param == "start_date" and table != RepointFiles:
-                    # Besides repoint table, others have a start_date field
-                    # This parameter can be ignore for the repointing table
-                    # because those files have all start dates in every file.
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
-                    query = query.where(table.start_date >= parsed_date)
-                elif param == "end_date":
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
-                    query = query.where(table.end_date <= parsed_date)
-                elif param == "file_path":
-                    query = query.where(table.file_path == value)
-                elif param == "latest" and value.lower() == "true":
-                    # TODO: fix this logic
-                    # Make a subquery that gives latest spin file
-                    row_number = (
-                        func.row_number()
-                        .over(
-                            partition_by=(table.start_date, table.end_date),
-                            order_by=desc(table.version),
-                        )
-                        .label("row_num")
-                    )
-
-                    # Use a subquery to select only rows where row_num == 1
-                    # (latest version)
-                    subquery = select(
-                        table.file_path,
-                        table.start_date,
-                        table.end_date,
-                        table.version,
-                        table.ingestion_date,
-                        row_number,
-                    )
-                    query = select(subquery).where(subquery.c.row_num == 1)
-                elif param == "start_ingest_date":
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
-                    query = query.where(table.ingestion_date >= parsed_date)
-                elif param == "end_ingest_date":
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
-                    query = query.where(table.ingestion_date <= parsed_date)
+                query = _get_query(table, query, param, value)
             except ValueError:
                 err_msg = f"Invalid value for {param}: {value}"
                 response = get_json_response(status_code, err_msg)
