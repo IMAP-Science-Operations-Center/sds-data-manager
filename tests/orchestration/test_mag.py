@@ -9,19 +9,39 @@ should:
   - never pick up the current day's own partition (a reprocessing run would
     otherwise be fed its own earlier output)
   - proceed with the current day alone when no previous day L1C exists
+  - wait (report a pending dependency) while the previous day's L1C is in
+    flight or expected, and stop waiting once it exists, provably has no
+    data, or its job already finished
 """
 
-import pytest
-from dagster import AssetKey, AssetMaterialization, build_asset_context
+from unittest.mock import PropertyMock, patch
 
-from sds_data_manager.orchestration.custom_behavior.mag import MagL1CJob
+import pytest
+from dagster import (
+    AssetKey,
+    AssetMaterialization,
+    DagsterInstance,
+    DagsterRun,
+    DagsterRunStatus,
+    build_asset_context,
+)
+from dagster._core.remote_origin import (
+    RegisteredCodeLocationOrigin,
+    RemoteJobOrigin,
+    RemoteRepositoryOrigin,
+)
+
+from sds_data_manager.orchestration.custom_behavior.mag import (
+    FINAL_RETRY_NUMBER,
+    MagL1CJob,
+)
 from sds_data_manager.orchestration.dagster_utilities import (
     parse_dates_from_partition_key,
 )
 from sds_data_manager.orchestration.imap_dagster import job_handlers
 
 TARGET_DAY = 2
-TARGET_PARTITION = "daily_2026-01-02T00:00:00_to_2026-01-02T23:59:59"
+TARGET_PARTITION = "daily_2026-01-02T00:00:00_to_2026-01-03T00:00:00"
 NORM_MAGO_L1C_JOB = "mag_l1c_normmago_processing_job"
 NORM_MAGI_L1C_JOB = "mag_l1c_normmagi_processing_job"
 
@@ -37,7 +57,8 @@ def _mag_l1c_job(dagster_job_name: str):
 
 
 def _daily_partition(day: int) -> str:
-    return f"daily_2026-01-{day:02d}T00:00:00_to_2026-01-{day:02d}T23:59:59"
+    """Return the day's partition key in the add_daily_partitions format."""
+    return f"daily_2026-01-{day:02d}T00:00:00_to_2026-01-{day + 1:02d}T00:00:00"
 
 
 def _materialize(instance, asset_name: str, day: int, filename: str):
@@ -92,6 +113,45 @@ def _science_filenames(science_processing_inputs) -> set:
         for science_input in science_processing_inputs
         for f in science_input.filename_list
     }
+
+
+def _add_run(instance, job_name: str, day: int, status, run_id: str, assets=None):
+    """Record a run for a given day's partition.
+
+    Sensor-requested runs carry the processing job's name; reprocessing
+    backfill runs carry Dagster's implicit asset job name plus an asset
+    selection, so `assets` mimics the latter. Dagster refuses to store a
+    QUEUED run without the origin its run coordinator would have attached.
+    """
+    remote_job_origin = None
+    if status == DagsterRunStatus.QUEUED:
+        remote_job_origin = RemoteJobOrigin(
+            repository_origin=RemoteRepositoryOrigin(
+                code_location_origin=RegisteredCodeLocationOrigin("test-location"),
+                repository_name="test-repo",
+            ),
+            job_name=job_name,
+        )
+    instance.run_storage.add_run(
+        DagsterRun(
+            job_name=job_name,
+            run_id=run_id,
+            tags={"dagster/partition": _daily_partition(day)},
+            status=status,
+            asset_selection=assets,
+            remote_job_origin=remote_job_origin,
+        )
+    )
+
+
+def _pending_context(instance):
+    """Build the target day's context.
+
+    The ephemeral_instance fixture registers real daily partitions (the
+    add_daily_partitions sensor), so the previous-day keys the pending check
+    queries already exist.
+    """
+    return build_asset_context(partition_key=TARGET_PARTITION, instance=instance)
 
 
 @pytest.mark.parametrize("dagster_job_name", [NORM_MAGO_L1C_JOB, NORM_MAGI_L1C_JOB])
@@ -179,3 +239,213 @@ def test_mag_l1c_proceeds_without_previous_day(ephemeral_instance):
     filenames = _science_filenames(result)
     assert not any("l1c" in f for f in filenames)
     assert any("l1b_norm-mago" in f for f in filenames)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [DagsterRunStatus.QUEUED, DagsterRunStatus.STARTING, DagsterRunStatus.STARTED],
+)
+def test_mag_l1c_waits_while_previous_day_l1c_runs(ephemeral_instance, status):
+    """An in-flight run for the previous day's partition means wait."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    _add_run(
+        ephemeral_instance,
+        NORM_MAGO_L1C_JOB,
+        TARGET_DAY - 1,
+        status,
+        "prev-day-in-flight",
+    )
+
+    assert job._previous_day_l1c_pending(context) is True
+
+
+def test_mag_l1c_waits_while_previous_day_backfill_runs(ephemeral_instance):
+    """An in-flight reprocessing-backfill run for the previous day also waits."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    _add_run(
+        ephemeral_instance,
+        "__ASSET_JOB",
+        TARGET_DAY - 1,
+        DagsterRunStatus.STARTED,
+        "prev-day-backfill-in-flight",
+        assets={AssetKey("mag_l1c_normmago")},
+    )
+
+    assert job._previous_day_l1c_pending(context) is True
+
+
+def test_mag_l1c_waits_for_expected_previous_day_l1c(ephemeral_instance):
+    """Previous-day L1Bs exist but no L1C and no finished run: still coming."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    _materialize_current_day_l1b(ephemeral_instance, TARGET_DAY - 1)
+
+    assert job._previous_day_l1c_pending(context) is True
+
+
+def test_mag_l1c_no_wait_when_previous_day_l1c_exists(ephemeral_instance):
+    """An existing previous-day L1C is delivered, not waited on."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    _materialize_current_day_l1b(ephemeral_instance, TARGET_DAY - 1)
+    _materialize(
+        ephemeral_instance,
+        "mag_l1c_normmago",
+        TARGET_DAY - 1,
+        _l1c_filename(TARGET_DAY - 1),
+    )
+
+    assert job._previous_day_l1c_pending(context) is False
+
+
+def test_mag_l1c_day_before_previous_does_not_satisfy_the_wait(ephemeral_instance):
+    """Day N-2's L1C must not stand in for day N-1's.
+
+    One day's partition ends at the exact midnight the next day's begins, so
+    an off-by-one window would let day N-2's partition satisfy (or block)
+    decisions about day N-1.
+    """
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    _materialize_current_day_l1b(ephemeral_instance, TARGET_DAY - 1)
+    _materialize(
+        ephemeral_instance,
+        "mag_l1c_normmago",
+        TARGET_DAY - 2,
+        _l1c_filename(TARGET_DAY - 2),
+    )
+
+    assert job._previous_day_l1c_pending(context) is True
+
+
+def test_mag_l1c_no_wait_when_previous_day_has_no_data(ephemeral_instance):
+    """A previous day with no L1B data has no L1C to wait for."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    assert job._previous_day_l1c_pending(context) is False
+
+
+def test_mag_l1c_no_wait_before_any_partitions_exist(ephemeral_instance):
+    """With no daily partitions registered at all, there is nothing to wait for."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    bare_instance = DagsterInstance.ephemeral()
+    context = build_asset_context(
+        partition_key=TARGET_PARTITION, instance=bare_instance
+    )
+
+    assert job._previous_day_l1c_pending(context) is False
+
+
+def test_mag_l1c_ignores_other_jobs_runs(ephemeral_instance):
+    """Another instrument's run on the previous day's partition is not ours."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    _add_run(
+        ephemeral_instance,
+        "codice_l1a_hskp_processing_job",
+        TARGET_DAY - 1,
+        DagsterRunStatus.STARTED,
+        "other-instrument-run",
+    )
+
+    assert job._previous_day_l1c_pending(context) is False
+
+
+def test_mag_l1c_ignores_own_day_run(ephemeral_instance):
+    """A run for the current day's own partition is not the previous day's."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    _add_run(
+        ephemeral_instance,
+        NORM_MAGO_L1C_JOB,
+        TARGET_DAY,
+        DagsterRunStatus.STARTED,
+        "own-day-run",
+    )
+
+    assert job._previous_day_l1c_pending(context) is False
+
+
+def test_mag_l1c_no_wait_after_previous_day_job_finished(ephemeral_instance):
+    """A finished previous-day run (skip or failure) means no L1C is coming."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    _materialize_current_day_l1b(ephemeral_instance, TARGET_DAY - 1)
+    _add_run(
+        ephemeral_instance,
+        NORM_MAGO_L1C_JOB,
+        TARGET_DAY - 1,
+        DagsterRunStatus.FAILURE,
+        "prev-day-failed",
+    )
+
+    assert job._previous_day_l1c_pending(context) is False
+
+
+def test_mag_l1c_finished_backfill_run_also_counts(ephemeral_instance):
+    """A finished reprocessing-backfill run for the previous day also counts.
+
+    Backfill runs carry Dagster's implicit asset job name and an asset
+    selection instead of this job's name.
+    """
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    _materialize_current_day_l1b(ephemeral_instance, TARGET_DAY - 1)
+    _add_run(
+        ephemeral_instance,
+        "__ASSET_JOB",
+        TARGET_DAY - 1,
+        DagsterRunStatus.FAILURE,
+        "prev-day-backfill-failed",
+        assets={AssetKey("mag_l1c_normmago")},
+    )
+
+    assert job._previous_day_l1c_pending(context) is False
+
+
+def test_mag_l1c_stops_waiting_on_final_retry(ephemeral_instance):
+    """The wait gives up on the last retry instead of failing the run."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    # The previous day's L1C is expected, so the job would normally wait.
+    _materialize_current_day_l1b(ephemeral_instance, TARGET_DAY - 1)
+
+    with patch.object(
+        type(context), "retry_number", new_callable=PropertyMock
+    ) as retry_number:
+        retry_number.return_value = 0
+        assert job._check_for_running_dependencies(context) is True
+        retry_number.return_value = FINAL_RETRY_NUMBER
+        assert job._check_for_running_dependencies(context) is False
+
+
+def test_mag_l1c_still_waits_on_upstream_ancestors(ephemeral_instance):
+    """The base class's ancestor check still applies to MAG L1C runs."""
+    job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
+    context = _pending_context(ephemeral_instance)
+
+    # An in-flight run materializing an upstream MAG L1B asset, as a
+    # reprocessing backfill would submit it.
+    _add_run(
+        ephemeral_instance,
+        "__ASSET_JOB",
+        TARGET_DAY,
+        DagsterRunStatus.STARTED,
+        "upstream-l1b-run",
+        assets={AssetKey("mag_l1b_normmago")},
+    )
+
+    assert job._check_for_running_dependencies(context) is True
