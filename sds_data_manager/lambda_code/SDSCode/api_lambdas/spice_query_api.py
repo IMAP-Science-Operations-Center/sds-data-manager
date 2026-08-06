@@ -4,11 +4,13 @@ import datetime
 import json
 import logging
 
+import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy import func, select
 
 from ..database import database as db
 from ..database import models
+from ..spice_utilities import furnish_best_spice_file
 from . import non_spice_table_api
 
 # Logger setup
@@ -184,13 +186,9 @@ def _remap_to_non_spice_params(query_params: dict) -> dict:
         query_params["file_path"] = query_params.pop("file_name")
 
     if "start_time" in query_params or "end_time" in query_params:
-        import spiceypy  # noqa: PLC0415
-
         try:
             spiceypy.et2datetime(0)
         except spiceypy.utils.exceptions.SpiceMISSINGTIMEINFO:
-            from ..spice_utilities import furnish_best_spice_file  # noqa: PLC0415
-
             furnish_best_spice_file("leapseconds")
 
         try:
