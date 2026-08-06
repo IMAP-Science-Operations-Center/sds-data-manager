@@ -15,7 +15,6 @@ from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
     non_spice_table_api,
     spice_query_api,
 )
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import non_spice_table_api
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     RepointFiles,
     SmallForcesFile,
