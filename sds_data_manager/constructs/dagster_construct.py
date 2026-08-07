@@ -341,6 +341,7 @@ class DagsterEcsConstruct(Construct):
             ),
             public_load_balancer=True,
             open_listener=False,
+            health_check_grace_period=cdk.Duration.seconds(300),
         )
         webserver_service.load_balancer.connections.allow_from(
             ec2.Peer.ipv4("128.138.131.0/24"),
@@ -348,6 +349,13 @@ class DagsterEcsConstruct(Construct):
         )
         webserver_service.service.connections.allow_to(
             sg, ec2.Port.tcp(5432), "Allow Dagster Webserver to access RDS"
+        )
+
+        # Reduce the frequency of health checks
+        webserver_service.target_group.configure_health_check(
+            timeout=cdk.Duration.seconds(120),
+            interval=cdk.Duration.seconds(300),
+            unhealthy_threshold_count=10
         )
 
         # Dagster Read Only Webserver
@@ -390,6 +398,7 @@ class DagsterEcsConstruct(Construct):
             ),
             public_load_balancer=True,
             open_listener=False,
+            health_check_grace_period=cdk.Duration.seconds(300),
         )
         allowed_readonly_cidrs = [
             "128.138.131.0/24",  # LASP
@@ -402,6 +411,7 @@ class DagsterEcsConstruct(Construct):
             "66.180.176.0/24",  # Princeton
             "66.180.177.0/24",  # Princeton
             "66.180.184.0/22",  # Princeton
+            "132.177.251.17/32" # UNH 
         ]
 
         for cidr in allowed_readonly_cidrs:
@@ -415,6 +425,13 @@ class DagsterEcsConstruct(Construct):
             sg, ec2.Port.tcp(5432), "Allow Dagster Readonly Webserver to access RDS"
         )
 
+        # Reduce the frequency of health checks
+        readonly_webserver_service.target_group.configure_health_check(
+            timeout=cdk.Duration.seconds(120),
+            interval=cdk.Duration.seconds(300),
+            unhealthy_threshold_count=10
+        )
+        
         # Dagster Daemon
         daemon_task_def = ecs.FargateTaskDefinition(
             self,
