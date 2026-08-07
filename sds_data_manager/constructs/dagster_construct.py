@@ -355,7 +355,7 @@ class DagsterEcsConstruct(Construct):
         webserver_service.target_group.configure_health_check(
             timeout=cdk.Duration.seconds(120),
             interval=cdk.Duration.seconds(300),
-            unhealthy_threshold_count=10
+            unhealthy_threshold_count=3,
         )
 
         # Dagster Read Only Webserver
@@ -411,7 +411,7 @@ class DagsterEcsConstruct(Construct):
             "66.180.176.0/24",  # Princeton
             "66.180.177.0/24",  # Princeton
             "66.180.184.0/22",  # Princeton
-            "132.177.251.17/32" # UNH 
+            "132.177.251.17/32",  # UNH
         ]
 
         for cidr in allowed_readonly_cidrs:
@@ -429,9 +429,9 @@ class DagsterEcsConstruct(Construct):
         readonly_webserver_service.target_group.configure_health_check(
             timeout=cdk.Duration.seconds(120),
             interval=cdk.Duration.seconds(300),
-            unhealthy_threshold_count=10
+            unhealthy_threshold_count=3,
         )
-        
+
         # Dagster Daemon
         daemon_task_def = ecs.FargateTaskDefinition(
             self,
