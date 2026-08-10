@@ -88,7 +88,7 @@ def lambda_handler(event, context):
     elif "small-forces" in raw_path:
         table = SmallForcesFile
     else:
-        err_msg = "Invalid path, path must contain either 'spin' or 'repoint'."
+        err_msg = "Invalid path: must contain 'spin', 'repoint', or 'small-forces."
         response = get_json_response(status_code, err_msg)
         logger.debug(err_msg)
         return response
