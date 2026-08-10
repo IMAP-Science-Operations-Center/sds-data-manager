@@ -114,14 +114,14 @@ class IalirtVpnConstruct(Construct):
         self.vpn_connections: dict[str, ec2.CfnVPNConnection] = {}
         for site, ip in {"WASH": wash_ip, "DENV": denv_ip}.items():
             # AWS needs to know the router's public IP and ASN to establish the tunnel.
-            # bgp_asn=64583 is NOAA's ASN per the ICD. This must match the ASN
+            # bgp_asn=64893 is NOAA's ASN per the ICD. This must match the ASN
             # configured on NOAA's actual router — AWS silently rejects the BGP
             # session (not the tunnel itself) if the peer AS doesn't match what's
             # registered here.
             cgw = ec2.CfnCustomerGateway(
                 self,
                 f"NoaaCustomerGateway{site}",
-                bgp_asn=64583,
+                bgp_asn=64893,
                 ip_address=ip,
                 type="ipsec.1",
             )
