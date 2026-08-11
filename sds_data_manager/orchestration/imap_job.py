@@ -14,6 +14,8 @@ import boto3
 import requests
 from botocore.exceptions import ClientError
 from dagster import (
+    AllPartitionMapping,
+    AssetDep,
     AssetExecutionContext,
     AssetObservation,
     AssetOut,
@@ -162,9 +164,19 @@ class IMAPJobHandler:
         for out in self.job_config.outputs:
             output_assets[out.to_dagster_name()] = AssetOut(is_required=False)
 
+        # NOTE: Dependencies are resolved by querying the database directly in run_job,
+        # not through Dagster's partition-mapped IO. Without an explicit
+        # mapping here e.g. deps = input_keys, Dagster infers IdentityPartitionMapping
+        # for deps whose partitions_def differs from ours (e.g. cadence assets
+        # depending on daily/repoint assets), which never has any keys in
+        # common and silently breaks backfills. AllPartitionMapping avoids
+        # that string-matching entirely.
         @multi_asset(
             name=f"{self.job_config.to_dagster_name()}_multi_asset_op",
-            deps=input_keys,
+            deps=[
+                AssetDep(key, partition_mapping=AllPartitionMapping())
+                for key in input_keys
+            ],
             partitions_def=self.partitions_def,
             outs=output_assets,
         )

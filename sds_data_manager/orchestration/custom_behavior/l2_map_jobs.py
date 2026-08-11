@@ -26,8 +26,6 @@ CADENCE_PATTERN = rf"{'|'.join([desc for desc in _CADENCE_TYPES])}"
 class L2MapJob(imap_job.IMAPJobHandler):
     """Overriding parts of the Hi processing pipeline."""
 
-    # TODO do we need to override any other functions?
-
     def __init__(self, job):
         """Initialize the handler, then override the sensor run frequency."""
         super().__init__(job)
