@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 
 import boto3
 import imap_data_access
@@ -236,118 +236,6 @@ def s3_event_handler(event):
     return http_response(status_code=200, body="Success")
 
 
-def batch_event_handler(event):
-    r"""Batch event handler.
-
-    Parameters
-    ----------
-    event : dict
-        The JSON formatted document with the data required for the
-        lambda function to process
-
-    Example event input:
-    Kept only parameter of interest
-    event = {
-        "detail-type": "Batch Job State Change",
-        "source": "aws.batch",
-        "time": "2025-04-11T18:48:16Z",
-        "detail": {
-            "jobArn": (
-                "arn:aws:batch:us-west-2:012345678910:"
-                "job/26242c7e-3d49-4e41-9387-74fcaf9630bb"
-            ),
-            "jobName": "swe-l0-job",
-            "jobId": "26242c7e-3d49-4e41-9387-74fcaf9630bb",
-            "jobQueue": (
-                "arn:aws:batch:us-west-2:012345678910:"
-                "job-queue/swe-fargate-batch-job-queue"
-            ),
-            "status": "FAILED",
-            "statusReason": "some error message",
-            "createdAt": 1744396985534,
-            "startedAt": 1744397031734,
-            "stoppedAt": 1744397296519,
-            "jobDefinition": (
-                "arn:aws:batch:us-west-2:012345678910:"
-                "job-definition/fargate-batch-job-definitionswe:1"
-            ),
-            "container": {
-                "image": (
-                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "swapi-repo:latest"
-                ),
-                "command": [
-                    "--instrument", "swapi",
-                    "--data-level", "l1",
-                    "--descriptor", "sci",
-                    "--start-date", "20230724",
-                    "--version", "v001",
-                    "--dependency", \"""[
-                        {
-                            'instrument': 'swapi',
-                            'level': 'l0',
-                            'start_date': 20230724,
-                            'version': 'v001'
-                        }
-                    ]\""",
-                    "--upload-to-sdc",
-                ],
-                "logStreamName": (
-                    "fargate-batch-job-definitionswe/default/"
-                    "8a2b784c7bd342f69ea5dac3adaed26f"
-                ),
-            },
-        }
-    }
-
-    Returns
-    -------
-    dict
-        HTTP response
-
-    """
-    # Get job status
-    job_status = (
-        models.Status.SUCCEEDED
-        if event["detail"]["status"] == "SUCCEEDED"
-        else models.Status.FAILED
-    )
-
-    # We injected our table ID into the job name
-    job_id = event["detail"]["jobName"].split("-")[-1]
-
-    # Convert startedAt and stoppedAt to datetime with timezone
-    # These fields may not always be present, so use .get() and handle None
-    # Default to startedAt and fallback to createdAt if the job never started
-    started_at_timestamp = event["detail"].get(
-        "startedAt", event["detail"].get("createdAt")
-    )
-    stopped_at_timestamp = event["detail"].get("stoppedAt")
-    started_at = (
-        datetime.fromtimestamp(started_at_timestamp / 1000, tz=timezone.utc)
-        if started_at_timestamp is not None
-        else None
-    )
-    stopped_at = (
-        datetime.fromtimestamp(stopped_at_timestamp / 1000, tz=timezone.utc)
-        if stopped_at_timestamp is not None
-        else None
-    )
-
-    with db.Session() as session:
-        # Get the batch job by its ID
-        job = session.get(models.ProcessingJob, job_id)
-        # Make the updates
-        job.status = job_status
-        job.job_definition = event["detail"]["jobDefinition"]
-        job.job_log_stream_id = event["detail"]["container"]["logStreamName"]
-        job.container_image = event["detail"]["container"]["image"]
-        job.started_at = started_at
-        job.stopped_at = stopped_at
-        session.commit()
-
-    return http_response(status_code=200, body="Success")
-
-
 def lambda_handler(event, context):
     """Create metadata and add it to the database.
 
@@ -371,8 +259,6 @@ def lambda_handler(event, context):
 
     if source == "aws.s3":
         return s3_event_handler(event)
-    elif source == "aws.batch":
-        return batch_event_handler(event)
     else:
         logger.error("Unknown event source")
         return http_response(status_code=400, body="Unknown event source")

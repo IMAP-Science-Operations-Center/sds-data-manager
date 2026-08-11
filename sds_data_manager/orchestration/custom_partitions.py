@@ -138,8 +138,9 @@ idex10_partitions = DynamicPartitionsDefinition(name="idex_10_day_partitions")
 @sensor(minimum_interval_seconds=86400)
 def add_idex_10_day_partitions(context: SensorEvaluationContext):
     """Alert Dagster when new IDEX 10-day partitions should be made."""
-    start_date = context.cursor or config.MISSION_START_TIME
-    start_dt = datetime.datetime.fromisoformat(start_date).replace(
+    # These partitions come from a static cadence CSV, so we always evaluate from
+    # mission start to avoid cursor drift shrinking the effective window.
+    start_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(
         tzinfo=datetime.timezone.utc
     )
     end_dt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
@@ -187,9 +188,7 @@ def add_idex_10_day_partitions(context: SensorEvaluationContext):
         partition_requests.append(idex10_partitions.build_add_request(partition_names))
         context.log.info(f"Registered new dynamic partitions: {partition_names}")
 
-    return SensorResult(
-        dynamic_partitions_requests=partition_requests, cursor=end_dt.isoformat()
-    )
+    return SensorResult(dynamic_partitions_requests=partition_requests)
 
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY 30-day
@@ -199,8 +198,9 @@ idex30_partitions = DynamicPartitionsDefinition(name="idex_30_day_partitions")
 @sensor(minimum_interval_seconds=86400)
 def add_idex_30_day_partitions(context: SensorEvaluationContext):
     """Alert Dagster when new IDEX 30-day partitions should be made."""
-    start_date = context.cursor or config.MISSION_START_TIME
-    start_dt = datetime.datetime.fromisoformat(start_date).replace(
+    # These partitions come from a static cadence CSV, so we always evaluate from
+    # mission start to avoid cursor drift shrinking the effective window.
+    start_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(
         tzinfo=datetime.timezone.utc
     )
     end_dt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
@@ -252,9 +252,7 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
         partition_requests.append(idex30_partitions.build_add_request(partition_names))
         context.log.info(f"Registered new dynamic partitions: {partition_names}")
 
-    return SensorResult(
-        dynamic_partitions_requests=partition_requests, cursor=end_dt.isoformat()
-    )
+    return SensorResult(dynamic_partitions_requests=partition_requests)
 
 
 # Run daily (24 hours = 86400 seconds)

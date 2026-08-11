@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timedelta
 
 import imap_data_access
+import pytest
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -401,3 +402,37 @@ def test_metakernel_with_human_readable_dates(session, s3_client):
     assert result["statusCode"] == 200
     # Should return the attitude file that was inserted
     assert json.loads(result["body"]) == ["imap_1000_001_1000_100_002.ah.bc"]
+
+
+def test_convert_input_times_to_j2000_accepts_fractional_second_strings():
+    """Fractional-second string times (as real query-string callers send) must parse.
+
+    Regression test: the non-%Y%m%d fallback previously used int(), which
+    raises an uncaught ValueError for any string containing a decimal point
+    (e.g. "802027200.184") instead of parsing it, crashing the lambda.
+    """
+    start_time, end_time = spice_metakernel_api._convert_input_times_to_j2000(
+        "802027200.184", "802027210.5"
+    )
+    assert start_time == pytest.approx(802027200.184)
+    assert end_time == pytest.approx(802027210.5)
+
+
+def test_metakernel_with_fractional_second_string_times(session):
+    """The metakernel API must not crash on fractional-second string query times."""
+    _insert_test_data(session)
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": "1.5",
+                "end_time": "100.25",
+                "spice_path": "",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+
+    assert result["statusCode"] == 200
+    assert len(json.loads(result["body"])) == 4

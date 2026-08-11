@@ -13,7 +13,6 @@
     - source: attitude_history
       data_type: spice
       descriptor: historical
-      trigger_job: false
     - source: leapseconds
       data_type: spice
       descriptor: historical

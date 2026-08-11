@@ -302,6 +302,7 @@ class DagsterEcsConstruct(Construct):
             run_task_def.task_definition_arn
         )
 
+        # Dagster Webserver
         webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
             "DagsterWebserver",
@@ -340,6 +341,7 @@ class DagsterEcsConstruct(Construct):
             ),
             public_load_balancer=True,
             open_listener=False,
+            health_check_grace_period=cdk.Duration.seconds(300),
         )
         webserver_service.load_balancer.connections.allow_from(
             ec2.Peer.ipv4("128.138.131.0/24"),
@@ -347,6 +349,87 @@ class DagsterEcsConstruct(Construct):
         )
         webserver_service.service.connections.allow_to(
             sg, ec2.Port.tcp(5432), "Allow Dagster Webserver to access RDS"
+        )
+
+        # Reduce the frequency of health checks
+        webserver_service.target_group.configure_health_check(
+            timeout=cdk.Duration.seconds(120),
+            interval=cdk.Duration.seconds(300),
+            unhealthy_threshold_count=3,
+        )
+
+        # Dagster Read Only Webserver
+        readonly_webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
+            self,
+            "DagsterReadonlyWebserver",
+            cluster=cluster,
+            cpu=4096,
+            memory_limit_mib=8192,
+            desired_count=1,
+            task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
+                image=ecr_image,
+                command=[
+                    "dagster-webserver",
+                    "-h",
+                    "0.0.0.0",
+                    "-p",
+                    "3000",
+                    "-w",
+                    "sds_data_manager/orchestration/workspace.yaml",
+                    "--read-only",  # Makes it read only
+                ],
+                container_port=3000,
+                environment=dagster_env_vars,
+                execution_role=execution_role,
+                task_role=task_role,
+                log_driver=ecs.LogDriver.aws_logs(
+                    stream_prefix="DagsterReadonlyWebserver",
+                    log_group=logs.LogGroup(
+                        self,
+                        "DagsterReadonlyWebserverLogs",
+                        removal_policy=RemovalPolicy.DESTROY,
+                    ),
+                ),
+                secrets={
+                    "DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(
+                        db_secret, "password"
+                    )
+                },
+            ),
+            public_load_balancer=True,
+            open_listener=False,
+            health_check_grace_period=cdk.Duration.seconds(300),
+        )
+        allowed_readonly_cidrs = [
+            "128.138.131.0/24",  # LASP
+            "128.112.0.0/16",  # Princeton
+            "140.180.0.0/16",  # Princeton
+            "204.153.48.0/22",  # Princeton
+            "12.161.8.0/24",  # Princeton
+            "12.161.10.0/24",  # Princeton
+            "12.161.14.0/24",  # Princeton
+            "66.180.176.0/24",  # Princeton
+            "66.180.177.0/24",  # Princeton
+            "66.180.184.0/22",  # Princeton
+            "132.177.251.17/32",  # UNH
+        ]
+
+        for cidr in allowed_readonly_cidrs:
+            readonly_webserver_service.load_balancer.connections.allow_from(
+                ec2.Peer.ipv4(cidr),
+                ec2.Port.tcp(80),
+            )
+
+        # Allow the new read-only container to talk to the RDS database
+        readonly_webserver_service.service.connections.allow_to(
+            sg, ec2.Port.tcp(5432), "Allow Dagster Readonly Webserver to access RDS"
+        )
+
+        # Reduce the frequency of health checks
+        readonly_webserver_service.target_group.configure_health_check(
+            timeout=cdk.Duration.seconds(120),
+            interval=cdk.Duration.seconds(300),
+            unhealthy_threshold_count=3,
         )
 
         # Dagster Daemon

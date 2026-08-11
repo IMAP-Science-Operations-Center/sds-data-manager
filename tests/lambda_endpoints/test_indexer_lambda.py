@@ -1,133 +1,14 @@
 """Tests for the indexer lambda."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from imap_data_access import ScienceFilePath
-from sqlalchemy import select
 
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import indexer
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.indexer import (
     send_event_from_indexer,
 )
-
-
-def test_batch_job_event(session, events_client):
-    """Test batch job event."""
-    # Write to Processing job table with current batch job event info
-    job_params = {
-        "status": models.Status.INPROGRESS,
-        "instrument": "swapi",
-        "data_level": "l1",
-        "descriptor": "sci-1min",
-        "start_date": datetime.strptime("20230724", "%Y%m%d"),
-        "major_version": 1,
-        "minor_version": 1,
-    }
-    processing_job = models.ProcessingJob(**job_params)
-    session.add(processing_job)
-    session.commit()
-    job_id = processing_job.id
-
-    # TODO: Will update this test further
-    # when I extend batch job event handler.
-    event = {
-        "detail-type": "Batch Job State Change",
-        "source": "aws.batch",
-        "detail": {
-            "jobArn": (
-                "arn:aws:batch:us-west-2:012345678910:"
-                "job/26242c7e-3d49-4e41-9387-74fcaf9630bb"
-            ),
-            "jobName": f"swe-l0-job-{job_id}",  # NOTE: We need to add job_id to jobName
-            "jobId": "26242c7e-3d49-4e41-9387-74fcaf9630bb",
-            "jobQueue": (
-                "arn:aws:batch:us-west-2:012345678910:"
-                "job-queue/swe-fargate-batch-job-queue"
-            ),
-            "status": "FAILED",
-            "statusReason": "some error message",
-            "startedAt": 1744397031734,
-            "stoppedAt": 1744397296519,
-            "jobDefinition": (
-                "arn:aws:batch:us-west-2:012345678910:"
-                "job-definition/fargate-batch-job-definitionswe:1"
-            ),
-            "container": {
-                "image": (
-                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest"
-                ),
-                "command": [
-                    "--instrument",
-                    "swapi",
-                    "--level",
-                    "l1",
-                    "--descriptor",
-                    "sci-1min",
-                    "--start-date",
-                    "20230724",
-                    "--version",
-                    "v001",
-                    "--dependency",
-                    """[
-                        {
-                            'instrument': 'swapi',
-                            'level': 'l0',
-                            'start_date': 20230724,
-                            'version': 'v001'
-                        }
-                    ]""",
-                    "--use-remote",
-                ],
-                "logStreamName": (
-                    "fargate-batch-job-definitionswe/default/"
-                    "8a2b784c7bd342f69ea5dac3adaed26f"
-                ),
-            },
-        },
-    }
-    returned_value = indexer.lambda_handler(event=event, context={})
-    assert returned_value["statusCode"] == 200
-
-    # check that data was written to status table
-    query = select(models.ProcessingJob.__table__).where(
-        models.ProcessingJob.instrument == job_params["instrument"],
-        models.ProcessingJob.data_level == job_params["data_level"],
-        models.ProcessingJob.major_version == job_params["major_version"],
-        models.ProcessingJob.minor_version == job_params["minor_version"],
-    )
-
-    processing_job = session.execute(query).first()
-    assert processing_job.id == job_id
-    assert processing_job.status == models.Status.FAILED
-    # Processing time should be 2025-04-11 18:48:16.519000+00:00.
-    # Had to do replace timezone info to be None because test's db
-    # looses timezone info. This shouldn't happen in production.
-    expected_started_at = datetime.fromtimestamp(
-        event["detail"]["startedAt"] / 1000, tz=timezone.utc
-    ).replace(tzinfo=None)
-    expected_stopped_at = datetime.fromtimestamp(
-        event["detail"]["stoppedAt"] / 1000, tz=timezone.utc
-    ).replace(tzinfo=None)
-
-    assert processing_job.started_at == expected_started_at
-    assert processing_job.stopped_at == expected_stopped_at
-
-    # Test for succeeded case
-    event["detail"]["status"] = "SUCCEEDED"
-    returned_value = indexer.lambda_handler(event=event, context={})
-    assert returned_value["statusCode"] == 200
-
-    query = select(models.ProcessingJob.__table__).where(
-        models.ProcessingJob.instrument == job_params["instrument"],
-        models.ProcessingJob.data_level == job_params["data_level"],
-        models.ProcessingJob.major_version == job_params["major_version"],
-        models.ProcessingJob.minor_version == job_params["minor_version"],
-    )
-
-    processing_job = session.execute(query).first()
-    assert processing_job.id == job_id
-    assert processing_job.status == models.Status.SUCCEEDED
 
 
 def test_s3_sci_event(session, s3_client, events_client):

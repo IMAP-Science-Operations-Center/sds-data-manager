@@ -519,6 +519,7 @@ def send_spice_event(spice_obj: SPICEFilePath, s3_key: str):
     spice_events = [
         "attitude_history",
         "attitude_predict",
+        "pointing_attitude",
         "ephemeris_reconstructed",
         "ephemeris_nominal",
         "ephemeris_predict",

@@ -122,6 +122,22 @@ jobs:
           poetry run cdk deploy $STACKS --context account_name=$ACCOUNT_NAME --require-approval never
 
       # ----------------------------------------------------
+      # Force ECS redeploy of Dagster daemon + webserver
+      # ----------------------------------------------------
+      - name: Force new ECS deployment for Dagster
+        run: |
+          CLUSTER=$(aws ecs list-clusters --region us-west-2 \
+            --query "clusterArns[?contains(@, 'DagsterCluster')]" --output text)
+
+          SERVICES=$(aws ecs list-services --cluster "$CLUSTER" --region us-west-2 \
+            --query "serviceArns[?contains(@, 'Dagster')]" --output text)
+
+          for svc in $SERVICES; do
+            echo "Forcing redeploy of $svc"
+            aws ecs update-service --cluster "$CLUSTER" --service "$svc" --force-new-deployment --region us-west-2
+          done
+
+      # ----------------------------------------------------
       # 🏷️ Tag Release (prod only)
       # ----------------------------------------------------
       - name: Create tag

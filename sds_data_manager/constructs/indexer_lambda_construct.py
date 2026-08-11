@@ -126,23 +126,8 @@ class IndexerLambda(Construct):
             ),
         )
 
-        # Uses batch job status
-        # to update status in the database and
-        # update ingested time if status was success
-        batch_job_status_rule = events.Rule(
-            self,
-            "batchJobStatus",
-            rule_name="batch-job-status",
-            event_pattern=events.EventPattern(
-                source=["aws.batch"],
-                detail_type=["Batch Job State Change"],
-                detail={"status": ["SUCCEEDED", "FAILED"]},
-            ),
-        )
-
         # Add the Lambda function as the target for the rules
         imap_data_arrival_rule.add_target(targets.LambdaFunction(indexer_lambda))
-        batch_job_status_rule.add_target(targets.LambdaFunction(indexer_lambda))
 
 
 class SPICEIndexerLambda(Construct):
