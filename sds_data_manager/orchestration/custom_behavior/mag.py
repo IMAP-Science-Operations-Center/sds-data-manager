@@ -25,12 +25,13 @@ class MagL1CJob(imap_job.IMAPJobHandler):
     """Deliver the previous day's L1C to MAG L1C processing.
 
     MAG L1C continues the previous day's L1C timeline across the day boundary
-    when the current day opens with a gap (imap_processing#3323). The previous
-    day's L1C is this job's own output product, so it is deliberately not
-    declared as an input in imap_mag_dependencies.yaml: a declared self-input
-    would put a cycle in the Dagster asset graph, and the generic input query
-    would feed a reprocessing run its own earlier output. The file is fetched
-    here at input-collection time instead.
+    when the current day opens with a gap (imap_processing#2925, implemented
+    in imap_processing#3323). The previous day's L1C is this job's own output
+    product, so it is deliberately not declared as an input in
+    imap_mag_dependencies.yaml: a declared self-input would put a cycle in
+    the Dagster asset graph, and the generic input query would feed a
+    reprocessing run its own earlier output. The file is fetched here at
+    input-collection time instead.
 
     Downlinks arrive in multi-day batches, so day N's job can start before
     day N-1's L1C has been built. _check_for_running_dependencies therefore
@@ -63,74 +64,84 @@ class MagL1CJob(imap_job.IMAPJobHandler):
         # so trim one second from both ends of the previous day: the window
         # then touches only day N-1's partition, not day N-2's (which ends at
         # day N-1's midnight) or this run's own (which starts at target_start).
-        previous_day_keys = set(
-            self._get_overlapping_target_partitions(
-                None,
-                target_start - datetime.timedelta(days=1, seconds=-1),
-                target_start - datetime.timedelta(seconds=1),
-                context.instance,
-            )
+        previous_day_keys = self._get_overlapping_target_partitions(
+            None,
+            target_start - datetime.timedelta(days=1) + datetime.timedelta(seconds=1),
+            target_start - datetime.timedelta(seconds=1),
+            context.instance,
         )
         if not previous_day_keys:
             return False
 
-        own_asset = self.job_config.outputs[0].to_dagster_asset()
         in_flight_runs = context.instance.get_runs(
             filters=RunsFilter(
                 statuses=[
                     DagsterRunStatus.QUEUED,
                     DagsterRunStatus.STARTING,
                     DagsterRunStatus.STARTED,
-                ]
+                ],
+                tags={"dagster/partition": previous_day_keys},
             )
         )
         for run in in_flight_runs:
-            if run.tags.get("dagster/partition") not in previous_day_keys:
-                continue
-            # Sensor-requested runs carry this job's name; reprocessing
-            # backfill runs carry the asset selection instead.
-            if run.job_name == self.dagster_job_name or own_asset in (
-                run.asset_selection or ()
-            ):
+            if self._is_own_job_run(run):
                 context.log.info(
                     f"Previous day's L1C job is in flight ({run.run_id}); waiting."
                 )
                 return True
 
-        materialized_l1c = set(context.instance.get_materialized_partitions(own_asset))
-        if materialized_l1c & previous_day_keys:
+        # Nothing in flight does not mean nothing is coming: the kickoff
+        # sensor requests day N-1's run only on a tick after its L1B lands.
+        # The materializations decide whether an L1C is still expected.
+        own_asset = self.job_config.outputs[0].to_dagster_asset()
+        materialized_l1c = context.instance.get_materialized_partitions(own_asset)
+        if set(materialized_l1c).intersection(previous_day_keys):
             return False  # a previous-day L1C exists; it will be delivered
 
         if not any(
-            previous_day_keys
-            & set(context.instance.get_materialized_partitions(dep.to_dagster_asset()))
+            set(
+                context.instance.get_materialized_partitions(dep.to_dagster_asset())
+            ).intersection(previous_day_keys)
             for dep in self.job_config.science_inputs
         ):
             return False  # the previous day has no L1B data: nothing to wait for
 
-        for key in previous_day_keys:
-            finished_runs = context.instance.get_runs(
-                filters=RunsFilter(
-                    statuses=[
-                        DagsterRunStatus.SUCCESS,
-                        DagsterRunStatus.FAILURE,
-                        DagsterRunStatus.CANCELED,
-                    ],
-                    tags={"dagster/partition": key},
-                )
+        # Day N-1 has L1B but no L1C. If its job already finished (failed, or
+        # skipped as a SUCCESS run that only logged an AssetObservation), no
+        # L1C is coming without intervention, so waiting only delays this run.
+        finished_runs = context.instance.get_runs(
+            filters=RunsFilter(
+                statuses=[
+                    DagsterRunStatus.SUCCESS,
+                    DagsterRunStatus.FAILURE,
+                    DagsterRunStatus.CANCELED,
+                ],
+                tags={"dagster/partition": previous_day_keys},
             )
-            for run in finished_runs:
-                # The partition tag is shared by every daily job, so match
-                # this job the same way as the in-flight check above.
-                if run.job_name == self.dagster_job_name or own_asset in (
-                    run.asset_selection or ()
-                ):
-                    return False  # its job already ran and skipped or failed
+        )
+        if any(self._is_own_job_run(run) for run in finished_runs):
+            return False  # its job already ran and skipped or failed
 
+        # Reached when day N-1's L1B has landed but the sensor has not yet
+        # requested its L1C run, which is the case this wait exists for.
         context.log.info(
             "The previous day has L1B data but no L1C yet; waiting for its job."
         )
         return True
+
+    def _is_own_job_run(self, run):
+        """Return True if the run is a run of this job.
+
+        The dagster/partition tag is shared by every daily job, so the tag
+        alone cannot identify this job's runs. Sensor runs carry this job's
+        name. Reprocessing runs come from a backfill (reprocessing.py) and
+        carry Dagster's implicit asset job name ("__ASSET_JOB"), so they are
+        matched by asset selection, which RunsFilter cannot filter on.
+        """
+        own_asset = self.job_config.outputs[0].to_dagster_asset()
+        return run.job_name == self.dagster_job_name or own_asset in (
+            run.asset_selection or ()
+        )
 
     def get_science_files_inputs(self, context, target_start, target_end):
         """Return the base science inputs plus the previous day's L1C, if any."""

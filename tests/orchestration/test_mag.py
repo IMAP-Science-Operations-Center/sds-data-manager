@@ -1,7 +1,7 @@
 """Test the MAG L1C custom job handler.
 
 MAG L1C continues the previous day's L1C timeline across the day boundary
-(imap_processing#3323), so its job pulls the previous day's L1C - its own
+(imap_processing#2925), so its job pulls the previous day's L1C - its own
 output product - as an extra input. These tests cover the previous-day
 delivery in sds_data_manager/orchestration/custom_behavior/mag.py, which
 should:
