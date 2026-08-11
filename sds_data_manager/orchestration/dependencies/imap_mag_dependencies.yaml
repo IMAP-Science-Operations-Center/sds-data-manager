@@ -136,8 +136,9 @@
 
 # custom_behavior/mag.py also delivers the previous day's L1C to this job
 # (MAG SDC Data Validation 4.3.3 time inheritance; imap_processing issue
-# 2925). It is not declared as an input here because that would put a
-# self-cycle in the Dagster asset graph.
+# 2925, implemented in imap_processing PR 3323). It is not declared as an
+# input here because that would put a self-cycle in the Dagster asset
+# graph.
 (l1c, norm-magi):
   partition: daily
   inputs:
@@ -165,8 +166,9 @@
 
 # custom_behavior/mag.py also delivers the previous day's L1C to this job
 # (MAG SDC Data Validation 4.3.3 time inheritance; imap_processing issue
-# 2925). It is not declared as an input here because that would put a
-# self-cycle in the Dagster asset graph.
+# 2925, implemented in imap_processing PR 3323). It is not declared as an
+# input here because that would put a self-cycle in the Dagster asset
+# graph.
 (l1c, norm-mago):
   partition: daily
   inputs:

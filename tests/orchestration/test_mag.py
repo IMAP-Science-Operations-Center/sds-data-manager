@@ -394,11 +394,7 @@ def test_mag_l1c_no_wait_after_previous_day_job_finished(ephemeral_instance):
 
 
 def test_mag_l1c_finished_backfill_run_also_counts(ephemeral_instance):
-    """A finished reprocessing-backfill run for the previous day also counts.
-
-    Backfill runs carry Dagster's implicit asset job name and an asset
-    selection instead of this job's name.
-    """
+    """A finished reprocessing-backfill run for the previous day also counts."""
     job = _mag_l1c_job(NORM_MAGO_L1C_JOB)
     context = _pending_context(ephemeral_instance)
 
