@@ -112,16 +112,14 @@ class IalirtVpnConstruct(Construct):
         # two auto-assigned tunnel IPs.
         # These LASP IKE Gateways must be given to NOAA.
         self.vpn_connections: dict[str, ec2.CfnVPNConnection] = {}
+        # NOAA's ASN per the ICD, per site.
+        noaa_asns = {"WASH": 64892, "DENV": 64893}
         for site, ip in {"WASH": wash_ip, "DENV": denv_ip}.items():
             # AWS needs to know the router's public IP and ASN to establish the tunnel.
-            # bgp_asn=64893 is NOAA's ASN per the ICD. This must match the ASN
-            # configured on NOAA's actual router — AWS silently rejects the BGP
-            # session (not the tunnel itself) if the peer AS doesn't match what's
-            # registered here.
             cgw = ec2.CfnCustomerGateway(
                 self,
                 f"NoaaCustomerGateway{site}",
-                bgp_asn=64893,
+                bgp_asn=noaa_asns[site],
                 ip_address=ip,
                 type="ipsec.1",
             )
