@@ -17,7 +17,7 @@ def test_add_idex_10_day_partitions(mock_datetime):
     mock_datetime.datetime.fromisoformat.return_value = datetime.datetime(
         2025, 9, 24, tzinfo=datetime.timezone.utc
     )
-    mock_datetime.timezone = datetime.timezone.utc
+    mock_datetime.timezone = datetime.timezone
     mock_datetime.timedelta = datetime.timedelta
     with instance_for_test() as instance:
         # Mock existing partitions
@@ -46,7 +46,7 @@ def test_add_idex_30_day_partitions(mock_datetime):
     mock_datetime.datetime.fromisoformat.return_value = datetime.datetime(
         2025, 9, 24, tzinfo=datetime.timezone.utc
     )
-    mock_datetime.timezone = datetime.timezone.utc
+    mock_datetime.timezone = datetime.timezone
     mock_datetime.timedelta = datetime.timedelta
     with instance_for_test() as instance:
         # Mock existing partitions
