@@ -120,8 +120,10 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
 
     # Check if all other requested kernels are found
     if expected_other_kernels != other_kernels_found:
-        missing_kernels = expected_other_kernels - other_kernels_found
-        logger.error(f"Missing SPICE kernel types: {missing_kernels}")
+        logger.error(
+            f"Non-ephemeris kernels {expected_other_kernels} not found in "
+            f"metakernel files {other_kernels_found}"
+        )
         return False
 
     # If no ephemeris kernels are requested, we can return True.
