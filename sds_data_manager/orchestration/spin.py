@@ -135,7 +135,12 @@ def get_spin_files(
     # Build the subquery with row numbers
     subquery = (
         session.query(
-            spin.file_path, spin.start_date, spin.end_date, spin.version, row_number
+            spin.file_path,
+            spin.start_date,
+            spin.end_date,
+            spin.version,
+            row_number,
+            spin.ingestion_date,
         )
         .filter(
             and_(
@@ -155,6 +160,8 @@ def get_spin_files(
             subquery.c.version,
         )
         .filter(subquery.c.row_num == 1)
+        # Order by ingestion date, newest first
+        .order_by(subquery.c.ingestion_date)
         .all()
     )
 
@@ -207,7 +214,6 @@ def get_upstream_dependency_inputs_spin(
             spin_records, start_date, end_date
         ):
             return None
-
         spin_files = [basename(record.file_path) for record in spin_records]
         logger.info(f"Found spin files: {spin_files}. Adding to collection.")
 
