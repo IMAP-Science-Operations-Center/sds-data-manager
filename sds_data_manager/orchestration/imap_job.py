@@ -14,7 +14,6 @@ import boto3
 import requests
 from botocore.exceptions import ClientError
 from dagster import (
-    AllPartitionMapping,
     AssetDep,
     AssetExecutionContext,
     AssetObservation,
@@ -27,6 +26,7 @@ from dagster import (
     RunRequest,
     RunsFilter,
     SensorEvaluationContext,
+    TimeWindowPartitionMapping,
     define_asset_job,
     multi_asset,
     sensor,
@@ -164,17 +164,21 @@ class IMAPJobHandler:
         for out in self.job_config.outputs:
             output_assets[out.to_dagster_name()] = AssetOut(is_required=False)
 
-        # NOTE: Dependencies are resolved by querying the database directly in run_job,
-        # not through Dagster's partition-mapped IO. Without an explicit
-        # mapping here e.g. deps = input_keys, Dagster infers IdentityPartitionMapping
-        # for deps whose partitions_def differs from ours (e.g. cadence assets
-        # depending on daily/repoint assets), which never has any keys in
-        # common and silently breaks backfills. AllPartitionMapping avoids
-        # that string-matching entirely.
+        # NOTE: Dependencies are resolved by querying the database directly in
+        # run_job, not through Dagster's partition-mapped IO. Without an explicit
+        # mapping (e.g. deps = input_keys), dagster infers IdentityPartitionMapping,
+        # which requires upstream and downstream to share a partitions_def - this breaks
+        # for deps whose partitions_def differs from ours (e.g. cadence assets depending
+        # on daily/repoint assets), since there's never any string overlap between the
+        # two partitions. TimeWindowPartitionMapping maps each downstream partition to
+        # every upstream partition whose time window overlaps it, so it degrades to the
+        # identity mapping when upstream and downstream share a partitions_def, and
+        # otherwise still resolves via each side's actual time window rather than key
+        # string matching.
         @multi_asset(
             name=f"{self.job_config.to_dagster_name()}_multi_asset_op",
             deps=[
-                AssetDep(key, partition_mapping=AllPartitionMapping())
+                AssetDep(key, partition_mapping=TimeWindowPartitionMapping())
                 for key in input_keys
             ],
             partitions_def=self.partitions_def,

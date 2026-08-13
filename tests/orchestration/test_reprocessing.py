@@ -4,7 +4,6 @@ import json
 from unittest.mock import Mock, patch
 
 from dagster import AssetKey, DagsterInstance, Definitions, asset, build_sensor_context
-from dagster._core.definitions.partitions.subset import DefaultPartitionsSubset
 
 from sds_data_manager.orchestration import reprocessing
 from sds_data_manager.orchestration.custom_partitions import (
@@ -60,19 +59,20 @@ def test_reprocess_one_repoint_partition() -> None:
     with (
         patch.object(reprocessing, "SQS_CLIENT", mock_sqs_client),
     ):
-        reprocessing.reprocess_sensor(context)
+        run_requests = list(reprocessing.reprocess_sensor(context))
 
-    # Check that there was a backfill submitted
-    backfills = instance.get_backfills()
-    assert len(backfills) == 1
-    backfill_subset = backfills[
-        0
-    ].asset_backfill_data.target_subset.partitions_subsets_by_asset_key
-    # There should be 2 assets reprocessed (1 job)
-    assert len(backfill_subset) == 2
-    assert backfill_subset[AssetKey("glows_l1a_de")] == DefaultPartitionsSubset(
-        subset={"repoint123_2026-01-01T00:00:00_to_2026-01-02T00:00:00"}
+    # Check that a run was requested for the one matching partition
+    assert len(run_requests) == 1
+    run_request = run_requests[0]
+    assert (
+        run_request.partition_key
+        == "repoint123_2026-01-01T00:00:00_to_2026-01-02T00:00:00"
     )
+    # There should be 2 assets reprocessed (1 job)
+    assert set(run_request.asset_selection) == {
+        AssetKey("glows_l1a_de"),
+        AssetKey("glows_l1a_hist"),
+    }
 
 
 def test_reprocess_all_swe() -> None:
@@ -124,19 +124,20 @@ def test_reprocess_all_swe() -> None:
     with (
         patch.object(reprocessing, "SQS_CLIENT", mock_sqs_client),
     ):
-        reprocessing.reprocess_sensor(context)
+        run_requests = list(reprocessing.reprocess_sensor(context))
 
-    # Check that there was a backfill submitted
-    backfills = instance.get_backfills()
-    assert len(backfills) == 1
-    backfill_subset = backfills[
-        0
-    ].asset_backfill_data.target_subset.partitions_subsets_by_asset_key
-    # There should be 3 keys
-    assert len(backfill_subset) == 3
-    assert backfill_subset[AssetKey("swe_l1a_sci")] == DefaultPartitionsSubset(
-        subset={"daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"}
+    # Check that a run was requested for the one matching partition
+    assert len(run_requests) == 1
+    run_request = run_requests[0]
+    assert (
+        run_request.partition_key == "daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"
     )
+    # There should be 3 assets reprocessed (1 job)
+    assert set(run_request.asset_selection) == {
+        AssetKey("swe_l1a_sci"),
+        AssetKey("swe_l1a_hk"),
+        AssetKey("swe_l1a_cemraw"),
+    }
 
 
 def test_reprocess_all_output_node() -> None:
@@ -191,16 +192,17 @@ def test_reprocess_all_output_node() -> None:
     with (
         patch.object(reprocessing, "SQS_CLIENT", mock_sqs_client),
     ):
-        reprocessing.reprocess_sensor(context)
+        run_requests = list(reprocessing.reprocess_sensor(context))
 
-    # Check that there was a backfill submitted
-    backfills = instance.get_backfills()
-    assert len(backfills) == 1
-    backfill_subset = backfills[
-        0
-    ].asset_backfill_data.target_subset.partitions_subsets_by_asset_key
-    # There should be 3 keys
-    assert len(backfill_subset) == 3
-    assert backfill_subset[AssetKey("swe_l1a_sci")] == DefaultPartitionsSubset(
-        subset={"daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"}
+    # Check that a run was requested for the one matching partition
+    assert len(run_requests) == 1
+    run_request = run_requests[0]
+    assert (
+        run_request.partition_key == "daily_2026-01-01T00:00:00_to_2026-01-02T00:00:00"
     )
+    # There should be 3 assets reprocessed (1 job)
+    assert set(run_request.asset_selection) == {
+        AssetKey("swe_l1a_sci"),
+        AssetKey("swe_l1a_hk"),
+        AssetKey("swe_l1a_cemraw"),
+    }
