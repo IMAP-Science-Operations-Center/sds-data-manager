@@ -6,22 +6,24 @@
       "Action": [
         "s3:ListBucket"
       ],
-      "Resource": "arn:aws:s3:::${AWS_BUCKET}"
+      "Resource": [
+        "arn:aws:s3:::${SRC_BUCKET}",
+        "arn:aws:s3:::${DST_BUCKET}"
+      ]
     },
     {
       "Effect": "Allow",
       "Action": [
-        "s3:GetObject",
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::${SRC_BUCKET}/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
         "s3:PutObject"
       ],
-      "Resource": "arn:aws:s3:::${AWS_BUCKET}/*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:GetSecretValue"
-      ],
-      "Resource": "arn:aws:secretsmanager:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT}:secret:sdp-database-cred*"
+      "Resource": "arn:aws:s3:::${DST_BUCKET}/*"
     }
   ]
 }
