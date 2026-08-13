@@ -108,16 +108,6 @@ def build_noaa_vpn_tgw(
         transit_gateway_route_table_id=tgw_route_table_id,
     )
 
-    # Add the VPC's address range to our route table, so any other
-    # attachment using this table (e.g. the NOAA VPN connections) can route
-    # traffic destined for the VPC here.
-    ec2.CfnTransitGatewayRouteTablePropagation(
-        ialirt_stack,
-        "IalirtTgwRouteTablePropagationVpc",
-        transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
-        transit_gateway_route_table_id=tgw_route_table_id,
-    )
-
     # AWS::EC2::VPNConnection does not expose its Transit Gateway attachment
     # ID as a CloudFormation attribute, so look it up via a custom resource
     # that calls ec2:DescribeTransitGatewayAttachments, filtered to the VPN
