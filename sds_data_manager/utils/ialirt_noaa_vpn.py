@@ -51,6 +51,10 @@ def build_noaa_vpn_tgw(
         ialirt_stack, "/ialirt/noaa-vpn/denv-ip"
     )
 
+    ialirt_eip_ip = ssm.StringParameter.value_for_string_parameter(
+        ialirt_stack, "/ialirt/noaa-vpn/eip-ip"
+    )
+
     # Create a Transit Gateway (TGW) to terminate the IPSec tunnel from NOAA.
     ialirt_transit_gateway = ec2.CfnTransitGateway(
         ialirt_stack,
@@ -100,16 +104,6 @@ def build_noaa_vpn_tgw(
     ec2.CfnTransitGatewayRouteTableAssociation(
         ialirt_stack,
         "IalirtTgwRouteTableAssociationVpc",
-        transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
-        transit_gateway_route_table_id=tgw_route_table_id,
-    )
-
-    # Add the VPC's address range to our route table, so any other
-    # attachment using this table (e.g. the NOAA VPN connections) can route
-    # traffic destined for the VPC here.
-    ec2.CfnTransitGatewayRouteTablePropagation(
-        ialirt_stack,
-        "IalirtTgwRouteTablePropagationVpc",
         transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
         transit_gateway_route_table_id=tgw_route_table_id,
     )
@@ -171,7 +165,7 @@ def build_noaa_vpn_tgw(
     ec2.CfnTransitGatewayRoute(
         ialirt_stack,
         "IalirtTgwDefaultRouteToVpc",
-        destination_cidr_block="0.0.0.0/0",
+        destination_cidr_block=f"{ialirt_eip_ip}/32",
         transit_gateway_route_table_id=tgw_route_table_id,
         transit_gateway_attachment_id=ialirt_vpc_attachment.attr_id,
     )

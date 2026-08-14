@@ -154,6 +154,9 @@ hist_spice: &hist_spice
     - source: repoint
       data_type: repoint
       descriptor: historical
+    - source: glows
+      data_type: ancillary
+      descriptor: force-reprocessing-config
   outputs:
     - source: glows
       data_type: l3b

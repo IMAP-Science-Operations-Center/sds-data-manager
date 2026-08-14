@@ -1,23 +1,24 @@
 """Tests for dynamic partition sensors in custom_partitions."""
 
 import datetime
-from unittest.mock import patch
+from unittest import mock
 
 from dagster import build_sensor_context, instance_for_test
 
 from sds_data_manager.orchestration import custom_partitions
 
 
-# wrap the real datetime *module*; override only datetime.datetime.now
-class _FrozenDatetime(datetime.datetime):
-    @classmethod
-    def now(cls, tz=None):
-        return datetime.datetime(2025, 9, 29, tzinfo=datetime.timezone.utc)
-
-
-@patch.object(custom_partitions.datetime, "datetime", _FrozenDatetime)
-def test_add_idex_10_day_partitions():
+@mock.patch("sds_data_manager.orchestration.custom_partitions.datetime")
+def test_add_idex_10_day_partitions(mock_datetime):
     """Check that add_idex_10_day_partitions adds the correct partitions."""
+    mock_datetime.datetime.now.return_value = datetime.datetime(
+        2025, 9, 29, tzinfo=datetime.timezone.utc
+    )
+    mock_datetime.datetime.fromisoformat.return_value = datetime.datetime(
+        2025, 9, 24, tzinfo=datetime.timezone.utc
+    )
+    mock_datetime.timezone = datetime.timezone
+    mock_datetime.timedelta = datetime.timedelta
     with instance_for_test() as instance:
         # Mock existing partitions
         instance.add_dynamic_partitions(
@@ -36,9 +37,17 @@ def test_add_idex_10_day_partitions():
     ]
 
 
-@patch.object(custom_partitions.datetime, "datetime", _FrozenDatetime)
-def test_add_idex_30_day_partitions():
+@mock.patch("sds_data_manager.orchestration.custom_partitions.datetime")
+def test_add_idex_30_day_partitions(mock_datetime):
     """Check that add_idex_30_day_partitions adds the correct partitions."""
+    mock_datetime.datetime.now.return_value = datetime.datetime(
+        2025, 9, 29, tzinfo=datetime.timezone.utc
+    )
+    mock_datetime.datetime.fromisoformat.return_value = datetime.datetime(
+        2025, 9, 24, tzinfo=datetime.timezone.utc
+    )
+    mock_datetime.timezone = datetime.timezone
+    mock_datetime.timedelta = datetime.timedelta
     with instance_for_test() as instance:
         # Mock existing partitions
         instance.add_dynamic_partitions(
