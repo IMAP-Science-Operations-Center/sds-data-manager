@@ -7,7 +7,7 @@ from pathlib import Path
 
 import spiceypy
 
-from ..spice_utilities import _metakernel_builder, furnish_best_spice_file
+from ..spice_utilities import furnish_best_spice_file, metakernel_builder
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ def lambda_handler(event, context):
         file_types = {type.strip().upper() for type in file_types.split(",")}
 
     # Build a metakernel
-    metakernel = _metakernel_builder(start_time, end_time, file_types=file_types)
+    metakernel = metakernel_builder(start_time, end_time, file_types=file_types)
 
     if (require_coverage.lower() == "true") and metakernel.contains_gaps():
         return {

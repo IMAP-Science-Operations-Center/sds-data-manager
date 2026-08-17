@@ -250,7 +250,7 @@ def furnish_best_spice_file(kernel_type: str):
         )
 
     # Query for latest kernel
-    metakernel = _metakernel_builder(0, MAXIMUM_MISSION_J2000_TIME, kernel_type.upper())
+    metakernel = metakernel_builder(0, MAXIMUM_MISSION_J2000_TIME, kernel_type.upper())
     metakernel_files = metakernel.return_spice_files_in_order(detailed=False)
     if not metakernel_files:
         raise FileNotFoundError(
@@ -274,7 +274,7 @@ def furnish_best_spice_file(kernel_type: str):
     return highest_version_spice_file
 
 
-def _metakernel_builder(
+def metakernel_builder(
     start_time: float, end_time: float, file_types: Collection[str] | None = None
 ) -> MetaKernel:
     """Create a MetaKernel class and inserts files into it."""
