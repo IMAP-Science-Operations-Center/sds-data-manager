@@ -160,7 +160,7 @@ def get_spin_files(
             subquery.c.version,
         )
         .filter(subquery.c.row_num == 1)
-        # Order by ingestion date, newest first
+        # Order by ingestion date, oldest first
         .order_by(subquery.c.ingestion_date)
         .all()
     )
