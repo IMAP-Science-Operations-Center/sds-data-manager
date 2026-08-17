@@ -250,7 +250,9 @@ def furnish_best_spice_file(kernel_type: str):
         )
 
     # Query for latest kernel
-    metakernel = metakernel_builder(0, MAXIMUM_MISSION_J2000_TIME, kernel_type.upper())
+    metakernel = metakernel_builder(
+        0, MAXIMUM_MISSION_J2000_TIME, {kernel_type.upper()}
+    )
     metakernel_files = metakernel.return_spice_files_in_order(detailed=False)
     if not metakernel_files:
         raise FileNotFoundError(
