@@ -1,6 +1,5 @@
 """Contains the lambda handler for the 'query' data access API."""
 
-import datetime
 import json
 import logging
 from collections.abc import Collection
@@ -8,9 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 
-import spiceypy
-
-from ..spice_utilities import furnish_best_spice_file
+from ..spice_utilities import convert_input_times_to_j2000
 from . import spice_query_api
 from .metakernel import MetaKernel
 
@@ -171,42 +168,6 @@ class KernelCollection:
         ]
 
 
-def _convert_input_times_to_j2000(start_date_str, end_date_str):
-    """Convert input to seconds since J2000."""
-    try:
-        # Convert to datetime objects
-        start_date_datetime = datetime.datetime.strptime(start_date_str, "%Y%m%d")
-        end_date_datetime = datetime.datetime.strptime(end_date_str, "%Y%m%d")
-
-        # Use SPICE to convert to J2000
-
-        # First, check if LSK is loaded in yet
-        count = spiceypy.ktotal("TEXT")
-        lsk_loaded = False
-        for i in range(count):
-            filename, _, _, _ = spiceypy.kdata(i, "TEXT", 100, 100, 100)
-
-            if ".tls" in filename:
-                logger.info("Leapsecond kernel is furnished.")
-                lsk_loaded = True
-                break
-
-        # If it is not loaded, attempt to load it
-        if not lsk_loaded:
-            logger.info(
-                "Attempting to load leapseconds kernel needed for time conversion."
-            )
-            furnish_best_spice_file("leapseconds")
-
-        # Convert datetime to J2000 using spiceypy
-        start_date = spiceypy.datetime2et(start_date_datetime)
-        end_date = spiceypy.datetime2et(end_date_datetime)
-    except (TypeError, ValueError):
-        start_date = float(start_date_str)
-        end_date = float(end_date_str)
-    return start_date, end_date
-
-
 def lambda_handler(event, context):
     """Entry point to the SPICE query API lambda.
 
@@ -227,7 +188,7 @@ def lambda_handler(event, context):
     query_params = event["queryStringParameters"]
     start_time_str = query_params["start_time"]
     end_time_str = query_params["end_time"]
-    start_time, end_time = _convert_input_times_to_j2000(start_time_str, end_time_str)
+    start_time, end_time = convert_input_times_to_j2000(start_time_str, end_time_str)
     spice_directory = Path(query_params.get("spice_path", ""))
     list_files = query_params.get("list_files", "false")
     require_coverage = query_params.get("require_coverage", "false")
