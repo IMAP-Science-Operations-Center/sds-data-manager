@@ -8,6 +8,8 @@ import pytest
 import spiceypy
 
 from sds_data_manager.orchestration import spice
+from sds_data_manager.orchestration.spin import get_upstream_dependency_inputs_spin
+from tests.orchestration.conftest import _insert_spin_file
 
 TEST_LSK_PATH = (
     Path(__file__).parent.parent / "test-data" / "test_spice_files" / "naif0012.tls"
@@ -109,3 +111,55 @@ def test_same_start_and_end_extends_query_window_by_24_hours():
     start_time, end_time = _query_times(["attitude_history"], instant, instant)
 
     assert (end_time - start_time) == pytest.approx(24 * 3600, abs=1e-9)
+
+
+def test_get_upstream_dependency_inputs_spin(mock_db_session):
+    """Test get_upstream_dependency_inputs_spin returns files in the correct order."""
+    # Add some test spin file records
+    # The first two files are for the same date range but have different versions.
+    # The v02 should be picked over the v01.
+    _insert_spin_file(
+        mock_db_session,
+        "imap_2026_142_2026_143_01.spin",
+        upload_time=1,
+        start_date=datetime.datetime(2026, 1, 1),
+        end_date=datetime.datetime(2026, 1, 2),
+    )
+    _insert_spin_file(
+        mock_db_session,
+        "imap_2026_142_2026_143_02.spin",
+        upload_time=2,
+        start_date=datetime.datetime(2026, 1, 1),
+        end_date=datetime.datetime(2026, 1, 2),
+    )
+    # The third and fourth files have overlapping date ranges. The ingest order
+    # should take precedence when sorting them. The last file ingested should
+    # be listed last (When loading SPICE kernels last one takes precedence).
+    _insert_spin_file(
+        mock_db_session,
+        "imap_2026_126_2026_128_01.spin",
+        upload_time=3,
+        start_date=datetime.datetime(2026, 1, 10),
+        end_date=datetime.datetime(2026, 1, 12),
+    )
+    _insert_spin_file(
+        mock_db_session,
+        "imap_2026_120_2026_127_01.spin",
+        upload_time=4,
+        start_date=datetime.datetime(2026, 1, 2),
+        end_date=datetime.datetime(2026, 1, 11),
+    )
+    # Query for a wide range of spin files.
+    spin_files = get_upstream_dependency_inputs_spin(
+        datetime.datetime(2025, 6, 1),
+        datetime.datetime(2027, 6, 10),
+        False,
+        mock_db_session,
+    )
+    # Check that the returned spin files are in the correct order and that the
+    # correct versions were selected.
+    assert spin_files == [
+        "imap_2026_142_2026_143_02.spin",
+        "imap_2026_126_2026_128_01.spin",
+        "imap_2026_120_2026_127_01.spin",
+    ]

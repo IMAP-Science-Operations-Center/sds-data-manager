@@ -276,6 +276,26 @@ def _insert_spice_file(session, filename, intervals, upload_time=0):
     session.commit()
 
 
+def _insert_spin_file(session, filename, upload_time=0, start_date=None, end_date=None):
+    if not start_date:
+        start_date = datetime.datetime(2026, 1, 1)
+    if not end_date:
+        end_date = datetime.datetime(2026, 1, 2)
+
+    spice_object = imap_data_access.SPICEFilePath(filename)
+    version = spice_object.spice_metadata["version"]
+    metadata_params = {
+        "file_path": f"imap/spice/{filename}",
+        "version": version,
+        "start_date": start_date,
+        "end_date": end_date,
+        "ingestion_date": datetime.datetime.now() + datetime.timedelta(upload_time),
+        "released": True,
+    }
+    session.add(models.SpinFiles(**metadata_params))
+    session.commit()
+
+
 @pytest.fixture
 def insert_test_spice_files(mock_db_session):
     """Put a filepath into the test data."""
