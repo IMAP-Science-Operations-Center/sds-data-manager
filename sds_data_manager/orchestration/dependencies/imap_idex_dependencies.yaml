@@ -86,7 +86,7 @@ spice_basics: &spice_basics
     - source: idex
       data_type: l1b
       descriptor: sci-10days
-      major_version: 1
+      major_version: 0
 
 (l2a, sci-10days):
   partition: 10d
