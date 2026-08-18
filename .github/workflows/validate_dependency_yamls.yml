@@ -1,0 +1,22 @@
+name: Validate Dependency YAMLs
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Validate dependency YAMLs
+        run: |
+          python scripts/validate_dependency_yamls.py
+

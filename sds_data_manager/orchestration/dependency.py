@@ -9,7 +9,7 @@ import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
 from ..lambda_code.SDSCode.api_lambdas import upload_api
-from .types import DependencyNode, Node, ProcessingJobNode
+from .types import DependencyNode, ProcessingJobNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -273,13 +273,13 @@ class DependencyConfigReader:
                 flat_list.append(item)
         return flat_list
 
-    def get_node_for_output(self, node: Node) -> ProcessingJobNode:
-        """Return the Dependency node that produces the given output.
+    def get_node_for_output(self, dep_node: DependencyNode) -> ProcessingJobNode:
+        """Return the ProcessingJobNode that produces the given DependencyNode output.
 
         Parameters
         ----------
-        node : Node
-            The output node for which to find the producing job.
+        dep_node : DependencyNode
+            The output DependencyNode for which to find the producing job.
 
         Returns
         -------
@@ -294,13 +294,38 @@ class DependencyConfigReader:
         for job_node in self._config.values():
             for output in job_node.outputs:
                 if (
-                    output.source == node.source
-                    and output.data_type == node.data_type
-                    and output.descriptor == node.descriptor
+                    output.source == dep_node.source
+                    and output.data_type == dep_node.data_type
+                    and output.descriptor == dep_node.descriptor
                 ):
                     return job_node
 
-        raise ValueError(f"No job found that produces output: ({node})")
+        raise ValueError(f"No job found that produces output: ({dep_node})")
+
+    def get_node_for_input(self, dep_node: DependencyNode) -> ProcessingJobNode | None:
+        """Return the ProcessingJobNode that produces the given DependencyNode input.
+
+        Parameters
+        ----------
+        dep_node : DependencyNode
+            The input DependencyNode for which to find the producing job.
+
+        Returns
+        -------
+        ProcessingJobNode, None
+            The job node whose inputs include the specified product. Returns
+            None if there are no jobs that have the input.
+        """
+        for job_node in self._config.values():
+            for input in job_node.inputs:
+                if (
+                    input.source == dep_node.source
+                    and input.data_type == dep_node.data_type
+                    and input.descriptor == dep_node.descriptor
+                ):
+                    return job_node
+
+        return None
 
 
 def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
