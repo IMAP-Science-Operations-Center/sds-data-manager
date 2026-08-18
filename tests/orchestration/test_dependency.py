@@ -28,17 +28,30 @@ def test_get_node_for_output_invalid():
 def test_get_node_for_input():
     """Test get_node_for_input."""
     reader = DependencyConfigReader()
-    node = reader.get_node_for_input(DependencyNode("idex", "l1a", "sci-10days"))
+    nodes = reader.get_nodes_for_input(DependencyNode("idex", "l1a", "sci-10days"))
+    # There should be only one node
+    assert len(nodes) == 1
     # Check that the correct processingJobNode was returned.
-    assert node.source == "idex"
-    assert node.data_type == "l1b"
-    assert node.descriptor == "sci-10days"
+    assert nodes[0].source == "idex"
+    assert nodes[0].data_type == "l1b"
+    assert nodes[0].descriptor == "sci-10days"
 
 
 def test_get_node_for_input_invalid():
     """Test get_node_for_input with non-existent dependency node."""
     reader = DependencyConfigReader()
     # This DependencyNode does not exist in the dependency configuration,
-    # so it should return none
-    node = reader.get_node_for_input(DependencyNode("idex", "l1a", "sci"))
-    assert node is None
+    # so it should return an empty list
+    node = reader.get_nodes_for_input(DependencyNode("idex", "l1a", "sci"))
+    assert node == []
+
+
+def test_get_nodes_for_input_many():
+    """Test get_node_for_input when there are multiple nodes."""
+    reader = DependencyConfigReader()
+    # Ultra l1c spacecraft psets are the inputs to multiple jobs
+    nodes = reader.get_nodes_for_input(
+        DependencyNode("ultra", "l1c", "45sensor-spacecraftpset")
+    )
+    # There should be 9 nodes
+    assert len(nodes) == 9

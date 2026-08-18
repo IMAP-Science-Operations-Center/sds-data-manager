@@ -302,20 +302,22 @@ class DependencyConfigReader:
 
         raise ValueError(f"No job found that produces output: ({dep_node})")
 
-    def get_node_for_input(self, dep_node: DependencyNode) -> ProcessingJobNode | None:
-        """Return the ProcessingJobNode that produces the given DependencyNode input.
+    def get_nodes_for_input(self, dep_node: DependencyNode) -> list[ProcessingJobNode]:
+        """Return the ProcessingJobNodes that have the given DependencyNode input.
 
         Parameters
         ----------
         dep_node : DependencyNode
-            The input DependencyNode for which to find the producing job.
+            The input DependencyNode for which to find the consuming job.
 
         Returns
         -------
-        ProcessingJobNode, None
-            The job node whose inputs include the specified product. Returns
-            None if there are no jobs that have the input.
+        list[ProcessingJobNode]
+            The job nodes whose inputs include the specified product.
         """
+        # returns a list because an input can be consumed by multiple jobs.
+        # E.g. PSETS often times are the inputs to more than one job.
+        processing_nodes = []
         for job_node in self._config.values():
             for input in job_node.inputs:
                 if (
@@ -323,9 +325,8 @@ class DependencyConfigReader:
                     and input.data_type == dep_node.data_type
                     and input.descriptor == dep_node.descriptor
                 ):
-                    return job_node
-
-        return None
+                    processing_nodes.append(job_node)
+        return processing_nodes
 
 
 def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
