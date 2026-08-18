@@ -38,13 +38,18 @@ IDEX_VALID_YAML = """
     - source: idex
       data_type: l1b
       descriptor: sci-10days
+      major_version: 2
+    - source: idex
+      data_type: l1b
+      descriptor: msg-10days
       major_version: 1
+
 """
 
 # Idex l1a sci-10days now has a greater major version than idex l1b
 # sci-10 days (downstream) this is invalid.
 IDEX_INVALID_YAML = IDEX_VALID_YAML.replace(
-    "data_type: l1b\n      descriptor: sci-10days\n      major_version: 1",
+    "data_type: l1b\n      descriptor: sci-10days\n      major_version: 2",
     "data_type: l1b\n      descriptor: sci-10days\n      major_version: 0",
 )
 
@@ -65,7 +70,7 @@ def _mock_idex_yaml(content):
     return _side_effect
 
 
-def test_validate_dependency_yaml_versions_fan_out_invalid():
+def test_validate_dependency_yaml_versions_invalid():
     """Yaml with one invalid downstream major_version should raise."""
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",
@@ -78,7 +83,7 @@ def test_validate_dependency_yaml_versions_fan_out_invalid():
             validate_dependency_yaml_versions(reader, 0, kickoff_job)
 
 
-def test_validate_dependency_yaml_versions_fan_out_valid():
+def test_validate_dependency_yaml_versions_valid():
     """Idex yaml content should pass."""
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",

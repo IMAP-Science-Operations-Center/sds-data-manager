@@ -33,12 +33,13 @@ def validate_dependency_yaml_versions(
                 f"has major_version {output.major_version}. It should be greater"
                 f" than or equal to {major_version}"
             )
-        major_version = output.major_version
         # Get the processing job(s) that uses this dependency node
         processing_nodes = reader.get_nodes_for_input(output)
         # Validate each of the processing nodes recursively
         for processing_node in processing_nodes:
-            validate_dependency_yaml_versions(reader, major_version, processing_node)
+            validate_dependency_yaml_versions(
+                reader, output.major_version, processing_node
+            )
 
 
 if __name__ == "__main__":
