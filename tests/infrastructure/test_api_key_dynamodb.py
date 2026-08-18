@@ -36,7 +36,7 @@ def dynamodb_table():
 def test_api_key_management(dynamodb_table):
     """Test API key management operations."""
     # Import after mocks are set up
-    from scripts.authorization.lambda_api_key_authorizer import (
+    from sds_data_manager.lambda_code.authorization.lambda_api_key_authorizer import (
         lambda_handler,
     )
     from scripts.authorization.manage_api_keys import (
@@ -95,7 +95,7 @@ def test_api_key_management(dynamodb_table):
 def test_scope_restrictions(dynamodb_table):
     """Test scope-based access restrictions."""
     # Import after mocks are set up
-    from scripts.authorization.lambda_api_key_authorizer import (
+    from sds_data_manager.lambda_code.authorization.lambda_api_key_authorizer import (
         lambda_handler,
     )
     from scripts.authorization.manage_api_keys import (
