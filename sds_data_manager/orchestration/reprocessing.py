@@ -95,7 +95,7 @@ def process_single_message(context: SensorEvaluationContext, message, sqs_queue_
         delete_sqs_message(sqs_queue_url, message)
         return
 
-    output_asset_keys, partition, data_type = result
+    output_asset_keys, partition, data_level = result
     partition_def = partition_map.get(partition)
 
     # Move start_dt to 23:59:59 of start_date (`+1 day - 1 second`) so the
@@ -125,7 +125,7 @@ def process_single_message(context: SensorEvaluationContext, message, sqs_queue_
     message_id_hash = hashlib.sha256(message["MessageId"].encode("utf-8")).hexdigest()[
         :8
     ]
-    tags = {"dagster/priority": priority_levels.get(data_type, "0")}
+    tags = {"dagster/priority": priority_levels.get(data_level, "0")}
     for partition_key in partition_keys:
         yield RunRequest(
             run_key=f"reprocess-{instrument}-{message_id_hash}-{partition_key}",
