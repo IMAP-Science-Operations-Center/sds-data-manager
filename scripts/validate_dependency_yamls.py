@@ -42,4 +42,5 @@ if __name__ == "__main__":
             validate_dependency_yaml(reader, 0, job)
             print(f"Validated {job.source} dependency YAML file")
         except ValueError as e:
-            print(f"Invalid dependency file for {job.source}.", e)
+            print(f"Invalid dependency file for {job.source}.")
+            raise e
