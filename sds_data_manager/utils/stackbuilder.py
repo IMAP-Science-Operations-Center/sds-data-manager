@@ -502,6 +502,9 @@ def build_sds(
         sg=rds_construct.rds_security_group,
         dagster_env_vars=dagster_env_vars,
         db_secret=dagster_database_construct.db_secret,
+        certificate=root_certificate,
+        root_domain_name=domain_name,
+        domain=domain,
     )
     dagster_ecs_stack.node.add_dependency(dagster_image_construct)
 
