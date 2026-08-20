@@ -1640,14 +1640,14 @@ files = [
 
 [[package]]
 name = "imap-data-access"
-version = "0.42.0"
+version = "1.1.0"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = "*"
 groups = ["main", "layer-idex-processing", "layer-processing"]
 files = [
-    {file = "imap_data_access-0.42.0-py3-none-any.whl", hash = "sha256:5eb6081dd9e6bcac2be60d5bb288a66d8d52922124d52e6d1ac7020beff2bc4b"},
-    {file = "imap_data_access-0.42.0.tar.gz", hash = "sha256:64dbd378dbe57e35eee157b513ee4929b279056983c19bd1481eeb90dac07fbf"},
+    {file = "imap_data_access-1.1.0-py3-none-any.whl", hash = "sha256:721e5b6281aca9704c1c707b273083b9a54072b2bf5f7c3ece71ee55125f1dd7"},
+    {file = "imap_data_access-1.1.0.tar.gz", hash = "sha256:1c6dc172fbbf66b52724380bda469696095bf423c456484b141e4302b765a977"},
 ]
 
 [package.dependencies]
@@ -4831,4 +4831,4 @@ tool = ["alembic"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "d51ae03e202f6b556f1195f10bd2f5859ef7d4815bc1d816490591c574975f1a"
+content-hash = "824941eb3040dc34bc813564e108f0c16d24fefd26715f6b47dd89efb3f9bb82"

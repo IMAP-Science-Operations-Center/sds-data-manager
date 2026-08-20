@@ -6,15 +6,20 @@ import json
 import os
 
 import boto3
-from dagster import AssetKey, AssetSelection, SensorEvaluationContext, sensor
-from dagster._core.execution.backfill import PartitionBackfill
+from dagster import (
+    AssetKey,
+    AssetSelection,
+    RunRequest,
+    SensorEvaluationContext,
+    sensor,
+)
 
 from sds_data_manager.orchestration.dagster_utilities import get_affected_partitions
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
     get_kickoff_jobs,
 )
-from sds_data_manager.orchestration.imap_job import partition_map
+from sds_data_manager.orchestration.imap_job import partition_map, priority_levels
 from sds_data_manager.orchestration.types import Node
 
 SQS_CLIENT = boto3.client("sqs", "us-west-2")
@@ -32,7 +37,10 @@ def read_sqs_messages(sqs_queue_url=None):
 
 @sensor(asset_selection=AssetSelection.all(), minimum_interval_seconds=100)
 def reprocess_sensor(context: SensorEvaluationContext):
-    """Sensor that triggers reprocessing backfills."""
+    """Sensor that triggers reprocessing runs.
+
+    Yields one RunRequest per affected partition.
+    """
     sqs_queue_url = os.getenv("REPROCESSING_SQS_URL")
     messages = read_sqs_messages(sqs_queue_url)
 
@@ -43,7 +51,7 @@ def reprocess_sensor(context: SensorEvaluationContext):
 
     for message in messages:
         try:
-            process_single_message(context, message, sqs_queue_url)
+            yield from process_single_message(context, message, sqs_queue_url)
         except Exception as e:
             context.log.exception(
                 f"Error processing message {message['MessageId']}: {e}"
@@ -55,10 +63,8 @@ def reprocess_sensor(context: SensorEvaluationContext):
     return None
 
 
-def process_single_message(
-    context: SensorEvaluationContext, message, sqs_queue_url
-) -> None:
-    """Process a single SQS message for reprocessing."""
+def process_single_message(context: SensorEvaluationContext, message, sqs_queue_url):
+    """Process a single SQS message, yielding a RunRequest per partition."""
     reader = DependencyConfigReader()
 
     # unpack message params
@@ -89,12 +95,14 @@ def process_single_message(
         delete_sqs_message(sqs_queue_url, message)
         return
 
-    output_asset_keys, partition = result
+    output_asset_keys, partition, data_level = result
     partition_def = partition_map.get(partition)
 
+    # Move start_dt to 23:59:59 of start_date (`+1 day - 1 second`) so the
+    # reprocessing window begins after the previous day's tail-end partition.
     start_dt = datetime.datetime.strptime(start_date, "%Y%m%d").replace(
         tzinfo=datetime.timezone.utc
-    )
+    ) + datetime.timedelta(days=1, seconds=-1)
     # Add 1 day to end_dt then subtract 1 second to capture all data through
     # end of day
     end_dt = datetime.datetime.strptime(end_date, "%Y%m%d").replace(
@@ -113,30 +121,20 @@ def process_single_message(
     context.log.info(
         f"Reprocessing {output_asset_keys} across partitions: {partition_keys}"
     )
-    # Generate an 8-digit hash of the message id to keep backfill run ids unique.
+    # Generate an 8-digit hash of the message id to keep run keys unique.
     message_id_hash = hashlib.sha256(message["MessageId"].encode("utf-8")).hexdigest()[
         :8
     ]
-    backfill = PartitionBackfill.from_asset_partitions(
-        backfill_id=f"reprocess-{instrument}-{message_id_hash}",
-        asset_graph=context.repository_def.asset_graph,
-        partition_names=partition_keys,
-        asset_selection=output_asset_keys,
-        backfill_timestamp=datetime.datetime.now(datetime.timezone.utc).timestamp(),
-        tags={
-            "instrument": instrument,
-            "descriptor": descriptor or "",
-            "data_level": data_level or "",
-        },
-        dynamic_partitions_store=context.instance,
-        all_partitions=False,
-        title=None,
-        description=None,
-        run_config=None,
-    )
-    context.instance.add_backfill(backfill)
+    tags = {"dagster/priority": priority_levels.get(data_level, "0")}
+    for partition_key in partition_keys:
+        yield RunRequest(
+            run_key=f"reprocess-{instrument}-{message_id_hash}-{partition_key}",
+            partition_key=partition_key,
+            asset_selection=output_asset_keys,
+            tags=tags,
+        )
 
-    # After a submitting the backfill, remove the sqs message
+    # After yielding run requests for all partitions, remove the sqs message
     delete_sqs_message(sqs_queue_url, message)
 
 
@@ -173,7 +171,7 @@ def get_job_assets(
     instrument: str,
     data_level: str | None,
     descriptor: str | None,
-) -> tuple[list[AssetKey], str] | None:
+) -> tuple[list[AssetKey], str, str] | None:
     """Resolve the job node to reprocess. Returns None if not found."""
     if not data_level:
         kickoff_jobs = get_kickoff_jobs(instrument)
@@ -207,7 +205,7 @@ def get_job_assets(
         )
         return None
 
-    return output_keys, job_node.partition
+    return output_keys, job_node.partition, job_node.data_type
 
 
 def delete_sqs_message(queue_url: str, message: dict) -> None:
