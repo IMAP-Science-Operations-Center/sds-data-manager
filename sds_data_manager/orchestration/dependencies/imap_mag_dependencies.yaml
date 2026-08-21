@@ -38,6 +38,10 @@
       major_version: 1
     - source: mag
       data_type: l1a
+      descriptor: norm-raw
+      major_version: 1
+    - source: mag
+      data_type: l1a
       descriptor: burst-raw
       major_version: 1
 
