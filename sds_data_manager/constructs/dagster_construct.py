@@ -387,6 +387,29 @@ class DagsterEcsConstruct(Construct):
             unhealthy_threshold_count=3,
         )
 
+        # Allow people to access the dagster webserver only
+        # if they have LASP login credentials.
+        # This is done by using OIDC authentication with the LASP Keycloak server.
+        webserver_service.listener.add_action(
+            "OidcAuthRule",
+            priority=1,
+            conditions=[elbv2.ListenerCondition.path_patterns(["/*"])],
+            action=elbv2.ListenerAction.authenticate_oidc(
+                authorization_endpoint="https://lasp-auth.colorado.edu/auth/realms/lasp/protocol/openid-connect/auth",
+                token_endpoint="https://lasp-auth.colorado.edu/auth/realms/lasp/protocol/openid-connect/token",  # noqa: S106
+                user_info_endpoint="https://lasp-auth.colorado.edu/auth/realms/lasp/protocol/openid-connect/userinfo",
+                issuer="https://lasp-auth.colorado.edu/auth/realms/lasp",
+                client_id="imap-processing",
+                client_secret=cdk.SecretValue.secrets_manager(
+                    "dagster_oidc_client_secret"
+                ),
+                scope="openid profile",
+                next=elbv2.ListenerAction.forward(
+                    target_groups=[webserver_service.target_group]
+                ),
+            ),
+        )
+
         # Dagster Read Only Webserver
         readonly_webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
@@ -468,7 +491,8 @@ class DagsterEcsConstruct(Construct):
         )
 
         # Second, allow people to access the read-only webserver
-        # if they have the correct OIDC token.
+        # if they have LASP login credentials.
+        # This is done by using OIDC authentication with the LASP Keycloak server.
         readonly_webserver_service.listener.add_action(
             "OidcAuthRule",
             priority=2,
