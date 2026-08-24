@@ -29,6 +29,43 @@ def get_map_partition_names(
     Find all closed partition since the first map start date to create Dagster
     partition if it does not already exist. If include_open is True, then also return
     partition names for the current open window for the cadence.
+
+    It returns all partition names for the given cadence and time range,
+    including the current open window if include_open is True.
+
+    Parameters
+    ----------
+    cadence_str : str
+        The cadence string, e.g., "3mo", "6mo", or "1yr".
+    start_time : datetime
+        The start time to begin searching for partitions. Defaults to
+        FIRST_MAP_START_DATE.
+    current_time : datetime, optional
+        The current time to use for determining the active window.
+        If None, uses the current UTC time.
+    include_open : bool, optional
+        Whether to include the current open window partition name. Defaults to False.
+
+    Returns
+    -------
+    list[str]
+        A list of partition names for the given cadence and time range.
+        Eg.
+
+        If include_open is True, a cadence of "3mo" and a current time
+        of 20260806, the returned partition names are
+            [
+                'cadence-3mo_2026-01-17T00:00:00_to_2026-04-17T00:00:00',
+                'cadence-3mo_2026-04-18T00:00:00_to_2026-07-17T00:00:00',
+                'cadence-3mo_2026-07-18T00:00:00_to_2026-10-17T00:00:00'
+            ]
+
+        If include_open is False, a cadence of "3mo" and a current time of
+        20260806, the returned partition names are
+            [
+                'cadence-3mo_2026-01-17T00:00:00_to_2026-04-17T00:00:00',
+                'cadence-3mo_2026-04-18T00:00:00_to_2026-07-17T00:00:00'
+            ]
     """
     if current_time is None:
         current_time = datetime.now(tz=timezone.utc)
@@ -56,25 +93,3 @@ def get_map_partition_names(
 
     # Return all selected window partition names.
     return [window.to_partition_name() for window in selected_windows]
-
-
-def get_progressive_map_partition_names(
-    current_time: datetime | None = None,
-) -> list[str]:
-    """Return progressive map partition names, deduping identical date ranges."""
-    progressive_partitions: list[str] = []
-
-    if current_time is None:
-        current_time = datetime.now(tz=timezone.utc)
-
-    for _, cadence_type in _CADENCE_TYPES.items():
-        # Looks for active window for the cadence. For example,
-        # in 3mo cadence, there are 4 potential windows: 0-3mo, 3-6mo,
-        # 6-9mo, 9-12mo for any given time. If the current time falls
-        # within any of those windows, that window is returned.
-        cadence_obj = cadence_type(current_time)
-        active_window = cadence_obj.get_current_window()
-
-        progressive_partitions.append(active_window.to_partition_name())
-
-    return progressive_partitions
