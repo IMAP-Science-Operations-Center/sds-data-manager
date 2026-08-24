@@ -55,7 +55,7 @@ if __name__ == "__main__":
     for job in kickoff_processing_jobs:
         try:
             validate_dependency_yaml_versions(reader, 0, job)
-            print(f"Validated {job.source} dependency YAML file")
+            print(f"Validated the {job.source} dependency YAML file")
         except ValueError as e:
             print(f"Invalid dependency file for {job.source}.")
             raise e
