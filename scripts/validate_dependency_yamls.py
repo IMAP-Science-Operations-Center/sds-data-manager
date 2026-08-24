@@ -18,9 +18,11 @@ def validate_dependency_yaml_versions(
     an upstream job. E.g. if (swe, l1a, sci) has major version 2, (swe, l1b, sci) must
     have major version 2 or higher.
 
-    dependency_yaml: str
-        Path to the dependency YAML file.
-    node: ProcessingJobNode
+    reader : DependencyConfigReader
+        An instance of DependencyConfigReader.
+    major_version : int
+        The major version of the previous node.
+    node : ProcessingJobNode | None
         The node to validate.
     """
     if node is None:
@@ -37,6 +39,9 @@ def validate_dependency_yaml_versions(
         processing_nodes = reader.get_nodes_for_input(output)
         # Validate each of the processing nodes recursively
         for processing_node in processing_nodes:
+            if processing_node.source != node.source:
+                # If the sources are different we should skip this check.
+                continue
             validate_dependency_yaml_versions(
                 reader, output.major_version, processing_node
             )
