@@ -5,7 +5,9 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from scripts.validate_dependency_yamls import validate_dependency_yaml_versions
+from scripts.dependency.validate_dependency_yamls import (
+    validate_dependency_yaml_versions,
+)
 from sds_data_manager.orchestration.dependency import DependencyConfigReader
 
 # Captured before any patching happens, since dependency.py's "yaml" module is
