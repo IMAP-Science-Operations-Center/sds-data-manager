@@ -23,9 +23,18 @@ class DependencyConfigReader:
     configurations, including loading from YAML files, validating nodes.
     """
 
-    def __init__(self):
-        """Initialize DependencyConfig by loading all dependencies."""
-        self._config = self._load_all_dependencies()
+    def __init__(self, yaml_dir: Path | None = None):
+        """Initialize DependencyConfig by loading all dependencies.
+
+        Parameters
+        ----------
+        yaml_dir : Path, optional
+            Directory containing the ``dependencies/`` subfolder of instrument
+            YAML files. Defaults to this module's directory. Pass a different
+            directory to load dependency configuration from another checkout,
+            e.g. to compare against an older revision.
+        """
+        self._config = self._load_all_dependencies(yaml_dir or Path(__file__).parent)
 
     @property
     def config(self) -> dict[tuple[str, str, str], list[DependencyNode]]:
@@ -98,6 +107,7 @@ class DependencyConfigReader:
 
     def _load_all_dependencies(
         self,
+        yaml_dir: Path,
     ) -> dict[tuple[str, str, str], list[DependencyNode]]:
         """Load all instrument YAML dependency files and unified dependency.
 
@@ -105,6 +115,12 @@ class DependencyConfigReader:
         (source, data_type, descriptor) representing a downstream product,
         and each value is a list of upstream :class:`~.utils.DependencyNode`
         objects.
+
+        Parameters
+        ----------
+        yaml_dir : Path
+            Directory containing the ``dependencies/`` subfolder of instrument
+            YAML files.
 
         Raises
         ------
@@ -121,7 +137,6 @@ class DependencyConfigReader:
         DependencyNode(source='codice', data_type='l0', descriptor='raw', ...)
         """
         dependencies = {}
-        yaml_dir = Path(__file__).parent
 
         for instrument in VALID_INSTRUMENTS:
             yaml_file = (
@@ -329,7 +344,9 @@ class DependencyConfigReader:
         return processing_nodes
 
 
-def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
+def get_kickoff_jobs(
+    instrument: str | None = None, reader: DependencyConfigReader | None = None
+) -> list[ProcessingJobNode]:
     """Return all the jobs that kick off each instrument pipeline.
 
     These are nodes that are downstream from a node with the data_level equal to
@@ -342,6 +359,8 @@ def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
     ----------
     instrument : str, optional
         The instrument for which to get the kickoff job.
+    reader : DependencyConfigReader, optional
+        An instance of DependencyConfigReader to use for reading the dependency
 
     Returns
     -------
@@ -351,8 +370,9 @@ def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
         If instrument is provided, return only the kickoff job for that instrument.
     """
     kick_off_jobs = []
+    if not reader:
+        reader = DependencyConfigReader()
 
-    reader = DependencyConfigReader()
     for potential_job in reader.config:
         for upstream_node in reader.inputs(potential_job):
             if upstream_node.data_type == "l0" and upstream_node.descriptor == "raw":
