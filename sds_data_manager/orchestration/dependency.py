@@ -128,7 +128,7 @@ class DependencyConfigReader:
                 yaml_dir / "dependencies" / f"imap_{instrument}_dependencies.yaml"
             )
 
-            if instrument == "ialirt":
+            if instrument in ("ialirt", "l1const"):
                 continue
 
             if not yaml_file.exists():
