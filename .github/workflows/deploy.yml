@@ -1,4 +1,8 @@
 name: Deploy
+# gh run list can't see workflow_dispatch inputs, so encode the target
+# environment in the run name itself - this lets the "Find last successfully
+# deployed commit" step below filter runs by environment via displayTitle.
+run-name: "Deploy to ${{ github.event_name == 'push' && 'dev' || inputs.environment }}"
 
 on:
   push:
@@ -136,6 +140,36 @@ jobs:
             echo "Forcing redeploy of $svc"
             aws ecs update-service --cluster "$CLUSTER" --service "$svc" --force-new-deployment --region us-west-2
           done
+
+      # ----------------------------------------------------
+      # Check for dependency major_version bumps since last deploy
+      # ----------------------------------------------------
+      - name: Find last successfully deployed commit
+        id: last_deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This run's own displayTitle is "Deploy to <account_name>" (see run-name
+          # at the top of this file), so match on that to find the last successful
+          # run that targeted the same environment. This run is still "in_progress"
+          # while it executes, so gh run list naturally excludes it here.
+          LAST_SHA=$(gh run list --workflow=deploy.yml --status=success --limit=100 \
+            --json headSha,displayTitle \
+            --jq "[.[] | select(.displayTitle == \"Deploy to ${{ env.account_name }}\")][0].headSha // empty")
+          echo "last_sha=$LAST_SHA" >> "$GITHUB_OUTPUT"
+          if [[ -z "$LAST_SHA" ]]; then
+            echo "No previous successful deploy found for ${{ env.account_name }}; skipping reprocess check."
+          else
+            echo "Last deployed commit: $LAST_SHA"
+          fi
+
+      - name: Check for dependency major_version bumps since last deploy
+        if: steps.last_deploy.outputs.last_sha != ''
+        run: |
+          git worktree add --detach /tmp/last-deploy "${{ steps.last_deploy.outputs.last_sha }}"
+          poetry run python scripts/dependency/reprocess_jobs_for_major_version_bump.py \
+            /tmp/last-deploy/sds_data_manager/orchestration
+          git worktree remove /tmp/last-deploy --force
 
       # ----------------------------------------------------
       # 🏷️ Tag Release (prod only)
