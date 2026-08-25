@@ -53,10 +53,10 @@ class L2MapJob(imap_job.IMAPJobHandler):
         def _sensor(context: SensorEvaluationContext):
             cadence_str = self.job_config.partition
 
-            # Find the currently active (open) map window for this job's cadence.
-            # This is the partition that gets progressively re-processed as new
-            # science data arrives, so we re-trigger a run for it on every tick.
+            # Find all map windows for this job's cadence.
             # Partitions come back oldest-first, so the last one is the open window.
+            # This open window partition gets progressively re-processed every tick
+            # with new available science data.
             partitions = get_map_partition_names(cadence_str, include_open=True)
             if not partitions:
                 context.log.info(f"No active {cadence_str} map partition found.")

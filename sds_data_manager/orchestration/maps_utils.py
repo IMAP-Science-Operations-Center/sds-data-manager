@@ -55,16 +55,16 @@ def get_map_partition_names(
         If include_open is True, a cadence of "3mo" and a current time
         of 20260806, the returned partition names are
             [
-                'cadence-3mo_2026-01-17T00:00:00_to_2026-04-17T00:00:00',
-                'cadence-3mo_2026-04-18T00:00:00_to_2026-07-17T00:00:00',
+                'cadence-3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00',
+                 'cadence-3mo_2026-04-18T00:00:00_to_2026-07-18T00:00:00',
                 'cadence-3mo_2026-07-18T00:00:00_to_2026-10-17T00:00:00'
             ]
 
         If include_open is False, a cadence of "3mo" and a current time of
         20260806, the returned partition names are
             [
-                'cadence-3mo_2026-01-17T00:00:00_to_2026-04-17T00:00:00',
-                'cadence-3mo_2026-04-18T00:00:00_to_2026-07-17T00:00:00'
+                'cadence-3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00',
+                'cadence-3mo_2026-04-18T00:00:00_to_2026-07-18T00:00:00'
             ]
     """
     if current_time is None:

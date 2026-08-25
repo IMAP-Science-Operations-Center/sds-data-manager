@@ -276,7 +276,7 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
         )
 
         context.log.info(f"Existing cadence partitions: {existing_partitions}")
-        context.log.info(f"Partitions to creates: {progressive_partition_names}")
+        context.log.info(f"Partitions to create: {progressive_partition_names}")
 
         missing_partitions = [
             partition_name
