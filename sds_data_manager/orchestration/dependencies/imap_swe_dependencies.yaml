@@ -75,7 +75,7 @@
     - source: swe
       data_type: l2
       descriptor: sci
-      major_version: 3
+      major_version: 1
 
 (l3, sci):
   partition: daily
@@ -139,5 +139,5 @@
     - source: swe
       data_type: l3
       descriptor: sci
-      major_version: 3
+      major_version: 1
 
