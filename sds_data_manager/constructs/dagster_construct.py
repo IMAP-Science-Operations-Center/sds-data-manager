@@ -482,7 +482,7 @@ class DagsterEcsConstruct(Construct):
 
         # First, only allow people to access the GraphQL API
         # if they have the correct header and value.
-        webserver_service.listener.add_action(
+        readonly_webserver_service.listener.add_action(
             "ApiRule",
             priority=1,  # Lower number = higher priority.
             conditions=[
@@ -497,7 +497,7 @@ class DagsterEcsConstruct(Construct):
                 )
             ],
             action=elbv2.ListenerAction.forward(
-                target_groups=[webserver_service.target_group]
+                target_groups=[readonly_webserver_service.target_group]
             ),
         )
 
