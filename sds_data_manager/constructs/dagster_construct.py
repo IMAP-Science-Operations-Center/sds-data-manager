@@ -17,6 +17,7 @@ from aws_cdk import (
 from aws_cdk import (
     aws_ecs_patterns as ecs_patterns,
 )
+from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import (
     aws_iam as iam,
 )
@@ -237,6 +238,9 @@ class DagsterEcsConstruct(Construct):
         sg,
         dagster_env_vars,
         db_secret,
+        certificate,
+        root_domain_name,
+        domain,
         **kwargs,
     ) -> None:
         """Initialize the Construct."""
@@ -302,7 +306,7 @@ class DagsterEcsConstruct(Construct):
             run_task_def.task_definition_arn
         )
 
-        # Dagster Webserver
+        ### Dagster Webserver
         webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
             "DagsterWebserver",
@@ -342,14 +346,39 @@ class DagsterEcsConstruct(Construct):
             public_load_balancer=True,
             open_listener=False,
             health_check_grace_period=cdk.Duration.seconds(300),
+            certificate=certificate,
+            domain_name=f"dagster.{root_domain_name}",
+            domain_zone=domain.hosted_zone,
+            redirect_http=True,
         )
-        webserver_service.load_balancer.connections.allow_from(
-            ec2.Peer.ipv4("128.138.131.0/24"),
-            ec2.Port.tcp(80),
-        )
+
         webserver_service.service.connections.allow_to(
             sg, ec2.Port.tcp(5432), "Allow Dagster Webserver to access RDS"
         )
+
+        allowed_cidrs = [
+            "128.138.131.0/24",  # LASP
+            "128.112.0.0/16",  # Princeton
+            "140.180.0.0/16",  # Princeton
+            "204.153.48.0/22",  # Princeton
+            "12.161.8.0/24",  # Princeton
+            "12.161.10.0/24",  # Princeton
+            "12.161.14.0/24",  # Princeton
+            "66.180.176.0/24",  # Princeton
+            "66.180.177.0/24",  # Princeton
+            "66.180.184.0/22",  # Princeton
+            "132.177.251.17/32",  # UNH
+        ]
+
+        for cidr in allowed_cidrs:
+            webserver_service.load_balancer.connections.allow_from(
+                ec2.Peer.ipv4(cidr),
+                ec2.Port.tcp(80),
+            )
+            webserver_service.load_balancer.connections.allow_from(
+                ec2.Peer.ipv4(cidr),
+                ec2.Port.tcp(443),
+            )
 
         # Reduce the frequency of health checks
         webserver_service.target_group.configure_health_check(
@@ -358,7 +387,41 @@ class DagsterEcsConstruct(Construct):
             unhealthy_threshold_count=3,
         )
 
-        # Dagster Read Only Webserver
+        # Allow people to access the dagster webserver only
+        # if they have LASP login credentials.
+        # This is done by using OIDC authentication with the LASP Keycloak server.
+        lasp_oidc_secret_name = "dagster_oidc_client"  # noqa: S105
+        webserver_service.listener.add_action(
+            "OidcAuthRule",
+            priority=1,
+            conditions=[elbv2.ListenerCondition.path_patterns(["/*"])],
+            action=elbv2.ListenerAction.authenticate_oidc(
+                authorization_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="authorization_endpoint"
+                ).unsafe_unwrap(),
+                token_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="token_endpoint"
+                ).unsafe_unwrap(),
+                user_info_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="user_info_endpoint"
+                ).unsafe_unwrap(),
+                issuer=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="issuer"
+                ).unsafe_unwrap(),
+                client_id=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="client_id"
+                ).unsafe_unwrap(),
+                client_secret=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="client_secret"
+                ),
+                scope="openid profile",
+                next=elbv2.ListenerAction.forward(
+                    target_groups=[webserver_service.target_group]
+                ),
+            ),
+        )
+
+        ### Dagster Read Only Webserver
         readonly_webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
             "DagsterReadonlyWebserver",
@@ -397,28 +460,13 @@ class DagsterEcsConstruct(Construct):
                 },
             ),
             public_load_balancer=True,
-            open_listener=False,
+            open_listener=True,
             health_check_grace_period=cdk.Duration.seconds(300),
+            certificate=certificate,
+            domain_name=f"processing.{root_domain_name}",
+            domain_zone=domain.hosted_zone,
+            redirect_http=True,
         )
-        allowed_readonly_cidrs = [
-            "128.138.131.0/24",  # LASP
-            "128.112.0.0/16",  # Princeton
-            "140.180.0.0/16",  # Princeton
-            "204.153.48.0/22",  # Princeton
-            "12.161.8.0/24",  # Princeton
-            "12.161.10.0/24",  # Princeton
-            "12.161.14.0/24",  # Princeton
-            "66.180.176.0/24",  # Princeton
-            "66.180.177.0/24",  # Princeton
-            "66.180.184.0/22",  # Princeton
-            "132.177.251.17/32",  # UNH
-        ]
-
-        for cidr in allowed_readonly_cidrs:
-            readonly_webserver_service.load_balancer.connections.allow_from(
-                ec2.Peer.ipv4(cidr),
-                ec2.Port.tcp(80),
-            )
 
         # Allow the new read-only container to talk to the RDS database
         readonly_webserver_service.service.connections.allow_to(
@@ -430,6 +478,60 @@ class DagsterEcsConstruct(Construct):
             timeout=cdk.Duration.seconds(120),
             interval=cdk.Duration.seconds(300),
             unhealthy_threshold_count=3,
+        )
+
+        # First, only allow people to access the GraphQL API
+        # if they have the correct header and value.
+        readonly_webserver_service.listener.add_action(
+            "ApiRule",
+            priority=1,  # Lower number = higher priority.
+            conditions=[
+                # Only allow traffic that includes this exact header and value
+                elbv2.ListenerCondition.http_header(
+                    "x-dagster-api-key",
+                    [
+                        cdk.SecretValue.secrets_manager(
+                            "dagster_graphql_api_key"
+                        ).unsafe_unwrap()
+                    ],
+                )
+            ],
+            action=elbv2.ListenerAction.forward(
+                target_groups=[readonly_webserver_service.target_group]
+            ),
+        )
+
+        # Second, allow people to access the read-only webserver
+        # if they have LASP login credentials.
+        # This is done by using OIDC authentication with the LASP Keycloak server.
+        readonly_webserver_service.listener.add_action(
+            "OidcAuthRule",
+            priority=2,
+            conditions=[elbv2.ListenerCondition.path_patterns(["/*"])],
+            action=elbv2.ListenerAction.authenticate_oidc(
+                authorization_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="authorization_endpoint"
+                ).unsafe_unwrap(),
+                token_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="token_endpoint"
+                ).unsafe_unwrap(),
+                user_info_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="user_info_endpoint"
+                ).unsafe_unwrap(),
+                issuer=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="issuer"
+                ).unsafe_unwrap(),
+                client_id=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="client_id"
+                ).unsafe_unwrap(),
+                client_secret=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="client_secret"
+                ),
+                scope="openid profile",
+                next=elbv2.ListenerAction.forward(
+                    target_groups=[readonly_webserver_service.target_group]
+                ),
+            ),
         )
 
         # Dagster Daemon
