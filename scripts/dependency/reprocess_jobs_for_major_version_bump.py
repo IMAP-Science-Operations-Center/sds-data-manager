@@ -1,18 +1,19 @@
 """Determine jobs that need reprocessing due to a major version bump."""
 
 import argparse
+import json
+import logging
 from pathlib import Path
 
 from imap_data_access import VALID_DATALEVELS
 
-from scripts.dependency.validate_dependency_yamls import (
-    validate_dependency_yaml_versions,
-)
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
     get_kickoff_jobs,
 )
 from sds_data_manager.orchestration.types import ProcessingJobNode
+
+logger = logging.getLogger(__name__)
 
 
 def get_updated_output_dependency_nodes(
@@ -147,7 +148,7 @@ def reprocess_jobs_for_major_version_bump(
         Reader built from the current dependency yaml files.
     """
     nodes = get_updated_output_dependency_nodes(old_reader, new_reader)
-    print(
+    logger.info(
         f"Found {len(nodes)} updated output nodes: "
         f"{[(node.source, node.data_type, node.descriptor) for node in nodes]}"
     )
@@ -182,10 +183,16 @@ if __name__ == "__main__":
     # (in this case the current/new) dependency yamls
     new_reader = DependencyConfigReader()
 
-    # First validate new dependency yamls. They should already have been validated
-    # from the github action in the PR creation but just to be sure.
-    for job in get_kickoff_jobs():
-        validate_dependency_yaml_versions(new_reader, 0, job)
+    # # First validate new dependency yamls. They should already have been validated
+    # # from the github action in the PR creation but just to be sure.
+    # for job in get_kickoff_jobs():
+    #     validate_dependency_yaml_versions(new_reader, 0, job)
 
     reprocess_jobs = reprocess_jobs_for_major_version_bump(old_reader, new_reader)
-    print(f"Found {len(reprocess_jobs)} jobs to reprocess: {reprocess_jobs}")
+    logger.info(f"Found {len(reprocess_jobs)} jobs to reprocess: {reprocess_jobs}")
+    # Print as JSON dict so the github action can parse it.
+    reprocess_jobs = [
+        {"instrument": job[0], "data_level": job[1], "descriptor": job[2]}
+        for job in reprocess_jobs
+    ]
+    print(json.dumps(reprocess_jobs))
