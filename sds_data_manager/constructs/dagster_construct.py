@@ -306,7 +306,7 @@ class DagsterEcsConstruct(Construct):
             run_task_def.task_definition_arn
         )
 
-        # Dagster Webserver
+        ### Dagster Webserver
         webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
             "DagsterWebserver",
@@ -390,18 +390,29 @@ class DagsterEcsConstruct(Construct):
         # Allow people to access the dagster webserver only
         # if they have LASP login credentials.
         # This is done by using OIDC authentication with the LASP Keycloak server.
+        lasp_oidc_secret_name = "dagster_oidc_client"  # noqa: S105
         webserver_service.listener.add_action(
             "OidcAuthRule",
             priority=1,
             conditions=[elbv2.ListenerCondition.path_patterns(["/*"])],
             action=elbv2.ListenerAction.authenticate_oidc(
-                authorization_endpoint="https://lasp-auth.colorado.edu/auth/realms/lasp/protocol/openid-connect/auth",
-                token_endpoint="https://lasp-auth.colorado.edu/auth/realms/lasp/protocol/openid-connect/token",  # noqa: S106
-                user_info_endpoint="https://lasp-auth.colorado.edu/auth/realms/lasp/protocol/openid-connect/userinfo",
-                issuer="https://lasp-auth.colorado.edu/auth/realms/lasp",
-                client_id="imap-processing",
+                authorization_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="authorization_endpoint"
+                ).unsafe_unwrap(),
+                token_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="token_endpoint"
+                ).unsafe_unwrap(),
+                user_info_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="user_info_endpoint"
+                ).unsafe_unwrap(),
+                issuer=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="issuer"
+                ).unsafe_unwrap(),
+                client_id=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="client_id"
+                ).unsafe_unwrap(),
                 client_secret=cdk.SecretValue.secrets_manager(
-                    "dagster_oidc_client_secret"
+                    lasp_oidc_secret_name, json_field="client_secret"
                 ),
                 scope="openid profile",
                 next=elbv2.ListenerAction.forward(
@@ -410,7 +421,7 @@ class DagsterEcsConstruct(Construct):
             ),
         )
 
-        # Dagster Read Only Webserver
+        ### Dagster Read Only Webserver
         readonly_webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
             "DagsterReadonlyWebserver",
@@ -498,13 +509,23 @@ class DagsterEcsConstruct(Construct):
             priority=2,
             conditions=[elbv2.ListenerCondition.path_patterns(["/*"])],
             action=elbv2.ListenerAction.authenticate_oidc(
-                authorization_endpoint="https://lasp-auth.colorado.edu/auth/realms/lasp/protocol/openid-connect/auth",
-                token_endpoint="https://lasp-auth.colorado.edu/auth/realms/lasp/protocol/openid-connect/token",  # noqa: S106
-                user_info_endpoint="https://lasp-auth.colorado.edu/auth/realms/lasp/protocol/openid-connect/userinfo",
-                issuer="https://lasp-auth.colorado.edu/auth/realms/lasp",
-                client_id="imap-processing",
+                authorization_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="authorization_endpoint"
+                ).unsafe_unwrap(),
+                token_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="token_endpoint"
+                ).unsafe_unwrap(),
+                user_info_endpoint=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="user_info_endpoint"
+                ).unsafe_unwrap(),
+                issuer=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="issuer"
+                ).unsafe_unwrap(),
+                client_id=cdk.SecretValue.secrets_manager(
+                    lasp_oidc_secret_name, json_field="client_id"
+                ).unsafe_unwrap(),
                 client_secret=cdk.SecretValue.secrets_manager(
-                    "dagster_oidc_client_secret"
+                    lasp_oidc_secret_name, json_field="client_secret"
                 ),
                 scope="openid profile",
                 next=elbv2.ListenerAction.forward(
