@@ -179,6 +179,7 @@ jobs:
       # Step 2: Retrieve Secrets using the official AWS action
       - name: Get Secrets from Secrets Manager
         id: get_secrets
+        if: steps.detect_jobs.outputs.jobs != '' && steps.detect_jobs.outputs.jobs != '[]'
         uses: aws-actions/aws-secretsmanager-get-secrets@v3
         with:
           secret-ids: |
@@ -186,7 +187,7 @@ jobs:
           parse-json-secrets: true # Automatically unpacks JSON key-values
 
       - name: Reprocess jobs that got a major version bump since last deploy
-        if: steps.detect_jobs.outputs.jobs != '[]'
+        if: steps.detect_jobs.outputs.jobs != '' && steps.detect_jobs.outputs.jobs != '[]'
         env:
           job_list: ${{ steps.detect_jobs.outputs.jobs }}
           api_key: ${{ steps.get_secrets.outputs.github_action_imap_api_key }}
