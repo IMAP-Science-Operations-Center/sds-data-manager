@@ -7,12 +7,16 @@ from dagster import (
     DynamicPartitionsDefinition,
     SensorEvaluationContext,
     SensorResult,
+    SkipReason,
     sensor,
 )
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import config
+from sds_data_manager.orchestration.maps_utils import (
+    get_map_partition_names,
+)
 
 IDEX_10_DAY_RANGES_PATH = (
     "sds_data_manager/lambda_code/SDSCode/utils/idex_10_day_CDF_names.csv"
@@ -20,6 +24,17 @@ IDEX_10_DAY_RANGES_PATH = (
 IDEX_30_DAY_RANGES_PATH = (
     "sds_data_manager/lambda_code/SDSCode/utils/idex_30_day_CDF_names.csv"
 )
+
+cadence_3mo_partitions = DynamicPartitionsDefinition(name="cadence_3mo_partitions")
+cadence_6mo_partitions = DynamicPartitionsDefinition(name="cadence_6mo_partitions")
+cadence_1yr_partitions = DynamicPartitionsDefinition(name="cadence_1yr_partitions")
+
+CADENCE_PARTITION_DEFS = {
+    "3mo": cadence_3mo_partitions,
+    "6mo": cadence_6mo_partitions,
+    "1yr": cadence_1yr_partitions,
+}
+
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY POINTING NUMBER
 repoint_partitions = DynamicPartitionsDefinition(name="repoint_partitions")
@@ -123,8 +138,9 @@ idex10_partitions = DynamicPartitionsDefinition(name="idex_10_day_partitions")
 @sensor(minimum_interval_seconds=86400)
 def add_idex_10_day_partitions(context: SensorEvaluationContext):
     """Alert Dagster when new IDEX 10-day partitions should be made."""
-    start_date = context.cursor or config.MISSION_START_TIME
-    start_dt = datetime.datetime.fromisoformat(start_date).replace(
+    # These partitions come from a static cadence CSV, so we always evaluate from
+    # mission start to avoid cursor drift shrinking the effective window.
+    start_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(
         tzinfo=datetime.timezone.utc
     )
     end_dt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
@@ -172,9 +188,7 @@ def add_idex_10_day_partitions(context: SensorEvaluationContext):
         partition_requests.append(idex10_partitions.build_add_request(partition_names))
         context.log.info(f"Registered new dynamic partitions: {partition_names}")
 
-    return SensorResult(
-        dynamic_partitions_requests=partition_requests, cursor=end_dt.isoformat()
-    )
+    return SensorResult(dynamic_partitions_requests=partition_requests)
 
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY 30-day
@@ -184,8 +198,9 @@ idex30_partitions = DynamicPartitionsDefinition(name="idex_30_day_partitions")
 @sensor(minimum_interval_seconds=86400)
 def add_idex_30_day_partitions(context: SensorEvaluationContext):
     """Alert Dagster when new IDEX 30-day partitions should be made."""
-    start_date = context.cursor or config.MISSION_START_TIME
-    start_dt = datetime.datetime.fromisoformat(start_date).replace(
+    # These partitions come from a static cadence CSV, so we always evaluate from
+    # mission start to avoid cursor drift shrinking the effective window.
+    start_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(
         tzinfo=datetime.timezone.utc
     )
     end_dt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
@@ -237,9 +252,61 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
         partition_requests.append(idex30_partitions.build_add_request(partition_names))
         context.log.info(f"Registered new dynamic partitions: {partition_names}")
 
-    return SensorResult(
-        dynamic_partitions_requests=partition_requests, cursor=end_dt.isoformat()
-    )
+    return SensorResult(dynamic_partitions_requests=partition_requests)
+
+
+# Run daily (24 hours = 86400 seconds)
+# TODO: update to run daily or weekly or at specified time
+# based on progressive discussion in the future.
+@sensor(minimum_interval_seconds=86400)
+def add_cadence_map_partitions(context: SensorEvaluationContext):
+    """Create missing cadence partitions daily.
+
+    This sensor checks for new cadence partitions that need to be created
+    and adds them to Dagster.
+    """
+    added_any = False
+
+    # Compare against existing partitions in dagster.
+    for cadence_str, partition_def in CADENCE_PARTITION_DEFS.items():
+        existing_partitions = set(
+            context.instance.get_dynamic_partitions(partition_def.name)
+        )
+        # TODO: Set include_open=True once progressive maps are needed.
+        #   Doing so will require creating a sensor that runs on the same cadence
+        #   as map updates, and that sensor will need to call
+        #   get_progressive_map_partition_names() to fetch the currently active maps.
+        progressive_partition_names = get_map_partition_names(cadence_str)
+
+        context.log.info(f"Existing cadence partitions: {existing_partitions}")
+        context.log.info(f"All partitions: {progressive_partition_names}")
+
+        prefix = f"cadence-{cadence_str}_"
+        missing_partitions = [
+            partition_name
+            for partition_name in progressive_partition_names
+            if partition_name.startswith(prefix)
+            and partition_name not in existing_partitions
+        ]
+        if not missing_partitions:
+            continue
+
+        # Add missing partitions via instance API
+        context.instance.add_dynamic_partitions(
+            partitions_def_name=partition_def.name,
+            partition_keys=missing_partitions,
+        )
+        context.log.info(
+            f"Added new {cadence_str} cadence partitions: {missing_partitions}"
+        )
+        added_any = True
+
+    if not added_any:
+        return SkipReason("No new cadence partitions to create")
+
+    # TODO: This sensor only manages partitions. Use auto-materialize
+    # or manual triggers to run jobs on these partitions.
+    return SensorResult()
 
 
 sensors = [
@@ -247,4 +314,5 @@ sensors = [
     add_daily_partitions,
     add_idex_10_day_partitions,
     add_idex_30_day_partitions,
+    add_cadence_map_partitions,
 ]

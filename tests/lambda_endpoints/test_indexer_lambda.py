@@ -1,9 +1,8 @@
 """Tests for the indexer lambda."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from imap_data_access import ScienceFilePath
-from sqlalchemy import select
 
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import indexer
@@ -12,124 +11,9 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.indexer import (
 )
 
 
-def test_batch_job_event(session, events_client):
-    """Test batch job event."""
-    # Write to Processing job table with current batch job event info
-    job_params = {
-        "status": models.Status.INPROGRESS,
-        "instrument": "swapi",
-        "data_level": "l1",
-        "descriptor": "sci-1min",
-        "start_date": datetime.strptime("20230724", "%Y%m%d"),
-        "version": "v001",
-    }
-    processing_job = models.ProcessingJob(**job_params)
-    session.add(processing_job)
-    session.commit()
-    job_id = processing_job.id
-
-    # TODO: Will update this test further
-    # when I extend batch job event handler.
-    event = {
-        "detail-type": "Batch Job State Change",
-        "source": "aws.batch",
-        "detail": {
-            "jobArn": (
-                "arn:aws:batch:us-west-2:012345678910:"
-                "job/26242c7e-3d49-4e41-9387-74fcaf9630bb"
-            ),
-            "jobName": f"swe-l0-job-{job_id}",  # NOTE: We need to add job_id to jobName
-            "jobId": "26242c7e-3d49-4e41-9387-74fcaf9630bb",
-            "jobQueue": (
-                "arn:aws:batch:us-west-2:012345678910:"
-                "job-queue/swe-fargate-batch-job-queue"
-            ),
-            "status": "FAILED",
-            "statusReason": "some error message",
-            "startedAt": 1744397031734,
-            "stoppedAt": 1744397296519,
-            "jobDefinition": (
-                "arn:aws:batch:us-west-2:012345678910:"
-                "job-definition/fargate-batch-job-definitionswe:1"
-            ),
-            "container": {
-                "image": (
-                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/swapi-repo:latest"
-                ),
-                "command": [
-                    "--instrument",
-                    "swapi",
-                    "--level",
-                    "l1",
-                    "--descriptor",
-                    "sci-1min",
-                    "--start-date",
-                    "20230724",
-                    "--version",
-                    "v001",
-                    "--dependency",
-                    """[
-                        {
-                            'instrument': 'swapi',
-                            'level': 'l0',
-                            'start_date': 20230724,
-                            'version': 'v001'
-                        }
-                    ]""",
-                    "--use-remote",
-                ],
-                "logStreamName": (
-                    "fargate-batch-job-definitionswe/default/"
-                    "8a2b784c7bd342f69ea5dac3adaed26f"
-                ),
-            },
-        },
-    }
-    returned_value = indexer.lambda_handler(event=event, context={})
-    assert returned_value["statusCode"] == 200
-
-    # check that data was written to status table
-    query = select(models.ProcessingJob.__table__).where(
-        models.ProcessingJob.instrument == job_params["instrument"],
-        models.ProcessingJob.data_level == job_params["data_level"],
-        models.ProcessingJob.version == job_params["version"],
-    )
-
-    processing_job = session.execute(query).first()
-    assert processing_job.id == job_id
-    assert processing_job.status == models.Status.FAILED
-    # Processing time should be 2025-04-11 18:48:16.519000+00:00.
-    # Had to do replace timezone info to be None because test's db
-    # looses timezone info. This shouldn't happen in production.
-    expected_started_at = datetime.fromtimestamp(
-        event["detail"]["startedAt"] / 1000, tz=timezone.utc
-    ).replace(tzinfo=None)
-    expected_stopped_at = datetime.fromtimestamp(
-        event["detail"]["stoppedAt"] / 1000, tz=timezone.utc
-    ).replace(tzinfo=None)
-
-    assert processing_job.started_at == expected_started_at
-    assert processing_job.stopped_at == expected_stopped_at
-
-    # Test for succeeded case
-    event["detail"]["status"] = "SUCCEEDED"
-    returned_value = indexer.lambda_handler(event=event, context={})
-    assert returned_value["statusCode"] == 200
-
-    query = select(models.ProcessingJob.__table__).where(
-        models.ProcessingJob.instrument == job_params["instrument"],
-        models.ProcessingJob.data_level == job_params["data_level"],
-        models.ProcessingJob.version == job_params["version"],
-    )
-
-    processing_job = session.execute(query).first()
-    assert processing_job.id == job_id
-    assert processing_job.status == models.Status.SUCCEEDED
-
-
 def test_s3_sci_event(session, s3_client, events_client):
     """Test s3 event."""
-    filepath = "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"
+    filepath = "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.0001.pkts"
     s3_client.put_object(
         Bucket="test-data-bucket",
         Key=filepath,
@@ -157,17 +41,19 @@ def test_s3_sci_event(session, s3_client, events_client):
     assert len(result) == 1
     assert (
         result[0].file_path
-        == "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"
+        == "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.0001.pkts"
     )
     assert result[0].data_level == "l0"
     assert result[0].instrument == "hit"
     assert result[0].extension == "pkts"
+    assert result[0].major_version == 1
+    assert result[0].minor_version == 1
 
 
 def test_s3_cr_event(session, s3_client, events_client):
     """Test s3 event."""
     filepath = (
-        "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.cdf"
+        "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.0001.cdf"
     )
     s3_client.put_object(
         Bucket="test-data-bucket",
@@ -194,14 +80,15 @@ def test_s3_cr_event(session, s3_client, events_client):
     # Check that data was written to database by lambda
     result = session.query(models.ScienceFiles).all()
     assert len(result) == 1
-    assert (
-        result[0].file_path
-        == "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.cdf"
+    assert result[0].file_path == (
+        "imap/glows/l3a/2024/01/imap_glows_l3a_sci-test_20240101-cr02025_v001.0001.cdf"
     )
     assert result[0].data_level == "l3a"
     assert result[0].instrument == "glows"
     assert result[0].extension == "cdf"
     assert result[0].cr == 2025
+    assert result[0].major_version == 1
+    assert result[0].minor_version == 1
 
 
 def test_s3_anc_event(session, s3_client, events_client):
@@ -247,7 +134,7 @@ def test_unknown_event(session):
 
 def test_send_lambda_put_event(events_client):
     """Test the ``send_event_from_indexer`` function."""
-    filename = "imap_swapi_l1_sci-1min_20230724_v001.cdf"
+    filename = "imap_swapi_l1_sci-1min_20230724_v001.0001.cdf"
     file_obj = ScienceFilePath(filename)
 
     result = send_event_from_indexer(file_obj)
@@ -303,7 +190,7 @@ def test_s3_release_event(session, s3_client):
 def test_s3_quicklook_event(session, s3_client, events_client):
     """Test s3 event for quicklook files."""
     # Use a clearly identifiable quicklook file pattern
-    filename = "imap_hit_l2_ql-survey_20240101_v001.png"
+    filename = "imap_hit_l2_ql-survey_20240101_v001.0001.png"
     filepath = f"imap/hit/l2/ql/2024/01/{filename}"
 
     s3_client.put_object(
@@ -336,6 +223,8 @@ def test_s3_quicklook_event(session, s3_client, events_client):
     assert result[0].file_path == filepath
     assert result[0].data_level == "l2"
     assert result[0].instrument == "hit"
+    assert result[0].major_version == 1
+    assert result[0].minor_version == 1
     assert result[0].extension == "png"
     assert result[0].descriptor == "ql-survey"
 
@@ -343,7 +232,7 @@ def test_s3_quicklook_event(session, s3_client, events_client):
 def test_idex_l0_event(session, s3_client, events_client):
     """Test s3 event for idex l0 files."""
     # Use a clearly identifiable IDEX L0 file pattern
-    filename = "imap_idex_l0_raw_20250101_v001.pkts"
+    filename = "imap_idex_l0_raw_20250101_v001.0001.pkts"
     filepath = f"imap/idex/l0/{filename}"
 
     s3_client.put_object(
@@ -371,6 +260,7 @@ def test_idex_l0_event(session, s3_client, events_client):
     assert returned_value["statusCode"] == 200
     assert returned_value["body"] == (
         "Received an IDEX L0 file"
-        " imap_idex_l0_raw_20250101_v001.pkts. This file will be indexed in a separate "
+        " imap_idex_l0_raw_20250101_v001.0001.pkts. This file will "
+        "be indexed in a separate "
         "lambda. See idex-l0-file-indexer lambda for details."
     )

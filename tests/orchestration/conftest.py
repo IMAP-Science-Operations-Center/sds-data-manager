@@ -139,8 +139,41 @@ def batch_client():
 
     # Mock describe_job_definitions to return a valid job definition
     mock_batch_client.describe_job_definitions.side_effect = get_job_definition
+
+    def return_job_info(
+        jobName,  # noqa: N803
+        jobQueue,  # noqa: N803
+        jobDefinition,  # noqa: N803
+        containerOverrides,  # noqa: N803
+        retryStrategy,  # noqa: N803
+    ):
+        return {
+            "jobId": "mock-test-job-id-123",
+            "jobName": jobName,
+            "jobDefinition": jobDefinition,
+            "jobQueue": jobQueue,
+        }
+
+    # Mock submit_job to safely return a dummy job ID
+    mock_batch_client.submit_job.side_effect = return_job_info
+
+    # Mock describe_jobs
+    mock_batch_client.describe_jobs.return_value = {
+        "jobs": [
+            {
+                "jobId": "mock-test-job-id-123",
+                "status": "SUCCEEDED",
+                "stoppedAt": 1480460816500,
+                "container": {"logStreamName": "mock/log/stream/123"},
+                "jobDefinition": "testDef",
+            }
+        ]
+    }
+    mock_logs_client = Mock()
+    mock_logs_client.get_log_events.return_value = {"events": []}
     with (
         patch.object(imap_job, "BATCH_CLIENT", mock_batch_client),
+        patch.object(imap_job, "LOGS_CLIENT", mock_logs_client),
     ):
         yield mock_batch_client
 
@@ -240,6 +273,26 @@ def _insert_spice_file(session, filename, intervals, upload_time=0):
         "ingestion_date": datetime.datetime.now() + datetime.timedelta(upload_time),
     } | _irrelevant_spice_data()
     session.add(models.SPICEFiles(**metadata_params))
+    session.commit()
+
+
+def _insert_spin_file(session, filename, upload_time=0, start_date=None, end_date=None):
+    if not start_date:
+        start_date = datetime.datetime(2026, 1, 1)
+    if not end_date:
+        end_date = datetime.datetime(2026, 1, 2)
+
+    spice_object = imap_data_access.SPICEFilePath(filename)
+    version = spice_object.spice_metadata["version"]
+    metadata_params = {
+        "file_path": f"imap/spice/{filename}",
+        "version": version,
+        "start_date": start_date,
+        "end_date": end_date,
+        "ingestion_date": datetime.datetime.now() + datetime.timedelta(upload_time),
+        "released": True,
+    }
+    session.add(models.SpinFiles(**metadata_params))
     session.commit()
 
 

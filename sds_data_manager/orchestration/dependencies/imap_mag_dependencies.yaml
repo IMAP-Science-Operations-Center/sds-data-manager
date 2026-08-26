@@ -23,15 +23,28 @@
     - source: mag
       data_type: l1a
       descriptor: norm-magi
+      major_version: 1
     - source: mag
       data_type: l1a
       descriptor: burst-magi
+      major_version: 1
     - source: mag
       data_type: l1a
       descriptor: norm-mago
+      major_version: 1
     - source: mag
       data_type: l1a
       descriptor: burst-mago
+      major_version: 1
+    - source: mag
+      data_type: l1a
+      descriptor: norm-raw
+      major_version: 1
+    - source: mag
+      data_type: l1a
+      descriptor: burst-raw
+      major_version: 1
+
 
 (l1b, burst-magi):
   partition: daily
@@ -54,6 +67,7 @@
     - source: mag
       data_type: l1b
       descriptor: burst-magi
+      major_version: 1
 
 (l1b, burst-mago):
   partition: daily
@@ -76,6 +90,7 @@
     - source: mag
       data_type: l1b
       descriptor: burst-mago
+      major_version: 1
 
 (l1b, norm-magi):
   partition: daily
@@ -98,6 +113,7 @@
     - source: mag
       data_type: l1b
       descriptor: norm-magi
+      major_version: 1
 
 (l1b, norm-mago):
   partition: daily
@@ -120,7 +136,13 @@
     - source: mag
       data_type: l1b
       descriptor: norm-mago
+      major_version: 1
 
+# custom_behavior/mag.py also delivers the previous day's L1C to this job
+# (MAG SDC Data Validation 4.3.3 time inheritance; imap_processing issue
+# 2925, implemented in imap_processing PR 3323). It is not declared as an
+# input here because that would put a self-cycle in the Dagster asset
+# graph.
 (l1c, norm-magi):
   partition: daily
   inputs:
@@ -144,7 +166,13 @@
     - source: mag
       data_type: l1c
       descriptor: norm-magi
+      major_version: 1
 
+# custom_behavior/mag.py also delivers the previous day's L1C to this job
+# (MAG SDC Data Validation 4.3.3 time inheritance; imap_processing issue
+# 2925, implemented in imap_processing PR 3323). It is not declared as an
+# input here because that would put a self-cycle in the Dagster asset
+# graph.
 (l1c, norm-mago):
   partition: daily
   inputs:
@@ -168,6 +196,7 @@
     - source: mag
       data_type: l1c
       descriptor: norm-mago
+      major_version: 1
 
 (l1d, norm-srf):
   partition: daily
@@ -233,27 +262,47 @@
     - source: mag
       data_type: l1d
       descriptor: norm-srf
+      major_version: 1
     - source: mag
       data_type: l1d
       descriptor: norm-dsrf
+      major_version: 1
     - source: mag
       data_type: l1d
       descriptor: norm-gse
+      major_version: 1
     - source: mag
       data_type: l1d
       descriptor: norm-rtn
+      major_version: 1
     - source: mag
       data_type: l1d
       descriptor: burst-srf
+      major_version: 1
     - source: mag
       data_type: l1d
       descriptor: burst-dsrf
+      major_version: 1
     - source: mag
       data_type: l1d
       descriptor: burst-gse
+      major_version: 1
     - source: mag
       data_type: l1d
       descriptor: burst-rtn
+      major_version: 1
+    - source: mag
+      data_type: l1d
+      descriptor: spin-offsets
+      major_version: 1
+    - source: mag
+      data_type: l1d
+      descriptor: gradiometry-offsets-norm
+      major_version: 1
+    - source: mag
+      data_type: l1d
+      descriptor: gradiometry-offsets-burst
+      major_version: 1
 
 (l2, burst-srf):
   partition: daily
@@ -308,15 +357,23 @@
     - source: mag
       data_type: l2
       descriptor: burst-srf
+      major_version: 1
     - source: mag
       data_type: l2
       descriptor: burst-dsrf
+      major_version: 1
     - source: mag
       data_type: l2
       descriptor: burst-gse
+      major_version: 1
     - source: mag
       data_type: l2
       descriptor: burst-rtn
+      major_version: 1
+    - source: mag
+      data_type: l2
+      descriptor: burst-gsm
+      major_version: 1
 
 (l2, norm-srf):
   partition: daily
@@ -371,12 +428,20 @@
     - source: mag
       data_type: l2
       descriptor: norm-srf
+      major_version: 1
     - source: mag
       data_type: l2
       descriptor: norm-dsrf
+      major_version: 1
     - source: mag
       data_type: l2
       descriptor: norm-gse
+      major_version: 1
     - source: mag
       data_type: l2
       descriptor: norm-rtn
+      major_version: 1
+    - source: mag
+      data_type: l2
+      descriptor: norm-gsm
+      major_version: 1

@@ -6,11 +6,9 @@
 # poetry run pytest tests/orchestration/test_end_to_end.py -s
 import datetime
 
-import pytest
 from dagster import (
     AssetKey,
     AssetMaterialization,
-    Failure,
     MaterializeResult,
     build_asset_context,
     build_sensor_context,
@@ -54,9 +52,11 @@ def test_glows_l1a_end_to_end(
             partition="repoint2_2026-01-02T00:00:00_to_2026-01-02T23:59:59",
             description="Mocked arrival of L0 science file for testing.",
             metadata={
-                "file_names": ["imap_glows_l0_raw_20260102-repoint00002_v001.pkts"],
+                "file_names": [
+                    "imap_glows_l0_raw_20260102-repoint00002_v000.0001.pkts",
+                ],
                 "input_type": "science",
-                "version": "v001",
+                "version": "v000.0001",
                 "start_date": "",
             },
         )
@@ -92,25 +92,30 @@ def test_glows_l1a_end_to_end(
     assert glows_l1a_job is not None, (
         "glows_l1a_all_processing_job was not found in job_handlers"
     )
-    # TEST 3: Run the asset and verify there is a timeout error.
-    with pytest.raises(Failure, match="Timeout"):
-        yielded_files = list(glows_l1a_job.run_job(context, 1, 1))
+    # TEST 3: Run the asset and verify that a job was submitted
+    # We expect a job to have been submitted, but no files exist in the DB
+    # So nothing is returned
+    yielded_files = list(glows_l1a_job.run_job(context, 1, 1))
+    assert len(mock_db_session.query(models.ProcessingJob).all()) == 1
+    assert len(yielded_files) == 0
 
     # TEST 4: Run the job again.
     # We expect it to simply exit,
-    # because there is still an "INPROGRESS" job in the database.
+    # because this exact job was run previously
     yielded_files = glows_l1a_job.run_job(context, 1, 1)
+    assert len(mock_db_session.query(models.ProcessingJob).all()) == 1
     assert len(list(yielded_files)) == 0
 
     # Insert pretend data into ScienceFiles
     glows_l1a_de_file = models.ScienceFiles(
-        file_path="imap_glows_l1a_de_20260102_v001.cdf",
+        file_path="imap_glows_l1a_de_20260102_v001.0001.cdf",
         instrument="glows",
         data_level="l1a",
         descriptor="de",
         start_date=datetime.datetime(2026, 1, 2),
         repointing=2,
-        version="v001",
+        major_version=1,
+        minor_version=1,
         ingestion_date=datetime.datetime(2026, 1, 2),
         cr=1,
         crid="asdf",
@@ -119,13 +124,14 @@ def test_glows_l1a_end_to_end(
     )
     mock_db_session.add(glows_l1a_de_file)
     glows_l1a_hist_file = models.ScienceFiles(
-        file_path="imap_glows_l1a_hist_20260102_v001.cdf",
+        file_path="imap_glows_l1a_hist_20260102_v001.0001.cdf",
         instrument="glows",
         data_level="l1a",
         descriptor="hist",
         start_date=datetime.datetime(2026, 1, 2),
         repointing=2,
-        version="v001",
+        major_version=1,
+        minor_version=1,
         ingestion_date=datetime.datetime(2026, 1, 2),
         cr=1,
         crid="asdf",
@@ -142,6 +148,8 @@ def test_glows_l1a_end_to_end(
     for f in yielded_files:
         assert isinstance(f, MaterializeResult)
         assert f.metadata["file_names"][0] in (
-            "imap_glows_l1a_de_20260102_v001.cdf",
-            "imap_glows_l1a_hist_20260102_v001.cdf",
+            "imap_glows_l1a_de_20260102_v001.0001.cdf",
+            "imap_glows_l1a_hist_20260102_v001.0001.cdf",
         )
+    # Assert only one job has ever been submitted still
+    assert len(mock_db_session.query(models.ProcessingJob).all()) == 1

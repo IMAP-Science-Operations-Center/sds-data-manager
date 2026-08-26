@@ -37,7 +37,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from imap_data_access import ImapFilePath, ScienceFilePath
-from imap_processing.idex.idex_constants import IDEXAPID
+from imap_processing.idex.idex_constants import IDEX_10_DAY_RANGES_PATH, IDEXAPID
 from imap_processing.idex.idex_l0 import decom_packets
 from imap_processing.idex.idex_l1a import Scitype
 from imap_processing.spice.time import met_to_datetime64
@@ -50,11 +50,6 @@ from .indexer import get_file_ingestion_date, http_response
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-# TODO use file from imap_processing
-IDEX_10_DAY_RANGES_PATH = (
-    Path(__file__).resolve().parent.parent / "utils" / "idex_10_day_CDF_names.csv"
-)
 
 
 def write_science_metadata_to_table(filename: str, s3_filepath: str) -> dict:
@@ -170,7 +165,7 @@ def compute_idex_l0_start_dates(s3_filepath: str) -> list:
 
     # IDEX instrument team defined 10-day window boundaries. Each row is one window with
     # a start and end date.
-    if not IDEX_10_DAY_RANGES_PATH.exists():
+    if not Path(IDEX_10_DAY_RANGES_PATH).exists():
         raise FileNotFoundError(
             f"Unable to find IDEX window definition CSV at {IDEX_10_DAY_RANGES_PATH}"
         )
@@ -263,7 +258,8 @@ def lambda_handler(event, context):
     )
     idex_params = {
         "ingestion_date": params["ingestion_date"],
-        "version": params["version"],
+        "major_version": params["major_version"],
+        "minor_version": params["minor_version"],
         "file_path": params["file_path"],
     }
     logger.info(f"Writing metadata to idex-l0-files db table: {idex_params}")

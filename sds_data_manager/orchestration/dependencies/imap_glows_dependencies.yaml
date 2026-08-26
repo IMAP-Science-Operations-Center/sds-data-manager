@@ -32,7 +32,6 @@ hist_spice: &hist_spice
   - source: pointing_attitude
     data_type: spice
     descriptor: historical
-    trigger_job: false
 
 # ======== Product-specific dependencies ===========
 (l1a, all):
@@ -46,9 +45,11 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l1a
       descriptor: de
+      major_version: 1
     - source: glows
       data_type: l1a
       descriptor: hist
+      major_version: 1
 
 (l1b, de):
   partition: repoint
@@ -63,6 +64,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l1b
       descriptor: de
+      major_version: 1
 
 (l1b, hist):
   partition: repoint
@@ -105,6 +107,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l1b
       descriptor: hist
+      major_version: 1
 
 (l2, hist):
   partition: repoint
@@ -121,6 +124,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l2
       descriptor: hist
+      major_version: 1
 
 (l3a, hist):
   partition: repoint
@@ -142,6 +146,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l3a
       descriptor: hist
+      major_version: 1
 
 (l3b, ion-rate-profile):
   partition: daily
@@ -149,7 +154,87 @@ hist_spice: &hist_spice
     - source: repoint
       data_type: repoint
       descriptor: historical
+    - source: glows
+      data_type: ancillary
+      descriptor: force-reprocessing-config
   outputs:
     - source: glows
       data_type: l3b
       descriptor: ion-rate-profile
+      major_version: 1
+    - source: glows
+      data_type: l3c
+      descriptor: sw-profile
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: l3b-archive
+      major_version: 1
+    - source: glows
+      data_type: l3d
+      descriptor: solar-hist
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: uv-anis
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: lya
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: e-dens
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: p-dens
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: speed
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: phion
+      major_version: 1
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-hi-45
+      major_version: 1
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-hi-90
+      major_version: 1
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-lo
+      major_version: 1
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-ul-sf
+      major_version: 1
+    - source: glows
+      data_type: l3e
+      descriptor: survival-probability-ul-hf
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-hi-45-raw
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-hi-90-raw
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-lo-raw
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-ul-sf-raw
+      major_version: 1
+    - source: glows
+      data_type: ancillary
+      descriptor: survival-probability-ul-hf-raw
+      major_version: 1

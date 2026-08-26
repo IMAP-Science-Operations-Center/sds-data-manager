@@ -39,6 +39,7 @@ from sds_data_manager.constructs import (
     spice_monitoring_construct,
     website_hosting,
 )
+from sds_data_manager.utils import ialirt_noaa_vpn
 
 
 def build_sds(
@@ -434,6 +435,8 @@ def build_sds(
         account_name=account_name,
     )
 
+    ialirt_noaa_vpn.build_noaa_vpn_tgw(ialirt_stack, networking)
+
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(
         scope=sdc_stack,
         construct_id="ReprocessingTools",
@@ -499,6 +502,9 @@ def build_sds(
         sg=rds_construct.rds_security_group,
         dagster_env_vars=dagster_env_vars,
         db_secret=dagster_database_construct.db_secret,
+        certificate=root_certificate,
+        root_domain_name=domain_name,
+        domain=domain,
     )
     dagster_ecs_stack.node.add_dependency(dagster_image_construct)
 

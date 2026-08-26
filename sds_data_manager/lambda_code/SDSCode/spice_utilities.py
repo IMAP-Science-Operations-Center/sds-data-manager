@@ -4,6 +4,9 @@ import json
 import logging
 import os
 import tempfile
+from collections.abc import Collection
+from dataclasses import dataclass, field
+from enum import Enum, auto
 from pathlib import Path
 
 import boto3
@@ -11,10 +14,165 @@ import imap_data_access
 import spiceypy
 from imap_data_access import SPICEFilePath
 
+from .api_lambdas import spice_query_api
+from .api_lambdas.metakernel import MetaKernel
+
 MAXIMUM_MISSION_J2000_TIME = 4575787269.183866
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+class LeapsecondKernels(Enum):
+    """Container for Leapsecond Kernel Types."""
+
+    LEAPSECONDS = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "leapseconds_category"
+
+
+class PlanetaryConstantsKernels(Enum):
+    """Container for Planetary Contants Kernel Types."""
+
+    PLANETARY_CONSTANTS = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "planetary_constants_category"
+
+
+class ScienceFramesKernels(Enum):
+    """Container for Science Frames Kernel Type."""
+
+    SCIENCE_FRAMES = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "science_frames_category"
+
+
+class IMAPFramesKernels(Enum):
+    """Container for IMAP Frames Kernel Type."""
+
+    IMAP_FRAMES = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "imap_frames_category"
+
+
+class SpacecraftClockKernels(Enum):
+    """Container for Spacecraft Clock Kernel Types."""
+
+    SPACECRAFT_CLOCK = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "spacecraft_clock_category"
+
+
+class PlanetaryEphemerisKernels(Enum):
+    """Container for Planetary Ephemeris Kernel Types."""
+
+    PLANETARY_EPHEMERIS = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "planetary_ephemeris_category"
+
+
+class SpacecraftEphemerisKernels(Enum):
+    """Container for Spacecraft Ephemeris Kernel Types."""
+
+    EPHEMERIS_RECONSTRUCTED = auto()
+    EPHEMERIS_NOMINAL = auto()
+    EPHEMERIS_PREDICTED = auto()
+    EPHEMERIS_90DAYS = auto()
+    EPHEMERIS_LONG = auto()
+    EPHEMERIS_LAUNCH = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "spacecraft_ephemeris_category"
+
+
+class SpacecraftAttitudeKernels(Enum):
+    """Container for Spacecraft Attitude Kernel Types."""
+
+    ATTITUDE_HISTORY = auto()
+    ATTITUDE_PREDICT = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "spacecraft_attitude_category"
+
+
+class EarthAttitudeKernels(Enum):
+    """Container for Earth Attitude Kernel Types."""
+
+    EARTH_ATTITUDE = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "earth_attitude_category"
+
+
+class PointingAttitudeKernels(Enum):
+    """Container for Pointing Attitude Kernel Types."""
+
+    POINTING_ATTITUDE = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "pointing_attitude_category"
+
+
+@dataclass
+class KernelCollection:
+    """Collection of SPICE kernel types for IMAP."""
+
+    imap_spice_load_order: list = field(
+        default_factory=lambda: [
+            LeapsecondKernels,
+            PlanetaryConstantsKernels,
+            IMAPFramesKernels,
+            ScienceFramesKernels,
+            SpacecraftClockKernels,
+            EarthAttitudeKernels,
+            PlanetaryEphemerisKernels,
+            SpacecraftEphemerisKernels,
+            SpacecraftAttitudeKernels,
+            PointingAttitudeKernels,
+        ]
+    )
+
+    @property
+    def file_types(self):
+        """Return all kernel members in lowercase."""
+        members = []
+        for kernel_class in self.imap_spice_load_order:
+            members.extend([member.name.lower() for member in kernel_class])
+        return members
+
+    @property
+    def category_types(self):
+        """Collect all kernel category type strings."""
+        return [
+            kernel_class.spice_category_name()
+            for kernel_class in self.imap_spice_load_order
+        ]
 
 
 def download_from_s3(s3_key: str, bucket_name: str | None = None) -> Path:
@@ -84,10 +242,6 @@ def furnish_best_spice_file(kernel_type: str):
         If S3_BUCKET or DATA_DIR are not set, no files are found in the database,
         or the file is not in the S3 bucket, FileNotFoundError will raise.
     """
-    from .api_lambdas import (  # noqa: PLC0415
-        spice_metakernel_api,
-    )
-
     # Check if S3_BUCKET and DATA_DIR are set
     if "S3_BUCKET" not in os.environ or "DATA_DIR" not in imap_data_access.config:
         raise FileNotFoundError(
@@ -96,23 +250,16 @@ def furnish_best_spice_file(kernel_type: str):
         )
 
     # Query for latest kernel
-    metakernel_response = spice_metakernel_api.lambda_handler(
-        {
-            "queryStringParameters": {
-                "start_time": 0,
-                "end_time": MAXIMUM_MISSION_J2000_TIME,
-                "list_files": "True",
-                "file_types": kernel_type,
-            }
-        },
-        None,
+    metakernel = metakernel_builder(
+        0, MAXIMUM_MISSION_J2000_TIME, {kernel_type.upper()}
     )
-    if metakernel_response["statusCode"] != 200:
+    metakernel_files = metakernel.return_spice_files_in_order(detailed=False)
+    if not metakernel_files:
         raise FileNotFoundError(
             f"Unable to find the latest {kernel_type} kernel. "
             "Please ensure that the kernel is available in the database."
         )
-    kernel_filename = json.loads(metakernel_response["body"])[0]
+    kernel_filename = Path(metakernel_files[0]).name
     logger.info(f"Furnishing the latest {kernel_type} kernel: {kernel_filename}")
     # Download the latest kernel file
     # Convert this into an s3 key
@@ -127,3 +274,39 @@ def furnish_best_spice_file(kernel_type: str):
     # Furnish the SPICE file
     spiceypy.furnsh(str(highest_version_spice_file))
     return highest_version_spice_file
+
+
+def metakernel_builder(
+    start_time: float, end_time: float, file_types: Collection[str] | None = None
+) -> MetaKernel:
+    """Create a MetaKernel class and inserts files into it."""
+    # Create the Metakernel class
+    metakernel = MetaKernel(
+        start_time,
+        end_time,
+        allowed_spice_types=KernelCollection().category_types,
+    )
+
+    for spice_category in KernelCollection().imap_spice_load_order:
+        for spice_subtype in spice_category:
+            if file_types and spice_subtype.name not in file_types:
+                continue  # Skip over the file if not in requested list
+            spice_files = spice_query_api.lambda_handler(
+                {
+                    "queryStringParameters": {
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "type": spice_subtype.name.lower(),
+                        "latest": "True",
+                    }
+                },
+                None,
+            )
+            metakernel.load_spice(
+                json.loads(spice_files["body"]),
+                spice_category.spice_category_name(),
+                "file_intervals_j2000",
+                priority_field="timestamp",
+            )
+
+    return metakernel

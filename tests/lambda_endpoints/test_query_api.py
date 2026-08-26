@@ -25,7 +25,8 @@ def _populate_test_data(session):
         "data_level": "l0",
         "descriptor": "raw",
         "start_date": datetime.datetime.strptime("20251107", "%Y%m%d"),
-        "version": "v001",
+        "major_version": 1,
+        "minor_version": 1,
         "extension": "pkts",
         "ingestion_date": datetime.datetime.strptime(
             "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
@@ -50,7 +51,9 @@ def expected_response():
                 "descriptor": "raw",
                 "start_date": "20251107",
                 "repointing": None,
-                "version": "v001",
+                "major_version": 1,
+                "minor_version": 1,
+                "version": "v001.0001",
                 "extension": "pkts",
                 "ingestion_date": "20251107 10:13:12",
                 "cr": None,
@@ -267,6 +270,31 @@ def test_invalid_query(session):
     assert param_not_valid_in_response(returned_query["body"], "size", "science")
 
 
+def test_end_date_not_valid_for_spice(session):
+    """Spice has no start_date, so the synthetic end_date param is rejected (400).
+
+    Regression test: end_date used to be offered for every non-ancillary table
+    and was implemented as a `start_date <=` filter, so ?table=spice&end_date=...
+    raised AttributeError (500) instead of a clean validation error.
+    """
+    event = {"queryStringParameters": {"table": "spice", "end_date": "20250101"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 400
+    assert param_not_valid_in_response(returned_query["body"], "end_date", "spice")
+
+
+def test_invalid_table_returns_400(session):
+    """An unknown `table` value returns a 400."""
+    event = {"queryStringParameters": {"table": "not_a_real_table"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 400
+    assert "not_a_real_table" in returned_query["body"]
+
+
 def _populate_test_data_ancillary_table(session):
     """Put a filepath into the test data for the ancillary table."""
     filepath = "test/ancillary/file/path/imap_mag_test_20210101_v001.csv"
@@ -348,3 +376,186 @@ def test_invalid_param_ancillary_query(session):
     assert param_not_valid_in_response(
         returned_query["body"], "repointing", "ancillary"
     )
+
+
+def _populate_versioned_science_data(session):
+    """Populate one science series with several major/minor versions.
+
+    All rows share the same instrument/level/descriptor/start_date series so
+    that version resolution collapses them. Versions added (major, minor):
+    (1, 1), (1, 2), (2, 1), (2, 3).
+    """
+    versions = [(1, 1), (1, 2), (2, 1), (2, 3)]
+    for major, minor in versions:
+        filepath = (
+            f"test/file/path/imap_hit_l1a_count_20251107_v{major:03d}.{minor:04d}.cdf"
+        )
+        session.add(
+            models.ScienceFiles(
+                file_path=filepath,
+                instrument="hit",
+                data_level="l1a",
+                descriptor="count",
+                start_date=datetime.datetime.strptime("20251107", "%Y%m%d"),
+                major_version=major,
+                minor_version=minor,
+                extension="cdf",
+                ingestion_date=datetime.datetime.strptime(
+                    "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                released=True,
+            )
+        )
+    session.commit()
+
+
+def _returned_versions(returned_query):
+    """Return the set of (major_version, minor_version) tuples in a response."""
+    return {
+        (item["major_version"], item["minor_version"])
+        for item in json.loads(returned_query["body"])
+    }
+
+
+def test_default_returns_latest_major_all_minors(session):
+    """Omitting version params returns the latest major with all its minors."""
+    _populate_versioned_science_data(session)
+    event = {"queryStringParameters": {"instrument": "hit"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    # Latest major is 2; both minor versions of major 2 are returned.
+    assert _returned_versions(returned_query) == {(2, 1), (2, 3)}
+
+
+def test_latest_true_returns_single_newest_file(session):
+    """latest=true returns only the single newest file (latest major+minor)."""
+    _populate_versioned_science_data(session)
+    event = {"queryStringParameters": {"instrument": "hit", "latest": "true"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert _returned_versions(returned_query) == {(2, 3)}
+
+
+def test_concrete_major_version_filter(session):
+    """A concrete major_version returns all minors of that major only."""
+    _populate_versioned_science_data(session)
+    event = {"queryStringParameters": {"instrument": "hit", "major_version": "1"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert _returned_versions(returned_query) == {(1, 1), (1, 2)}
+
+
+def test_version_alias_minor_only(session):
+    """Legacy `version=vXXX` maps to a minor_version filter within latest major."""
+    _populate_versioned_science_data(session)
+    event = {"queryStringParameters": {"instrument": "hit", "version": "v001"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    # minor_version=1 within the latest major (2).
+    assert _returned_versions(returned_query) == {(2, 1)}
+
+
+def test_version_alias_full_form(session):
+    """Legacy `version=vMMM.mmmm` maps to both major and minor filters."""
+    _populate_versioned_science_data(session)
+    event = {"queryStringParameters": {"instrument": "hit", "version": "v001.0002"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert _returned_versions(returned_query) == {(1, 2)}
+
+
+def _populate_old_filename_science_data(session):
+    """Populate science files that use the legacy vXXX filename convention.
+
+    Files produced before the major/minor version split used filenames like
+    ``imap_hit_l1a_count_20251107_v002.cdf`` and are stored with the default
+    major_version of 1 and the legacy number as the minor_version.
+    """
+    for minor in (1, 2):
+        filepath = f"test/file/path/imap_hit_l1a_count_20251107_v{minor:03d}.cdf"
+        session.add(
+            models.ScienceFiles(
+                file_path=filepath,
+                instrument="hit",
+                data_level="l1a",
+                descriptor="count",
+                start_date=datetime.datetime.strptime("20251107", "%Y%m%d"),
+                major_version=1,
+                minor_version=minor,
+                extension="cdf",
+                ingestion_date=datetime.datetime.strptime(
+                    "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                released=True,
+            )
+        )
+    session.commit()
+
+
+def test_query_with_old_filename_format(session):
+    """Files from legacy vXXX filenames stay queryable, including via `version`."""
+    _populate_old_filename_science_data(session)
+
+    # A plain query returns the files (the default latest-major path still works;
+    # the legacy files all share major_version 1).
+    event = {"queryStringParameters": {"instrument": "hit"}}
+    returned_query = query_api.lambda_handler(event=event, context={})
+    assert returned_query["statusCode"] == 200
+    assert _returned_versions(returned_query) == {(1, 1), (1, 2)}
+
+    # The legacy `version=vXXX` parameter still resolves to a specific file.
+    event = {"queryStringParameters": {"instrument": "hit", "version": "v002"}}
+    returned_query = query_api.lambda_handler(event=event, context={})
+    assert returned_query["statusCode"] == 200
+    assert _returned_versions(returned_query) == {(1, 2)}
+
+
+def test_latest_default_excludes_unreleased_for_unauthenticated(session):
+    """Unauthenticated latest resolution ignores unreleased newer versions."""
+    _populate_versioned_science_data(session)
+    # Add an unreleased newer major that an unauthenticated user must not see,
+    # and which must not suppress the latest released version.
+    session.add(
+        models.ScienceFiles(
+            file_path="test/file/path/imap_hit_l1a_count_20251107_v003.0001.cdf",
+            instrument="hit",
+            data_level="l1a",
+            descriptor="count",
+            start_date=datetime.datetime.strptime("20251107", "%Y%m%d"),
+            major_version=3,
+            minor_version=1,
+            extension="cdf",
+            ingestion_date=datetime.datetime.strptime(
+                "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            released=False,
+        )
+    )
+    session.commit()
+
+    event = {"queryStringParameters": {"instrument": "hit"}}
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    # Latest *released* major is still 2, with both of its minors.
+    assert _returned_versions(returned_query) == {(2, 1), (2, 3)}
+
+
+def test_invalid_version_alias_returns_400(session):
+    """A malformed `version` value returns a 400."""
+    _populate_versioned_science_data(session)
+    event = {"queryStringParameters": {"instrument": "hit", "version": "vABC"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 400

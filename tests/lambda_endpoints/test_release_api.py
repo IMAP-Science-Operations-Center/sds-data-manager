@@ -1,13 +1,4 @@
-"""Integration tests for the Release API.
-
-These tests verify the six core release behaviors against a live in-memory DB:
-
-Test Case 1  release (no descriptor)  — all matching instrument+date files released
-Test Case 2  early-release
-Test Case 3  unrelease
-Test Case 4  repoint files for a single day
-Test Case 5  ancillary files query
-"""
+"""Integration tests for the Release API."""
 
 import datetime
 from unittest.mock import patch
@@ -40,6 +31,8 @@ def _science(
     descriptor="hk",
     start_date="20250115",
     released=False,
+    major_version=1,
+    minor_version=1,
 ):
     session.add(
         models.ScienceFiles(
@@ -48,7 +41,8 @@ def _science(
             data_level="l0",
             descriptor=descriptor,
             start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
-            version="v001",
+            major_version=major_version,
+            minor_version=minor_version,
             extension="pkts",
             released=released,
             ingestion_date=datetime.datetime(
@@ -59,45 +53,76 @@ def _science(
     session.commit()
 
 
-# ---------------------------------------------------------------------------
-# Test Case 1  release — all files for instrument + date range
-# ---------------------------------------------------------------------------
+def _ancillary(
+    session,
+    *,
+    file_path,
+    instrument="swe",
+    descriptor="l1b-in-flight-cal",
+    start_date="20260413",
+    end_date=None,
+    version="v001",
+    released=False,
+):
+    """Insert a single AncillaryFiles row and commit."""
+    session.add(
+        models.AncillaryFiles(
+            file_path=file_path,
+            instrument=instrument,
+            descriptor=descriptor,
+            start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
+            end_date=(
+                datetime.datetime.strptime(end_date, "%Y%m%d") if end_date else None
+            ),
+            version=version,
+            extension="csv",
+            released=released,
+            ingestion_date=datetime.datetime(2026, 4, 14, 0, 0, 0),
+        )
+    )
+    session.commit()
 
 
-def test_release_all_files_in_date_range(session):
-    """release_type=release with no descriptor releases every matching file.
-
-    Two files for the target instrument within the date range and one file
-    outside the range must remain unreleased.
-    """
+@patch("sds_data_manager.lambda_code.SDSCode.api_lambdas.release_api.download_file")
+def test_science_release(mock_download_file, session, tmp_path):
+    """Test that science files in the manifest are released properly."""
     _science(
         session,
-        file_path="imap/hit/l0/imap_hit_l0_hk_20250110_v001.pkts",
+        file_path="imap/hit/l0/imap_hit_l0_hk_20250110_v001.0000.pkts",
         instrument="hit",
         descriptor="hk",
         start_date="20250110",
+        major_version=1,
+        minor_version=0,
     )
     _science(
         session,
-        file_path="imap/hit/l0/imap_hit_l0_sci_20250120_v001.pkts",
+        file_path="imap/hit/l0/imap_hit_l0_sci_20250120_v001.0000.pkts",
         instrument="hit",
         descriptor="sci",
         start_date="20250120",
+        major_version=1,
+        minor_version=0,
     )
     _science(
         session,
-        file_path="imap/hit/l0/imap_hit_l0_hk_20250201_v001.pkts",
+        file_path="imap/hit/l0/imap_hit_l0_hk_20250201_v001.0000.pkts",
         instrument="hit",
         descriptor="hk",
         start_date="20250201",
+        major_version=1,
+        minor_version=0,
     )  # outside range
 
+    # Provide the manifest file with the two in-range files
+    file_content = """hit, l0, hk, false\nhit, l0, sci, true"""
+    manifest_path = tmp_path / "imap_hit_release_20250101_20250131_v001.txt"
+    manifest_path.write_text(file_content, encoding="utf-8")
+    mock_download_file.return_value = manifest_path
+
     params = {
-        "instrument": "hit",
-        "start_date": "20250101",
-        "end_date": "20250131",
         "release_type": "release",
-        "release_number": "1",
+        "manifest_file": "imap_hit_release_20250101_20250131_v001.txt",
     }
     result = release_api.lambda_handler(
         event=_build_event(params),
@@ -107,191 +132,19 @@ def test_release_all_files_in_date_range(session):
     assert result["statusCode"] == 200
 
     rows = {r.file_path: r.released for r in session.query(models.ScienceFiles).all()}
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250110_v001.pkts"] is True, (
-        "In-range file should be released"
+    assert rows["imap/hit/l0/imap_hit_l0_hk_20250110_v001.0000.pkts"] is False, (
+        "HK descriptor file should remain unreleased"
     )
-    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.pkts"] is True, (
-        "In-range file should be released"
+    assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v001.0000.pkts"] is False, (
+        "HK descriptor file should remain unreleased"
     )
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v001.pkts"] is False, (
-        "Out-of-range file must stay unreleased"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Test Case 2  early-release
-# ---------------------------------------------------------------------------
-
-
-@patch(
-    "sds_data_manager.lambda_code.SDSCode.api_lambdas.release_api.download_read_file"
-)
-def test_early_release(mock_download_read_file, session):
-    # Provide the manifest file with the two in-range files
-    science_files = [
-        "imap/hit/l0/imap_hit_l0_hk_20250110_v001.pkts",
-        "imap/hit/l0/imap_hit_l0_sci_20250120_v001.pkts",
-    ]
-    ancillary_files = []
-    mock_download_read_file.return_value = (science_files, ancillary_files)
-
-    _science(
-        session,
-        file_path="imap/hit/l0/imap_hit_l0_hk_20250110_v001.pkts",
-        instrument="hit",
-        descriptor="hk",
-        start_date="20250110",
-    )
-    _science(
-        session,
-        file_path="imap/hit/l0/imap_hit_l0_sci_20250120_v001.pkts",
-        instrument="hit",
-        descriptor="sci",
-        start_date="20250120",
-    )
-    _science(
-        session,
-        file_path="imap/hit/l0/imap_hit_l0_hk_20250201_v001.pkts",
-        instrument="hit",
-        descriptor="hk",
-        start_date="20250201",
-    )
-
-    manifest_file = "s3://dummy-bucket/manifest.txt"
-    result = release_api.lambda_handler(
-        event=_build_event(
-            {
-                "release_type": "early-release",
-                "manifest_file": manifest_file,
-            }
-        ),
-        context={},
-    )
-
-    assert result["statusCode"] == 200
-
-    rows = {r.file_path: r.released for r in session.query(models.ScienceFiles).all()}
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250110_v001.pkts"] is True
-    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.pkts"] is True
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v001.pkts"] is False
-
-
-# ---------------------------------------------------------------------------
-# Test Case 3  unrelease
-# ---------------------------------------------------------------------------
-
-
-@patch(
-    "sds_data_manager.lambda_code.SDSCode.api_lambdas.release_api.download_read_file"
-)
-def test_unrelease_all_files_in_date_range(mock_download_read_file, session):
-    # Provide the manifest file with the two in-range files
-    science_files = [
-        "imap/hit/l0/imap_hit_l0_hk_20250110_v001.pkts",
-        "imap/hit/l0/imap_hit_l0_sci_20250120_v001.pkts",
-    ]
-    ancillary_files = []
-    mock_download_read_file.return_value = (science_files, ancillary_files)
-
-    _science(
-        session,
-        file_path="imap/hit/l0/imap_hit_l0_hk_20250110_v001.pkts",
-        instrument="hit",
-        descriptor="hk",
-        start_date="20250110",
-        released=True,
-    )
-    _science(
-        session,
-        file_path="imap/hit/l0/imap_hit_l0_sci_20250120_v001.pkts",
-        instrument="hit",
-        descriptor="sci",
-        start_date="20250120",
-        released=True,
-    )
-    _science(
-        session,
-        file_path="imap/hit/l0/imap_hit_l0_hk_20250201_v001.pkts",
-        instrument="hit",
-        descriptor="hk",
-        start_date="20250201",
-        released=True,
-    )  # outside range
-
-    manifest_file = "s3://dummy-bucket/manifest.txt"
-    result = release_api.lambda_handler(
-        event=_build_event(
-            {
-                "release_type": "unrelease",
-                "manifest_file": manifest_file,
-            }
-        ),
-        context={},
-    )
-
-    assert result["statusCode"] == 200
-
-    rows = {r.file_path: r.released for r in session.query(models.ScienceFiles).all()}
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250110_v001.pkts"] is False, (
-        "In-range file must be unreleased"
-    )
-    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.pkts"] is False, (
-        "In-range file must be unreleased"
-    )
-    assert rows["imap/hit/l0/imap_hit_l0_hk_20250201_v001.pkts"] is True, (
-        "Out-of-range file must remain released"
+    assert rows["imap/hit/l0/imap_hit_l0_sci_20250120_v001.0000.pkts"] is True, (
+        "Sci descriptor file should be released"
     )
 
 
-# ---------------------------------------------------------------------------
-# Test Case 4  repoint files for a single day
-# ---------------------------------------------------------------------------
-
-
-def test_release_repoint_files_date_range(session):
-    """Test multiple repoint files for a single day."""
-    # April 7th, Hi has three repoint files with different repointing and version
-    files = [
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.cdf", 209, "v001"),
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00210_v002.cdf", 210, "v002"),
-        ("imap_hi_l1a_45sensor-hk_20260407-repoint00211_v003.cdf", 211, "v003"),
-    ]
-    for file_path, repointing, version in files:
-        session.add(
-            models.ScienceFiles(
-                file_path=file_path,
-                instrument="hi",
-                data_level="l1a",
-                descriptor="45sensor-hk",
-                start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-                repointing=repointing,
-                version=version,
-                extension="cdf",
-                released=False,
-                ingestion_date=datetime.datetime(2026, 4, 8, 0, 0, 0),
-            )
-        )
-    session.commit()
-
-    # Query for all files on this date
-    results = release_api.query_latest_science_files(
-        session,
-        instrument="hi",
-        start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-        end_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
-    )
-    file_paths = sorted([obj.file_path for obj in results])
-    assert file_paths == [
-        "imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.cdf",
-        "imap_hi_l1a_45sensor-hk_20260407-repoint00210_v002.cdf",
-        "imap_hi_l1a_45sensor-hk_20260407-repoint00211_v003.cdf",
-    ], f"Expected all repoint files, got: {file_paths}"
-
-
-# ---------------------------------------------------------------------------
-# Test Case 5  ancillary files released from manifest
-# ---------------------------------------------------------------------------
-def test_release_ancillary_files_in_date_range(session):
+@patch("sds_data_manager.lambda_code.SDSCode.api_lambdas.release_api.download_file")
+def test_ancillary_release(mock_download_file, session, tmp_path):
     """Ancillary files in manifest are released properly."""
     # Add all as unreleased
     session.add(
@@ -323,6 +176,19 @@ def test_release_ancillary_files_in_date_range(session):
     # Add an out-of-range ancillary file (should not be released)
     session.add(
         models.AncillaryFiles(
+            file_path="imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_v001.json",
+            instrument="codice",
+            descriptor="l1a-sci-lut",
+            start_date=datetime.datetime.strptime("20260403", "%Y%m%d"),
+            end_date=None,
+            version="v001",
+            extension="json",
+            released=False,
+            ingestion_date=datetime.datetime(2026, 1, 2, 0, 0, 0),
+        )
+    )
+    session.add(
+        models.AncillaryFiles(
             file_path="imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_v002.json",
             instrument="codice",
             descriptor="l1a-sci-lut",
@@ -336,11 +202,11 @@ def test_release_ancillary_files_in_date_range(session):
     )
     session.commit()
 
-    result = release_api.get_latest_ancillary_files(
+    result = release_api.latest_ancillary_release(
         session,
-        instrument="codice",
         start_date=datetime.datetime.strptime("20260403", "%Y%m%d"),
         end_date=datetime.datetime.strptime("20260430", "%Y%m%d"),
+        line="codice,ancillary,l1a-sci-lut,true",
     )
     expected_ancillary_files = [
         "imap/ancillary/codice/imap_codice_l1a-sci-lut_20260403_20260403_v001.json",
@@ -351,3 +217,246 @@ def test_release_ancillary_files_in_date_range(session):
         f"Expected ancillary files {expected_ancillary_files}, "
         f"got {[f.file_path for f in result]}"
     )
+
+    # Date edge cases
+    _ancillary(
+        session,
+        file_path="imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260401_20260413_v001.csv",
+        version="v001",
+        start_date="20260401",
+        end_date="20260413",
+    )
+    _ancillary(
+        session,
+        file_path="imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260401_20260413_v002.csv",
+        version="v002",
+        start_date="20260401",
+        end_date="20260413",
+    )
+    _ancillary(
+        session,
+        file_path="imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260420_v001.csv",
+        version="v001",
+        start_date="20260420",
+    )
+    _ancillary(
+        session,
+        file_path="imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260420_v002.csv",
+        version="v002",
+        start_date="20260420",
+    )
+
+    file_content = """swe, ancillary, l1b-in-flight-cal, true"""
+    manifest_path = tmp_path / "imap_swe_release_20260401_20260430_v001.txt"
+    manifest_path.write_text(file_content, encoding="utf-8")
+    mock_download_file.return_value = manifest_path
+
+    params = {
+        "release_type": "release",
+        "manifest_file": "s3://dummy-bucket/imap_swe_release_20260401_20260430_v001.txt",
+    }
+    result = release_api.lambda_handler(event=_build_event(params), context={})
+
+    assert result["statusCode"] == 200
+
+    rows = {r.file_path: r.released for r in session.query(models.AncillaryFiles).all()}
+    assert (
+        rows["imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260401_20260413_v001.csv"]
+        is False
+    ), "Older version should not be released"
+    # Latest version should be released
+    assert (
+        rows["imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260401_20260413_v002.csv"]
+        is True
+    ), "Latest version should be released"
+    assert (
+        rows["imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260420_v001.csv"] is False
+    ), "Excluded file should not be released"
+    # Latest version should be released
+    assert (
+        rows["imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260420_v002.csv"] is True
+    ), "Latest version for April 20 should be released"
+
+
+@patch("sds_data_manager.lambda_code.SDSCode.api_lambdas.release_api.download_file")
+def test_ancillary_release_with_wildcard(mock_download_file, session, tmp_path):
+    """release_type=release with no exclude file releases only the latest version.
+
+    Two versions of the same descriptor+start_date exist. Only the highest
+    version (v002) should be released; v001 must remain unreleased.
+    An out-of-range file must also remain unreleased.
+    """
+    # v001 — older version for April 13
+    _ancillary(
+        session,
+        file_path="imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260413_v001.csv",
+        version="v001",
+        start_date="20260413",
+    )
+    # v002 — latest version for April 13
+    _ancillary(
+        session,
+        file_path="imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260413_v002.csv",
+        version="v002",
+        start_date="20260413",
+    )
+    # Out-of-range: May 5 — outside the query window
+    _ancillary(
+        session,
+        file_path="imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260505_v001.csv",
+        version="v001",
+        start_date="20260505",
+    )
+
+    file_content = """swe, ancillary, all, true"""
+    manifest_path = tmp_path / "imap_swe_release_20260401_20260430_v001.txt"
+    manifest_path.write_text(file_content, encoding="utf-8")
+    mock_download_file.return_value = manifest_path
+
+    # No exclude file provided
+    params = {
+        "release_type": "release",
+        "manifest_file": "s3://dummy-bucket/imap_swe_release_20260401_20260430_v001.txt",
+    }
+    result = release_api.lambda_handler(event=_build_event(params), context={})
+
+    assert result["statusCode"] == 200
+
+    rows = {r.file_path: r.released for r in session.query(models.AncillaryFiles).all()}
+    # Older version should remain unreleased
+    assert (
+        rows["imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260413_v001.csv"] is False
+    ), "Older version must not be released"
+    # Latest version should be released
+    assert (
+        rows["imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260413_v002.csv"] is True
+    ), "Latest version should be released"
+    # Out-of-range file must stay unreleased
+    assert (
+        rows["imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20260505_v001.csv"] is False
+    ), "Out-of-range file must not be released"
+
+
+def test_early_release():
+    result = release_api.lambda_handler(
+        event=_build_event(
+            {
+                "release_type": "early-release",
+                "manifest_file": "s3://dummy-bucket/manifest.txt",
+            }
+        ),
+        context={},
+    )
+
+    assert result["statusCode"] == 501
+    assert result["body"] == "Early release operation not supported yet."
+
+
+def test_unrelease_all_files_in_date_range():
+    result = release_api.lambda_handler(
+        event=_build_event(
+            {
+                "release_type": "unrelease",
+                "manifest_file": "s3://dummy-bucket/manifest.txt",
+            }
+        ),
+        context={},
+    )
+
+    assert result["statusCode"] == 501
+    assert result["body"] == "Unrelease operation not supported yet."
+
+
+def test_latest_science_release(session):
+    """Test multiple repoint files for a single day."""
+    # April 7th, Hi has three repoint files with different repointing and major
+    # /minor versions
+    files = [
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.0003.cdf", 209, 1, 3),
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00210_v001.0001.cdf", 210, 1, 1),
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.0001.cdf", 211, 1, 1),
+        ("imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.0002.cdf", 211, 1, 2),
+    ]
+    for file_path, repointing, major_ver, minor_ver in files:
+        session.add(
+            models.ScienceFiles(
+                file_path=file_path,
+                instrument="hi",
+                data_level="l1a",
+                descriptor="45sensor-hk",
+                start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
+                repointing=repointing,
+                major_version=major_ver,
+                minor_version=minor_ver,
+                extension="cdf",
+                released=False,
+                ingestion_date=datetime.datetime(2026, 4, 8, 0, 0, 0),
+            )
+        )
+    session.commit()
+
+    # Query for all files on this date
+    results = release_api.latest_science_release(
+        session,
+        start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
+        end_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
+        line="hi, l1a, all, true",
+    )
+    file_paths = sorted([obj.file_path for obj in results])
+    assert file_paths == [
+        "imap_hi_l1a_45sensor-hk_20260407-repoint00209_v001.0003.cdf",
+        "imap_hi_l1a_45sensor-hk_20260407-repoint00210_v001.0001.cdf",
+        "imap_hi_l1a_45sensor-hk_20260407-repoint00211_v001.0002.cdf",
+    ], f"Expected all repoint files, got: {file_paths}"
+
+    # Query non-repoint files
+    files = [
+        ("imap_swapi_l1_sci_20260407_v002.0002.cdf", "sci", "20260407", 2, 2),
+        ("imap_swapi_l1_sci_20260407_v001.0002.cdf", "sci", "20260407", 1, 2),
+        ("imap_swapi_l1_sci_20260407_v001.0001.cdf", "sci", "20260407", 1, 1),
+        ("imap_swapi_l1_sci_20260408_v001.0001.cdf", "sci", "20260408", 1, 1),
+        ("imap_swapi_l1_sci_20260408_v001.0002.cdf", "sci", "20260408", 1, 2),
+        # HK is used to see if it gets excluded properly in later step
+        ("imap_swapi_l1a_hk_20260408_v001.0001.cdf", "hk", "20260408", 1, 1),
+    ]
+    for file_path, descriptor, start_date, major_ver, minor_ver in files:
+        session.add(
+            models.ScienceFiles(
+                file_path=file_path,
+                instrument="swapi",
+                data_level="l1",
+                descriptor=descriptor,
+                start_date=datetime.datetime.strptime(start_date, "%Y%m%d"),
+                repointing=None,
+                major_version=major_ver,
+                minor_version=minor_ver,
+                extension="cdf",
+                released=False,
+                ingestion_date=datetime.datetime(2026, 4, 8, 0, 0, 0),
+            )
+        )
+    session.commit()
+
+    latest_non_repoint_files = release_api.latest_science_release(
+        session,
+        start_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
+        end_date=datetime.datetime.strptime("20260407", "%Y%m%d"),
+        line="swapi,all,all,true",
+    )
+    file_paths = sorted([obj.file_path for obj in latest_non_repoint_files])
+    assert file_paths == [
+        "imap_swapi_l1_sci_20260407_v002.0002.cdf",
+    ], f"Expected only the latest non-repoint file, got: {file_paths}"
+
+    # In this release query, we only ask for latest sci files on April 8th,
+    # so the HK file should be excluded and should not be returned.
+    latest_non_repoint_files = release_api.latest_science_release(
+        session,
+        start_date=datetime.datetime.strptime("20260408", "%Y%m%d"),
+        end_date=datetime.datetime.strptime("20260408", "%Y%m%d"),
+        line="swapi,l1,sci,true",
+    )
+    file_paths = sorted([obj.file_path for obj in latest_non_repoint_files])
+    assert file_paths == [
+        "imap_swapi_l1_sci_20260408_v001.0002.cdf",
+    ], f"Expected only the latest non-repoint file, got: {file_paths}"

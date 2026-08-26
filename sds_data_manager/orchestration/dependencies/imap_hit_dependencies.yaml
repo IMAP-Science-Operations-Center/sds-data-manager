@@ -29,12 +29,19 @@ l0_data: &l0_data
     - source: hit
       data_type: l1a
       descriptor: counts-standard
+      major_version: 1
     - source: hit
       data_type: l1a
       descriptor: counts-sectored
+      major_version: 1
     - source: hit
       data_type: l1a
       descriptor: direct-events
+      major_version: 1
+    - source: hit
+      data_type: l1a
+      descriptor: hk
+      major_version: 1
 
 (l1b, hk):
   partition: daily
@@ -45,6 +52,7 @@ l0_data: &l0_data
     - source: hit
       data_type: l1b
       descriptor: hk
+      major_version: 1
 
 
 (l1b, sectored-rates):
@@ -57,6 +65,7 @@ l0_data: &l0_data
     - source: hit
       data_type: l1b
       descriptor: sectored-rates
+      major_version: 1
 
 (l1b, standard-rates):
   partition: daily
@@ -68,6 +77,7 @@ l0_data: &l0_data
     - source: hit
       data_type: l1b
       descriptor: standard-rates
+      major_version: 1
 
 (l1b, summed-rates):
   partition: daily
@@ -79,6 +89,7 @@ l0_data: &l0_data
     - source: hit
       data_type: l1b
       descriptor: summed-rates
+      major_version: 1
 
 (l2, macropixel-intensity):
   partition: daily
@@ -102,6 +113,7 @@ l0_data: &l0_data
     - source: hit
       data_type: l2
       descriptor: macropixel-intensity
+      major_version: 1
 
 (l2, standard-intensity):
   partition: daily
@@ -125,6 +137,7 @@ l0_data: &l0_data
     - source: hit
       data_type: l2
       descriptor: standard-intensity
+      major_version: 1
 
 (l2, summed-intensity):
   partition: daily
@@ -148,6 +161,7 @@ l0_data: &l0_data
     - source: hit
       data_type: l2
       descriptor: summed-intensity
+      major_version: 1
 
 (l3, direct-events):
   partition: daily
@@ -204,6 +218,7 @@ l0_data: &l0_data
     - source: hit
       data_type: l3
       descriptor: direct-events
+      major_version: 1
 
 (l3, macropixel):
   partition: daily
@@ -217,8 +232,10 @@ l0_data: &l0_data
     - source: mag
       data_type: l2
       descriptor: norm-dsrf
+      required: false
       trigger_job: false
   outputs:
     - source: hit
       data_type: l3
       descriptor: macropixel
+      major_version: 1

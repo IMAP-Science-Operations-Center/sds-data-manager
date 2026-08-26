@@ -8,16 +8,13 @@ from unittest.mock import Mock, patch
 import boto3
 import pytest
 from moto import mock_ecr, mock_events, mock_s3
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
-from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import (
-    Base,
     SPICEFiles,
 )
 from sds_data_manager.orchestration import imap_job
+from tests.conftest import in_memory_session
 
 BUCKET_NAME = "test-data-bucket"
 
@@ -72,7 +69,13 @@ def ancillary_file():
 @pytest.fixture(scope="module")
 def science_file():
     """Path to a valid science file."""
-    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v000.cdf"
+    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v001.0001.cdf"
+
+
+@pytest.fixture(scope="module")
+def legacy_science_file():
+    """Path to a science file using the legacy vXXX version format."""
+    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v001.cdf"
 
 
 @pytest.fixture(scope="module")
@@ -80,7 +83,7 @@ def dependency_file():
     """Path to a valid dependency file."""
     return (
         "imap/dependency/ultra/l2/2025/03/imap_ultra_l2_u45-ena-h-hf-nsp-test-hae-6deg"
-        "-3mo-4d649e314e8ac32e3fb76fe5d5aad46f_20250301_v001.json"
+        "-3mo-4d649e314e8ac32e3fb76fe5d5aad46f_20250301_v001.0001.json"
     )
 
 
@@ -93,10 +96,7 @@ def spice_file():
 @pytest.fixture(scope="module")
 def invalid_file():
     """Path for an invalid file."""
-    return (
-        "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_"
-        "second-description_20100101_v000.cdf"
-    )
+    return "imap/swe/l1a/2010/01/imap_swe_l1a_test-description_20100101_v001.001.cdf"
 
 
 @pytest.fixture(autouse=True)
@@ -206,26 +206,9 @@ POSTGRES_AVAILABLE = False
 #       get a new database session and start fresh each time.
 @pytest.fixture
 def session():
-    """Create a test postgres database engine."""
-    with patch.object(db, "Session") as mock_session:
-        connection = "sqlite:///:memory:"
-        engine = create_engine(connection)
-
-        # Create the tables and session
-        Base.metadata.create_all(engine)
-
-        with sessionmaker(bind=engine)() as session:
-            # Attach this session to the mocked module's Session call
-            mock_session.return_value = session
-
-            # Provide the session to the tests
-            yield session
-
-            # Cleanup after the test
-            session.rollback()
-            session.close()
-            # Drop tables to ensure clean state for next test
-            Base.metadata.drop_all(engine)
+    """Create a test database session (in-memory SQLite)."""
+    with in_memory_session() as session:
+        yield session
 
 
 def _static_spice_files(session):

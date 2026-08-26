@@ -334,6 +334,7 @@ def generate_and_upload_30_days(
     outages: dict,
     dsn: dict,
     uksa: list | None = None,
+    start_date: datetime | None = None,
 ):
     """Upload new coverage json files to S3.
 
@@ -349,6 +350,8 @@ def generate_and_upload_30_days(
         Dictionary containing DSN data.
     uksa : list, optional
         List of UKSA contact windows as (start, end) tuples.
+    start_date : datetime, optional
+        First day of the 30-day window to (re)generate.
 
     Notes
     -----
@@ -356,7 +359,12 @@ def generate_and_upload_30_days(
     outages = {"Kiel": [("2026-09-22T13:50:00.00Z", "2026-09-22T14:10:00.00Z")]}
     dsn = {"DSS-55": [("2026-09-22T08:00:00.00Z", "2026-09-22T09:00:00.00Z")]}
     """
-    today = datetime.now(timezone.utc)
+    if start_date is None:
+        today = datetime.now(timezone.utc)
+    else:
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=timezone.utc)
+        today = start_date.astimezone(timezone.utc)
 
     for i in range(30):
         day = today + timedelta(days=i)
@@ -417,4 +425,15 @@ def lambda_handler(event, context):
             "No outage files found in bucket %s. Using empty outages dict.", bucket
         )
 
-    generate_and_upload_30_days(bucket, region, outages, dsn, uksa)
+    # Optional override to backfill a past 30-day window, e.g. after an
+    # outage file is uploaded for a day that has already passed.
+    start_date_str = event.get("start_date")
+    start_date = (
+        datetime.strptime(start_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        if start_date_str
+        else None
+    )
+
+    generate_and_upload_30_days(
+        bucket, region, outages, dsn, uksa, start_date=start_date
+    )

@@ -9,7 +9,7 @@ import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
 from ..lambda_code.SDSCode.api_lambdas import upload_api
-from .types import DependencyNode, Node, ProcessingJobNode
+from .types import DependencyNode, ProcessingJobNode
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -128,7 +128,7 @@ class DependencyConfigReader:
                 yaml_dir / "dependencies" / f"imap_{instrument}_dependencies.yaml"
             )
 
-            if instrument == "ialirt":
+            if instrument in ("ialirt", "l1const"):
                 continue
 
             if not yaml_file.exists():
@@ -184,6 +184,7 @@ class DependencyConfigReader:
                                 dependency_query_time_range=upstream.get(
                                     "date_range", []
                                 ),
+                                major_version=upstream.get("major_version"),
                             )
                         )
                     job_outputs_list = []
@@ -200,6 +201,7 @@ class DependencyConfigReader:
                                 dependency_query_time_range=output.get(
                                     "date_range", []
                                 ),
+                                major_version=output.get("major_version"),
                             )
                         )
 
@@ -271,13 +273,13 @@ class DependencyConfigReader:
                 flat_list.append(item)
         return flat_list
 
-    def get_node_for_output(self, node: Node) -> ProcessingJobNode:
-        """Return the Dependency node that produces the given output.
+    def get_node_for_output(self, dep_node: DependencyNode) -> ProcessingJobNode:
+        """Return the ProcessingJobNode that produces the given DependencyNode output.
 
         Parameters
         ----------
-        node : Node
-            The output node for which to find the producing job.
+        dep_node : DependencyNode
+            The output DependencyNode for which to find the producing job.
 
         Returns
         -------
@@ -292,13 +294,39 @@ class DependencyConfigReader:
         for job_node in self._config.values():
             for output in job_node.outputs:
                 if (
-                    output.source == node.source
-                    and output.data_type == node.data_type
-                    and output.descriptor == node.descriptor
+                    output.source == dep_node.source
+                    and output.data_type == dep_node.data_type
+                    and output.descriptor == dep_node.descriptor
                 ):
                     return job_node
 
-        raise ValueError(f"No job found that produces output: ({node})")
+        raise ValueError(f"No job found that produces output: ({dep_node})")
+
+    def get_nodes_for_input(self, dep_node: DependencyNode) -> list[ProcessingJobNode]:
+        """Return the ProcessingJobNodes that have the given DependencyNode input.
+
+        Parameters
+        ----------
+        dep_node : DependencyNode
+            The input DependencyNode for which to find the consuming job.
+
+        Returns
+        -------
+        list[ProcessingJobNode]
+            The job nodes whose inputs include the specified product.
+        """
+        # returns a list because an input can be consumed by multiple jobs.
+        # E.g. PSETS often times are the inputs to more than one job.
+        processing_nodes = []
+        for job_node in self._config.values():
+            for input in job_node.inputs:
+                if (
+                    input.source == dep_node.source
+                    and input.data_type == dep_node.data_type
+                    and input.descriptor == dep_node.descriptor
+                ):
+                    processing_nodes.append(job_node)
+        return processing_nodes
 
 
 def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
