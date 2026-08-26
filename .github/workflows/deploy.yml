@@ -182,7 +182,7 @@ jobs:
         uses: aws-actions/aws-secretsmanager-get-secrets@v3
         with:
           secret-ids: |
-            github_action_imap_config,github_action_imap_api_key
+            ,github_action_imap_api_key
           parse-json-secrets: true # Automatically unpacks JSON key-values
 
       - name: Reprocess jobs that got a major version bump since last deploy
