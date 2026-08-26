@@ -14,8 +14,8 @@ import imap_data_access
 import spiceypy
 from imap_data_access import SPICEFilePath
 
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
-from sds_data_manager.lambda_code.SDSCode.api_lambdas.metakernel import MetaKernel
+from .api_lambdas import spice_query_api
+from .api_lambdas.metakernel import MetaKernel
 
 MAXIMUM_MISSION_J2000_TIME = 4575787269.183866
 
