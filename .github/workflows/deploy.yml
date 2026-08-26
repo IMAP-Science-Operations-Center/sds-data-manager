@@ -177,12 +177,12 @@ jobs:
           git worktree remove /tmp/last-deploy --force
 
       # Step 2: Retrieve Secrets using the official AWS action
-      # https://github.com/aws-actions/aws-secretsmanager-get-secrets
       - name: Get Secrets from Secrets Manager
+        id: get_secrets
         uses: aws-actions/aws-secretsmanager-get-secrets@v3
         with:
           secret-ids: |
-            github_action_imap_api_key
+            github_action_imap_config,github_action_imap_api_key
           parse-json-secrets: true # Automatically unpacks JSON key-values
 
       - name: Reprocess jobs that got a major version bump since last deploy
