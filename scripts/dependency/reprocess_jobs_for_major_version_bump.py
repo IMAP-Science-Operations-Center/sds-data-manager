@@ -175,6 +175,8 @@ def reprocess_jobs_for_major_version_bump(
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("previous_yaml_path")
     args = parser.parse_args()
