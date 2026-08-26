@@ -198,7 +198,7 @@ jobs:
             descriptor=$(echo "$row" | jq -r '.descriptor')
 
             echo "Reprocessing job for instrument: $instrument, data_level: $data_level, descriptor: $descriptor"
-            imap-data-access --api-key "$api_key" --url https://api.dev.imap-mission.com reprocess --instrument "$instrument" --data-level "$data_level" --descriptor "$descriptor" --start-date 20250910 --end-date "$CURRENT_DATE"
+            poetry run imap-data-access --api-key "$api_key" --url https://api.dev.imap-mission.com reprocess --instrument "$instrument" --data-level "$data_level" --descriptor "$descriptor" --start-date 20250910 --end-date "$CURRENT_DATE"
           done < <(echo "$job_list" | jq -c '.[]')
 
 
