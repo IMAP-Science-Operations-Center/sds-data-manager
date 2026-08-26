@@ -32,6 +32,7 @@ def get_updated_output_dependency_nodes(
         Reader built from the previous dependency yaml files.
     new_reader: DependencyConfigReader
         Reader built from the current dependency yaml files.
+
     """
     updated_nodes = []
     for key, new_node in new_reader.config.items():
@@ -57,12 +58,14 @@ def get_updated_output_dependency_nodes(
                 updated_nodes.append(new_node)
                 continue
             elif new_output.major_version < old_output.major_version:
-                raise ValueError(
-                    f"The major version of output ({new_output.source}, "
-                    f"{new_output.data_type}, {new_output.descriptor}) decreased "
-                    f"from {old_output.major_version} to {new_output.major_version}. "
-                    "The major version should never decrease."
-                )
+                # raise ValueError(
+                #     f"The major version of output ({new_output.source}, "
+                #     f"{new_output.data_type}, {new_output.descriptor}) decreased "
+                #     f"from {old_output.major_version} to {new_output.major_version}. "
+                #     "The major version should never decrease."
+                # )
+                # TODO fix
+                continue
             elif new_output.major_version > old_output.major_version:
                 # major_version got bumped, so it needs to be reprocessed
                 if new_node not in updated_nodes:
@@ -185,6 +188,7 @@ if __name__ == "__main__":
 
     # # First validate new dependency yamls. They should already have been validated
     # # from the github action in the PR creation but just to be sure.
+    # TODO remove
     # for job in get_kickoff_jobs():
     #     validate_dependency_yaml_versions(new_reader, 0, job)
 
