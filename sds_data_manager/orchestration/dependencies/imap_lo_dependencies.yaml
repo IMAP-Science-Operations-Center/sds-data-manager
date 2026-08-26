@@ -598,6 +598,7 @@ lo_l2_map_inputs: &lo_l2_map_inputs
     - source: lo
       data_type: l1c
       descriptor: quickmap
+      major_version: 1
 
 # ======== Level L2 ========
 
