@@ -191,14 +191,14 @@ jobs:
           job_list: ${{ steps.detect_jobs.outputs.jobs }}
           api_key: ${{ steps.get_secrets.outputs.github_action_imap_api_key }}
         run: |
-          current_date = $(date +'%Y%m%d')
+          CURRENT_DATE=$(date +'%Y%m%d')
           while read -r row; do
             instrument=$(echo "$row" | jq -r '.instrument')
             data_level=$(echo "$row" | jq -r '.data_level')
             descriptor=$(echo "$row" | jq -r '.descriptor')
 
             echo "Reprocessing job for instrument: $instrument, data_level: $data_level, descriptor: $descriptor"
-            imap-data-access --api-key "$api-key" --url https://api.dev.imap-mission.com reprocess --instrument "$instrument" --data-level "$data_level" --descriptor "$descriptor" --start-date 20250910 --end-date "$current_date"
+            imap-data-access --api-key "$api-key" --url https://api.dev.imap-mission.com reprocess --instrument "$instrument" --data-level "$data_level" --descriptor "$descriptor" --start-date 20250910 --end-date "$CURRENT_DATE"
           done < <(echo "job_list" | jq -c '.[]')
 
 
