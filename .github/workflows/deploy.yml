@@ -190,7 +190,7 @@ jobs:
         if: steps.detect_jobs.outputs.jobs != '' && steps.detect_jobs.outputs.jobs != '[]'
         env:
           job_list: ${{ steps.detect_jobs.outputs.jobs }}
-          api_key: ${{ steps.get_secrets.outputs.github_action_imap_api_key }}
+          api_key: ${{ env.GITHUB_ACTION_IMAP_API_KEY }}
         run: |
           CURRENT_DATE=$(date +'%Y%m%d')
           while read -r row; do
