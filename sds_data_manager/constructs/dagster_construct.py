@@ -409,10 +409,10 @@ class DagsterEcsConstruct(Construct):
                     lasp_oidc_secret_name, json_field="issuer"
                 ).unsafe_unwrap(),
                 client_id=cdk.SecretValue.secrets_manager(
-                    lasp_oidc_secret_name, json_field="client_id"
+                    lasp_oidc_secret_name, json_field="client_id_readwrite"
                 ).unsafe_unwrap(),
                 client_secret=cdk.SecretValue.secrets_manager(
-                    lasp_oidc_secret_name, json_field="client_secret"
+                    lasp_oidc_secret_name, json_field="client_secret_readwrite"
                 ),
                 scope="openid profile",
                 next=elbv2.ListenerAction.forward(
@@ -522,10 +522,10 @@ class DagsterEcsConstruct(Construct):
                     lasp_oidc_secret_name, json_field="issuer"
                 ).unsafe_unwrap(),
                 client_id=cdk.SecretValue.secrets_manager(
-                    lasp_oidc_secret_name, json_field="client_id"
+                    lasp_oidc_secret_name, json_field="client_id_readonly"
                 ).unsafe_unwrap(),
                 client_secret=cdk.SecretValue.secrets_manager(
-                    lasp_oidc_secret_name, json_field="client_secret"
+                    lasp_oidc_secret_name, json_field="client_secret_readonly"
                 ),
                 scope="openid profile",
                 next=elbv2.ListenerAction.forward(
