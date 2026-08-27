@@ -106,8 +106,8 @@ spice_basics: &spice_basics
       descriptor: sci-10days
       major_version: 1
 
-(l2b, all-30days):
-  partition: 30d
+(l2b, all-10days):
+  partition: 10d
   inputs:
     - *spice_basics
     - source: idex
