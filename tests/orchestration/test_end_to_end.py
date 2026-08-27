@@ -9,7 +9,7 @@ import datetime
 from dagster import (
     AssetKey,
     AssetMaterialization,
-    MaterializeResult,
+    AssetObservation,
     build_asset_context,
     build_sensor_context,
 )
@@ -92,19 +92,21 @@ def test_glows_l1a_end_to_end(
     assert glows_l1a_job is not None, (
         "glows_l1a_all_processing_job was not found in job_handlers"
     )
-    # TEST 3: Run the asset and verify that a job was submitted
-    # We expect a job to have been submitted, but no files exist in the DB
-    # So nothing is returned
+    # TEST 3: Run the asset and verify that a job was submitted.
+    # The op no longer materializes anything itself, it only reports an
+    # AssetObservation for each output once the Batch job succeeds.
     yielded_files = list(glows_l1a_job.run_job(context, 1, 1))
     assert len(mock_db_session.query(models.ProcessingJob).all()) == 1
-    assert len(yielded_files) == 0
+    assert len(yielded_files) == len(glows_l1a_job.job_config.outputs)
+    assert all(isinstance(f, AssetObservation) for f in yielded_files)
 
     # TEST 4: Run the job again.
-    # We expect it to simply exit,
+    # We expect it to simply report the job was already submitted,
     # because this exact job was run previously
-    yielded_files = glows_l1a_job.run_job(context, 1, 1)
+    yielded_files = list(glows_l1a_job.run_job(context, 1, 1))
     assert len(mock_db_session.query(models.ProcessingJob).all()) == 1
-    assert len(list(yielded_files)) == 0
+    assert len(yielded_files) == len(glows_l1a_job.job_config.outputs)
+    assert all(isinstance(f, AssetObservation) for f in yielded_files)
 
     # Insert pretend data into ScienceFiles
     glows_l1a_de_file = models.ScienceFiles(
@@ -141,13 +143,21 @@ def test_glows_l1a_end_to_end(
     mock_db_session.add(glows_l1a_hist_file)
     mock_db_session.commit()
 
-    # TEST 5: Run the asset a third time.
-    # Even though we skip submission,
-    # the code should still find the science file to materialize
-    yielded_files = glows_l1a_job.run_job(context, 1, 1)
-    for f in yielded_files:
-        assert isinstance(f, MaterializeResult)
-        assert f.metadata["file_names"][0] in (
+    # TEST 5: The op still does not materialize anything itself.
+    yielded_files = list(glows_l1a_job.run_job(context, 1, 1))
+    assert len(yielded_files) == len(glows_l1a_job.job_config.outputs)
+    assert all(isinstance(f, AssetObservation) for f in yielded_files)
+
+    # TEST 6: The consolidated materialization sensor should find the new
+    # science files and runlessly materialize the corresponding assets.
+    materialization_sensor = defs.get_sensor_def("science_file_materialization_sensor")
+    context = build_sensor_context(instance=ephemeral_instance)
+    sensor_result = materialization_sensor(context)
+
+    assert len(sensor_result.asset_events) == 2
+    for materialization in sensor_result.asset_events:
+        assert isinstance(materialization, AssetMaterialization)
+        assert materialization.metadata["file_names"].value[0] in (
             "imap_glows_l1a_de_20260102_v001.0001.cdf",
             "imap_glows_l1a_hist_20260102_v001.0001.cdf",
         )

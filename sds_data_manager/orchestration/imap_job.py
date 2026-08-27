@@ -30,7 +30,6 @@ from dagster import (
     sensor,
 )
 from imap_data_access import VALID_DATALEVELS, DependencyFilePath, processing_input
-from imap_data_access.file_validation import Version
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 
@@ -45,7 +44,6 @@ from sds_data_manager.orchestration import (
     spice,
     spin,
 )
-from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
 from sds_data_manager.orchestration.dependency import DependencyConfigReader
 from sds_data_manager.orchestration.types import DependencyNode, ProcessingJobNode
 
@@ -190,14 +188,16 @@ class IMAPJobHandler:
 
         1) Get all dependencies from the dependency tree
         2) Check if the job had been submitted before
-           a) If it has, and Dagster doesn't know about it, then it will materialize
-              the asset
-           b) If Dagster does know about it, we exit
+           a) If it has, we report that it was skipped
+           b) If not, we submit a new job
         3) Get the Job version
         4) Submit the job
-        5) Wait for the output files,
-           and materialize them as we see them in the database.
+        5) Wait for the job to finish, reporting an AssetObservation or Failure.
 
+        This op never materializes the output assets itself. Actual asset
+        materialization is handled separately by a sensor that watches for new
+        files in the database, so that a materialization is never lost if this
+        run is interrupted after the Batch job succeeds.
         """
         # Before doing anything, check if any of the dependencies are currently
         # running or about to run.
@@ -269,37 +269,25 @@ class IMAPJobHandler:
                     batch_job_timeout,
                     time_to_wait_after_batch_query,
                 )
-                time.sleep(
-                    time_to_wait_after_batch_query
-                )  # Give the indexer time to pick up the files
-
-                output_files = self.find_outputs(
-                    context,
-                    session,
-                    output_versions=output_versions,
-                    start_date=target_start,
-                    repointing=target_pointing_number,
-                    inputs=dependency_inputs.serialize(),
-                )
-                for f in output_files:
-                    yield f
                 if batch_status == models.Status.FAILED:
                     raise Failure(
                         description="Batch Job Failure. View logs for details."
                     )
+                for output in self.job_config.outputs:
+                    yield AssetObservation(
+                        asset_key=output.to_dagster_asset(),
+                        partition=context.partition_key,
+                        metadata={"status": "Succeeded"},
+                    )
             elif submit_response.status == "skipped":
-                # If we skipped the job, let us materialize any previous outputs
-                # so that we ensure dagster knows about them
-
-                output_files = self.find_outputs(
-                    context,
-                    session,
-                    start_date=target_start,
-                    repointing=target_pointing_number,
-                    inputs=dependency_inputs.serialize(),
-                )
-                for f in output_files:
-                    yield f
+                # The job was already submitted previously. The materialization
+                # sensor is responsible for picking up any resulting output files.
+                for output in self.job_config.outputs:
+                    yield AssetObservation(
+                        asset_key=output.to_dagster_asset(),
+                        partition=context.partition_key,
+                        metadata={"status": "Skipped - Already Submitted"},
+                    )
             else:
                 raise Failure(description=submit_response.message)
 
@@ -397,76 +385,6 @@ class IMAPJobHandler:
 
         # Return either Success or Failure
         return final_status
-
-    def find_outputs(
-        self,
-        context,
-        session: db.Session,
-        output_versions: dict | None = None,
-        start_date: datetime.datetime | None = None,
-        repointing: int | None = None,
-        inputs: dict | None = None,
-    ):
-        """Return all output from a job given a particular start_date/repointing."""
-        output_materializations = []
-
-        if start_date is None and repointing is None:
-            raise ValueError(
-                "You must at least provide either start_date or repointing"
-            )
-
-        for output in self.job_config.outputs:
-            filters = [
-                models.ScienceFiles.instrument == output.source,
-                models.ScienceFiles.data_level == output.data_type,
-                models.ScienceFiles.descriptor == output.descriptor,
-            ]
-            if output_versions is not None:
-                if output.descriptor in output_versions.keys():
-                    versions = output_versions[output.descriptor]
-                    filters.append(
-                        models.ScienceFiles.major_version == versions["major_version"]
-                    )
-                    filters.append(
-                        models.ScienceFiles.minor_version == versions["minor_version"]
-                    )
-            if repointing is not None:
-                filters.append(models.ScienceFiles.repointing == int(repointing))
-            if start_date is not None:
-                filters.append(models.ScienceFiles.start_date == start_date.date())
-            created_file = (
-                session.query(models.ScienceFiles)
-                .filter(*filters)
-                .distinct(
-                    models.ScienceFiles.start_date,
-                    models.ScienceFiles.repointing,
-                )
-                .order_by(
-                    models.ScienceFiles.start_date,
-                    models.ScienceFiles.repointing,
-                    models.ScienceFiles.major_version.desc(),
-                    models.ScienceFiles.minor_version.desc(),
-                )
-                .first()
-            )
-            if created_file:
-                context.log.info(
-                    f"""Found file {os.path.basename(created_file.file_path)}!
-                        Creating Asset.
-                    """
-                )
-                materialization = get_materialization_result(
-                    context,
-                    output.to_dagster_asset(),
-                    context.partition_key,
-                    [os.path.basename(created_file.file_path)],
-                    Version(created_file.major_version, created_file.minor_version),
-                    "science",
-                    inputs=inputs,
-                )
-                if materialization:
-                    output_materializations.append(materialization)
-        return output_materializations
 
     def _check_for_running_dependencies(self, context):
         """Check if anything upstream of this file is currently running."""

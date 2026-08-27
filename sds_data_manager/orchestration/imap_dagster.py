@@ -15,6 +15,7 @@ from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
 )
 from sds_data_manager.orchestration.file_handler_registry import FileBuilderRegistry
+from sds_data_manager.orchestration.imap_file import build_materialization_sensor
 from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 
 
@@ -81,11 +82,30 @@ for potential_job in all_jobs:
 # store in assets list
 assets_to_build = job_handlers + file_handlers
 
-sensors = []
-batch_jobs = []
-for asset in assets_to_build:
-    batch_jobs.append(asset.build_asset())
-    sensors.append(asset.build_sensor())
+# File handlers that materialize via the single consolidated sensor below, vs.
+# those (e.g. IDEX) that fully manage their own materialization and sensor.
+default_file_handlers = [h for h in file_handlers if h.USE_COMMON_SENSOR]
+custom_file_handlers = [h for h in file_handlers if not h.USE_COMMON_SENSOR]
+
+# Every output a job or default file handler could materialize, along with the
+# partitions_def to use for it, fed into the single materialization sensor.
+materialization_targets = []
+for job in job_handlers:
+    for output in job.job_config.outputs:
+        materialization_targets.append((output, job.partitions_def))
+for handler in default_file_handlers:
+    materialization_targets.append((handler.job_config, handler.partitions_def))
+
+# These sensors determine when it is time to kick off a job
+kickoff_sensors = [job.build_sensor() for job in job_handlers]
+# These sensors have custom behavior for materializing assets that are not handled
+# by the consolidated sensor
+custom_sensors = [handler.build_sensor() for handler in custom_file_handlers]
+# This sensor materializes all assets that are handled by the consolidated file sensor
+new_files_sensor = build_materialization_sensor(materialization_targets)
+sensors = kickoff_sensors + custom_sensors + [new_files_sensor]
+
+batch_jobs = [asset.build_asset() for asset in assets_to_build]
 
 assets = batch_jobs
 

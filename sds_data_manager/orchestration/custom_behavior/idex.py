@@ -32,6 +32,10 @@ from sds_data_manager.orchestration.types import DependencyNode
 class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
     """Handle IMAP files that have no associated jobs."""
 
+    # This handler materializes itself from IDEXL0Files via its own asset/sensor,
+    # so it is excluded from the consolidated science file materialization sensor.
+    USE_COMMON_SENSOR = False
+
     def __init__(self, node: DependencyNode, partition):
         """Initialize the IDEXL0FileHandler class."""
         self.job_config = node
