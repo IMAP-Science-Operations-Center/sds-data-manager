@@ -7,6 +7,9 @@ from pathlib import Path
 
 from imap_data_access import VALID_DATALEVELS
 
+from scripts.dependency.validate_dependency_yamls import (
+    validate_dependency_yaml_versions,
+)
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
     get_kickoff_jobs,
@@ -58,14 +61,12 @@ def get_updated_output_dependency_nodes(
                 updated_nodes.append(new_node)
                 continue
             elif new_output.major_version < old_output.major_version:
-                # raise ValueError(
-                #     f"The major version of output ({new_output.source}, "
-                #     f"{new_output.data_type}, {new_output.descriptor}) decreased "
-                #     f"from {old_output.major_version} to {new_output.major_version}. "
-                #     "The major version should never decrease."
-                # )
-                # TODO fix
-                continue
+                raise ValueError(
+                    f"The major version of output ({new_output.source}, "
+                    f"{new_output.data_type}, {new_output.descriptor}) decreased "
+                    f"from {old_output.major_version} to {new_output.major_version}. "
+                    "The major version should never decrease."
+                )
             elif new_output.major_version > old_output.major_version:
                 # major_version got bumped, so it needs to be reprocessed
                 if new_node not in updated_nodes:
@@ -190,8 +191,8 @@ if __name__ == "__main__":
 
     # # First validate new dependency yamls. They should already have been validated
     # # from the github action in the PR creation but just to be sure.
-    # for job in get_kickoff_jobs():
-    #     validate_dependency_yaml_versions(new_reader, 0, job)
+    for job in get_kickoff_jobs():
+        validate_dependency_yaml_versions(new_reader, 0, job)
 
     reprocess_jobs = reprocess_jobs_for_major_version_bump(old_reader, new_reader)
     logger.info(f"Found {len(reprocess_jobs)} jobs to reprocess: {reprocess_jobs}")
