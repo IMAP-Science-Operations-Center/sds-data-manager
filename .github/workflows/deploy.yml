@@ -193,13 +193,18 @@ jobs:
           api_key: ${{ env.GITHUB_ACTION_IMAP_API_KEY }}
         run: |
           CURRENT_DATE=$(date +'%Y%m%d')
+          URL_ARGS=()
+          # If dev, we need to point to the dev API endpoint, otherwise it defaults to prod.
+          if [[ "$account_name" != "prod" ]]; then
+            URL_ARGS=(--url https://api.dev.imap-mission.com)
+          fi
           while read -r row; do
             instrument=$(echo "$row" | jq -r '.instrument')
             data_level=$(echo "$row" | jq -r '.data_level')
             descriptor=$(echo "$row" | jq -r '.descriptor')
 
-            echo "Reprocessing job for instrument: $instrument, data_level: $data_level, descriptor: $descriptor"
-            poetry run imap-data-access --api-key "$api_key" --url https://api.dev.imap-mission.com reprocess --instrument "$instrument" --data-level "$data_level" --descriptor "$descriptor" --start-date 20250910 --end-date "$CURRENT_DATE"
+            echo "Kicking off full mission reprocessing for instrument: $instrument, data_level: $data_level, descriptor: $descriptor"
+            poetry run imap-data-access --api-key "$api_key" "${URL_ARGS[@]}" reprocess --instrument "$instrument" --data-level "$data_level" --descriptor "$descriptor" --start-date 20250924 --end-date "$CURRENT_DATE"
           done < <(echo "$job_list" | jq -c '.[]')
 
 

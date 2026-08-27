@@ -190,7 +190,6 @@ if __name__ == "__main__":
 
     # # First validate new dependency yamls. They should already have been validated
     # # from the github action in the PR creation but just to be sure.
-    # TODO remove
     # for job in get_kickoff_jobs():
     #     validate_dependency_yaml_versions(new_reader, 0, job)
 
