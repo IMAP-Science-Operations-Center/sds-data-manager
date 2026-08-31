@@ -4,12 +4,17 @@ import datetime
 import json
 import os
 import sys
+from pathlib import Path
 
 import pytest
+import spiceypy
 
 # Add the project root to the path to allow imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import non_spice_table_api
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
+    non_spice_table_api,
+    spice_query_api,
+)
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     RepointFiles,
     SmallForcesFile,
@@ -295,3 +300,116 @@ def test_small_forces_table(small_forces_db):
     for result in results:
         assert result["start_date"].startswith("2025-04-10")
         assert result["end_date"].startswith("2025-04-20")
+
+
+# Tests when non-SPICE tables are accessed via `spice_query_api`
+
+
+def test_spin_via_spice_query_api(spin_db):
+    """Test spin table query via the spice query API."""
+    event = {
+        "queryStringParameters": {
+            "type": "spin",
+            "start_date": "20260925",
+            "end_date": "20260925",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 1
+    assert (
+        results[0]["file_path"] == "imap/spice/spin/imap_2026_268_2026_268_01.spin.csv"
+    )
+    assert results[0]["start_date"].startswith("2026-09-25")
+
+
+def test_repoint_via_spice_query_api(repoint_db):
+    """Test repoint table query via the spice query API."""
+    event = {
+        "queryStringParameters": {
+            "type": "repoint",
+            "end_date": "20260925",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 1
+    assert (
+        results[0]["file_path"]
+        == "imap/spice/repoint/imap_2026_267_2026_268_02.repoint"
+    )
+    assert results[0]["end_date"].startswith("2026-09-25")
+
+
+def test_thruster_via_spice_query_api(small_forces_db):
+    """Test small-forces table query via the spice query API."""
+    event = {
+        "queryStringParameters": {
+            "type": "thruster",
+            "start_date": "20250410",
+            "end_date": "20250420",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 2
+    file_paths = [r["file_path"] for r in results]
+    assert "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff" in file_paths
+    assert "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff" in file_paths
+
+
+def test_file_name_renamed_to_file_path(spin_db):
+    """The query param `file_name` is translated to `file_path` for non-SPICE tables."""
+    event = {
+        "queryStringParameters": {
+            "type": "spin",
+            "file_name": "imap/spice/spin/imap_2026_268_2026_268_01.spin.csv",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 1
+    assert (
+        results[0]["file_path"] == "imap/spice/spin/imap_2026_268_2026_268_01.spin.csv"
+    )
+
+
+def test_thruster_start_end_time_via_spice_query_api(small_forces_db):
+    """Test small-forces table query using start/end time via the spice query API."""
+    tests_path = Path(os.path.abspath(__file__)).parent.parent
+    test_spice_data_dir = tests_path / "test-data" / "test_spice_files"
+    with spiceypy.KernelPool([str(test_spice_data_dir / "naif0012.tls")]):
+        start_time = spiceypy.datetime2et(
+            datetime.datetime.strptime("20250410", "%Y%m%d")
+        )
+        end_time = spiceypy.datetime2et(
+            datetime.datetime.strptime("20250420", "%Y%m%d")
+        )
+
+        event = {
+            "queryStringParameters": {
+                "type": "thruster",
+                "start_time": f"{start_time}",
+                "end_time": f"{end_time}",
+            },
+        }
+        response = spice_query_api.lambda_handler(event, {})
+
+        assert response["statusCode"] == 200
+        results = json.loads(response["body"])
+        assert len(results) == 2
+        file_paths = [r["file_path"] for r in results]
+        assert (
+            "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff" in file_paths
+        )
+        assert (
+            "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff" in file_paths
+        )

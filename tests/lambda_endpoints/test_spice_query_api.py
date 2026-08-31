@@ -261,3 +261,30 @@ def test_ingest_time_queries(session):
     }
     returned_query = spice_query_api.lambda_handler(event=event, context={})
     assert len(json.loads(returned_query["body"])) == 1
+
+
+def test_no_type_query(session, expected_ck_response):
+    """Test query parameter with no `type`."""
+    _insert_ck_test_data(session)
+
+    event = {"queryStringParameters": {}}
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+    assert returned_query["body"] == expected_ck_response
+
+
+def test_type_query_kernels(session, expected_ck_response):
+    """Test if the `type` query parameter works with `kernels` type."""
+    _insert_ck_test_data(session)
+
+    event = {"queryStringParameters": {"type": "kernels"}}
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+    assert returned_query["body"] == expected_ck_response
+
+
+def test_type_query_attitude_history(session, expected_ck_response):
+    """Test if the `type` query parameter works with `attitude_history` type."""
+    _insert_ck_test_data(session)
+
+    event = {"queryStringParameters": {"type": "attitude_history"}}
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+    assert returned_query["body"] == expected_ck_response
