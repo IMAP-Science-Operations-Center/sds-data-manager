@@ -704,15 +704,6 @@ class IMAPJobHandler:
                 context.log.info(
                     f"Skipping trigger evaluation for {dependency.source}."
                 )
-            elif cursor_str == config.MISSION_START_TIME:
-                # Just process everything, don't bother looping through all new files.
-                partitions = dagster_utilities.get_affected_partitions(
-                    context,
-                    self.partitions_def,
-                    datetime.datetime.fromisoformat(config.MISSION_START_TIME),
-                    datetime.datetime.fromisoformat(config.MISSION_END_TIME),
-                )
-                partitions_to_run.extend(partitions)
             elif dependency.source in spice.GROWING_KERNEL_TYPES:
                 # Attitude history and pointing attitude kernels grow over time
                 # (new segments are appended to the same file series). Using
@@ -745,7 +736,7 @@ class IMAPJobHandler:
                     partitions_to_run.extend(partitions)
             cursors[dep_name] = latest_ingestion_date.isoformat()
 
-        return partitions_to_run
+        return list(set(partitions_to_run))
 
     def trigger_from_new_science_inputs(
         self,
