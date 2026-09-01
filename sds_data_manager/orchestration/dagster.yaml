@@ -53,3 +53,6 @@ run_coordinator:
 sensors:
   use_threads: true
   num_workers: 8
+
+code_servers:
+  local_startup_timeout: 600
