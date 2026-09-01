@@ -361,7 +361,7 @@ def get_kickoff_jobs(
         The instrument for which to get the kickoff job.
     reader : DependencyConfigReader, optional
         An instance of DependencyConfigReader to use for reading the dependency
-         configuration.
+        configuration.
 
     Returns
     -------

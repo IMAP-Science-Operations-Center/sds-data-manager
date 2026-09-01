@@ -56,7 +56,12 @@ def get_updated_output_dependency_nodes(
                 ),
                 None,
             )
-            if new_output.major_version < old_output.major_version:
+            if old_output is None:
+                # output is new, so this job needs to be reprocessed
+                if new_node not in updated_nodes:
+                    updated_nodes.append(new_node)
+                continue
+            elif new_output.major_version < old_output.major_version:
                 raise ValueError(
                     f"The major version of output ({new_output.source}, "
                     f"{new_output.data_type}, {new_output.descriptor}) decreased "
