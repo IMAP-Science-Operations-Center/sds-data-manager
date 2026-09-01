@@ -40,6 +40,7 @@ def test_add_idex_10_day_partitions(mock_datetime):
         "idex10_2025-10-27T00:00:00_to_2025-11-06T00:00:00",
     ]
 
+
 def test_add_cadence_map_partitions_open_window():
     """Check that get_map_partition_names includes the active open window."""
     partition_names = get_map_partition_names(
