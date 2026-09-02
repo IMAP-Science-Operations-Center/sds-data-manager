@@ -14,7 +14,7 @@ Run it explicitly with::
 
 import boto3
 import pytest
-
+from tests.integration.integration_test_files import SOURCE_FILES
 from tests.integration import helpers
 
 # Production account: these tests must NEVER touch it.
@@ -25,29 +25,6 @@ REGION = "us-west-2"
 
 # Name of the Secrets Manager secret holding the main SDS RDS credentials.
 DB_SECRET_NAME = "sdp-database-cred"  # noqa: S105 - secret name, not a secret
-
-# Files copied into the dev data bucket at the start of a run. Copying a file
-# under an ``imap/<instrument>/`` prefix triggers the indexer lambda and, in
-# turn, Dagster processing. Add more (source_bucket, key) tuples over time.
-SOURCE_FILES = [
-    (
-        "sds-data-593025701104",
-        "imap/glows/l0/2026/01/imap_glows_l0_raw_20260101-repoint00096_v001.0002.pkts",
-    ),
-    (
-        "sds-data-593025701104",
-        "imap/spice/repoint/imap_2026_191_01.repoint",
-    ),
-    (
-        "sds-data-593025701104",
-        "imap/spice/lsk/naif0012.tls",
-    ),
-    (
-        "sds-data-593025701104",
-        "imap/spice/sclk/imap_sclk_0225.tsc",
-    ),
-]
-
 
 def pytest_collection_modifyitems(config, items):
     """Auto-mark everything in this package as integration + network."""
@@ -121,6 +98,8 @@ def _environment_setup(boto_session, guard_account, sds_db_engine, data_bucket):
     helpers.wipe_all_tables(sds_db_engine)
     print("Wiping all Dagster assets...")
     helpers.run_dagster_asset_wipe(ecs_client)
+    print("Resetting Dagster kickoff sensor cursors...")
+    helpers.run_dagster_sensor_cursor_reset(ecs_client)
     print("Wiping data bucket...")
     helpers.wipe_data_bucket(s3_client, data_bucket)
     print("Copying source files to data bucket...")
