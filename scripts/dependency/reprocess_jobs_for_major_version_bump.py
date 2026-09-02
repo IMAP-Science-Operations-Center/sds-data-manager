@@ -110,9 +110,15 @@ def get_updated_root_node(
         # so there's nothing to walk further up
         # Only check inputs of the same source since major versions only get bumped
         # within the same source.
+        # If the input node does not trigger the job, do not walk further up:
+        #   - only triggering_deps (trigger_job=True) actually cause Dagster to
+        #     re-trigger this node when they're reprocessed
+        #   - walking past a non-triggering input would incorrectly fold this node
+        #     into its upstream root, so it would never get explicitly reprocessed
         if (
             input_node.data_type not in VALID_DATALEVELS
             or input_node.source != node.source
+            or not input_node.trigger_job
         ):
             continue
         upstream_node = new_reader.get_node_for_output(input_node)

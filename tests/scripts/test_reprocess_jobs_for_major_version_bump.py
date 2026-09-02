@@ -73,5 +73,9 @@ def test_reprocess_jobs_for_major_version_bump_multiple_instruments():
 
     assert jobs == [
         ("idex", "l1b", "sci-10days"),
+        # since the inputs to idex l2b are non triggering inputs, we
+        # also kick off l2b jobs. They should wait to run after everything
+        # is finished due to the _check_for_running_dependencies check.
+        ("idex", "l2b", "all-30days"),
         ("swe", "l1a", "all"),
     ]
