@@ -6,6 +6,7 @@ import pytest
 import yaml
 
 from scripts.validate_dependency_yamls import validate_dependency_yaml_versions
+from sds_data_manager.orchestration import dependency as dependency_module
 from sds_data_manager.orchestration.dependency import DependencyConfigReader
 
 # Captured before any patching happens, since dependency.py's "yaml" module is
@@ -14,6 +15,21 @@ from sds_data_manager.orchestration.dependency import DependencyConfigReader
 # side effect below must call this real reference instead of yaml.safe_load
 # directly or it will recurse into the mock and blow the stack.
 _REAL_SAFE_LOAD = yaml.safe_load
+
+
+@pytest.fixture(autouse=True)
+def _clear_dependency_cache():
+    """Force every test here to re-parse the dependency YAML.
+
+    DependencyConfigReader caches its parsed config process-wide, so these
+    tests -- which patch the YAML content -- need the cache cleared going in,
+    and cleared again afterwards so their fake config does not leak into other
+    test modules.
+    """
+    dependency_module.clear_config_cache()
+    yield
+    dependency_module.clear_config_cache()
+
 
 # Idex l1b sci-10days (downstream) has a major_version greater than or equal to
 # its upstream input, idex l1a sci-10days. This is valid.

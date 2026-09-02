@@ -16,6 +16,15 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def clear_config_cache():
+    """Drop the process-wide cached dependency configuration.
+
+    The configuration is immutable at runtime, so this is only needed by tests
+    that patch the YAML content out from under :class:`DependencyConfigReader`.
+    """
+    DependencyConfigReader._cached_config = None
+
+
 class DependencyConfigReader:
     """Dependency configuration reader.
 
@@ -23,12 +32,28 @@ class DependencyConfigReader:
     configurations, including loading from YAML files, validating nodes.
     """
 
+    # The parsed configuration, shared by every instance in the process.
+    #
+    # The YAML files ship inside the image and never change while the process is
+    # alive, but this class is constructed once per job handler (~300 of them) on
+    # every code-location load, and every Dagster run worker pays a full
+    # code-location load on startup. Parsing once instead of ~300 times takes
+    # that load from minutes to seconds.
+    _cached_config: dict[tuple[str, str, str], ProcessingJobNode] | None = None
+
     def __init__(self):
-        """Initialize DependencyConfig by loading all dependencies."""
-        self._config = self._load_all_dependencies()
+        """Initialize DependencyConfig by loading all dependencies.
+
+        The parsed result is cached on the class, so only the first instance in
+        a process pays the parsing cost. See ``_cached_config`` for why, and
+        :func:`clear_config_cache` for the test escape hatch.
+        """
+        if DependencyConfigReader._cached_config is None:
+            DependencyConfigReader._cached_config = self._load_all_dependencies()
+        self._config = DependencyConfigReader._cached_config
 
     @property
-    def config(self) -> dict[tuple[str, str, str], list[DependencyNode]]:
+    def config(self) -> dict[tuple[str, str, str], ProcessingJobNode]:
         """Get the underlying dependency configuration dictionary.
 
         Returns

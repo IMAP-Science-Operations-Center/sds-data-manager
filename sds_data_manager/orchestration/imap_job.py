@@ -675,6 +675,7 @@ class IMAPJobHandler:
             "imap_frames",
             "science_frames",
             "planetary_constants",
+            "planetary_ephemeris"
         ]:
             # Never trigger from these
             return []
