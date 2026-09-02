@@ -14,8 +14,9 @@ Run it explicitly with::
 
 import boto3
 import pytest
-from tests.integration.integration_test_files import SOURCE_FILES
+
 from tests.integration import helpers
+from tests.integration.integration_test_files import SOURCE_FILES
 
 # Production account: these tests must NEVER touch it.
 PROD_ACCOUNT = "593025701104"
@@ -25,6 +26,7 @@ REGION = "us-west-2"
 
 # Name of the Secrets Manager secret holding the main SDS RDS credentials.
 DB_SECRET_NAME = "sdp-database-cred"  # noqa: S105 - secret name, not a secret
+
 
 def pytest_collection_modifyitems(config, items):
     """Auto-mark everything in this package as integration + network."""

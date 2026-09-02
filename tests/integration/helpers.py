@@ -206,7 +206,9 @@ def copy_source_files(s3_client, dest_bucket: str, source_files: list) -> None:
             Key=key,
             CopySource={"Bucket": source_bucket, "Key": key},
         )
-        time.sleep(1)  # Give the indexer a chance to react before the next file is copied.
+        time.sleep(
+            1
+        )  # Give the indexer a chance to react before the next file is copied.
 
 
 def _find_dagster_cluster_arn(ecs_client) -> str:
