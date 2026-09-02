@@ -1,7 +1,5 @@
 name: Deploy
-# gh run list can't see workflow_dispatch inputs, so encode the target
-# environment in the run name itself - this lets the "Find last successfully
-# deployed commit" step below filter runs by environment via displayTitle.
+# Encode the target environment in the run name for readability in the Actions UI.
 run-name: "Deploy to ${{ github.event_name == 'push' && 'dev' || inputs.environment }}"
 
 on:
@@ -30,8 +28,7 @@ on:
 
 permissions:
   id-token: write
-  contents: write # needed for tagging and release creation
-  actions: read
+  contents: write # needed for tagging, release creation, and the deploy marker ref
 
 jobs:
   cdk-deploy:
@@ -75,6 +72,15 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.ref || github.ref }}
+
+      # actions/checkout resolves the "ref" input (branch, tag, or SHA) to a
+      # concrete commit. github.sha / the run's headSha do NOT reflect this -
+      # they're fixed to whatever triggered the run, so on a rollback deploy
+      # (custom ref input) they'd point at the wrong commit. Resolve the real
+      # checked-out SHA here so it can be persisted as the deploy baseline below.
+      - name: Resolve deployed commit
+        id: resolve_sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
         with:
@@ -141,21 +147,26 @@ jobs:
             aws ecs update-service --cluster "$CLUSTER" --service "$svc" --force-new-deployment --region us-west-2
           done
 
+          # update-service returns as soon as the redeploy is *requested* - the old
+          # tasks are still running and can pick up reprocessing requests below with
+          # the pre-deploy dependency config. Block here until the new tasks are
+          # actually up and healthy before submitting any reprocessing requests.
+          echo "Waiting for services to stabilize: $SERVICES"
+          aws ecs wait services-stable --cluster "$CLUSTER" --services $SERVICES --region us-west-2
+
       # ----------------------------------------------------
       # Check for dependency major_version bumps since last deploy
       # ----------------------------------------------------
       - name: Find last successfully deployed commit
         id: last_deploy
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # This run's own displayTitle is "Deploy to <account_name>" (see run-name
-          # at the top of this file), so match on that to find the last successful
-          # run that targeted the same environment. This run is still "in_progress"
-          # while it executes, so gh run list naturally excludes it here.
-          LAST_SHA=$(gh run list --workflow=deploy.yml --status=success --limit=100 \
-            --json headSha,displayTitle \
-            --jq "[.[] | select(.displayTitle == \"Deploy to ${{ env.account_name }}\")][0].headSha // empty")
+          # The deploy baseline is tracked in a dedicated ref per environment
+          # (refs/last-deploy/<account_name>), updated below only after a
+          # successful deploy. This reflects the commit actually checked out
+          # by this workflow (see "Resolve deployed commit"), not the run's
+          # headSha, which is wrong for rollback deploys using the "ref" input.
+          MARKER_REF="refs/last-deploy/${{ env.account_name }}"
+          LAST_SHA=$(git ls-remote origin "$MARKER_REF" | cut -f1)
           echo "last_sha=$LAST_SHA" >> "$GITHUB_OUTPUT"
           if [[ -z "$LAST_SHA" ]]; then
             echo "No previous successful deploy found for ${{ env.account_name }}; skipping reprocess check."
@@ -163,6 +174,9 @@ jobs:
             echo "Last deployed commit: $LAST_SHA"
           fi
 
+      - name: Record deployed commit
+        run: |
+          git push origin "${{ steps.resolve_sha.outputs.sha }}:refs/last-deploy/${{ env.account_name }}" --force
 
       - name: Check for dependency major_version bumps since last deploy
         id: detect_jobs
