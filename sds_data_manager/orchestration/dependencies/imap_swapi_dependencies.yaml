@@ -55,7 +55,7 @@ l3a_spice_common: &l3a_spice_common
     data_type: spice
     descriptor: historical
 
-(l1a, hk):
+(l1, hk):
   partition: daily
   inputs:
     - source: swapi
@@ -72,10 +72,6 @@ l3a_spice_common: &l3a_spice_common
   outputs:
     - source: swapi
       data_type: l1a
-      descriptor: hk
-      major_version: 1
-    - source: swapi
-      data_type: l1b
       descriptor: hk
       major_version: 1
 
