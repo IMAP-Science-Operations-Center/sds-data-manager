@@ -1,6 +1,9 @@
 """Shared static dependency-yaml constants for tests/scripts."""
 
+import pytest
 import yaml
+
+from sds_data_manager.orchestration import dependency as dependency_module
 
 # Captured before any patching happens, since dependency.py's "yaml" module is
 # the same module object as the one imported here. Patching
@@ -185,3 +188,17 @@ def mock_yaml(overrides):
         return _REAL_SAFE_LOAD(stream)
 
     return _side_effect
+
+
+@pytest.fixture(autouse=True)
+def _clear_dependency_cache():
+    """Force every test here to re-parse the dependency YAML.
+
+    DependencyConfigReader caches its parsed config process-wide, so these
+    tests -- which patch the YAML content -- need the cache cleared going in,
+    and cleared again afterwards so their fake config does not leak into other
+    test modules.
+    """
+    dependency_module.clear_config_cache()
+    yield
+    dependency_module.clear_config_cache()

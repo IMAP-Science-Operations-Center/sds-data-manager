@@ -3,6 +3,7 @@
 import logging
 import os
 from pathlib import Path
+from typing import ClassVar
 
 import requests
 import yaml
@@ -22,7 +23,7 @@ def clear_config_cache():
     The configuration is immutable at runtime, so this is only needed by tests
     that patch the YAML content out from under :class:`DependencyConfigReader`.
     """
-    DependencyConfigReader._cached_config = None
+    DependencyConfigReader._cached_config = {}
 
 
 class DependencyConfigReader:
@@ -31,6 +32,11 @@ class DependencyConfigReader:
     This class encapsulates all operations for reading instrument dependency
     configurations, including loading from YAML files, validating nodes.
     """
+
+    # Mapping from YAML directory to its loaded dependency configuration.
+    _cached_config: ClassVar[
+        dict[Path, dict[tuple[str, str, str], ProcessingJobNode]]
+    ] = {}
 
     def __init__(self, yaml_dir: Path | None = None):
         """Initialize DependencyConfig by loading all dependencies.
@@ -43,11 +49,12 @@ class DependencyConfigReader:
             directory to load dependency configuration from another checkout,
             e.g. to compare against an older revision.
         """
-        if DependencyConfigReader._cached_config is None:
-            DependencyConfigReader._cached_config = self._load_all_dependencies(
-                yaml_dir or Path(__file__).parent
+        dir = yaml_dir or Path(__file__).parent
+        if dir not in DependencyConfigReader._cached_config:
+            DependencyConfigReader._cached_config[dir] = self._load_all_dependencies(
+                dir
             )
-        self._config = DependencyConfigReader._cached_config
+        self._config = DependencyConfigReader._cached_config[dir]
 
     @property
     def config(self) -> dict[tuple[str, str, str], ProcessingJobNode]:

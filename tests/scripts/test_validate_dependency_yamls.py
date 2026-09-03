@@ -7,7 +7,6 @@ import pytest
 from scripts.dependency.validate_dependency_yamls import (
     validate_dependency_yaml_versions,
 )
-from sds_data_manager.orchestration import dependency as dependency_module
 from sds_data_manager.orchestration.dependency import DependencyConfigReader
 from tests.scripts.conftest import (
     IDEX_INVALID_YAML,
@@ -17,20 +16,6 @@ from tests.scripts.conftest import (
     SWE_VALID_YAML_BUMPED,
     mock_yaml,
 )
-
-
-@pytest.fixture(autouse=True)
-def _clear_dependency_cache():
-    """Force every test here to re-parse the dependency YAML.
-
-    DependencyConfigReader caches its parsed config process-wide, so these
-    tests -- which patch the YAML content -- need the cache cleared going in,
-    and cleared again afterwards so their fake config does not leak into other
-    test modules.
-    """
-    dependency_module.clear_config_cache()
-    yield
-    dependency_module.clear_config_cache()
 
 
 def test_validate_dependency_yaml_versions_invalid():
