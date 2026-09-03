@@ -436,3 +436,92 @@ def test_metakernel_with_fractional_second_string_times(session):
 
     assert result["statusCode"] == 200
     assert len(json.loads(result["body"])) == 4
+
+
+def test_metakernel_no_query_string_parameters(session):
+    """QueryStringParameters being None must not crash, and should include all data."""
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[1, MAXIMUM_MISSION_J2000_TIME]],
+    )
+
+    result = spice_metakernel_api.lambda_handler(
+        {"queryStringParameters": None},
+        None,
+    )
+
+    assert result["statusCode"] == 200
+    assert "KERNELS_TO_LOAD" in result["body"]
+    assert "imap_1000_001_1000_100_002.ah.bc" in result["body"]
+
+
+def test_metakernel_missing_start_and_end_time(session):
+    """start_time/end_time omitted (other params present) must not crash."""
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[1, MAXIMUM_MISSION_J2000_TIME]],
+    )
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "spice_path": "",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"]) == ["imap_1000_001_1000_100_002.ah.bc"]
+
+
+def test_metakernel_only_start_time_provided(session):
+    """When end_time is omitted, files should not be filtered by an upper bound."""
+    # This file's coverage starts well after start_time and extends to the
+    # end of the mission - it should still be included since no end_time
+    # filter is applied.
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[500000, MAXIMUM_MISSION_J2000_TIME]],
+    )
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 1,
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"]) == ["imap_1000_001_1000_100_002.ah.bc"]
+
+
+def test_metakernel_only_end_time_provided(session):
+    """When start_time is omitted, files should not be filtered by a lower bound."""
+    # This file's coverage is entirely near the very start of the mission -
+    # it should still be included since no start_time filter is applied.
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[1, 50]],
+    )
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "end_time": MAXIMUM_MISSION_J2000_TIME,
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"]) == ["imap_1000_001_1000_100_002.ah.bc"]

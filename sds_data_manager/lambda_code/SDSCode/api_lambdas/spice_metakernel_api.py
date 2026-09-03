@@ -7,7 +7,10 @@ from pathlib import Path
 
 import spiceypy
 
-from ..spice_utilities import furnish_best_spice_file, metakernel_builder
+from ..spice_utilities import (
+    furnish_best_spice_file,
+    metakernel_builder,
+)
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -15,11 +18,21 @@ logger.setLevel(logging.INFO)
 
 
 def _convert_input_times_to_j2000(start_date_str, end_date_str):
-    """Convert input to seconds since J2000."""
-    try:
-        # Convert to datetime objects
-        start_date_datetime = datetime.datetime.strptime(start_date_str, "%Y%m%d")
-        end_date_datetime = datetime.datetime.strptime(end_date_str, "%Y%m%d")
+    """Convert input to seconds since J2000.
+
+    Either input may be None, in which case it will be returned as None for that value.
+    """
+
+    def _convert_single(date_str):
+        if date_str is None:
+            return None
+
+        try:
+            # Convert to datetime objects
+            date_datetime = datetime.datetime.strptime(date_str, "%Y%m%d")
+        except (TypeError, ValueError):
+            # Not a date string, assume a J2000 seconds value
+            return float(date_str)
 
         # Use SPICE to convert to J2000
 
@@ -41,13 +54,9 @@ def _convert_input_times_to_j2000(start_date_str, end_date_str):
             )
             furnish_best_spice_file("leapseconds")
 
-        # Convert datetime to J2000 using spiceypy
-        start_date = spiceypy.datetime2et(start_date_datetime)
-        end_date = spiceypy.datetime2et(end_date_datetime)
-    except (TypeError, ValueError):
-        start_date = float(start_date_str)
-        end_date = float(end_date_str)
-    return start_date, end_date
+        return spiceypy.datetime2et(date_datetime)
+
+    return _convert_single(start_date_str), _convert_single(end_date_str)
 
 
 def lambda_handler(event, context):
@@ -66,11 +75,15 @@ def lambda_handler(event, context):
     """
     logger.info("Metakernel event: " + json.dumps(event, indent=2))
 
-    # Gather the query parameters
-    query_params = event["queryStringParameters"]
-    start_time_str = query_params["start_time"]
-    end_time_str = query_params["end_time"]
-    start_time, end_time = _convert_input_times_to_j2000(start_time_str, end_time_str)
+    # Gather the query parameters, ensure it is not None and instead
+    # default to empty dict to avoid error
+    query_params = event.get("queryStringParameters") or {}
+    start_time_str = query_params.get("start_time")
+    end_time_str = query_params.get("end_time")
+    # Allow SPICE query to have dates omitted
+    query_start_time, query_end_time = _convert_input_times_to_j2000(
+        start_time_str, end_time_str
+    )
     spice_directory = Path(query_params.get("spice_path", ""))
     list_files = query_params.get("list_files", "false")
     require_coverage = query_params.get("require_coverage", "false")
@@ -79,7 +92,11 @@ def lambda_handler(event, context):
         file_types = {type.strip().upper() for type in file_types.split(",")}
 
     # Build a metakernel
-    metakernel = metakernel_builder(start_time, end_time, file_types=file_types)
+    metakernel = metakernel_builder(
+        query_start_time,
+        query_end_time,
+        file_types=file_types,
+    )
 
     if (require_coverage.lower() == "true") and metakernel.contains_gaps():
         return {
