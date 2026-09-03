@@ -1062,8 +1062,9 @@ class IMAPJobHandler:
 
         # Step 1: Query the processing jobs table for the most recent minor
         # version for this instrument/data_level/descriptor/start_date/repointing.
-        # All output products share the same minor_version so we can just query
-        # the processing job table.
+        # All output products share the same minor_version so we can query the
+        # processing job table for the maximum minor_version associated with
+        # the job.
         max_minor_version_record = (
             session.query(models.ProcessingJob)
             .filter(*filter_conditions(models.ProcessingJob))
