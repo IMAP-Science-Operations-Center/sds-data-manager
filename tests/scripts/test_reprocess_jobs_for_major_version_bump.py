@@ -17,7 +17,10 @@ def test_reprocess_jobs_for_major_version_bump():
     new_reader.config[("idex", "l2b", "all-30days")].outputs[1].major_version += 1
     jobs = reprocess_jobs_for_major_version_bump(old_reader, new_reader)
 
-    assert jobs == [("idex", "l1b", "sci-10days")]
+    assert jobs == [
+        ("idex", "l1b", "sci-10days"),
+        ("idex", "l2b", "all-30days"),
+    ]
 
 
 def test_reprocess_jobs_for_major_version_bump_root_node():
@@ -32,7 +35,7 @@ def test_reprocess_jobs_for_major_version_bump_root_node():
     new_reader.config[("idex", "l2b", "all-30days")].outputs[1].major_version += 1
     jobs = reprocess_jobs_for_major_version_bump(old_reader, new_reader)
 
-    assert jobs == [("idex", "l1a", "all")]
+    assert jobs == [("idex", "l1a", "all"), ("idex", "l2b", "all-30days")]
 
 
 def test_reprocess_jobs_for_major_version_bump_two_upstream():
@@ -50,6 +53,7 @@ def test_reprocess_jobs_for_major_version_bump_two_upstream():
     assert jobs == [
         ("idex", "l1b", "msg-10days"),
         ("idex", "l1b", "sci-10days"),
+        ("idex", "l2b", "all-30days"),
     ]
 
 

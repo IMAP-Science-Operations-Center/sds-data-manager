@@ -24,32 +24,40 @@ def get_updated_output_dependency_nodes(
 ) -> list[ProcessingJobNode]:
     """Find the jobs that need reprocessing due to major_version bump.
 
-    This function will loop through every output in the new dependency yaml and
-    compare it against the same output in the old dependency yaml. If the job is
-    new, or one of its outputs is new, or an output's major_version increased, the
-    job gets added to the list of jobs that need to be reprocessed. If a
-    major_version ever decreased, this raises an error since major_version should
-    never decrease.
+    This function will loop through every potential job's output in the new
+    dependency yaml and compare it against the output of the old potential
+    job in the old dependency yaml. If the job is new, or one of its outputs
+    is new, or an output's major_version increased, the potential job's
+    dependency information node is added to the list of jobs that need to be
+    reprocessed.
 
     old_reader: DependencyConfigReader
         Reader built from the previous dependency yaml files.
     new_reader: DependencyConfigReader
         Reader built from the current dependency yaml files.
 
+    Returns
+    -------
+    list[ProcessingJobNode]
+        Jobs whose output is new or had a major_version bump.
     """
     updated_nodes = []
-    for key, new_node in new_reader.config.items():
-        old_node = old_reader.config.get(key, None)
-        if old_node is None and new_node not in updated_nodes:
+    for job_key, new_potential_job in new_reader.config.items():
+        old_potential_job = old_reader.config.get(job_key, None)
+        if old_potential_job is None and new_potential_job not in updated_nodes:
+            logger.info(
+                f"New Job ({new_potential_job.source},{new_potential_job.data_type},"
+                f"{new_potential_job.descriptor})"
+            )
             # job didn't exist before, so it needs to be reprocessed
-            updated_nodes.append(new_node)
+            updated_nodes.append(new_potential_job)
             continue
-        for new_output in new_node.outputs:
+        for new_output in new_potential_job.outputs:
             # find the same output in the old node, if it's there
             old_output = next(
                 (
                     output
-                    for output in old_node.outputs
+                    for output in old_potential_job.outputs
                     if output.source == new_output.source
                     and output.data_type == new_output.data_type
                     and output.descriptor == new_output.descriptor
@@ -57,21 +65,27 @@ def get_updated_output_dependency_nodes(
                 None,
             )
             if old_output is None:
-                # output is new, so this job needs to be reprocessed
-                if new_node not in updated_nodes:
-                    updated_nodes.append(new_node)
-                continue
-            elif new_output.major_version < old_output.major_version:
-                raise ValueError(
-                    f"The major version of output ({new_output.source}, "
-                    f"{new_output.data_type}, {new_output.descriptor}) decreased "
-                    f"from {old_output.major_version} to {new_output.major_version}. "
-                    "The major version should never decrease."
+                logger.info(
+                    f"New output ({new_output.source},{new_output.data_type},"
+                    f"{new_output.descriptor}) has major_version="
+                    f"{new_output.major_version}."
                 )
+                # output is new, so this job needs to be reprocessed
+                if new_potential_job not in updated_nodes:
+                    updated_nodes.append(new_potential_job)
+                continue
+            # Major version should never decrease. That is handled in the
+            # validation code.
             elif new_output.major_version > old_output.major_version:
+                logger.info(
+                    f"Output product ({new_output.source},{new_output.data_type},"
+                    f"{new_output.descriptor}) was bumped from major_version="
+                    f"{old_output.major_version} to major_version="
+                    f"{new_output.major_version}"
+                )
                 # major_version got bumped, so it needs to be reprocessed
-                if new_node not in updated_nodes:
-                    updated_nodes.append(new_node)
+                if new_potential_job not in updated_nodes:
+                    updated_nodes.append(new_potential_job)
 
     return updated_nodes
 
@@ -100,6 +114,11 @@ def get_updated_root_node(
     root_jobs: list[ProcessingJobNode]
         The kickoff job for each pipeline, from get_kickoff_jobs(). If node is
         already one of these, there's nothing further upstream to check.
+
+    Returns
+    -------
+    list[ProcessingJobNode]
+        The furthest upstream changed job(s) in node's chain of changes.
     """
     root_nodes = []
     if node in root_jobs:
@@ -157,6 +176,11 @@ def reprocess_jobs_for_major_version_bump(
         last deployment).
     new_reader: DependencyConfigReader
         Reader built from the current dependency yaml files.
+
+    Returns
+    -------
+    list[tuple[str, str, str]]
+        (source, data_type, descriptor) tuples for each job to reprocess.
     """
     nodes = get_updated_output_dependency_nodes(old_reader, new_reader)
     logger.info(
@@ -196,8 +220,8 @@ if __name__ == "__main__":
     # (in this case the current/new) dependency yamls
     new_reader = DependencyConfigReader()
 
-    # # First validate new dependency yamls. They should already have been validated
-    # # from the github action in the PR creation but just to be sure.
+    # First validate new dependency yamls. They should already have been validated
+    # from the github action in the PR creation but just to be sure.
     for job in get_kickoff_jobs():
         validate_dependency_yaml_versions(new_reader, 0, job)
 

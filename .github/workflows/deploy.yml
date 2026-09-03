@@ -174,10 +174,6 @@ jobs:
             echo "Last deployed commit: $LAST_SHA"
           fi
 
-      - name: Record deployed commit
-        run: |
-          git push origin "${{ steps.resolve_sha.outputs.sha }}:refs/last-deploy/${{ env.account_name }}" --force
-
       - name: Check for dependency major_version bumps since last deploy
         id: detect_jobs
         if: steps.last_deploy.outputs.last_sha != ''
@@ -186,7 +182,7 @@ jobs:
           git fetch --depth=1 origin "$LAST_SHA"
           git worktree add --detach /tmp/last-deploy "$LAST_SHA"
           trap 'git worktree remove /tmp/last-deploy --force' EXIT
-          JOBS_LIST=$(poetry run python scripts/dependency/reprocess_jobs_for_major_version_bump.py \
+          JOBS_LIST=$(poetry run python -m scripts.dependency.reprocess_jobs_for_major_version_bump \
             /tmp/last-deploy/sds_data_manager/orchestration)
           echo "jobs=$JOBS_LIST" >> "$GITHUB_OUTPUT"
           git worktree remove /tmp/last-deploy --force
@@ -211,7 +207,7 @@ jobs:
           CURRENT_DATE=$(date +'%Y%m%d')
           URL_ARGS=()
           # If dev, we need to point to the dev API endpoint, otherwise it defaults to prod.
-          if [[ "$account_name" != "prod" ]]; then
+          if [[ "$account_name" == "dev" ]]; then
             URL_ARGS=(--url https://api.dev.imap-mission.com)
           fi
           while read -r row; do
@@ -223,6 +219,16 @@ jobs:
             poetry run imap-data-access --api-key "$api_key" "${URL_ARGS[@]}" reprocess --instrument "$instrument" --data-level "$data_level" --descriptor "$descriptor" --start-date 20250924 --end-date "$CURRENT_DATE"
           done < <(echo "$job_list" | jq -c '.[]')
 
+      # Only advance the baseline once every required reprocessing request has been
+      # accepted (this step won't run if bump detection, secret retrieval, or a
+      # reprocess call above failed). Placed after the reprocess step - rather than
+      # right after resolving the deployed commit - so a failure partway through
+      # leaves the marker pointing at the previous deploy, and a rerun still sees
+      # the outstanding bumps instead of comparing the deployed SHA to itself. Still
+      # runs on the no-bump path since detect_jobs/reprocess are skipped, not failed.
+      - name: Record deployed commit
+        run: |
+          git push origin "${{ steps.resolve_sha.outputs.sha }}:refs/last-deploy/${{ env.account_name }}" --force
 
       # ----------------------------------------------------
       # 🏷️ Tag Release (prod only)
