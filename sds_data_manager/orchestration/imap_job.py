@@ -1062,59 +1062,31 @@ class IMAPJobHandler:
 
         # Step 1: Query the processing jobs table for the most recent minor
         # version for this instrument/data_level/descriptor/start_date/repointing.
-        # TODO calculate each output products minor versions independently.
+        # All output products share the same minor_version so we can just query
+        # the processing job table.
         max_minor_version_record = (
             session.query(models.ProcessingJob)
             .filter(*filter_conditions(models.ProcessingJob))
             .order_by(models.ProcessingJob.minor_version.desc())
             .first()
         )
-        in_progress = False
+
         if max_minor_version_record:
-            minor_version_processing_table = max_minor_version_record.minor_version
-            # Step 2: If a job for this exact key is already in progress, flag it
-            # so we fall back to the processing-jobs version below instead of the
-            # science files version. The minor version itself is still bumped by
-            # the shared "+ 1" logic in Step 5; try_to_submit_job() is what
-            # actually prevents duplicate jobs from running.
+            current_minor_version = int(max_minor_version_record.minor_version)
+            # If a job for this exact key is already in progress, log it.
+            # The minor version itself is still bumped by the shared "+ 1" logic.
+            # try_to_submit_job() is what actually prevents duplicate
+            # jobs from running.
             if max_minor_version_record.status == models.Status.INPROGRESS:
                 logger.info(
-                    f"Job with id: {max_minor_version_record.id} is in progress, but "
-                    f"the dependencies have changed. Bumping version number."
+                    f"Job with id: {max_minor_version_record.id} is in progress. "
+                    f"Will submit a new job if dependencies have changed"
                 )
-                in_progress = True
         else:
-            minor_version_processing_table = None
+            current_minor_version = None
 
-        # Spacecraft pointing-attitude jobs produce a SPICE kernel rather than a
-        # science file, so there's no science files row to compare against —
-        # we always need to fall back to the processing-jobs table for these.
-        is_spacecraft_job = (
-            self.job_config.source == "spacecraft"
-            and self.job_config.descriptor == "pointing-attitude"
-        )
-
-        # Step 3: If the descriptor is "all", only use the max version from the
-        # processing job table. The ScienceFiles table does not have descriptors
-        # of "all", since the products produced will have their own specific
-        # descriptors. Also use the processing-jobs version if this is a
-        # spacecraft pointing-attitude job, or if a matching job is in progress.
-        if "all" in self.job_config.descriptor or is_spacecraft_job or in_progress:
-            current_minor_version = minor_version_processing_table
-        else:
-            # Step 4: Otherwise, get the max minor version from the science
-            # files table.
-            max_minor_version_sci_table = (
-                session.query(func.max(models.ScienceFiles.minor_version)).filter(
-                    *filter_conditions(models.ScienceFiles)
-                )
-            ).scalar()
-
-            current_minor_version = max_minor_version_sci_table
-
-        # Step 5: Bump the minor version by one (starting at 1 if no prior
-        # version exists). Each output's major version comes directly from the
-        # dependency config and is not bumped.
+        # Step 2: Bump the minor version by 1 for this run. If no previous
+        # minor version exists, start at 1.
         minor_version = (
             current_minor_version + 1 if current_minor_version is not None else 1
         )
