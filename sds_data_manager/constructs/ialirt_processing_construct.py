@@ -110,6 +110,7 @@ class IalirtProcessing(Construct):
             "noaa": {
                 "params": ["noaa"],
                 "ports": [7565],
+                "allow_icmp": True,
             },
             "uksa": {
                 "params": ["uksa"],
@@ -143,6 +144,12 @@ class IalirtProcessing(Construct):
                         connection=ec2.Port.tcp(port),
                         description=f"Allow outbound traffic to {partner} "
                         f"on TCP port {port}",
+                    )
+                if config.get("allow_icmp"):
+                    self.ecs_security_group.add_ingress_rule(
+                        peer=ec2.Peer.ipv4(cidr),
+                        connection=ec2.Port.all_icmp(),
+                        description=f"Allow inbound ICMP (ping) from {partner}",
                     )
 
     def add_compute_resources(self):
