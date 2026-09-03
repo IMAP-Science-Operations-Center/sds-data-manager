@@ -31,27 +31,20 @@ class DependencyConfigReader:
     This class encapsulates all operations for reading instrument dependency
     configurations, including loading from YAML files, validating nodes.
     """
-
-    # The parsed configuration, shared by every instance in the process.
-    #
-    # The YAML files ship inside the image and never change while the process is
-    # alive, but this class is constructed once per job handler (~300 of them) on
-    # every code-location load, and every Dagster run worker pays a full
-    # code-location load on startup. Parsing once instead of ~300 times takes
-    # that load from minutes to seconds.
-    _cached_config: dict[tuple[str, str, str], ProcessingJobNode] | None = None
-
-    def __init__(self):
+    def __init__(self, yaml_dir: Path | None = None):
         """Initialize DependencyConfig by loading all dependencies.
 
-        The parsed result is cached on the class, so only the first instance in
-        a process pays the parsing cost. See ``_cached_config`` for why, and
-        :func:`clear_config_cache` for the test escape hatch.
+        Parameters
+        ----------
+        yaml_dir : Path, optional
+            Directory containing the ``dependencies/`` subfolder of instrument
+            YAML files. Defaults to this module's directory. Pass a different
+            directory to load dependency configuration from another checkout,
+            e.g. to compare against an older revision.
         """
         if DependencyConfigReader._cached_config is None:
-            DependencyConfigReader._cached_config = self._load_all_dependencies()
+            DependencyConfigReader._cached_config = self._load_all_dependencies((yaml_dir or Path(__file__).parent)
         self._config = DependencyConfigReader._cached_config
-
     @property
     def config(self) -> dict[tuple[str, str, str], ProcessingJobNode]:
         """Get the underlying dependency configuration dictionary.
@@ -123,6 +116,7 @@ class DependencyConfigReader:
 
     def _load_all_dependencies(
         self,
+        yaml_dir: Path,
     ) -> dict[tuple[str, str, str], list[DependencyNode]]:
         """Load all instrument YAML dependency files and unified dependency.
 
@@ -130,6 +124,12 @@ class DependencyConfigReader:
         (source, data_type, descriptor) representing a downstream product,
         and each value is a list of upstream :class:`~.utils.DependencyNode`
         objects.
+
+        Parameters
+        ----------
+        yaml_dir : Path
+            Directory containing the ``dependencies/`` subfolder of instrument
+            YAML files.
 
         Raises
         ------
@@ -146,7 +146,6 @@ class DependencyConfigReader:
         DependencyNode(source='codice', data_type='l0', descriptor='raw', ...)
         """
         dependencies = {}
-        yaml_dir = Path(__file__).parent
 
         for instrument in VALID_INSTRUMENTS:
             yaml_file = (
@@ -354,7 +353,9 @@ class DependencyConfigReader:
         return processing_nodes
 
 
-def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
+def get_kickoff_jobs(
+    instrument: str | None = None, reader: DependencyConfigReader | None = None
+) -> list[ProcessingJobNode]:
     """Return all the jobs that kick off each instrument pipeline.
 
     These are nodes that are downstream from a node with the data_level equal to
@@ -367,6 +368,9 @@ def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
     ----------
     instrument : str, optional
         The instrument for which to get the kickoff job.
+    reader : DependencyConfigReader, optional
+        An instance of DependencyConfigReader to use for reading the dependency
+        configuration.
 
     Returns
     -------
@@ -376,8 +380,9 @@ def get_kickoff_jobs(instrument: str | None = None) -> list[ProcessingJobNode]:
         If instrument is provided, return only the kickoff job for that instrument.
     """
     kick_off_jobs = []
+    if reader is None:
+        reader = DependencyConfigReader()
 
-    reader = DependencyConfigReader()
     for potential_job in reader.config:
         for upstream_node in reader.inputs(potential_job):
             if upstream_node.data_type == "l0" and upstream_node.descriptor == "raw":
