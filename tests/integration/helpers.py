@@ -188,7 +188,12 @@ def wipe_data_bucket(s3_client, bucket: str) -> int:
         ]
         for batch_start in range(0, len(objects), 1000):
             batch = objects[batch_start : batch_start + 1000]
-            s3_client.delete_objects(Bucket=bucket, Delete={"Objects": batch})
+            response = s3_client.delete_objects(
+                Bucket=bucket, Delete={"Objects": batch}
+            )
+            errors = response.get("Errors", [])
+            if errors:
+                raise RuntimeError(f"Failed to delete objects from {bucket}: {errors}")
             deleted += len(batch)
     return deleted
 
