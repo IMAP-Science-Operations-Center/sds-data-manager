@@ -97,9 +97,6 @@ partition_map = {
     "daily": custom_partitions.daily_partitions,
     "repoint": custom_partitions.repoint_partitions,
     "10d": custom_partitions.idex10_partitions,
-    # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
-    # maps to exactly 30 days. If this changes, this logic will need update.
-    "30d": custom_partitions.idex30_partitions,
 } | custom_partitions.CADENCE_PARTITION_DEFS
 
 

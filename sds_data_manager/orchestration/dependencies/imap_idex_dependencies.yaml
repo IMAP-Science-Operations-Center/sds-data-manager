@@ -106,24 +106,22 @@ spice_basics: &spice_basics
       descriptor: sci-10days
       major_version: 1
 
-(l2b, all-30days):
-  partition: 30d
+(l2b, all-10days):
+  partition: 10d
   inputs:
     - *spice_basics
     - source: idex
       data_type: l2a
       descriptor: sci-10days
-      trigger_job: false
     - source: idex
       data_type: l1b
       descriptor: msg-10days
-      trigger_job: false
   outputs:
     - source: idex
       data_type: l2b
-      descriptor: sci-1mo
+      descriptor: sci-10days
       major_version: 1
     - source: idex
       data_type: l2c
-      descriptor: rectangular-map-1mo
+      descriptor: rectangular-map-10days
       major_version: 1
