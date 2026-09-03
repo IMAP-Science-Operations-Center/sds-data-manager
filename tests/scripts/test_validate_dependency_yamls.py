@@ -3,78 +3,26 @@
 from unittest.mock import patch
 
 import pytest
-import yaml
 
-from scripts.validate_dependency_yamls import validate_dependency_yaml_versions
-from sds_data_manager.orchestration.dependency import DependencyConfigReader
-
-# Captured before any patching happens, since dependency.py's "yaml" module is
-# the same module object as the one imported here. Patching
-# "dependency.yaml.safe_load" therefore replaces yaml.safe_load globally, so the
-# side effect below must call this real reference instead of yaml.safe_load
-# directly or it will recurse into the mock and blow the stack.
-_REAL_SAFE_LOAD = yaml.safe_load
-
-# Idex l1b sci-10days (downstream) has a major_version greater than or equal to
-# its upstream input, idex l1a sci-10days. This is valid.
-IDEX_VALID_YAML = """
-(l1a, all):
-  inputs:
-    - source: idex
-      data_type: l0
-      descriptor: raw
-  outputs:
-    - source: idex
-      data_type: l1a
-      descriptor: sci-10days
-      major_version: 1
-
-(l1b, sci-10days):
-  inputs:
-    - source: idex
-      data_type: l1a
-      descriptor: sci-10days
-  outputs:
-    - source: idex
-      data_type: l1b
-      descriptor: sci-10days
-      major_version: 2
-    - source: idex
-      data_type: l1b
-      descriptor: msg-10days
-      major_version: 1
-
-"""
-
-# Idex l1a sci-10days now has a greater major version than idex l1b
-# sci-10 days (downstream) this is invalid.
-IDEX_INVALID_YAML = IDEX_VALID_YAML.replace(
-    "data_type: l1b\n      descriptor: sci-10days\n      major_version: 2",
-    "data_type: l1b\n      descriptor: sci-10days\n      major_version: 0",
+from scripts.dependency.validate_dependency_yamls import (
+    validate_dependency_yaml_versions,
 )
-
-
-def _mock_yaml(instrument, content):
-    """Build a yaml.safe_load side_effect that swaps in `content` for one instrument.
-
-    DependencyConfigReader loads every instrument's YAML file from disk, so this
-    intercepts only the read of imap_<instrument>_dependencies.yaml and lets every
-    other instrument's file load normally.
-    """
-
-    def _side_effect(stream):
-        if f"imap_{instrument}_dependencies.yaml" in getattr(stream, "name", ""):
-            return _REAL_SAFE_LOAD(content)
-        return _REAL_SAFE_LOAD(stream)
-
-    return _side_effect
+from sds_data_manager.orchestration.dependency import DependencyConfigReader
+from tests.scripts.conftest import (
+    IDEX_INVALID_YAML,
+    IDEX_VALID_YAML,
+    MAG_VALID_YAML_L2_BUMP,
+    SWAPI_VALID_YAML,
+    SWE_VALID_YAML_BUMPED,
+    mock_yaml,
+)
 
 
 def test_validate_dependency_yaml_versions_invalid():
     """Yaml with one invalid downstream major_version should raise."""
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",
-        side_effect=_mock_yaml("idex", IDEX_INVALID_YAML),
+        side_effect=mock_yaml({"idex": IDEX_INVALID_YAML}),
     ):
         reader = DependencyConfigReader()
         kickoff_job = reader.config[("idex", "l1a", "all")]
@@ -87,7 +35,7 @@ def test_validate_dependency_yaml_versions_valid():
     """Idex yaml content should pass."""
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",
-        side_effect=_mock_yaml("idex", IDEX_VALID_YAML),
+        side_effect=mock_yaml({"idex": IDEX_VALID_YAML}),
     ):
         reader = DependencyConfigReader()
         kickoff_job = reader.config[("idex", "l1a", "all")]
@@ -100,23 +48,15 @@ def test_validate_dependency_yaml_versions_mag_l2():
     """Bumping mag l2 norm-rtn should pass, even though swapi depends on it.
 
     validate_dependency_yaml_versions only walks downstream jobs within the same
-    source (see the `processing_node.source != node.source` check), so a
-    cross-instrument dependent like (swapi, l3a, alpha-sw) should never be checked
-    or cause this to raise.
+    source (see the `processing_node.source != node.source` check), so swapi's
+    l3a alpha-sw job - a real cross-instrument dependent of mag l2 norm-rtn -
+    should never be checked or cause this to raise.
     """
-    with open(
-        "sds_data_manager/orchestration/dependencies/imap_mag_dependencies.yaml",
-        encoding="utf-8",
-    ) as file:
-        mag_valid_yaml = file.read()
-
-    mag_valid_yaml_l2_bump = mag_valid_yaml.replace(
-        "data_type: l2\n      descriptor: norm-rtn\n      major_version: 1",
-        "data_type: l2\n      descriptor: norm-rtn\n      major_version: 2",
-    )
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",
-        side_effect=_mock_yaml("mag", mag_valid_yaml_l2_bump),
+        side_effect=mock_yaml(
+            {"mag": MAG_VALID_YAML_L2_BUMP, "swapi": SWAPI_VALID_YAML}
+        ),
     ):
         reader = DependencyConfigReader()
         kickoff_job = reader.config[("mag", "l1a", "all")]
@@ -126,35 +66,10 @@ def test_validate_dependency_yaml_versions_mag_l2():
 
 
 def test_validate_dependency_yaml_versions_swe():
-    """The real swe dependency yaml, with a monotonic version bump per level, passes.
-
-    Unlike the other tests here, this loads the actual production yaml instead of
-    a hand-built fixture, as a regression check against the real config.
-    """
-    with open(
-        "sds_data_manager/orchestration/dependencies/imap_swe_dependencies.yaml",
-        encoding="utf-8",
-    ) as file:
-        valid_swe_yaml = file.read()
-
-    valid_swe_yaml = (
-        valid_swe_yaml.replace(
-            "data_type: l1b\n      descriptor: sci\n      major_version: 1",
-            "data_type: l1b\n      descriptor: sci\n      major_version: 5",
-        )
-        .replace(
-            "data_type: l2\n      descriptor: sci\n      major_version: 1",
-            "data_type: l2\n      descriptor: sci\n      major_version: 7",
-        )
-        .replace(
-            "data_type: l3\n      descriptor: sci\n      major_version: 1",
-            "data_type: l3\n      descriptor: sci\n      major_version: 10",
-        )
-    )
-
+    """A static swe chain, with a monotonic version bump per level, should pass."""
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",
-        side_effect=_mock_yaml("swe", valid_swe_yaml),
+        side_effect=mock_yaml({"swe": SWE_VALID_YAML_BUMPED}),
     ):
         reader = DependencyConfigReader()
         kickoff_job = reader.config[("swe", "l1a", "all")]
