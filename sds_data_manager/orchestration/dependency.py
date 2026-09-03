@@ -31,6 +31,7 @@ class DependencyConfigReader:
     This class encapsulates all operations for reading instrument dependency
     configurations, including loading from YAML files, validating nodes.
     """
+
     def __init__(self, yaml_dir: Path | None = None):
         """Initialize DependencyConfig by loading all dependencies.
 
@@ -43,17 +44,20 @@ class DependencyConfigReader:
             e.g. to compare against an older revision.
         """
         if DependencyConfigReader._cached_config is None:
-            DependencyConfigReader._cached_config = self._load_all_dependencies((yaml_dir or Path(__file__).parent)
+            DependencyConfigReader._cached_config = self._load_all_dependencies(
+                yaml_dir or Path(__file__).parent
+            )
         self._config = DependencyConfigReader._cached_config
+
     @property
     def config(self) -> dict[tuple[str, str, str], ProcessingJobNode]:
         """Get the underlying dependency configuration dictionary.
 
         Returns
         -------
-        dict[tuple[str, str, str], list[DependencyNode]]
-            Mapping of ``(source, data_type, descriptor)`` tuples to lists of
-            :class:`~.utils.DependencyNode` upstream dependency objects.
+        dict[tuple[str, str, str], ProcessingJobNode]
+            Mapping of ``(source, data_type, descriptor)`` tuples to
+            :class:`~.utils.ProcessingJobNode` objects.
         """
         return self._config
 

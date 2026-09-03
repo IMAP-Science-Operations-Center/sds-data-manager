@@ -324,10 +324,12 @@ def _wait_for_task(
         if task["lastStatus"] == "STOPPED":
             for container in task["containers"]:
                 exit_code = container.get("exitCode")
-                if exit_code not in (0, None):
+                if exit_code != 0:
+                    reason = container.get("reason") or task.get(
+                        "stoppedReason", "no reason given"
+                    )
                     raise RuntimeError(
-                        f"{description} task exited with code {exit_code}: "
-                        f"{container.get('reason', 'no reason given')}"
+                        f"{description} task exited with code {exit_code}: {reason}"
                     )
             return
         time.sleep(10)
