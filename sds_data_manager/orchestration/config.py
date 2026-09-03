@@ -6,7 +6,7 @@ from enum import Enum
 MISSION_START_TIME = "2025-09-24T00:00:00"
 MISSION_END_TIME = "2045-09-24T00:00:00"
 
-VALID_CADENCE_STRS = ["1mo", "3mo", "6mo", "1yr"]
+VALID_CADENCE_STRS = ["3mo", "6mo", "1yr"]
 
 FIRST_MAP_START_DATE = datetime.datetime(2026, 1, 17, tzinfo=datetime.timezone.utc)
 
@@ -50,7 +50,7 @@ class CadenceDays(float, Enum):
         Parameters
         ----------
         cadence_str : str, optional
-            The cadence string (e.g. "1mo", "3mo", "6mo", "1yr"). If not provided,
+            The cadence string (e.g. "3mo", "6mo", "1yr"). If not provided,
             the function will return the list of valid cadence strings.
 
         Returns
@@ -62,7 +62,6 @@ class CadenceDays(float, Enum):
 
         """
         lookup = {
-            "1mo": cls.ONE_MONTH,
             "3mo": cls.THREE_MONTHS,
             "6mo": cls.SIX_MONTHS,
             "1yr": cls.ONE_YEAR,
@@ -93,17 +92,10 @@ class CadenceDays(float, Enum):
         datetime.datetime | str
             The first job start date for this cadence.
         """
-        if self.value == CadenceDays.ONE_MONTH.value:
-            # 1mo jobs are not map jobs. We want them to start earlier. E.g. IDEX l2b is
-            # a 1 month cadence job and the first job should be a month after launch
-            start_date = datetime.datetime.fromisoformat(
-                MISSION_START_TIME
-            ) + datetime.timedelta(days=self.value)
-        else:
-            # For map jobs, we want the first job to start at the first map start date
-            # plus the cadence. E.g.:
-            #    - 3 month maps start at FIRST_MAP_START_DATE + 3 months
-            #    - 6 month maps start at FIRST_MAP_START_DATE + 6 months
-            #    - 1 year maps start at FIRST_MAP_START_DATE + 1 year
-            start_date = FIRST_MAP_START_DATE + datetime.timedelta(days=self.value)
+        # For map jobs, we want the first job to start at the first map start date
+        # plus the cadence. E.g.:
+        #    - 3 month maps start at FIRST_MAP_START_DATE + 3 months
+        #    - 6 month maps start at FIRST_MAP_START_DATE + 6 months
+        #    - 1 year maps start at FIRST_MAP_START_DATE + 1 year
+        start_date = FIRST_MAP_START_DATE + datetime.timedelta(days=self.value)
         return start_date.strftime("%Y%m%d") if as_string else start_date
