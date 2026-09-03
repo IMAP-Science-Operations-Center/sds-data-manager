@@ -139,5 +139,5 @@
     - source: swe
       data_type: l3
       descriptor: sci
-      major_version: 1
+      major_version: 2
 
