@@ -572,6 +572,36 @@ lo_l2_map_inputs: &lo_l2_map_inputs
       descriptor: ilo-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
       major_version: 1
 
+(l1c, quickmap):
+  partition: repoint
+  inputs:
+    - *spice_basic
+    - source: lo
+      data_type: l1b
+      descriptor: de
+    - source: lo
+      data_type: l1b
+      descriptor: goodtimes
+    - source: lo
+      data_type: l1b
+      descriptor: bgrates
+    - source: lo
+      data_type: l1b
+      descriptor: nhk
+    - source: lo
+      data_type: l1b
+      descriptor: histrates
+    - source: spacecraft
+      data_type: l1a
+      descriptor: quaternions
+  outputs:
+    - source: lo
+      data_type: l1c
+      descriptor: quickmap
+      major_version: 1
+
+# ======== Level L2 ========
+
 (l2, l090-ena-h-hf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
   inputs: *lo_l2_map_inputs
