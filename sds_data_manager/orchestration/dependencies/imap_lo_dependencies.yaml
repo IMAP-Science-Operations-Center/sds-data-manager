@@ -662,6 +662,42 @@ lo_l2_map_inputs: &lo_l2_map_inputs
       descriptor: l090-isn-o-sf-nsp-ram-hae-6deg-1yr
       major_version: 1
 
+(l2, l075-enanbs-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l075-enanbs-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
+
+(l2, l075-enanbs-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l075-enanbs-o-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
+
+(l2, l105-enanbs-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l105-enanbs-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
+
+(l2, l105-enanbs-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs: *lo_l2_map_inputs
+  outputs:
+    - source: lo
+      data_type: l2
+      descriptor: l105-enanbs-o-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
+
 (l2, t090-ena-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
   inputs: *lo_l2_map_inputs
@@ -690,6 +726,54 @@ lo_l2_map_inputs: &lo_l2_map_inputs
       major_version: 1
 
 # ======== Level L3 ========
+
+(l3, l075-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l075-enanbs-h-sf-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-isn-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
+
+(l3, l075-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l075-enanbs-o-sf-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-isn-o-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
+
+(l3, l105-isn-h-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l105-enanbs-h-sf-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-isn-h-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
+
+(l3, l105-isn-o-sf-nsp-ram-hae-6deg-1yr):
+  partition: 1yr
+  inputs:
+    - source: lo
+      data_type: l2
+      descriptor: l105-enanbs-o-sf-nsp-ram-hae-6deg-1yr
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-isn-o-sf-nsp-ram-hae-6deg-1yr
+      major_version: 1
 
 (l3, l090-isn-h-sf-nsp-ram-hae-6deg-1yr):
   partition: 1yr
