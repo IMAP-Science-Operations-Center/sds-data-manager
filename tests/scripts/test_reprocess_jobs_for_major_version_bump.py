@@ -3,12 +3,16 @@
 from scripts.dependency.reprocess_jobs_for_major_version_bump import (
     reprocess_jobs_for_major_version_bump,
 )
-from sds_data_manager.orchestration.dependency import DependencyConfigReader
+from sds_data_manager.orchestration.dependency import (
+    DependencyConfigReader,
+    clear_config_cache,
+)
 
 
 def test_reprocess_jobs_for_major_version_bump():
     """A single changed leaf job should be the only one reprocessed."""
     old_reader = DependencyConfigReader()
+    clear_config_cache()
     new_reader = DependencyConfigReader()
 
     new_reader.config[("idex", "l1b", "sci-10days")].outputs[0].major_version += 1
@@ -26,6 +30,7 @@ def test_reprocess_jobs_for_major_version_bump():
 def test_reprocess_jobs_for_major_version_bump_root_node():
     """When the kickoff job itself changed, it should be the reprocessed root."""
     old_reader = DependencyConfigReader()
+    clear_config_cache()
     new_reader = DependencyConfigReader()
 
     new_reader.config[("idex", "l1a", "all")].outputs[0].major_version += 1
@@ -41,6 +46,7 @@ def test_reprocess_jobs_for_major_version_bump_root_node():
 def test_reprocess_jobs_for_major_version_bump_two_upstream():
     """A node with two changed upstream branches should reprocess both roots."""
     old_reader = DependencyConfigReader()
+    clear_config_cache()
     new_reader = DependencyConfigReader()
 
     new_reader.config[("idex", "l1b", "sci-10days")].outputs[0].major_version += 1
@@ -60,6 +66,7 @@ def test_reprocess_jobs_for_major_version_bump_two_upstream():
 def test_reprocess_jobs_for_major_version_bump_multiple_instruments():
     """Changes in independent instrument pipelines should each get their own root."""
     old_reader = DependencyConfigReader()
+    clear_config_cache()
     new_reader = DependencyConfigReader()
 
     # IDEX

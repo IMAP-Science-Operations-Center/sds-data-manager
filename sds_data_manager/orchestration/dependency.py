@@ -3,6 +3,7 @@
 import logging
 import os
 from pathlib import Path
+from typing import ClassVar
 
 import requests
 import yaml
@@ -16,12 +17,26 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def clear_config_cache():
+    """Drop the process-wide cached dependency configuration.
+
+    The configuration is immutable at runtime, so this is only needed by tests
+    that patch the YAML content out from under :class:`DependencyConfigReader`.
+    """
+    DependencyConfigReader._cached_config = {}
+
+
 class DependencyConfigReader:
     """Dependency configuration reader.
 
     This class encapsulates all operations for reading instrument dependency
     configurations, including loading from YAML files, validating nodes.
     """
+
+    # Mapping from YAML directory to its loaded dependency configuration.
+    _cached_config: ClassVar[
+        dict[Path, dict[tuple[str, str, str], ProcessingJobNode]]
+    ] = {}
 
     def __init__(self, yaml_dir: Path | None = None):
         """Initialize DependencyConfig by loading all dependencies.
@@ -34,17 +49,22 @@ class DependencyConfigReader:
             directory to load dependency configuration from another checkout,
             e.g. to compare against an older revision.
         """
-        self._config = self._load_all_dependencies(yaml_dir or Path(__file__).parent)
+        dir = yaml_dir or Path(__file__).parent
+        if dir not in DependencyConfigReader._cached_config:
+            DependencyConfigReader._cached_config[dir] = self._load_all_dependencies(
+                dir
+            )
+        self._config = DependencyConfigReader._cached_config[dir]
 
     @property
-    def config(self) -> dict[tuple[str, str, str], list[DependencyNode]]:
+    def config(self) -> dict[tuple[str, str, str], ProcessingJobNode]:
         """Get the underlying dependency configuration dictionary.
 
         Returns
         -------
-        dict[tuple[str, str, str], list[DependencyNode]]
-            Mapping of ``(source, data_type, descriptor)`` tuples to lists of
-            :class:`~.utils.DependencyNode` upstream dependency objects.
+        dict[tuple[str, str, str], ProcessingJobNode]
+            Mapping of ``(source, data_type, descriptor)`` tuples to
+            :class:`~.utils.ProcessingJobNode` objects.
         """
         return self._config
 
