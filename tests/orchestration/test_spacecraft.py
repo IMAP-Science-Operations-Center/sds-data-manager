@@ -3,7 +3,8 @@
 This test sets up the environment so that:
     - Pointing numbers start on 2026-01-01, and span nearly the whole day.
     - There are 2 spice files in the database: sclk and lsk
-    - The pointing number partition sensor has already ran in dagster
+    - The repoint, daily, and pointing_attitude partition sensors have
+      already run in dagster
     - There are no other assets within Dagster
 """
 
@@ -69,8 +70,11 @@ def test_spacecraft_l1a_sensor(mock_db_session, ephemeral_instance):
     sensor_result = spacecraft_l1a_sensor(context)
     run_requests = list(sensor_result)
 
-    # Verify things were kicked off
-    assert len(run_requests) == 10, "Expected a run for each repoint partition."
+    # This job is keyed off pointing_attitude_partitions, not repoint_partitions:
+    # one partition per ah kernel cycle. `ephemeral_instance` seeds exactly one ah
+    # kernel covering the full pointing_table_entries range, so one partition (and
+    # therefore one run) is expected here, not one per pointing.
+    assert len(run_requests) == 1, "Expected a run for the single ah kernel partition."
 
 
 def test_spacecraft_l1a_no_repoint(
