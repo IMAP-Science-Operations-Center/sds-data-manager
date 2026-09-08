@@ -247,15 +247,55 @@ pointing_attitude_partitions = DynamicPartitionsDefinition(
 )
 
 
+def _select_maximal_ah_kernels(attitude_kernels):
+    """Drop kernels whose coverage is fully contained in another kernel's.
+
+    Superseded kernels are never removed from the DB, so without this filter
+    the sensor would keep regenerating their partitions, undoing the
+    subsumption-based deletion below.
+
+    Kernels are sorted by coverage duration, longest first, so the largest
+    (and most likely to be a superset) kernels are tested first. Each kernel
+    is then only compared against the `maximal` kernels accepted so far
+    rather than the full kernel list: since nothing already accepted can be
+    contained in a kernel processed later (it would need a duration >=
+    the one that already stands), that list stays small in practice (one
+    entry per "generation" of combined files), keeping this cheap even
+    against a cold start with a hundred-plus kernels.
+    """
+    dated_kernels = [
+        kernel
+        for kernel in attitude_kernels
+        if kernel.min_date_datetime and kernel.max_date_datetime
+    ]
+    dated_kernels.sort(
+        key=lambda kernel: kernel.max_date_datetime - kernel.min_date_datetime,
+        reverse=True,
+    )
+
+    maximal_kernels = []
+    for kernel in dated_kernels:
+        if any(
+            larger.min_date_datetime <= kernel.min_date_datetime
+            and larger.max_date_datetime >= kernel.max_date_datetime
+            for larger in maximal_kernels
+        ):
+            continue  # Fully contained within an already-accepted kernel
+        maximal_kernels.append(kernel)
+    return maximal_kernels
+
+
 @sensor(minimum_interval_seconds=600)
 def add_pointing_attitude_partitions(context: SensorEvaluationContext):
     """Alert Dagster when new spacecraft pointing partitions should be made.
 
-    One partition is maintained per ah kernel cycle. When a new ah kernel
-    extends or replaces earlier coverage, any existing partitions whose full
-    range is subsumed by the new partition are deleted first. This handles
-    both the normal growing-append case (same start, later end) and the
-    retroactive combined-file case (one large file that subsumes many small
+    One partition is maintained per maximal ah kernel cycle (kernels fully
+    contained within another kernel's coverage are ignored, see
+    _select_maximal_ah_kernels). When a new ah kernel extends or replaces
+    earlier coverage, any existing partitions whose full range is subsumed
+    by the new partition are deleted first. This handles both the normal
+    growing-append case (same start, later end) and the retroactive
+    combined-file case (one large file that subsumes many small
     early-mission daily partitions).
     """
     with db.Session() as session:
@@ -267,6 +307,8 @@ def add_pointing_attitude_partitions(context: SensorEvaluationContext):
 
         if not attitude_kernels:
             return SensorResult()
+
+        attitude_kernels = _select_maximal_ah_kernels(attitude_kernels)
 
         existing_partitions = context.instance.get_dynamic_partitions(
             "pointing_attitude_partitions"
@@ -286,8 +328,6 @@ def add_pointing_attitude_partitions(context: SensorEvaluationContext):
         partitions_to_delete = []
 
         for kernel in attitude_kernels:
-            if not kernel.min_date_datetime or not kernel.max_date_datetime:
-                continue
             ah_min = kernel.min_date_datetime
             ah_max = kernel.max_date_datetime
 
