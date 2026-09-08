@@ -231,11 +231,17 @@ def pointing_table_entries(mock_db_session):
 
     records = []
     for i in range(1, 11):
+        pointing_end = datetime.datetime(2026, 1, i, 23, 59, 59)
+        # Mirrors index_pointing_data: repoint_end_utc of pointing i is the next
+        # pointing's start; the last pointing has no known next repoint yet.
+        next_repoint = None if i == 10 else pointing_end + datetime.timedelta(seconds=1)
         records.append(
             PointingTable(
                 pointing_id=i,
                 pointing_start_utc=datetime.datetime(2026, 1, i, 0, 0, 0),
-                pointing_end_utc=datetime.datetime(2026, 1, i, 23, 59, 59),
+                pointing_end_utc=pointing_end,
+                repoint_start_utc=next_repoint,
+                repoint_end_utc=next_repoint,
             )
         )
     mock_db_session.add_all(records)
@@ -307,8 +313,25 @@ def insert_test_spice_files(mock_db_session):
 
 
 @pytest.fixture
-def ephemeral_instance(pointing_table_entries):
+def ephemeral_instance(pointing_table_entries, mock_db_session):
     """Provide an isolated, in-memory Dagster instance."""
+    # A single attitude_history kernel covering the full pointing_table_entries
+    # date range, so add_pointing_attitude_partitions below has coverage to key off.
+    mock_db_session.add(
+        models.SPICEFiles(
+            file_path="imap/spice/imap_2026_001_2026_011_001.ah.bc",
+            file_name="imap_2026_001_2026_011_001.ah.bc",
+            kernel_type="attitude_history",
+            min_date_datetime=datetime.datetime(
+                2026, 1, 1, tzinfo=datetime.timezone.utc
+            ),
+            max_date_datetime=datetime.datetime(
+                2026, 1, 11, tzinfo=datetime.timezone.utc
+            ),
+        )
+    )
+    mock_db_session.commit()
+
     with instance_for_test() as instance:
         # Add repoint partitions
         context = build_sensor_context(instance=instance)
@@ -323,8 +346,21 @@ def ephemeral_instance(pointing_table_entries):
 
         # Add daily partitions
         context = build_sensor_context(instance=instance)
-        add_repoint_partitions_sensor = defs.get_sensor_def("add_daily_partitions")
-        sensor_result = add_repoint_partitions_sensor(context)
+        add_daily_partitions_sensor = defs.get_sensor_def("add_daily_partitions")
+        sensor_result = add_daily_partitions_sensor(context)
+
+        for request in sensor_result.dynamic_partitions_requests:
+            instance.add_dynamic_partitions(
+                partitions_def_name=request.partitions_def_name,
+                partition_keys=request.partition_keys,
+            )
+
+        # Add pointing_attitude partitions
+        context = build_sensor_context(instance=instance)
+        add_pointing_attitude_partitions_sensor = defs.get_sensor_def(
+            "add_pointing_attitude_partitions"
+        )
+        sensor_result = add_pointing_attitude_partitions_sensor(context)
 
         for request in sensor_result.dynamic_partitions_requests:
             instance.add_dynamic_partitions(
