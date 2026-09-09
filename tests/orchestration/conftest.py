@@ -332,40 +332,19 @@ def ephemeral_instance(pointing_table_entries, mock_db_session):
     )
     mock_db_session.commit()
 
+    def _run_partition_sensor(sensor_name):
+        """Run a dynamic-partitions sensor and apply its requests to the instance."""
+        context = build_sensor_context(instance=instance)
+        sensor_result = defs.get_sensor_def(sensor_name)(context)
+        for request in sensor_result.dynamic_partitions_requests:
+            instance.add_dynamic_partitions(
+                partitions_def_name=request.partitions_def_name,
+                partition_keys=request.partition_keys,
+            )
+
     with instance_for_test() as instance:
-        # Add repoint partitions
-        context = build_sensor_context(instance=instance)
-        add_repoint_partitions_sensor = defs.get_sensor_def("add_repoint_partitions")
-        sensor_result = add_repoint_partitions_sensor(context)
-
-        for request in sensor_result.dynamic_partitions_requests:
-            instance.add_dynamic_partitions(
-                partitions_def_name=request.partitions_def_name,
-                partition_keys=request.partition_keys,
-            )
-
-        # Add daily partitions
-        context = build_sensor_context(instance=instance)
-        add_daily_partitions_sensor = defs.get_sensor_def("add_daily_partitions")
-        sensor_result = add_daily_partitions_sensor(context)
-
-        for request in sensor_result.dynamic_partitions_requests:
-            instance.add_dynamic_partitions(
-                partitions_def_name=request.partitions_def_name,
-                partition_keys=request.partition_keys,
-            )
-
-        # Add pointing_attitude partitions
-        context = build_sensor_context(instance=instance)
-        add_pointing_attitude_partitions_sensor = defs.get_sensor_def(
-            "add_pointing_attitude_partitions"
-        )
-        sensor_result = add_pointing_attitude_partitions_sensor(context)
-
-        for request in sensor_result.dynamic_partitions_requests:
-            instance.add_dynamic_partitions(
-                partitions_def_name=request.partitions_def_name,
-                partition_keys=request.partition_keys,
-            )
+        _run_partition_sensor("add_repoint_partitions")
+        _run_partition_sensor("add_daily_partitions")
+        _run_partition_sensor("add_pointing_attitude_partitions")
 
         yield instance
