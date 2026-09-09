@@ -331,7 +331,15 @@ def add_pointing_attitude_partitions(context: SensorEvaluationContext):
             ah_min = kernel.min_date_datetime
             ah_max = kernel.max_date_datetime
 
-            # First pointing with any overlap with the ah kernel coverage
+            # A pointing's fixed attitude actually ends at repoint_start_utc
+            # (when the spacecraft starts slewing to the next pointing), not at
+            # pointing_end_utc. pointing_end_utc is recorded as when the *next*
+            # pointing begins, i.e. after that slew finishes -- so it's later
+            # than the true end of this pointing's stable attitude. That's why
+            # these queries check repoint_start_utc against the ah kernel's
+            # bounds instead of pointing_end_utc.
+
+            # First pointing with any overlap with the ah kernel coverage.
             first_overlapping = (
                 session.query(models.PointingTable)
                 .filter(
@@ -377,6 +385,10 @@ def add_pointing_attitude_partitions(context: SensorEvaluationContext):
             ]
             partitions_to_delete.extend(subsumed)
             partitions_to_add.append(new_partition_name)
+
+        # de-duplicate partition lists
+        partitions_to_delete = list(dict.fromkeys(partitions_to_delete))
+        partitions_to_add = list(dict.fromkeys(partitions_to_add))
 
         partition_requests = []
         if partitions_to_delete:

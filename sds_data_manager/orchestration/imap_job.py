@@ -959,7 +959,7 @@ class IMAPJobHandler:
             # Science inputs were configured but none were found.
             raise MissingDependenciesError(
                 f"No science files were discovered between {target_start} and "
-                f"{target_end}. All jobs require at least one science file."
+                f"{target_end}. This job require at least one science file."
             )
 
         return science_processing_inputs
