@@ -29,9 +29,11 @@ class L2MapJob(imap_job.IMAPJobHandler):
     def __init__(self, job):
         """Initialize the handler, then override the sensor run frequency."""
         super().__init__(job)
-        # Run the sensor every week (604800 seconds) to re-run active
-        # progressive map partitions.
-        self.sensor_run_frequency = 604800
+        # Poll every 30 minutes so we reliably catch the Monday 6am UTC
+        # window (see build_sensor), without missing it due to daemon tick
+        # drift. The weekday/hour guard in build_sensor is what actually
+        # restricts kickoffs to once a week.
+        self.sensor_run_frequency = 1800
 
     def build_sensor(self):
         """Return a Dagster sensor monitoring for new cadence partitions.
@@ -40,8 +42,11 @@ class L2MapJob(imap_job.IMAPJobHandler):
         That job is part of the @asset's job.
         This job simply alerts the asset if there is the *potential* to start.
 
-        1) Check for any new partitions since last sensor tick.
-        2) Yield a RunRequest for each new partition key.
+        1) Only proceed if it's currently Monday 6am UTC. The sensor itself
+           polls more often than that (see sensor_run_frequency) purely so it
+           doesn't miss the window.
+        2) Check for any new partitions since last sensor tick.
+        3) Yield a RunRequest for each new partition key.
         """
         sensor_name = f"{self.job_config.to_dagster_name()}_kickoff_sensor"
 
@@ -51,6 +56,13 @@ class L2MapJob(imap_job.IMAPJobHandler):
             minimum_interval_seconds=self.sensor_run_frequency,
         )
         def _sensor(context: SensorEvaluationContext):
+            now = datetime.datetime.now(datetime.timezone.utc)
+            # Monday == weekday 0. Only kick off progressive maps once a
+            # week, on Monday at 6am UTC.
+            if now.weekday() != 0 or now.hour != 6:
+                context.log.info("Not the right day or time to kick off a new run.")
+                return
+
             cadence_str = self.job_config.partition
 
             # Find all map windows for this job's cadence.
@@ -76,8 +88,11 @@ class L2MapJob(imap_job.IMAPJobHandler):
                 )
                 return
 
-            # Create a unique suffix for this sensor trigger
-            job_suffix = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Date-only (not time-of-day) suffix: if this sensor ticks more
+            # than once during the Monday 6am UTC hour, every tick produces
+            # the same run_key, so Dagster's run_key deduplication prevents
+            # duplicate runs for the same week.
+            job_suffix = now.strftime("%Y-%m-%d")
             run_key = "_".join(
                 [
                     self.job_config.to_dagster_name(),
