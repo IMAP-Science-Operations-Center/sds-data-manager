@@ -106,9 +106,10 @@ repository = "https://github.com/IMAP-Science-Operations-Center/sds-data-manager
 testpaths = [
   "tests",
 ]
-addopts = "-ra"
+addopts = "-ra -m 'not integration'"
 markers = [
     "network: Test that requires network access",
+    "integration: Test that runs against a live deployed environment",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning:importlib*",
