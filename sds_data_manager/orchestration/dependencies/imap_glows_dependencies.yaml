@@ -146,7 +146,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l3a
       descriptor: hist
-      major_version: 1
+      major_version: 2
 
 (l3b, ion-rate-profile):
   partition: daily
@@ -161,80 +161,80 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l3b
       descriptor: ion-rate-profile
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: l3c
       descriptor: sw-profile
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: l3b-archive
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: l3d
       descriptor: solar-hist
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: uv-anis
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: lya
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: e-dens
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: p-dens
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: speed
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: phion
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: l3e
       descriptor: survival-probability-hi-45
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: l3e
       descriptor: survival-probability-hi-90
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: l3e
       descriptor: survival-probability-lo
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: l3e
       descriptor: survival-probability-ul-sf
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: l3e
       descriptor: survival-probability-ul-hf
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: survival-probability-hi-45-raw
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: survival-probability-hi-90-raw
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: survival-probability-lo-raw
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: survival-probability-ul-sf-raw
-      major_version: 1
+      major_version: 2
     - source: glows
       data_type: ancillary
       descriptor: survival-probability-ul-hf-raw
-      major_version: 1
+      major_version: 2

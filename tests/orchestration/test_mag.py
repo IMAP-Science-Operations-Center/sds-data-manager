@@ -1,4 +1,4 @@
-"""Test the MAG L1C custom job handler.
+"""Test the MAG custom job handlers in custom_behavior/mag.py.
 
 MAG L1C continues the previous day's L1C timeline across the day boundary
 (imap_processing#2925), so its job pulls the previous day's L1C - its own
@@ -12,8 +12,13 @@ should:
   - wait (report a pending dependency) while the previous day's L1C is in
     flight or expected, and stop waiting once it exists, provably has no
     data, or its job already finished
+
+MAG L1D rotates vectors across the 30-minute buffers on either side of the
+day (sds-data-manager issue 1112), so MagL1DJob should query SPICE for the
+day plus both buffers and receive kernels that only cover a buffer.
 """
 
+import datetime
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -31,14 +36,17 @@ from dagster._core.remote_origin import (
     RemoteRepositoryOrigin,
 )
 
+from sds_data_manager.orchestration import imap_job, spice
 from sds_data_manager.orchestration.custom_behavior.mag import (
     FINAL_RETRY_NUMBER,
     MagL1CJob,
+    MagL1DJob,
 )
 from sds_data_manager.orchestration.dagster_utilities import (
     parse_dates_from_partition_key,
 )
 from sds_data_manager.orchestration.imap_dagster import job_handlers
+from tests.orchestration.conftest import _insert_spice_file
 
 TARGET_DAY = 2
 TARGET_PARTITION = "daily_2026-01-02T00:00:00_to_2026-01-03T00:00:00"
@@ -445,3 +453,47 @@ def test_mag_l1c_still_waits_on_upstream_ancestors(ephemeral_instance):
     )
 
     assert job._check_for_running_dependencies(context) is True
+
+
+def test_mag_l1d_queries_spice_across_the_buffered_day():
+    """The registered L1D job widens the SPICE window by 30 minutes on each side."""
+    job = next(j for j in job_handlers if isinstance(j, MagL1DJob))
+    assert job.dagster_job_name == "mag_l1d_normsrf_processing_job"
+    target_start, target_end = parse_dates_from_partition_key(TARGET_PARTITION)
+
+    with patch.object(
+        spice, "get_upstream_dependency_inputs_spice", return_value=["kernel.bc"]
+    ) as query:
+        assert job.get_spice_file_inputs(None, target_start, target_end) == [
+            "kernel.bc"
+        ]
+
+    query.assert_called_once_with(
+        job.job_config.spice_types,
+        target_start - datetime.timedelta(minutes=30),
+        target_end + datetime.timedelta(minutes=30),
+    )
+
+
+def test_mag_l1d_receives_kernels_covering_only_the_buffers(mock_db_session):
+    """The real metakernel query delivers buffer-only kernels to L1D alone."""
+    job = next(j for j in job_handlers if isinstance(j, MagL1DJob))
+    target_start, target_end = parse_dates_from_partition_key(TARGET_PARTITION)
+    start_et, end_et = map(spice._seconds_since_j2000, (target_start, target_end))
+    before, day_of, after = (
+        "imap_dps_2026_001_2026_002_001.ah.bc",
+        "imap_dps_2026_002_2026_003_001.ah.bc",
+        "imap_dps_2026_003_2026_004_001.ah.bc",
+    )
+    _insert_spice_file(mock_db_session, before, [[start_et - 1800, start_et]])
+    _insert_spice_file(mock_db_session, day_of, [[start_et, end_et]])
+    _insert_spice_file(mock_db_session, after, [[end_et, end_et + 1800]])
+
+    with patch.object(job.job_config, "spice_types", ["pointing_attitude"]):
+        generic = imap_job.IMAPJobHandler.get_spice_file_inputs(
+            job, mock_db_session, target_start, target_end
+        )
+        buffered = job.get_spice_file_inputs(mock_db_session, target_start, target_end)
+
+    assert generic == [day_of]
+    assert set(buffered) == {before, day_of, after}

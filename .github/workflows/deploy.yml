@@ -1,4 +1,6 @@
 name: Deploy
+# Encode the target environment in the run name for readability in the Actions UI.
+run-name: "Deploy to ${{ github.event_name == 'push' && 'dev' || inputs.environment }}"
 
 on:
   push:
@@ -26,8 +28,7 @@ on:
 
 permissions:
   id-token: write
-  contents: write # needed for tagging and release creation
-  actions: read
+  contents: write # needed for tagging, release creation, and the deploy marker ref
 
 jobs:
   cdk-deploy:
@@ -71,6 +72,15 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.ref || github.ref }}
+
+      # actions/checkout resolves the "ref" input (branch, tag, or SHA) to a
+      # concrete commit. github.sha / the run's headSha do NOT reflect this -
+      # they're fixed to whatever triggered the run, so on a rollback deploy
+      # (custom ref input) they'd point at the wrong commit. Resolve the real
+      # checked-out SHA here so it can be persisted as the deploy baseline below.
+      - name: Resolve deployed commit
+        id: resolve_sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
         with:
@@ -136,6 +146,89 @@ jobs:
             echo "Forcing redeploy of $svc"
             aws ecs update-service --cluster "$CLUSTER" --service "$svc" --force-new-deployment --region us-west-2
           done
+
+          # update-service returns as soon as the redeploy is *requested* - the old
+          # tasks are still running and can pick up reprocessing requests below with
+          # the pre-deploy dependency config. Block here until the new tasks are
+          # actually up and healthy before submitting any reprocessing requests.
+          echo "Waiting for services to stabilize: $SERVICES"
+          aws ecs wait services-stable --cluster "$CLUSTER" --services $SERVICES --region us-west-2
+
+      # ----------------------------------------------------
+      # Check for dependency major_version bumps since last deploy
+      # ----------------------------------------------------
+      - name: Find last successfully deployed commit
+        id: last_deploy
+        run: |
+          # The deploy baseline is tracked in a dedicated ref per environment
+          # (refs/last-deploy/<account_name>), updated below only after a
+          # successful deploy. This reflects the commit actually checked out
+          # by this workflow (see "Resolve deployed commit"), not the run's
+          # headSha, which is wrong for rollback deploys using the "ref" input.
+          MARKER_REF="refs/last-deploy/${{ env.account_name }}"
+          LAST_SHA=$(git ls-remote origin "$MARKER_REF" | cut -f1)
+          echo "last_sha=$LAST_SHA" >> "$GITHUB_OUTPUT"
+          if [[ -z "$LAST_SHA" ]]; then
+            echo "No previous successful deploy found for ${{ env.account_name }}; skipping reprocess check."
+          else
+            echo "Last deployed commit: $LAST_SHA"
+          fi
+
+      - name: Check for dependency major_version bumps since last deploy
+        id: detect_jobs
+        if: steps.last_deploy.outputs.last_sha != ''
+        run: |
+          LAST_SHA="${{ steps.last_deploy.outputs.last_sha }}"
+          git fetch --depth=1 origin "$LAST_SHA"
+          git worktree add --detach /tmp/last-deploy "$LAST_SHA"
+          trap 'git worktree remove /tmp/last-deploy --force' EXIT
+          JOBS_LIST=$(poetry run python -m scripts.dependency.reprocess_jobs_for_major_version_bump \
+            /tmp/last-deploy/sds_data_manager/orchestration)
+          echo "jobs=$JOBS_LIST" >> "$GITHUB_OUTPUT"
+          git worktree remove /tmp/last-deploy --force
+          trap - EXIT
+
+      # Step 2: Retrieve Secrets using the official AWS action
+      - name: Get Secrets from Secrets Manager
+        id: get_secrets
+        if: steps.detect_jobs.outputs.jobs != '' && steps.detect_jobs.outputs.jobs != '[]'
+        uses: aws-actions/aws-secretsmanager-get-secrets@v3
+        with:
+          secret-ids: |
+            ,github_action_imap_api_key
+          parse-json-secrets: true # Automatically unpacks JSON key-values
+
+      - name: Reprocess jobs that got a major version bump since last deploy
+        if: steps.detect_jobs.outputs.jobs != '' && steps.detect_jobs.outputs.jobs != '[]'
+        env:
+          job_list: ${{ steps.detect_jobs.outputs.jobs }}
+          api_key: ${{ env.GITHUB_ACTION_IMAP_API_KEY }}
+        run: |
+          CURRENT_DATE=$(date +'%Y%m%d')
+          URL_ARGS=()
+          # If dev, we need to point to the dev API endpoint, otherwise it defaults to prod.
+          if [[ "$account_name" == "dev" ]]; then
+            URL_ARGS=(--url https://api.dev.imap-mission.com)
+          fi
+          while read -r row; do
+            instrument=$(echo "$row" | jq -r '.instrument')
+            data_level=$(echo "$row" | jq -r '.data_level')
+            descriptor=$(echo "$row" | jq -r '.descriptor')
+
+            echo "Kicking off full mission reprocessing for instrument: $instrument, data_level: $data_level, descriptor: $descriptor"
+            poetry run imap-data-access --api-key "$api_key" "${URL_ARGS[@]}" reprocess --instrument "$instrument" --data-level "$data_level" --descriptor "$descriptor" --start-date 20250924 --end-date "$CURRENT_DATE"
+          done < <(echo "$job_list" | jq -c '.[]')
+
+      # Only advance the baseline once every required reprocessing request has been
+      # accepted (this step won't run if bump detection, secret retrieval, or a
+      # reprocess call above failed). Placed after the reprocess step - rather than
+      # right after resolving the deployed commit - so a failure partway through
+      # leaves the marker pointing at the previous deploy, and a rerun still sees
+      # the outstanding bumps instead of comparing the deployed SHA to itself. Still
+      # runs on the no-bump path since detect_jobs/reprocess are skipped, not failed.
+      - name: Record deployed commit
+        run: |
+          git push origin "${{ steps.resolve_sha.outputs.sha }}:refs/last-deploy/${{ env.account_name }}" --force
 
       # ----------------------------------------------------
       # 🏷️ Tag Release (prod only)

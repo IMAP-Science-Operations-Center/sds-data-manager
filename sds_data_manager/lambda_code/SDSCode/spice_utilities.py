@@ -251,7 +251,9 @@ def furnish_best_spice_file(kernel_type: str):
 
     # Query for latest kernel
     metakernel = metakernel_builder(
-        0, MAXIMUM_MISSION_J2000_TIME, {kernel_type.upper()}
+        0,
+        MAXIMUM_MISSION_J2000_TIME,
+        file_types={kernel_type.upper()},
     )
     metakernel_files = metakernel.return_spice_files_in_order(detailed=False)
     if not metakernel_files:
@@ -277,13 +279,35 @@ def furnish_best_spice_file(kernel_type: str):
 
 
 def metakernel_builder(
-    start_time: float, end_time: float, file_types: Collection[str] | None = None
+    start_time: float | None,
+    end_time: float | None,
+    file_types: Collection[str] | None = None,
 ) -> MetaKernel:
-    """Create a MetaKernel class and inserts files into it."""
+    """Create a MetaKernel class and inserts files into it.
+
+    Parameters
+    ----------
+    start_time: float | None
+        Start time in seconds since J2000, used to filter the SPICE file database.
+        If None, no lower bound is used in the query.
+    end_time: float | None
+        End time in seconds since J2000, used to filter the SPICE file database.
+        If None, no upper bound is used in the query.
+    file_types: Collection[str] | None
+        Optional restriction on which SPICE file types to include.
+
+    Returns
+    -------
+    MetaKernel
+        Constructed MetaKernel containing all matching SPICE files.
+    """
+    # Establish start and end times for the metakernel
+    metakernel_start_time = 0 if start_time is None else start_time
+    metakernel_end_time = MAXIMUM_MISSION_J2000_TIME if end_time is None else end_time
     # Create the Metakernel class
     metakernel = MetaKernel(
-        start_time,
-        end_time,
+        metakernel_start_time,
+        metakernel_end_time,
         allowed_spice_types=KernelCollection().category_types,
     )
 
@@ -291,15 +315,19 @@ def metakernel_builder(
         for spice_subtype in spice_category:
             if file_types and spice_subtype.name not in file_types:
                 continue  # Skip over the file if not in requested list
+
+            query_string_parameters = {
+                "type": spice_subtype.name.lower(),
+                "latest": "True",
+            }
+            # Add query start and end times if provided, skip if not included
+            if start_time is not None:
+                query_string_parameters["start_time"] = start_time
+            if end_time is not None:
+                query_string_parameters["end_time"] = end_time
+
             spice_files = spice_query_api.lambda_handler(
-                {
-                    "queryStringParameters": {
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "type": spice_subtype.name.lower(),
-                        "latest": "True",
-                    }
-                },
+                {"queryStringParameters": query_string_parameters},
                 None,
             )
             metakernel.load_spice(

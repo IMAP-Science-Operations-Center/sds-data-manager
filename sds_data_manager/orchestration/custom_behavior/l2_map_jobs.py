@@ -1,21 +1,21 @@
 """Override behavior for l2 Map processing."""
 
 import datetime
-import json
 
 from dagster import (
     RunRequest,
     SensorEvaluationContext,
-    SkipReason,
     sensor,
 )
 
 from sds_data_manager.orchestration import (
     imap_job,
 )
-from sds_data_manager.orchestration.custom_partitions import CADENCE_PARTITION_DEFS
 from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
-from sds_data_manager.orchestration.maps_utils import _CADENCE_TYPES
+from sds_data_manager.orchestration.maps_utils import (
+    _CADENCE_TYPES,
+    get_map_partition_names,
+)
 
 CADENCE_PATTERN = rf"{'|'.join([desc for desc in _CADENCE_TYPES])}"
 
@@ -29,10 +29,12 @@ class L2MapJob(imap_job.IMAPJobHandler):
     def __init__(self, job):
         """Initialize the handler, then override the sensor run frequency."""
         super().__init__(job)
-        self.sensor_run_frequency = 43200  # Run the sensor every 12 hours
+        # Poll every 30 minutes so we reliably catch the Monday 6am UTC
+        # window (see build_sensor), without missing it due to daemon tick
+        # drift. The weekday/hour guard in build_sensor is what actually
+        # restricts kickoffs to once a week.
+        self.sensor_run_frequency = 1800
 
-    # Override the sensor to kickoff jobs not based on upstream files but whether there
-    # are new partitions registered by add_cadence_map_partitions sensor.
     def build_sensor(self):
         """Return a Dagster sensor monitoring for new cadence partitions.
 
@@ -40,55 +42,71 @@ class L2MapJob(imap_job.IMAPJobHandler):
         That job is part of the @asset's job.
         This job simply alerts the asset if there is the *potential* to start.
 
-        1) Check for any new partitions since last sensor tick.
-        2) Yield a RunRequest for each new partition key.
+        1) Only proceed if it's currently Monday 6am UTC. The sensor itself
+           polls more often than that (see sensor_run_frequency) purely so it
+           doesn't miss the window.
+        2) Check for any new partitions since last sensor tick.
+        3) Yield a RunRequest for each new partition key.
         """
         sensor_name = f"{self.job_config.to_dagster_name()}_kickoff_sensor"
 
         @sensor(
             name=sensor_name,
             job=self.dagster_job,
-            # TODO should we wait longer for maps?
             minimum_interval_seconds=self.sensor_run_frequency,
         )
         def _sensor(context: SensorEvaluationContext):
-            cadence_str = self.job_config.descriptor.split("-")[-1]
-            partition_def = CADENCE_PARTITION_DEFS[cadence_str]
-
-            # Get the existing partitions for this cadence.
-            existing_partitions = set(
-                context.instance.get_dynamic_partitions(partition_def.name)
-            )
-
-            # Get the partitions read at the last sensor tick.
-            seen_partitions = (
-                set(json.loads(context.cursor)) if context.cursor else set()
-            )
-            # Get the new partitions that have been added since the last sensor tick.
-            new_partitions = existing_partitions - seen_partitions
-            context.log.info(
-                "Cadence sensor state for %s: existing=%d, seen=%d, new=%d",
-                self.job_config.to_dagster_name(),
-                len(existing_partitions),
-                len(seen_partitions),
-                len(new_partitions),
-            )
-            if not new_partitions:
-                yield SkipReason("No new cadence partitions to process")
+            now = datetime.datetime.now(datetime.timezone.utc)
+            # Monday == weekday 0. Only kick off progressive maps once a
+            # week, on Monday at 6am UTC.
+            if now.weekday() != 0 or now.hour != 6:
+                context.log.info("Not the right day or time to kick off a new run.")
                 return
 
-            for partition_name in sorted(new_partitions):
-                # Create a unique suffix for this sensor trigger
-                job_suffix = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                run_key = "_".join(
-                    [
-                        self.job_config.to_dagster_name(),
-                        partition_name,
-                        job_suffix,
-                    ]
-                )
-                yield RunRequest(run_key=run_key, partition_key=partition_name)
+            cadence_str = self.job_config.partition
 
-            context.update_cursor(json.dumps(sorted(seen_partitions | new_partitions)))
+            # Find all map windows for this job's cadence.
+            # Partitions come back oldest-first, so the last one is the open window.
+            # This open window partition gets progressively re-processed every tick
+            # with new available science data.
+            partitions = get_map_partition_names(cadence_str, include_open=True)
+            if not partitions:
+                context.log.info(f"No active {cadence_str} map partition found.")
+                return
+
+            partition_name = partitions[-1]
+
+            # add_cadence_map_partitions registers new partitions once a day, so
+            # there can be a lag before Dagster knows about this window. Only
+            # trigger runs for partitions that have actually been registered.
+            existing_partitions = context.instance.get_dynamic_partitions(
+                self.partitions_def.name
+            )
+            if partition_name not in existing_partitions:
+                context.log.info(
+                    f"Partition {partition_name} not yet registered, skipping."
+                )
+                return
+
+            # Date-only (not time-of-day) suffix: if this sensor ticks more
+            # than once during the Monday 6am UTC hour, every tick produces
+            # the same run_key, so Dagster's run_key deduplication prevents
+            # duplicate runs for the same week.
+            job_suffix = now.strftime("%Y-%m-%d")
+            run_key = "_".join(
+                [
+                    self.job_config.to_dagster_name(),
+                    partition_name,
+                    job_suffix,
+                ]
+            )
+            context.log.info(
+                f"Yielding a run request with ID: {run_key} "
+                f"on partition {partition_name}."
+            )
+            # Kicks off the job by requesting a run in Dagster
+            yield RunRequest(run_key=run_key, partition_key=partition_name)
+
+            context.update_cursor(partition_name)
 
         return _sensor

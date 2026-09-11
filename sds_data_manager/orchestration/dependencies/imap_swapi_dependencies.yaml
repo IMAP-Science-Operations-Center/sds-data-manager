@@ -128,10 +128,6 @@ l3a_spice_common: &l3a_spice_common
     - source: swapi
       data_type: l2
       descriptor: sci
-      trigger_job: false
-    - source: swapi
-      data_type: l3a
-      descriptor: proton-sw
     - source: mag
       data_type: l1d
       descriptor: norm-rtn
@@ -206,10 +202,6 @@ l3a_spice_common: &l3a_spice_common
     - source: swapi
       data_type: l2
       descriptor: sci
-      trigger_job: false
-    - source: swapi
-      data_type: l3a
-      descriptor: proton-sw
     - source: swapi
       data_type: ancillary
       descriptor: energy-gf-pui-lut
