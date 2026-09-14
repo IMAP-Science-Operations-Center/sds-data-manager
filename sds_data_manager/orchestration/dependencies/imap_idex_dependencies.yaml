@@ -40,7 +40,7 @@ spice_basics: &spice_basics
     - source: idex
       data_type: l1a
       descriptor: msg-10days
-      major_version: 1
+      major_version: 2
 
 (l1b, msg-10days):
   partition: 10d
