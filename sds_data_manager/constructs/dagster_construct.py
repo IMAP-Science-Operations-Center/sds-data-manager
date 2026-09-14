@@ -281,8 +281,8 @@ class DagsterEcsConstruct(Construct):
         run_task_def = ecs.FargateTaskDefinition(
             self,
             "DagsterRunBaseTaskDef",
-            cpu=1024,
-            memory_limit_mib=2048,
+            cpu=4096,
+            memory_limit_mib=8192,
             execution_role=execution_role,
             task_role=task_role,
         )
