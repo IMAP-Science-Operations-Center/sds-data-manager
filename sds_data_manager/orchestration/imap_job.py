@@ -1070,8 +1070,8 @@ class IMAPJobHandler:
             and max_minor_version_job.status == models.Status.INPROGRESS
         ):
             logger.info(
-                f"Job with id: {max_minor_version_job.id} is in progress, but "
-                f"the dependencies have changed. Bumping version number."
+                f"Job with id: {max_minor_version_job.id} is in progress. "
+                f"Bumping minor version number."
             )
 
         # Bump the minor version by one (starting at 1 if no prior version
@@ -1082,6 +1082,12 @@ class IMAPJobHandler:
             if max_minor_version_job is not None
             else 1
         )
+        # output.descriptor is not necessarily unique across outputs (e.g. a job
+        # can produce the same descriptor at two data levels).
+        # validate_dependency_yaml_versions (enforced in a github action)
+        # guarantees that any outputs sharing a descriptor also share the
+        # same major_version, and minor_version is the same for every output
+        # here, so it's safe to key this dict by descriptor alone.
         return {
             output.descriptor: {
                 "minor_version": minor_version,
