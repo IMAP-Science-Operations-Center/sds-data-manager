@@ -319,6 +319,12 @@ lo_l3a_dist_common: &lo_l3a_dist_common
     - source: codice
       data_type: l2
       descriptor: hi-direct-events
+    - source: codice
+      data_type: l1a
+      descriptor: hi-direct-events
+    - source: codice
+      data_type: ancillary
+      descriptor: l3-hi-mass-correction-lut
   outputs:
     - source: codice
       data_type: l3a

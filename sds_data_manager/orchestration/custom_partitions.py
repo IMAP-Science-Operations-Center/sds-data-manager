@@ -21,9 +21,6 @@ from sds_data_manager.orchestration.maps_utils import (
 IDEX_10_DAY_RANGES_PATH = (
     "sds_data_manager/lambda_code/SDSCode/utils/idex_10_day_CDF_names.csv"
 )
-IDEX_30_DAY_RANGES_PATH = (
-    "sds_data_manager/lambda_code/SDSCode/utils/idex_30_day_CDF_names.csv"
-)
 
 cadence_3mo_partitions = DynamicPartitionsDefinition(name="cadence_3mo_partitions")
 cadence_6mo_partitions = DynamicPartitionsDefinition(name="cadence_6mo_partitions")
@@ -191,70 +188,6 @@ def add_idex_10_day_partitions(context: SensorEvaluationContext):
     return SensorResult(dynamic_partitions_requests=partition_requests)
 
 
-##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY 30-day
-idex30_partitions = DynamicPartitionsDefinition(name="idex_30_day_partitions")
-
-
-@sensor(minimum_interval_seconds=86400)
-def add_idex_30_day_partitions(context: SensorEvaluationContext):
-    """Alert Dagster when new IDEX 30-day partitions should be made."""
-    # These partitions come from a static cadence CSV, so we always evaluate from
-    # mission start to avoid cursor drift shrinking the effective window.
-    start_dt = datetime.datetime.fromisoformat(config.MISSION_START_TIME).replace(
-        tzinfo=datetime.timezone.utc
-    )
-    end_dt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
-        days=40
-    )  # We'll make sure we're grabbing the next couple of 30-day periods
-
-    idex_30_day_ranges = pd.read_csv(
-        IDEX_30_DAY_RANGES_PATH,
-        usecols=["start_date", "end_date"],
-        converters={
-            "start_date": lambda s: pd.to_datetime(s, format="%Y%m%d", utc=True),
-            "end_date": lambda s: pd.to_datetime(s, format="%Y%m%d", utc=True),
-        },
-    )
-
-    if idex_30_day_ranges["start_date"].duplicated().any():
-        raise ValueError("Duplicate IDEX 30-day start_date values were found")
-
-    # Convert inputs to pandas datetime objects for safe comparison
-    start_bound = pd.to_datetime(start_dt)
-    end_bound = pd.to_datetime(end_dt)
-
-    # Create a mask to filter rows where start_date falls within the bounds
-    mask = (idex_30_day_ranges["start_date"] >= start_bound) & (
-        idex_30_day_ranges["start_date"] <= end_bound
-    )
-
-    # Apply the mask, sort, and extract the formatted strings
-    filtered_df = (
-        idex_30_day_ranges[mask].sort_values("start_date").reset_index(drop=True)
-    )
-    thirty_day_keys = (
-        filtered_df["start_date"].dt.strftime("%Y-%m-%dT%H:%M:%S").tolist()
-    )
-
-    existing_partitions = context.instance.get_dynamic_partitions(
-        "idex_30_day_partitions"
-    )
-    partition_names = []
-    for i in range(0, len(thirty_day_keys) - 1):
-        partition_name = (
-            "idex30_" + thirty_day_keys[i] + "_to_" + thirty_day_keys[i + 1]
-        )
-        if partition_name in existing_partitions:
-            continue
-        partition_names.append(partition_name)
-    partition_requests = []
-    if partition_names:
-        partition_requests.append(idex30_partitions.build_add_request(partition_names))
-        context.log.info(f"Registered new dynamic partitions: {partition_names}")
-
-    return SensorResult(dynamic_partitions_requests=partition_requests)
-
-
 # Run daily (24 hours = 86400 seconds)
 @sensor(minimum_interval_seconds=86400)
 def add_cadence_map_partitions(context: SensorEvaluationContext):
@@ -306,6 +239,5 @@ sensors = [
     add_repoint_partitions,
     add_daily_partitions,
     add_idex_10_day_partitions,
-    add_idex_30_day_partitions,
     add_cadence_map_partitions,
 ]
