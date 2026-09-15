@@ -355,43 +355,43 @@ lo_l3a_dist_common: &lo_l3a_dist_common
       descriptor: lo-direct-events
       major_version: 1
 
-(l3a, lo-heplus-3d-distribution):
+(l3b, lo-heplus-3d-distribution):
   partition: daily
   inputs:
     - *lo_l3a_dist_common
   outputs:
     - source: codice
-      data_type: l3a
+      data_type: l3b
       descriptor: lo-heplus-3d-distribution
       major_version: 1
 
-(l3a, lo-heplusplus-3d-distribution):
+(l3b, lo-heplusplus-3d-distribution):
   partition: daily
   inputs:
     - *lo_l3a_dist_common
   outputs:
     - source: codice
-      data_type: l3a
+      data_type: l3b
       descriptor: lo-heplusplus-3d-distribution
       major_version: 1
 
-(l3a, lo-hplus-3d-distribution):
+(l3b, lo-hplus-3d-distribution):
   partition: daily
   inputs:
     - *lo_l3a_dist_common
   outputs:
     - source: codice
-      data_type: l3a
+      data_type: l3b
       descriptor: lo-hplus-3d-distribution
       major_version: 1
 
-(l3a, lo-oplus6-3d-distribution):
+(l3b, lo-oplus6-3d-distribution):
   partition: daily
   inputs:
     - *lo_l3a_dist_common
   outputs:
     - source: codice
-      data_type: l3a
+      data_type: l3b
       descriptor: lo-oplus6-3d-distribution
       major_version: 1
 
