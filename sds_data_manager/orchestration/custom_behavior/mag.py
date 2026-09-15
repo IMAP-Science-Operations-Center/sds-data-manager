@@ -19,6 +19,19 @@ from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegist
 FINAL_RETRY_NUMBER = 10
 
 
+@JobBuilderRegistry.register("mag", "l1d", "norm-srf")
+class MagL1DJob(imap_job.IMAPJobHandler):
+    """Query SPICE for the padded MAG L1D processing window."""
+
+    def get_spice_file_inputs(self, session, target_start, target_end):
+        """Include the 30-minute buffer on either side of the science day."""
+        return super().get_spice_file_inputs(
+            session,
+            target_start - datetime.timedelta(minutes=30),
+            target_end + datetime.timedelta(minutes=30),
+        )
+
+
 @JobBuilderRegistry.register("mag", "l1c", "norm-mago")
 @JobBuilderRegistry.register("mag", "l1c", "norm-magi")
 class MagL1CJob(imap_job.IMAPJobHandler):

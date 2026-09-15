@@ -3,14 +3,19 @@
 import json
 import os
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import imap_data_access
 import pytest
 
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
+    spice_metakernel_api,
+    spice_query_api,
+)
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.spice_utilities import (
     MAXIMUM_MISSION_J2000_TIME,
+    metakernel_builder,
 )
 
 
@@ -436,3 +441,134 @@ def test_metakernel_with_fractional_second_string_times(session):
 
     assert result["statusCode"] == 200
     assert len(json.loads(result["body"])) == 4
+
+
+def test_metakernel_no_query_string_parameters(session):
+    """QueryStringParameters being None must not crash, and should include all data."""
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[1, MAXIMUM_MISSION_J2000_TIME]],
+    )
+
+    result = spice_metakernel_api.lambda_handler(
+        {"queryStringParameters": None},
+        None,
+    )
+
+    assert result["statusCode"] == 200
+    assert "KERNELS_TO_LOAD" in result["body"]
+    assert "imap_1000_001_1000_100_002.ah.bc" in result["body"]
+
+
+def test_metakernel_missing_start_and_end_time(session):
+    """start_time/end_time omitted (other params present) must not crash."""
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[1, MAXIMUM_MISSION_J2000_TIME]],
+    )
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "spice_path": "",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"]) == ["imap_1000_001_1000_100_002.ah.bc"]
+
+
+def test_metakernel_only_start_time_provided(session):
+    """When end_time is omitted, files should not be filtered by an upper bound."""
+    # This file's coverage starts well after start_time and extends to the
+    # end of the mission - it should still be included since no end_time
+    # filter is applied.
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[500000, MAXIMUM_MISSION_J2000_TIME]],
+    )
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 1,
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"]) == ["imap_1000_001_1000_100_002.ah.bc"]
+
+
+def test_metakernel_only_end_time_provided(session):
+    """When start_time is omitted, files should not be filtered by a lower bound."""
+    # This file's coverage is entirely near the very start of the mission -
+    # it should still be included since no start_time filter is applied.
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[1, 50]],
+    )
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "end_time": MAXIMUM_MISSION_J2000_TIME,
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"]) == ["imap_1000_001_1000_100_002.ah.bc"]
+
+
+def test_metakernel_start_time_omitted_not_forwarded(session):
+    """Omitted start_time must not appear as a key in the downstream query."""
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[500000, MAXIMUM_MISSION_J2000_TIME]],
+    )
+
+    with patch(
+        "sds_data_manager.lambda_code.SDSCode.spice_utilities.spice_query_api.lambda_handler",
+        wraps=spice_query_api.lambda_handler,
+    ) as spy:
+        metakernel_builder(start_time=None, end_time=100)
+
+    assert spy.call_count > 0
+    for call in spy.call_args_list:
+        query_string_parameters = call.args[0]["queryStringParameters"]
+        assert "start_time" not in query_string_parameters
+        assert query_string_parameters["end_time"] == 100
+
+
+def test_metakernel_end_time_omitted_not_forwarded(session):
+    """Omitted end_time must not appear as a key in the downstream query."""
+    _insert_test_file(
+        session,
+        "imap_1000_001_1000_100_002.ah.bc",
+        [[1, 50]],
+    )
+
+    with patch(
+        "sds_data_manager.lambda_code.SDSCode.spice_utilities.spice_query_api.lambda_handler",
+        wraps=spice_query_api.lambda_handler,
+    ) as spy:
+        metakernel_builder(start_time=1, end_time=None)
+
+    assert spy.call_count > 0
+    for call in spy.call_args_list:
+        query_string_parameters = call.args[0]["queryStringParameters"]
+        assert "end_time" not in query_string_parameters
+        assert query_string_parameters["start_time"] == 1
