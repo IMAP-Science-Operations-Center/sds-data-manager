@@ -69,12 +69,27 @@ class SdpDatabase(Construct):
         self.rds_security_group = ec2.SecurityGroup(
             scope, "RdsSecurityGroup", vpc=vpc, allow_all_outbound=True
         )
-        # Allow ingress to LASP IP address range and specific port
-        self.rds_security_group.add_ingress_rule(
-            peer=ec2.Peer.ipv4("128.138.131.0/24"),
-            connection=ec2.Port.tcp(5432),
-            description="Ingress RDS",
-        )
+
+        # Allow ingress to LASP/Princeton IP addresses and specific port
+        allowed_port = 5432
+        allowed_cidrs = [
+            "128.138.131.0/24",  # LASP
+            "128.112.0.0/16",  # Princeton
+            "140.180.0.0/16",  # Princeton
+            "204.153.48.0/22",  # Princeton
+            "12.161.8.0/24",  # Princeton
+            "12.161.10.0/24",  # Princeton
+            "12.161.14.0/24",  # Princeton
+            "66.180.176.0/24",  # Princeton
+            "66.180.177.0/24",  # Princeton
+            "66.180.184.0/22",  # Princeton
+        ]
+        for cidr in allowed_cidrs:
+            self.rds_security_group.add_ingress_rule(
+                peer=ec2.Peer.ipv4(cidr),
+                connection=ec2.Port.tcp(allowed_port),
+                description="Ingress RDS",
+            )
 
         # Lambda was put into the same security group as the RDS, but we still need this
         # TODO: Is this still needed? We get a warning in the CDK logs with it
