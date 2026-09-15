@@ -72,16 +72,14 @@ class SdpDatabase(Construct):
             scope, "RdsSecurityGroup", vpc=vpc, allow_all_outbound=True
         )
 
-        # Allow ingress to LASP/Princeton/UNH IP addresses and specific port
-        database_institutions = ["lasp", "princeton", "unh"]
+        # Allow ingress to all allowed cidrs at specific port
         database_port = 5432
-        for institution in database_institutions:
-            for cidr in ALLOWED_CIDRS[institution]:
-                self.rds_security_group.add_ingress_rule(
-                    peer=ec2.Peer.ipv4(cidr),
-                    connection=ec2.Port.tcp(database_port),
-                    description="Ingress RDS",
-                )
+        for cidr in ALLOWED_CIDRS:
+            self.rds_security_group.add_ingress_rule(
+                peer=ec2.Peer.ipv4(cidr),
+                connection=ec2.Port.tcp(database_port),
+                description="Ingress RDS",
+            )
 
         # Lambda was put into the same security group as the RDS, but we still need this
         # TODO: Is this still needed? We get a warning in the CDK logs with it

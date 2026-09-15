@@ -358,17 +358,15 @@ class DagsterEcsConstruct(Construct):
             sg, ec2.Port.tcp(5432), "Allow Dagster Webserver to access RDS"
         )
 
-        dagster_institutions = ["lasp", "princeton", "unh"]
-        for institution in dagster_institutions:
-            for cidr in ALLOWED_CIDRS[institution]:
-                webserver_service.load_balancer.connections.allow_from(
-                    ec2.Peer.ipv4(cidr),
-                    ec2.Port.tcp(80),
-                )
-                webserver_service.load_balancer.connections.allow_from(
-                    ec2.Peer.ipv4(cidr),
-                    ec2.Port.tcp(443),
-                )
+        for cidr in ALLOWED_CIDRS:
+            webserver_service.load_balancer.connections.allow_from(
+                ec2.Peer.ipv4(cidr),
+                ec2.Port.tcp(80),
+            )
+            webserver_service.load_balancer.connections.allow_from(
+                ec2.Peer.ipv4(cidr),
+                ec2.Port.tcp(443),
+            )
 
         # Reduce the frequency of health checks
         webserver_service.target_group.configure_health_check(
