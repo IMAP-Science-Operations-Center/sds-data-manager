@@ -10,6 +10,8 @@ from aws_cdk import aws_secretsmanager as secrets
 from aws_cdk import custom_resources as cr
 from constructs import Construct
 
+from sds_data_manager.utils.allowed_cidrs import ALLOWED_CIDRS
+
 
 class SdpDatabase(Construct):
     """Construct for creating database."""
@@ -70,26 +72,16 @@ class SdpDatabase(Construct):
             scope, "RdsSecurityGroup", vpc=vpc, allow_all_outbound=True
         )
 
-        # Allow ingress to LASP/Princeton IP addresses and specific port
-        allowed_port = 5432
-        allowed_cidrs = [
-            "128.138.131.0/24",  # LASP
-            "128.112.0.0/16",  # Princeton
-            "140.180.0.0/16",  # Princeton
-            "204.153.48.0/22",  # Princeton
-            "12.161.8.0/24",  # Princeton
-            "12.161.10.0/24",  # Princeton
-            "12.161.14.0/24",  # Princeton
-            "66.180.176.0/24",  # Princeton
-            "66.180.177.0/24",  # Princeton
-            "66.180.184.0/22",  # Princeton
-        ]
-        for cidr in allowed_cidrs:
-            self.rds_security_group.add_ingress_rule(
-                peer=ec2.Peer.ipv4(cidr),
-                connection=ec2.Port.tcp(allowed_port),
-                description="Ingress RDS",
-            )
+        # Allow ingress to LASP/Princeton/UNH IP addresses and specific port
+        database_institutions = ["lasp", "princeton", "unh"]
+        database_port = 5432
+        for institution in database_institutions:
+            for cidr in ALLOWED_CIDRS[institution]:
+                self.rds_security_group.add_ingress_rule(
+                    peer=ec2.Peer.ipv4(cidr),
+                    connection=ec2.Port.tcp(database_port),
+                    description="Ingress RDS",
+                )
 
         # Lambda was put into the same security group as the RDS, but we still need this
         # TODO: Is this still needed? We get a warning in the CDK logs with it
