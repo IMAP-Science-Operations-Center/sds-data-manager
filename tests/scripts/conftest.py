@@ -25,6 +25,18 @@ IDEX_VALID_YAML = """
       data_type: l1a
       descriptor: sci-10days
       major_version: 1
+    - source: idex
+      data_type: l1a
+      descriptor: catlst-10days
+      major_version: 1
+    - source: idex
+      data_type: l1b
+      descriptor: catlst-10days
+      major_version: 1
+    - source: idex
+      data_type: l1a
+      descriptor: msg-10days
+      major_version: 1
 
 (l1b, sci-10days):
   inputs:
@@ -50,6 +62,12 @@ IDEX_INVALID_YAML = IDEX_VALID_YAML.replace(
     "data_type: l1b\n      descriptor: sci-10days\n      major_version: 0",
 )
 
+# Idex l1a catlst-10days now has a greater major version than idex l1b catlst. Since
+# they have the same descriptor, the major_versions are required to match
+IDEX_INVALID_CATLST_YAML = IDEX_VALID_YAML.replace(
+    "data_type: l1b\n      descriptor: catlst-10days\n      major_version: 1",
+    "data_type: l1b\n      descriptor: catlst-10days\n      major_version: 2",
+)
 # A minimal mag chain (l1a -> l2), starting at major_version 1. The
 # cross-instrument dependent lives in SWAPI_VALID_YAML below - a job's source
 # always comes from the file it's defined in (see
@@ -91,6 +109,7 @@ MAG_VALID_YAML_L2_BUMP = _MAG_VALID_YAML.replace(
 # swapi l3a alpha-sw depends on mag l2 norm-rtn - a real cross-instrument
 # dependency (see imap_swapi_dependencies.yaml).
 SWAPI_VALID_YAML = """
+
 (l3a, alpha-sw):
   inputs:
     - source: mag
@@ -103,7 +122,12 @@ SWAPI_VALID_YAML = """
       major_version: 1
 
 """
-
+# This YMAL is now invalid because the job node data_level is l3a and the output is l3b.
+# It is required that at least one output product shares a data_level with the job node.
+SWAPI_INVALID_YAML = SWAPI_VALID_YAML.replace(
+    "data_type: l3a\n      descriptor: alpha-sw",
+    "data_type: l3b\n      descriptor: alpha-sw",
+)
 # A minimal, static swe chain (l1a -> l1b -> l2 -> l3), all starting at
 # major_version 1.
 _SWE_VALID_YAML = """

@@ -1,5 +1,7 @@
 """Validate the dependency YAML file."""
 
+import numpy as np
+
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
     get_kickoff_jobs,
@@ -8,7 +10,7 @@ from sds_data_manager.orchestration.types import ProcessingJobNode
 
 
 def validate_dependency_yaml_versions(
-    reader, major_version, node: ProcessingJobNode | None
+    reader, node: ProcessingJobNode | None, major_version: int | None = None
 ):
     """Validate the dependency YAML file.
 
@@ -20,13 +22,49 @@ def validate_dependency_yaml_versions(
 
     reader : DependencyConfigReader
         An instance of DependencyConfigReader.
-    major_version : int
-        The major version of the previous node.
     node : ProcessingJobNode | None
         The node to validate.
+    major_version : int or None
+        The major version of the previous node. If None, we assume there is no
+        previous node and the node supplied is the root node.
     """
     if node is None:
         return
+
+    # If major_version is none, this means that we are at the root node.
+    # Any major_version greater than zero is valid for the root node so
+    # set the major_version to zero to simulate the previous node's
+    # major_version
+    if major_version is None:
+        major_version = 0
+
+    # First find any outputs that have identical descriptors. These products
+    # must all have the same major_version.
+    for descriptor, count in zip(
+        *np.unique([out.descriptor for out in node.outputs], return_counts=True),
+        strict=True,
+    ):
+        if count > 1:  # check if there are multiple outputs with the same descriptor
+            matching_desc_versions = [
+                out.major_version
+                for out in node.outputs
+                if out.descriptor == descriptor
+            ]
+            if (
+                len(set(matching_desc_versions)) > 1
+            ):  # check if all major versions are the same
+                raise ValueError(
+                    f"Invalid major version for job node outputs: {node.outputs}. All "
+                    f"outputs with identical descriptors should have the same major "
+                    f"versions. Found versions {matching_desc_versions}"
+                )
+
+    if not any([out.data_type == node.data_type for out in node.outputs]):
+        raise ValueError(
+            f"At least one output must have the same data level as the job node "
+            f"itself. Job node level: {node.data_type}, output levels :"
+            f" {[out.data_type for out in node.outputs]}"
+        )
     # loop through each output of the node and check if the major version is valid
     for output in node.outputs:
         if output.major_version < major_version:
@@ -43,7 +81,7 @@ def validate_dependency_yaml_versions(
                 # If the sources are different we should skip this check.
                 continue
             validate_dependency_yaml_versions(
-                reader, output.major_version, processing_node
+                reader, processing_node, output.major_version
             )
 
 
@@ -54,7 +92,7 @@ if __name__ == "__main__":
     kickoff_processing_jobs = get_kickoff_jobs()
     for job in kickoff_processing_jobs:
         try:
-            validate_dependency_yaml_versions(reader, 0, job)
+            validate_dependency_yaml_versions(reader, job)
             print(f"Validated the {job.source} dependency YAML file")
         except ValueError as e:
             print(f"Invalid dependency file for {job.source}.")
