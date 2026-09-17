@@ -5,7 +5,7 @@
 # and how to properly configure them for your pipeline lambdas.
 
 # ====== Common Data Dependencies ======
-lo_l3a_dist_common: &lo_l3a_dist_common
+lo_l3b_dist_common: &lo_l3b_dist_common
   - source: codice
     data_type: l3a
     descriptor: lo-direct-events
@@ -358,7 +358,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
 (l3b, lo-heplus-3d-distribution):
   partition: daily
   inputs:
-    - *lo_l3a_dist_common
+    - *lo_l3b_dist_common
   outputs:
     - source: codice
       data_type: l3b
@@ -368,7 +368,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
 (l3b, lo-heplusplus-3d-distribution):
   partition: daily
   inputs:
-    - *lo_l3a_dist_common
+    - *lo_l3b_dist_common
   outputs:
     - source: codice
       data_type: l3b
@@ -378,7 +378,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
 (l3b, lo-hplus-3d-distribution):
   partition: daily
   inputs:
-    - *lo_l3a_dist_common
+    - *lo_l3b_dist_common
   outputs:
     - source: codice
       data_type: l3b
@@ -388,7 +388,7 @@ lo_l3a_dist_common: &lo_l3a_dist_common
 (l3b, lo-oplus6-3d-distribution):
   partition: daily
   inputs:
-    - *lo_l3a_dist_common
+    - *lo_l3b_dist_common
   outputs:
     - source: codice
       data_type: l3b
