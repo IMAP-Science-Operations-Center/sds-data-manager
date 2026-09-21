@@ -1017,8 +1017,10 @@ class IMAPJobHandler:
 
         The major version for each output comes directly from the dependency
         config and is not bumped here. The minor version is shared across all
-        outputs of a job: it is the maximum minor version already seen in the
-        processing jobs table for this job, increased by one.
+        outputs of a job: it is the maximum of (a) the minor version already
+        seen in the processing jobs table for this job, and (b) the largest
+        minor version already seen in the science files table across all of
+        this job's outputs, increased by one.
 
         Parameters
         ----------
@@ -1036,6 +1038,24 @@ class IMAPJobHandler:
             Dictionary keyed by output descriptor, where each value is a dict
             with "major_version" and "minor_version" keys.
         """
+
+        def filter_conditions(table, node):
+            # Filter conditions for the query
+            conditions = [
+                table.instrument == node.source,
+                table.data_level == node.data_type,
+                table.descriptor == node.descriptor,
+                table.start_date == start_date.date(),
+                table.repointing == repointing,
+            ]
+            if table == models.ProcessingJob:
+                conditions.append(
+                    table.status.in_(
+                        [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
+                    )
+                )
+            return conditions
+
         # Get the output nodes for the job
         job_node = (
             self.job_config.source,
@@ -1044,28 +1064,24 @@ class IMAPJobHandler:
         )
         outputs = self.dependency_config_reader.config[job_node].outputs
 
-        # Query the processing jobs table for the most recent minor version for
-        # this instrument/data_level/descriptor/start_date/repointing. This one
-        # minor version is shared by every output of the job below.
+        # Step 1: Query the processing jobs table for the most recent minor
+        # version for this instrument/data_level/descriptor/start_date/repointing.
         max_minor_version_job = (
             session.query(models.ProcessingJob)
-            .filter(
-                models.ProcessingJob.instrument == self.job_config.source,
-                models.ProcessingJob.data_level == self.job_config.data_type,
-                models.ProcessingJob.descriptor == self.job_config.descriptor,
-                models.ProcessingJob.start_date == start_date.date(),
-                models.ProcessingJob.repointing == repointing,
-                models.ProcessingJob.status.in_(
-                    [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
-                ),
-            )
+            .filter(*filter_conditions(models.ProcessingJob, self.job_config))
             .order_by(models.ProcessingJob.minor_version.desc())
             .first()
         )
-        # If a job for this exact key is already in progress, log it. The minor
-        # version itself is still bumped by the "+ 1" logic below;
-        # try_to_submit_job() is what actually prevents duplicate jobs from
-        # running.
+        max_minor_version_processing_job = (
+            max_minor_version_job.minor_version
+            if max_minor_version_job is not None
+            else None
+        )
+
+        # Step 2: If a job for this exact key is already in progress, log it.
+        # The minor version itself is still bumped by the shared "+ 1" logic in
+        # Step 4; try_to_submit_job() is what actually prevents duplicate jobs
+        # from running.
         if (
             max_minor_version_job is not None
             and max_minor_version_job.status == models.Status.INPROGRESS
@@ -1075,14 +1091,38 @@ class IMAPJobHandler:
                 f"Bumping minor version number."
             )
 
-        # Bump the minor version by one (starting at 1 if no prior version
-        # exists). Each output's major version comes directly from the
-        # dependency config and is not bumped.
+        # Step 3: Get the max minor version already seen in the science files
+        # table for each output, and keep the largest across all outputs of
+        # the job.
+        max_minor_version_science_files = None
+        for output in outputs:
+            current_minor_version = (
+                session.query(func.max(models.ScienceFiles.minor_version))
+                .filter(*filter_conditions(models.ScienceFiles, output))
+                .scalar()
+            )
+            if current_minor_version is not None and (
+                max_minor_version_science_files is None
+                or current_minor_version > max_minor_version_science_files
+            ):
+                max_minor_version_science_files = current_minor_version
+
+        # Step 4: The minor version to use is the max of the processing jobs
+        # table's minor version (Step 1) and the science files table's minor
+        # version across all outputs (Step 3), bumped by one. Start at 1 if
+        # neither has been created before.
+        minor_version_candidates = [
+            version
+            for version in (
+                max_minor_version_processing_job,
+                max_minor_version_science_files,
+            )
+            if version is not None
+        ]
         minor_version = (
-            max_minor_version_job.minor_version + 1
-            if max_minor_version_job is not None
-            else 1
+            max(minor_version_candidates) + 1 if minor_version_candidates else 1
         )
+
         # output.descriptor is not necessarily unique across outputs (e.g. a job
         # can produce the same descriptor at two data levels).
         # validate_dependency_yaml_versions (enforced in a github action)
