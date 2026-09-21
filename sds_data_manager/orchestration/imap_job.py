@@ -246,6 +246,7 @@ class IMAPJobHandler:
                 session=session,
                 start_date=target_start,
                 repointing=target_pointing_number,
+                dependency_inputs=dependency_inputs,
             )
             context.log.info(f"Job Versions to Use: {output_versions}")
 
@@ -1115,6 +1116,7 @@ class IMAPJobHandler:
         session: db.Session,
         start_date: datetime,
         repointing: int | None = None,
+        dependency_inputs: processing_input.ProcessingInputCollection | None = None,
     ) -> dict[str, dict[str, int]]:
         """Determine the major and minor version to use for each output product.
 
@@ -1134,6 +1136,13 @@ class IMAPJobHandler:
         repointing : int, optional
             Repointing number. Versions are tracked independently per repointing so
             that multiple repoints on the same day each start at minor version 1.
+        dependency_inputs : ProcessingInputCollection, optional
+            This run's already-resolved dependencies, as computed by
+            get_dependencies(). Unused by the base implementation; available so
+            a subclass can version its output off the actual resolved
+            dependency files (e.g. a specific SPICE kernel) rather than a
+            separately-derived value that could disagree with what's really in
+            the dependency JSON.
 
         Returns
         -------
