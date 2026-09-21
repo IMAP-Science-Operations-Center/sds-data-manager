@@ -322,6 +322,7 @@ def ephemeral_instance(pointing_table_entries, mock_db_session):
             file_path="imap/spice/imap_2026_001_2026_011_001.ah.bc",
             file_name="imap_2026_001_2026_011_001.ah.bc",
             kernel_type="attitude_history",
+            version=1,
             min_date_datetime=datetime.datetime(
                 2026, 1, 1, tzinfo=datetime.timezone.utc
             ),
