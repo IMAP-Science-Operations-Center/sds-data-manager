@@ -1,4 +1,7 @@
 name: Promote Container Images from Dev to Prod
+
+run-name: "Promote ${{ inputs.instruments }} ${{ inputs.l3_data && 'L3' || 'L0-L2' }} Containers from Dev to Prod"
+
 on:
   workflow_dispatch:
     inputs:

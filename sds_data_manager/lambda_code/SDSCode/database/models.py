@@ -250,6 +250,7 @@ class AncillaryFileBase:
     descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
+    repointing = Column(Integer, nullable=True)
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(String, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))

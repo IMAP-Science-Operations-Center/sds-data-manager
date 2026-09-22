@@ -38,6 +38,8 @@ from aws_cdk.aws_ecr_assets import DockerImageAsset, Platform
 from cdk_ecr_deployment import DockerImageName, ECRDeployment
 from constructs import Construct
 
+from sds_data_manager.utils.allowed_cidrs import ALLOWED_CIDRS
+
 
 class EcrConstruct(Construct):
     """Construct the ECR Resources."""
@@ -356,21 +358,7 @@ class DagsterEcsConstruct(Construct):
             sg, ec2.Port.tcp(5432), "Allow Dagster Webserver to access RDS"
         )
 
-        allowed_cidrs = [
-            "128.138.131.0/24",  # LASP
-            "128.112.0.0/16",  # Princeton
-            "140.180.0.0/16",  # Princeton
-            "204.153.48.0/22",  # Princeton
-            "12.161.8.0/24",  # Princeton
-            "12.161.10.0/24",  # Princeton
-            "12.161.14.0/24",  # Princeton
-            "66.180.176.0/24",  # Princeton
-            "66.180.177.0/24",  # Princeton
-            "66.180.184.0/22",  # Princeton
-            "132.177.251.17/32",  # UNH
-        ]
-
-        for cidr in allowed_cidrs:
+        for cidr in ALLOWED_CIDRS:
             webserver_service.load_balancer.connections.allow_from(
                 ec2.Peer.ipv4(cidr),
                 ec2.Port.tcp(80),
