@@ -1,7 +1,9 @@
 """Helpers for building I-ALiRT's NOAA Site-to-Site VPN path."""
 
-from aws_cdk import Stack
+from aws_cdk import RemovalPolicy, Stack
+from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_logs as logs
 from aws_cdk import aws_secretsmanager as secretsmanager
 from aws_cdk import aws_ssm as ssm
 from aws_cdk import custom_resources as cr
@@ -82,6 +84,29 @@ def build_noaa_vpn_tgw(
         subnet_ids=[subnet.subnet_id for subnet in networking.vpc.private_subnets],
     )
 
+    # Log only traffic crossing the TGW VPC attachment itself, i.e. NOAA's
+    # VPN traffic in/out of the VPC, rather than everything else the shared
+    # private subnet carries (NAT Gateway egress, other resources' ENIs).
+    # Satisfies the LASP monitoring responsibility (VPC Flow Logs, ACCEPT
+    # and REJECT) documented for the I-ALiRT/NOAA interconnection.
+    noaa_vpn_flow_log_group = logs.LogGroup(
+        ialirt_stack,
+        "IalirtVpnFlowLogs",
+        retention=logs.RetentionDays.ONE_YEAR,
+        removal_policy=RemovalPolicy.RETAIN,
+    )
+    # Note: traffic_type is not a supported parameter for Transit Gateway /
+    # Transit Gateway Attachment flow logs (AWS always captures both ACCEPT
+    # and REJECT records for this resource type).
+    ec2.FlowLog(
+        ialirt_stack,
+        "IalirtVpnTgwAttachmentFlowLog",
+        resource_type=ec2.FlowLogResourceType.from_transit_gateway_attachment_id(
+            ialirt_vpc_attachment.attr_id
+        ),
+        destination=ec2.FlowLogDestination.to_cloud_watch_logs(noaa_vpn_flow_log_group),
+    )
+
     ialirt_vpn = ialirt_vpn_construct.IalirtVpnConstruct(
         scope=ialirt_stack,
         construct_id="IalirtVpn",
@@ -159,6 +184,40 @@ def build_noaa_vpn_tgw(
             transit_gateway_attachment_id=vpn_attachment_id,
             transit_gateway_route_table_id=tgw_route_table_id,
         )
+
+    # AWS already publishes each tunnel's up/down state to CloudWatch
+    # (namespace AWS/VPN, metric TunnelState) with no configuration needed
+    # on our end. This dashboard just gives a single place to look at it,
+    # via a search expression so it doesn't need to know the tunnels'
+    # outside IPs (which aren't available as CloudFormation attributes).
+    cloudwatch.Dashboard(
+        ialirt_stack,
+        "IalirtNoaaVpnDashboard",
+        dashboard_name="IalirtNoaaVpnTunnelState",
+        widgets=[
+            [
+                cloudwatch.GraphWidget(
+                    title="NOAA VPN Tunnel State (1 = up, 0 = down)",
+                    left=[
+                        cloudwatch.MathExpression(
+                            # Confirmed via `aws cloudwatch list-metrics
+                            # --namespace AWS/VPN --metric-name TunnelState`:
+                            # AWS only publishes this metric as single-
+                            # dimension rollups (TunnelIpAddress alone, VpnId
+                            # alone, or no dimension) -- there is no combined
+                            # {TunnelIpAddress, VpnId} metric to search on.
+                            expression=(
+                                "SEARCH('{AWS/VPN,TunnelIpAddress} "
+                                "MetricName=\"TunnelState\"', 'Average', 300)"
+                            ),
+                            label="",
+                        )
+                    ],
+                    width=24,
+                )
+            ]
+        ],
+    )
 
     # Static route: send traffic for I-ALiRT EC2's Elastic IP into the VPC
     # attachment, where the NAT Gateway forwards it to the public internet.
