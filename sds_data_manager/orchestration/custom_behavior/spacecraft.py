@@ -153,6 +153,17 @@ class SpacecraftPointingAttitudeJob(imap_job.IMAPJobHandler):
             .first()
         )
         if not created_kernel:
+            expected_version = (
+                output_versions[output.descriptor]["minor_version"]
+                if output_versions is not None and output.descriptor in output_versions
+                else None
+            )
+            context.log.info(
+                f"No pointing_attitude SPICEFiles row found for partition "
+                f"{context.partition_key!r} (start_date={start_date}, "
+                f"end_date={end_date}, expected_version={expected_version}). "
+                "No materialization will be emitted for this run."
+            )
             return []
 
         context.log.info(
