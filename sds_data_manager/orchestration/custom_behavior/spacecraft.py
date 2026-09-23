@@ -185,12 +185,36 @@ class SpacecraftPointingAttitudeJob(imap_job.IMAPJobHandler):
     def build_sensor(self):
         """Return a Dagster sensor monitoring for new dependencies.
 
-        By running on each new repoint partition, rather than new repoint files,
-        we ensure that dagster has been given enough time to actually create the
-        new custom partitions.
+        Combines two triggering mechanisms:
 
+        Phase 1: by running on each new pointing_attitude_partitions
+        key -- created out-of-band by
+        custom_partitions.add_pointing_attitude_partitions, keyed off the
+        *maximal* attitude_history kernel currently known -- rather than on new
+        attitude_history files directly, we ensure Dagster has already had time
+        to create the corresponding partition before we try to target it with a
+        RunRequest.
+
+        Phase 2: re-trigger *existing* partitions when a new
+        attitude_history kernel arrives that is fully contained within an
+        already-accepted kernel's coverage (see
+        custom_partitions._select_maximal_ah_kernels). Such a kernel is
+        discarded by the partition-maintenance sensor as "already covered" --
+        so no new/renamed partition is ever created for it, and phase 1 alone
+        would never notice it -- but it may still contain corrected data for
+        part of an existing partition's time range that must be reprocessed.
+        This reuses the generic growing-kernel-narrowing logic already relied
+        on by every other job type (trigger_from_new_non_science_inputs /
+        spice.get_growing_kernel_trigger_ranges), restricted here to the
+        attitude_history dependency only.
         """
         sensor_name = f"{self.job_config.to_dagster_name()}_kickoff_sensor"
+
+        attitude_history_dependency = next(
+            dep
+            for dep in self.job_config.inputs
+            if dep.source == "attitude_history" and dep.data_type == "spice"
+        )
 
         @sensor(
             name=sensor_name,
@@ -199,17 +223,26 @@ class SpacecraftPointingAttitudeJob(imap_job.IMAPJobHandler):
         )
         def _sensor(context: SensorEvaluationContext):
 
-            # Create a unique suffix for this sensor trigger
+            # Create a unique suffix for this sensor trigger. Shared across
+            # both phases below so that a partition considered by both phases
+            # in the same tick collapses to a single RunRequest (identical
+            # run_key), rather than firing two runs for it.
             job_suffix = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            cursor_str = context.cursor or "[]"
-            processed_partitions = set(json.loads(cursor_str))
+            cursor_data = json.loads(context.cursor) if context.cursor else {}
+            if isinstance(cursor_data, list):
+                # Migrate the pre-phase-2 cursor format (a bare JSON list of
+                # partition keys) used before phase 2 existed.
+                cursor_data = {"partitions": cursor_data, "dependency_cursors": {}}
+            processed_partitions = set(cursor_data.get("partitions", []))
+            dependency_cursors = cursor_data.get("dependency_cursors", {})
+            new_dependency_cursors = dependency_cursors.copy()
 
+            # --- Phase 1: brand new partitions ---
             # Query the instance for the current state of the dynamic partitions
             current_partitions = set(
                 context.instance.get_dynamic_partitions(self.partitions_def.name)
             )
-            # Determine the delta
             new_partitions = current_partitions - processed_partitions
 
             # Yield a RunRequest for each new partition
@@ -226,8 +259,39 @@ class SpacecraftPointingAttitudeJob(imap_job.IMAPJobHandler):
                     partition_key=partition_key,
                 )
 
-            # Update the cursor so we don't process these again
-            # We store the full current set so the next tick has the latest baseline
-            context.update_cursor(json.dumps(list(current_partitions)))
+            # --- Phase 2: re-trigger existing partitions for attitude_history
+            # coverage that arrived but didn't change the partition set ---
+            target_partitions = self.trigger_from_new_non_science_inputs(
+                context,
+                attitude_history_dependency,
+                new_dependency_cursors,
+                models.SPICEFiles,
+                models.SPICEFiles.kernel_type,
+                None,
+                "min_date_datetime",
+                "max_date_datetime",
+            )
+            # Brand-new partitions are exclusively phase 1's concern above.
+            target_partitions = [
+                partition
+                for partition in target_partitions
+                if partition in processed_partitions
+            ]
+
+            yield from self._yield_run_requests_for_partitions(
+                context, target_partitions, attitude_history_dependency, job_suffix
+            )
+
+            # Lock in the new cursor state: the full current set of
+            # partitions (baseline for next tick's phase 1), plus the
+            # ingestion-date cursor phase 2 consumed.
+            context.update_cursor(
+                json.dumps(
+                    {
+                        "partitions": list(current_partitions),
+                        "dependency_cursors": new_dependency_cursors,
+                    }
+                )
+            )
 
         return _sensor

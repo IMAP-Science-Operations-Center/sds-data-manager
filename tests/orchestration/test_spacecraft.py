@@ -11,6 +11,7 @@ This test sets up the environment so that:
 # source $(poetry env info --path)/bin/activate
 # poetry run pytest tests/orchestration/test_spacecraft.py -s
 import datetime
+import json
 
 import imap_data_access
 import pytest
@@ -437,3 +438,94 @@ def test_spacecraft_l1a_determine_output_versions_requires_attitude_history(
             start_date=datetime.datetime(2026, 1, 2, tzinfo=datetime.timezone.utc),
             dependency_inputs=dependency_inputs,
         )
+
+
+def test_spacecraft_l1a_sensor_retriggers_on_contained_attitude_history_kernel(
+    mock_db_session, ephemeral_instance
+):
+    """A new ah kernel contained within an existing partition must retrigger it.
+
+    Regression test for the "contained kernel" gap: _select_maximal_ah_kernels
+    discards a fully-contained new ah kernel as already covered, so
+    add_pointing_attitude_partitions computes the same partition name as
+    before and makes no add/delete. Only the kickoff sensor's phase 2 (the
+    generic growing-kernel re-trigger logic) can notice the new kernel and
+    re-fire the existing partition.
+    """
+    spacecraft_l1a_sensor = defs.get_sensor_def(
+        "spacecraft_l1a_pointingattitude_kickoff_sensor"
+    )
+
+    # Tick 1: baseline. Phase 1 fires exactly one RunRequest for the single
+    # existing partition; record the cursor for tick 2.
+    context_1 = build_sensor_context(instance=ephemeral_instance)
+    run_requests_1 = list(spacecraft_l1a_sensor(context_1))
+    assert len(run_requests_1) == 1
+    existing_partition = run_requests_1[0].partition_key
+
+    # A new ah kernel, fully CONTAINED within the original kernel's
+    # [2026-01-01, 2026-01-11] coverage but with a DIFFERENT min_date_datetime
+    # (2026-01-05) -- so _select_maximal_ah_kernels drops it as already
+    # covered (add_pointing_attitude_partitions makes no partition changes),
+    # while get_growing_kernel_trigger_ranges' predecessor lookup (exact
+    # min_date_datetime match) finds none and falls into the Case-3
+    # "rollover" fallback, returning this kernel's own contained range.
+    mock_db_session.add(
+        models.SPICEFiles(
+            file_path="imap/spice/imap_2026_005_2026_009_001.ah.bc",
+            file_name="imap_2026_005_2026_009_001.ah.bc",
+            kernel_type="attitude_history",
+            version=1,
+            min_date_datetime=datetime.datetime(
+                2026, 1, 5, tzinfo=datetime.timezone.utc
+            ),
+            max_date_datetime=datetime.datetime(
+                2026, 1, 9, tzinfo=datetime.timezone.utc
+            ),
+            ingestion_date=datetime.datetime.now(datetime.timezone.utc),
+        )
+    )
+    mock_db_session.commit()
+
+    # Confirm the partition-maintenance sensor really does nothing: this
+    # locks in the premise of the bug (no rename/recreate should occur).
+    partitions_before = set(
+        ephemeral_instance.get_dynamic_partitions("pointing_attitude_partitions")
+    )
+    maintenance_context = build_sensor_context(instance=ephemeral_instance)
+    maintenance_result = defs.get_sensor_def("add_pointing_attitude_partitions")(
+        maintenance_context
+    )
+    assert list(maintenance_result.dynamic_partitions_requests) == []
+    assert (
+        set(ephemeral_instance.get_dynamic_partitions("pointing_attitude_partitions"))
+        == partitions_before
+    )
+
+    # Tick 2: the kickoff sensor must re-trigger the SAME existing partition.
+    context_2 = build_sensor_context(
+        instance=ephemeral_instance, cursor=context_1.cursor
+    )
+    run_requests_2 = list(spacecraft_l1a_sensor(context_2))
+
+    assert len(run_requests_2) == 1
+    assert run_requests_2[0].partition_key == existing_partition
+
+
+def test_spacecraft_l1a_sensor_migrates_legacy_list_cursor(
+    mock_db_session, ephemeral_instance
+):
+    """A pre-existing bare-list cursor (the old format) must not crash phase 2."""
+    spacecraft_l1a_sensor = defs.get_sensor_def(
+        "spacecraft_l1a_pointingattitude_kickoff_sensor"
+    )
+    existing_partitions = list(
+        ephemeral_instance.get_dynamic_partitions("pointing_attitude_partitions")
+    )
+    legacy_cursor = json.dumps(existing_partitions)
+
+    context = build_sensor_context(instance=ephemeral_instance, cursor=legacy_cursor)
+    run_requests = list(spacecraft_l1a_sensor(context))
+
+    # No new partitions and no new attitude_history data -> no RunRequests.
+    assert run_requests == []
