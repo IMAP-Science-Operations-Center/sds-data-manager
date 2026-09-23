@@ -258,6 +258,7 @@
     - source: spin
       data_type: spin
       descriptor: historical
+      require_coverage: true
   outputs:
     - source: mag
       data_type: l1d

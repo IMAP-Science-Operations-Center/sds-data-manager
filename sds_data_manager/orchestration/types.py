@@ -260,6 +260,9 @@ class DependencyNode(Node):
             ["-1l"] means last processed
             ["6np"] means nearest 6 pointing
 
+    require_coverage marks a dependency whose files must cover the whole partition
+    window; the job is skipped until they do.
+
     Validation is performed for each field.
 
     This information is retrieved from configuration files and used to assemble the
@@ -268,13 +271,16 @@ class DependencyNode(Node):
 
     required: bool = True
     trigger_job: bool = True
+    require_coverage: bool = False
     dependency_query_time_range: list = field(default_factory=list)
     major_version: int = 1
 
     def __post_init__(self):
         """Validate all fields on construction."""
         super().__post_init__()
-        self._validate_boolean_fields(self.required, self.trigger_job)
+        self._validate_boolean_fields(
+            self.required, self.trigger_job, self.require_coverage
+        )
         self._validate_date_range(self.dependency_query_time_range)
 
     def serialize(self) -> dict[str, Any]:
@@ -286,10 +292,19 @@ class DependencyNode(Node):
         """Deserialize dictionary to dependency node."""
         return cls(**json_object)
 
-    def _validate_boolean_fields(self, required: bool, trigger_job: bool) -> None:
-        """Validate required and trigger_job are booleans."""
-        if not isinstance(required, bool) or not isinstance(trigger_job, bool):
-            raise ValueError("'required' and 'trigger_job' must be boolean values")
+    def _validate_boolean_fields(
+        self, required: bool, trigger_job: bool, require_coverage: bool
+    ) -> None:
+        """Validate required, trigger_job and require_coverage are booleans."""
+        if (
+            not isinstance(required, bool)
+            or not isinstance(trigger_job, bool)
+            or not isinstance(require_coverage, bool)
+        ):
+            raise ValueError(
+                "'required', 'trigger_job' and 'require_coverage' must be "
+                "boolean values"
+            )
 
     def _validate_date_range(self, date_range) -> None:
         """Validate date range format if provided."""

@@ -25,7 +25,7 @@ def verify_spin_coverage(
 
     Spin files have start_date and end_date ranges. This function verifies:
     1. First record covers or starts before the input start_date
-    2. No gaps exist between consecutive record ranges
+    2. No gaps exist between the range covered so far and the next record
     3. Last record covers up to or past the input end_date
 
     If gaps are found, they are logged at INFO level.
@@ -63,27 +63,22 @@ def verify_spin_coverage(
         )
         return False
 
-    # Check for gaps between consecutive records
-    for i in range(len(sorted_records) - 1):
-        current_end = sorted_records[i].end_date
-        next_start = sorted_records[i + 1].start_date
-
-        # Gap exists if next_start is after current_end
-        # (next_start must be on the same day as current_end or overlap)
-        if next_start > current_end:
-            gap_start = current_end + datetime.timedelta(days=1)
-            gap_end = next_start - datetime.timedelta(days=1)
+    covered_through = sorted_records[0].end_date
+    for record in sorted_records[1:]:
+        if record.start_date > covered_through:
+            gap_start = covered_through + datetime.timedelta(days=1)
+            gap_end = record.start_date - datetime.timedelta(days=1)
             logger.info(
                 f"Spin coverage gap between records: Gap from "
                 f"{gap_start.strftime('%Y%m%d')} to {gap_end.strftime('%Y%m%d')}"
             )
             return False
+        covered_through = max(covered_through, record.end_date)
 
-    # Check if last record covers past input end_date
-    if sorted_records[-1].end_date.replace(
+    if covered_through.replace(tzinfo=datetime.timezone.utc) < end_date.replace(
         tzinfo=datetime.timezone.utc
-    ) < end_date.replace(tzinfo=datetime.timezone.utc):
-        gap_start = sorted_records[-1].end_date + datetime.timedelta(days=1)
+    ):
+        gap_start = covered_through + datetime.timedelta(days=1)
         gap_end = end_date
         logger.info(
             f"Spin coverage gap at end: Gap from {gap_start.strftime('%Y%m%d')} "

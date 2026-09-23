@@ -216,6 +216,9 @@ class DependencyConfigReader:
                                 descriptor=upstream["descriptor"],
                                 required=upstream.get("required", True),
                                 trigger_job=upstream.get("trigger_job", True),
+                                require_coverage=upstream.get(
+                                    "require_coverage", False
+                                ),
                                 dependency_query_time_range=upstream.get(
                                     "date_range", []
                                 ),

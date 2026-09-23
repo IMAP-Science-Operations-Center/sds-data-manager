@@ -71,6 +71,7 @@
     - source: spin
       data_type: spin
       descriptor: historical
+      require_coverage: true
   outputs:
     - source: swe
       data_type: l2
