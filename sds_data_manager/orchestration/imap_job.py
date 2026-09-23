@@ -96,6 +96,7 @@ priority_levels = {
 partition_map = {
     "daily": custom_partitions.daily_partitions,
     "repoint": custom_partitions.repoint_partitions,
+    "pointing_attitude": custom_partitions.pointing_attitude_partitions,
     "10d": custom_partitions.idex10_partitions,
 } | custom_partitions.CADENCE_PARTITION_DEFS
 
@@ -242,6 +243,7 @@ class IMAPJobHandler:
                 session=session,
                 start_date=target_start,
                 repointing=target_pointing_number,
+                dependency_inputs=dependency_inputs,
             )
             context.log.info(f"Job Versions to Use: {output_versions}")
 
@@ -603,45 +605,21 @@ class IMAPJobHandler:
                         models.AncillaryFiles.instrument,
                         models.AncillaryFiles.descriptor,
                     )
+                elif dependency.data_type == "repoint":
+                    # New repoint inputs — RepointFiles only has end_date, no start_date
+                    target_partitions = self.trigger_from_new_non_science_inputs(
+                        context,
+                        dependency,
+                        new_cursors,
+                        models.RepointFiles,
+                        datetime_start_column="end_date",
+                        datetime_end_column="end_date",
+                    )
                 # Now we loop through each partition that we received new data for, and
                 # determine if we need to start it again.
-                for target_partition in target_partitions:
-                    # Check if this partition has already been run successfully
-                    runs = context.instance.get_runs(
-                        filters=RunsFilter(
-                            job_name=self.dagster_job_name,
-                            statuses=[DagsterRunStatus.SUCCESS],
-                            tags={"dagster/partition": target_partition},
-                        ),
-                        limit=1,  # Limit to 1 since we only care about existence
-                    )
-
-                    # If this has never been run,
-                    # or we always trigger from this dependency
-                    if (dep_name in self.triggering_input_names) or not runs:
-                        run_key = "_".join(
-                            [
-                                self.job_config.to_dagster_name(),
-                                target_partition,
-                                job_suffix,
-                            ]
-                        )
-                        context.log.info(
-                            f"""Yielding a run request with ID:
-                               {run_key} on partition {target_partition}.
-                               """
-                        )
-
-                        # Go to _generic_batch_sumbitter
-                        yield RunRequest(
-                            partition_key=target_partition, run_key=run_key
-                        )
-
-                    elif runs and (dep_name not in self.triggering_input_names):
-                        context.log.info(
-                            """"We have already materialized something like this,
-                            and this dependency does not trigger new processing."""
-                        )
+                yield from self._yield_run_requests_for_partitions(
+                    context, target_partitions, dependency, job_suffix
+                )
 
                 if (time.time() - sensor_start_time) > 30:
                     context.log.info(
@@ -653,6 +631,63 @@ class IMAPJobHandler:
             context.update_cursor(json.dumps(new_cursors))
 
         return _sensor
+
+    def _yield_run_requests_for_partitions(
+        self,
+        context: SensorEvaluationContext,
+        target_partitions: list[str],
+        dependency: DependencyNode,
+        job_suffix: str,
+    ):
+        """Yield a RunRequest for each partition that should be (re)triggered.
+
+        A partition is triggered if either it has never had a successful run
+        of this job, or `dependency` is one of this job's
+        `triggering_input_names` (configured to always cause reprocessing
+        regardless of prior successful runs).
+
+        `job_suffix` should be computed once per sensor tick and reused
+        across every dependency/partition evaluated in that tick, so a
+        partition considered more than once in the same tick collapses to
+        the same `run_key` and Dagster's run-key idempotency check prevents
+        a double-fire.
+        """
+        dep_name = dependency.to_dagster_name()
+        for target_partition in target_partitions:
+            # Check if this partition has already been run successfully
+            runs = context.instance.get_runs(
+                filters=RunsFilter(
+                    job_name=self.dagster_job_name,
+                    statuses=[DagsterRunStatus.SUCCESS],
+                    tags={"dagster/partition": target_partition},
+                ),
+                limit=1,  # Limit to 1 since we only care about existence
+            )
+
+            # If this has never been run,
+            # or we always trigger from this dependency
+            if (dep_name in self.triggering_input_names) or not runs:
+                run_key = "_".join(
+                    [
+                        self.job_config.to_dagster_name(),
+                        target_partition,
+                        job_suffix,
+                    ]
+                )
+                context.log.info(
+                    f"""Yielding a run request with ID:
+                       {run_key} on partition {target_partition}.
+                       """
+                )
+
+                # Go to _generic_batch_sumbitter
+                yield RunRequest(partition_key=target_partition, run_key=run_key)
+
+            elif runs and (dep_name not in self.triggering_input_names):
+                context.log.info(
+                    """"We have already materialized something like this,
+                    and this dependency does not trigger new processing."""
+                )
 
     def trigger_from_new_non_science_inputs(
         self,
@@ -944,11 +979,11 @@ class IMAPJobHandler:
                     processing_input.ScienceInput(*list(set(renamed_science_files)))
                 )
 
-        if not science_processing_inputs:
-            # Return right away if we have zero science files.
+        if not science_processing_inputs and self.job_config.science_inputs:
+            # Science inputs were configured but none were found.
             raise MissingDependenciesError(
                 f"No science files were discovered between {target_start} and "
-                f"{target_end}. All jobs require at least one science file."
+                f"{target_end}. This job require at least one science file."
             )
 
         return science_processing_inputs
@@ -1009,6 +1044,7 @@ class IMAPJobHandler:
         session: db.Session,
         start_date: datetime,
         repointing: int | None = None,
+        dependency_inputs: processing_input.ProcessingInputCollection | None = None,
     ) -> dict[str, dict[str, int]]:
         """Determine the major and minor version to use for each output product.
 
@@ -1028,6 +1064,13 @@ class IMAPJobHandler:
         repointing : int, optional
             Repointing number. Versions are tracked independently per repointing so
             that multiple repoints on the same day each start at minor version 1.
+        dependency_inputs : ProcessingInputCollection, optional
+            This run's already-resolved dependencies, as computed by
+            get_dependencies(). Unused by the base implementation; available so
+            a subclass can version its output off the actual resolved
+            dependency files (e.g. a specific SPICE kernel) rather than a
+            separately-derived value that could disagree with what's really in
+            the dependency JSON.
 
         Returns
         -------
