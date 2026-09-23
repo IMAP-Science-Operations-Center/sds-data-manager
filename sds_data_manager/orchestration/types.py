@@ -261,7 +261,9 @@ class DependencyNode(Node):
             ["6np"] means nearest 6 pointing
 
     require_coverage marks a dependency whose files must cover the whole partition
-    window; the job is skipped until they do.
+    window; the job is skipped until they do. Only spin dependencies honor it, and
+    coverage is judged from the dates in the spin filenames, not the spin rows
+    inside them.
 
     Validation is performed for each field.
 
