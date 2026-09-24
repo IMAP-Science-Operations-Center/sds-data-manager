@@ -98,10 +98,10 @@ class IalirtArchiveConstruct(Construct):
         self, ialirt_archive_lambda: lambda_.DockerImageFunction
     ) -> None:
         """Create the event rule to trigger Lambda once per day."""
-        # Scheduled rule - daily at 00:00 UTC
+        # Scheduled rule - daily at 02:00 UTC
         rule = events.Rule(
             self,
             "IalirtDailyQueryRule",
-            schedule=events.Schedule.cron(minute="0", hour="0"),
+            schedule=events.Schedule.cron(minute="0", hour="2"),
         )
         rule.add_target(targets.LambdaFunction(ialirt_archive_lambda))

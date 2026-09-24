@@ -89,27 +89,27 @@ def lambda_handler(event, context):
     bucket = os.environ.get("S3_BUCKET")
     region = os.environ.get("AWS_REGION")
 
-    # Query 1 day's worth of data a week ago.
+    # Query 1 day's worth of data from the previous day.
     now_override = event.get("now_utc")
     if now_override:
         now = datetime.fromisoformat(now_override).astimezone(timezone.utc)
     else:
         now = datetime.now(timezone.utc)
-    target_date = (now - timedelta(days=7)).date()
+    target_date = (now - timedelta(days=1)).date()
 
     # This is in case the solid state recorder is setup to save
     # I-ALiRT data onboard in which case DSN will deliver the data in batches
     # approximately 3 times per week (instead of having all data be
     # in near-realtime).
-    seven_days_ago = datetime.combine(
+    target_day_start = datetime.combine(
         target_date, time.min, tzinfo=timezone.utc
     )  # 00:00 UTC
-    one_week = seven_days_ago + timedelta(days=1)  # next midnight
+    target_day_end = target_day_start + timedelta(days=1)  # next midnight
 
     buffer = timedelta(minutes=5)
 
-    start_iso = seven_days_ago.isoformat()
-    end_iso = (one_week + buffer).isoformat()
+    start_iso = target_day_start.isoformat()
+    end_iso = (target_day_end + buffer).isoformat()
 
     all_items = []
     for inst in INSTRUMENTS:
@@ -126,7 +126,7 @@ def lambda_handler(event, context):
         return
     dataset = create_xarray_from_records(all_items)
     dataset.attrs["Data_version"] = "001"
-    dataset.attrs["Start_date"] = seven_days_ago.strftime("%Y%m%d")
+    dataset.attrs["Start_date"] = target_day_start.strftime("%Y%m%d")
     test_data_path = write_cdf(
         dataset, istp=True, compression=None, auto_fix_depends=False
     )
