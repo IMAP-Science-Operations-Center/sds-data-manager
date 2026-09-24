@@ -138,8 +138,13 @@ class ProcessingConstruct(Construct):
             # fargate_cpu_architecture=ecs.CpuArchitecture.ARM64,
             # fargate_operating_system_family=ecs.OperatingSystemFamily.LINUX
         )
+
+        # Job name looks like 'glows-l3' for L3 and 'glows' otherwise.
+        # GLOWS L3 jobs need a longer timeout
+        if "glows-l3" in job_name:
+            timeout = cdk.Duration.hours(7)
         # Mag l1d jobs need a longer timeout
-        if "mag" in job_name:
+        elif "mag" in job_name:
             timeout = cdk.Duration.hours(4)
         else:
             timeout = cdk.Duration.hours(3)

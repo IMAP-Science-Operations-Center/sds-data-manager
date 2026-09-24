@@ -317,6 +317,36 @@ def _populate_test_data_ancillary_table(session):
     session.commit()
 
 
+def _populate_ancillary_repointing_data(session):
+    """Add two ancillary files sharing a start_date but different repointings."""
+    common = {
+        "instrument": "glows",
+        "descriptor": "test",
+        "start_date": datetime.datetime.strptime("20210101", "%Y%m%d"),
+        "version": "v001",
+        "extension": "dat",
+        "ingestion_date": datetime.datetime.strptime(
+            "2021-01-01 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+        ),
+        "released": True,
+    }
+    session.add(
+        models.AncillaryFiles(
+            file_path="test/imap_glows_test_20210101-repoint00001_v001.dat",
+            repointing=1,
+            **common,
+        )
+    )
+    session.add(
+        models.AncillaryFiles(
+            file_path="test/imap_glows_test_20210101-repoint00002_v001.dat",
+            repointing=2,
+            **common,
+        )
+    )
+    session.commit()
+
+
 @pytest.fixture
 def expected_response_ancillary_table():
     """Return the expected response for ancillary table."""
@@ -327,6 +357,7 @@ def expected_response_ancillary_table():
                 "instrument": "mag",
                 "descriptor": "test",
                 "start_date": "20210101",
+                "repointing": None,
                 "end_date": None,
                 "version": "v001",
                 "extension": "csv",
@@ -367,14 +398,32 @@ def test_invalid_param_ancillary_query(session):
     """Test invalid parameter on the ancillary table."""
     _populate_test_data_ancillary_table(session)
 
-    event = {"queryStringParameters": {"repointing": "123", "table": "ancillary"}}
+    # data_level is a science column, not an ancillary one.
+    event = {"queryStringParameters": {"data_level": "l2", "table": "ancillary"}}
 
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 400
     # Check if error message contains the expected content
     assert param_not_valid_in_response(
-        returned_query["body"], "repointing", "ancillary"
+        returned_query["body"], "data_level", "ancillary"
+    )
+
+
+def test_query_ancillary_repointing(session):
+    """Repointing is a valid ancillary query parameter and filters by value."""
+    _populate_ancillary_repointing_data(session)
+
+    event = {"queryStringParameters": {"repointing": "2", "table": "ancillary"}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    results = json.loads(returned_query["body"])
+    assert len(results) == 1
+    assert results[0]["repointing"] == 2
+    assert (
+        results[0]["file_path"] == "test/imap_glows_test_20210101-repoint00002_v001.dat"
     )
 
 

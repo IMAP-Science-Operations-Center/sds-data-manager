@@ -1,4 +1,7 @@
 name: Build and Deploy Dev Container Images
+
+run-name: "Build and Deploy Dev Containers | Instruments: ${{ inputs.instruments }}"
+
 on:
   workflow_dispatch:
     inputs:
