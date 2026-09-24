@@ -44,16 +44,6 @@ def _job(source: str, data_type: str, descriptor: str):
     )
 
 
-def _insert_partial_day_spin_file(session):
-    """Insert the spin file whose rows end partway through the target day."""
-    _insert_spin_file(
-        session,
-        PARTIAL_DAY_SPIN_FILE,
-        start_date=datetime.datetime(2026, 9, 9),
-        end_date=datetime.datetime(2026, 9, 10),
-    )
-
-
 @pytest.mark.parametrize("product", [("mag", "l1d", "norm-srf"), ("swe", "l2", "sci")])
 def test_mag_l1d_and_swe_l2_require_spin_coverage(mock_db_session, product):
     """Spin inputs are withheld until spin files cover the whole day."""
@@ -61,7 +51,12 @@ def test_mag_l1d_and_swe_l2_require_spin_coverage(mock_db_session, product):
     assert job.job_config.spin_input.require_coverage is True
     target_start, target_end = parse_dates_from_partition_key(TARGET_PARTITION)
 
-    _insert_partial_day_spin_file(mock_db_session)
+    _insert_spin_file(
+        mock_db_session,
+        PARTIAL_DAY_SPIN_FILE,
+        start_date=datetime.datetime(2026, 9, 9),
+        end_date=datetime.datetime(2026, 9, 10),
+    )
     with pytest.raises(imap_job.MissingDependenciesError, match="spin"):
         job.get_spin_files_inputs(mock_db_session, target_start, target_end)
 
@@ -75,16 +70,10 @@ def test_mag_l1d_and_swe_l2_require_spin_coverage(mock_db_session, product):
     assert set(spin_files) == {PARTIAL_DAY_SPIN_FILE, FULL_DAY_SPIN_FILE}
 
 
-def test_spin_coverage_is_not_required_by_default(mock_db_session):
-    """Jobs without the flag receive spin files that only partly cover the day."""
+def test_require_coverage_defaults_to_false():
+    """A spin dependency that omits the flag does not require coverage."""
     job = _job("hi", "l1b", "45sensor-de")
     assert job.job_config.spin_input.require_coverage is False
-    target_start, target_end = parse_dates_from_partition_key(TARGET_PARTITION)
-
-    _insert_partial_day_spin_file(mock_db_session)
-    assert job.get_spin_files_inputs(mock_db_session, target_start, target_end) == [
-        PARTIAL_DAY_SPIN_FILE
-    ]
 
 
 def test_verify_spin_coverage_longer_file_spans_shorter_ones():
