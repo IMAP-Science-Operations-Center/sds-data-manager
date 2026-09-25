@@ -4,10 +4,8 @@ import datetime
 import json
 import os
 import sys
-from pathlib import Path
 
 import pytest
-import spiceypy
 
 # Add the project root to the path to allow imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -135,28 +133,43 @@ def test_spin_table_api_date_filters(spin_db):
     assert results[0]["start_date"].startswith("2026-09-25")
 
 
-# def test_spin_table_api_latest_version(spin_db):
-#     """Test that 'latest=true' returns only the newest version of each date."""
-#     event = {
-#         "queryStringParameters": {
-#             "latest": "true"
-#         }
-#     }
+def test_small_forces_table_api_latest_version(small_forces_db):
+    """Test that 'latest=true' returns only the newest version of each date group."""
+    event = {
+        "queryStringParameters": {"latest": "true"},
+        "rawPath": "/small-forces-table",
+    }
 
-#     response = spin_table_api.lambda_handler(event, {})
+    response = non_spice_table_api.lambda_handler(event, {})
 
-#     assert response["statusCode"] == 200
-#     results = json.loads(response["body"])
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
 
-#     # Should have two results - the latest version from each day
-#     assert len(results) == 2
+    # Both fixture files share the same start/end date, so only the newest
+    # version (02) should be returned.
+    assert len(results) == 1
+    assert results[0]["version"] == "02"
+    assert (
+        results[0]["file_path"]
+        == "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff"
+    )
 
-#     # Verify we got v002 for first date and v001 for second date
-#     date_to_version = {result["start_date"]: result["version"] for result in results}
-#     assert any(date.startswith("2026-09-25") and version == "v002"
-#                 for date, version in date_to_version.items())
-#     assert any(date.startswith("2026-09-26") and version == "v001"
-#                 for date, version in date_to_version.items())
+
+def test_repoint_table_api_latest_version(repoint_db):
+    """Test 'latest=true' for repoint files, which have no `start_date` column."""
+    event = {
+        "queryStringParameters": {"latest": "true"},
+        "rawPath": "/repoint-table",
+    }
+
+    response = non_spice_table_api.lambda_handler(event, {})
+
+    # The two fixture repoint files have distinct end_dates, so both are the
+    # latest in their own group. The key assertion is that partitioning on
+    # end_date alone does not raise for a table without `start_date`.
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 2
 
 
 def test_spin_table_api_invalid_parameter(spin_db):
@@ -383,33 +396,23 @@ def test_file_name_renamed_to_file_path(spin_db):
 
 
 def test_thruster_start_end_time_via_spice_query_api(small_forces_db):
-    """Test small-forces table query using start/end time via the spice query API."""
-    tests_path = Path(os.path.abspath(__file__)).parent.parent
-    test_spice_data_dir = tests_path / "test-data" / "test_spice_files"
-    with spiceypy.KernelPool([str(test_spice_data_dir / "naif0012.tls")]):
-        start_time = spiceypy.datetime2et(
-            datetime.datetime.strptime("20250410", "%Y%m%d")
-        )
-        end_time = spiceypy.datetime2et(
-            datetime.datetime.strptime("20250420", "%Y%m%d")
-        )
+    """Test that `start_time`/`end_time` are remapped to `start_date`/`end_date`.
 
-        event = {
-            "queryStringParameters": {
-                "type": "thruster",
-                "start_time": f"{start_time}",
-                "end_time": f"{end_time}",
-            },
-        }
-        response = spice_query_api.lambda_handler(event, {})
+    The non-SPICE tables API expects human-readable `yyyymmdd` dates, so the
+    values are passed through unchanged and only the parameter names are mapped.
+    """
+    event = {
+        "queryStringParameters": {
+            "type": "thruster",
+            "start_time": "20250410",
+            "end_time": "20250420",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
 
-        assert response["statusCode"] == 200
-        results = json.loads(response["body"])
-        assert len(results) == 2
-        file_paths = [r["file_path"] for r in results]
-        assert (
-            "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff" in file_paths
-        )
-        assert (
-            "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff" in file_paths
-        )
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 2
+    file_paths = [r["file_path"] for r in results]
+    assert "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff" in file_paths
+    assert "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff" in file_paths

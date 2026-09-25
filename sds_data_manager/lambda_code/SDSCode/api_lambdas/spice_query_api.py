@@ -4,13 +4,11 @@ import datetime
 import json
 import logging
 
-import spiceypy
 from imap_data_access import SPICEFilePath
 from sqlalchemy import func, select
 
 from ..database import database as db
 from ..database import models
-from ..spice_utilities import furnish_best_spice_file
 from . import non_spice_table_api
 
 # Logger setup
@@ -57,7 +55,7 @@ def lambda_handler(event, context):
     When ``type`` is one of the non-SPICE values, the ``file_name`` parameter is
     renamed to ``file_path``, ``start_time`` is mapped to ``start_date``, ``end_time``
     is mapped to ``end_date``, and the remaining parameters are passed to the
-    non-SPICE API.
+    non-SPICE API. Dates are expected as human-readable ``yyyymmdd`` strings.
     """
     logger.debug("SPICE Query Event: " + json.dumps(event, indent=2))
 
@@ -68,20 +66,10 @@ def lambda_handler(event, context):
     table_type = query_params.get("type", "kernels")
 
     if table_type in _NON_SPICE_RAW_PATHS:
-        # Remove `type`, since it is not a valid non-SPICE query parameter.
-        query_params.pop("type")
-
-        # Remap incoming parameters to ones supported by the non-SPICE tables API.
-        try:
-            query_params = _remap_to_non_spice_params(query_params)
-        except ValueError:
-            err_msg = "Expected start/end times in ET."
-            return non_spice_table_api.get_json_response(status_code, err_msg)
-
         return non_spice_table_api.lambda_handler(
             {
                 "rawPath": _NON_SPICE_RAW_PATHS[table_type],
-                "queryStringParameters": query_params,
+                "queryStringParameters": _remap_to_non_spice_params(query_params),
             },
             context,
         )
@@ -181,27 +169,20 @@ def lambda_handler(event, context):
 
 
 def _remap_to_non_spice_params(query_params: dict) -> dict:
-    """Remap SPICE query parameters to those supported by the non-SPICE tables API."""
+    """Remap SPICE query parameters to those supported by the non-SPICE tables API.
+
+    The non-SPICE tables API expects human-readable ``yyyymmdd`` dates, so date
+    values are passed through unchanged; only the parameter names are translated.
+    """
+    # `type` is consumed by this API and is not a valid non-SPICE query parameter.
+    query_params.pop("type", None)
+
     if "file_name" in query_params:
         query_params["file_path"] = query_params.pop("file_name")
-
-    if "start_time" in query_params or "end_time" in query_params:
-        try:
-            spiceypy.et2datetime(0)
-        except spiceypy.utils.exceptions.SpiceMISSINGTIMEINFO:
-            furnish_best_spice_file("leapseconds")
-
-        try:
-            if "start_time" in query_params:
-                query_params["start_date"] = spiceypy.et2datetime(
-                    float(query_params.pop("start_time"))
-                ).strftime("%Y%m%d")
-            if "end_time" in query_params:
-                query_params["end_date"] = spiceypy.et2datetime(
-                    float(query_params.pop("end_time"))
-                ).strftime("%Y%m%d")
-        except spiceypy.utils.exceptions.SpiceError as e:
-            raise ValueError(f"Invalid ET value for start_time/end_time: {e}") from e
+    if "start_time" in query_params:
+        query_params["start_date"] = query_params.pop("start_time")
+    if "end_time" in query_params:
+        query_params["end_date"] = query_params.pop("end_time")
 
     return query_params
 
