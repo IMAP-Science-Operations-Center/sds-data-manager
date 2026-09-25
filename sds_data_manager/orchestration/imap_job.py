@@ -413,6 +413,25 @@ class IMAPJobHandler:
             )
 
         for output in self.job_config.outputs:
+            # Ancillary outputs (e.g. the GLOWS l3b-archive zip) live in the
+            # ancillary_files table, not science_files. "ancillary" is not a
+            # member of the science_files.data_level enum, and ancillary files
+            # use a single "vXXX" version string rather than major/minor columns,
+            # so they need a separate query.
+            if output.data_type == "ancillary":
+                materialization = self._find_ancillary_output(
+                    context,
+                    session,
+                    output,
+                    output_versions=output_versions,
+                    start_date=start_date,
+                    repointing=repointing,
+                    inputs=inputs,
+                )
+                if materialization:
+                    output_materializations.append(materialization)
+                continue
+
             filters = [
                 models.ScienceFiles.instrument == output.source,
                 models.ScienceFiles.data_level == output.data_type,
@@ -464,6 +483,60 @@ class IMAPJobHandler:
                 if materialization:
                     output_materializations.append(materialization)
         return output_materializations
+
+    def _find_ancillary_output(
+        self,
+        context,
+        session: db.Session,
+        output,
+        output_versions: dict | None = None,
+        start_date: datetime.datetime | None = None,
+        repointing: int | None = None,
+        inputs: dict | None = None,
+    ):
+        """Return the materialization for a single ancillary output, if found."""
+        filters = [
+            models.AncillaryFiles.instrument == output.source,
+            models.AncillaryFiles.descriptor == output.descriptor,
+        ]
+        # When we know the version the job just produced, match it exactly. The
+        # ancillary version string carries only the (bumped) minor version.
+        if output_versions is not None and output.descriptor in output_versions:
+            minor_version = output_versions[output.descriptor]["minor_version"]
+            filters.append(
+                models.AncillaryFiles.version == str(Version(None, minor_version))
+            )
+        if repointing is not None:
+            filters.append(models.AncillaryFiles.repointing == int(repointing))
+        if start_date is not None:
+            filters.append(models.AncillaryFiles.start_date == start_date.date())
+
+        created_file = (
+            session.query(models.AncillaryFiles)
+            .filter(*filters)
+            .order_by(models.AncillaryFiles.version.desc())
+            .first()
+        )
+        if not created_file:
+            return None
+
+        context.log.info(
+            f"""Found file {os.path.basename(created_file.file_path)}!
+                Creating Asset.
+            """
+        )
+        # The major version is config-driven; the minor version comes from the
+        # file's "vXXX" version string.
+        minor_version = Version.from_version(created_file.version).minor
+        return get_materialization_result(
+            context,
+            output.to_dagster_asset(),
+            context.partition_key,
+            [os.path.basename(created_file.file_path)],
+            Version(output.major_version, minor_version),
+            "ancillary",
+            inputs=inputs,
+        )
 
     def _check_for_running_dependencies(self, context):
         """Check if anything upstream of this file is currently running."""
