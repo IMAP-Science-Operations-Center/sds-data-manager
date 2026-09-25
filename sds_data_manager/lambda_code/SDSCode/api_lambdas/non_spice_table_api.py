@@ -37,28 +37,26 @@ def _get_query(table, query, param, value):
     elif param == "file_path":
         query = query.where(table.file_path == value)
     elif param == "latest" and value.lower() == "true":
-        # TODO: fix this logic
-        # Make a subquery that gives latest spin file
+        # Keep only the newest version for each date group. Repoint files only
+        # have an end_date, so partition on that column alone for that table.
+        partition_by = [table.end_date]
+        if table is not RepointFiles:
+            partition_by.insert(0, table.start_date)
+
         row_number = (
             func.row_number()
-            .over(
-                partition_by=(table.start_date, table.end_date),
-                order_by=desc(table.version),
-            )
+            .over(partition_by=partition_by, order_by=desc(table.version))
             .label("row_num")
         )
 
-        # Use a subquery to select only rows where row_num == 1
-        # (latest version)
-        subquery = select(
-            table.file_path,
-            table.start_date,
-            table.end_date,
-            table.version,
-            table.ingestion_date,
-            row_number,
+        # Build a real subquery of (file_path, row_num) and join it back to the
+        # table so the outer query keeps selecting table entities (needed by the
+        # downstream `.scalars()` call and response formatting).
+        latest_subq = select(table.file_path, row_number).subquery()
+        query = query.join(
+            latest_subq,
+            (table.file_path == latest_subq.c.file_path) & (latest_subq.c.row_num == 1),
         )
-        query = select(subquery).where(subquery.c.row_num == 1)
     elif param == "start_ingest_date":
         parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
         query = query.where(table.ingestion_date >= parsed_date)
@@ -88,7 +86,7 @@ def lambda_handler(event, context):
     elif "small-forces" in raw_path:
         table = SmallForcesFile
     else:
-        err_msg = "Invalid path: must contain 'spin', 'repoint', or 'small-forces."
+        err_msg = "Invalid path: must contain 'spin', 'repoint', or 'small-forces'."
         response = get_json_response(status_code, err_msg)
         logger.debug(err_msg)
         return response
