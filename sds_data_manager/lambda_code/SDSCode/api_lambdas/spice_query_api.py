@@ -45,17 +45,7 @@ def lambda_handler(event, context):
     * ``repoint`` - repoint files table
     * ``thruster`` - small-forces (thruster) files table
     * ``kernels`` - All supported SPICE kernels types
-    * ``<other>`` - A specific SPICE kernel type from the SPICE files table
-
-    Passing a kernel-type value such as ``attitude_history`` filters the SPICE table
-    by ``kernel_type``. The remaining SPICE-specific parameters
-    (``file_name``, ``start_time``, ``end_time``, ``latest``,
-    ``start_ingest_date``, ``end_ingest_date``) apply.
-
-    When ``type`` is one of the non-SPICE values, the ``file_name`` parameter is
-    renamed to ``file_path``, ``start_time`` is mapped to ``start_date``, ``end_time``
-    is mapped to ``end_date``, and the remaining parameters are passed to the
-    non-SPICE API. Dates are expected as human-readable ``yyyymmdd`` strings.
+    * ``<other kernel type>`` - Use metakernel API to query requested kernels
     """
     logger.debug("SPICE Query Event: " + json.dumps(event, indent=2))
 
