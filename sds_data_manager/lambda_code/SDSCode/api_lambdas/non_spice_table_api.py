@@ -13,7 +13,61 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event, context):  # noqa: PLR0912
+def get_json_response(status_code, body_str, headers=None):
+    """Return a formatted JSON response."""
+    if headers is None:
+        headers = {"Content-Type": "application/json"}
+    return {
+        "statusCode": status_code,
+        "headers": headers,
+        "body": json.dumps(body_str),
+    }
+
+
+def _get_query(table, query, param, value):
+    if param == "start_date" and table != RepointFiles:
+        # Besides repoint table, others have a start_date field
+        # This parameter can be ignore for the repointing table
+        # because those files have all start dates in every file.
+        parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+        query = query.where(table.start_date >= parsed_date)
+    elif param == "end_date":
+        parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+        query = query.where(table.end_date <= parsed_date)
+    elif param == "file_path":
+        query = query.where(table.file_path == value)
+    elif param == "latest" and value.lower() == "true":
+        # Keep only the newest version for each date group. Repoint files only
+        # have an end_date, so partition on that column alone for that table.
+        partition_by = [table.end_date]
+        if table is not RepointFiles:
+            partition_by.insert(0, table.start_date)
+
+        row_number = (
+            func.row_number()
+            .over(partition_by=partition_by, order_by=desc(table.version))
+            .label("row_num")
+        )
+
+        # Build a real subquery of (file_path, row_num) and join it back to the
+        # table so the outer query keeps selecting table entities (needed by the
+        # downstream `.scalars()` call and response formatting).
+        latest_subq = select(table.file_path, row_number).subquery()
+        query = query.join(
+            latest_subq,
+            (table.file_path == latest_subq.c.file_path) & (latest_subq.c.row_num == 1),
+        )
+    elif param == "start_ingest_date":
+        parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+        query = query.where(table.ingestion_date >= parsed_date)
+    elif param == "end_ingest_date":
+        parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+        query = query.where(table.ingestion_date <= parsed_date)
+
+    return query
+
+
+def lambda_handler(event, context):
     """Handle API requests for the non-SPICE data.
 
     Non-SPICE data such as spin, repoint and small-forces.
@@ -22,6 +76,8 @@ def lambda_handler(event, context):  # noqa: PLR0912
         "Spin/Repoint/small-forces Query Event: " + json.dumps(event, indent=2)
     )
 
+    # Initialize status_code to 400
+    status_code = 400
     raw_path = event.get("rawPath", "")
     if "spin" in raw_path:
         table = SpinFiles
@@ -30,13 +86,9 @@ def lambda_handler(event, context):  # noqa: PLR0912
     elif "small-forces" in raw_path:
         table = SmallForcesFile
     else:
-        response = {
-            "statusCode": 400,
-            "body": json.dumps(
-                "Invalid path. Path must contain either 'spin' or 'repoint'."
-            ),
-        }
-        logger.debug("Invalid path, must contain either 'spin' or 'repoint'.")
+        err_msg = "Invalid path: must contain 'spin', 'repoint', or 'small-forces'."
+        response = get_json_response(status_code, err_msg)
+        logger.debug(err_msg)
         return response
 
     # add session, pick model like in indexer and add query to filter_as
@@ -59,67 +111,23 @@ def lambda_handler(event, context):  # noqa: PLR0912
         for param, value in query_params.items():
             # confirm that the query parameter is valid
             if param not in valid_parameters:
-                response = {
-                    "statusCode": 400,
-                    "body": json.dumps(
-                        f"{param} is not a valid query parameter. "
-                        + f"Valid query parameters are: {valid_parameters}"
-                    ),
-                }
-                logger.debug(
-                    f"Received an invalid query parameter [{param}],"
-                    " valid options are: {valid_parameters}"
+                err_msg = (
+                    f"{param} is not a valid query parameter. "
+                    f"Valid query parameters are: {valid_parameters}"
                 )
+                response = get_json_response(status_code, err_msg)
+                logger.debug(err_msg)
                 return response
             try:
-                if param == "start_date" and table != RepointFiles:
-                    # Besides repoint table, others have a start_date field
-                    # This parameter can be ignore for the repointing table
-                    # because those files have all start dates in every file.
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
-                    query = query.where(table.start_date >= parsed_date)
-                elif param == "end_date":
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
-                    query = query.where(table.end_date <= parsed_date)
-                elif param == "file_path":
-                    query = query.where(table.file_path == value)
-                elif param == "latest" and value.lower() == "true":
-                    # TODO: fix this logic
-                    # Make a subquery that gives latest spin file
-                    row_number = (
-                        func.row_number()
-                        .over(
-                            partition_by=(table.start_date, table.end_date),
-                            order_by=desc(table.version),
-                        )
-                        .label("row_num")
-                    )
-
-                    # Use a subquery to select only rows where row_num == 1
-                    # (latest version)
-                    subquery = select(
-                        table.file_path,
-                        table.start_date,
-                        table.end_date,
-                        table.version,
-                        table.ingestion_date,
-                        row_number,
-                    )
-                    query = select(subquery).where(subquery.c.row_num == 1)
-                elif param == "start_ingest_date":
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
-                    query = query.where(table.ingestion_date >= parsed_date)
-                elif param == "end_ingest_date":
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
-                    query = query.where(table.ingestion_date <= parsed_date)
+                query = _get_query(table, query, param, value)
             except ValueError:
-                response = {
-                    "statusCode": 400,
-                    "body": json.dumps(f"Invalid value for {param}: {value}"),
-                }
-                logger.debug(f"Invalid value for {param}: {value}")
+                err_msg = f"Invalid value for {param}: {value}"
+                response = get_json_response(status_code, err_msg)
+                logger.debug(err_msg)
                 return response
 
+        # Reset status_code to 200 if we got this far
+        status_code = 200
         search_results = session.execute(query).scalars().all()
         # format the search results into a list of dictionaries
         if table == RepointFiles:
@@ -135,7 +143,7 @@ def lambda_handler(event, context):  # noqa: PLR0912
                 }
                 for result in search_results
             ]
-            return {"statusCode": 200, "body": json.dumps(search_results)}
+            return get_json_response(status_code, search_results)
 
         # Spin or small-forces files have a start_date field
         search_results = [
@@ -148,4 +156,4 @@ def lambda_handler(event, context):  # noqa: PLR0912
             }
             for result in search_results
         ]
-        return {"statusCode": 200, "body": json.dumps(search_results)}
+        return get_json_response(status_code, search_results)
