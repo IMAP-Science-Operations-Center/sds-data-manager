@@ -10,6 +10,17 @@ VALID_CADENCE_STRS = ["3mo", "6mo", "1yr"]
 
 FIRST_MAP_START_DATE = datetime.datetime(2026, 1, 17, tzinfo=datetime.timezone.utc)
 
+# How long a processing job output must have been in the science files table before
+# the backup materialization sensor materializes it. This gives the job's own op
+# time to materialize it first (with its input metadata).
+BACKUP_MATERIALIZATION_MIN_AGE = datetime.timedelta(hours=1)
+
+# How long a file-only science file (e.g. raw L0) must have been in the science files
+# table before the file materialization sensor materializes it. ingestion_date is the
+# S3 LastModified time, which is earlier than when the indexer commits the row, so a
+# short delay keeps the sensor's cursor from moving past rows not yet committed.
+FILE_MATERIALIZATION_MIN_AGE = datetime.timedelta(minutes=2)
+
 sensor_schedules = {
     "l0": 300,
     "l1": 300,
