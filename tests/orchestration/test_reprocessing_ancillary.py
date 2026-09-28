@@ -1,11 +1,11 @@
-"""Regression tests for reprocessing jobs that produce ancillary outputs.
+"""Tests for ``find_outputs()`` handling of ancillary outputs.
 
-See issue #1655: ``IMAPJobHandler.find_outputs()`` used to query the
-``science_files`` table for *every* configured output, including ancillary
-ones. Because ``"ancillary"`` is not a member of the Postgres ``data_level``
-enum, filtering ``science_files.data_level == "ancillary"`` raised
-``sqlalchemy.exc.DataError`` and crashed the Dagster op. Ancillary outputs must
-instead be looked up in the ``ancillary_files`` table.
+``IMAPJobHandler.find_outputs()`` must route ancillary outputs to the
+``ancillary_files`` table rather than ``science_files``: ``"ancillary"`` is not
+a member of the Postgres ``data_level`` enum, so querying
+``science_files.data_level == "ancillary"`` raises ``sqlalchemy.exc.DataError``.
+These tests validate that general behavior. A GLOWS job config is used as a
+convenient example of a job with an ancillary output. See issue #1655.
 """
 
 import datetime
@@ -16,8 +16,9 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration.imap_dagster import dependency_config
 from sds_data_manager.orchestration.imap_job import IMAPJobHandler
 
-# The GLOWS l3b job from the issue: it emits both science (l3b/l3c/l3d/l3e)
-# and ancillary (e.g. l3b-archive) outputs.
+# An example job config that produces an ancillary output. This GLOWS job emits
+# both science (l3b/l3c/l3d/l3e) and ancillary (e.g. l3b-archive) outputs, which
+# lets a single call to find_outputs() exercise the ancillary path.
 JOB_KEY = ("glows", "l3b", "ion-rate-profile")
 PARTITION_KEY = "daily_2026-09-20T00:00:00_to_2026-09-21T00:00:00"
 START_DATE = datetime.datetime(2026, 9, 20)
@@ -25,7 +26,7 @@ ARCHIVE_FILE = "imap_glows_l3b-archive_20260920_v002.zip"
 
 
 def _insert_l3b_archive(session, version="v002"):
-    """Insert the GLOWS l3b-archive ancillary file the job just produced."""
+    """Insert an ancillary file matching one of the job's ancillary outputs."""
     session.add(
         models.AncillaryFiles(
             file_path=f"imap/ancillary/glows/{ARCHIVE_FILE}",
@@ -43,11 +44,12 @@ def _insert_l3b_archive(session, version="v002"):
 
 
 def test_find_outputs_materializes_ancillary_output(mock_db_session):
-    """find_outputs() finds an ancillary output without crashing on the enum.
+    """find_outputs() resolves an ancillary output without crashing on the enum.
 
-    Reproduces the exact path from issue #1655: reprocessing GLOWS l3b for a
-    single day. Previously this raised ``DataError`` because the ancillary
-    output was queried against ``science_files``.
+    Validates the general case: an ancillary output is looked up in
+    ``ancillary_files`` and materialized, rather than being queried against
+    ``science_files`` (which would raise ``DataError`` on the ``data_level``
+    enum).
     """
     _insert_l3b_archive(mock_db_session)
 
