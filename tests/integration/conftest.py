@@ -14,17 +14,19 @@ Run it explicitly with::
 
 import boto3
 import pytest
-from tests.integration.integration_test_files import SOURCE_FILES
-from tests.integration import helpers
 
-# Production account: these tests must NEVER touch it.
-PROD_ACCOUNT = "593025701104"
+from tests.integration import helpers
+from tests.integration.integration_test_files import TEST_FILES
+
+# Only run on the development account.
+DEV_ACCOUNT = "449431850278"
 
 # Region the dev environment is deployed to.
 REGION = "us-west-2"
 
 # Name of the Secrets Manager secret holding the main SDS RDS credentials.
 DB_SECRET_NAME = "sdp-database-cred"  # noqa: S105 - secret name, not a secret
+
 
 def pytest_collection_modifyitems(config, items):
     """Auto-mark everything in this package as integration + network."""
@@ -42,11 +44,11 @@ def boto_session():
 
 @pytest.fixture(scope="session", autouse=True)
 def guard_account(boto_session):
-    """Abort the entire session if pointed at the production account."""
+    """Abort the entire session if not pointed at the development account."""
     account = boto_session.client("sts").get_caller_identity()["Account"]
-    if account == PROD_ACCOUNT:
+    if account != DEV_ACCOUNT:
         pytest.exit(
-            f"Refusing to run integration tests against production account {account}.",
+            f"Refusing to run integration tests against account {account}.",
             returncode=2,
         )
     return account
@@ -103,4 +105,4 @@ def _environment_setup(boto_session, guard_account, sds_db_engine, data_bucket):
     print("Wiping data bucket...")
     helpers.wipe_data_bucket(s3_client, data_bucket)
     print("Copying source files to data bucket...")
-    helpers.copy_source_files(s3_client, data_bucket, SOURCE_FILES)
+    helpers.copy_source_files(s3_client, data_bucket, TEST_FILES)

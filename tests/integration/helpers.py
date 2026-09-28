@@ -164,11 +164,12 @@ def wipe_all_tables(engine: Engine) -> None:
     a single ``TRUNCATE`` across the sorted tables clears them while resetting
     identity sequences. ``CASCADE`` handles any foreign-key relationships.
     """
-    table_names = [table.name for table in Base.metadata.sorted_tables]
-    if not table_names:
-        return
-    quoted = ", ".join(f'"{name}"' for name in table_names)
     with engine.begin() as connection:
+        preparer = connection.dialect.identifier_preparer
+        tables = Base.metadata.sorted_tables
+        if not tables:
+            return
+        quoted = ", ".join(preparer.format_table(t) for t in tables)
         connection.execute(text(f"TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE"))
 
 
@@ -188,7 +189,12 @@ def wipe_data_bucket(s3_client, bucket: str) -> int:
         ]
         for batch_start in range(0, len(objects), 1000):
             batch = objects[batch_start : batch_start + 1000]
-            s3_client.delete_objects(Bucket=bucket, Delete={"Objects": batch})
+            response = s3_client.delete_objects(
+                Bucket=bucket, Delete={"Objects": batch}
+            )
+            errors = response.get("Errors", [])
+            if errors:
+                raise RuntimeError(f"Failed to delete objects from {bucket}: {errors}")
             deleted += len(batch)
     return deleted
 
@@ -206,7 +212,9 @@ def copy_source_files(s3_client, dest_bucket: str, source_files: list) -> None:
             Key=key,
             CopySource={"Bucket": source_bucket, "Key": key},
         )
-        time.sleep(1)  # Give the indexer a chance to react before the next file is copied.
+        time.sleep(
+            1
+        )  # Give the indexer a chance to react before the next file is copied.
 
 
 def _find_dagster_cluster_arn(ecs_client) -> str:
@@ -317,10 +325,12 @@ def _wait_for_task(
         if task["lastStatus"] == "STOPPED":
             for container in task["containers"]:
                 exit_code = container.get("exitCode")
-                if exit_code not in (0, None):
+                if exit_code != 0:
+                    reason = container.get("reason") or task.get(
+                        "stoppedReason", "no reason given"
+                    )
                     raise RuntimeError(
-                        f"{description} task exited with code {exit_code}: "
-                        f"{container.get('reason', 'no reason given')}"
+                        f"{description} task exited with code {exit_code}: {reason}"
                     )
             return
         time.sleep(10)

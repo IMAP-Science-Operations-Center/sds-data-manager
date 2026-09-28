@@ -24,5 +24,5 @@ jobs:
 
       - name: Validate dependency YAMLs
         run: |
-          poetry run python scripts/validate_dependency_yamls.py
+          poetry run python scripts/dependency/validate_dependency_yamls.py
 

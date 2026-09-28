@@ -124,6 +124,43 @@ def test_s3_anc_event(session, s3_client, events_client):
     assert result[0].extension == "cdf"
 
 
+def test_s3_anc_repoint_event(session, s3_client, events_client):
+    """Test s3 event for an ancillary file with a repointing number."""
+    filepath = (
+        "imap/ancillary/swe/imap_swe_l1b-in-flight-cal_20240101-repoint00002_v001.cdf"
+    )
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=filepath,
+        Body=b"test",
+    )
+    event = {
+        "detail-type": "Object Created",
+        "source": "aws.s3",
+        "time": "2024-01-16T17:35:08Z",
+        "detail": {
+            "version": "0",
+            "bucket": {"name": "test-data-bucket"},
+            "object": {
+                "key": (filepath),
+                "reason": "PutObject",
+            },
+        },
+    }
+    # Test for good event
+    returned_value = indexer.lambda_handler(event=event, context={})
+    assert returned_value["statusCode"] == 200
+
+    # Check that the indexer parsed the repointing number from the filename and
+    # splatted it into the AncillaryFiles model.
+    result = session.query(models.AncillaryFiles).all()
+    assert len(result) == 1
+    assert result[0].file_path == filepath
+    assert result[0].instrument == "swe"
+    assert result[0].extension == "cdf"
+    assert result[0].repointing == 2
+
+
 def test_unknown_event(session):
     """Test for unknown event source."""
     event = {"source": "test"}

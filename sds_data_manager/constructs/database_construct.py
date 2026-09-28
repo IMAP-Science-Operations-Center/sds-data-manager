@@ -10,6 +10,8 @@ from aws_cdk import aws_secretsmanager as secrets
 from aws_cdk import custom_resources as cr
 from constructs import Construct
 
+from sds_data_manager.utils.allowed_cidrs import ALLOWED_CIDRS
+
 
 class SdpDatabase(Construct):
     """Construct for creating database."""
@@ -69,12 +71,15 @@ class SdpDatabase(Construct):
         self.rds_security_group = ec2.SecurityGroup(
             scope, "RdsSecurityGroup", vpc=vpc, allow_all_outbound=True
         )
-        # Allow ingress to LASP IP address range and specific port
-        self.rds_security_group.add_ingress_rule(
-            peer=ec2.Peer.ipv4("128.138.131.0/24"),
-            connection=ec2.Port.tcp(5432),
-            description="Ingress RDS",
-        )
+
+        # Allow ingress to all allowed cidrs at specific port
+        database_port = 5432
+        for cidr in ALLOWED_CIDRS:
+            self.rds_security_group.add_ingress_rule(
+                peer=ec2.Peer.ipv4(cidr),
+                connection=ec2.Port.tcp(database_port),
+                description="Ingress RDS",
+            )
 
         # Lambda was put into the same security group as the RDS, but we still need this
         # TODO: Is this still needed? We get a warning in the CDK logs with it
