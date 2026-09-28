@@ -60,6 +60,7 @@ class IalirtProcessing(Construct):
         self.s3_bucket_name = ialirt_bucket.bucket_name
         self.secret_name = secret_name
         self.region = env.region
+        self.account_name = account_name
 
         # Create security group in which containers will reside
         self.create_ecs_security_group()
@@ -110,6 +111,7 @@ class IalirtProcessing(Construct):
             "noaa": {
                 "params": ["noaa"],
                 "ports": [7565],
+                "allow_icmp": True,
             },
             "uksa": {
                 "params": ["uksa"],
@@ -143,6 +145,12 @@ class IalirtProcessing(Construct):
                         connection=ec2.Port.tcp(port),
                         description=f"Allow outbound traffic to {partner} "
                         f"on TCP port {port}",
+                    )
+                if config.get("allow_icmp") and self.account_name == "dev":
+                    self.ecs_security_group.add_ingress_rule(
+                        peer=ec2.Peer.ipv4(cidr),
+                        connection=ec2.Port.all_icmp(),
+                        description=f"Allow inbound ICMP (ping) from {partner}",
                     )
 
     def add_compute_resources(self):
