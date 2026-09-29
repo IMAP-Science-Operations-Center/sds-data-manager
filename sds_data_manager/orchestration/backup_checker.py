@@ -189,7 +189,7 @@ def backup_sensor(context: SensorEvaluationContext):
                 if materialization:
                     context.log.warning(
                         f"{record.file_path} was not materialized by its "
-                        "processing job or other sensor; " \
+                        "processing job or other sensor; "
                         "materializing it from the backup "
                         "sensor without input metadata."
                     )

@@ -13,13 +13,6 @@ The goal is to keep everything mission-agnostic except the data-product configur
 - `scripts/`: Various utility scripts (e.g., `authorization/` for handling API keys).
 - `tests/`: Pytest test suite, mocking AWS/Docker locally.
 
-## Hard Rules (MUST FOLLOW)
-1. **NO DEPLOYMENT COMMANDS**: NEVER suggest deployment commands like `cdk deploy` as a solution to users unless explicitly asked in the context of a deployment script. Deploys happen via GitHub Actions.
-2. **DAGSTER YAML**: DO NOT read the ~6,500 lines of Dagster YAML configurations in `sds_data_manager/orchestration/dependencies/*.yaml` wholesale. Grep for the specific `(data_type, descriptor)` key you need, and only read a file in full when explicitly asked to modify job definitions or inputs.
-3. **SCIENCE ALGORITHMS**: The actual science algorithms live in a different repository (`imap-processing`). The batch jobs submitted by Dagster use containers built from that repo. Do not try to implement science processing logic here.
-4. **CUSTOM BEHAVIOR OVER SPECIAL CASES**: To change behavior for a single data product, subclass the handler in `sds_data_manager/orchestration/custom_behavior/` and register it — do not special-case inside the generic handler. See [imap-architecture.md](imap-architecture.md).
-5. **GENERATED REQUIREMENTS FILES**: Do not hand-edit the `requirements.txt` files under `lambda_layer/` and `sds_data_manager/lambda_code/` — they are exported from `pyproject.toml` by pre-commit hooks (see below).
-
 ## Commands
 
 ```bash
