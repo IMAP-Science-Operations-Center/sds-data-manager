@@ -14,7 +14,7 @@ This repository manages the AWS cloud infrastructure (CDK, Lambdas, Batch, API G
 - **`DagsterStack`** — the Dagster ECS Fargate deployment.
 - **`BackupStack`** — cross-account backups.
 
-Constructs are one-per-file under `sds_data_manager/constructs/`.
+CDK constructs are defined under `sds_data_manager/constructs/`.
 
 `poetry run cdk synth` is the main "does the infrastructure still build" check, and CI runs it. Never suggest `cdk deploy` — deploys happen through GitHub Actions.
 
@@ -53,11 +53,11 @@ Constructs are one-per-file under `sds_data_manager/constructs/`.
 ## Database
 
 PostgreSQL in AWS, modeled with SQLAlchemy in `sds_data_manager/lambda_code/SDSCode/database/models.py`:
-`ScienceFiles`, `QuicklookFiles`, `SPICEFiles`, `AncillaryFiles`, `ReleaseFiles`, `SpinFiles`, `RepointFiles`, `PointingTable`, `ProcessingJob`, `IDEXL0Files`, and `Version`.
+`ScienceFiles`, `QuicklookFiles`, `SPICEFiles`, `AncillaryFiles`, `ReleaseFiles`, `SpinFiles`, `RepointFiles`, `SmallForcesFile`, `PointingTable`, `ProcessingJob`, `IDEXL0Files`, and `Version`.
 
 Schema changes are managed with Alembic; migrations live in `alembic/versions/` and `alembic/env.py` requires `DATABASE_URL` to be set in the environment. `alembic/versions/*.py` is exempt from all ruff rules.
 
-Tests under `tests/orchestration/` run against a real `postgres:15-alpine` container via `testcontainers` (so Docker is required); other test directories use in-memory SQLite (`tests/conftest.py`) with `moto` mocks for AWS.
+Tests under `tests/orchestration/` run against a real `postgres:15-alpine` container via `testcontainers` (so Docker is required). Most unit tests use in-memory SQLite (`tests/conftest.py`) with `moto` mocks for AWS, while `tests/integration/` targets live development AWS resources and is marked `network`.
 
 **Relevant Files/Directories:**
 - `sds_data_manager/lambda_code/SDSCode/database/models.py`
@@ -66,7 +66,7 @@ Tests under `tests/orchestration/` run against a real `postgres:15-alpine` conta
 
 ## Dagster Orchestration
 
-Dagster is deployed in an ECS Fargate cluster with separate clusters for the Daemon, Web Server, and Read-Only Web Server.
+Dagster is deployed in one ECS Fargate cluster with separate services for the Daemon, Web Server, and Read-Only Web Server.
 
 ### Everything is generated from YAML config
 
@@ -104,9 +104,9 @@ We provide APIs to query databases and download specific data products.
 - **Authentication**: Managed via API keys distributed to users.
 - **`imap-data-access`**: An external maintained Python library summarizing API integrations for end users.
 
-Note: There is also a static S3 website for the mission hosted on Route 53, for which this repo provides some underlying infrastructure but no deployable HTML/JS code.
+Note: There is also a static mission website stored in S3 and served through CloudFront, with DNS managed by Route 53. This repository provides its infrastructure but no deployable HTML/JS code.
 
 **Relevant Files/Directories:**
 - **API Lambdas (Query, Download, Upload)**: `sds_data_manager/lambda_code/SDSCode/api_lambdas/`
 - **API Gateway CDK Constructs**: `sds_data_manager/constructs/api_gateway_construct.py`, `sds_data_manager/constructs/sds_api_manager_construct.py`
-- **Authorization Scripts**: `scripts/authorization/` (e.g., `lambda_api_key_authorizer.py`, `manage_api_keys.py`)
+- **Authorization Code**: `sds_data_manager/lambda_code/authorization/lambda_api_key_authorizer.py`, `scripts/authorization/manage_api_keys.py`
