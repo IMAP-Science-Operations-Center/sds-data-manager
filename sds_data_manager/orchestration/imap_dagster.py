@@ -8,7 +8,7 @@ from imap_data_access import VALID_DATALEVELS
 
 import sds_data_manager.orchestration.custom_behavior
 from sds_data_manager.orchestration import (
-    config,
+    backup_checker,
     custom_partitions,
     reprocessing,
 )
@@ -16,7 +16,6 @@ from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
 )
 from sds_data_manager.orchestration.file_handler_registry import FileBuilderRegistry
-from sds_data_manager.orchestration.imap_file import build_materialization_sensor
 from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 
 
@@ -83,51 +82,16 @@ for potential_job in all_jobs:
 # store in assets list
 assets_to_build = job_handlers + file_handlers
 
-# File handlers that materialize via the shared file sensor below, vs.
-# those (e.g. IDEX) that fully manage their own materialization and sensor.
-default_file_handlers = [h for h in file_handlers if h.USE_COMMON_SENSOR]
-custom_file_handlers = [h for h in file_handlers if not h.USE_COMMON_SENSOR]
-
-# File-only assets have nothing else materializing them, so this sensor is their
-# primary materialization path. It only waits long enough for the indexer to commit.
-new_files_sensor = build_materialization_sensor(
-    [(handler.job_config, handler.partitions_def) for handler in default_file_handlers],
-    name="science_file_materialization_sensor",
-    materialized_by="file_sensor",
-    min_age=config.FILE_MATERIALIZATION_MIN_AGE,
-)
-
-# Processing job outputs are materialized by their job's op. This backup sensor
-# only picks up outputs the op missed (e.g. the run was interrupted after the Batch
-# job succeeded), and waits long enough that it doesn't race the op.
-job_output_backup_sensor = build_materialization_sensor(
-    [
-        (output, job.partitions_def)
-        for job in job_handlers
-        for output in job.job_config.outputs
-    ],
-    name="job_output_backup_materialization_sensor",
-    materialized_by="backup_sensor",
-    min_age=config.BACKUP_MATERIALIZATION_MIN_AGE,
-    is_backup=True,
-)
-
-# These sensors determine when it is time to kick off a job
-kickoff_sensors = [job.build_sensor() for job in job_handlers]
-
-# These sensors have custom behavior for materializing assets that are not handled
-# by the shared file sensor (at the moment, just IDEX)
-custom_sensors = [handler.build_sensor() for handler in custom_file_handlers]
-
-# Combine all sensors
-sensors = (
-    kickoff_sensors + custom_sensors + [new_files_sensor, job_output_backup_sensor]
-)
+sensors = []
+batch_jobs = []
+for asset in assets_to_build:
+    batch_jobs.append(asset.build_asset())
+    sensors.append(asset.build_sensor())
 
 # Combine all jobs
 batch_jobs = [asset.build_asset() for asset in assets_to_build]
 
 defs = Definitions(
     assets=batch_jobs,
-    sensors=custom_partitions.sensors + sensors + reprocessing.sensors,
+    sensors=custom_partitions.sensors + sensors + backup_checker.sensors + reprocessing.sensors,
 )
