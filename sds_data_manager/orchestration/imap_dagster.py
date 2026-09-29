@@ -88,9 +88,6 @@ for asset in assets_to_build:
     batch_jobs.append(asset.build_asset())
     sensors.append(asset.build_sensor())
 
-# Combine all jobs
-batch_jobs = [asset.build_asset() for asset in assets_to_build]
-
 defs = Definitions(
     assets=batch_jobs,
     sensors=custom_partitions.sensors
