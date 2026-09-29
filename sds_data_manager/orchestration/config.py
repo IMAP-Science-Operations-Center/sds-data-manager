@@ -10,6 +10,15 @@ VALID_CADENCE_STRS = ["3mo", "6mo", "1yr"]
 
 FIRST_MAP_START_DATE = datetime.datetime(2026, 1, 17, tzinfo=datetime.timezone.utc)
 
+# How long a processing job output must have been in the science files table before
+# the backup materialization sensor materializes it. This gives the job's own op
+# time to materialize it first (with its input metadata).
+BACKUP_MATERIALIZATION_MIN_AGE = datetime.timedelta(hours=1)
+# Files ingested longer ago than this are never considered by the backup sensor, so
+# a reset of the Dagster instance (or the sensor's cursor) does not trigger a mass
+# re-materialization of historical files.
+BACKUP_MATERIALIZATION_MAX_AGE = datetime.timedelta(hours=2)
+
 sensor_schedules = {
     "l0": 300,
     "l1": 300,
