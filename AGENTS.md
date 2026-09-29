@@ -22,4 +22,4 @@ The full guidance for this repo lives in two files. **Read both before doing non
 
 ## Keeping these files in sync
 
-When you learn something new about this repo that future agents need, add it to the relevant `.github/` file above rather than expanding this one.
+When you learn something new about this repo that future developers need, add it to the relevant `.github/` file above rather than expanding this one. If you make any changes to the architecture, be sure to update imap-architecture.md as well.
