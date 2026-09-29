@@ -7,6 +7,8 @@ import os
 from dagster import (
     AssetKey,
     AssetSelection,
+    DagsterEventType,
+    EventRecordsFilter,
     SensorEvaluationContext,
     SensorResult,
     sensor,
@@ -49,6 +51,36 @@ def _get_affected_partitions(context, session, record, partitions_def):
     return dagster_utilities.get_affected_partitions(
         context, partitions_def, record.start_date, record.start_date
     )
+
+
+def _is_safe_to_backfill(context, asset_key, partition, file_name) -> bool:
+    """Return True if a backup materialization can't clobber a wanted one.
+
+    The latest materialization of a partition is what downstream jobs read their
+    inputs from, so the backup sensor only writes one when the partition has never
+    been materialized, or when the latest materialization is exactly one file with
+    the same name (ignoring version) as ``file_name``. Partitions that hold several
+    files (e.g. ``idex_l0_raw``) or a different file are left alone.
+
+    Version ordering is still enforced afterwards by ``get_materialization``.
+    """
+    records = context.instance.get_event_records(
+        EventRecordsFilter(
+            asset_key=asset_key,
+            asset_partitions=[partition],
+            event_type=DagsterEventType.ASSET_MATERIALIZATION,
+        ),
+        limit=1,
+    )
+    if not records:
+        return True
+    last_files = records[0].asset_materialization.metadata.get("file_names")
+    last_files = last_files.value if last_files else []
+    if isinstance(last_files, str):
+        last_files = [last_files]
+    # "imap_glows_l1a_de_20260102_v001.0001.cdf" -> "imap_glows_l1a_de_20260102"
+    base = file_name.rsplit("_", 1)[0]
+    return len(last_files) == 1 and last_files[0].rsplit("_", 1)[0] == base
 
 
 def _parse_cursor(cursor: str | None) -> tuple[datetime.datetime, str]:
@@ -94,15 +126,21 @@ def backup_sensor(context: SensorEvaluationContext):
     only considers files older than ``min_age``. If a file is older than ``min_age``
     but never materialized, it was very likely missed by the other assets, and
     should be materialized.
+
+    Files older than ``max_age`` are never considered, so a reset cursor or
+    Dagster instance does not re-materialize the whole history. The sensor also
+    never overwrites a materialization unless it is an older version of the same
+    single file (see ``_is_safe_to_backfill``).
     """
     from sds_data_manager.orchestration.imap_dagster import defs  # noqa: PLC0415
 
     materializations = []
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cutoff = now - config.BACKUP_MATERIALIZATION_MIN_AGE
+    window_start = now - config.BACKUP_MATERIALIZATION_MAX_AGE
     last_ingestion_date, last_file_path = _parse_cursor(context.cursor)
-    cutoff = (
-        datetime.datetime.now(datetime.timezone.utc)
-        - config.BACKUP_MATERIALIZATION_MIN_AGE
-    )
+    if last_ingestion_date < window_start:
+        last_ingestion_date, last_file_path = window_start, ""
 
     # Keyset pagination on (ingestion_date, file_path), so the cursor can
     # stop part way through rows that share an ingestion_date.
@@ -168,11 +206,18 @@ def backup_sensor(context: SensorEvaluationContext):
                 context, session, record, partitions_def
             )
 
+            file_name = os.path.basename(record.file_path)
             for partition in affected_partitions:
                 context.log.info(
                     f"""The following partition was
                     identified as affected: {partition}"""
                 )
+                if not _is_safe_to_backfill(context, target, partition, file_name):
+                    context.log.info(
+                        f"Partition {partition} of {target.to_user_string()} holds "
+                        f"other files; not overwriting it with {file_name}."
+                    )
+                    continue
                 # If the job op materializes this file at the same moment,
                 # both may pass this check and Dagster records two identical
                 # materializations. That is harmless: downstream job
@@ -181,7 +226,7 @@ def backup_sensor(context: SensorEvaluationContext):
                     context,
                     target,
                     partition,
-                    [os.path.basename(record.file_path)],
+                    [file_name],
                     Version(record.major_version, record.minor_version),
                     "science",
                     extra_metadata={"materialized_by": "backup_sensor"},
