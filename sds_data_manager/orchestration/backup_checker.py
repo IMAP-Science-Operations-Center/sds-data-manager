@@ -7,7 +7,6 @@ import os
 from dagster import (
     AssetKey,
     AssetSelection,
-    DynamicPartitionsDefinition,
     SensorEvaluationContext,
     SensorResult,
     sensor,
@@ -18,9 +17,9 @@ from sqlalchemy import and_, or_, select
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import config, dagster_utilities
-from sds_data_manager.orchestration.types import DependencyNode
 
 MAX_RECORDS_PER_TICK = 500
+
 
 def _get_affected_partitions(context, session, record, partitions_def):
     """Return the partition keys affected by a newly ingested ScienceFiles record."""
@@ -77,29 +76,33 @@ def _parse_cursor(cursor: str | None) -> tuple[datetime.datetime, str]:
     return ingestion_date, file_path
 
 
-
-@sensor(name="job_output_backup_materialization_sensor",
-        asset_selection=AssetSelection.all(),
-        minimum_interval_seconds=300,
-    )
+@sensor(
+    name="job_output_backup_materialization_sensor",
+    asset_selection=AssetSelection.all(),
+    minimum_interval_seconds=300,
+)
 def backup_sensor(context: SensorEvaluationContext):
     """Sensor that runlessly materializes IMAP assets from ScienceFiles.
-    
-    The sensor serves as a "backup" for the primary methods of materializing 
+
+    The sensor serves as a "backup" for the primary methods of materializing
     assets. It scans the ScienceFiles table for newly ingested files, maps each
     one back to its Dagster asset key and partitions definition, and reports a
     runless AssetMaterialization for it unless an equal or newer materialization
     already exists.
 
-    To give the other sensors and assets time to materialize first, this sensor 
+    To give the other sensors and assets time to materialize first, this sensor
     only considers files older than ``min_age``. If a file is older than ``min_age``
     but never materialized, it was very likely missed by the other assets, and
-    should be materialized. 
+    should be materialized.
     """
+    from sds_data_manager.orchestration.imap_dagster import defs  # noqa: PLC0415
 
     materializations = []
     last_ingestion_date, last_file_path = _parse_cursor(context.cursor)
-    cutoff = datetime.datetime.now(datetime.timezone.utc) - config.BACKUP_MATERIALIZATION_MIN_AGE
+    cutoff = (
+        datetime.datetime.now(datetime.timezone.utc)
+        - config.BACKUP_MATERIALIZATION_MIN_AGE
+    )
 
     # Keyset pagination on (ingestion_date, file_path), so the cursor can
     # stop part way through rows that share an ingestion_date.
@@ -127,7 +130,7 @@ def backup_sensor(context: SensorEvaluationContext):
 
         # Only materialize the highest version of each logical file in this
         # batch. Older versions seen in a later batch are rejected by
-        # get_materialization's version check, so this saves time. 
+        # get_materialization's version check, so this saves time.
         latest_records = {}
         for record in recent_db_records:
             key = (
@@ -144,11 +147,20 @@ def backup_sensor(context: SensorEvaluationContext):
                 latest_records[key] = record
 
         for record in latest_records.values():
-            target = AssetKey(record.source + "_" + record.data_type + "_" + record.descriptor).replace("-", "")
-            if context.asset_graph.has_asset_key(target):
+            target = AssetKey(
+                (
+                    record.instrument
+                    + "_"
+                    + record.data_level
+                    + "_"
+                    + record.descriptor
+                ).replace("-", "")
+            )
+            asset_graph = defs.get_repository_def().asset_graph
+            try:
+                partitions_def = asset_graph.get(target).partitions_def
                 context.log.info(f"Analyzing file: {record.file_path}")
-                partitions_def = context.asset_graph.get(target).partitions_def
-            else:
+            except KeyError:
                 context.log.info(f"No suitable assets found for: {record.file_path}")
                 continue
 
@@ -191,5 +203,6 @@ def backup_sensor(context: SensorEvaluationContext):
             }
         ),
     )
+
 
 sensors = [backup_sensor]

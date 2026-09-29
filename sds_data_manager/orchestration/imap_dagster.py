@@ -93,5 +93,8 @@ batch_jobs = [asset.build_asset() for asset in assets_to_build]
 
 defs = Definitions(
     assets=batch_jobs,
-    sensors=custom_partitions.sensors + sensors + backup_checker.sensors + reprocessing.sensors,
+    sensors=custom_partitions.sensors
+    + sensors
+    + backup_checker.sensors
+    + reprocessing.sensors,
 )

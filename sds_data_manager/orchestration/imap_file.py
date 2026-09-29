@@ -1,19 +1,17 @@
 """Class for handling science files on the SDS that are not created by AWS Batch."""
 
 import datetime
-import json
 import os
 
 from dagster import (
     AssetSelection,
     AssetSpec,
-    DynamicPartitionsDefinition,
     SensorEvaluationContext,
     SensorResult,
     sensor,
 )
 from imap_data_access.file_validation import Version
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -34,7 +32,7 @@ class IMAPScienceFileHandler:
         return AssetSpec(
             key=self.job_config.to_dagster_asset(), partitions_def=self.partitions_def
         )
-    
+
     def build_sensor(self):
         """Create an asset representing an IMAP science file NOT created from Batch."""
         sensor_name = f"{self.job_config.to_dagster_name()}_sensor"
