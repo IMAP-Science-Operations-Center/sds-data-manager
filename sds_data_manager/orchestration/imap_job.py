@@ -195,6 +195,9 @@ class IMAPJobHandler:
         5) Wait for the output files,
            and materialize them as we see them in the database.
 
+        If this run is interrupted before step 5, or the indexer is slow to record
+        the outputs, the job_output_backup_materialization_sensor will eventually
+        materialize them instead (without the inputs metadata).
         """
         # Before doing anything, check if any of the dependencies are currently
         # running or about to run.

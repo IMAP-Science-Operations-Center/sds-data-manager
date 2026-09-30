@@ -8,6 +8,7 @@ from imap_data_access import VALID_DATALEVELS
 
 import sds_data_manager.orchestration.custom_behavior
 from sds_data_manager.orchestration import (
+    backup_checker,
     custom_partitions,
     reprocessing,
 )
@@ -87,8 +88,10 @@ for asset in assets_to_build:
     batch_jobs.append(asset.build_asset())
     sensors.append(asset.build_sensor())
 
-assets = batch_jobs
-
 defs = Definitions(
-    assets=assets, sensors=custom_partitions.sensors + sensors + reprocessing.sensors
+    assets=batch_jobs,
+    sensors=custom_partitions.sensors
+    + sensors
+    + backup_checker.sensors
+    + reprocessing.sensors,
 )

@@ -67,8 +67,12 @@ def get_materialization(
     version: Version,
     data_type: str,
     start_date: str = "",
+    extra_metadata: dict | None = None,
 ):
-    """Return AssetMaterialization only if different from previous materialization."""
+    """Return AssetMaterialization only if different from previous materialization.
+
+    ``extra_metadata`` is merged into the materialization's metadata.
+    """
     if _existing_asset(context, asset_key, partition, file_names, version):
         return
 
@@ -81,6 +85,7 @@ def get_materialization(
             "major_version": str(version.major),
             "minor_version": str(version.minor),
             "start_date": start_date,
+            **(extra_metadata or {}),
         },
     )
 
