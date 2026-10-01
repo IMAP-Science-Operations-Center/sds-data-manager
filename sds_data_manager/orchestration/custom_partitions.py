@@ -235,9 +235,180 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
     return SensorResult()
 
 
+##### THIS TELLS DAGSTER ABOUT SPACECRAFT POINTING-ATTITUDE PROCESSING WINDOWS
+# One partition per attitude_history SPICE kernel, keyed by pointing times.
+# Partition start = pointing_start_utc of the first pointing with any overlap
+# with the ah kernel. Partition end = pointing_end_utc of the last pointing
+# completely covered by the ah kernel.
+# Prefix is "pointingattitude" (no underscores) so parse_dates_from_partition_key can
+# split on the first "_" to isolate the date range.
+pointing_attitude_partitions = DynamicPartitionsDefinition(
+    name="pointing_attitude_partitions"
+)
+
+
+def _select_maximal_ah_kernels(attitude_kernels):
+    """Drop kernels whose coverage is fully contained in another kernel's.
+
+    Superseded kernels are never removed from the DB, so without this filter
+    the sensor would keep regenerating their partitions, undoing the
+    subsumption-based deletion below.
+
+    Kernels are sorted by coverage duration, longest first, so the largest
+    (and most likely to be a superset) kernels are tested first. Each kernel
+    is then only compared against the `maximal` kernels accepted so far
+    rather than the full kernel list: since nothing already accepted can be
+    contained in a kernel processed later (it would need a duration >=
+    the one that already stands), that list stays small in practice (one
+    entry per "generation" of combined files), keeping this cheap even
+    against a cold start with a hundred-plus kernels.
+    """
+    dated_kernels = [
+        kernel
+        for kernel in attitude_kernels
+        if kernel.min_date_datetime and kernel.max_date_datetime
+    ]
+    dated_kernels.sort(
+        key=lambda kernel: kernel.max_date_datetime - kernel.min_date_datetime,
+        reverse=True,
+    )
+
+    maximal_kernels = []
+    for kernel in dated_kernels:
+        if any(
+            larger.min_date_datetime <= kernel.min_date_datetime
+            and larger.max_date_datetime >= kernel.max_date_datetime
+            for larger in maximal_kernels
+        ):
+            continue  # Fully contained within an already-accepted kernel
+        maximal_kernels.append(kernel)
+    return maximal_kernels
+
+
+@sensor(minimum_interval_seconds=600)
+def add_pointing_attitude_partitions(context: SensorEvaluationContext):
+    """Alert Dagster when new spacecraft pointing partitions should be made.
+
+    One partition is maintained per maximal ah kernel cycle (kernels fully
+    contained within another kernel's coverage are ignored, see
+    _select_maximal_ah_kernels). When a new ah kernel extends or replaces
+    earlier coverage, any existing partitions whose full range is subsumed
+    by the new partition are deleted first. This handles both the normal
+    growing-append case (same start, later end) and the retroactive
+    combined-file case (one large file that subsumes many small
+    early-mission daily partitions).
+    """
+    with db.Session() as session:
+        attitude_kernels = (
+            session.query(models.SPICEFiles)
+            .filter(models.SPICEFiles.kernel_type == "attitude_history")
+            .all()
+        )
+
+        if not attitude_kernels:
+            return SensorResult()
+
+        attitude_kernels = _select_maximal_ah_kernels(attitude_kernels)
+
+        existing_partitions = context.instance.get_dynamic_partitions(
+            "pointing_attitude_partitions"
+        )
+
+        # Parse existing partitions into (start_str, end_str, key) for subsumption
+        # checks. %Y-%m-%dT%H:%M:%S is fixed-width and zero-padded, so
+        # lexicographic string comparison is equivalent to chronological order.
+        existing_parsed = []
+        for key in existing_partitions:
+            date_range = key.split("_", 1)[1]
+            if "_to_" in date_range:
+                start_str, end_str = date_range.split("_to_")
+                existing_parsed.append((start_str, end_str, key))
+
+        partitions_to_add = []
+        partitions_to_delete = []
+
+        for kernel in attitude_kernels:
+            ah_min = kernel.min_date_datetime
+            ah_max = kernel.max_date_datetime
+
+            # A pointing's fixed attitude actually ends at repoint_start_utc
+            # (when the spacecraft starts slewing to the next pointing), not at
+            # pointing_end_utc. pointing_end_utc is recorded as when the *next*
+            # pointing begins, i.e. after that slew finishes -- so it's later
+            # than the true end of this pointing's stable attitude. That's why
+            # these queries check repoint_start_utc against the ah kernel's
+            # bounds instead of pointing_end_utc.
+
+            # First pointing with any overlap with the ah kernel coverage.
+            first_overlapping = (
+                session.query(models.PointingTable)
+                .filter(
+                    models.PointingTable.pointing_start_utc < ah_max,
+                    models.PointingTable.repoint_start_utc > ah_min,
+                )
+                .order_by(models.PointingTable.pointing_start_utc)
+                .first()
+            )
+
+            # Last pointing completely contained within the ah kernel coverage
+            last_covered = (
+                session.query(models.PointingTable)
+                .filter(
+                    models.PointingTable.pointing_start_utc >= ah_min,
+                    models.PointingTable.repoint_start_utc <= ah_max,
+                )
+                .order_by(models.PointingTable.pointing_end_utc.desc())
+                .first()
+            )
+
+            # Skip if no pointings are completely covered yet
+            if not first_overlapping or not last_covered:
+                continue
+
+            new_start_str = first_overlapping.pointing_start_utc.strftime(
+                "%Y-%m-%dT%H:%M:%S"
+            )
+            new_end_str = last_covered.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S")
+            new_partition_name = f"pointingattitude_{new_start_str}_to_{new_end_str}"
+
+            if new_partition_name in existing_partitions:
+                continue  # Already up to date
+
+            # Delete any existing partition whose range is fully contained within
+            # the new range. Covers both the growing-append case (same start,
+            # smaller end) and the retroactive combined-file case (many small
+            # early-mission partitions all subsumed by one large new partition).
+            subsumed = [
+                key
+                for start_str, end_str, key in existing_parsed
+                if start_str >= new_start_str and end_str <= new_end_str
+            ]
+            partitions_to_delete.extend(subsumed)
+            partitions_to_add.append(new_partition_name)
+
+        # de-duplicate partition lists
+        partitions_to_delete = list(dict.fromkeys(partitions_to_delete))
+        partitions_to_add = list(dict.fromkeys(partitions_to_add))
+
+        partition_requests = []
+        if partitions_to_delete:
+            partition_requests.append(
+                pointing_attitude_partitions.build_delete_request(partitions_to_delete)
+            )
+            context.log.info(f"Deleting subsumed partitions: {partitions_to_delete}")
+        if partitions_to_add:
+            partition_requests.append(
+                pointing_attitude_partitions.build_add_request(partitions_to_add)
+            )
+            context.log.info(f"Registered new partitions: {partitions_to_add}")
+
+    return SensorResult(dynamic_partitions_requests=partition_requests)
+
+
 sensors = [
     add_repoint_partitions,
     add_daily_partitions,
     add_idex_10_day_partitions,
     add_cadence_map_partitions,
+    add_pointing_attitude_partitions,
 ]
