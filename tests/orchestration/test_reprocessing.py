@@ -73,6 +73,7 @@ def test_reprocess_one_repoint_partition() -> None:
         AssetKey("glows_l1a_de"),
         AssetKey("glows_l1a_hist"),
     }
+    assert run_request.tags["imap/reprocess_id"] == "test-id"
 
 
 def test_reprocess_all_swe() -> None:
