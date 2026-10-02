@@ -6,7 +6,6 @@ from unittest.mock import Mock
 
 def test_reprocessing_proxy_returns_reprocess_id(monkeypatch):
     """Test that the SQS MessageId is returned as the reprocess_id."""
-
     monkeypatch.setenv("QUEUE_URL", "test-queue")
     from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
         reprocessing_proxy,
