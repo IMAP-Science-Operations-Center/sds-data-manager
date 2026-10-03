@@ -985,13 +985,25 @@ class IMAPJobHandler:
 
     def get_spice_file_inputs(self, session, target_start, target_end):
         """Return the spice files needed to cover a time range."""
-        spice_files = spice.get_upstream_dependency_inputs_spice(
+        spice_files, missing_kernel_types = spice.get_upstream_dependency_inputs_spice(
             self.job_config.spice_types, target_start, target_end
         )
-        if not spice_files and self.job_config.spice_inputs:
-            # If no SPICE files are returned, but there are SPICE inputs, raise failure
+        if (
+            missing_kernel_types
+            and len(missing_kernel_types) > 0
+            and self.job_config.spice_inputs
+        ):
+            # If there are missing kernels, raise failure
             raise MissingDependenciesError(
-                f"Missing SPICE files ({', '.join(self.job_config.spice_types)}) "
+                f"Missing kernel types: {', '.join(missing_kernel_types)}"
+                f"Found the following kernels: {', '.join(spice_files)}"
+                f"between {target_start} and {target_end}"
+            )
+        # if spice files and missing kernels are none, the metakernel api failed
+        if not spice_files and not missing_kernel_types:
+            raise MissingDependenciesError(
+                f"The Metakernel API found zero files when querying for kernel "
+                f"types: {', '.join(self.job_config.spice_types)} "
                 f"between {target_start} and {target_end}"
             )
 
