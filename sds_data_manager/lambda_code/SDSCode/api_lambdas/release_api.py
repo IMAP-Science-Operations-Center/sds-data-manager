@@ -46,7 +46,15 @@ def check_api_key(event):
 
 
 def validate_query_params(event):
-    """Validate query parameters and return (is_valid, error_message)."""
+    """Validate query parameters.
+
+    Returns
+    -------
+    dict
+        A 400 response if the parameters are invalid. Otherwise a 200
+        response whose ``data`` holds the ``release_type`` and
+        ``query_params``.
+    """
     query_params = event.get("queryStringParameters") or {}
 
     # Validate release_type and derive the released flag value.
@@ -311,7 +319,8 @@ def download_file(manifest_file):
     Parameters
     ----------
     manifest_file : str
-        S3 path to the manifest text file. Each line is an IMAP file path.
+        Filename of the release manifest. The S3 key is built from the
+        filename using the IMAP file path convention.
 
     Returns
     -------
@@ -412,19 +421,22 @@ def reprocess_type_handler(query_params):
 def lambda_handler(event, context):
     """Entry point for the release API lambda.
 
-    Required query parameters for 'release' type:
-        instrument   : instrument name (e.g. mag, swe, lo, codice)
-        start_date   : inclusive lower bound on file start_date (YYYYMMDD)
-        end_date     : inclusive upper bound on file start_date (YYYYMMDD)
+    Query parameters:
+        release_type  : one of 'release', 'early-release', or 'unrelease'.
+                        Only 'release' is implemented; the others return 501.
+        manifest_file : filename of a release manifest that has already been
+                        uploaded through the upload API, e.g.
+                        imap_hit_data-release-001_20260201_20260430_v001.txt.
+                        The release date range comes from the start and end
+                        dates in this filename.
 
-    Optional parameters for 'release' type:
-        exclude_file : S3 path to manifest text file listing files to
-                       exclude from release. Each line in the manifest
-                       can contain science or ancillary filename.
+    The manifest is a CSV with the header
+    ``instrument,data_level,descriptor,release_flag``. For each line whose
+    release_flag is true, the latest version of each matching file is marked
+    as released. Lines whose release_flag is false are skipped; they do not
+    withhold anything.
 
-    Required parameters for 'early' or 'unrelease' type:
-        manifest_file : S3 path to manifest text file listing files to
-        release/unrelease.
+    Only API keys with a non-read scope may release files.
 
     Parameters
     ----------
