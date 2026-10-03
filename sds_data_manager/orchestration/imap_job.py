@@ -416,57 +416,149 @@ class IMAPJobHandler:
             )
 
         for output in self.job_config.outputs:
-            filters = [
-                models.ScienceFiles.instrument == output.source,
-                models.ScienceFiles.data_level == output.data_type,
-                models.ScienceFiles.descriptor == output.descriptor,
-            ]
-            if output_versions is not None:
-                if output.descriptor in output_versions.keys():
-                    versions = output_versions[output.descriptor]
-                    filters.append(
-                        models.ScienceFiles.major_version == versions["major_version"]
-                    )
-                    filters.append(
-                        models.ScienceFiles.minor_version == versions["minor_version"]
-                    )
-            if repointing is not None:
-                filters.append(models.ScienceFiles.repointing == int(repointing))
-            if start_date is not None:
-                filters.append(models.ScienceFiles.start_date == start_date.date())
-            created_file = (
-                session.query(models.ScienceFiles)
-                .filter(*filters)
-                .distinct(
-                    models.ScienceFiles.start_date,
-                    models.ScienceFiles.repointing,
-                )
-                .order_by(
-                    models.ScienceFiles.start_date,
-                    models.ScienceFiles.repointing,
-                    models.ScienceFiles.major_version.desc(),
-                    models.ScienceFiles.minor_version.desc(),
-                )
-                .first()
+            find_output = (
+                self._find_ancillary_output
+                if output.data_type == "ancillary"
+                else self._find_science_output
             )
-            if created_file:
-                context.log.info(
-                    f"""Found file {os.path.basename(created_file.file_path)}!
-                        Creating Asset.
-                    """
-                )
-                materialization = get_materialization_result(
-                    context,
-                    output.to_dagster_asset(),
-                    context.partition_key,
-                    [os.path.basename(created_file.file_path)],
-                    Version(created_file.major_version, created_file.minor_version),
-                    "science",
-                    inputs=inputs,
-                )
-                if materialization:
-                    output_materializations.append(materialization)
+            materialization = find_output(
+                context,
+                session,
+                output,
+                output_versions=output_versions,
+                start_date=start_date,
+                repointing=repointing,
+                inputs=inputs,
+            )
+            if materialization:
+                output_materializations.append(materialization)
         return output_materializations
+
+    def _find_science_output(
+        self,
+        context,
+        session: db.Session,
+        output,
+        output_versions: dict | None = None,
+        start_date: datetime.datetime | None = None,
+        repointing: int | None = None,
+        inputs: dict | None = None,
+    ):
+        """Return the materialization for a single science output, if found."""
+        filters = [
+            models.ScienceFiles.instrument == output.source,
+            models.ScienceFiles.data_level == output.data_type,
+            models.ScienceFiles.descriptor == output.descriptor,
+        ]
+
+        if output_versions is not None and output.descriptor in output_versions:
+            versions = output_versions[output.descriptor]
+            filters.append(
+                models.ScienceFiles.major_version == versions["major_version"]
+            )
+            filters.append(
+                models.ScienceFiles.minor_version == versions["minor_version"]
+            )
+
+        if repointing is not None:
+            filters.append(models.ScienceFiles.repointing == int(repointing))
+
+        if start_date is not None:
+            filters.append(models.ScienceFiles.start_date == start_date.date())
+
+        created_file = (
+            session.query(models.ScienceFiles)
+            .filter(*filters)
+            .distinct(
+                models.ScienceFiles.start_date,
+                models.ScienceFiles.repointing,
+            )
+            .order_by(
+                models.ScienceFiles.start_date,
+                models.ScienceFiles.repointing,
+                models.ScienceFiles.major_version.desc(),
+                models.ScienceFiles.minor_version.desc(),
+            )
+            .first()
+        )
+
+        if not created_file:
+            return None
+
+        context.log.info(
+            f"""Found file {os.path.basename(created_file.file_path)}!
+                Creating Asset.
+            """
+        )
+
+        return get_materialization_result(
+            context,
+            output.to_dagster_asset(),
+            context.partition_key,
+            [os.path.basename(created_file.file_path)],
+            Version(created_file.major_version, created_file.minor_version),
+            "science",
+            inputs=inputs,
+        )
+
+    def _find_ancillary_output(
+        self,
+        context,
+        session: db.Session,
+        output,
+        output_versions: dict | None = None,
+        start_date: datetime.datetime | None = None,
+        repointing: int | None = None,
+        inputs: dict | None = None,
+    ):
+        """Return the materialization for a single ancillary output, if found."""
+        filters = [
+            models.AncillaryFiles.instrument == output.source,
+            models.AncillaryFiles.descriptor == output.descriptor,
+        ]
+
+        # When we know the version the job just produced, match it exactly. The
+        # ancillary version string carries only the (bumped) minor version.
+        if output_versions is not None and output.descriptor in output_versions:
+            minor_version = output_versions[output.descriptor]["minor_version"]
+            filters.append(
+                models.AncillaryFiles.version == str(Version(None, minor_version))
+            )
+
+        if repointing is not None:
+            filters.append(models.AncillaryFiles.repointing == int(repointing))
+
+        if start_date is not None:
+            filters.append(models.AncillaryFiles.start_date == start_date.date())
+
+        created_file = (
+            session.query(models.AncillaryFiles)
+            .filter(*filters)
+            .order_by(models.AncillaryFiles.version.desc())
+            .first()
+        )
+
+        if not created_file:
+            return None
+
+        context.log.info(
+            f"""Found file {os.path.basename(created_file.file_path)}!
+                Creating Asset.
+            """
+        )
+
+        # The major version is config-driven; the minor version comes from the
+        # file's "vXXX" version string.
+        minor_version = Version.from_version(created_file.version).minor
+        return get_materialization_result(
+            context,
+            output.to_dagster_asset(),
+            context.partition_key,
+            [os.path.basename(created_file.file_path)],
+            Version(output.major_version, minor_version),
+            "ancillary",
+            inputs=inputs,
+        )
 
     def _check_for_running_dependencies(self, context):
         """Check if anything upstream of this file is currently running."""
