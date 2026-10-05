@@ -9,7 +9,10 @@ import pytest
 
 # Add the project root to the path to allow imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-from sds_data_manager.lambda_code.SDSCode.api_lambdas import non_spice_table_api
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
+    non_spice_table_api,
+    spice_query_api,
+)
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     RepointFiles,
     SmallForcesFile,
@@ -130,28 +133,43 @@ def test_spin_table_api_date_filters(spin_db):
     assert results[0]["start_date"].startswith("2026-09-25")
 
 
-# def test_spin_table_api_latest_version(spin_db):
-#     """Test that 'latest=true' returns only the newest version of each date."""
-#     event = {
-#         "queryStringParameters": {
-#             "latest": "true"
-#         }
-#     }
+def test_small_forces_table_api_latest_version(small_forces_db):
+    """Test that 'latest=true' returns only the newest version of each date group."""
+    event = {
+        "queryStringParameters": {"latest": "true"},
+        "rawPath": "/small-forces-table",
+    }
 
-#     response = spin_table_api.lambda_handler(event, {})
+    response = non_spice_table_api.lambda_handler(event, {})
 
-#     assert response["statusCode"] == 200
-#     results = json.loads(response["body"])
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
 
-#     # Should have two results - the latest version from each day
-#     assert len(results) == 2
+    # Both fixture files share the same start/end date, so only the newest
+    # version (02) should be returned.
+    assert len(results) == 1
+    assert results[0]["version"] == "02"
+    assert (
+        results[0]["file_path"]
+        == "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff"
+    )
 
-#     # Verify we got v002 for first date and v001 for second date
-#     date_to_version = {result["start_date"]: result["version"] for result in results}
-#     assert any(date.startswith("2026-09-25") and version == "v002"
-#                 for date, version in date_to_version.items())
-#     assert any(date.startswith("2026-09-26") and version == "v001"
-#                 for date, version in date_to_version.items())
+
+def test_repoint_table_api_latest_version(repoint_db):
+    """Test 'latest=true' for repoint files, which have no `start_date` column."""
+    event = {
+        "queryStringParameters": {"latest": "true"},
+        "rawPath": "/repoint-table",
+    }
+
+    response = non_spice_table_api.lambda_handler(event, {})
+
+    # The two fixture repoint files have distinct end_dates, so both are the
+    # latest in their own group. The key assertion is that partitioning on
+    # end_date alone does not raise for a table without `start_date`.
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 2
 
 
 def test_spin_table_api_invalid_parameter(spin_db):
@@ -295,3 +313,106 @@ def test_small_forces_table(small_forces_db):
     for result in results:
         assert result["start_date"].startswith("2025-04-10")
         assert result["end_date"].startswith("2025-04-20")
+
+
+# Tests when non-SPICE tables are accessed via `spice_query_api`
+
+
+def test_spin_via_spice_query_api(spin_db):
+    """Test spin table query via the spice query API."""
+    event = {
+        "queryStringParameters": {
+            "type": "spin",
+            "start_date": "20260925",
+            "end_date": "20260925",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 1
+    assert (
+        results[0]["file_path"] == "imap/spice/spin/imap_2026_268_2026_268_01.spin.csv"
+    )
+    assert results[0]["start_date"].startswith("2026-09-25")
+
+
+def test_repoint_via_spice_query_api(repoint_db):
+    """Test repoint table query via the spice query API."""
+    event = {
+        "queryStringParameters": {
+            "type": "repoint",
+            "end_date": "20260925",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 1
+    assert (
+        results[0]["file_path"]
+        == "imap/spice/repoint/imap_2026_267_2026_268_02.repoint"
+    )
+    assert results[0]["end_date"].startswith("2026-09-25")
+
+
+def test_thruster_via_spice_query_api(small_forces_db):
+    """Test small-forces table query via the spice query API."""
+    event = {
+        "queryStringParameters": {
+            "type": "thruster",
+            "start_date": "20250410",
+            "end_date": "20250420",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 2
+    file_paths = [r["file_path"] for r in results]
+    assert "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff" in file_paths
+    assert "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff" in file_paths
+
+
+def test_file_name_renamed_to_file_path(spin_db):
+    """The query param `file_name` is translated to `file_path` for non-SPICE tables."""
+    event = {
+        "queryStringParameters": {
+            "type": "spin",
+            "file_name": "imap/spice/spin/imap_2026_268_2026_268_01.spin.csv",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 1
+    assert (
+        results[0]["file_path"] == "imap/spice/spin/imap_2026_268_2026_268_01.spin.csv"
+    )
+
+
+def test_thruster_start_end_time_via_spice_query_api(small_forces_db):
+    """Test that `start_time`/`end_time` are remapped to `start_date`/`end_date`.
+
+    The non-SPICE tables API expects human-readable `yyyymmdd` dates, so the
+    values are passed through unchanged and only the parameter names are mapped.
+    """
+    event = {
+        "queryStringParameters": {
+            "type": "thruster",
+            "start_time": "20250410",
+            "end_time": "20250420",
+        },
+    }
+    response = spice_query_api.lambda_handler(event, {})
+
+    assert response["statusCode"] == 200
+    results = json.loads(response["body"])
+    assert len(results) == 2
+    file_paths = [r["file_path"] for r in results]
+    assert "imap/spice/small-forces/imap_2025_100_2025_110_hist_01.sff" in file_paths
+    assert "imap/spice/small-forces/imap_2025_100_2025_110_hist_02.sff" in file_paths
