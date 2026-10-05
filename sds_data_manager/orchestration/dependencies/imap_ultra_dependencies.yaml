@@ -867,7 +867,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       descriptor: 45sensor-status
     - source: ultra
       data_type: ancillary
-      descriptor: l1b-45sensor-de-product-lookup
+      descriptor: l1b-45sensor-extendedspin-config
       trigger_job: false
     - source: spacecraft_clock
       data_type: spice
@@ -1029,7 +1029,7 @@ de_inputs_90sensor: &de_inputs_90sensor
       descriptor: 90sensor-status
     - source: ultra
       data_type: ancillary
-      descriptor: l1b-90sensor-de-product-lookup
+      descriptor: l1b-90sensor-extendedspin-config
       trigger_job: false
     - source: spacecraft_clock
       data_type: spice
