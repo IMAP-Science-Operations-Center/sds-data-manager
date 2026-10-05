@@ -127,6 +127,7 @@ def process_single_message(context: SensorEvaluationContext, message, sqs_queue_
     ]
     tags = {
         "dagster/priority": priority_levels.get(data_level, "0"),
+        # attach SQS message ID to track reprocssing in dagster
         "imap/reprocess_id": message["MessageId"],
     }
     for partition_key in partition_keys:
