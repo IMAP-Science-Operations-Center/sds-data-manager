@@ -995,11 +995,12 @@ class IMAPJobHandler:
         ):
             # If there are missing kernels, raise failure
             raise MissingDependenciesError(
-                f"Missing kernel types: {', '.join(missing_kernel_types)}"
-                f"Found the following kernels: {', '.join(spice_files)}"
+                f"Missing SPICE kernel types: {', '.join(missing_kernel_types)}"
+                f"Found the following files: {', '.join(spice_files)}"
                 f"between {target_start} and {target_end}"
             )
-        # if spice files and missing kernels are none, the metakernel api failed
+        # if spice files and missing kernels are none, the metakernel api failed to
+        # find any
         if not spice_files and not missing_kernel_types:
             raise MissingDependenciesError(
                 f"The Metakernel API found zero files when querying for kernel "
