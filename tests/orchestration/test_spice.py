@@ -182,7 +182,7 @@ def test_check_requested_kernels_missing_ephemeris():
 
 
 def test_check_requested_kernels_best_ephemeris():
-    """Check that when multiple ephris kernels are requested the best is returned."""
+    """Check that when multiple ephemeris kernels are requested the best is returned."""
     metakernel_files = [
         "naif0012.tls",
         "imap_sclk_0000.tsc",
