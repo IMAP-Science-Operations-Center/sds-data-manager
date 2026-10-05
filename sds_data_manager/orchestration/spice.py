@@ -131,8 +131,7 @@ def check_for_missing_kernels(combined_kernel_sources, metakernel_files):
     # the missing kernels list.
     if (
         len(expected_ephemeris) == 1
-        and next(iter(expected_ephemeris)) == "ephemeris_reconstructed"
-        and "ephemeris_reconstructed" not in ephemeris_found
+        and next(iter(expected_ephemeris)) not in ephemeris_found
     ):
         missing_kernels.update(expected_ephemeris)
 
