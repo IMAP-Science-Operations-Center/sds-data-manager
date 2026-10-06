@@ -284,6 +284,52 @@ def test_metakernel_filtered_file_types(session):
     assert result["body"] == "No files found."
 
 
+def test_metakernel_lo_pivot_attitude(session):
+    """Lo pivot kernels: newest version per pointing, every pointing in range."""
+    # Pointing 1 has two versions covering the same window; only v002 is used.
+    _insert_test_file(
+        session, "imap_lopivot-repoint00001_1000_001_1000_001_001.bc", [[1, 10]]
+    )
+    _insert_test_file(
+        session,
+        "imap_lopivot-repoint00001_1000_001_1000_001_002.bc",
+        [[1, 10]],
+        upload_time=-1,
+    )
+    # Pointings 2 and 3 do not overlap with each other or with pointing 1.
+    _insert_test_file(
+        session, "imap_lopivot-repoint00002_1000_001_1000_001_001.bc", [[20, 30]]
+    )
+    _insert_test_file(
+        session, "imap_lopivot-repoint00003_1000_001_1000_001_001.bc", [[40, 50]]
+    )
+    # Pointing 4 is outside the requested range.
+    _insert_test_file(
+        session, "imap_lopivot-repoint00004_1000_001_1000_001_001.bc", [[200, 210]]
+    )
+    # Other kernel types are excluded by the file_types filter.
+    _insert_test_data(session)
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 1,
+                "end_time": 100,
+                "spice_path": "",
+                "list_files": "True",
+                "file_types": "lo_pivot_attitude",
+            }
+        },
+        None,
+    )
+    assert result["statusCode"] == 200
+    assert sorted(json.loads(result["body"])) == [
+        "imap_lopivot-repoint00001_1000_001_1000_001_002.bc",
+        "imap_lopivot-repoint00002_1000_001_1000_001_001.bc",
+        "imap_lopivot-repoint00003_1000_001_1000_001_001.bc",
+    ]
+
+
 def test_metakernel_string_input(session, s3_client):
     """Test that string input is allowed, and is converted to a datetime object."""
     current_path = os.path.dirname(os.path.abspath(__file__))

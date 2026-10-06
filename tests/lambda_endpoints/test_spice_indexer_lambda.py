@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import imap_data_access
 import numpy as np
 import pytest
 import spiceypy
@@ -280,6 +281,102 @@ def test_s3_spice_files(mock_download, mock_clear, session, events_client, s3_cl
         },
         None,
     )
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.wnfetd"
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.wncard",
+    return_value=1,
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.ckcov"
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.spiceypy.ckobj",
+    return_value=[-43101],
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.clear_ephemeral_storage"
+)
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download_from_s3"
+)
+def test_s3_lo_pivot_attitude_file(
+    mock_download,
+    mock_clear,
+    mock_ckobj,
+    mock_ckcov,
+    mock_wncard,
+    mock_wnfetd,
+    session,
+    events_client,
+    s3_client,
+    tmp_path,
+):
+    """Index a Lo pivot attitude kernel and check its coverage is the pointing."""
+    tests_path = Path(os.path.abspath(__file__)).parent.parent
+    test_spice_data_dir = tests_path / "test-data" / "test_spice_files"
+    lsk_test_path = test_spice_data_dir / "naif0012.tls"
+    sclk_test_path = test_spice_data_dir / "imap_sclk_0012.tsc"
+    put_local_file_in_bucket(s3_client, "imap/spice/lsk/naif0012.tls", lsk_test_path)
+    put_local_file_in_bucket(
+        s3_client, "imap/spice/sclk/imap_sclk_0012.tsc", sclk_test_path
+    )
+    _insert_test_file(
+        session, "naif0012.tls", "imap/spice/lsk/naif0012.tls", [[0, 1000000000]]
+    )
+    _insert_test_file(
+        session,
+        "imap_sclk_0012.tsc",
+        "imap/spice/sclk/imap_sclk_0012.tsc",
+        [[0, 1000000000]],
+    )
+
+    # The CK coverage calls are mocked to report a single pointing window,
+    # so the kernel file contents are never read.
+    with spiceypy.KernelPool([str(lsk_test_path)]):
+        et_start = spiceypy.str2et("2025-10-11T01:00:00")
+        et_end = spiceypy.str2et("2025-10-11T23:00:00")
+    mock_wnfetd.return_value = (et_start, et_end)
+    filename = "imap_lopivot-repoint00042_2025_284_2025_284_001.bc"
+    lo_pivot_path = tmp_path / filename
+    lo_pivot_path.write_bytes(b"")
+
+    s3_key = str(
+        SPICEFilePath(filename)
+        .construct_path()
+        .relative_to(imap_data_access.config["DATA_DIR"])
+    )
+    assert s3_key == f"imap/spice/ck/{filename}"
+
+    def download_side_effect(path):
+        if path.endswith("naif0012.tls"):
+            return lsk_test_path
+        elif path.endswith("imap_sclk_0012.tsc"):
+            return sclk_test_path
+        elif path.endswith(filename):
+            return lo_pivot_path
+        raise ValueError(f"Unexpected download path: {path}")
+
+    mock_download.side_effect = download_side_effect
+    event = put_local_file_in_bucket(s3_client, s3_key, lo_pivot_path)
+    spice_indexer.lambda_handler(event, None)
+    assert mock_ckcov.call_args.kwargs["idcode"] == -43101
+
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"type": "lo_pivot_attitude"}}, None
+    )
+    result = json.loads(result["body"])
+    assert len(result) == 1
+    assert result[0]["file_name"] == f"ck/{filename}"
+    assert result[0]["kernel_type"] == "lo_pivot_attitude"
+    assert result[0]["version"] == 1
+    # Coverage should be the pointing window, not the whole mission
+    assert result[0]["min_date_j2000"] == et_start
+    assert result[0]["max_date_j2000"] == et_end
+    assert result[0]["file_intervals_j2000"] == [[et_start, et_end]]
 
 
 def test_s3_spin_files(session, s3_client, events_client):
