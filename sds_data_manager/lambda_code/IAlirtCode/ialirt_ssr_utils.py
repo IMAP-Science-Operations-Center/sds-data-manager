@@ -5,12 +5,30 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import imap_data_access
+import requests
 import xarray as xr
+from imap_data_access.processing_input import (
+    ProcessingInputCollection,
+    SPICEInput,
+    SPICESource,
+)
 from imap_processing import imap_module_directory
 from imap_processing.utils import packet_file_to_datasets
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+KERNELS = {
+    "ephemeris_predicted",
+    "ephemeris_90days",
+    "planetary_ephemeris",
+    "spacecraft_clock",
+    "leapseconds",
+    "imap_frames",
+    "science_frames",
+    "planetary_constants",
+}
+EFS_BASE_PATH = Path("/mnt/data")
 
 
 def query_filenames(day: datetime) -> list[str]:
@@ -103,3 +121,69 @@ def parse_packets(
     combined = combined.isel(epoch=unique_indices)
 
     return combined
+
+
+def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollection:
+    """Query the SPICE metakernel API for the latest kernels for a day.
+
+    The time range covers the day and the day after, to match the packet files.
+
+    Parameters
+    ----------
+    url : str
+        The IMAP data access API URL.
+    day : datetime
+        The day to query.
+
+    Returns
+    -------
+    dependency_inputs : ProcessingInputCollection
+        A collection containing a SPICEInput object with the list of kernel
+        filenames returned from the metakernel API, in priority order.
+    """
+    # The end date is exclusive (midnight), so day + 2 covers day and day + 1.
+    metakernel_url = url + "/metakernel"
+    params = {
+        "start_time": day.strftime("%Y%m%d"),
+        "end_time": (day + timedelta(days=2)).strftime("%Y%m%d"),
+        "list_files": "True",
+        "file_types": ",".join(KERNELS),
+    }
+
+    logger.info(f"Sending request to {metakernel_url} with params: {params}")
+    response = requests.get(metakernel_url, params=params, timeout=10)
+    response.raise_for_status()
+    metakernel_files = response.json()
+
+    logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")
+    dependency_inputs = ProcessingInputCollection()
+    dependency_inputs.add(SPICEInput(*metakernel_files))
+
+    return dependency_inputs
+
+
+def download_spice_files(dependencies: ProcessingInputCollection) -> list[Path]:
+    """Download SPICE kernel files from the IMAP data archive to EFS.
+
+    Parameters
+    ----------
+    dependencies : ProcessingInputCollection
+        A collection containing a SPICEInput object with the list of kernel
+        filenames returned from the metakernel API.
+
+    Returns
+    -------
+    spice_files : list[Path]
+        The SPICE files stored in EFS.
+
+    Notes
+    -----
+    List is priority ordered so furnishing in order results in correct SPICE priority.
+    """
+    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    dependencies.download_all_files()
+
+    spice_files = dependencies.get_file_paths(data_type=SPICESource.SPICE.value)
+    logger.info(f"Downloaded SPICE files: {spice_files}")
+
+    return spice_files
