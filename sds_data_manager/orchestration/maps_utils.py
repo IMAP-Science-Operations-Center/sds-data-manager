@@ -15,7 +15,10 @@ _CADENCE_TYPES: dict[str, type[BaseENAMapPartition]] = {
     "1yr": Map1YrPartition,
 }
 
-FIRST_MAP_START_DATE = datetime(2026, 1, 17, tzinfo=timezone.utc)
+# IMAP did not launch until September 24th 2025, but by selecting the following start
+# date, we ensure that the maps are directly comparable to IBEX maps (predecessor
+# mission) which has maps that start on 12/25.
+FIRST_MAP_START_DATE = datetime(2024, 12, 25, tzinfo=timezone.utc)
 
 
 def get_map_partition_names(
@@ -53,18 +56,18 @@ def get_map_partition_names(
         Eg.
 
         If include_open is True, a cadence of "3mo" and a current time
-        of 20260806, the returned partition names are
+        of 20250806, the returned partition names are
             [
-                'cadence-3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00',
-                 'cadence-3mo_2026-04-18T00:00:00_to_2026-07-18T00:00:00',
-                'cadence-3mo_2026-07-18T00:00:00_to_2026-10-17T00:00:00'
+                'cadence-3mo_2024-12-25T00:00:00_to_2025-03-26T00:00:00',
+                'cadence-3mo_2025-03-26T00:00:00_to_2025-06-25T00:00:00',
+                'cadence-3mo_2025-06-25T00:00:00_to_2025-09-24T00:00:00'
             ]
 
         If include_open is False, a cadence of "3mo" and a current time of
-        20260806, the returned partition names are
+        20250806, the returned partition names are
             [
-                'cadence-3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00',
-                'cadence-3mo_2026-04-18T00:00:00_to_2026-07-18T00:00:00'
+                'cadence-3mo_2024-12-25T00:00:00_to_2025-03-26T00:00:00',
+                'cadence-3mo_2025-03-26T00:00:00_to_2025-06-25T00:00:00'
             ]
     """
     if current_time is None:
@@ -79,6 +82,7 @@ def get_map_partition_names(
 
     # Get all the windows since the first map start date for the cadence.
     windows = cadence_type(current_time).get_windows_since(start_time)
+
     if include_open:
         # Look for past and present windows
         selected_windows = [
