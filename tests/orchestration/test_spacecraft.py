@@ -24,6 +24,7 @@ from imap_data_access import processing_input
 
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration.imap_dagster import defs, job_handlers
+from tests.orchestration.conftest import insert_ah_kernel
 
 
 def _irrelevant_spice_data():
@@ -440,17 +441,16 @@ def test_spacecraft_l1a_determine_output_versions_requires_attitude_history(
         )
 
 
-def test_spacecraft_l1a_sensor_retriggers_on_contained_attitude_history_kernel(
+def test_spacecraft_l1a_sensor_retriggers_on_same_key_attitude_history_kernel(
     mock_db_session, ephemeral_instance
 ):
-    """A new ah kernel contained within an existing partition must retrigger it.
+    """A new ah kernel that doesn't change the partition key must retrigger it.
 
-    Regression test for the "contained kernel" gap: _select_maximal_ah_kernels
-    discards a fully-contained new ah kernel as already covered, so
-    add_pointing_attitude_partitions computes the same partition name as
-    before and makes no add/delete. Only the kickoff sensor's phase 2 (the
-    generic growing-kernel re-trigger logic) can notice the new kernel and
-    re-fire the existing partition.
+    A higher version of an existing kernel with identical coverage takes over
+    the same time range, so add_pointing_attitude_partitions computes the same
+    partition name as before and makes no add/delete. Only the kickoff
+    sensor's phase 2 (the generic growing-kernel re-trigger logic) can notice
+    the new kernel and re-fire the existing partition.
     """
     spacecraft_l1a_sensor = defs.get_sensor_def(
         "spacecraft_l1a_pointingattitude_kickoff_sensor"
@@ -463,29 +463,16 @@ def test_spacecraft_l1a_sensor_retriggers_on_contained_attitude_history_kernel(
     assert len(run_requests_1) == 1
     existing_partition = run_requests_1[0].partition_key
 
-    # A new ah kernel, fully CONTAINED within the original kernel's
-    # [2026-01-01, 2026-01-11] coverage but with a DIFFERENT min_date_datetime
-    # (2026-01-05) -- so _select_maximal_ah_kernels drops it as already
-    # covered (add_pointing_attitude_partitions makes no partition changes),
-    # while get_growing_kernel_trigger_ranges' predecessor lookup (exact
-    # min_date_datetime match) finds none and falls into the Case-3
-    # "rollover" fallback, returning this kernel's own contained range.
-    mock_db_session.add(
-        models.SPICEFiles(
-            file_path="imap/spice/imap_2026_005_2026_009_001.ah.bc",
-            file_name="imap_2026_005_2026_009_001.ah.bc",
-            kernel_type="attitude_history",
-            version=1,
-            min_date_datetime=datetime.datetime(
-                2026, 1, 5, tzinfo=datetime.timezone.utc
-            ),
-            max_date_datetime=datetime.datetime(
-                2026, 1, 9, tzinfo=datetime.timezone.utc
-            ),
-            ingestion_date=datetime.datetime.now(datetime.timezone.utc),
-        )
+    # v002 of the fixture's [2026-01-01, 2026-01-11] kernel: same coverage, so
+    # get_growing_kernel_trigger_ranges treats it as Case 1 (version
+    # increment) and returns the full range.
+    insert_ah_kernel(
+        mock_db_session,
+        "imap_2026_001_2026_011_002.ah.bc",
+        datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
+        datetime.datetime(2026, 1, 11, tzinfo=datetime.timezone.utc),
+        ingestion_date=datetime.datetime.now(datetime.timezone.utc),
     )
-    mock_db_session.commit()
 
     # Confirm the partition-maintenance sensor really does nothing: this
     # locks in the premise of the bug (no rename/recreate should occur).

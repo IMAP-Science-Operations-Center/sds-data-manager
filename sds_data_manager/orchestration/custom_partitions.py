@@ -11,9 +11,10 @@ from dagster import (
     sensor,
 )
 
+from sds_data_manager.lambda_code.SDSCode import spice_utilities
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.orchestration import config
+from sds_data_manager.orchestration import config, spice
 from sds_data_manager.orchestration.maps_utils import (
     get_map_partition_names,
 )
@@ -236,10 +237,12 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
 
 
 ##### THIS TELLS DAGSTER ABOUT SPACECRAFT POINTING-ATTITUDE PROCESSING WINDOWS
-# One partition per attitude_history SPICE kernel, keyed by pointing times.
+# One partition per contiguous stretch of attitude_history coverage that a
+# single kernel is "in effect" for, keyed by pointing times.
 # Partition start = pointing_start_utc of the first pointing with any overlap
-# with the ah kernel. Partition end = pointing_end_utc of the last pointing
-# completely covered by the ah kernel.
+# with that stretch. Partition end = pointing_end_utc of the last pointing
+# completely covered by it. A stretch that completely covers no pointing is
+# merged into the next contiguous stretch.
 # Prefix is "pointingattitude" (no underscores) so parse_dates_from_partition_key can
 # split on the first "_" to isolate the date range.
 pointing_attitude_partitions = DynamicPartitionsDefinition(
@@ -247,89 +250,83 @@ pointing_attitude_partitions = DynamicPartitionsDefinition(
 )
 
 
-def _select_maximal_ah_kernels(attitude_kernels):
-    """Drop kernels whose coverage is fully contained in another kernel's.
+def _get_effective_ah_coverage() -> list[
+    tuple[str, datetime.datetime, datetime.datetime]
+]:
+    """Return the stretches of time each attitude_history kernel is in effect for.
 
-    Superseded kernels are never removed from the DB, so without this filter
-    the sensor would keep regenerating their partitions, undoing the
-    subsumption-based deletion below.
+    Kernels are selected by the same metakernel logic used to resolve SPICE
+    dependencies for a processing run (latest version per file root, then
+    most-recently-ingested first, each kernel only filling the gaps left by
+    higher-priority kernels). This keeps the partitions consistent with the
+    kernels a run will actually load, and means a superseded kernel stops
+    driving partitions as soon as a newer delivery covers its time range,
+    even when the newer kernels' coverage doesn't line up exactly with it.
 
-    Kernels are sorted by coverage duration, longest first, so the largest
-    (and most likely to be a superset) kernels are tested first. Each kernel
-    is then only compared against the `maximal` kernels accepted so far
-    rather than the full kernel list: since nothing already accepted can be
-    contained in a kernel processed later (it would need a duration >=
-    the one that already stands), that list stays small in practice (one
-    entry per "generation" of combined files), keeping this cheap even
-    against a cold start with a hundred-plus kernels.
+    Each kernel's contribution is its coverage envelope (first segment start
+    to last segment end) minus the envelopes of every higher-priority kernel.
+    Envelopes, rather than individual segments, are used so a kernel's own
+    internal data gaps never split it into several partitions; it is only
+    split where a higher-priority kernel takes over part of its range.
+
+    Returns
+    -------
+    list[tuple[str, datetime.datetime, datetime.datetime]]
+        (file_name, start, end) for each contributed stretch, in metakernel
+        priority order (highest first). Stretches never overlap, and
+        stretches cut by a higher-priority kernel touch it exactly.
     """
-    dated_kernels = [
-        kernel
-        for kernel in attitude_kernels
-        if kernel.min_date_datetime and kernel.max_date_datetime
-    ]
-    dated_kernels.sort(
-        key=lambda kernel: kernel.max_date_datetime - kernel.min_date_datetime,
-        reverse=True,
+    metakernel = spice_utilities.metakernel_builder(
+        None, None, file_types={"ATTITUDE_HISTORY"}
     )
+    selected = metakernel.spice_files[
+        spice_utilities.SpacecraftAttitudeKernels.spice_category_name()
+    ]
 
-    maximal_kernels = []
-    for kernel in dated_kernels:
-        if any(
-            larger.min_date_datetime <= kernel.min_date_datetime
-            and larger.max_date_datetime >= kernel.max_date_datetime
-            for larger in maximal_kernels
-        ):
-            continue  # Fully contained within an already-accepted kernel
-        maximal_kernels.append(kernel)
-    return maximal_kernels
+    claimed = []
+    coverage = []
+    for kernel in selected:
+        intervals = spice.parse_interval_list(kernel.get("file_intervals_datetime"))
+        if not intervals:
+            continue
+        envelope = [intervals[0][0], intervals[-1][1]]
+        for start, end in spice.subtract_intervals([envelope], claimed):
+            coverage.append((kernel["file_name"], start, end))
+        claimed.append(envelope)
+    return coverage
 
 
 @sensor(minimum_interval_seconds=600)
 def add_pointing_attitude_partitions(context: SensorEvaluationContext):
-    """Alert Dagster when new spacecraft pointing partitions should be made.
+    """Keep the pointing attitude partitions in sync with the current ah kernels.
 
-    One partition is maintained per maximal ah kernel cycle (kernels fully
-    contained within another kernel's coverage are ignored, see
-    _select_maximal_ah_kernels). When a new ah kernel extends or replaces
-    earlier coverage, any existing partitions whose full range is subsumed
-    by the new partition are deleted first. This handles both the normal
-    growing-append case (same start, later end) and the retroactive
-    combined-file case (one large file that subsumes many small
-    early-mission daily partitions).
+    The desired set of partitions is rebuilt from scratch every tick from the
+    attitude_history coverage currently in effect (see
+    _get_effective_ah_coverage), then reconciled against the existing
+    partitions: missing partitions are added and any partition that is no
+    longer desired is deleted. This handles the normal growing-append case
+    (same start, later end), the retroactive combined-file case (one large
+    file replacing many small early-mission files), and reprocessed
+    deliveries whose coverage boundaries don't match the kernels they replace.
     """
+    effective_coverage = _get_effective_ah_coverage()
+    if not effective_coverage:
+        return SensorResult()
+
+    desired_partitions = []
+    # A stretch too short to fully cover any pointing would otherwise lose
+    # the pointing it partially covers: the previous partition stops before
+    # that pointing and the next one starts after it. Carry such a stretch
+    # forward and merge it into the start of the next contiguous one.
+    pending_start = pending_end = None
     with db.Session() as session:
-        attitude_kernels = (
-            session.query(models.SPICEFiles)
-            .filter(models.SPICEFiles.kernel_type == "attitude_history")
-            .all()
-        )
-
-        if not attitude_kernels:
-            return SensorResult()
-
-        attitude_kernels = _select_maximal_ah_kernels(attitude_kernels)
-
-        existing_partitions = context.instance.get_dynamic_partitions(
-            "pointing_attitude_partitions"
-        )
-
-        # Parse existing partitions into (start_str, end_str, key) for subsumption
-        # checks. %Y-%m-%dT%H:%M:%S is fixed-width and zero-padded, so
-        # lexicographic string comparison is equivalent to chronological order.
-        existing_parsed = []
-        for key in existing_partitions:
-            date_range = key.split("_", 1)[1]
-            if "_to_" in date_range:
-                start_str, end_str = date_range.split("_to_")
-                existing_parsed.append((start_str, end_str, key))
-
-        partitions_to_add = []
-        partitions_to_delete = []
-
-        for kernel in attitude_kernels:
-            ah_min = kernel.min_date_datetime
-            ah_max = kernel.max_date_datetime
+        for file_name, stretch_start, ah_max in sorted(
+            effective_coverage, key=lambda coverage: coverage[1]
+        ):
+            ah_min = stretch_start
+            if pending_end is not None and pending_end >= stretch_start:
+                ah_min = pending_start
+            pending_start = pending_end = None
 
             # A pointing's fixed attitude actually ends at repoint_start_utc
             # (when the spacecraft starts slewing to the next pointing), not at
@@ -363,44 +360,47 @@ def add_pointing_attitude_partitions(context: SensorEvaluationContext):
 
             # Skip if no pointings are completely covered yet
             if not first_overlapping or not last_covered:
+                context.log.info(
+                    f"No fully covered pointing for {file_name} between "
+                    f"{ah_min} and {ah_max}; merging it into the next stretch."
+                )
+                pending_start, pending_end = ah_min, ah_max
                 continue
 
             new_start_str = first_overlapping.pointing_start_utc.strftime(
                 "%Y-%m-%dT%H:%M:%S"
             )
             new_end_str = last_covered.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S")
-            new_partition_name = f"pointingattitude_{new_start_str}_to_{new_end_str}"
-
-            if new_partition_name in existing_partitions:
-                continue  # Already up to date
-
-            # Delete any existing partition whose range is fully contained within
-            # the new range. Covers both the growing-append case (same start,
-            # smaller end) and the retroactive combined-file case (many small
-            # early-mission partitions all subsumed by one large new partition).
-            subsumed = [
-                key
-                for start_str, end_str, key in existing_parsed
-                if start_str >= new_start_str and end_str <= new_end_str
-            ]
-            partitions_to_delete.extend(subsumed)
-            partitions_to_add.append(new_partition_name)
-
-        # de-duplicate partition lists
-        partitions_to_delete = list(dict.fromkeys(partitions_to_delete))
-        partitions_to_add = list(dict.fromkeys(partitions_to_add))
-
-        partition_requests = []
-        if partitions_to_delete:
-            partition_requests.append(
-                pointing_attitude_partitions.build_delete_request(partitions_to_delete)
+            desired_partitions.append(
+                f"pointingattitude_{new_start_str}_to_{new_end_str}"
             )
-            context.log.info(f"Deleting subsumed partitions: {partitions_to_delete}")
-        if partitions_to_add:
-            partition_requests.append(
-                pointing_attitude_partitions.build_add_request(partitions_to_add)
-            )
-            context.log.info(f"Registered new partitions: {partitions_to_add}")
+
+    # Never wipe out every partition because nothing was resolvable this tick.
+    if not desired_partitions:
+        return SensorResult()
+
+    desired_partitions = list(dict.fromkeys(desired_partitions))
+    existing_partitions = context.instance.get_dynamic_partitions(
+        "pointing_attitude_partitions"
+    )
+    partitions_to_delete = [
+        key for key in existing_partitions if key not in desired_partitions
+    ]
+    partitions_to_add = [
+        key for key in desired_partitions if key not in existing_partitions
+    ]
+
+    partition_requests = []
+    if partitions_to_delete:
+        partition_requests.append(
+            pointing_attitude_partitions.build_delete_request(partitions_to_delete)
+        )
+        context.log.info(f"Deleting superseded partitions: {partitions_to_delete}")
+    if partitions_to_add:
+        partition_requests.append(
+            pointing_attitude_partitions.build_add_request(partitions_to_add)
+        )
+        context.log.info(f"Registered new partitions: {partitions_to_add}")
 
     return SensorResult(dynamic_partitions_requests=partition_requests)
 

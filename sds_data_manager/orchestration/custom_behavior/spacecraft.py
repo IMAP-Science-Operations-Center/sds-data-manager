@@ -190,19 +190,19 @@ class SpacecraftPointingAttitudeJob(imap_job.IMAPJobHandler):
         Phase 1: by running on each new pointing_attitude_partitions
         key -- created out-of-band by
         custom_partitions.add_pointing_attitude_partitions, keyed off the
-        *maximal* attitude_history kernel currently known -- rather than on new
+        attitude_history coverage currently in effect -- rather than on new
         attitude_history files directly, we ensure Dagster has already had time
         to create the corresponding partition before we try to target it with a
         RunRequest.
 
         Phase 2: re-trigger *existing* partitions when a new
-        attitude_history kernel arrives that is fully contained within an
-        already-accepted kernel's coverage (see
-        custom_partitions._select_maximal_ah_kernels). Such a kernel is
-        discarded by the partition-maintenance sensor as "already covered" --
-        so no new/renamed partition is ever created for it, and phase 1 alone
-        would never notice it -- but it may still contain corrected data for
-        part of an existing partition's time range that must be reprocessed.
+        attitude_history kernel arrives without changing the partition set.
+        Partition keys are snapped to pointing boundaries, so a new kernel
+        (e.g. a higher version with the same coverage, or a reprocessed
+        kernel whose coverage differs only within a pointing) can take over
+        a range while producing exactly the same partition key -- phase 1
+        alone would never notice it, but it may still contain corrected data
+        that must be reprocessed.
         This reuses the generic growing-kernel-narrowing logic already relied
         on by every other job type (trigger_from_new_non_science_inputs /
         spice.get_growing_kernel_trigger_ranges), restricted here to the
