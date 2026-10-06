@@ -116,3 +116,33 @@ def setup_data_table():
         yield {
             "data_table": data_table,
         }
+
+
+@pytest.fixture
+def setup_ssr_table():
+    """Initialize DynamoDB resource and create SSR table."""
+    os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+    os.environ["SSR_TABLE"] = "ialirt-ssr-table"
+
+    with mock_dynamodb():
+        # Initialize DynamoDB resource
+        dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
+
+        ssr_table = dynamodb.create_table(
+            TableName=os.environ["SSR_TABLE"],
+            KeySchema=[
+                # Partition key
+                {"AttributeName": "instrument", "KeyType": "HASH"},
+                # Sort key
+                {"AttributeName": "time_utc", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "instrument", "AttributeType": "S"},
+                {"AttributeName": "time_utc", "AttributeType": "S"},
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+
+        yield {
+            "ssr_table": ssr_table,
+        }
