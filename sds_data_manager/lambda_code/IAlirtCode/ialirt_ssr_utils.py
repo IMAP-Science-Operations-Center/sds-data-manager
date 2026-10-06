@@ -187,3 +187,62 @@ def download_spice_files(dependencies: ProcessingInputCollection) -> list[Path]:
     logger.info(f"Downloaded SPICE files: {spice_files}")
 
     return spice_files
+
+
+def get_ancillary(instrument: str, descriptor: str, day: datetime) -> Path:
+    """Query and download the ancillary file valid for a given day to EFS.
+
+    This is consistent with how ancillary files are selected for processing
+    (ImapJob.get_ancillary_files_inputs in orchestration/imap_job.py):
+
+    - A file is valid for the day if its start_date is on or before the day and
+      its end_date is on or after the day. Files without an end_date
+      (e.g. imap_swe_l1b-in-flight-cal_20260406_v001.csv) are valid from their
+      start_date onward. Files with an end_date
+      (e.g. imap_swe_l1b-in-flight-cal_20240510_20260716_v020.csv) are only
+      valid within that range.
+    - Only the latest version for each start_date is considered.
+    - Of the valid files, the one with the latest start_date is selected.
+
+    Parameters
+    ----------
+    instrument : str
+        The name of the instrument.
+    descriptor : str
+        The name of the descriptor.
+    day : datetime
+        The day being processed.
+
+    Returns
+    -------
+    download_path : Path
+        Download path of the ancillary file.
+    """
+    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    date_str = day.strftime("%Y%m%d")
+    # end_date filters on the file start_date, so this returns files that
+    # start on or before the day.
+    ancillary_files = imap_data_access.query(
+        table="ancillary",
+        instrument=instrument,
+        descriptor=descriptor,
+        end_date=date_str,
+        version="latest",
+    )
+
+    # Drop files whose end_date is before the day.
+    valid_files = [
+        f for f in ancillary_files if not f.get("end_date") or f["end_date"] >= date_str
+    ]
+    if not valid_files:
+        raise FileNotFoundError(
+            f"No ancillary file found for {instrument=}, {descriptor=}, {date_str=}"
+        )
+
+    ancillary_file = sorted(
+        valid_files, key=lambda x: (x["start_date"], x["version"]), reverse=True
+    )[0]
+    download_path = imap_data_access.download(ancillary_file["file_path"])
+    logger.info(f"Downloaded ancillary file: {download_path}")
+
+    return download_path

@@ -10,6 +10,7 @@ from imap_data_access.processing_input import ProcessingInputCollection, SPICEIn
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils import (
     download_spice_files,
+    get_ancillary,
     get_latest_spice_kernels,
     parse_packets,
     query_filenames,
@@ -98,3 +99,35 @@ def test_download_spice_files(mock_download):
         "naif0012.tls",
         "imap_pred_20260922_20261020_v01.bsp",
     ]
+
+
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils.imap_data_access.download"
+)
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils.imap_data_access.query"
+)
+def test_get_ancillary(mock_query, mock_download):
+    """Test get_ancillary function."""
+    # The query only returns files that start on or before the day.
+    mock_query.return_value = [
+        {
+            "file_path": "imap_swe_l1b-in-flight-cal_20260810_v001.csv",
+            "start_date": "20260810",
+            "end_date": None,
+            "version": "v001",
+        },
+        {
+            "file_path": "imap_swe_l1b-in-flight-cal_20260824_v001.csv",
+            "start_date": "20260824",
+            "end_date": None,
+            "version": "v001",
+        },
+    ]
+
+    get_ancillary("swe", "l1b-in-flight-cal", datetime(2026, 8, 25))
+
+    assert mock_query.call_args.kwargs["end_date"] == "20260825"
+    mock_download.assert_called_once_with(
+        "imap_swe_l1b-in-flight-cal_20260824_v001.csv"
+    )
