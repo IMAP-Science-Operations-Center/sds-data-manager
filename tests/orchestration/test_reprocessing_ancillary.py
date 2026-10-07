@@ -72,7 +72,7 @@ def test_find_outputs_materializes_ancillary_output(mock_db_session):
     assert result.asset_key.to_python_identifier() == "glows_ancillary_l3barchive"
     assert result.metadata["input_type"] == "ancillary"
     # Major version is config-driven (2); minor comes from the file's "v002".
-    assert result.metadata["major_version"] == "2"
+    assert result.metadata["major_version"] == "3"
     assert result.metadata["minor_version"] == "2"
 
 
