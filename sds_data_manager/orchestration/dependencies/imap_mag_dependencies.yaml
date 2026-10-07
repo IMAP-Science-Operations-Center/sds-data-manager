@@ -262,47 +262,47 @@
     - source: mag
       data_type: l1d
       descriptor: norm-srf
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: norm-dsrf
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: norm-gse
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: norm-rtn
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: burst-srf
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: burst-dsrf
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: burst-gse
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: burst-rtn
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: spin-offsets
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: gradiometry-offsets-norm
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l1d
       descriptor: gradiometry-offsets-burst
-      major_version: 1
+      major_version: 2
 
 (l2, burst-srf):
   partition: daily
@@ -357,23 +357,23 @@
     - source: mag
       data_type: l2
       descriptor: burst-srf
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l2
       descriptor: burst-dsrf
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l2
       descriptor: burst-gse
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l2
       descriptor: burst-rtn
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l2
       descriptor: burst-gsm
-      major_version: 1
+      major_version: 2
 
 (l2, norm-srf):
   partition: daily
@@ -428,20 +428,20 @@
     - source: mag
       data_type: l2
       descriptor: norm-srf
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l2
       descriptor: norm-dsrf
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l2
       descriptor: norm-gse
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l2
       descriptor: norm-rtn
-      major_version: 1
+      major_version: 2
     - source: mag
       data_type: l2
       descriptor: norm-gsm
-      major_version: 1
+      major_version: 2
