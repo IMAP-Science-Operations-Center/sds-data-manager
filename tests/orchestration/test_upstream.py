@@ -1,55 +1,35 @@
 """Test for function _check_for_running_dependencies."""
 
 from dagster import (
-    AssetKey,
     DagsterEvent,
     DagsterEventType,
     DagsterInstance,
     Definitions,
-    asset,
-    build_sensor_context,
+    build_asset_context,
 )
 
-from sds_data_manager.orchestration.custom_partitions import (
-    repoint_partitions,
-)
 from sds_data_manager.orchestration.imap_dagster import dependency_config
 from sds_data_manager.orchestration.imap_job import IMAPJobHandler
 
 
-# TODO move this into test suite once we have it.
 def test_check_for_running_dependencies() -> None:
     """Test the reprocessing functionality."""
     instance = DagsterInstance.ephemeral()
-    instance.add_dynamic_partitions(
-        "repoint_partitions", ["repoint123_2026-01-01T00:00:00_to_2026-01-02T00:00:00"]
+    partition_key = "repoint123_2026-01-01T00:00:00_to_2026-01-02T00:00:00"
+    instance.add_dynamic_partitions("repoint_partitions", [partition_key])
+
+    job_handler = IMAPJobHandler(dependency_config._config[("glows", "l1a", "all")])
+    defs = Definitions(
+        assets=[job_handler.build_asset()], sensors=[job_handler.build_sensor()]
     )
 
-    # Set up upstream assets for glows pipeline
-    @asset(partitions_def=repoint_partitions)
-    def glows_l1a_de():
-        pass
-
-    @asset(partitions_def=repoint_partitions)
-    def glows_l1a_hist():
-        pass
-
-    @asset(partitions_def=repoint_partitions, deps=[glows_l1a_de])
-    def glows_l1b_de():
-        pass
-
-    defs = Definitions(assets=[glows_l1a_de, glows_l1a_hist, glows_l1b_de])
-    repo_def = defs.get_repository_def()
-
-    context = build_sensor_context(
-        instance=instance,
-        repository_def=repo_def,
-    )
-
-    # Mock a glows l1a run
+    # run_job receives an asset context with the partition it is processing
+    context = build_asset_context(instance=instance, partition_key=partition_key)
+    # Mock a glows l1a run. The kickoff sensor's RunRequest(partition_key=...)
+    # stores the partition on the run as the "dagster/partition" tag.
     run = instance.create_run_for_job(
-        job_def=defs.get_job_def("__ASSET_JOB"),
-        asset_selection={AssetKey("glows_l1a_de")},
+        job_def=defs.resolve_job_def(job_handler.dagster_job_name),
+        tags={"dagster/partition": partition_key},
     )
     # 2. Transition run to status = started.
     instance.report_dagster_event(
