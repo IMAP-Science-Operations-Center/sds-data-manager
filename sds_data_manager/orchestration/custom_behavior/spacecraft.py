@@ -176,7 +176,7 @@ class SpacecraftPointingAttitudeJob(imap_job.IMAPJobHandler):
             output.to_dagster_asset(),
             context.partition_key,
             [os.path.basename(created_kernel.file_path)],
-            Version(created_kernel.version, 0),
+            Version(output.major_version, created_kernel.version),
             "spice",
             inputs=inputs,
         )

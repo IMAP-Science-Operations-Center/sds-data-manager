@@ -700,16 +700,6 @@ class IMAPJobHandler:
                         models.AncillaryFiles.instrument,
                         models.AncillaryFiles.descriptor,
                     )
-                elif dependency.data_type == "repoint":
-                    # New repoint inputs — RepointFiles only has end_date, no start_date
-                    target_partitions = self.trigger_from_new_non_science_inputs(
-                        context,
-                        dependency,
-                        new_cursors,
-                        models.RepointFiles,
-                        datetime_start_column="end_date",
-                        datetime_end_column="end_date",
-                    )
                 # Now we loop through each partition that we received new data for, and
                 # determine if we need to start it again.
                 yield from self._yield_run_requests_for_partitions(

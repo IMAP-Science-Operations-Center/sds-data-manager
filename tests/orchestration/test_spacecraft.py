@@ -367,6 +367,10 @@ def test_spacecraft_l1a_find_outputs_matches_correct_version(
     assert materializations[0].metadata["file_names"] == [
         "imap_dps_2026_002_2026_002_02.ah.bc"
     ]
+    # Recorded as the version the job was submitted with: the configured
+    # major version and the kernel version as the minor.
+    assert materializations[0].metadata["major_version"] == "1"
+    assert materializations[0].metadata["minor_version"] == "2"
 
 
 def test_spacecraft_l1a_determine_output_versions_uses_last_attitude_history(

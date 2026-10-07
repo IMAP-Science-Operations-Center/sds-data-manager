@@ -475,3 +475,59 @@ def test_reprocessed_ah_delivery_replaces_partitions(mock_db_session):
 
         # Stable: a second tick changes nothing.
         assert _reconcile(instance).dynamic_partitions_requests == []
+
+
+def test_trailing_remainder_extends_previous_partition(mock_db_session):
+    """A final stretch covering no pointing on its own still extends the chain.
+
+    The newer kernel takes over partway through the 10-09 pointing, so neither
+    kernel fully covers that pointing alone, but together they do.
+    """
+    _insert_daily_pointings(mock_db_session)
+    insert_ah_kernel(
+        mock_db_session,
+        "imap_2025_274_2025_283_001.ah.bc",
+        _dt("2025-10-01T00:00:00"),
+        _dt("2025-10-10T00:00:00"),
+        ingestion_date=_dt("2025-10-10T00:00:00"),
+    )
+    insert_ah_kernel(
+        mock_db_session,
+        "imap_2025_282_2025_283_001.ah.bc",
+        _dt("2025-10-09T20:00:00"),
+        _dt("2025-10-10T18:00:00"),
+        ingestion_date=_dt("2025-10-11T00:00:00"),
+    )
+
+    with instance_for_test() as instance:
+        instance.add_dynamic_partitions(
+            "pointing_attitude_partitions",
+            ["pointingattitude_2025-09-30T14:00:00_to_2025-10-10T14:00:00"],
+        )
+        # The existing partition is already correct, so it is kept as is.
+        assert _reconcile(instance).dynamic_partitions_requests == []
+
+
+def test_trailing_remainder_after_gap_not_merged(mock_db_session):
+    """A trailing stretch separated from the previous one by a gap is dropped."""
+    _insert_daily_pointings(mock_db_session)
+    insert_ah_kernel(
+        mock_db_session,
+        "imap_2025_274_2025_282_001.ah.bc",
+        _dt("2025-10-01T00:00:00"),
+        _dt("2025-10-09T20:00:00"),
+        ingestion_date=_dt("2025-10-10T00:00:00"),
+    )
+    insert_ah_kernel(
+        mock_db_session,
+        "imap_2025_282_2025_283_002.ah.bc",
+        _dt("2025-10-09T21:00:00"),
+        _dt("2025-10-10T18:00:00"),
+        ingestion_date=_dt("2025-10-11T00:00:00"),
+    )
+
+    with instance_for_test() as instance:
+        _reconcile(instance)
+        assert set(instance.get_dynamic_partitions("pointing_attitude_partitions")) == {
+            "pointingattitude_2025-09-30T14:00:00_to_2025-10-09T14:00:00"
+        }

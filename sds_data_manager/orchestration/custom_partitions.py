@@ -296,6 +296,45 @@ def _get_effective_ah_coverage() -> list[
     return coverage
 
 
+# A pointing's fixed attitude actually ends at repoint_start_utc (when the
+# spacecraft starts slewing to the next pointing), not at pointing_end_utc.
+# pointing_end_utc is recorded as when the *next* pointing begins, i.e. after
+# that slew finishes -- so it's later than the true end of this pointing's
+# stable attitude. That's why these queries check repoint_start_utc against
+# the ah kernel's bounds instead of pointing_end_utc.
+def _first_overlapping_pointing(session, ah_min, ah_max):
+    """Return the first pointing with any overlap with [ah_min, ah_max]."""
+    return (
+        session.query(models.PointingTable)
+        .filter(
+            models.PointingTable.pointing_start_utc < ah_max,
+            models.PointingTable.repoint_start_utc > ah_min,
+        )
+        .order_by(models.PointingTable.pointing_start_utc)
+        .first()
+    )
+
+
+def _last_covered_pointing(session, ah_min, ah_max):
+    """Return the last pointing completely contained within [ah_min, ah_max]."""
+    return (
+        session.query(models.PointingTable)
+        .filter(
+            models.PointingTable.pointing_start_utc >= ah_min,
+            models.PointingTable.repoint_start_utc <= ah_max,
+        )
+        .order_by(models.PointingTable.pointing_end_utc.desc())
+        .first()
+    )
+
+
+def _pointing_attitude_partition_key(first_pointing, last_pointing):
+    """Build the partition key spanning first_pointing through last_pointing."""
+    start_str = first_pointing.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S")
+    end_str = last_pointing.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S")
+    return f"pointingattitude_{start_str}_to_{end_str}"
+
+
 @sensor(minimum_interval_seconds=600)
 def add_pointing_attitude_partitions(context: SensorEvaluationContext):
     """Keep the pointing attitude partitions in sync with the current ah kernels.
@@ -319,6 +358,10 @@ def add_pointing_attitude_partitions(context: SensorEvaluationContext):
     # that pointing and the next one starts after it. Carry such a stretch
     # forward and merge it into the start of the next contiguous one.
     pending_start = pending_end = None
+    # (ah_min, ah_max, first_overlapping) of the stretch behind the most
+    # recently desired partition, so a trailing remainder can be merged back
+    # into it after the loop.
+    last_window = None
     with db.Session() as session:
         for file_name, stretch_start, ah_max in sorted(
             effective_coverage, key=lambda coverage: coverage[1]
@@ -328,35 +371,8 @@ def add_pointing_attitude_partitions(context: SensorEvaluationContext):
                 ah_min = pending_start
             pending_start = pending_end = None
 
-            # A pointing's fixed attitude actually ends at repoint_start_utc
-            # (when the spacecraft starts slewing to the next pointing), not at
-            # pointing_end_utc. pointing_end_utc is recorded as when the *next*
-            # pointing begins, i.e. after that slew finishes -- so it's later
-            # than the true end of this pointing's stable attitude. That's why
-            # these queries check repoint_start_utc against the ah kernel's
-            # bounds instead of pointing_end_utc.
-
-            # First pointing with any overlap with the ah kernel coverage.
-            first_overlapping = (
-                session.query(models.PointingTable)
-                .filter(
-                    models.PointingTable.pointing_start_utc < ah_max,
-                    models.PointingTable.repoint_start_utc > ah_min,
-                )
-                .order_by(models.PointingTable.pointing_start_utc)
-                .first()
-            )
-
-            # Last pointing completely contained within the ah kernel coverage
-            last_covered = (
-                session.query(models.PointingTable)
-                .filter(
-                    models.PointingTable.pointing_start_utc >= ah_min,
-                    models.PointingTable.repoint_start_utc <= ah_max,
-                )
-                .order_by(models.PointingTable.pointing_end_utc.desc())
-                .first()
-            )
+            first_overlapping = _first_overlapping_pointing(session, ah_min, ah_max)
+            last_covered = _last_covered_pointing(session, ah_min, ah_max)
 
             # Skip if no pointings are completely covered yet
             if not first_overlapping or not last_covered:
@@ -367,13 +383,25 @@ def add_pointing_attitude_partitions(context: SensorEvaluationContext):
                 pending_start, pending_end = ah_min, ah_max
                 continue
 
-            new_start_str = first_overlapping.pointing_start_utc.strftime(
-                "%Y-%m-%dT%H:%M:%S"
-            )
-            new_end_str = last_covered.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S")
             desired_partitions.append(
-                f"pointingattitude_{new_start_str}_to_{new_end_str}"
+                _pointing_attitude_partition_key(first_overlapping, last_covered)
             )
+            last_window = (ah_min, ah_max, first_overlapping)
+
+        # No later stretch picked up the final remainder. If it continues
+        # straight on from the previous partition's coverage, their union may
+        # fully cover pointings neither covers alone, so extend that partition.
+        if (
+            pending_end is not None
+            and last_window is not None
+            and last_window[1] >= pending_start
+        ):
+            window_min, _, first_overlapping = last_window
+            last_covered = _last_covered_pointing(session, window_min, pending_end)
+            if last_covered:
+                desired_partitions[-1] = _pointing_attitude_partition_key(
+                    first_overlapping, last_covered
+                )
 
     # Never wipe out every partition because nothing was resolvable this tick.
     if not desired_partitions:
