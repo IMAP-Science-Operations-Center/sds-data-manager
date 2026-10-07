@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -12,6 +13,15 @@ from imap_processing.ialirt.calculate_ingest import format_ingest_data
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+# I-ALiRT packets are on VCID 5. Other VCIDs are frames with corrupted headers.
+# Example:
+# 2026/276-18:14:02.117 Error: dropout in VCDU counter for VCID=5!
+# previous: 148, current: 150
+DROPOUT_PATTERN = re.compile(
+    r"^(?P<time>\S+) Error: dropout in VCDU counter for VCID=(?P<vcid>\d+)!"
+    r"\s+previous: (?P<previous>\d+), current: (?P<current>\d+)"
+)
 
 
 def query_filenames(s3_client: BaseClient, bucket: str, now: datetime):
@@ -77,6 +87,50 @@ def read_ingest_logs(s3_client: BaseClient, filenames: list, bucket: str):
     return all_lines
 
 
+def find_dropouts(lines: list) -> list:
+    """Find I-ALiRT frame dropouts reported in the IOIS logs.
+
+    Parameters
+    ----------
+    lines : list
+        All lines of the log files.
+
+    Returns
+    -------
+    dropouts : list
+        Ground time of each dropout and the number of missing frames.
+    """
+    sending = False
+    dropouts = []
+
+    for line in lines:
+        # Station rows of the periodic status report, e.g.
+        # 17  Censipam      278-06:57:27  277-12:58:57    0.0
+        parts = line.split()
+        if "Periodic status report" in line:
+            sending = False
+        elif parts and parts[0].isdigit():
+            sending = sending or float(parts[-1]) > 0
+
+        # Only count dropouts while a station is sending data.
+        match = DROPOUT_PATTERN.match(line)
+        if not match or match["vcid"] != "5" or not sending:
+            continue
+
+        # The frame counter is 8 bits.
+        missing = (int(match["current"]) - int(match["previous"]) - 1) % 256
+        if missing:
+            time = datetime.strptime(match["time"], "%Y/%j-%H:%M:%S.%f")
+            dropouts.append(
+                {
+                    "time": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "missing_frames": missing,
+                }
+            )
+
+    return dropouts
+
+
 def lambda_handler(event, context):
     """Create near real-time ingest json files.
 
@@ -120,6 +174,7 @@ def lambda_handler(event, context):
     all_lines = read_ingest_logs(s3_client, filenames, bucket)
 
     formatted = format_ingest_data(filenames[-1], all_lines)
+    formatted["dropouts"] = find_dropouts(all_lines)
     name = Path(filenames[-1]).name
     timestamp = name.split(".", 2)[-1]
     output_key = f"realtime/imap_ialirt_realtime_{timestamp}.json"
