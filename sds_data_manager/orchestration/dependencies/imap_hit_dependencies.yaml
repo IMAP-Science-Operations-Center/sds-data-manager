@@ -238,4 +238,4 @@ l0_data: &l0_data
     - source: hit
       data_type: l3
       descriptor: macropixel
-      major_version: 2
+      major_version: 1

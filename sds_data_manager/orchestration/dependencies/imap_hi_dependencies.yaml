@@ -925,7 +925,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h45-spx-h-hf-sp-anti-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, h45-spx-h-hf-sp-anti-hae-6deg-1yr):
   partition: 1yr
@@ -937,7 +937,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h45-spx-h-hf-sp-anti-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, h45-spx-h-hf-sp-full-hae-4deg-6mo):
   partition: 6mo
@@ -949,7 +949,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h45-spx-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, h45-spx-h-hf-sp-full-hae-6deg-6mo):
   partition: 6mo
@@ -961,7 +961,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h45-spx-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, h45-spx-h-hf-sp-ram-hae-4deg-1yr):
   partition: 1yr
@@ -973,7 +973,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h45-spx-h-hf-sp-ram-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, h45-spx-h-hf-sp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -987,7 +987,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h45-spx-h-hf-sp-ram-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, h90-spx-h-hf-sp-anti-hae-4deg-1yr):
   partition: 1yr
@@ -999,7 +999,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h90-spx-h-hf-sp-anti-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, h90-spx-h-hf-sp-anti-hae-6deg-1yr):
   partition: 1yr
@@ -1011,7 +1011,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h90-spx-h-hf-sp-anti-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, h90-spx-h-hf-sp-full-hae-4deg-6mo):
   partition: 6mo
@@ -1023,7 +1023,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h90-spx-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, h90-spx-h-hf-sp-full-hae-6deg-6mo):
   partition: 6mo
@@ -1035,7 +1035,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h90-spx-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, h90-spx-h-hf-sp-ram-hae-4deg-1yr):
   partition: 1yr
@@ -1047,7 +1047,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h90-spx-h-hf-sp-ram-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, h90-spx-h-hf-sp-ram-hae-6deg-1yr):
   partition: 1yr
@@ -1061,7 +1061,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h90-spx-h-hf-sp-ram-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, hic-spx-h-hf-sp-full-hae-4deg-1yr):
   partition: 1yr
@@ -1073,7 +1073,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: hic-spx-h-hf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, hic-spx-h-hf-sp-full-hae-6deg-1yr):
   partition: 1yr
@@ -1085,7 +1085,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: hic-spx-h-hf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, sp-maps):
   partition: daily
@@ -1097,91 +1097,91 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-sf-sp-ram-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-sf-sp-anti-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-sf-sp-ram-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-sf-sp-anti-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-sf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-sf-sp-ram-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-sf-sp-anti-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-sf-sp-ram-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-sf-sp-anti-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-sf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-hf-sp-ram-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-hf-sp-anti-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-hf-sp-ram-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-hf-sp-anti-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-hf-sp-ram-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-hf-sp-anti-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-hf-sp-ram-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-hf-sp-anti-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h45-ena-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: h90-ena-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, hic-maps):
   partition: daily
@@ -1193,16 +1193,16 @@ sensor90_l1c_pset: &sensor90_l1c_pset
     - source: hi
       data_type: l3
       descriptor: hic-ena-h-hf-nsp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: hic-ena-h-hf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: hic-ena-h-hf-nsp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: hi
       data_type: l3
       descriptor: hic-ena-h-hf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1

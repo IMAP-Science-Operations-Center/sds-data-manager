@@ -1853,7 +1853,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-spx-h-hf-sp-full-hae-2deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-2deg-3mo):
   partition: 3mo
@@ -1868,7 +1868,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-spx-h-hf-sp-full-hae-2deg-3mo
-      major_version: 2
+      major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-2deg-6mo):
   partition: 6mo
@@ -1883,7 +1883,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-spx-h-hf-sp-full-hae-2deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-4deg-1yr):
   partition: 1yr
@@ -1898,7 +1898,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-spx-h-hf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-4deg-3mo):
   partition: 3mo
@@ -1913,7 +1913,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-spx-h-hf-sp-full-hae-4deg-3mo
-      major_version: 2
+      major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-4deg-6mo):
   partition: 6mo
@@ -1928,7 +1928,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-spx-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-6deg-1yr):
   partition: 1yr
@@ -1943,7 +1943,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-spx-h-hf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-6deg-3mo):
   partition: 3mo
@@ -1958,7 +1958,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-spx-h-hf-sp-full-hae-6deg-3mo
-      major_version: 2
+      major_version: 1
 
 (l3, u45-spx-h-hf-sp-full-hae-6deg-6mo):
   partition: 6mo
@@ -1973,7 +1973,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-spx-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-2deg-1yr):
   partition: 1yr
@@ -1988,7 +1988,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-spx-h-hf-sp-full-hae-2deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-2deg-3mo):
   partition: 3mo
@@ -2003,7 +2003,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-spx-h-hf-sp-full-hae-2deg-3mo
-      major_version: 2
+      major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-2deg-6mo):
   partition: 6mo
@@ -2018,7 +2018,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-spx-h-hf-sp-full-hae-2deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-4deg-1yr):
   partition: 1yr
@@ -2033,7 +2033,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-spx-h-hf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-4deg-3mo):
   partition: 3mo
@@ -2048,7 +2048,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-spx-h-hf-sp-full-hae-4deg-3mo
-      major_version: 2
+      major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-4deg-6mo):
   partition: 6mo
@@ -2063,7 +2063,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-spx-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-6deg-1yr):
   partition: 1yr
@@ -2078,7 +2078,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-spx-h-hf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-6deg-3mo):
   partition: 3mo
@@ -2093,7 +2093,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-spx-h-hf-sp-full-hae-6deg-3mo
-      major_version: 2
+      major_version: 1
 
 (l3, u90-spx-h-hf-sp-full-hae-6deg-6mo):
   partition: 6mo
@@ -2108,7 +2108,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-spx-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-2deg-1yr):
   partition: 1yr
@@ -2123,7 +2123,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-2deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-2deg-3mo):
   partition: 3mo
@@ -2138,7 +2138,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-2deg-3mo
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-2deg-6mo):
   partition: 6mo
@@ -2153,7 +2153,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-2deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-4deg-1yr):
   partition: 1yr
@@ -2168,7 +2168,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-4deg-3mo):
   partition: 3mo
@@ -2183,7 +2183,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-4deg-3mo
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-4deg-6mo):
   partition: 6mo
@@ -2198,7 +2198,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-6deg-1yr):
   partition: 1yr
@@ -2213,7 +2213,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-6deg-3mo):
   partition: 3mo
@@ -2228,7 +2228,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-6deg-3mo
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-spx-h-hf-sp-full-hae-6deg-6mo):
   partition: 6mo
@@ -2243,7 +2243,7 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-spx-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
 
 (l3, u45-maps):
   partition: daily
@@ -2255,75 +2255,75 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-2deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-2deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-4deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-4deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-6deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-6deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-2deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-2deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-2deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-2deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-hf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u45-ena-h-sf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, u90-maps):
   partition: daily
@@ -2335,75 +2335,75 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-2deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-2deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-4deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-4deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-6deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-6deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-2deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-2deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-2deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-2deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-hf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: u90-ena-h-sf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-sp-maps):
   partition: daily
@@ -2415,39 +2415,39 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-2deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-4deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-6deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-2deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-2deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-sp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
 
 (l3, ulc-nsp-maps):
   partition: daily
@@ -2459,36 +2459,36 @@ de_inputs_90sensor: &de_inputs_90sensor
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-2deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-4deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-6deg-3mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-2deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-4deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-6deg-6mo
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-2deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-4deg-1yr
-      major_version: 2
+      major_version: 1
     - source: ultra
       data_type: l3
       descriptor: ulc-ena-h-hf-nsp-full-hae-6deg-1yr
-      major_version: 2
+      major_version: 1
