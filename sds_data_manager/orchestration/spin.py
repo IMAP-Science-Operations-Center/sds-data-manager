@@ -5,8 +5,7 @@ import logging
 from contextlib import nullcontext
 from os.path import basename
 
-from sqlalchemy import and_, desc, func
-from sqlalchemy.orm import aliased
+from sqlalchemy import and_
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -98,6 +97,53 @@ def verify_spin_coverage(
     return True
 
 
+def _is_superseded(
+    record,
+    records: list,
+    start_day: datetime.date,
+    end_day: datetime.date,
+) -> bool:
+    """Check whether higher-version spin files cover a record within a window.
+
+    A spin file is superseded when every day it covers inside the window is
+    also covered by a spin file with a higher version. Newer deliveries do not
+    always split days the same way as older ones (e.g. ``imap_2025_360_2025_360_01``
+    is replaced by ``imap_2025_359_2025_360_10`` and ``imap_2025_360_2025_361_10``),
+    so this cannot be decided by matching identical date ranges.
+
+    Parameters
+    ----------
+    record : Row
+        The SpinFiles record to check.
+    records : list
+        All candidate SpinFiles records overlapping the window.
+    start_day : datetime.date
+        First day of the window.
+    end_day : datetime.date
+        Last day of the window.
+
+    Returns
+    -------
+    bool
+        True if the record is fully covered by higher-version records.
+    """
+    newer_ranges = [
+        (other.start_date.date(), other.end_date.date())
+        for other in records
+        if int(other.version) > int(record.version)
+    ]
+    if not newer_ranges:
+        return False
+
+    day = max(record.start_date.date(), start_day)
+    last_day = min(record.end_date.date(), end_day)
+    while day <= last_day:
+        if not any(start <= day <= end for start, end in newer_ranges):
+            return False
+        day += datetime.timedelta(days=1)
+    return True
+
+
 def get_spin_files(
     session,
     start_date: datetime,
@@ -105,7 +151,8 @@ def get_spin_files(
 ) -> list:
     """Get spin input.
 
-    Query the spin table for the given date range and get latest version.
+    Query the spin table for the given date range and drop any file whose
+    days in the range are all covered by higher-version files.
 
     Parameters
     ----------
@@ -119,28 +166,16 @@ def get_spin_files(
     Returns
     -------
     list
-        List of SpinFiles records with file_path, start_date, end_date, version.
+        List of SpinFiles records with file_path, start_date, end_date, version,
+        ordered by ingestion date, oldest first.
     """
-    spin = aliased(models.SpinFiles)
-
-    # Define the row_number() window function
-    row_number = (
-        func.row_number()
-        .over(
-            partition_by=(spin.start_date, spin.end_date), order_by=desc(spin.version)
-        )
-        .label("row_num")
-    )
-
-    # Build the subquery with row numbers
-    subquery = (
+    spin = models.SpinFiles
+    candidates = (
         session.query(
             spin.file_path,
             spin.start_date,
             spin.end_date,
             spin.version,
-            row_number,
-            spin.ingestion_date,
         )
         .filter(
             and_(
@@ -148,24 +183,18 @@ def get_spin_files(
                 spin.end_date >= start_date,
             )
         )
-        .subquery()
-    )
-
-    # Outer query to select only latest version per start/end date
-    records = (
-        session.query(
-            subquery.c.file_path,
-            subquery.c.start_date,
-            subquery.c.end_date,
-            subquery.c.version,
-        )
-        .filter(subquery.c.row_num == 1)
         # Order by ingestion date, oldest first
-        .order_by(subquery.c.ingestion_date)
+        .order_by(spin.ingestion_date)
         .all()
     )
 
-    return records
+    start_day = start_date.date()
+    end_day = end_date.date()
+    return [
+        record
+        for record in candidates
+        if not _is_superseded(record, candidates, start_day, end_day)
+    ]
 
 
 def get_upstream_dependency_inputs_spin(

@@ -163,3 +163,63 @@ def test_get_upstream_dependency_inputs_spin(mock_db_session):
         "imap_2026_126_2026_128_01.spin",
         "imap_2026_120_2026_127_01.spin",
     ]
+
+
+def test_get_upstream_dependency_inputs_spin_superseded_by_new_ranges(
+    mock_db_session,
+):
+    """Test older spin files are dropped when newer versions split days differently.
+
+    Regression test for repoint89 (2025-12-25T10:02:13 to 2025-12-26T10:02:10),
+    which was given imap_2025_360_2025_360_01.spin alongside the _10 files that
+    replace it.
+    """
+
+    def doy(day):
+        return datetime.datetime(2025, 1, 1) + datetime.timedelta(days=day - 1)
+
+    old_files = [
+        ("imap_2025_358_2025_359_01.spin", 358, 359),
+        ("imap_2025_359_2025_360_01.spin", 359, 360),
+        ("imap_2025_360_2025_360_01.spin", 360, 360),
+        # Only partly covered by the _10 files, so it is still needed.
+        ("imap_2025_361_2025_362_01.spin", 361, 362),
+    ]
+    new_files = [
+        ("imap_2025_358_2025_359_10.spin", 358, 359),
+        ("imap_2025_359_2025_360_10.spin", 359, 360),
+        ("imap_2025_360_2025_361_10.spin", 360, 361),
+    ]
+    for upload_time, (filename, start, end) in enumerate(old_files + new_files):
+        _insert_spin_file(
+            mock_db_session,
+            filename,
+            upload_time=upload_time,
+            start_date=doy(start),
+            end_date=doy(end),
+        )
+
+    # The job floors the partition start to midnight before querying.
+    spin_files = get_upstream_dependency_inputs_spin(
+        datetime.datetime(2025, 12, 25),
+        datetime.datetime(2025, 12, 26, 10, 2, 10),
+        False,
+        mock_db_session,
+    )
+    assert spin_files == [
+        "imap_2025_358_2025_359_10.spin",
+        "imap_2025_359_2025_360_10.spin",
+        "imap_2025_360_2025_361_10.spin",
+    ]
+
+    # Day 362 has no _10 coverage, so the _01 file spanning 361-362 is kept.
+    spin_files = get_upstream_dependency_inputs_spin(
+        doy(361),
+        doy(362),
+        False,
+        mock_db_session,
+    )
+    assert spin_files == [
+        "imap_2025_361_2025_362_01.spin",
+        "imap_2025_360_2025_361_10.spin",
+    ]
