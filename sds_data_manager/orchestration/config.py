@@ -3,12 +3,12 @@
 import datetime
 from enum import Enum
 
+from sds_data_manager.orchestration.maps_utils import FIRST_MAP_START_DATE
+
 MISSION_START_TIME = "2025-09-24T00:00:00"
 MISSION_END_TIME = "2045-09-24T00:00:00"
 
 VALID_CADENCE_STRS = ["3mo", "6mo", "1yr"]
-
-FIRST_MAP_START_DATE = datetime.datetime(2026, 1, 17, tzinfo=datetime.timezone.utc)
 
 # How long a processing job output must have been in the science files table before
 # the backup materialization sensor materializes it. This gives the job's own op
