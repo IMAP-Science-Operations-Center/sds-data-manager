@@ -69,16 +69,16 @@ NON_TRIGGERING_KERNEL_TYPES = (
 )
 
 
-def check_requested_kernels(combined_kernel_sources, metakernel_files):
+def check_for_missing_kernels(combined_kernel_sources, metakernel_files):
     """Check if all requested kernels are present in the metakernel files.
 
     We need to ensure that the returned list of metakernel files includes
     all requested kernels, especially for ephemeris kernels. The API can
     return the "best" ephemeris kernels, which can include both historical
     and predicted kernels depending on the input time range. If the user
-    specifically requests only historical ephemeris kernels, we must verify
-    that only historical files are returned. Otherwise, both historical
-    and predicted kernels are acceptable.
+    specifically requests only one ephemeris kernel, e.g. historical
+    ephemeris kernels, we must verify that only historical files are
+    returned. Otherwise, both historical and predicted kernels are acceptable.
 
     Additionally, the API can return multiple kernels for the same source
     if the files cover specific date ranges. Because of this, we must
@@ -95,8 +95,8 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
 
     Returns
     -------
-    bool
-        True if all requested kernels are found, False otherwise.
+    list
+        Unique list of missing kernels. If empty, all requested kernels were found.
     """
     requested_kernels = set(combined_kernel_sources.split(","))
     expected_ephemeris = set(
@@ -108,6 +108,7 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
 
     ephemeris_found = set()
     other_kernels_found = set()
+    missing_kernels = set()
 
     for file in metakernel_files:
         file_obj = imap_data_access.SPICEFilePath(file)
@@ -124,37 +125,31 @@ def check_requested_kernels(combined_kernel_sources, metakernel_files):
             f"Non-ephemeris kernels {expected_other_kernels} not found in "
             f"metakernel files {other_kernels_found}"
         )
-        return False
+        missing_kernels.update(expected_other_kernels - other_kernels_found)
 
-    # If no ephemeris kernels are requested, we can return True.
-    if not expected_ephemeris:
-        return True
-
-    # If only historical ephemeris kernel is requested, check that it
-    # is found.
+    # If any single ephemeris kernel is requested, and not found add it to
+    # the missing kernels list.
     if (
         len(expected_ephemeris) == 1
-        and next(iter(expected_ephemeris)) == "ephemeris_reconstructed"
-        and "ephemeris_reconstructed" in ephemeris_found
+        and next(iter(expected_ephemeris)) not in ephemeris_found
     ):
-        return True
+        missing_kernels.update(expected_ephemeris)
 
     # If 'best' ephemeris kernel is requested, check that at least one of the kernels
     # is found in the metakernel files.
-    if (
-        len(expected_ephemeris) > 1
-        and any("ephemeris_" in kernel for kernel in expected_ephemeris)
-        and any("ephemeris_" in kernel for kernel in ephemeris_found)
+    if len(expected_ephemeris) > 1 and not any(
+        "ephemeris_" in kernel for kernel in ephemeris_found
     ):
-        return True
+        missing_kernels.update(expected_ephemeris)
 
-    logger.error(
+    logger.info(
         f"Requested ephemeris kernels: {expected_ephemeris}, "
         f"found in metakernel files: {ephemeris_found}"
         f"\nRequested other kernels: {expected_other_kernels}, "
         f"found in metakernel files: {other_kernels_found}"
+        f"\nMissing kernels: {missing_kernels}"
     )
-    return False
+    return sorted(list(missing_kernels))
 
 
 def get_upstream_dependency_inputs_spice(
@@ -181,6 +176,8 @@ def get_upstream_dependency_inputs_spice(
     -------
     ProcessingInputCollection
         Dependency files that can include Ancillary, SPICE, or Science inputs.
+    list
+        Missing kernels types that were requested but not found in the metakernel files.
     """
     # TODO revisit setting end_time after SIT-4. Should be handled upstream
     query_end_date = (
@@ -203,16 +200,15 @@ def get_upstream_dependency_inputs_spice(
     )
     if metakernel_response["statusCode"] != 200:
         logger.error(f"Metakernel lambda raised error: {metakernel_response['body']}")
-        return None
+        return None, None
     metakernel_files = json.loads(metakernel_response["body"])
-    # If number of kernels returned doesn't match the number of file types
-    # requested
-    has_all_kernels = check_requested_kernels(",".join(dependencies), metakernel_files)
-    if not has_all_kernels:
-        return None
+    # Get list of any missing kernels
+    missing_kernels = check_for_missing_kernels(
+        ",".join(dependencies), metakernel_files
+    )
 
     logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")
-    return metakernel_files
+    return metakernel_files, missing_kernels
 
 
 def parse_interval_list(

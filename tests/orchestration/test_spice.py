@@ -163,3 +163,35 @@ def test_get_upstream_dependency_inputs_spin(mock_db_session):
         "imap_2026_126_2026_128_01.spin",
         "imap_2026_120_2026_127_01.spin",
     ]
+
+
+def test_check_requested_kernels():
+    """Check that the correct missing kernels are returned."""
+    metakernel_files = []
+    desired_kernels = "leapseconds,spacecraft_clock"
+    missing_kernels = spice.check_for_missing_kernels(desired_kernels, metakernel_files)
+    assert missing_kernels == ["leapseconds", "spacecraft_clock"]
+
+
+def test_check_requested_kernels_missing_ephemeris():
+    """Check that when a single ephemeris is requested and missing, it is returned."""
+    metakernel_files = ["naif0012.tls", "imap_sclk_0000.tsc"]
+    desired_kernels = "leapseconds,spacecraft_clock,ephemeris_reconstructed"
+    missing_kernels = spice.check_for_missing_kernels(desired_kernels, metakernel_files)
+    assert missing_kernels == ["ephemeris_reconstructed"]
+
+
+def test_check_requested_kernels_best_ephemeris():
+    """Check that when multiple ephemeris kernels are requested the best is returned."""
+    metakernel_files = [
+        "naif0012.tls",
+        "imap_sclk_0000.tsc",
+        "imap_pred_od022_20260206_20260320_v01.bsp",
+    ]
+    desired_kernels = (
+        "leapseconds,spacecraft_clock,ephemeris_reconstructed,ephemeris_predicted"
+    )
+    missing_kernels = spice.check_for_missing_kernels(desired_kernels, metakernel_files)
+    # should NOT return any missing kernels because the ephemeris_predicted
+    # kernel is present
+    assert missing_kernels == []

@@ -462,7 +462,7 @@ def test_mag_l1d_queries_spice_across_the_buffered_day():
     target_start, target_end = parse_dates_from_partition_key(TARGET_PARTITION)
 
     with patch.object(
-        spice, "get_upstream_dependency_inputs_spice", return_value=["kernel.bc"]
+        spice, "get_upstream_dependency_inputs_spice", return_value=(["kernel.bc"], [])
     ) as query:
         assert job.get_spice_file_inputs(None, target_start, target_end) == [
             "kernel.bc"
