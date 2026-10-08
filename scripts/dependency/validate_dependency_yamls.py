@@ -1,5 +1,7 @@
 """Validate the dependency YAML file."""
 
+import logging
+
 import numpy as np
 
 from sds_data_manager.orchestration.dependency import (
@@ -7,6 +9,8 @@ from sds_data_manager.orchestration.dependency import (
     get_kickoff_jobs,
 )
 from sds_data_manager.orchestration.types import ProcessingJobNode
+
+logger = logging.getLogger(__name__)
 
 
 def validate_dependency_yaml_versions(
@@ -68,7 +72,8 @@ def validate_dependency_yaml_versions(
     # loop through each output of the node and check if the major version is valid
     for output in node.outputs:
         if output.major_version < major_version:
-            raise ValueError(
+            # TODO : this check should optionally warn the user. See issue #1654
+            logger.warning(
                 f"Output ({output.source}, {output.data_type}, {output.descriptor}) "
                 f"has major_version {output.major_version}. It should be greater"
                 f" than or equal to {major_version}"
