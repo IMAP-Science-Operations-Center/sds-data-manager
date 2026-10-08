@@ -12,6 +12,7 @@ from sds_data_manager.lambda_code.SDSCode.api_lambdas import (
     spice_metakernel_api,
     spice_query_api,
 )
+from sds_data_manager.lambda_code.SDSCode.api_lambdas.metakernel import MetaKernel
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.spice_utilities import (
     MAXIMUM_MISSION_J2000_TIME,
@@ -618,3 +619,112 @@ def test_metakernel_end_time_omitted_not_forwarded(session):
         query_string_parameters = call.args[0]["queryStringParameters"]
         assert "end_time" not in query_string_parameters
         assert query_string_parameters["start_time"] == 1
+
+
+@pytest.mark.parametrize(
+    ("file_intervals", "expected_gaps"),
+    [
+        # No overlap at all: the whole gap remains.
+        ([[0, 100]], [(300, 400)]),
+        ([[500, 600]], [(300, 400)]),
+        # Last segment ends before the gap (issue #1692): the result must not
+        # reach back before gap_start or end before it starts.
+        ([[0, 100], [110, 200], [210, 220]], [(300, 400)]),
+        # Fully covered.
+        ([[250, 450]], []),
+        ([[250, 350], [350, 450]], []),
+        # Partial coverage, clipped to the gap on both sides.
+        ([[250, 320], [340, 360], [390, 450]], [(320, 340), (360, 390)]),
+        ([[310, 320]], [(300, 310), (320, 400)]),
+        # Unsorted input.
+        ([[390, 450], [250, 320]], [(320, 390)]),
+    ],
+)
+def test_calculate_gaps(file_intervals, expected_gaps):
+    """Remaining gaps are the gap minus the file's intervals, within the gap."""
+    assert MetaKernel._calculate_gaps(file_intervals, 300, 400) == expected_gaps
+
+
+def _select(files, start=-10, end=400):
+    """Run files (highest priority first) through the MetaKernel."""
+    metakernel = MetaKernel(start, end, ["attitude"])
+    for name, intervals in files:
+        metakernel._check_file(
+            {"file_name": name, "intervals": intervals}, "attitude", "intervals"
+        )
+    return metakernel
+
+
+def test_growing_series_selects_only_newest_kernel():
+    """Older kernels of a growing series add nothing and must not be selected.
+
+    Regression test for #1692: with multi-segment kernels, older kernels in
+    the series were selected and corrupted the remaining-gap list.
+    """
+    metakernel = _select(
+        [
+            ("278", [[0, 100], [110, 200], [210, 300]]),
+            ("220", [[0, 100], [110, 200], [210, 220]]),
+            ("206", [[0, 100], [110, 200], [210, 206.5]]),
+        ]
+    )
+
+    assert [f["file_name"] for f in metakernel.spice_files["attitude"]] == ["278"]
+    assert sorted(metakernel.spice_gaps["attitude"]) == [
+        (-10, 0),
+        (100, 110),
+        (200, 210),
+        (300, 400),
+    ]
+
+
+def test_older_kernel_filling_real_hole_is_selected():
+    """An older kernel with data where the newest has a hole is still selected."""
+    metakernel = _select(
+        [
+            ("278", [[0, 100], [110, 300]]),
+            ("220", [[0, 220]]),
+            ("206", [[0, 206]]),
+        ]
+    )
+
+    assert [f["file_name"] for f in metakernel.spice_files["attitude"]] == [
+        "278",
+        "220",
+    ]
+    assert sorted(metakernel.spice_gaps["attitude"]) == [(-10, 0), (300, 400)]
+
+
+def test_metakernel_growing_attitude_history_series(session):
+    """The API returns only the newest kernel of a growing ah series."""
+    _insert_test_file(
+        session,
+        "imap_2026_189_2026_206_002.ah.bc",
+        [[0, 100], [110, 200], [210, 206.5]],
+    )
+    _insert_test_file(
+        session,
+        "imap_2026_189_2026_220_002.ah.bc",
+        [[0, 100], [110, 200], [210, 220]],
+        upload_time=1,
+    )
+    _insert_test_file(
+        session,
+        "imap_2026_189_2026_278_001.ah.bc",
+        [[0, 100], [110, 200], [210, 300]],
+        upload_time=2,
+    )
+
+    result = spice_metakernel_api.lambda_handler(
+        {
+            "queryStringParameters": {
+                "start_time": 0,
+                "end_time": 300,
+                "file_types": "attitude_history",
+                "list_files": "True",
+            }
+        },
+        None,
+    )
+
+    assert json.loads(result["body"]) == ["imap_2026_189_2026_278_001.ah.bc"]
