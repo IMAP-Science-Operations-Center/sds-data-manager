@@ -240,9 +240,10 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
 # One partition per contiguous stretch of attitude_history coverage that a
 # single kernel is "in effect" for, keyed by pointing times.
 # Partition start = pointing_start_utc of the first pointing with any overlap
-# with that stretch. Partition end = pointing_end_utc of the last pointing
-# completely covered by it. A stretch that completely covers no pointing is
-# merged into the next contiguous stretch.
+# with that stretch. Partition end = repoint_start_utc of the last pointing
+# completely covered by it, i.e. when its stable attitude ends, matching the
+# end of the pointing attitude kernel generated for it. A stretch that
+# completely covers no pointing is merged into the next contiguous stretch.
 # Prefix is "pointingattitude" (no underscores) so parse_dates_from_partition_key can
 # split on the first "_" to isolate the date range.
 pointing_attitude_partitions = DynamicPartitionsDefinition(
@@ -331,7 +332,7 @@ def _last_covered_pointing(session, ah_min, ah_max):
 def _pointing_attitude_partition_key(first_pointing, last_pointing):
     """Build the partition key spanning first_pointing through last_pointing."""
     start_str = first_pointing.pointing_start_utc.strftime("%Y-%m-%dT%H:%M:%S")
-    end_str = last_pointing.pointing_end_utc.strftime("%Y-%m-%dT%H:%M:%S")
+    end_str = last_pointing.repoint_start_utc.strftime("%Y-%m-%dT%H:%M:%S")
     return f"pointingattitude_{start_str}_to_{end_str}"
 
 

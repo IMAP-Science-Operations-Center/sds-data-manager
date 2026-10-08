@@ -87,11 +87,20 @@ def make_coverage(min_str, max_str, file_name="imap_2025_001_2025_090_001.ah.bc"
     return (file_name, _dt(min_str), _dt(max_str))
 
 
+# How long each test pointing's slew to the next pointing takes.
+SLEW = datetime.timedelta(minutes=15)
+
+
 def make_pointing(start_str, end_str):
-    """Minimal mock PointingTable record."""
+    """Minimal mock PointingTable record.
+
+    `end_str` is when the pointing's stable attitude ends (repoint_start_utc);
+    the pointing itself ends once the following slew finishes.
+    """
     p = MagicMock()
     p.pointing_start_utc = _dt(start_str)
-    p.pointing_end_utc = _dt(end_str)
+    p.repoint_start_utc = _dt(end_str)
+    p.pointing_end_utc = _dt(end_str) + SLEW
     return p
 
 
@@ -330,7 +339,7 @@ def _insert_daily_pointings(session):
                 pointing_id=pointing_id,
                 pointing_start_utc=day,
                 pointing_end_utc=next_day,
-                repoint_start_utc=next_day - datetime.timedelta(minutes=15),
+                repoint_start_utc=next_day - SLEW,
                 repoint_end_utc=next_day,
             )
         )
@@ -366,10 +375,13 @@ def _reconcile(instance):
 
 
 def _assert_partitions_tile(partitions):
-    """Each partition must start exactly where the previous one ends."""
-    ranges = sorted(key.split("_", 1)[1].split("_to_") for key in partitions)
+    """Each partition must start as soon as the slew after the previous one ends."""
+    ranges = sorted(
+        [_dt(start), _dt(end)]
+        for start, end in (key.split("_", 1)[1].split("_to_") for key in partitions)
+    )
     for (_, previous_end), (start, _) in itertools.pairwise(ranges):
-        assert start == previous_end, ranges
+        assert start == previous_end + SLEW, ranges
 
 
 def test_effective_ah_coverage_after_reprocessed_delivery(mock_db_session):
@@ -443,11 +455,11 @@ def test_reprocessed_ah_delivery_replaces_partitions(mock_db_session):
             instance.get_dynamic_partitions("pointing_attitude_partitions")
         )
         assert prod_partitions == {
-            "pointingattitude_2025-09-24T14:00:00_to_2025-12-24T14:00:00",
-            "pointingattitude_2025-12-24T14:00:00_to_2026-03-25T14:00:00",
-            "pointingattitude_2026-03-25T14:00:00_to_2026-06-24T14:00:00",
-            "pointingattitude_2026-06-24T14:00:00_to_2026-07-08T14:00:00",
-            "pointingattitude_2026-07-08T14:00:00_to_2026-10-05T14:00:00",
+            "pointingattitude_2025-09-24T14:00:00_to_2025-12-24T13:45:00",
+            "pointingattitude_2025-12-24T14:00:00_to_2026-03-25T13:45:00",
+            "pointingattitude_2026-03-25T14:00:00_to_2026-06-24T13:45:00",
+            "pointingattitude_2026-06-24T14:00:00_to_2026-07-08T13:45:00",
+            "pointingattitude_2026-07-08T14:00:00_to_2026-10-05T13:45:00",
         }
         _assert_partitions_tile(prod_partitions)
 
@@ -458,16 +470,16 @@ def test_reprocessed_ah_delivery_replaces_partitions(mock_db_session):
         )
 
         assert draft_partitions == {
-            "pointingattitude_2025-09-23T14:00:00_to_2025-12-24T14:00:00",
-            "pointingattitude_2025-12-24T14:00:00_to_2026-01-30T14:00:00",
-            "pointingattitude_2026-01-30T14:00:00_to_2026-03-25T14:00:00",
-            "pointingattitude_2026-03-25T14:00:00_to_2026-06-23T14:00:00",
-            "pointingattitude_2026-06-23T14:00:00_to_2026-07-08T14:00:00",
-            "pointingattitude_2026-07-08T14:00:00_to_2026-09-30T14:00:00",
+            "pointingattitude_2025-09-23T14:00:00_to_2025-12-24T13:45:00",
+            "pointingattitude_2025-12-24T14:00:00_to_2026-01-30T13:45:00",
+            "pointingattitude_2026-01-30T14:00:00_to_2026-03-25T13:45:00",
+            "pointingattitude_2026-03-25T14:00:00_to_2026-06-23T13:45:00",
+            "pointingattitude_2026-06-23T14:00:00_to_2026-07-08T13:45:00",
+            "pointingattitude_2026-07-08T14:00:00_to_2026-09-30T13:45:00",
             # The 2026_273_2026_275 kernel fully covers no pointing, so it is
             # merged with the prod kernel tail that follows it rather than
             # dropping the 09-30 pointing from every partition.
-            "pointingattitude_2026-09-30T14:00:00_to_2026-10-05T14:00:00",
+            "pointingattitude_2026-09-30T14:00:00_to_2026-10-05T13:45:00",
         }
         # Every prod partition was replaced; none overlap the new ones.
         assert not prod_partitions & draft_partitions
@@ -502,7 +514,7 @@ def test_trailing_remainder_extends_previous_partition(mock_db_session):
     with instance_for_test() as instance:
         instance.add_dynamic_partitions(
             "pointing_attitude_partitions",
-            ["pointingattitude_2025-09-30T14:00:00_to_2025-10-10T14:00:00"],
+            ["pointingattitude_2025-09-30T14:00:00_to_2025-10-10T13:45:00"],
         )
         # The existing partition is already correct, so it is kept as is.
         assert _reconcile(instance).dynamic_partitions_requests == []
@@ -529,5 +541,5 @@ def test_trailing_remainder_after_gap_not_merged(mock_db_session):
     with instance_for_test() as instance:
         _reconcile(instance)
         assert set(instance.get_dynamic_partitions("pointing_attitude_partitions")) == {
-            "pointingattitude_2025-09-30T14:00:00_to_2025-10-09T14:00:00"
+            "pointingattitude_2025-09-30T14:00:00_to_2025-10-09T13:45:00"
         }
