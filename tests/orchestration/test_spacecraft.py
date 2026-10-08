@@ -359,7 +359,7 @@ def test_spacecraft_l1a_find_outputs_matches_correct_version(
     materializations = spacecraft_l1a_job.find_outputs(
         context,
         mock_db_session,
-        output_versions={"pointing-attitude": {"minor_version": 2, "major_version": 1}},
+        output_versions={"pointing-attitude": {"minor_version": 2, "major_version": 2}},
         start_date=target_start,
     )
 
@@ -369,7 +369,7 @@ def test_spacecraft_l1a_find_outputs_matches_correct_version(
     ]
     # Recorded as the version the job was submitted with: the configured
     # major version and the kernel version as the minor.
-    assert materializations[0].metadata["major_version"] == "1"
+    assert materializations[0].metadata["major_version"] == "2"
     assert materializations[0].metadata["minor_version"] == "2"
 
 
@@ -413,7 +413,7 @@ def test_spacecraft_l1a_determine_output_versions_uses_last_attitude_history(
     )
 
     assert output_versions == {
-        "pointing-attitude": {"minor_version": 2, "major_version": 1}
+        "pointing-attitude": {"minor_version": 2, "major_version": 2}
     }
 
 
