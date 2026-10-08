@@ -20,7 +20,7 @@ from tests.scripts.conftest import (
 )
 
 
-def test_validate_dependency_yaml_versions_invalid():
+def test_validate_dependency_yaml_versions_invalid(caplog):
     """Yaml with one invalid downstream major_version should raise."""
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",
@@ -29,8 +29,11 @@ def test_validate_dependency_yaml_versions_invalid():
         reader = DependencyConfigReader()
         kickoff_job = reader.config[("idex", "l1a", "all")]
 
-        with pytest.raises(ValueError, match="has major_version 0"):
-            validate_dependency_yaml_versions(reader, kickoff_job)
+        validate_dependency_yaml_versions(reader, kickoff_job)
+        assert (
+            "Output (idex, l1b, sci-10days) has major_version 0. "
+            "It should be greater than or equal to 1"
+        ) in caplog.text
 
 
 def test_validate_dependency_yaml_versions_valid():

@@ -107,7 +107,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l1b
       descriptor: hist
-      major_version: 1
+      major_version: 2
 
 (l2, hist):
   partition: repoint
@@ -124,7 +124,7 @@ hist_spice: &hist_spice
     - source: glows
       data_type: l2
       descriptor: hist
-      major_version: 1
+      major_version: 2
 
 (l3a, hist):
   partition: repoint

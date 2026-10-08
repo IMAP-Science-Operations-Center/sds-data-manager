@@ -33,7 +33,7 @@
     - source: spacecraft
       data_type: l1a
       descriptor: pointing-attitude
-      major_version: 1
+      major_version: 2
 
 
 (l1a, quaternions):
