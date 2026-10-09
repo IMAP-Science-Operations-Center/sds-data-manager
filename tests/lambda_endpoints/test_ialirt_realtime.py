@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_realtime import (
+    find_dropouts,
     lambda_handler,
     query_filenames,
     read_ingest_logs,
@@ -87,4 +88,33 @@ def test_read_ingest_logs(s3_client):
         "2025/212-16:32:38.239 some log line",
         "2025/212-16:33:04.063 another log line",
         "2025/212-16:33:06.070 more log lines",
+    ]
+
+
+def test_find_dropouts():
+    """Test finding I-ALiRT frame dropouts in the logs."""
+    error = "Error: dropout in VCDU counter for VCID"
+    lines = [
+        "2026/276-18:14:00.100 Periodic status report:",
+        "ID  Description   LastDataRcvd  ConnectionTime  Rate (kbps)",
+        "17  Censipam      276-18:14:00  275-17:37:07    2.1",
+        f"2026/276-18:14:03.120 {error}=5!  previous: 148, current: 150",
+        # Counter rollover.
+        f"2026/276-18:14:05.130 {error}=5!  previous: 253, current: 1",
+        # Other VCIDs are corrupted frame headers.
+        f"2026/276-18:14:06.140 {error}=11!  previous: 169, current: 126865",
+        f"2026/276-18:14:07.150 {error}=5!  previous: 169, current: 184",
+        "2026/276-18:15:00.100 Periodic status report:",
+        "ID  Description   LastDataRcvd  ConnectionTime  Rate (kbps)",
+        "17  Censipam      276-18:14:30  275-17:37:07    0.0",
+        # Dropout while no station is sending is skipped.
+        f"2026/276-18:15:07.150 {error}=5!  previous: 169, current: 190",
+    ]
+
+    dropouts = find_dropouts(lines)
+
+    assert dropouts == [
+        {"time": "2026-10-03T18:14:03Z", "missing_frames": 1},
+        {"time": "2026-10-03T18:14:05Z", "missing_frames": 3},
+        {"time": "2026-10-03T18:14:07Z", "missing_frames": 14},
     ]

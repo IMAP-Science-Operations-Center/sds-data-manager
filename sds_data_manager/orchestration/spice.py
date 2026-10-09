@@ -215,7 +215,7 @@ def get_upstream_dependency_inputs_spice(
     return metakernel_files
 
 
-def _parse_interval_list(
+def parse_interval_list(
     raw_intervals: list[list[str]] | None,
 ) -> list[list[datetime.datetime]]:
     """Convert a list of ISO-formatted [start, end] pairs to datetime pairs.
@@ -372,12 +372,12 @@ def get_growing_kernel_trigger_ranges(
             ranges.append((new_file.min_date_datetime, new_file.max_date_datetime))
         else:
             # Case 2: coverage extended - only trigger the new segments.
-            new_intervals = _parse_interval_list(new_file.file_intervals_datetime)
+            new_intervals = parse_interval_list(new_file.file_intervals_datetime)
             if not new_intervals:
                 # Defensive fallback: no segment data to diff against.
                 ranges.append((new_file.min_date_datetime, new_file.max_date_datetime))
                 continue
-            old_intervals = _parse_interval_list(predecessor.file_intervals_datetime)
+            old_intervals = parse_interval_list(predecessor.file_intervals_datetime)
             new_segments = subtract_intervals(new_intervals, old_intervals)
             ranges.extend((seg[0], seg[1]) for seg in new_segments)
     return ranges

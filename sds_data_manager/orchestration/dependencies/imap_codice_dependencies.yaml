@@ -329,7 +329,7 @@ lo_l3b_dist_common: &lo_l3b_dist_common
     - source: codice
       data_type: l3a
       descriptor: hi-direct-events
-      major_version: 1
+      major_version: 2
 
 (l3a, lo-direct-events):
   partition: daily

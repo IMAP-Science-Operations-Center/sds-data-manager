@@ -21,10 +21,17 @@ def lambda_handler(event, context):
         f"Received event: {json.dumps(event, indent=2)}. Sending to reprocessing queue"
     )
 
-    sqs_client.send_message(
+    response = sqs_client.send_message(
         QueueUrl=QUEUE_URL,
         MessageBody=json.dumps(params),
         MessageGroupId="reprocess",
     )
+    reprocess_id = response["MessageId"]
+    logger.info(f"Queued reprocessing request with reprocess_id={reprocess_id}")
 
-    return {"statusCode": 200, "body": json.dumps({"message": "Reprocess job queued"})}
+    return {
+        "statusCode": 200,
+        "body": json.dumps(
+            {"message": "Reprocess job queued", "reprocess_id": reprocess_id}
+        ),
+    }

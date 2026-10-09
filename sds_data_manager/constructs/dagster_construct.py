@@ -403,6 +403,9 @@ class DagsterEcsConstruct(Construct):
                     lasp_oidc_secret_name, json_field="client_secret_readwrite"
                 ),
                 scope="openid profile",
+                # Expire the ALB auth session after 1 hour (default is 7 days)
+                # to avoid long-lived refresh attempts against Keycloak.
+                session_timeout=cdk.Duration.seconds(3600),
                 next=elbv2.ListenerAction.forward(
                     target_groups=[webserver_service.target_group]
                 ),
@@ -516,6 +519,9 @@ class DagsterEcsConstruct(Construct):
                     lasp_oidc_secret_name, json_field="client_secret_readonly"
                 ),
                 scope="openid profile",
+                # Expire the ALB auth session after 1 hour (default is 7 days)
+                # to avoid long-lived refresh attempts against Keycloak.
+                session_timeout=cdk.Duration.seconds(3600),
                 next=elbv2.ListenerAction.forward(
                     target_groups=[readonly_webserver_service.target_group]
                 ),

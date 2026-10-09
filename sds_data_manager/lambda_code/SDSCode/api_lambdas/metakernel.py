@@ -315,11 +315,11 @@ seconds since J2000.
         return results
 
     @staticmethod
-    def _calculate_gaps(file_intervals, gap_start, gap_end):  # noqa: PLR0912
-        """Caclulate the gaps based on file_intervals.
+    def _calculate_gaps(file_intervals, gap_start, gap_end):
+        """Calculate the parts of a gap that a file's intervals don't cover.
 
-        Slide a "window" across the file to determine the intervals
-        that remain uncovered between gap_start and gap_end.
+        Subtract the file's valid intervals from the gap, keeping every
+        returned gap within [gap_start, gap_end].
 
         A visual representation:
 
@@ -330,15 +330,9 @@ seconds since J2000.
           |----------|   |------------------|   |--------------------------|
            interval 1         interval 2                interval 3
 
-        The calculated search windows:
-        |----------------|----------------------|---------------------------------|
-        search window 1     search window 2               search window 3
-
         The calculated gaps:
-        |-|          |---|                   |--|                           |-----|
-        gap 1        gap 2                   gap 3                           gap 4
-
-        This function then returns this list of calculated gap intervals
+        |-|          |---|                  |---|                          |------|
+        gap 1        gap 2                  gap 3                           gap 4
 
         Parameters
         ----------
@@ -352,59 +346,25 @@ seconds since J2000.
         Return
         ------
         remaining_gaps: list[tuple[Any, Any]]
-            The gaps definitely not covered by this file.
+            The gaps definitely not covered by this file, in time order.
         """
-        sub_gaps = []
-        for i in range(0, len(file_intervals)):
-            file_interval_start = file_intervals[i][0]
-            file_interval_end = file_intervals[i][1]
-
-            # Determine the search window
-            if (
-                file_interval_start <= gap_start and file_interval_end >= gap_start
-            ) or i == 0:
-                search_window_start = gap_start
-            else:
-                search_window_start = file_intervals[i - 1][1]
-            if (
-                file_interval_start <= gap_end and file_interval_end >= gap_end
-            ) or i == len(file_intervals) - 1:
-                search_window_end = gap_end
-            else:
-                search_window_end = file_intervals[i][1]
-
-            # Quick check, are we out of bounds of the range we care about?
-            # <---- search window ----->
-            #                               <----- gap span ------>
-            if search_window_start >= gap_end or search_window_end <= gap_start:
-                continue
-
-            # Another quick check, does this already interval cover everything
-            # we're looking for?
-            #      <------- gap span ------------>
-            # <--------- file coverage -------------------->
-            if file_interval_start <= gap_start and file_interval_end >= gap_end:
-                return []  # Return here, no gaps to needed to fill
-
-            # Calculate and append gaps to the list
-            if file_interval_start > search_window_start:
-                # <----------- search window --------....
-                #       <----- file coverage --------....
-                if search_window_start < gap_start:
-                    start = gap_start
-                else:
-                    start = search_window_start
-                sub_gaps.extend([(start, file_interval_start)])  # Gaps before interval
-            if file_interval_end < search_window_end:
-                # ....--- search window --------------->
-                # ....-- file coverage -------->
-                if search_window_end > gap_end:
-                    end = gap_end
-                else:
-                    end = search_window_end
-                sub_gaps.extend([(file_interval_end, end)])  # Gaps after interval
-
-        return sub_gaps
+        remaining_gaps = []
+        # Everything before `cursor` is either covered by the file or already
+        # recorded as a remaining gap.
+        cursor = gap_start
+        for interval_start, interval_end in sorted(file_intervals):
+            if interval_end <= cursor:
+                continue  # Entirely before the uncovered part of the gap
+            if interval_start >= gap_end:
+                break  # This and every later interval is after the gap
+            if interval_start > cursor:
+                remaining_gaps.append((cursor, interval_start))
+            cursor = interval_end
+            if cursor >= gap_end:
+                break
+        if cursor < gap_end:
+            remaining_gaps.append((cursor, gap_end))
+        return remaining_gaps
 
     def __repr__(self):
         """Return all loaded SPICE files as JSON."""
