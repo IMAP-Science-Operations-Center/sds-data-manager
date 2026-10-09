@@ -117,10 +117,12 @@ class CoverageInterval:
                 prev = current
                 continue
             if current.start <= prev.end:
-                prev = cls(prev.start, current.end)
+                prev = cls(prev.start, max(prev.end, current.end))
             else:
                 ret.append(prev)
-        ret.append(prev)
+                prev = current
+        if prev is not None:
+            ret.append(prev)
         return ret
 
     def bounds_le(self, other: Self) -> bool:
