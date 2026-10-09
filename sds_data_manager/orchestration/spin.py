@@ -2,8 +2,11 @@
 
 import datetime
 import logging
+from collections import defaultdict
 from contextlib import nullcontext
+from dataclasses import dataclass
 from os.path import basename
+from typing import Self
 
 from sqlalchemy import and_
 
@@ -97,51 +100,125 @@ def verify_spin_coverage(
     return True
 
 
-def _is_superseded(
-    record,
-    records: list,
-    start_day: datetime.date,
-    end_day: datetime.date,
-) -> bool:
-    """Check whether higher-version spin files cover a record within a window.
+@dataclass(frozen=True, slots=True, order=True)
+class CoverageInterval:
+    """Class to emulate a (subclassable) NamedTuple of start and end timestamps."""
 
-    A spin file is superseded when every day it covers inside the window is
-    also covered by a spin file with a higher version. Newer deliveries do not
-    always split days the same way as older ones (e.g. ``imap_2025_360_2025_360_01``
-    is replaced by ``imap_2025_359_2025_360_10`` and ``imap_2025_360_2025_361_10``),
-    so this cannot be decided by matching identical date ranges.
+    start: datetime.date
+    end: datetime.date
 
-    Parameters
-    ----------
-    record : Row
-        The SpinFiles record to check.
-    records : list
-        All candidate SpinFiles records overlapping the window.
-    start_day : datetime.date
-        First day of the window.
-    end_day : datetime.date
-        Last day of the window.
+    @classmethod
+    def merge_sorted(cls, ivls: list[Self]) -> list[Self]:
+        """Return a list of merged intervals."""
+        ret: list[Self] = []
+        prev: Self | None = None
+        for current in ivls:
+            if not prev:
+                prev = current
+                continue
+            if current.start <= prev.end:
+                prev = cls(prev.start, current.end)
+            else:
+                ret.append(prev)
+        ret.append(prev)
+        return ret
 
-    Returns
-    -------
-    bool
-        True if the record is fully covered by higher-version records.
-    """
-    newer_ranges = [
-        (other.start_date.date(), other.end_date.date())
-        for other in records
-        if int(other.version) > int(record.version)
-    ]
-    if not newer_ranges:
-        return False
+    def bounds_le(self, other: Self) -> bool:
+        """Return whether self's bounds as a whole are less or equal to other's.
 
-    day = max(record.start_date.date(), start_day)
-    last_day = min(record.end_date.date(), end_day)
-    while day <= last_day:
-        if not any(start <= day <= end for start, end in newer_ranges):
-            return False
-        day += datetime.timedelta(days=1)
-    return True
+        Only true when self and other are disjoint, up to possible endpoint overlap.
+        """
+        return self.end <= other.start
+
+    def bounds_ge(self, other: Self) -> bool:
+        """Return whether self's bounds as a whole are greater or equal to other's.
+
+        Only true when self and other are disjoint, up to possible endpoint overlap.
+        """
+        return self.start >= other.end
+
+    def envelops(self, other: Self) -> bool:
+        """Return whether iff self completely covers other."""
+        return self.start <= other.start and self.end >= other.end
+
+
+@dataclass(frozen=True, slots=True)
+class RawCoverageInterval(CoverageInterval):
+    """CoverageInterval that also points to the raw record from which it was derived."""
+
+    record: models.SpinFiles
+    index: int
+
+
+def _filter_superseded(records: list[models.SpinFiles]) -> list[models.SpinFiles]:
+    # ingest, sort, and merge coverage intervals
+    raw_cov_ivls_by_version: dict[int, list[RawCoverageInterval]] = defaultdict(list)
+    merged_cov_ivls_by_version: dict[int, list[CoverageInterval]] = {}
+    for index, record in enumerate(records):
+        interval = RawCoverageInterval(
+            record.start_date.date(),
+            record.end_date.date(),
+            record,
+            index,
+        )
+        raw_cov_ivls_by_version[int(record.version)].append(interval)
+    for version, cov_ivls in raw_cov_ivls_by_version.items():
+        cov_ivls.sort()
+        merged_cov_ivls_by_version[version] = CoverageInterval.merge_sorted(cov_ivls)
+
+    # sort the dict by descending keys (versions)
+    merged_cov_ivls_by_version = dict(
+        sorted(merged_cov_ivls_by_version.items(), reverse=True)
+    )
+
+    # find merged coverage intervals at higher priority than each version
+    higher_cov_ivls_by_version: dict[int, list[CoverageInterval]] = {}
+    next_higher_version: int | None = None
+    for version, cov_ivls in merged_cov_ivls_by_version.items():
+        if next_higher_version is None:
+            higher_cov_ivls_by_version[version] = []
+            next_higher_version = version
+            continue
+        combined_ivls = cov_ivls + higher_cov_ivls_by_version[next_higher_version]
+        combined_ivls.sort()
+        merged_combined_ivls = CoverageInterval.merge_sorted(combined_ivls)
+        higher_cov_ivls_by_version[version] = merged_combined_ivls
+        next_higher_version = version
+
+    filtered_raw_ivls: list[RawCoverageInterval] = []
+    for version, raw_cov_ivls in raw_cov_ivls_by_version.items():
+        # cov_ivls is already sorted by start/end
+        higher_cov_ivls = higher_cov_ivls_by_version[version]
+
+        higher_iter = iter(higher_cov_ivls)
+        current_higher = next(higher_iter, None)
+        for current_raw in raw_cov_ivls:
+            while current_higher is not None:
+                if current_raw.bounds_le(current_higher):
+                    # save current_raw
+                    filtered_raw_ivls.append(current_raw)
+                    break
+                elif current_raw.bounds_ge(current_higher):
+                    # increment current_higher
+                    current_higher = next(higher_iter, None)
+                # current_raw and current_higher intersect
+                elif current_higher.envelops(current_raw):
+                    # throw away current_raw, as it's completely covered
+                    break
+                else:
+                    # save current_raw, as it is only partially covered
+                    # by higher priority intervals
+                    filtered_raw_ivls.append(current_raw)
+                    break
+            else:
+                # save current_raw, as its bounds are greater than all
+                # higher priority intervals
+                filtered_raw_ivls.append(current_raw)
+
+    # sort by the input ordering
+    filtered_raw_ivls.sort(key=lambda raw_ivl: raw_ivl.index)
+
+    return [raw_ivl.record for raw_ivl in filtered_raw_ivls]
 
 
 def get_spin_files(
@@ -189,13 +266,7 @@ def get_spin_files(
         .all()
     )
 
-    start_day = start_date.date()
-    end_day = end_date.date()
-    records = [
-        record
-        for record in candidates
-        if not _is_superseded(record, candidates, start_day, end_day)
-    ]
+    records = _filter_superseded(candidates)
     # imap_processing gives the last file the highest priority. The sort is
     # stable, so ingestion order breaks ties in version and start date.
     records.sort(key=lambda record: (int(record.version), record.start_date))
