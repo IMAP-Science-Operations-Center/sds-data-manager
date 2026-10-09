@@ -25,6 +25,11 @@ on:
         required: false
         type: boolean
         default: true
+      skip_ialirt_ssr:
+        description: "For manual prod deploys only: skip deploying IalirtSsrStack"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   id-token: write
@@ -120,11 +125,19 @@ jobs:
         env:
           ACCOUNT_NAME: ${{ env.account_name }}
           SKIP_IALIRT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod' && github.event.inputs.skip_ialirt == 'true' }}
+          SKIP_IALIRT_SSR: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod' && github.event.inputs.skip_ialirt_ssr == 'true' }}
         run: |
           echo "Deploying to environment: $ACCOUNT_NAME"
           echo "SKIP_IALIRT=$SKIP_IALIRT"
-          if [[ "$SKIP_IALIRT" == "true" ]]; then
+          echo "SKIP_IALIRT_SSR=$SKIP_IALIRT_SSR"
+          if [[ "$SKIP_IALIRT" == "true" || "$SKIP_IALIRT_SSR" == "true" ]]; then
             STACKS="NetworkingStack HostedZoneCertificateStack WebsiteStack SDCStack DagsterStack BackupStack"
+            if [[ "$SKIP_IALIRT" != "true" ]]; then
+              STACKS="$STACKS IalirtStack"
+            fi
+            if [[ "$SKIP_IALIRT_SSR" != "true" ]]; then
+              STACKS="$STACKS IalirtSsrStack"
+            fi
           else
             STACKS="--all"
           fi

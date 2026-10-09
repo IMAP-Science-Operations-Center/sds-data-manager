@@ -30,6 +30,8 @@ class IAlirtEFSConstruct(Construct):
         scope: Construct,
         construct_id: str,
         vpc: ec2.Vpc,
+        volume_name: str = "IALIRT-SPICE-EFS",
+        security_group_name: str = "IAlirtEFSSecurityGroup",
         **kwargs,
     ) -> None:
         """Construct the EFS.
@@ -42,6 +44,10 @@ class IAlirtEFSConstruct(Construct):
             A unique string identifier for this construct.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
+        volume_name : str
+            Name of the EFS file system.
+        security_group_name : str
+            Name of the EFS security group. Must be unique within the VPC.
         kwargs : dict
             Keyword arguments
 
@@ -50,7 +56,7 @@ class IAlirtEFSConstruct(Construct):
 
         # Initialize EFS related information that other resources
         # will need to access EFS or mount EFS.
-        self.volume_name = "IALIRT-SPICE-EFS"
+        self.volume_name = volume_name
         self.efs_path = "/data"
 
         # Define EFS security group, ports are added in EC2 stack
@@ -60,7 +66,7 @@ class IAlirtEFSConstruct(Construct):
             vpc=vpc,
             description="No outbound rule for EFS",
             allow_all_outbound=False,
-            security_group_name="IAlirtEFSSecurityGroup",
+            security_group_name=security_group_name,
         )
 
         # Add inbound rule for TCP port 2049
