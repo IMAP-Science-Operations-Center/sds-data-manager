@@ -268,7 +268,9 @@ def test_get_upstream_dependency_inputs_spin_superseded_at_span_edges(
     """Test single-day files on the first or last day of a newer span are dropped.
 
     The _10 files cover days 358-360, so single-day _01 files on day 358 or
-    day 360 are fully covered and must not be returned.
+    day 360 are fully covered and must not be returned. The _01 set is
+    contiguous, like a real delivery, with a middle file sharing a boundary
+    day with each single-day file.
     """
 
     def doy(day):
@@ -276,6 +278,7 @@ def test_get_upstream_dependency_inputs_spin_superseded_at_span_edges(
 
     files = [
         ("imap_2025_358_2025_358_01.spin", 358, 358),
+        ("imap_2025_358_2025_360_01.spin", 358, 360),
         ("imap_2025_360_2025_360_01.spin", 360, 360),
         ("imap_2025_358_2025_359_10.spin", 358, 359),
         ("imap_2025_359_2025_360_10.spin", 359, 360),
