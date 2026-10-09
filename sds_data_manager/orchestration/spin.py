@@ -178,7 +178,6 @@ class RawCoverageInterval(CoverageInterval):
 def _filter_superseded(records: list[models.SpinFiles]) -> list[models.SpinFiles]:
     # ingest, sort, and merge coverage intervals
     raw_cov_ivls_by_version: dict[int, list[RawCoverageInterval]] = defaultdict(list)
-    merged_cov_ivls_by_version: dict[int, list[CoverageInterval]] = {}
     for index, record in enumerate(records):
         interval = RawCoverageInterval(
             record.start_date.date(),
@@ -187,6 +186,7 @@ def _filter_superseded(records: list[models.SpinFiles]) -> list[models.SpinFiles
             index,
         )
         raw_cov_ivls_by_version[int(record.version)].append(interval)
+    merged_cov_ivls_by_version: dict[int, list[CoverageInterval]] = {}
     for version, cov_ivls in raw_cov_ivls_by_version.items():
         cov_ivls.sort()
         merged_cov_ivls_by_version[version] = CoverageInterval.merge_sorted(cov_ivls)
@@ -199,12 +199,15 @@ def _filter_superseded(records: list[models.SpinFiles]) -> list[models.SpinFiles
     # find merged coverage intervals at higher priority than each version
     higher_cov_ivls_by_version: dict[int, list[CoverageInterval]] = {}
     next_higher_version: int | None = None
-    for version, cov_ivls in merged_cov_ivls_by_version.items():
+    for version, _cov_ivls in merged_cov_ivls_by_version.items():
         if next_higher_version is None:
             higher_cov_ivls_by_version[version] = []
             next_higher_version = version
             continue
-        combined_ivls = cov_ivls + higher_cov_ivls_by_version[next_higher_version]
+        combined_ivls = (
+            merged_cov_ivls_by_version[next_higher_version]
+            + higher_cov_ivls_by_version[next_higher_version]
+        )
         combined_ivls.sort()
         merged_combined_ivls = CoverageInterval.merge_sorted(combined_ivls)
         higher_cov_ivls_by_version[version] = merged_combined_ivls
@@ -212,7 +215,7 @@ def _filter_superseded(records: list[models.SpinFiles]) -> list[models.SpinFiles
 
     filtered_raw_ivls: list[RawCoverageInterval] = []
     for version, raw_cov_ivls in raw_cov_ivls_by_version.items():
-        # cov_ivls is already sorted by start/end
+        # raw_cov_ivls is already sorted by start/end
         higher_cov_ivls = higher_cov_ivls_by_version[version]
 
         higher_iter = iter(higher_cov_ivls)
