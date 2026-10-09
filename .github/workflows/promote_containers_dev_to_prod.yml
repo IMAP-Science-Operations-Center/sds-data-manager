@@ -48,6 +48,7 @@ concurrency:
 env:
   # IMAP instruments - keep in sync with imap_data_access.VALID_INSTRUMENTS
   VALID_INSTRUMENTS: "codice,glows,hit,hi,ialirt,idex,lo,mag,spacecraft,swapi,swe,ultra"
+  VALID_L3_INSTRUMENTS: "codice,glows,hit,hi,lo,swapi,swe,ultra"
   DEV_ACCOUNT: "449431850278"
   PROD_ACCOUNT: "593025701104"
   AWS_REGION: "us-west-2"
@@ -64,7 +65,7 @@ jobs:
         run: |
           # Determine which instruments to promote
           if [ "${{ inputs.instruments }}" = "all" ]; then
-            instruments="${{ env.VALID_INSTRUMENTS }}"
+            instruments="${{ inputs.l3_data && env.VALID_L3_INSTRUMENTS || env.VALID_INSTRUMENTS }}"
           else
             instruments="${{ inputs.instruments }}"
           fi
