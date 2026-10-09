@@ -5,8 +5,9 @@ import logging
 from collections import defaultdict
 from contextlib import nullcontext
 from dataclasses import dataclass
+from functools import total_ordering
 from os.path import basename
-from typing import Self
+from typing import Any, Self
 
 from sqlalchemy import and_
 
@@ -100,7 +101,8 @@ def verify_spin_coverage(
     return True
 
 
-@dataclass(frozen=True, slots=True, order=True)
+@total_ordering
+@dataclass(frozen=True, slots=True, eq=False)
 class CoverageInterval:
     """Class to emulate a (subclassable) NamedTuple of start and end timestamps."""
 
@@ -143,8 +145,29 @@ class CoverageInterval:
         """Return whether iff self completely covers other."""
         return self.start <= other.start and self.end >= other.end
 
+    @property
+    def bounds(self) -> tuple[datetime.date, datetime.date]:
+        """Return the bounds of the CoverageInterval."""
+        return (self.start, self.end)
 
-@dataclass(frozen=True, slots=True)
+    def __lt__(self, other: Any) -> bool:
+        """Perform < comparison."""
+        if not isinstance(other, CoverageInterval):
+            return NotImplemented
+        return self.bounds < other.bounds
+
+    def __eq__(self, other: Any) -> bool:
+        """Perform == comparison."""
+        if not isinstance(other, CoverageInterval):
+            return NotImplemented
+        return self.bounds == other.bounds
+
+    def __hash__(self) -> int:
+        """Hash the object."""
+        return hash(self.bounds)
+
+
+@dataclass(frozen=True, slots=True, eq=False)
 class RawCoverageInterval(CoverageInterval):
     """CoverageInterval that also points to the raw record from which it was derived."""
 
