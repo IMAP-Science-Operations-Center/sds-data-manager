@@ -132,9 +132,10 @@ def test_get_upstream_dependency_inputs_spin(mock_db_session):
         start_date=datetime.datetime(2026, 1, 1),
         end_date=datetime.datetime(2026, 1, 2),
     )
-    # The third and fourth files have overlapping date ranges. The ingest order
-    # should take precedence when sorting them. The last file ingested should
-    # be listed last (When loading SPICE kernels last one takes precedence).
+    # The third and fourth files have the same version and overlapping date
+    # ranges. The start date should take precedence over the ingest order when
+    # sorting them, so the later-starting file is listed last even though it was
+    # ingested first (When loading SPICE kernels last one takes precedence).
     _insert_spin_file(
         mock_db_session,
         "imap_2026_126_2026_128_01.spin",
@@ -156,12 +157,13 @@ def test_get_upstream_dependency_inputs_spin(mock_db_session):
         False,
         mock_db_session,
     )
-    # Check that the returned spin files are in the correct order and that the
-    # correct versions were selected.
+    # Check that the returned spin files are in reverse priority order (highest
+    # version last, then latest start date last) and that the correct versions
+    # were selected.
     assert spin_files == [
-        "imap_2026_142_2026_143_02.spin",
-        "imap_2026_126_2026_128_01.spin",
         "imap_2026_120_2026_127_01.spin",
+        "imap_2026_126_2026_128_01.spin",
+        "imap_2026_142_2026_143_02.spin",
     ]
 
 
@@ -221,5 +223,25 @@ def test_get_upstream_dependency_inputs_spin_superseded_by_new_ranges(
     )
     assert spin_files == [
         "imap_2025_361_2025_362_01.spin",
+        "imap_2025_360_2025_361_10.spin",
+    ]
+
+    # A lower version ingested after the _10 files must not take priority.
+    _insert_spin_file(
+        mock_db_session,
+        "imap_2025_360_2025_360_02.spin",
+        upload_time=10,
+        start_date=doy(360),
+        end_date=doy(360),
+    )
+    spin_files = get_upstream_dependency_inputs_spin(
+        datetime.datetime(2025, 12, 25),
+        datetime.datetime(2025, 12, 26, 10, 2, 10),
+        False,
+        mock_db_session,
+    )
+    assert spin_files == [
+        "imap_2025_358_2025_359_10.spin",
+        "imap_2025_359_2025_360_10.spin",
         "imap_2025_360_2025_361_10.spin",
     ]

@@ -167,7 +167,8 @@ def get_spin_files(
     -------
     list
         List of SpinFiles records with file_path, start_date, end_date, version,
-        ordered by ingestion date, oldest first.
+        in reverse priority order: lowest version first, then earliest start
+        date first, so the last record has the highest priority.
     """
     spin = models.SpinFiles
     candidates = (
@@ -190,11 +191,15 @@ def get_spin_files(
 
     start_day = start_date.date()
     end_day = end_date.date()
-    return [
+    records = [
         record
         for record in candidates
         if not _is_superseded(record, candidates, start_day, end_day)
     ]
+    # imap_processing gives the last file the highest priority. The sort is
+    # stable, so ingestion order breaks ties in version and start date.
+    records.sort(key=lambda record: (int(record.version), record.start_date))
+    return records
 
 
 def get_upstream_dependency_inputs_spin(
