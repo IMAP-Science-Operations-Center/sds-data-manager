@@ -245,3 +245,54 @@ def test_get_upstream_dependency_inputs_spin_superseded_by_new_ranges(
         "imap_2025_359_2025_360_10.spin",
         "imap_2025_360_2025_361_10.spin",
     ]
+
+
+@pytest.mark.parametrize(
+    ("window_start", "window_end", "expected"),
+    [
+        # Window on the first day of the _10 span
+        (358, 358, ["imap_2025_358_2025_359_10.spin"]),
+        # Window on the last day of the _10 span
+        (360, 360, ["imap_2025_359_2025_360_10.spin"]),
+        # Window covering the whole _10 span
+        (
+            358,
+            360,
+            ["imap_2025_358_2025_359_10.spin", "imap_2025_359_2025_360_10.spin"],
+        ),
+    ],
+)
+def test_get_upstream_dependency_inputs_spin_superseded_at_span_edges(
+    mock_db_session, window_start, window_end, expected
+):
+    """Test single-day files on the first or last day of a newer span are dropped.
+
+    The _10 files cover days 358-360, so single-day _01 files on day 358 or
+    day 360 are fully covered and must not be returned.
+    """
+
+    def doy(day):
+        return datetime.datetime(2025, 1, 1) + datetime.timedelta(days=day - 1)
+
+    files = [
+        ("imap_2025_358_2025_358_01.spin", 358, 358),
+        ("imap_2025_360_2025_360_01.spin", 360, 360),
+        ("imap_2025_358_2025_359_10.spin", 358, 359),
+        ("imap_2025_359_2025_360_10.spin", 359, 360),
+    ]
+    for upload_time, (filename, start, end) in enumerate(files):
+        _insert_spin_file(
+            mock_db_session,
+            filename,
+            upload_time=upload_time,
+            start_date=doy(start),
+            end_date=doy(end),
+        )
+
+    spin_files = get_upstream_dependency_inputs_spin(
+        doy(window_start),
+        doy(window_end) + datetime.timedelta(hours=10),
+        False,
+        mock_db_session,
+    )
+    assert spin_files == expected
