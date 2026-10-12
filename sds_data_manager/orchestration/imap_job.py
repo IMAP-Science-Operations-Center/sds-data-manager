@@ -1182,11 +1182,13 @@ class IMAPJobHandler:
             # Filter conditions for the query
             conditions = [
                 table.instrument == node.source,
-                table.data_level == node.data_type,
                 table.descriptor == node.descriptor,
                 table.start_date == start_date.date(),
                 table.repointing == repointing,
             ]
+            # The ancillary files table has no data_level column
+            if table != models.AncillaryFiles:
+                conditions.append(table.data_level == node.data_type)
             if table == models.ProcessingJob:
                 conditions.append(
                     table.status.in_(
@@ -1236,16 +1238,10 @@ class IMAPJobHandler:
         max_minor_version_science_files = None
         for output in outputs:
             if output.data_type == "ancillary":
-                # Ancillary outputs live in the ancillary files table, which has
-                # no data_level column and stores the version as a "vXXX" string.
+                # Ancillary files store the version as a "vXXX" string.
                 max_version = (
                     session.query(func.max(models.AncillaryFiles.version))
-                    .filter(
-                        models.AncillaryFiles.instrument == output.source,
-                        models.AncillaryFiles.descriptor == output.descriptor,
-                        models.AncillaryFiles.start_date == start_date.date(),
-                        models.AncillaryFiles.repointing == repointing,
-                    )
+                    .filter(*filter_conditions(models.AncillaryFiles, output))
                     .scalar()
                 )
                 current_minor_version = (
