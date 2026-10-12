@@ -1151,8 +1151,8 @@ class IMAPJobHandler:
         config and is not bumped here. The minor version is shared across all
         outputs of a job: it is the maximum of (a) the minor version already
         seen in the processing jobs table for this job, and (b) the largest
-        minor version already seen in the science ancillary files table across
-        all of this job's outputs, increased by one.
+        minor version already seen in the science or ancillary files table
+        across all of this job's outputs, increased by one.
 
         Parameters
         ----------
