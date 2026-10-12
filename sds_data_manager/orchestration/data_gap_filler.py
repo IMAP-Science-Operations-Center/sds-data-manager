@@ -35,12 +35,13 @@ from dagster import (
     AssetSelection,
     RunRequest,
     SensorEvaluationContext,
-    SkipReason,
     asset,
     define_asset_job,
     sensor,
 )
 from imap_data_access import webpoda
+
+from sds_data_manager.orchestration import config
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +49,10 @@ logger = logging.getLogger(__name__)
 # day. This matches REPOINTING_INSTRUMENTS in the packet downloader Lambda.
 REPOINTING_INSTRUMENTS = {"glows", "hi", "lo", "ultra"}
 
-# Run once a week, following the time-guard pattern used by the L2 map job
-# sensors (custom_behavior/l2_map_jobs.py): the sensor polls more often than
-# weekly so a delayed daemon tick cannot miss the window, and the weekday /
-# hour guard is what actually limits runs to once a week. Dagster also
-# deduplicates runs by run_key, which encodes the window being checked.
-WEEKLY_RUN_WEEKDAY = 0  # Monday
-WEEKLY_RUN_HOUR_UTC = 6
-SENSOR_POLL_INTERVAL_SECONDS = 1800
+# The sensor is evaluated at most once per config.DATA_GAP_FILLER_INTERVAL
+# (one week), which is what limits this job to a weekly run; Dagster also
+# deduplicates runs by run_key, which encodes the window being checked. The
+# schedule constants live in config.py alongside the other sensor settings.
 
 
 def _now() -> datetime.datetime:
@@ -95,7 +92,7 @@ def get_gap_check_window(
     tuple[datetime.datetime, datetime.datetime]
         The (start_time, end_time) bounds of the gap check window.
     """
-    end = (now - datetime.timedelta(days=7)).replace(
+    end = (now - config.DATA_GAP_FILLER_DELAY).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
     start = _subtract_one_month(end)
@@ -232,21 +229,18 @@ gap_fill_job = define_asset_job(
 @sensor(
     name="l0_data_gap_fill_sensor",
     job=gap_fill_job,
-    minimum_interval_seconds=SENSOR_POLL_INTERVAL_SECONDS,
+    minimum_interval_seconds=int(config.DATA_GAP_FILLER_INTERVAL.total_seconds()),
 )
 def l0_data_gap_fill_sensor(context: SensorEvaluationContext):
     """Trigger the L0 data gap filler once a week.
 
-    Only proceeds on Mondays at 06:00 UTC (see the note on
-    ``WEEKLY_RUN_WEEKDAY`` above). The run key encodes the end of the
-    window being checked, so repeated sensor ticks within the run hour
-    cannot start duplicate runs for the same week.
+    The sensor's minimum interval (``config.DATA_GAP_FILLER_INTERVAL``)
+    limits evaluations to once a week, so every evaluation yields one run.
+    The run key encodes the end of the window being checked, so the same
+    week cannot be checked twice. Note the weekly cadence is anchored to
+    whenever the sensor is first turned on, not to a fixed weekday.
     """
-    now = _now()
-    if now.weekday() != WEEKLY_RUN_WEEKDAY or now.hour != WEEKLY_RUN_HOUR_UTC:
-        return SkipReason("Not the weekly data gap check time (Monday 06:00 UTC).")
-
-    _, end_time = get_gap_check_window(now)
+    _, end_time = get_gap_check_window(_now())
     run_key = f"l0_data_gap_fill_{end_time.strftime('%Y%m%d')}"
     context.log.info(f"Yielding a run request with ID: {run_key}")
     yield RunRequest(run_key=run_key)

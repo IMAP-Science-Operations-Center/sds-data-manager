@@ -129,22 +129,36 @@ def _run_requests(result):
     return list(result)
 
 
-def test_sensor_yields_run_request_monday_6am_utc():
-    """On Monday at 06:00 UTC the sensor kicks off one run for the week."""
-    # Monday 2026-10-12
-    run_requests = _evaluate_sensor(datetime.datetime(2026, 10, 12, 6, 15, tzinfo=UTC))
+def test_sensor_yields_one_run_request_per_evaluation():
+    """Every evaluation yields exactly one run request.
+
+    The weekly cadence comes from the sensor's minimum interval, not from
+    the time of evaluation, so any day/time behaves the same.
+    """
+    # Tuesday 2026-10-13
+    run_requests = _evaluate_sensor(datetime.datetime(2026, 10, 13, 6, 15, tzinfo=UTC))
     assert len(run_requests) == 1
     assert isinstance(run_requests[0], RunRequest)
-    # The window for this run ends one week earlier, on 2026-10-05.
-    assert run_requests[0].run_key == "l0_data_gap_fill_20261005"
+    # The window for this run ends one week earlier, on 2026-10-06.
+    assert run_requests[0].run_key == "l0_data_gap_fill_20261006"
 
 
-def test_sensor_skips_outside_weekly_window():
-    """The sensor does not run on other days, or other hours on Monday."""
-    # Tuesday
-    assert _evaluate_sensor(datetime.datetime(2026, 10, 13, 6, 15, tzinfo=UTC)) == []
-    # Monday, wrong hour
-    assert _evaluate_sensor(datetime.datetime(2026, 10, 12, 7, 15, tzinfo=UTC)) == []
+def test_sensor_run_key_changes_with_the_week():
+    """Different weeks produce different run keys, so runs never collide."""
+    first = _evaluate_sensor(datetime.datetime(2026, 10, 13, tzinfo=UTC))
+    second = _evaluate_sensor(datetime.datetime(2026, 10, 20, tzinfo=UTC))
+    assert first[0].run_key != second[0].run_key
+
+
+def test_sensor_minimum_interval_is_one_week():
+    """The sensor is evaluated at most once per config interval (a week)."""
+    from sds_data_manager.orchestration import config
+
+    sensor_def = l0_data_gap_fill_sensor
+    assert (
+        sensor_def.minimum_interval_seconds
+        == config.DATA_GAP_FILLER_INTERVAL.total_seconds()
+    )
 
 
 def test_defs_include_gap_filler():

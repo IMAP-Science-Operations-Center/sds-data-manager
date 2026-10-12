@@ -19,6 +19,13 @@ BACKUP_MATERIALIZATION_MIN_AGE = datetime.timedelta(hours=1)
 # re-materialization of historical files.
 BACKUP_MATERIALIZATION_MAX_AGE = datetime.timedelta(hours=2)
 
+# The L0 data gap filler (data_gap_filler.py) re-checks a month of WebPODA
+# data by spacecraft time, ending DATA_GAP_FILLER_DELAY before each run, so
+# the packet downloader Lambda has already had its chance at that data. Its
+# sensor is evaluated at most once per DATA_GAP_FILLER_INTERVAL.
+DATA_GAP_FILLER_INTERVAL = datetime.timedelta(weeks=1)
+DATA_GAP_FILLER_DELAY = datetime.timedelta(weeks=1)
+
 sensor_schedules = {
     "l0": 300,
     "l1": 300,
