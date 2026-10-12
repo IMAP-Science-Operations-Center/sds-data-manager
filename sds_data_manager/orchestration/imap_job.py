@@ -1151,8 +1151,8 @@ class IMAPJobHandler:
         config and is not bumped here. The minor version is shared across all
         outputs of a job: it is the maximum of (a) the minor version already
         seen in the processing jobs table for this job, and (b) the largest
-        minor version already seen in the science files table across all of
-        this job's outputs, increased by one.
+        minor version already seen in the science ancillary files table across
+        all of this job's outputs, increased by one.
 
         Parameters
         ----------
@@ -1230,16 +1230,33 @@ class IMAPJobHandler:
                 f"Bumping minor version number."
             )
 
-        # Step 3: Get the max minor version already seen in the science files
-        # table for each output, and keep the largest across all outputs of
-        # the job.
+        # Step 3: Get the max minor version already seen in the science or
+        # ancillary files table for each output, and keep the largest across
+        # all outputs of the job.
         max_minor_version_science_files = None
         for output in outputs:
-            current_minor_version = (
-                session.query(func.max(models.ScienceFiles.minor_version))
-                .filter(*filter_conditions(models.ScienceFiles, output))
-                .scalar()
-            )
+            if output.data_type == "ancillary":
+                # Ancillary outputs live in the ancillary files table, which has
+                # no data_level column and stores the version as a "vXXX" string.
+                max_version = (
+                    session.query(func.max(models.AncillaryFiles.version))
+                    .filter(
+                        models.AncillaryFiles.instrument == output.source,
+                        models.AncillaryFiles.descriptor == output.descriptor,
+                        models.AncillaryFiles.start_date == start_date.date(),
+                        models.AncillaryFiles.repointing == repointing,
+                    )
+                    .scalar()
+                )
+                current_minor_version = (
+                    Version.from_version(max_version).minor if max_version else None
+                )
+            else:
+                current_minor_version = (
+                    session.query(func.max(models.ScienceFiles.minor_version))
+                    .filter(*filter_conditions(models.ScienceFiles, output))
+                    .scalar()
+                )
             if current_minor_version is not None and (
                 max_minor_version_science_files is None
                 or current_minor_version > max_minor_version_science_files
