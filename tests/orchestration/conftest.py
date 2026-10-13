@@ -23,7 +23,7 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     Base,
 )
-from sds_data_manager.orchestration import imap_job
+from sds_data_manager.orchestration import imap_job, spice
 from sds_data_manager.orchestration.imap_dagster import defs
 
 BUCKET_NAME = "test-data-bucket"
@@ -231,11 +231,17 @@ def pointing_table_entries(mock_db_session):
 
     records = []
     for i in range(1, 11):
+        pointing_end = datetime.datetime(2026, 1, i, 23, 59, 59)
+        # Mirrors index_pointing_data: repoint_end_utc of pointing i is the next
+        # pointing's start; the last pointing has no known next repoint yet.
+        next_repoint = None if i == 10 else pointing_end + datetime.timedelta(seconds=1)
         records.append(
             PointingTable(
                 pointing_id=i,
                 pointing_start_utc=datetime.datetime(2026, 1, i, 0, 0, 0),
-                pointing_end_utc=datetime.datetime(2026, 1, i, 23, 59, 59),
+                pointing_end_utc=pointing_end,
+                repoint_start_utc=next_repoint,
+                repoint_end_utc=next_repoint,
             )
         )
     mock_db_session.add_all(records)
@@ -306,30 +312,65 @@ def insert_test_spice_files(mock_db_session):
     _insert_spice_file(mock_db_session, "imap_sclk_0189.tsc", [[1, 10000000000000]])
 
 
+def insert_ah_kernel(session, file_name, start, end, ingestion_date):
+    """Insert an attitude_history SPICEFiles row with a single coverage segment.
+
+    Populates every column the metakernel selection logic relies on (file_root
+    for latest-version filtering, j2000 intervals for gap filling, ingestion
+    date for priority), so the row is picked up exactly as a real one would be.
+    """
+    spice_object = imap_data_access.SPICEFilePath(file_name)
+    version = spice_object.spice_metadata["version"]
+    start_j2000 = spice._seconds_since_j2000(start)
+    end_j2000 = spice._seconds_since_j2000(end)
+    session.add(
+        models.SPICEFiles(
+            file_path=f"imap/spice/ck/{file_name}",
+            file_name=file_name,
+            file_root="".join(file_name.rsplit(version, 1)),
+            kernel_type="attitude_history",
+            version=int(version),
+            min_date_j2000=start_j2000,
+            max_date_j2000=end_j2000,
+            file_intervals_j2000=[[start_j2000, end_j2000]],
+            min_date_datetime=start,
+            max_date_datetime=end,
+            file_intervals_datetime=[[start.isoformat(), end.isoformat()]],
+            ingestion_date=ingestion_date,
+        )
+    )
+    session.commit()
+
+
 @pytest.fixture
-def ephemeral_instance(pointing_table_entries):
+def ephemeral_instance(pointing_table_entries, mock_db_session):
     """Provide an isolated, in-memory Dagster instance."""
+    # A single attitude_history kernel covering the full pointing_table_entries
+    # date range, so add_pointing_attitude_partitions below has coverage to key off.
+    # Ingested before mission start so generic sensors' ingestion-date cursors
+    # never see it as a newly arrived file.
+    insert_ah_kernel(
+        mock_db_session,
+        "imap_2026_001_2026_011_001.ah.bc",
+        datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
+        datetime.datetime(2026, 1, 11, tzinfo=datetime.timezone.utc),
+        ingestion_date=datetime.datetime(2025, 1, 1, tzinfo=datetime.timezone.utc),
+    )
+    mock_db_session.commit()
+
+    def _run_partition_sensor(sensor_name):
+        """Run a dynamic-partitions sensor and apply its requests to the instance."""
+        context = build_sensor_context(instance=instance)
+        sensor_result = defs.get_sensor_def(sensor_name)(context)
+        for request in sensor_result.dynamic_partitions_requests:
+            instance.add_dynamic_partitions(
+                partitions_def_name=request.partitions_def_name,
+                partition_keys=request.partition_keys,
+            )
+
     with instance_for_test() as instance:
-        # Add repoint partitions
-        context = build_sensor_context(instance=instance)
-        add_repoint_partitions_sensor = defs.get_sensor_def("add_repoint_partitions")
-        sensor_result = add_repoint_partitions_sensor(context)
-
-        for request in sensor_result.dynamic_partitions_requests:
-            instance.add_dynamic_partitions(
-                partitions_def_name=request.partitions_def_name,
-                partition_keys=request.partition_keys,
-            )
-
-        # Add daily partitions
-        context = build_sensor_context(instance=instance)
-        add_repoint_partitions_sensor = defs.get_sensor_def("add_daily_partitions")
-        sensor_result = add_repoint_partitions_sensor(context)
-
-        for request in sensor_result.dynamic_partitions_requests:
-            instance.add_dynamic_partitions(
-                partitions_def_name=request.partitions_def_name,
-                partition_keys=request.partition_keys,
-            )
+        _run_partition_sensor("add_repoint_partitions")
+        _run_partition_sensor("add_daily_partitions")
+        _run_partition_sensor("add_pointing_attitude_partitions")
 
         yield instance
