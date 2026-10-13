@@ -1239,6 +1239,7 @@ class IMAPJobHandler:
         for output in outputs:
             if output.data_type == "ancillary":
                 # Ancillary files store the version as a "vXXX" string.
+                # A major version will be passed in anyway, but ignored.
                 max_version = (
                     session.query(func.max(models.AncillaryFiles.version))
                     .filter(*filter_conditions(models.AncillaryFiles, output))
