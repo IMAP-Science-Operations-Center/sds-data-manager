@@ -186,17 +186,17 @@ class IMAPJobHandler:
 
         This function will:
 
-        1) Get all dependencies from the dependency tree
-        2) Check if the job had been submitted before
-           a) If it has, and Dagster doesn't know about it, then it will materialize
-              the asset
-           b) If Dagster does know about it, we exit
-        3) Get the Job version
-        4) Submit the job
-        5) Wait for the output files,
+        1) Get all dependencies from the dependency tree. If any are missing,
+           report an AssetObservation for each output and exit.
+        2) Get the Job version
+        3) Try to submit the job. If a job with the same dependencies was
+           submitted before, the submission is skipped: report an
+           AssetObservation for each output and exit without materializing
+           anything. The run that did the processing owns the materialization.
+        4) Wait for the output files,
            and materialize them as we see them in the database.
 
-        If this run is interrupted before step 5, or the indexer is slow to record
+        If this run is interrupted before step 4, or the indexer is slow to record
         the outputs, the job_output_backup_materialization_sensor will eventually
         materialize them instead (without the inputs metadata).
         """
@@ -290,18 +290,15 @@ class IMAPJobHandler:
                         description="Batch Job Failure. View logs for details."
                     )
             elif submit_response.status == "skipped":
-                # If we skipped the job, let us materialize any previous outputs
-                # so that we ensure dagster knows about them
-
-                output_files = self.find_outputs(
-                    context,
-                    session,
-                    start_date=target_start,
-                    repointing=target_pointing_number,
-                    inputs=dependency_inputs.serialize(),
-                )
-                for f in output_files:
-                    yield f
+                context.log.info("Skipped - Duplicated Job")
+                for output in self.job_config.outputs:
+                    yield AssetObservation(
+                        asset_key=output.to_dagster_asset(),
+                        partition=context.partition_key,
+                        metadata={
+                            "status": "Skipped - Duplicated Job",
+                        },
+                    )
             else:
                 raise Failure(description=submit_response.message)
 
