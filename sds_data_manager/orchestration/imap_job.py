@@ -283,8 +283,7 @@ class IMAPJobHandler:
                     repointing=target_pointing_number,
                     inputs=dependency_inputs.serialize(),
                 )
-                for f in output_files:
-                    yield f
+                yield from output_files
                 if batch_status == models.Status.FAILED:
                     raise Failure(
                         description="Batch Job Failure. View logs for details."
