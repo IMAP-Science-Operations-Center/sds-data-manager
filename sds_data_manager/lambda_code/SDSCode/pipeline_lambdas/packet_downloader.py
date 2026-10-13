@@ -1,5 +1,6 @@
 """Lambda function to automate packet downloads and L0 file creation."""
 
+import csv
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -139,6 +140,12 @@ def download_ena_data(event_repoint_key):
         Filename=repointing_file,
     )
 
+    # imap-data-access >= 1.3.0 takes the repointing data as a list of rows
+    # (previously it read the repointing file itself), in the same format the
+    # library used to parse: one dict per row of the repointing file.
+    with open(repointing_file) as f:
+        repoint_data = list(csv.DictReader(f))
+
     logger.info(f"Downloading data from {start_time} to {end_time}")
     for instrument in REPOINTING_INSTRUMENTS:
         logger.info("Downloading data for instrument: %s", instrument)
@@ -147,8 +154,8 @@ def download_ena_data(event_repoint_key):
             instrument=instrument,
             start_time=start_time,
             end_time=end_time,
-            repointing_file=repointing_file,
-            upload_to_server=True,
+            repoint_data=repoint_data,
+            upload_to_sdc=True,
         )
 
 
@@ -170,7 +177,7 @@ def download_insitu_data():
             instrument=instrument,
             start_time=start_time,
             end_time=end_time,
-            upload_to_server=True,
+            upload_to_sdc=True,
         )
 
 
