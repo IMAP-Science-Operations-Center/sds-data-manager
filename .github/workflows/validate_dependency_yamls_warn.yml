@@ -32,4 +32,3 @@ jobs:
           poetry run python scripts/dependency/validate_dependency_yamls.py \
             --previous-yaml-path /tmp/base/sds_data_manager/orchestration \
             --checks 0
-        continue-on-error: true # This prevents a failure from blocking the PR
