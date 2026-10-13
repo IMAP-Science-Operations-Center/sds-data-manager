@@ -1024,13 +1024,14 @@ class IMAPJobHandler:
                 f"Found the following files: {', '.join(spice_files)} "
                 f"between {target_start} and {target_end}"
             )
-        # if spice files and missing kernels are none, the metakernel api failed to
-        # find any
-        if not spice_files and not missing_kernel_types:
+        # spice_files is only None when the metakernel API returned a non-200
+        # response.
+        if spice_files is None:
             raise MissingDependenciesError(
-                f"The Metakernel API found zero files when querying for kernel "
+                f"The Metakernel API request failed when querying for kernel "
                 f"types: {', '.join(self.job_config.spice_types)} "
-                f"between {target_start} and {target_end}"
+                f"between {target_start} and {target_end}. "
+                f"Check the metakernel api logs."
             )
 
         return spice_files
