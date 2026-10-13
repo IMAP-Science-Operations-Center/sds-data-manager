@@ -189,8 +189,8 @@ def fill_data_gaps(start_time: datetime.datetime, end_time: datetime.datetime) -
             logger.info(f"Checking data gaps for instrument: {instrument}")
             webpoda.download_repointing_data(
                 instrument=instrument,
-                start_time=start_time,
-                end_time=end_time,
+                start_time=start_time.astimezone(datetime.timezone.utc).replace(tzinfo=None),
+                end_time=end_time.astimezone(datetime.timezone.utc).replace(tzinfo=None),
                 repoint_data=repoint_data,
                 upload_to_sdc=True,
                 query_by_ert=False,
