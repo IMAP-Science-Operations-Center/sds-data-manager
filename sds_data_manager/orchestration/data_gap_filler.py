@@ -124,8 +124,7 @@ def setup_environment() -> None:
         ssm_response = ssm.get_parameter(Name=ssm_parameter_name, WithDecryption=True)
         imap_data_access.config["API_KEY"] = ssm_response["Parameter"]["Value"]
     except Exception as e:
-        logger.warning(f"Could not retrieve API key from SSM: {e}")
-        # Continue without API key - some operations might still work
+        raise RuntimeError("Could not retrieve API key from SSM") from e
 
     imap_data_access.config["DATA_DIR"] = Path("/tmp")  # noqa: S108
 
