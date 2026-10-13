@@ -1,4 +1,4 @@
-name: Validate Dependency YAMLs
+name: Validate Dependency YAMLs (WARN)
 
 on:
   pull_request:
