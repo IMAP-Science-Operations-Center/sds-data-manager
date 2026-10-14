@@ -1,6 +1,6 @@
 """Configure the ialirt SSR processing construct."""
 
-from aws_cdk import RemovalPolicy, aws_dynamodb
+from aws_cdk import RemovalPolicy
 from aws_cdk import aws_dynamodb as ddb
 from constructs import Construct
 
@@ -12,7 +12,7 @@ class IalirtSsrConstruct(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        account_name: str = "dev",
+        account_name: str,
         **kwargs,
     ) -> None:
         """IalirtSsrConstruct Stack.
@@ -36,7 +36,7 @@ class IalirtSsrConstruct(Construct):
         # Create DynamoDB Table
         self.ssr_table = self.create_table()
 
-    def create_table(self) -> aws_dynamodb.Table:
+    def create_table(self) -> ddb.Table:
         """Create and return the SSR data product table."""
         removal_policy = (
             RemovalPolicy.RETAIN
