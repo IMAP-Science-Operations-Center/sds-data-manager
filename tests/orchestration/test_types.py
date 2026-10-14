@@ -43,3 +43,6 @@ def test_get_windows_since(cadence_str):
 
     for window in windows:
         assert window.cadence == cadence_str
+        # The start and end should always fall on the 25th of whatever month
+        assert window.start.day == 25
+        assert window.end.day == 25

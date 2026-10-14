@@ -572,10 +572,10 @@ class BaseENAMapPartition:
         for the cadence. The windows start on Dec 25 of the given year
         and run through Dec 25 of the next year. Eg.
             - For 3mo cadence, it will generate 4 windows:
-                - Dec 25 to Mar 26 of the next year
-                - Mar 26 to Jun 25 of the next year
-                - Jun 25 to Sept 24 of the next year
-                - Sept 24 to Dec 25 of the next year
+                - Dec 25 to Mar 25 of the next year
+                - Mar 25 to Jun 25 of the next year
+                - Jun 25 to Sept 25 of the next year
+                - Sept 25 to Dec 25 of the next year
             - For 6mo cadence, it will generate 2 windows:
                 - Dec 25 to Jun 25 of the next year
                 - Jun 25 to Dec 25 of the next year
@@ -640,17 +640,17 @@ class Map3MoPartition(BaseENAMapPartition):
     cadence: ClassVar[str] = "3mo"
     # These boundaries are used to construct the 3-month maps windows:
     #     First partition can be 91 days(or 92 days on leap year).
-    #     "cadence_3mo_{year}-12-25T00:00:00_to_{year+1}-03-26T00:00:00",
+    #     "cadence_3mo_{year}-12-25T00:00:00_to_{year+1}-03-25T00:00:00",
     #     Next two partition are always 91 days.
-    #     "cadence_3mo_{year+1}-03-26T00:00:00_to_{year+1}-06-25T00:00:00",
-    #     "cadence_3mo_{year+1}-06-25T00:00:00_to_{year+1}-09-24T00:00:00",
+    #     "cadence_3mo_{year+1}-03-25T00:00:00_to_{year+1}-06-25T00:00:00",
+    #     "cadence_3mo_{year+1}-06-25T00:00:00_to_{year+1}-09-25T00:00:00",
     #     Last partition is always 92 days.
-    #     "cadence_3mo_{year+1}-09-24T00:00:00_to_{year+1}-12-25T00:00:00"
+    #     "cadence_3mo_{year+1}-09-25T00:00:00_to_{year+1}-12-25T00:00:00"
     boundaries: ClassVar[tuple[WindowBoundary, ...]] = (
         WindowBoundary(12, 25),  # Dec 25
-        WindowBoundary(3, 26),  # March 26 (next year)
+        WindowBoundary(3, 25),  # March 25 (next year)
         WindowBoundary(6, 25),  # June 25 (next year)
-        WindowBoundary(9, 24),  # Sept 24 (next year)
+        WindowBoundary(9, 25),  # Sept 25 (next year)
         WindowBoundary(12, 25),  # Dec 25 (next year - marks end of last window)
     )
 
