@@ -101,33 +101,59 @@ def test_download_spice_files(mock_download):
     ]
 
 
+@pytest.mark.parametrize(
+    ("files", "expected"),
+    [
+        # The latest start_date is picked.
+        (
+            [
+                ("imap_swe_l1b-in-flight-cal_20260810_v001.csv", "20260810", None),
+                ("imap_swe_l1b-in-flight-cal_20260824_v001.csv", "20260824", None),
+            ],
+            "imap_swe_l1b-in-flight-cal_20260824_v001.csv",
+        ),
+        # For the same start_date, the greater version is picked.
+        (
+            [
+                ("imap_swe_l1b-in-flight-cal_20260824_v001.csv", "20260824", None),
+                ("imap_swe_l1b-in-flight-cal_20260824_v002.csv", "20260824", None),
+            ],
+            "imap_swe_l1b-in-flight-cal_20260824_v002.csv",
+        ),
+        # Files with an end_date before the day are dropped.
+        (
+            [
+                ("imap_swe_l1b-in-flight-cal_20260810_v001.csv", "20260810", None),
+                (
+                    "imap_swe_l1b-in-flight-cal_20260820_20260822_v003.csv",
+                    "20260820",
+                    "20260822",
+                ),
+            ],
+            "imap_swe_l1b-in-flight-cal_20260810_v001.csv",
+        ),
+    ],
+)
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils.imap_data_access.download"
 )
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils.imap_data_access.query"
 )
-def test_get_ancillary(mock_query, mock_download):
-    """Test get_ancillary function."""
+def test_get_ancillary(mock_query, mock_download, files, expected):
+    """Test that get_ancillary picks the file valid for the day."""
     # The query only returns files that start on or before the day.
     mock_query.return_value = [
         {
-            "file_path": "imap_swe_l1b-in-flight-cal_20260810_v001.csv",
-            "start_date": "20260810",
-            "end_date": None,
-            "version": "v001",
-        },
-        {
-            "file_path": "imap_swe_l1b-in-flight-cal_20260824_v001.csv",
-            "start_date": "20260824",
-            "end_date": None,
-            "version": "v001",
-        },
+            "file_path": file_path,
+            "start_date": start_date,
+            "end_date": end_date,
+            "version": file_path[-8:-4],
+        }
+        for file_path, start_date, end_date in files
     ]
 
     get_ancillary("swe", "l1b-in-flight-cal", datetime(2026, 8, 25))
 
     assert mock_query.call_args.kwargs["end_date"] == "20260825"
-    mock_download.assert_called_once_with(
-        "imap_swe_l1b-in-flight-cal_20260824_v001.csv"
-    )
+    mock_download.assert_called_once_with(expected)
