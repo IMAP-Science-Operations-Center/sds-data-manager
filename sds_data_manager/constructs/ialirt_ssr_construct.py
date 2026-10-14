@@ -53,9 +53,11 @@ class IalirtSsrConstruct(Construct):
             removal_policy=removal_policy,
             # Restore data to any point in time within the last 35 days.
             point_in_time_recovery=point_in_time_recovery,
-            # Partition key (PK) = instrument.
+            # Partition key (PK) = instrument and version, e.g. "mag#v001".
+            # Including the version lets each version be stored and
+            # queried separately instead of overwriting the previous one.
             partition_key=ddb.Attribute(
-                name="instrument",
+                name="instrument_version",
                 type=ddb.AttributeType.STRING,
             ),
             # Sort key (SK) = time_utc.

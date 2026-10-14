@@ -132,12 +132,12 @@ def setup_ssr_table():
             TableName=os.environ["SSR_TABLE"],
             KeySchema=[
                 # Partition key
-                {"AttributeName": "instrument", "KeyType": "HASH"},
+                {"AttributeName": "instrument_version", "KeyType": "HASH"},
                 # Sort key
                 {"AttributeName": "time_utc", "KeyType": "RANGE"},
             ],
             AttributeDefinitions=[
-                {"AttributeName": "instrument", "AttributeType": "S"},
+                {"AttributeName": "instrument_version", "AttributeType": "S"},
                 {"AttributeName": "time_utc", "AttributeType": "S"},
             ],
             BillingMode="PAY_PER_REQUEST",

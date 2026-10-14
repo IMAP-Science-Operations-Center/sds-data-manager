@@ -1,32 +1,30 @@
 """Test the IAlirt SSR database."""
 
 import pytest
-from boto3.dynamodb.conditions import Attr, Key
+from boto3.dynamodb.conditions import Key
+
+
+def make_item(version, time_utc, value):
+    """Create an SSR table item with its key attributes."""
+    return {
+        "instrument_version": f"mag#{version}",
+        "time_utc": time_utc,
+        "instrument": "mag",
+        "version": version,
+        "data_product_1": str(value),
+    }
 
 
 @pytest.fixture
 def populate_ssr_table(setup_ssr_table):
     """Populate DynamoDB table."""
     ssr_table = setup_ssr_table["ssr_table"]
+    # v001 and v002 both have data at the first time.
     items = [
-        {
-            "instrument": "mag",
-            "time_utc": "2021-01-01T00:00:00",
-            "version": "v001",
-            "data_product_1": str(1234.56),
-        },
-        {
-            "instrument": "mag",
-            "time_utc": "2021-01-01T00:01:00",
-            "version": "v002",
-            "data_product_1": str(1234.57),
-        },
-        {
-            "instrument": "mag",
-            "time_utc": "2021-02-01T00:00:00",
-            "version": "v002",
-            "data_product_2": str(101.3),
-        },
+        make_item("v001", "2021-01-01T00:00:00", 1234.56),
+        make_item("v001", "2021-01-01T00:01:00", 1234.57),
+        make_item("v002", "2021-01-01T00:00:00", 1234.58),
+        make_item("v002", "2021-02-01T00:00:00", 101.3),
     ]
     for item in items:
         ssr_table.put_item(Item=item)
@@ -34,16 +32,19 @@ def populate_ssr_table(setup_ssr_table):
     return items
 
 
-def test_ssr_query_by_utc_and_version(setup_ssr_table, populate_ssr_table):
-    """Test to query by time_utc and filter by version."""
+@pytest.mark.parametrize(
+    ("version", "expected_indices"), [("v001", [0, 1]), ("v002", [2])]
+)
+def test_ssr_query_by_version_and_utc(
+    setup_ssr_table, populate_ssr_table, version, expected_indices
+):
+    """Test that each version is kept and can be queried by time_utc."""
     ssr_table = setup_ssr_table["ssr_table"]
     expected_items = populate_ssr_table
 
     response = ssr_table.query(
-        KeyConditionExpression=Key("instrument").eq("mag")
+        KeyConditionExpression=Key("instrument_version").eq(f"mag#{version}")
         & Key("time_utc").between("2021-01-01T00:00:00", "2021-01-02T00:00:00"),
-        FilterExpression=Attr("version").eq("v002"),
     )
     items = response["Items"]
-    assert len(items) == 1
-    assert items[0] == expected_items[1]
+    assert items == [expected_items[i] for i in expected_indices]
