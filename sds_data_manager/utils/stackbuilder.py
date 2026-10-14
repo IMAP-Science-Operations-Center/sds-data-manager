@@ -334,7 +334,10 @@ def build_sds(
 
     # create EFS
     ialirt_efs_instance = ialirt_efs_construct.IAlirtEFSConstruct(
-        scope=ialirt_stack, construct_id="IAlirtEFSConstruct", vpc=networking.vpc
+        scope=ialirt_stack,
+        construct_id="IAlirtEFSConstruct",
+        vpc=networking.vpc,
+        account_name=account_name,
     )
 
     # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
@@ -447,6 +450,7 @@ def build_sds(
         scope=ialirt_ssr_stack,
         construct_id="IAlirtSsrEFSConstruct",
         vpc=networking.vpc,
+        account_name=account_name,
         volume_name="IALIRT-SSR-SPICE-EFS",
         security_group_name="IAlirtSsrEFSSecurityGroup",
     )

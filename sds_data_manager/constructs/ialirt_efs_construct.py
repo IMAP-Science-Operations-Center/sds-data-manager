@@ -18,11 +18,12 @@ class IAlirtEFSConstruct(Construct):
     visualizer display, it should have decent I/O capabilities
     to read and write the model output data to the frontend quickly.
 
-    NOTE: The EFS file systems will not be removed during a CDK
+    NOTE: In prod, the EFS file systems will not be removed during a CDK
     destroy. This is a protection mechanism to
     prevent data from being deleted. After destroying this
     stack you will need to manually delete these
-    resources via the AWS console or CLI.
+    resources via the AWS console or CLI. In other accounts, the EFS
+    file systems are removed with the stack.
     """
 
     def __init__(
@@ -30,6 +31,7 @@ class IAlirtEFSConstruct(Construct):
         scope: Construct,
         construct_id: str,
         vpc: ec2.Vpc,
+        account_name: str,
         volume_name: str = "IALIRT-SPICE-EFS",
         security_group_name: str = "IAlirtEFSSecurityGroup",
         **kwargs,
@@ -44,6 +46,8 @@ class IAlirtEFSConstruct(Construct):
             A unique string identifier for this construct.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
+        account_name : str
+            The account name, e.g. 'prod' or 'dev'.
         volume_name : str
             Name of the EFS file system.
         security_group_name : str
@@ -95,7 +99,11 @@ class IAlirtEFSConstruct(Construct):
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
             ),
-            removal_policy=cdk.RemovalPolicy.DESTROY,
+            removal_policy=(
+                cdk.RemovalPolicy.RETAIN
+                if account_name == "prod"
+                else cdk.RemovalPolicy.DESTROY
+            ),
         )
 
         # Make an access point for others to be able to access the drive
