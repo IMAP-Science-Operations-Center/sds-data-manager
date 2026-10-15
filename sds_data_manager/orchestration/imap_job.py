@@ -375,7 +375,7 @@ class IMAPJobHandler:
                 f"container reason: {container_info.get('reason')}"
             )
 
-            # Gather information about start/stop timing
+        # Gather information about start/stop timing
         started_at_timestamp = job_info.get("startedAt", job_info.get("createdAt"))
         stopped_at_timestamp = job_info.get("stoppedAt")
         started_at = (
