@@ -446,20 +446,12 @@ def build_sds(
         scope, "IalirtSsrStack", cross_region_references=True, env=env
     )
 
-    # EFS for the SPICE kernels used by SSR processing
-    ialirt_efs_construct.IAlirtEFSConstruct(
-        scope=ialirt_ssr_stack,
-        construct_id="IAlirtSsrEFSConstruct",
-        vpc=networking.vpc,
-        account_name=account_name,
-        volume_name="IALIRT-SSR-SPICE-EFS",
-        security_group_name="IAlirtSsrEFSSecurityGroup",
-    )
-
     ialirt_ssr_construct.IalirtSsrConstruct(
         scope=ialirt_ssr_stack,
         construct_id="IalirtSsrConstruct",
         account_name=account_name,
+        vpc=networking.vpc,
+        data_access_url=general_data_access_url,
     )
 
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(
