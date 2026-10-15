@@ -367,7 +367,15 @@ class IMAPJobHandler:
                 "The job may have failed before the container could start."
             )
 
-        # Gather information about start/stop timing
+        # If the job failed, log why so we don't have to go to the batch console.
+        if final_status == models.Status.FAILED:
+            context.log.info(
+                f"Batch job status reason: {job_info.get('statusReason')}, "
+                f"container exit code: {container_info.get('exitCode')}, "
+                f"container reason: {container_info.get('reason')}"
+            )
+
+            # Gather information about start/stop timing
         started_at_timestamp = job_info.get("startedAt", job_info.get("createdAt"))
         stopped_at_timestamp = job_info.get("stoppedAt")
         started_at = (
