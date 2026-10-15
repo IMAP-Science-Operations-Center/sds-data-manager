@@ -26,6 +26,7 @@ from sds_data_manager.constructs import (
     ialirt_processing_construct,
     ialirt_realtime_construct,
     ialirt_schedule_fetch_construct,
+    ialirt_ssr_construct,
     indexer_lambda_construct,
     instrument_lambdas,
     lambda_layer_construct,
@@ -453,6 +454,12 @@ def build_sds(
         account_name=account_name,
         volume_name="IALIRT-SSR-SPICE-EFS",
         security_group_name="IAlirtSsrEFSSecurityGroup",
+    )
+
+    ialirt_ssr_construct.IalirtSsrConstruct(
+        scope=ialirt_ssr_stack,
+        construct_id="IalirtSsrConstruct",
+        account_name=account_name,
     )
 
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(
