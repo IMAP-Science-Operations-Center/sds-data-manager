@@ -129,7 +129,7 @@ class IMAPJobHandler:
         job : ProcessingJobNode
             The job node to process.
         """
-        self.BATCH_JOB_TIMEOUT_SECONDS = 18000  # 5 hours
+        self.BATCH_JOB_TIMEOUT_SECONDS = 54000  # 15 hours
         self.WAIT_TIME_AFTER_BATCH_SECONDS = (
             60  # time to wait after a batch job completes to search for files.
         )
