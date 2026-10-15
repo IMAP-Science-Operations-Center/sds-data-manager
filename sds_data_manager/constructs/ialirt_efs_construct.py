@@ -18,11 +18,12 @@ class IAlirtEFSConstruct(Construct):
     visualizer display, it should have decent I/O capabilities
     to read and write the model output data to the frontend quickly.
 
-    NOTE: The EFS file systems will not be removed during a CDK
+    NOTE: In prod, the EFS file systems will not be removed during a CDK
     destroy. This is a protection mechanism to
     prevent data from being deleted. After destroying this
     stack you will need to manually delete these
-    resources via the AWS console or CLI.
+    resources via the AWS console or CLI. In other accounts, the EFS
+    file systems are removed with the stack.
     """
 
     def __init__(
@@ -30,6 +31,9 @@ class IAlirtEFSConstruct(Construct):
         scope: Construct,
         construct_id: str,
         vpc: ec2.Vpc,
+        account_name: str,
+        volume_name: str = "IALIRT-SPICE-EFS",
+        security_group_name: str = "IAlirtEFSSecurityGroup",
         **kwargs,
     ) -> None:
         """Construct the EFS.
@@ -42,6 +46,12 @@ class IAlirtEFSConstruct(Construct):
             A unique string identifier for this construct.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
+        account_name : str
+            The account name, e.g. 'prod' or 'dev'.
+        volume_name : str
+            Name of the EFS file system.
+        security_group_name : str
+            Name of the EFS security group. Must be unique within the VPC.
         kwargs : dict
             Keyword arguments
 
@@ -50,7 +60,7 @@ class IAlirtEFSConstruct(Construct):
 
         # Initialize EFS related information that other resources
         # will need to access EFS or mount EFS.
-        self.volume_name = "IALIRT-SPICE-EFS"
+        self.volume_name = volume_name
         self.efs_path = "/data"
 
         # Define EFS security group, ports are added in EC2 stack
@@ -60,7 +70,7 @@ class IAlirtEFSConstruct(Construct):
             vpc=vpc,
             description="No outbound rule for EFS",
             allow_all_outbound=False,
-            security_group_name="IAlirtEFSSecurityGroup",
+            security_group_name=security_group_name,
         )
 
         # Add inbound rule for TCP port 2049
@@ -89,7 +99,11 @@ class IAlirtEFSConstruct(Construct):
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
             ),
-            removal_policy=cdk.RemovalPolicy.DESTROY,
+            removal_policy=(
+                cdk.RemovalPolicy.RETAIN
+                if account_name == "prod"
+                else cdk.RemovalPolicy.DESTROY
+            ),
         )
 
         # Make an access point for others to be able to access the drive

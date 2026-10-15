@@ -1659,14 +1659,14 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "imap-processing"
-version = "1.0.38"
+version = "1.0.39"
 description = "IMAP Science Operations Center Processing"
 optional = false
 python-versions = "<3.15,>=3.10"
 groups = ["layer-idex-processing", "layer-processing"]
 files = [
-    {file = "imap_processing-1.0.38-py3-none-any.whl", hash = "sha256:3a53fa4aadc1906c6d2188a2ce9f3f4dc410662771319b37835a2b19853fca9f"},
-    {file = "imap_processing-1.0.38.tar.gz", hash = "sha256:bf1c3d34dccf8ceb22aff52143e474de709817c200ca569536bf8fe85d3eaa86"},
+    {file = "imap_processing-1.0.39-py3-none-any.whl", hash = "sha256:c1ea7ded837b85ea23afd10efb0c46989ea4411d8ffc3f397ae29de3fe94c9d3"},
+    {file = "imap_processing-1.0.39.tar.gz", hash = "sha256:bfd633ad788b31d1334ec5ad2fda386e7c3634032882359d9cf45560f73c245a"},
 ]
 
 [package.dependencies]
@@ -4831,4 +4831,4 @@ tool = ["alembic"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "cab2812014e3397e004c16609d3cf50ee0e67120667e84d6cc0f6715cd0af0d1"
+content-hash = "62bddb932b319f01796119a3e73ed98033e5161468ea25ef35022210428bdbbc"

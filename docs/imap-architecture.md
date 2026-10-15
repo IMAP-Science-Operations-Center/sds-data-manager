@@ -11,6 +11,7 @@ This repository manages the AWS cloud infrastructure (CDK, Lambdas, Batch, API G
 - **`WebsiteStack`** — the static mission website (deployed to `us-east-1`).
 - **`SDCStack`** — the bulk of the system: buckets, database, API gateway, indexer, and batch/processing.
 - **`IalirtStack`** — real-time telemetry (I-ALiRT), largely independent of the rest.
+- **`IalirtSsrStack`** — I-ALiRT SSR processing.
 - **`DagsterStack`** — the Dagster ECS Fargate deployment.
 - **`BackupStack`** — cross-account backups.
 
