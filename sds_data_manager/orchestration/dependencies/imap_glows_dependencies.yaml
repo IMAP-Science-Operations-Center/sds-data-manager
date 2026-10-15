@@ -99,6 +99,10 @@ hist_spice: &hist_spice
       data_type: spice
       descriptor: historical
       trigger_job: false
+    - source: ephemeris_predicted
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
     - source: planetary_ephemeris
       data_type: spice
       descriptor: historical
