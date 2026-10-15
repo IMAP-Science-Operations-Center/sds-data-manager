@@ -28,7 +28,6 @@ KERNELS = {
     "science_frames",
     "planetary_constants",
 }
-EFS_BASE_PATH = Path("/mnt/data")
 
 
 def query_filenames(day: datetime) -> list[str]:
@@ -162,25 +161,29 @@ def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollecti
     return dependency_inputs
 
 
-def download_spice_files(dependencies: ProcessingInputCollection) -> list[Path]:
-    """Download SPICE kernel files from the IMAP data archive to EFS.
+def download_spice_files(
+    dependencies: ProcessingInputCollection, download_dir: Path
+) -> list[Path]:
+    """Download SPICE kernel files from the IMAP data archive.
 
     Parameters
     ----------
     dependencies : ProcessingInputCollection
         A collection containing a SPICEInput object with the list of kernel
         filenames returned from the metakernel API.
+    download_dir : Path
+        The directory where the files will be downloaded.
 
     Returns
     -------
     spice_files : list[Path]
-        The SPICE files stored in EFS.
+        The downloaded SPICE files.
 
     Notes
     -----
     List is priority ordered so furnishing in order results in correct SPICE priority.
     """
-    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    imap_data_access.config["DATA_DIR"] = download_dir
     dependencies.download_all_files()
 
     spice_files = dependencies.get_file_paths(data_type=SPICESource.SPICE.value)
@@ -189,8 +192,10 @@ def download_spice_files(dependencies: ProcessingInputCollection) -> list[Path]:
     return spice_files
 
 
-def get_ancillary(instrument: str, descriptor: str, day: datetime) -> Path:
-    """Query and download the ancillary file valid for a given day to EFS.
+def get_ancillary(
+    instrument: str, descriptor: str, day: datetime, download_dir: Path
+) -> Path:
+    """Query and download the ancillary file valid for a given day.
 
     This is consistent with how ancillary files are selected for processing
     (ImapJob.get_ancillary_files_inputs in orchestration/imap_job.py):
@@ -212,13 +217,15 @@ def get_ancillary(instrument: str, descriptor: str, day: datetime) -> Path:
         The name of the descriptor.
     day : datetime
         The day being processed.
+    download_dir : Path
+        The directory where the file will be downloaded.
 
     Returns
     -------
     download_path : Path
         Download path of the ancillary file.
     """
-    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    imap_data_access.config["DATA_DIR"] = download_dir
     date_str = day.strftime("%Y%m%d")
     # end_date filters on the file start_date, so this returns files that
     # start on or before the day.
