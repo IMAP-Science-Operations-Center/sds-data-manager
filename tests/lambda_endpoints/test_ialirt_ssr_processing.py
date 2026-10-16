@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 from unittest.mock import patch
 
+import imap_data_access
 import numpy as np
 import pytest
 import xarray as xr
@@ -119,6 +120,7 @@ def test_spacecraft_items(mock_imap_state, mock_str_to_et, mock_et_to_ttj2000ns)
     assert items[0]["time_utc"] == "2026-10-08T00:00:00"
 
 
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing.boto3.client")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing.process_mag")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing.trim_packets")
 @patch(
@@ -142,12 +144,19 @@ def test_lambda_handler(
     mock_check,
     mock_trim,
     mock_process_mag,
+    mock_ssm_client,
     setup_ssr_table,
     monkeypatch,
     tmp_path,
 ):
     """Test that lambda_handler writes MAG items to the SSR table."""
     monkeypatch.setenv("INSTRUMENT", "mag")
+    monkeypatch.setenv("SSM_API_KEY_PARAMETER", "/imap-sdc/batch-jobs/api-key")
+    # Restore the global imap_data_access config after the test.
+    monkeypatch.setitem(imap_data_access.config, "API_KEY", None)
+    mock_ssm_client.return_value.get_parameter.return_value = {
+        "Parameter": {"Value": "test-api-key"}
+    }
     kernel = tmp_path / "naif0012.tls"
     kernel.touch()
     mock_download_spice.return_value = [kernel]
@@ -159,3 +168,4 @@ def test_lambda_handler(
         KeyConditionExpression=Key("instrument_version").eq("mag#v001")
     )
     assert response["Items"][0]["time_utc"] == "2026-10-08T12:00:00"
+    assert imap_data_access.config["API_KEY"] == "test-api-key"

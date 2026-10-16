@@ -8,6 +8,7 @@ from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 
 # One Lambda per instrument, plus spacecraft status and position/velocity.
@@ -128,6 +129,14 @@ class IalirtSsrConstruct(Construct):
         )
         self.ssr_table.grant_read_write_data(lambda_role)
 
+        # Unreleased L0 files are only returned to queries with an API key.
+        api_key_parameter = ssm.StringParameter.from_secure_string_parameter_attributes(
+            self,
+            "ApiKeyParameter",
+            parameter_name="/imap-sdc/batch-jobs/api-key",
+        )
+        api_key_parameter.grant_read(lambda_role)
+
         code = lambda_.DockerImageCode.from_image_asset(
             docker_path,
             file="IAlirtCode/Dockerfile.ssr",
@@ -157,6 +166,7 @@ class IalirtSsrConstruct(Construct):
                     "INSTRUMENT": instrument,
                     "SSR_TABLE": self.ssr_table.table_name,
                     "IMAP_DATA_ACCESS_URL": data_access_url,
+                    "SSM_API_KEY_PARAMETER": "/imap-sdc/batch-jobs/api-key",
                 },
                 # Limits how many days of one instrument run at once during
                 # a backfill, so SSR does not take concurrency from

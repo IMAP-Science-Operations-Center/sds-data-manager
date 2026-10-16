@@ -14,6 +14,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import boto3
+import imap_data_access
 import numpy as np
 import pandas as pd
 import spiceypy
@@ -532,6 +533,11 @@ def lambda_handler(event, context):
     version = event["version"]
 
     try:
+        # Unreleased L0 files are only returned to queries with an API key.
+        ssm_response = boto3.client("ssm").get_parameter(
+            Name=os.environ["SSM_API_KEY_PARAMETER"], WithDecryption=True
+        )
+        imap_data_access.config["API_KEY"] = ssm_response["Parameter"]["Value"]
         process_day(instrument, day, version, url, table)
     except Exception as e:
         logger.error(
