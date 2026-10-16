@@ -50,8 +50,13 @@ SPACECRAFT_CADENCE = timedelta(minutes=1)
 DOWNLOAD_DIR = Path("/tmp/ssr")  # noqa: S108
 # How close to midnight the first and last packets of the day must be.
 COVERAGE_TOLERANCE = timedelta(seconds=60)
+# Packets kept on each side of the day, so products near midnight still have
+# all of their packets.
+BOUNDARY_BUFFER = timedelta(minutes=10)
 # src_seq_ctr is a 14-bit counter.
 SEQ_CTR_MODULO = 16384
+# How often to store spacecraft status. Matches ialirt-ingest's ~1 per minute.
+STATUS_CADENCE_NS = 60 * 10**9
 
 
 class IalirtDataGapError(Exception):
@@ -109,6 +114,31 @@ def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
             f"{day:%Y%m%d}: {gaps.size} src_seq_ctr gap(s), "
             f"first after {ttj2000ns_to_utc(epoch[gaps[0]])}."
         )
+
+
+def trim_packets(combined: xr.Dataset, day: datetime) -> xr.Dataset:
+    """Keep only the packets needed to process the day.
+
+    combined has the whole day and the whole next day. Only the day plus
+    BOUNDARY_BUFFER on each side is needed, so products near midnight still
+    have all of their packets.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data for the day and the day after, sorted by epoch.
+    day : datetime
+        The day being processed.
+
+    Returns
+    -------
+    xr.Dataset
+        Packets from BOUNDARY_BUFFER before the day to BOUNDARY_BUFFER after.
+    """
+    buffer = int(BOUNDARY_BUFFER.total_seconds() * 1e9)
+    day_start = str_yyyymmdd_to_ttj2000ns(f"{day:%Y%m%d}")
+    day_end = str_yyyymmdd_to_ttj2000ns(f"{day + timedelta(days=1):%Y%m%d}")
+    return combined.sel(epoch=slice(day_start - buffer, day_end + buffer))
 
 
 def process_mag(
@@ -267,6 +297,30 @@ def process_swapi(
     return result, {"swapi_esa-unit-conversion": cal_path.name}
 
 
+def process_spacecraft_status(combined: xr.Dataset) -> list[dict]:
+    """Process spacecraft status, one product per minute.
+
+    process_status gives every record the time of the middle of its input,
+    so it is called on only the last packet of each minute. Each product
+    then has that packet's status values and time.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data.
+
+    Returns
+    -------
+    result : list[dict]
+        Spacecraft status data products, one per minute.
+    """
+    minute = combined["epoch"] // STATUS_CADENCE_NS
+    return [
+        process_status(packets.isel(epoch=[-1]))[0]
+        for _, packets in combined.groupby(minute)
+    ]
+
+
 def trim_to_day(result: list[dict], day: datetime) -> list[dict]:
     """Keep only products with met_in_utc within the day.
 
@@ -381,27 +435,22 @@ def spacecraft_items(
     ]
 
 
-def lambda_handler(event, context):
+def process_day(instrument: str, day: datetime, version: str, url: str, table):
     """Process one day of I-ALiRT SSR data for one instrument.
 
     Parameters
     ----------
-    event : dict
-        {"day": "YYYYMMDD", "version": "v001"}
-    context : LambdaContext
-        This object provides methods and properties that provide
-        information about the invocation, function,
-        and runtime environment.
+    instrument : str
+        The instrument to process, e.g. "mag".
+    day : datetime
+        The day to process.
+    version : str
+        The data version, e.g. "v001".
+    url : str
+        The IMAP data access API URL.
+    table : dynamodb.Table
+        The SSR DynamoDB table.
     """
-    logger.info("Received event: %s", json.dumps(event))
-
-    instrument = os.environ["INSTRUMENT"]
-    url = os.environ["IMAP_DATA_ACCESS_URL"]
-    table = boto3.resource("dynamodb").Table(os.environ["SSR_TABLE"])
-
-    day = datetime.strptime(event["day"], "%Y%m%d")
-    version = event["version"]
-
     # /tmp persists between warm invocations. Clear it first in case a
     # previous invocation failed or timed out before cleaning up.
     shutil.rmtree(DOWNLOAD_DIR, ignore_errors=True)
@@ -427,6 +476,7 @@ def lambda_handler(event, context):
         else:
             combined = parse_packets(query_filenames(day), DOWNLOAD_DIR)
             check_day_coverage(combined, day)
+            combined = trim_packets(combined, day)
             if instrument == "mag":
                 result, ancillary_files = process_mag(combined, day, DOWNLOAD_DIR)
             elif instrument == "hit":
@@ -442,7 +492,7 @@ def lambda_handler(event, context):
                 result, ancillary_files = process_swapi(combined, day, DOWNLOAD_DIR)
             elif instrument == "spacecraft_status":
                 # Spacecraft status has no ancillary files.
-                result, ancillary_files = process_status(combined), {}
+                result, ancillary_files = process_spacecraft_status(combined), {}
             else:
                 raise ValueError(f"Unknown instrument: {instrument}")
             result = trim_to_day(result, day)
@@ -458,3 +508,38 @@ def lambda_handler(event, context):
             batch.put_item(Item=item)
 
     logger.info("Inserted %d %s items for %s %s", len(items), instrument, day, version)
+
+
+def lambda_handler(event, context):
+    """Process one day of I-ALiRT SSR data for one instrument.
+
+    Parameters
+    ----------
+    event : dict
+        {"day": "YYYYMMDD", "version": "v001"}
+    context : LambdaContext
+        This object provides methods and properties that provide
+        information about the invocation, function,
+        and runtime environment.
+    """
+    logger.info("Received event: %s", json.dumps(event))
+
+    instrument = os.environ["INSTRUMENT"]
+    url = os.environ["IMAP_DATA_ACCESS_URL"]
+    table = boto3.resource("dynamodb").Table(os.environ["SSR_TABLE"])
+
+    day = datetime.strptime(event["day"], "%Y%m%d")
+    version = event["version"]
+
+    try:
+        process_day(instrument, day, version, url, table)
+    except Exception as e:
+        logger.error(
+            "FAILED %s %s %s: %s: %s",
+            instrument,
+            event["day"],
+            version,
+            type(e).__name__,
+            e,
+        )
+        raise
