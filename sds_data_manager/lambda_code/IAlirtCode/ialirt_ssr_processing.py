@@ -1,0 +1,460 @@
+"""I-ALiRT SSR processing lambdas.
+
+Each instrument (and the spacecraft) is deployed as its own Lambda from the
+same image. The INSTRUMENT environment variable selects which processor runs.
+"""
+
+import json
+import logging
+import os
+import shutil
+import time
+from datetime import datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
+
+import boto3
+import numpy as np
+import pandas as pd
+import spiceypy
+import xarray as xr
+from ialirt_ssr_utils import (
+    download_spice_files,
+    get_ancillary,
+    get_latest_spice_kernels,
+    parse_packets,
+    query_filenames,
+)
+from imap_processing.cdf.utils import load_cdf
+from imap_processing.ialirt.l0.parse_mag import process_packet
+from imap_processing.ialirt.l0.process_codice import process_codice
+from imap_processing.ialirt.l0.process_hit import process_hit
+from imap_processing.ialirt.l0.process_status import process_status
+from imap_processing.ialirt.l0.process_swapi import process_swapi_ialirt
+from imap_processing.ialirt.l0.process_swe import process_swe
+from imap_processing.spice.geometry import SpiceBody, SpiceFrame, imap_state
+from imap_processing.spice.time import (
+    et_to_ttj2000ns,
+    et_to_utc,
+    str_to_et,
+    str_yyyymmdd_to_ttj2000ns,
+    ttj2000ns_to_et,
+)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Spacecraft position/velocity cadence over the day.
+SPACECRAFT_CADENCE = timedelta(minutes=1)
+# Packets, SPICE kernels and ancillary files for one invocation.
+DOWNLOAD_DIR = Path("/tmp/ssr")  # noqa: S108
+# How close to midnight the first and last packets of the day must be.
+COVERAGE_TOLERANCE = timedelta(seconds=60)
+# src_seq_ctr is a 14-bit counter.
+SEQ_CTR_MODULO = 16384
+
+
+class IalirtDataGapError(Exception):
+    """Raised when a day of I-ALiRT packets has gaps and is not processed."""
+
+
+def ttj2000ns_to_utc(ttj2000ns: int) -> str:
+    """Convert TTJ2000 nanoseconds (packet epoch) to a UTC string."""
+    return et_to_utc(ttj2000ns_to_et(ttj2000ns))
+
+
+def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
+    """Check that the packets cover the whole day with no missing packets.
+
+    Days that fail are skipped and need to be inspected and processed
+    manually.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data for the day and the day after, sorted by epoch.
+    day : datetime
+        The day being processed.
+
+    Raises
+    ------
+    IalirtDataGapError
+        If the first packet is not near the start of the day, the last packet
+        is not at or after the end of the day, or src_seq_ctr skips a value.
+    """
+    tolerance = int(COVERAGE_TOLERANCE.total_seconds() * 1e9)
+    day_start = str_yyyymmdd_to_ttj2000ns(f"{day:%Y%m%d}")
+    day_end = str_yyyymmdd_to_ttj2000ns(f"{day + timedelta(days=1):%Y%m%d}")
+
+    # Include packets just after midnight to show the data continues
+    # through the end of the day.
+    packets = combined.sel(epoch=slice(day_start, day_end + tolerance))
+    epoch = packets["epoch"].values
+    src_seq_ctr = packets["src_seq_ctr"].values.astype(np.int64)
+
+    if epoch.size == 0:
+        raise IalirtDataGapError(f"{day:%Y%m%d}: no packets.")
+    if epoch[0] > day_start + tolerance:
+        raise IalirtDataGapError(
+            f"{day:%Y%m%d}: first packet at {ttj2000ns_to_utc(epoch[0])}."
+        )
+    if epoch[-1] < day_end:
+        raise IalirtDataGapError(
+            f"{day:%Y%m%d}: last packet at {ttj2000ns_to_utc(epoch[-1])}."
+        )
+
+    gaps = np.flatnonzero(np.diff(src_seq_ctr) % SEQ_CTR_MODULO != 1)
+    if gaps.size:
+        raise IalirtDataGapError(
+            f"{day:%Y%m%d}: {gaps.size} src_seq_ctr gap(s), "
+            f"first after {ttj2000ns_to_utc(epoch[gaps[0]])}."
+        )
+
+
+def process_mag(
+    combined: xr.Dataset, day: datetime, download_dir: Path
+) -> tuple[list[dict], dict]:
+    """Process MAG.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data.
+    day : datetime
+        The day being processed.
+    download_dir : Path
+        The directory where ancillary files are downloaded.
+
+    Returns
+    -------
+    result : list[dict]
+        MAG data products.
+    ancillary_files : dict
+        Ancillary filenames used, keyed by instrument_descriptor.
+    """
+    ialirt_cal_path = get_ancillary("mag", "ialirt-calibration", day, download_dir)
+    l1b_cal_path = get_ancillary("mag", "l1b-calibration", day, download_dir)
+    result = process_packet(combined, load_cdf(l1b_cal_path), load_cdf(ialirt_cal_path))
+    ancillary_files = {
+        "mag_ialirt-calibration": ialirt_cal_path.name,
+        "mag_l1b-calibration": l1b_cal_path.name,
+    }
+    return result, ancillary_files
+
+
+def process_swe_ssr(
+    combined: xr.Dataset, day: datetime, download_dir: Path
+) -> tuple[list[dict], dict]:
+    """Process SWE.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data.
+    day : datetime
+        The day being processed.
+    download_dir : Path
+        The directory where ancillary files are downloaded.
+
+    Returns
+    -------
+    result : list[dict]
+        SWE data products.
+    ancillary_files : dict
+        Ancillary filenames used, keyed by instrument_descriptor.
+    """
+    cal_path = get_ancillary("swe", "l1b-in-flight-cal", day, download_dir)
+    result = process_swe(combined, [cal_path])
+    return result, {"swe_l1b-in-flight-cal": cal_path.name}
+
+
+def process_codice_lo(
+    combined: xr.Dataset, day: datetime, download_dir: Path
+) -> tuple[list[dict], dict]:
+    """Process CoDICE-Lo.
+
+    CoDICE-Lo uses the same efficiency and geometric factor tables as
+    regular processing.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data.
+    day : datetime
+        The day being processed.
+    download_dir : Path
+        The directory where ancillary files are downloaded.
+
+    Returns
+    -------
+    result : list[dict]
+        CoDICE-Lo data products.
+    ancillary_files : dict
+        Ancillary filenames used, keyed by instrument_descriptor.
+    """
+    lut_path = get_ancillary("codice", "l1a-sci-lut", day, download_dir)
+    efficiency_path = get_ancillary("codice", "l2-lo-efficiency", day, download_dir)
+    gfactor_path = get_ancillary("codice", "l2-lo-gfactor", day, download_dir)
+    result, _ = process_codice(
+        combined, lut_path, efficiency_path, "codice_lo", gfactor_path
+    )
+    ancillary_files = {
+        "codice_l1a-sci-lut": lut_path.name,
+        "codice_l2-lo-efficiency": efficiency_path.name,
+        "codice_l2-lo-gfactor": gfactor_path.name,
+    }
+    return result, ancillary_files
+
+
+def process_codice_hi(
+    combined: xr.Dataset, day: datetime, download_dir: Path
+) -> tuple[list[dict], dict]:
+    """Process CoDICE-Hi.
+
+    CoDICE-Hi uses its own I-ALiRT efficiency table and no geometric factor.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data.
+    day : datetime
+        The day being processed.
+    download_dir : Path
+        The directory where ancillary files are downloaded.
+
+    Returns
+    -------
+    result : list[dict]
+        CoDICE-Hi data products.
+    ancillary_files : dict
+        Ancillary filenames used, keyed by instrument_descriptor.
+    """
+    lut_path = get_ancillary("codice", "l1a-sci-lut", day, download_dir)
+    efficiency_path = get_ancillary(
+        "codice", "l2-hi-ialirt-efficiency", day, download_dir
+    )
+    _, result = process_codice(combined, lut_path, efficiency_path, "codice_hi")
+    ancillary_files = {
+        "codice_l1a-sci-lut": lut_path.name,
+        "codice_l2-hi-ialirt-efficiency": efficiency_path.name,
+    }
+    return result, ancillary_files
+
+
+def process_swapi(
+    combined: xr.Dataset, day: datetime, download_dir: Path
+) -> tuple[list[dict], dict]:
+    """Process SWAPI.
+
+    Parameters
+    ----------
+    combined : xr.Dataset
+        L0 parsed data.
+    day : datetime
+        The day being processed.
+    download_dir : Path
+        The directory where ancillary files are downloaded.
+
+    Returns
+    -------
+    result : list[dict]
+        SWAPI data products.
+    ancillary_files : dict
+        Ancillary filenames used, keyed by instrument_descriptor.
+    """
+    cal_path = get_ancillary("swapi", "esa-unit-conversion", day, download_dir)
+    result = process_swapi_ialirt(combined, pd.read_csv(cal_path))
+    return result, {"swapi_esa-unit-conversion": cal_path.name}
+
+
+def trim_to_day(result: list[dict], day: datetime) -> list[dict]:
+    """Keep only products with met_in_utc within the day.
+
+    Trimming happens after processing so that products built from packets
+    near midnight still have all of their packets.
+
+    Parameters
+    ----------
+    result : list[dict]
+        Data products with a met_in_utc key.
+    day : datetime
+        The day being processed.
+
+    Returns
+    -------
+    list[dict]
+        Data products within [day, day + 1).
+    """
+    start = day.strftime("%Y-%m-%dT%H:%M:%S")
+    end = (day + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+    return [item for item in result if start <= item["met_in_utc"] < end]
+
+
+def format_items(
+    result: list[dict],
+    instrument: str,
+    version: str,
+    spice_kernels: list[str],
+    ancillary_files: dict,
+) -> list[dict]:
+    """Convert data products into SSR table items.
+
+    Parameters
+    ----------
+    result : list[dict]
+        Data products from processing.
+    instrument : str
+        The instrument name.
+    version : str
+        The data version, e.g. "v001".
+    spice_kernels : list[str]
+        SPICE kernel filenames used, in priority order.
+    ancillary_files : dict
+        Ancillary filenames used, keyed by instrument_descriptor.
+
+    Returns
+    -------
+    items : list[dict]
+        Items keyed by instrument_version and time_utc.
+    """
+    exclude_keys = {"apid", "met", "met_in_utc"}
+    return [
+        {
+            "instrument_version": f"{instrument}#{version}",
+            "time_utc": item["met_in_utc"],
+            "instrument": instrument,
+            **{k: v for k, v in item.items() if k not in exclude_keys},
+            "spice_kernels": spice_kernels,
+            "ancillary_files": ancillary_files,
+        }
+        for item in result
+    ]
+
+
+def to_decimal(values: np.ndarray) -> list[Decimal]:
+    """Convert floats to Decimal, since DynamoDB does not accept floats."""
+    return [Decimal(str(val)) for val in values]
+
+
+def spacecraft_items(
+    day: datetime, version: str, spice_kernels: list[str]
+) -> list[dict]:
+    """Calculate spacecraft position and velocity over the day.
+
+    Parameters
+    ----------
+    day : datetime
+        The day being processed.
+    version : str
+        The data version, e.g. "v001".
+    spice_kernels : list[str]
+        SPICE kernel filenames used, in priority order.
+
+    Returns
+    -------
+    items : list[dict]
+        GSE/GSM position and velocity items at SPACECRAFT_CADENCE.
+    """
+    n_steps = int(timedelta(days=1) / SPACECRAFT_CADENCE)
+    times = [day + i * SPACECRAFT_CADENCE for i in range(n_steps)]
+    time_strs = [t.strftime("%Y-%m-%dT%H:%M:%S") for t in times]
+    ets = np.array([str_to_et(t) for t in time_strs])
+
+    gsm_state = imap_state(ets, ref_frame=SpiceFrame.IMAP_GSM, observer=SpiceBody.EARTH)
+    gse_state = imap_state(ets, ref_frame=SpiceFrame.IMAP_GSE, observer=SpiceBody.EARTH)
+
+    return [
+        {
+            "instrument_version": f"spacecraft#{version}",
+            "time_utc": time_str,
+            "instrument": "spacecraft",
+            "ttj2000ns": int(et_to_ttj2000ns(et)),
+            "sc_position_GSM": to_decimal(gsm[:3]),
+            "sc_velocity_GSM": to_decimal(gsm[3:]),
+            "sc_position_GSE": to_decimal(gse[:3]),
+            "sc_velocity_GSE": to_decimal(gse[3:]),
+            "spice_kernels": spice_kernels,
+        }
+        for time_str, et, gsm, gse in zip(
+            time_strs, ets, gsm_state, gse_state, strict=True
+        )
+    ]
+
+
+def lambda_handler(event, context):
+    """Process one day of I-ALiRT SSR data for one instrument.
+
+    Parameters
+    ----------
+    event : dict
+        {"day": "YYYYMMDD", "version": "v001"}
+    context : LambdaContext
+        This object provides methods and properties that provide
+        information about the invocation, function,
+        and runtime environment.
+    """
+    logger.info("Received event: %s", json.dumps(event))
+
+    instrument = os.environ["INSTRUMENT"]
+    url = os.environ["IMAP_DATA_ACCESS_URL"]
+    table = boto3.resource("dynamodb").Table(os.environ["SSR_TABLE"])
+
+    day = datetime.strptime(event["day"], "%Y%m%d")
+    version = event["version"]
+
+    # /tmp persists between warm invocations. Clear it first in case a
+    # previous invocation failed or timed out before cleaning up.
+    shutil.rmtree(DOWNLOAD_DIR, ignore_errors=True)
+    DOWNLOAD_DIR.mkdir(parents=True)
+
+    start = time.perf_counter()
+    spice_files = download_spice_files(get_latest_spice_kernels(url, day), DOWNLOAD_DIR)
+    size_mb = sum(path.stat().st_size for path in spice_files) / 1e6
+    logger.info(
+        "Downloaded %d SPICE files (%.1f MB) in %.1f s",
+        len(spice_files),
+        size_mb,
+        time.perf_counter() - start,
+    )
+    spice_kernels = [path.name for path in spice_files]
+
+    # Only these kernels are loaded inside the block. They are unloaded when
+    # the block exits, even on an error, so none carry over to the next
+    # invocation in a warm Lambda.
+    with spiceypy.KernelPool([str(path) for path in spice_files]):
+        if instrument == "spacecraft":
+            items = spacecraft_items(day, version, spice_kernels)
+        else:
+            combined = parse_packets(query_filenames(day), DOWNLOAD_DIR)
+            check_day_coverage(combined, day)
+            if instrument == "mag":
+                result, ancillary_files = process_mag(combined, day, DOWNLOAD_DIR)
+            elif instrument == "hit":
+                # HIT has no ancillary files.
+                result, ancillary_files = process_hit(combined), {}
+            elif instrument == "swe":
+                result, ancillary_files = process_swe_ssr(combined, day, DOWNLOAD_DIR)
+            elif instrument == "codice_lo":
+                result, ancillary_files = process_codice_lo(combined, day, DOWNLOAD_DIR)
+            elif instrument == "codice_hi":
+                result, ancillary_files = process_codice_hi(combined, day, DOWNLOAD_DIR)
+            elif instrument == "swapi":
+                result, ancillary_files = process_swapi(combined, day, DOWNLOAD_DIR)
+            elif instrument == "spacecraft_status":
+                # Spacecraft status has no ancillary files.
+                result, ancillary_files = process_status(combined), {}
+            else:
+                raise ValueError(f"Unknown instrument: {instrument}")
+            result = trim_to_day(result, day)
+            logger.info("[%s] results populated for [%s]", len(result), instrument)
+            items = format_items(
+                result, instrument, version, spice_kernels, ancillary_files
+            )
+
+    with table.batch_writer(
+        overwrite_by_pkeys=["instrument_version", "time_utc"]
+    ) as batch:
+        for item in items:
+            batch.put_item(Item=item)
+
+    logger.info("Inserted %d %s items for %s %s", len(items), instrument, day, version)
