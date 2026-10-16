@@ -78,7 +78,8 @@ def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
     Parameters
     ----------
     combined : xr.Dataset
-        L0 parsed data for the day and the day after, sorted by epoch.
+        L0 parsed data for the day before, the day and the day after,
+        sorted by epoch.
     day : datetime
         The day being processed.
 
@@ -120,14 +121,15 @@ def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
 def trim_packets(combined: xr.Dataset, day: datetime) -> xr.Dataset:
     """Keep only the packets needed to process the day.
 
-    combined has the whole day and the whole next day. Only the day plus
-    BOUNDARY_BUFFER on each side is needed, so products near midnight still
-    have all of their packets.
+    combined has the whole day before, the day and the day after. Only the
+    day plus BOUNDARY_BUFFER on each side is needed, so products near
+    midnight still have all of their packets.
 
     Parameters
     ----------
     combined : xr.Dataset
-        L0 parsed data for the day and the day after, sorted by epoch.
+        L0 parsed data for the day before, the day and the day after,
+        sorted by epoch.
     day : datetime
         The day being processed.
 

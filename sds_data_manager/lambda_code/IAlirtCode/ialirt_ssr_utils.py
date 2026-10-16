@@ -31,10 +31,11 @@ KERNELS = {
 
 
 def query_filenames(day: datetime) -> list[str]:
-    """Query the latest I-ALiRT L0 files for a given day and the day after.
+    """Query the latest I-ALiRT L0 files for the day before, the day and the day after.
 
-    Packets for a given day can land in the next day's file, so both days
-    are needed to get a complete day of data.
+    Packets for a given day can land in the next day's file, and products
+    near midnight are built from packets on both sides of it, so all three
+    days are needed to get a complete day of data.
 
     Parameters
     ----------
@@ -49,16 +50,16 @@ def query_filenames(day: datetime) -> list[str]:
     Raises
     ------
     FileNotFoundError
-        If a file is missing for either day.
+        If a file is missing for any of the days.
     """
-    dates = [day.strftime("%Y%m%d"), (day + timedelta(days=1)).strftime("%Y%m%d")]
+    dates = [(day + timedelta(days=i)).strftime("%Y%m%d") for i in (-1, 0, 1)]
     results = imap_data_access.query(
         table="science",
         instrument="ialirt",
         data_level="l0",
         descriptor="raw",
         start_date=dates[0],
-        end_date=dates[1],
+        end_date=dates[-1],
         version="latest",
     )
 
@@ -125,7 +126,8 @@ def parse_packets(
 def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollection:
     """Query the SPICE metakernel API for the latest kernels for a day.
 
-    The time range covers the day and the day after, to match the packet files.
+    The time range covers the day before, the day and the day after, to match
+    the packet files.
 
     Parameters
     ----------
@@ -140,10 +142,11 @@ def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollecti
         A collection containing a SPICEInput object with the list of kernel
         filenames returned from the metakernel API, in priority order.
     """
-    # The end date is exclusive (midnight), so day + 2 covers day and day + 1.
+    # The end date is exclusive (midnight), so day - 1 to day + 2 covers
+    # day - 1, day and day + 1.
     metakernel_url = url + "/metakernel"
     params = {
-        "start_time": day.strftime("%Y%m%d"),
+        "start_time": (day - timedelta(days=1)).strftime("%Y%m%d"),
         "end_time": (day + timedelta(days=2)).strftime("%Y%m%d"),
         "list_files": "True",
         "file_types": ",".join(KERNELS),

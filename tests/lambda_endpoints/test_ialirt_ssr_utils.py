@@ -18,13 +18,18 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils import (
 
 @patch("imap_data_access.query")
 def test_query_filenames(mock_query):
-    """Test that query_filenames returns the files for both days."""
+    """Test that query_filenames returns the files for all three days."""
     mock_query.return_value = [
-        {"file_path": "file_1.pkts", "start_date": "20261002"},
-        {"file_path": "file_2.pkts", "start_date": "20261003"},
+        {"file_path": "file_1.pkts", "start_date": "20261001"},
+        {"file_path": "file_2.pkts", "start_date": "20261002"},
+        {"file_path": "file_3.pkts", "start_date": "20261003"},
     ]
 
-    assert query_filenames(datetime(2026, 10, 2)) == ["file_1.pkts", "file_2.pkts"]
+    assert query_filenames(datetime(2026, 10, 2)) == [
+        "file_1.pkts",
+        "file_2.pkts",
+        "file_3.pkts",
+    ]
 
 
 @patch("imap_data_access.query")
