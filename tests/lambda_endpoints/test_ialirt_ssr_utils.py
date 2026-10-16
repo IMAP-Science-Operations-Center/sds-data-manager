@@ -1,7 +1,6 @@
 """Test the I-ALiRT SSR utilities."""
 
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -78,11 +77,7 @@ def test_get_latest_spice_kernels(mock_get):
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils.ProcessingInputCollection.download_all_files"
 )
-@patch(
-    "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils.EFS_BASE_PATH",
-    Path("/mock/efs"),
-)
-def test_download_spice_files(mock_download):
+def test_download_spice_files(mock_download, tmp_path):
     """Test download_spice_files function."""
     mock_files = [
         "imap_sclk_0000.tsc",
@@ -92,7 +87,7 @@ def test_download_spice_files(mock_download):
     collection = ProcessingInputCollection()
     collection.add(SPICEInput(*mock_files))
 
-    result = download_spice_files(collection)
+    result = download_spice_files(collection, tmp_path)
 
     assert [file.name for file in result] == [
         "imap_sclk_0000.tsc",
@@ -140,7 +135,7 @@ def test_download_spice_files(mock_download):
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils.imap_data_access.query"
 )
-def test_get_ancillary(mock_query, mock_download, files, expected):
+def test_get_ancillary(mock_query, mock_download, files, expected, tmp_path):
     """Test that get_ancillary picks the file valid for the day."""
     # The query only returns files that start on or before the day.
     mock_query.return_value = [
@@ -153,7 +148,7 @@ def test_get_ancillary(mock_query, mock_download, files, expected):
         for file_path, start_date, end_date in files
     ]
 
-    get_ancillary("swe", "l1b-in-flight-cal", datetime(2026, 8, 25))
+    get_ancillary("swe", "l1b-in-flight-cal", datetime(2026, 8, 25), tmp_path)
 
     assert mock_query.call_args.kwargs["end_date"] == "20260825"
     mock_download.assert_called_once_with(expected)
