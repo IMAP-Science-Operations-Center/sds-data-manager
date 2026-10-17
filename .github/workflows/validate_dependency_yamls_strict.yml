@@ -1,9 +1,6 @@
-name: Validate Dependency YAMLs
+name: Validate Dependency YAMLs (STRICT)
 
 on:
-  push:
-    branches:
-      - dev
   pull_request:
 
 jobs:
@@ -24,5 +21,5 @@ jobs:
 
       - name: Validate dependency YAMLs
         run: |
-          poetry run python scripts/dependency/validate_dependency_yamls.py
+          poetry run python scripts/dependency/validate_dependency_yamls.py --checks 1 2
 
