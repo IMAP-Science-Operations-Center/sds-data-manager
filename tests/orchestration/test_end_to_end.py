@@ -9,7 +9,7 @@ import datetime
 from dagster import (
     AssetKey,
     AssetMaterialization,
-    MaterializeResult,
+    AssetObservation,
     build_asset_context,
     build_sensor_context,
 )
@@ -100,11 +100,14 @@ def test_glows_l1a_end_to_end(
     assert len(yielded_files) == 0
 
     # TEST 4: Run the job again.
-    # We expect it to simply exit,
-    # because this exact job was run previously
-    yielded_files = glows_l1a_job.run_job(context, 1, 1)
+    # This exact job was run previously, so submission is skipped and
+    # we only report an observation for each output
+    yielded_events = list(glows_l1a_job.run_job(context, 1, 1))
     assert len(mock_db_session.query(models.ProcessingJob).all()) == 1
-    assert len(list(yielded_files)) == 0
+    assert len(yielded_events) == len(glows_l1a_job.job_config.outputs)
+    for event in yielded_events:
+        assert isinstance(event, AssetObservation)
+        assert event.metadata["status"].value == "Skipped - Duplicated Job"
 
     # Insert pretend data into ScienceFiles
     glows_l1a_de_file = models.ScienceFiles(
@@ -142,14 +145,12 @@ def test_glows_l1a_end_to_end(
     mock_db_session.commit()
 
     # TEST 5: Run the asset a third time.
-    # Even though we skip submission,
-    # the code should still find the science file to materialize
-    yielded_files = glows_l1a_job.run_job(context, 1, 1)
-    for f in yielded_files:
-        assert isinstance(f, MaterializeResult)
-        assert f.metadata["file_names"][0] in (
-            "imap_glows_l1a_de_20260102_v001.0001.cdf",
-            "imap_glows_l1a_hist_20260102_v001.0001.cdf",
-        )
+    # Submission is skipped again. Even though output files now exist, a
+    # skipped run must not materialize them: that belongs to the run that
+    # did the processing (or the backup materialization sensor)
+    yielded_events = list(glows_l1a_job.run_job(context, 1, 1))
+    assert len(yielded_events) == len(glows_l1a_job.job_config.outputs)
+    for event in yielded_events:
+        assert isinstance(event, AssetObservation)
     # Assert only one job has ever been submitted still
     assert len(mock_db_session.query(models.ProcessingJob).all()) == 1
