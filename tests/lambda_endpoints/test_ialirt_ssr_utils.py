@@ -79,6 +79,20 @@ def test_get_latest_spice_kernels(mock_get):
     assert result.processing_input[0].filename_list == mock_files
 
 
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils.requests.get")
+def test_get_latest_spice_kernels_types(mock_get):
+    """Test that only the requested kernel types are queried."""
+    mock_response = MagicMock()
+    mock_response.json.return_value = ["naif0012.tls"]
+    mock_get.return_value = mock_response
+
+    get_latest_spice_kernels(
+        "https://api.dev.imap-mission.com", datetime(2026, 10, 2), {"leapseconds"}
+    )
+
+    assert mock_get.call_args.kwargs["params"]["file_types"] == "leapseconds"
+
+
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils.ProcessingInputCollection.download_all_files"
 )
