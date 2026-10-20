@@ -150,6 +150,35 @@ class LoPivotAttitudeKernels(Enum):
         return "lo_pivot_attitude_category"
 
 
+class SpinTables(Enum):
+    """Container for spin file types. These are CSV files, not SPICE kernels."""
+
+    SPIN = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "spin_category"
+
+
+class ThrusterFiles(Enum):
+    """Container for small forces file types. These are not SPICE kernels."""
+
+    THRUSTER = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "thruster_category"
+
+
+# The longest gap to ignore, in seconds, between consecutive spin or small forces
+# files. They are delivered as pieces of one continuous record. Adjacent spin
+# files overlap or gap by up to 20 ms, while a real gap is at least one spin
+# (about 15 s).
+SEAM_GAP_TOLERANCE = 1.0
+
+
 @dataclass
 class KernelCollection:
     """Collection of SPICE kernel types for IMAP."""
@@ -167,7 +196,20 @@ class KernelCollection:
             SpacecraftAttitudeKernels,
             PointingAttitudeKernels,
             LoPivotAttitudeKernels,
+            SpinTables,
+            ThrusterFiles,
         ]
+    )
+    # Categories that are only loaded when their types are requested by name.
+    # Spin and small forces files are not SPICE kernels, so they must not appear
+    # in a default metakernel.
+    opt_in_categories: list = field(default_factory=lambda: [SpinTables, ThrusterFiles])
+    # Seconds of gap to ignore between files, for each category name
+    gap_tolerances: dict = field(
+        default_factory=lambda: {
+            SpinTables.spice_category_name(): SEAM_GAP_TOLERANCE,
+            ThrusterFiles.spice_category_name(): SEAM_GAP_TOLERANCE,
+        }
     )
 
     @property
@@ -185,6 +227,32 @@ class KernelCollection:
             kernel_class.spice_category_name()
             for kernel_class in self.imap_spice_load_order
         ]
+
+    def requested_types(self, file_types: Collection[str] | None = None) -> dict:
+        """Return the categories and types to load for a metakernel request.
+
+        Parameters
+        ----------
+        file_types : Collection[str], optional
+            Upper-case type names requested. If not given, every type except
+            those in opt-in categories is loaded.
+
+        Returns
+        -------
+        dict
+            Each category to load, in load order, mapped to its types to load.
+        """
+        requested = {}
+        for kernel_class in self.imap_spice_load_order:
+            if file_types:
+                members = [m for m in kernel_class if m.name in file_types]
+            elif kernel_class in self.opt_in_categories:
+                members = []
+            else:
+                members = list(kernel_class)
+            if members:
+                requested[kernel_class] = members
+        return requested
 
 
 def download_from_s3(s3_key: str, bucket_name: str | None = None) -> Path:
@@ -306,7 +374,8 @@ def metakernel_builder(
         End time in seconds since J2000, used to filter the SPICE file database.
         If None, no upper bound is used in the query.
     file_types: Collection[str] | None
-        Optional restriction on which SPICE file types to include.
+        Optional restriction on which SPICE file types to include. Spin and
+        thruster files are only included when requested here.
 
     Returns
     -------
@@ -316,18 +385,21 @@ def metakernel_builder(
     # Establish start and end times for the metakernel
     metakernel_start_time = 0 if start_time is None else start_time
     metakernel_end_time = MAXIMUM_MISSION_J2000_TIME if end_time is None else end_time
-    # Create the Metakernel class
+    kernel_collection = KernelCollection()
+    requested_types = kernel_collection.requested_types(file_types)
+    # Only the requested categories are tracked, so categories that were not
+    # requested are not reported as gaps.
     metakernel = MetaKernel(
         metakernel_start_time,
         metakernel_end_time,
-        allowed_spice_types=KernelCollection().category_types,
+        allowed_spice_types=[
+            category.spice_category_name() for category in requested_types
+        ],
+        gap_tolerances=kernel_collection.gap_tolerances,
     )
 
-    for spice_category in KernelCollection().imap_spice_load_order:
-        for spice_subtype in spice_category:
-            if file_types and spice_subtype.name not in file_types:
-                continue  # Skip over the file if not in requested list
-
+    for spice_category, spice_subtypes in requested_types.items():
+        for spice_subtype in spice_subtypes:
             query_string_parameters = {
                 "type": spice_subtype.name.lower(),
                 "latest": "True",
@@ -346,6 +418,8 @@ def metakernel_builder(
                 json.loads(spice_files["body"]),
                 spice_category.spice_category_name(),
                 "file_intervals_j2000",
+                # Versions restart with each new file name, so they can't rank
+                # files with different names. The latest ingested file wins.
                 priority_field="timestamp",
             )
 

@@ -18,7 +18,7 @@ class MetaKernel:
         start_time: int,
         end_time: int,
         allowed_spice_types: list[str],
-        min_gap_time: int = 0,
+        gap_tolerances: dict[str, float] | None = None,
     ):
         """Initialize the Metakernel.
 
@@ -31,11 +31,12 @@ class MetaKernel:
         allowed_spice_types: list[str]
             A list of strings that represent the allowed types of SPICE files,
             in order of the priority with which to load them in the metakernel.
-        min_gap_time: int
-            The minimum gap time to ignore in seconds, and assume SPICE can
-            interpolate well enough over this small gap.
+        gap_tolerances: dict[str, float], optional
+            For each SPICE type, the longest gap in seconds to ignore where one
+            file's data ends and another's begins. Types not listed tolerate no
+            gaps.
         """
-        self.minimum_gap_time_to_ignore = min_gap_time
+        self.gap_tolerances = gap_tolerances or {}
         self.start_time_j2000 = start_time
         self.end_time_j2000 = end_time
         self.spice_files = {}
@@ -173,13 +174,10 @@ seconds since J2000.
 
         # This variable will contain all gaps that exist after checking this file
         new_gaps = []
+        gap_tolerance = self.gap_tolerances.get(spice_type, 0)
 
         # Loop through all gaps.
         for gap in self.spice_gaps[spice_type]:
-            if gap[1] - gap[0] < self.minimum_gap_time_to_ignore:
-                # Ignore this gap if it is small enough
-                continue
-
             # Before checking any further, do a preliminary check.
             # Does the maximum and minimum time in this file cover any
             # portion of this gap? If not, don't check each interval individually.
@@ -226,8 +224,13 @@ seconds since J2000.
                 # Check if we've already added it. No need to add it again.
                 if file_to_check not in self.spice_files[spice_type]:
                     self.spice_files[spice_type].append(file_to_check)
-                # Add any of these "subgaps" to the new list of gaps.
-                new_gaps.extend(subgap_list)
+                # Add any of these "subgaps" to the new list of gaps, except those
+                # within the tolerance, such as the seam between two files.
+                new_gaps.extend(
+                    subgap
+                    for subgap in subgap_list
+                    if subgap[1] - subgap[0] > gap_tolerance
+                )
 
         # Ensure no duplicated gaps exist by called "set".
         self.spice_gaps[spice_type] = list(set(new_gaps))

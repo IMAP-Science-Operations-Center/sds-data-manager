@@ -8,6 +8,7 @@ from pathlib import Path
 import spiceypy
 
 from ..spice_utilities import (
+    KernelCollection,
     furnish_best_spice_file,
     metakernel_builder,
 )
@@ -114,6 +115,31 @@ def lambda_handler(event, context):
     file_types = query_params.get("file_types", None)
     if file_types:
         file_types = {type.strip().upper() for type in file_types.split(",")}
+        kernel_collection = KernelCollection()
+        valid_types = {type.upper() for type in kernel_collection.file_types}
+        if invalid_types := file_types - valid_types:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    f"Invalid file_types: {sorted(invalid_types)}. "
+                    f"Valid types are: {sorted(valid_types)}"
+                ),
+            }
+        # Spin and small forces files aren't SPICE kernels, so they are only
+        # listed, never written into a metakernel
+        list_only_types = {
+            member.name
+            for category in kernel_collection.opt_in_categories
+            for member in category
+        }
+        if (file_types & list_only_types) and list_files.lower() != "true":
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    f"{sorted(file_types & list_only_types)} can only be requested "
+                    "with list_files=true"
+                ),
+            }
 
     # Build a metakernel
     metakernel = metakernel_builder(
