@@ -294,7 +294,7 @@ class IalirtApiManager(Construct):
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             # Lambda allocates CPU proportionally to memory,
-            # and DynamoDB queries are often CPU-bound due to
+            # and DynamoDB queries are often CPU-bound due toGi
             # JSON parsing and network serialization.
             memory_size=2048,
             environment={
