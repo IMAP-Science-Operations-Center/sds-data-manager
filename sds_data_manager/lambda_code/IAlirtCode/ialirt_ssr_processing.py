@@ -382,7 +382,6 @@ def format_items(
         {
             "instrument_version": f"{instrument}#{version}",
             "time_utc": item["met_in_utc"],
-            "instrument": instrument,
             **{k: v for k, v in item.items() if k not in exclude_keys},
             "kernel_set_key": kernel_set_key,
         }
@@ -608,6 +607,9 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table): 
                 result, ancillary_files = process_spacecraft_status(combined), {}
             else:
                 raise ValueError(f"Unknown instrument: {instrument}")
+            if not (any(result) and all(result)):
+                logger.info("No %s products for %s %s", instrument, day, version)
+                return
             result = trim_to_day(result, day)
             logger.info("[%s] results populated for [%s]", len(result), instrument)
             items += format_items(result, instrument, version, kernel_set_key)
