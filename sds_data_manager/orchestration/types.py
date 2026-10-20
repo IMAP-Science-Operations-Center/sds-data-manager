@@ -612,10 +612,11 @@ class BaseENAMapPartition:
     def get_windows_since(self, since_time: datetime.datetime) -> list[MapWindow]:
         """Return all windows since the given time through the current year."""
         windows: list[MapWindow] = []
-        for year in range(since_time.year, self.current_time.year + 1):
+        for year in range(since_time.year - 1, self.current_time.year + 1):
             windows.extend(self.get_windows(year))
 
-        return windows
+        # Drop windows that ended at or before since_time.
+        return [wind for wind in windows if wind.end > since_time]
 
     def get_current_window(self) -> MapWindow | None:
         """Return the active map window for current_time.
