@@ -177,6 +177,9 @@ def test_synchronizer_spin_file_added(session, s3_client):
     assert item.end_date == datetime.datetime(2026, 9, 24)
     assert item.version == "01"
 
+    # The empty file has no coverage, so it is only indexed into the spin table
+    assert session.query(models.SPICEFiles).count() == 0
+
 
 def test_synchronizer_spin_file_removed(session, s3_client):
     """A spin database entry gets removed if it isn't in S3."""
@@ -228,6 +231,9 @@ def test_synchronizer_small_forces_file_added(session, s3_client):
     assert item.start_date == datetime.datetime(2025, 4, 10)
     assert item.end_date == datetime.datetime(2025, 4, 20)
     assert item.version == "01"
+
+    # The empty file has no coverage, so it is only indexed into its own table
+    assert session.query(models.SPICEFiles).count() == 0
 
 
 def test_synchronizer_small_forces_file_removed(session, s3_client):

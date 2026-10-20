@@ -4,7 +4,7 @@ import csv
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import boto3
@@ -40,6 +40,9 @@ COVERAGE_SPICE_ARRAY_LENGTH = 10000  # Use an array size of 10000 for coverage c
 COVERAGE_LEVEL = "INTERVAL"  # the granularity at which the coverage is examined
 COVERAGE_TOLERANCE = 0.0  # Tolerance value expressed in ticks of the spacecraft.
 COVERAGE_TIME_SYSTEM = "TDB"  # Whether to use J2000 (TDB) or spacecraft clock (SCLK)
+
+# Record time format in small forces files, e.g. "2026 SEP 30 13:02:06.662376"
+SFF_TIME_FORMAT = "%Y %b %d %H:%M:%S.%f"
 
 
 def clear_ephemeral_storage(downloaded_path: Path):
@@ -141,6 +144,149 @@ def get_coverage_dictionary(spice_file: Path):
             )
 
     return results_j2000, results_datetime, results_sclk
+
+
+def get_spin_file_coverage(spin_file: Path) -> tuple[datetime, datetime]:
+    """Determine the time span covered by a spin file from its rows.
+
+    Coverage runs from the first spin's start to the end of the last spin
+    (its start plus its period). The day-of-year range in the filename is
+    not used, since spin files start and end partway through those days.
+
+    Parameters
+    ----------
+    spin_file : Path
+        The path to the spin CSV file.
+
+    Returns
+    -------
+    tuple[datetime, datetime]
+        The UTC start and end of the file's coverage.
+
+    Raises
+    ------
+    ValueError
+        If the file contains no spin rows.
+    """
+    with open(spin_file, newline="") as file:
+        # imap_processing reads spin files with comment="#", so skip those lines
+        reader = csv.DictReader(
+            (line for line in file if not line.startswith("#")), restval=""
+        )
+        rows = [row for row in reader if row["spin_start_utc"].strip()]
+    if not rows:
+        raise ValueError(f"No spin rows found in {spin_file.name}")
+
+    start = datetime.fromisoformat(rows[0]["spin_start_utc"].strip())
+    last_spin_start = datetime.fromisoformat(rows[-1]["spin_start_utc"].strip())
+    end = last_spin_start + timedelta(seconds=float(rows[-1]["spin_period_sec"]))
+    return start.replace(tzinfo=timezone.utc), end.replace(tzinfo=timezone.utc)
+
+
+def get_small_forces_file_coverage(sff_file: Path) -> tuple[datetime, datetime]:
+    """Determine the time span covered by a small forces file from its records.
+
+    A small forces file (SFF) has a header of ``KEY,VALUE`` lines, including
+    the record column names on a line starting with ``INDEX``, ended by a
+    ``$$EOH`` line. The records after it form a continuous history, so the
+    coverage runs from the first record's STARTTIME to the last record's
+    ENDTIME. The header START_TIME is not used, since it is 1 s earlier than
+    the first record.
+
+    Parameters
+    ----------
+    sff_file : Path
+        The path to the small forces file.
+
+    Returns
+    -------
+    tuple[datetime, datetime]
+        The UTC start and end of the file's coverage.
+
+    Raises
+    ------
+    ValueError
+        If the header has no ``$$EOH`` line or column names, its record times
+        are not UTC, or the file contains no records.
+    """
+    header = {}
+    columns = None
+    first_record = last_record = None
+    with open(sff_file, newline="") as file:
+        reader = csv.reader(file, skipinitialspace=True)
+        for row in reader:
+            if not row:
+                continue
+            key = row[0].strip()
+            if key == "$$EOH":
+                break
+            if key == "INDEX":
+                columns = [column.strip() for column in row]
+            else:
+                header[key] = row[1].strip() if len(row) > 1 else ""
+        else:
+            raise ValueError(f"No $$EOH line found in {sff_file.name}")
+
+        for row in reader:
+            if row:
+                first_record = first_record or row
+                last_record = row
+
+    if columns is None:
+        raise ValueError(f"No record column names found in {sff_file.name}")
+    timezone_name = header.get("STARTTIME/ENDTIME_TIMEZONE")
+    if timezone_name != "UTC":
+        raise ValueError(
+            f"Expected UTC record times in {sff_file.name}, found {timezone_name!r}"
+        )
+    if first_record is None:
+        raise ValueError(f"No records found in {sff_file.name}")
+
+    start = datetime.strptime(
+        first_record[columns.index("STARTTIME")].strip(), SFF_TIME_FORMAT
+    )
+    end = datetime.strptime(
+        last_record[columns.index("ENDTIME")].strip(), SFF_TIME_FORMAT
+    )
+    return start.replace(tzinfo=timezone.utc), end.replace(tzinfo=timezone.utc)
+
+
+# Files that are not SPICE kernels, so their coverage is read from their contents
+COVERAGE_FROM_FILE_CONTENTS = {
+    "spin": get_spin_file_coverage,
+    "thruster": get_small_forces_file_coverage,
+}
+
+
+def _get_coverage_from_datetimes(start: datetime, end: datetime):
+    """Build a single-interval coverage from a start and end datetime.
+
+    Requires the leapseconds and spacecraft clock kernels to be furnished.
+
+    Parameters
+    ----------
+    start : datetime
+        Start of the coverage. Timezone-naive values are treated as UTC.
+    end : datetime
+        End of the coverage. Timezone-naive values are treated as UTC.
+
+    Returns
+    -------
+    results_j2000: list[list[float]]
+        The coverage in SPICE J2000 time
+    results_datetime: list[list[datetime]]
+        The coverage as python datetime objects
+    results_sclk: list[list[str]]
+        The coverage using spacecraft clock time notation
+    """
+    results_j2000 = [[spiceypy.datetime2et(start), spiceypy.datetime2et(end)]]
+    results_sclk = [
+        [
+            spiceypy.sce2s(SPACECRAFT_ID, results_j2000[0][0]),
+            spiceypy.sce2s(SPACECRAFT_ID, results_j2000[0][1]),
+        ]
+    ]
+    return results_j2000, [[start, end]], results_sclk
 
 
 def _upsert_into_spice_table(
@@ -255,28 +401,25 @@ def index_spice_file(s3_key: str):
             raise e
 
     if latest_lsk and latest_sclk:  # clock and leapsecond kernels are loaded
-        if spice_metadata["start_date"] is None or spice_metadata["end_date"] is None:
+        if spice_metadata["type"] in COVERAGE_FROM_FILE_CONTENTS:
+            start, end = COVERAGE_FROM_FILE_CONTENTS[spice_metadata["type"]](
+                Path(spice_file)
+            )
+            file_coverage_j2000, file_coverage_datetime, file_coverage_sclk = (
+                _get_coverage_from_datetimes(start, end)
+            )
+        elif spice_metadata["start_date"] is None or spice_metadata["end_date"] is None:
             # In this block, we have files that do NOT need to have
             # any file_intervals calculated. We will use the maximum time range.
             if spice_metadata["start_date"] is None:
                 spice_metadata["start_date"] = minimum_mission_time
             if spice_metadata["end_date"] is None:
                 spice_metadata["end_date"] = maximum_mission_time
-            file_coverage_datetime = [
-                [spice_metadata["start_date"], spice_metadata["end_date"]]
-            ]
-            file_coverage_j2000 = [
-                [
-                    spiceypy.datetime2et(spice_metadata["start_date"]),
-                    spiceypy.datetime2et(spice_metadata["end_date"]),
-                ]
-            ]
-            file_coverage_sclk = [
-                [
-                    spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][0]),
-                    spiceypy.sce2s(SPACECRAFT_ID, file_coverage_j2000[0][1]),
-                ]
-            ]
+            file_coverage_j2000, file_coverage_datetime, file_coverage_sclk = (
+                _get_coverage_from_datetimes(
+                    spice_metadata["start_date"], spice_metadata["end_date"]
+                )
+            )
         else:
             file_coverage_j2000, file_coverage_datetime, file_coverage_sclk = (
                 get_coverage_dictionary(spice_file)
@@ -289,8 +432,8 @@ def index_spice_file(s3_key: str):
         file_coverage_j2000,
         file_coverage_datetime,
         file_coverage_sclk,
-        latest_lsk,
-        latest_sclk,
+        latest_sclk=latest_sclk,
+        latest_lsk=latest_lsk,
     )
     # NOTE: Only clear the current SPICE file from ephemeral storage.
     # Time kernels (leapseconds and spacecraft clock) are kept in ephemeral
@@ -300,6 +443,7 @@ def index_spice_file(s3_key: str):
     clear_ephemeral_storage(spice_file)
 
 
+# TODO: Remove in #1737, once spin files are only indexed into the SPICE table.
 def index_spin_file(s3_key: Path):
     """Insert spin file metadata into spin database table.
 
@@ -364,6 +508,8 @@ def index_repoint_file(s3_key):
     logger.info(f"Indexed {s3_key} to SPICEFiles table")
 
 
+# TODO: Remove in #1737, once small forces files are only indexed into the SPICE
+#  table.
 def index_small_forces_file(s3_key):
     """Insert small-forces file metadata into small-forces database table.
 
@@ -388,6 +534,38 @@ def index_small_forces_file(s3_key):
         session.commit()
 
     logger.info(f"Indexed {s3_key} to SmallForcesFile table")
+
+
+# Spin and small forces files are written to both their own table and the SPICE
+# table while orchestration moves to reading them from the SPICE table (#1731).
+# TODO: Remove LEGACY_TABLE_INDEXERS and index_spin_or_small_forces_file in #1737.
+#  Spin and small forces files then go through index_spice_file like any other
+#  kernel, and a failure to index them is raised instead of logged.
+LEGACY_TABLE_INDEXERS = {
+    "spin": index_spin_file,
+    "thruster": index_small_forces_file,
+}
+
+
+def index_spin_or_small_forces_file(s3_key: str, kernel_type: str):
+    """Index a spin or small forces file into the SPICE table and its own table.
+
+    The file's own table (spin_files or small_forces_files) is what orchestration
+    reads today, so a failure to index into the SPICE table is logged rather than
+    raised, and the file's own table is still updated.
+
+    Parameters
+    ----------
+    s3_key : str
+        S3 path of the spin or small forces file.
+    kernel_type : str
+        The file's SPICE type, either "spin" or "thruster".
+    """
+    try:
+        index_spice_file(s3_key)
+    except Exception:
+        logger.exception(f"Failed to index {s3_key} into the SPICE table")
+    LEGACY_TABLE_INDEXERS[kernel_type](s3_key)
 
 
 def parse_datetime(val):
@@ -620,12 +798,12 @@ def lambda_handler(event, context):
     if spice_obj.spice_metadata["type"] == "repoint":
         index_pointing_data(s3_key)
         index_repoint_file(s3_key)
-    elif spice_obj.spice_metadata["type"] == "spin":
-        logger.info(f"Indexing {s3_key} spin table")
-        index_spin_file(s3_key)
-    elif spice_obj.spice_metadata["type"] == "thruster":
-        logger.info(f"Indexing {s3_key} small-forces table")
-        index_small_forces_file(s3_key)
+    elif spice_obj.spice_metadata["type"] in LEGACY_TABLE_INDEXERS:
+        # TODO: Remove this branch in #1737 so the else branch indexes these files.
+        logger.info(
+            f"Indexing {s3_key} to SPICE and {spice_obj.spice_metadata['type']} tables"
+        )
+        index_spin_or_small_forces_file(s3_key, spice_obj.spice_metadata["type"])
     else:
         # Index the SPICE kernels to the SPICE table
         logger.info(f"Indexing {s3_key} to SPICE table")
