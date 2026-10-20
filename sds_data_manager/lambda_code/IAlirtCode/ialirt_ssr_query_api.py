@@ -67,23 +67,27 @@ def latest_time_utc(instrument_version: str) -> str | None:
     return items[0]["time_utc"] if items else None
 
 
-def format_time(dt: datetime) -> str:
-    """Format a time like time_utc, keeping microseconds only if there are any.
+def format_time(dt: datetime, microseconds: bool) -> str:
+    """Format a time like time_utc.
 
-    spice items have time_utc = kernel_set_key, which has microseconds, so
-    querying a kernel_set_key must not drop them.
+    spice and ancillary items have time_utc = kernel_set_key, which always has
+    microseconds, even when they are zero (e.g. 2026-10-20T06:00:01.000000).
+    So microseconds are kept whenever the given time had them, not only when
+    they are non-zero.
 
     Parameters
     ----------
     dt : datetime
         The time to format.
+    microseconds : bool
+        Whether to include microseconds.
 
     Returns
     -------
     str
-        The time as YYYY-MM-DDTHH:MM:SS, plus .ffffff if it has microseconds.
+        The time as YYYY-MM-DDTHH:MM:SS, plus .ffffff if microseconds is True.
     """
-    if dt.microsecond:
+    if microseconds:
         return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -111,17 +115,20 @@ def get_time_range(
     start = params.get("time_utc_start")
     end = params.get("time_utc_end")
 
+    # A "." means the time has fractional seconds.
     if start and end:
-        start = format_time(validate_time(start))
-        end = format_time(validate_time(end))
+        start = format_time(validate_time(start), "." in start)
+        end = format_time(validate_time(end), "." in end)
     elif start:
         start_dt = validate_time(start)
-        start = format_time(start_dt)
-        end = format_time(start_dt + timedelta(hours=1))
+        microseconds = "." in start
+        start = format_time(start_dt, microseconds)
+        end = format_time(start_dt + timedelta(hours=1), microseconds)
     elif end:
         end_dt = validate_time(end)
-        start = format_time(end_dt - timedelta(hours=1))
-        end = format_time(end_dt)
+        microseconds = "." in end
+        start = format_time(end_dt - timedelta(hours=1), microseconds)
+        end = format_time(end_dt, microseconds)
     else:
         # SSR data lags by at least a day, so default to the latest
         # 1 hour of data instead of the last hour before now.
@@ -131,7 +138,7 @@ def get_time_range(
             return None
         # Keep end as stored so the latest item is included even if
         # time_utc has fractional seconds.
-        start = format_time(validate_time(end) - timedelta(hours=1))
+        start = format_time(validate_time(end) - timedelta(hours=1), "." in end)
 
     if not has_api_key and start < PUBLIC_CUTOFF_UTC:
         raise BadTimeError("API key required for data prior to 2026-02-01T00:00:00")
