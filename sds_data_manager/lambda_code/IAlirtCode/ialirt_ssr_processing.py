@@ -9,7 +9,7 @@ import logging
 import os
 import shutil
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -20,12 +20,14 @@ import pandas as pd
 import spiceypy
 import xarray as xr
 from ialirt_ssr_utils import (
+    KERNELS,
     download_spice_files,
     get_ancillary,
     get_latest_spice_kernels,
     parse_packets,
     query_filenames,
 )
+from imap_data_access.processing_input import ProcessingInputCollection
 from imap_processing.cdf.utils import load_cdf
 from imap_processing.ialirt.l0.parse_mag import process_packet
 from imap_processing.ialirt.l0.process_codice import process_codice
@@ -45,6 +47,10 @@ from imap_processing.spice.time import (
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Only MAG and the spacecraft use SPICE geometry. The other instruments only
+# convert times, which needs just these kernels.
+GEOMETRY_INSTRUMENTS = {"mag", "spacecraft"}
+TIME_KERNELS = {"leapseconds", "spacecraft_clock"}
 # Spacecraft position/velocity cadence over the day.
 SPACECRAFT_CADENCE = timedelta(minutes=1)
 # Packets, SPICE kernels and ancillary files for one invocation.
@@ -351,8 +357,7 @@ def format_items(
     result: list[dict],
     instrument: str,
     version: str,
-    spice_kernels: list[str],
-    ancillary_files: dict,
+    kernel_set_key: str,
 ) -> list[dict]:
     """Convert data products into SSR table items.
 
@@ -364,25 +369,51 @@ def format_items(
         The instrument name.
     version : str
         The data version, e.g. "v001".
-    spice_kernels : list[str]
-        SPICE kernel filenames used, in priority order.
-    ancillary_files : dict
-        Ancillary filenames used, keyed by instrument_descriptor.
+    kernel_set_key : str
+        time_utc of the spice and ancillary items used for processing.
 
     Returns
     -------
     items : list[dict]
         Items keyed by instrument_version and time_utc.
     """
-    exclude_keys = {"apid", "met", "met_in_utc"}
+    exclude_keys = {"apid", "met", "met_in_utc", "mag_hk_status"}
     return [
         {
             "instrument_version": f"{instrument}#{version}",
             "time_utc": item["met_in_utc"],
             "instrument": instrument,
             **{k: v for k, v in item.items() if k not in exclude_keys},
-            "spice_kernels": spice_kernels,
-            "ancillary_files": ancillary_files,
+            "kernel_set_key": kernel_set_key,
+        }
+        for item in result
+    ]
+
+
+def mag_hk_items(result: list[dict], version: str, kernel_set_key: str) -> list[dict]:
+    """Convert MAG data products into MAG housekeeping items.
+
+    Parameters
+    ----------
+    result : list[dict]
+        MAG data products from processing.
+    version : str
+        The data version, e.g. "v001".
+    kernel_set_key : str
+        time_utc of the spice and ancillary items used for processing.
+
+    Returns
+    -------
+    items : list[dict]
+        Items keyed by instrument_version and time_utc.
+    """
+    return [
+        {
+            "instrument_version": f"mag_hk#{version}",
+            "time_utc": item["met_in_utc"],
+            "instrument": "mag_hk",
+            "mag_hk_status": item["mag_hk_status"],
+            "kernel_set_key": kernel_set_key,
         }
         for item in result
     ]
@@ -393,9 +424,7 @@ def to_decimal(values: np.ndarray) -> list[Decimal]:
     return [Decimal(str(val)) for val in values]
 
 
-def spacecraft_items(
-    day: datetime, version: str, spice_kernels: list[str]
-) -> list[dict]:
+def spacecraft_items(day: datetime, version: str, kernel_set_key: str) -> list[dict]:
     """Calculate spacecraft position and velocity over the day.
 
     Parameters
@@ -404,8 +433,8 @@ def spacecraft_items(
         The day being processed.
     version : str
         The data version, e.g. "v001".
-    spice_kernels : list[str]
-        SPICE kernel filenames used, in priority order.
+    kernel_set_key : str
+        time_utc of the spice item used for processing.
 
     Returns
     -------
@@ -430,7 +459,7 @@ def spacecraft_items(
             "sc_velocity_GSM": to_decimal(gsm[3:]),
             "sc_position_GSE": to_decimal(gse[:3]),
             "sc_velocity_GSE": to_decimal(gse[3:]),
-            "spice_kernels": spice_kernels,
+            "kernel_set_key": kernel_set_key,
         }
         for time_str, et, gsm, gse in zip(
             time_strs, ets, gsm_state, gse_state, strict=True
@@ -438,7 +467,81 @@ def spacecraft_items(
     ]
 
 
-def process_day(instrument: str, day: datetime, version: str, url: str, table):
+def spice_item(
+    dependencies: ProcessingInputCollection,
+    version: str,
+    kernel_set_key: str,
+    kernel_set_key_ttj2000ns: int,
+) -> dict:
+    """Create the item for the SPICE kernels used.
+
+    Parameters
+    ----------
+    dependencies : ProcessingInputCollection
+        A collection containing a SPICEInput object with the kernels used.
+    version : str
+        The data version, e.g. "v001".
+    kernel_set_key : str
+        The kernel set identifier, used as time_utc.
+    kernel_set_key_ttj2000ns : int
+        The kernel set key in TTJ2000 ns.
+
+    Returns
+    -------
+    item : dict
+        The spice item, keyed by kernel type.
+    """
+    spice_input = dependencies.processing_input[0]
+    spice_kernels = dict(
+        zip(
+            [path.spice_metadata["type"] for path in spice_input.imap_file_paths],
+            spice_input.filename_list,
+            strict=True,
+        )
+    )
+    return {
+        "instrument_version": f"spice#{version}",
+        "time_utc": kernel_set_key,
+        "instrument": "spice",
+        "spice_kernels": spice_kernels,
+        "ttj2000ns": kernel_set_key_ttj2000ns,
+    }
+
+
+def ancillary_item(
+    ancillary_files: dict,
+    version: str,
+    kernel_set_key: str,
+    kernel_set_key_ttj2000ns: int,
+) -> dict:
+    """Create the item for the ancillary files used.
+
+    Parameters
+    ----------
+    ancillary_files : dict
+        Ancillary filenames used, keyed by instrument_descriptor.
+    version : str
+        The data version, e.g. "v001".
+    kernel_set_key : str
+        The kernel set identifier, used as time_utc.
+    kernel_set_key_ttj2000ns : int
+        The kernel set key in TTJ2000 ns.
+
+    Returns
+    -------
+    item : dict
+        The ancillary item.
+    """
+    return {
+        "instrument_version": f"ancillary#{version}",
+        "time_utc": kernel_set_key,
+        "instrument": "ancillary",
+        "ancillary_files": ancillary_files,
+        "ttj2000ns": kernel_set_key_ttj2000ns,
+    }
+
+
+def process_day(instrument: str, day: datetime, version: str, url: str, table):  # noqa: PLR0912
     """Process one day of I-ALiRT SSR data for one instrument.
 
     Parameters
@@ -460,7 +563,9 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table):
     DOWNLOAD_DIR.mkdir(parents=True)
 
     start = time.perf_counter()
-    spice_files = download_spice_files(get_latest_spice_kernels(url, day), DOWNLOAD_DIR)
+    kernel_types = KERNELS if instrument in GEOMETRY_INSTRUMENTS else TIME_KERNELS
+    dependencies = get_latest_spice_kernels(url, day, kernel_types)
+    spice_files = download_spice_files(dependencies, DOWNLOAD_DIR)
     size_mb = sum(path.stat().st_size for path in spice_files) / 1e6
     logger.info(
         "Downloaded %d SPICE files (%.1f MB) in %.1f s",
@@ -468,14 +573,19 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table):
         size_mb,
         time.perf_counter() - start,
     )
-    spice_kernels = [path.name for path in spice_files]
+
+    kernel_set_key = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     # Only these kernels are loaded inside the block. They are unloaded when
     # the block exits, even on an error, so none carry over to the next
     # invocation in a warm Lambda.
     with spiceypy.KernelPool([str(path) for path in spice_files]):
+        kernel_set_key_ttj2000ns = int(et_to_ttj2000ns(str_to_et(kernel_set_key)))
+        items = [
+            spice_item(dependencies, version, kernel_set_key, kernel_set_key_ttj2000ns)
+        ]
         if instrument == "spacecraft":
-            items = spacecraft_items(day, version, spice_kernels)
+            items += spacecraft_items(day, version, kernel_set_key)
         else:
             combined = parse_packets(query_filenames(day), DOWNLOAD_DIR)
             check_day_coverage(combined, day)
@@ -500,9 +610,19 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table):
                 raise ValueError(f"Unknown instrument: {instrument}")
             result = trim_to_day(result, day)
             logger.info("[%s] results populated for [%s]", len(result), instrument)
-            items = format_items(
-                result, instrument, version, spice_kernels, ancillary_files
-            )
+            items += format_items(result, instrument, version, kernel_set_key)
+            if instrument == "mag":
+                items += mag_hk_items(result, version, kernel_set_key)
+            # Only add an ancillary item if files were used.
+            if ancillary_files:
+                items.append(
+                    ancillary_item(
+                        ancillary_files,
+                        version,
+                        kernel_set_key,
+                        kernel_set_key_ttj2000ns,
+                    )
+                )
 
     with table.batch_writer(
         overwrite_by_pkeys=["instrument_version", "time_utc"]
