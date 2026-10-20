@@ -123,7 +123,9 @@ def parse_packets(
     return combined
 
 
-def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollection:
+def get_latest_spice_kernels(
+    url: str, day: datetime, kernel_types: set[str] = KERNELS
+) -> ProcessingInputCollection:
     """Query the SPICE metakernel API for the latest kernels for a day.
 
     The time range covers the day before, the day and the day after, to match
@@ -135,6 +137,8 @@ def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollecti
         The IMAP data access API URL.
     day : datetime
         The day to query.
+    kernel_types : set[str]
+        The kernel types to query. Defaults to all of KERNELS.
 
     Returns
     -------
@@ -149,7 +153,7 @@ def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollecti
         "start_time": (day - timedelta(days=1)).strftime("%Y%m%d"),
         "end_time": (day + timedelta(days=2)).strftime("%Y%m%d"),
         "list_files": "True",
-        "file_types": ",".join(KERNELS),
+        "file_types": ",".join(kernel_types),
     }
 
     logger.info(f"Sending request to {metakernel_url} with params: {params}")
