@@ -173,6 +173,7 @@ class IalirtSsrConstruct(Construct):
                 # ialirt-ingest and the SDC APIs. 8 x 20 = 160 reserved.
                 # Throttled async invocations are retried for up to 6 hours.
                 reserved_concurrent_executions=20,
+                retry_attempts=0,
             )
             ssr_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
             ssr_lambdas[instrument] = ssr_lambda
