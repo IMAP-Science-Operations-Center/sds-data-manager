@@ -224,12 +224,16 @@ seconds since J2000.
                 # Check if we've already added it. No need to add it again.
                 if file_to_check not in self.spice_files[spice_type]:
                     self.spice_files[spice_type].append(file_to_check)
-                # Add any of these "subgaps" to the new list of gaps, except those
-                # within the tolerance, such as the seam between two files.
+                # Add any of these "subgaps" to the new list of gaps, except seams
+                # between files that are within the tolerance. A gap at either end
+                # of the query window is never a seam, since no file is on the
+                # other side of it, so it is always kept.
                 new_gaps.extend(
                     subgap
                     for subgap in subgap_list
                     if subgap[1] - subgap[0] > gap_tolerance
+                    or subgap[0] == self.start_time_j2000
+                    or subgap[1] == self.end_time_j2000
                 )
 
         # Ensure no duplicated gaps exist by called "set".

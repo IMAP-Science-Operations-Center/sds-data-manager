@@ -50,7 +50,8 @@ Spin (`spin`) and small forces (`thruster`) files are indexed into `spice_files`
 their categories are **opt-in**: they're only included when named in `file_types`. A default metakernel never lists
 them. They also have a **seam tolerance**: each file is one piece of a continuous record, and adjacent files can overlap
 or gap by up to 20 ms. Gaps of up to `SEAM_GAP_TOLERANCE` (1 s) between files are ignored. A real spin gap is at least
-one spin, about 15 s.
+one spin, about 15 s. A gap at the start or end of the query window is never ignored, however short, since no file is
+on the other side of it.
 
 Since they aren't kernels, both can only be requested with `list_files=true`, and are never written into a metakernel.
 Dependency resolution always lists files, so a job that needs small forces files can still declare them like any other

@@ -945,6 +945,54 @@ def test_metakernel_spin_gap_tolerance_keeps_small_window(session):
     assert result["statusCode"] == 422
 
 
+# Two files of each list-only type with different names, the second ingested later
+EDGE_GAP_FILES = {
+    "spin": (
+        "imap_2026_267_2026_267_01.spin.csv",
+        "imap_2026_267_2026_268_01.spin.csv",
+    ),
+    "thruster": (
+        "imap_2026_273_2026_273_hist_01.sff",
+        "imap_2026_273_2026_274_hist_01.sff",
+    ),
+}
+
+
+@pytest.mark.parametrize("kernel_type", EDGE_GAP_FILES)
+@pytest.mark.parametrize(
+    ("intervals", "expected_gap"),
+    [
+        ([[0.5, 200]], [0, 0.5]),  # Data starts after the window does
+        ([[0, 199.5]], [199.5, 200]),  # Data ends before the window does
+    ],
+)
+def test_metakernel_short_gap_at_window_edge(
+    session, kernel_type, intervals, expected_gap
+):
+    """A gap at either end of the window is kept, however short.
+
+    The seam tolerance only applies between files. No file is on the other side
+    of a gap at the window's edge, so it is missing coverage.
+    """
+    _insert_test_file(session, EDGE_GAP_FILES[kernel_type][0], intervals)
+
+    result = _list_files(kernel_type, 0, 200, require_coverage=True)
+    assert result["statusCode"] == 422
+    assert json.loads(result["body"]) == {f"{kernel_type}_category": [expected_gap]}
+
+
+@pytest.mark.parametrize("kernel_type", EDGE_GAP_FILES)
+def test_metakernel_lower_priority_file_fills_short_edge_gap(session, kernel_type):
+    """A lower-priority file is used to fill a short gap at the window's edge."""
+    older, newer = EDGE_GAP_FILES[kernel_type]
+    _insert_test_file(session, older, [[0, 100]])
+    _insert_test_file(session, newer, [[0.5, 200]], upload_time=1)
+
+    result = _list_files(kernel_type, 0, 200, require_coverage=True)
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"]) == [older, newer]
+
+
 def test_metakernel_thruster_versions_and_seam(session):
     """The latest small forces file is used, and consecutive files tile cleanly.
 
