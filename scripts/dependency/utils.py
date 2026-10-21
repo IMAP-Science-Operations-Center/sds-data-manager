@@ -63,18 +63,24 @@ def get_updated_output_dependency_nodes(
                 if new_potential_job not in updated_nodes:
                     updated_nodes.append(new_potential_job)
                 continue
-            # Major version should never decrease. That is handled in the
-            # validation code.
+
             elif new_output.major_version > old_output.major_version:
                 logger.info(
                     f"Output product ({new_output.source},{new_output.data_type},"
-                    f"{new_output.descriptor}) was bumped from major_version="
-                    f"{old_output.major_version} to major_version="
+                    f"{new_output.descriptor}) was bumped from major version="
+                    f"{old_output.major_version} to major version="
                     f"{new_output.major_version}"
                 )
                 # major_version got bumped.
                 if new_potential_job not in updated_nodes:
                     updated_nodes.append(new_potential_job)
+            elif new_output.major_version < old_output.major_version:
+                raise ValueError(
+                    f"Output product ({new_output.source},{new_output.data_type},"
+                    f"{new_output.descriptor}) was decreased from major version="
+                    f"{old_output.major_version} to major version="
+                    f"{new_output.major_version}. Major versions should never decrease."
+                )
 
     return updated_nodes
 
