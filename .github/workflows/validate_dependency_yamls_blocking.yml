@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  run-script:
+  validate-dependency-yamls-blocking:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
