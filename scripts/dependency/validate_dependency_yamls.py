@@ -284,18 +284,18 @@ def main(argv: list[str] | None = None) -> None:
     # (in this case the current/new) dependency yamls
     reader = DependencyConfigReader()
 
+    # Only check the jobs that were updated in the code changes, plus the
+    # jobs directly downstream of them, since only those can have a new
+    # decrease.
+    nodes_to_check = None
+    if args.previous_yaml_path is not None:
+        old_reader = DependencyConfigReader(args.previous_yaml_path)
+        updated_nodes = get_updated_output_dependency_nodes(old_reader, reader)
+        nodes_to_check = get_nodes_to_check(updated_nodes, reader)
+
     checks = []
     for check_id in args.checks:
-        if (
-            check_id == MajorVersionIncrementCheck.check_id
-            and args.previous_yaml_path is not None
-        ):
-            # Only check the jobs that were updated in the code changes, plus the
-            # jobs directly downstream of them, since only those can have a new
-            # decrease.
-            old_reader = DependencyConfigReader(args.previous_yaml_path)
-            updated_nodes = get_updated_output_dependency_nodes(old_reader, reader)
-            nodes_to_check = get_nodes_to_check(updated_nodes, reader)
+        if check_id == MajorVersionIncrementCheck.check_id:
             checks.append(MajorVersionIncrementCheck(nodes_to_check=nodes_to_check))
         else:
             checks.append(CHECKS[check_id]())

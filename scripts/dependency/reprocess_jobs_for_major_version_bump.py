@@ -9,9 +9,6 @@ from scripts.dependency.utils import (
     get_updated_output_dependency_nodes,
     get_updated_root_node,
 )
-from scripts.dependency.validate_dependency_yamls import (
-    validate_dependency_yaml_versions,
-)
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
     get_kickoff_jobs,
@@ -80,11 +77,6 @@ if __name__ == "__main__":
     # Without specifying the yaml path, DependencyConfigReader will use the default
     # (in this case the current/new) dependency yamls
     new_reader = DependencyConfigReader()
-
-    # First validate new dependency yamls. They should already have been validated
-    # from the github action in the PR creation but just to be sure.
-    for job in get_kickoff_jobs():
-        validate_dependency_yaml_versions(new_reader, job)
 
     reprocess_jobs = reprocess_jobs_for_major_version_bump(old_reader, new_reader)
     logger.info(f"Found {len(reprocess_jobs)} jobs to reprocess: {reprocess_jobs}")
