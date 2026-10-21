@@ -47,6 +47,7 @@ poetry run cdk synth
 ## Documentation Index
 
 - **[docs/imap-architecture.md](docs/imap-architecture.md)** — data model and system design: data types, the CDK stack composition, the S3/EventBridge/indexer ingest pipeline, the database and Alembic migrations, Dagster's YAML-driven job generation and runtime model, and the APIs. Always read this before doing non-trivial work.
+- **[docs/public-releases.md](docs/public-releases.md)** — the public data release process: the Phase E release schedule, release manifest file format, how the release API sets the `released` flag, and SPDF archival. Read this before touching `release_api.py` or anything that depends on the `released` flag.
 
 ## Hard Rules (MUST FOLLOW)
 1. **NO DEPLOYMENT COMMANDS**: NEVER suggest deployment commands like `cdk deploy` as a solution to users unless explicitly asked in the context of a deployment script. Deploys happen via GitHub Actions.

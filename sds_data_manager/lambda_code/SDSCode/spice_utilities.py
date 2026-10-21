@@ -139,6 +139,17 @@ class PointingAttitudeKernels(Enum):
         return "pointing_attitude_category"
 
 
+class LoPivotAttitudeKernels(Enum):
+    """Container for Lo Pivot Attitude Kernel Types."""
+
+    LO_PIVOT_ATTITUDE = auto()
+
+    @staticmethod
+    def spice_category_name():
+        """Category of SPICE file."""
+        return "lo_pivot_attitude_category"
+
+
 @dataclass
 class KernelCollection:
     """Collection of SPICE kernel types for IMAP."""
@@ -155,6 +166,7 @@ class KernelCollection:
             SpacecraftEphemerisKernels,
             SpacecraftAttitudeKernels,
             PointingAttitudeKernels,
+            LoPivotAttitudeKernels,
         ]
     )
 

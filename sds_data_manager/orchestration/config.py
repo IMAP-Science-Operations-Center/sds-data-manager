@@ -3,12 +3,12 @@
 import datetime
 from enum import Enum
 
+from sds_data_manager.orchestration.maps_utils import FIRST_MAP_START_DATE
+
 MISSION_START_TIME = "2025-09-24T00:00:00"
 MISSION_END_TIME = "2045-09-24T00:00:00"
 
 VALID_CADENCE_STRS = ["3mo", "6mo", "1yr"]
-
-FIRST_MAP_START_DATE = datetime.datetime(2026, 1, 17, tzinfo=datetime.timezone.utc)
 
 # How long a processing job output must have been in the science files table before
 # the backup materialization sensor materializes it. This gives the job's own op
@@ -18,6 +18,13 @@ BACKUP_MATERIALIZATION_MIN_AGE = datetime.timedelta(hours=1)
 # a reset of the Dagster instance (or the sensor's cursor) does not trigger a mass
 # re-materialization of historical files.
 BACKUP_MATERIALIZATION_MAX_AGE = datetime.timedelta(hours=2)
+
+# The L0 data gap filler (data_gap_filler.py) re-checks a month of WebPODA
+# data by spacecraft time, ending DATA_GAP_FILLER_DELAY before each run, so
+# the packet downloader Lambda has already had its chance at that data. Its
+# sensor is evaluated at most once per DATA_GAP_FILLER_INTERVAL.
+DATA_GAP_FILLER_INTERVAL = datetime.timedelta(weeks=1)
+DATA_GAP_FILLER_DELAY = datetime.timedelta(weeks=1)
 
 sensor_schedules = {
     "l0": 300,

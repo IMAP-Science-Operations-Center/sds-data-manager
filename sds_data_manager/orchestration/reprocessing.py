@@ -76,8 +76,8 @@ def process_single_message(context: SensorEvaluationContext, message, sqs_queue_
     end_date = params.get("end_date")
 
     context.log.info(
-        f"Reprocessing event received: {instrument=}, "
-        f"{data_level=}, {descriptor=}, {start_date=}, {end_date=}"
+        f"Reprocessing event received: reprocess_id={message['MessageId']}, "
+        f"{instrument=}, {data_level=}, {descriptor=}, {start_date=}, {end_date=}"
     )
 
     # Check inputs. If they are not valid, log a warning and delete the message to
@@ -125,7 +125,11 @@ def process_single_message(context: SensorEvaluationContext, message, sqs_queue_
     message_id_hash = hashlib.sha256(message["MessageId"].encode("utf-8")).hexdigest()[
         :8
     ]
-    tags = {"dagster/priority": priority_levels.get(data_level, "0")}
+    tags = {
+        "dagster/priority": priority_levels.get(data_level, "0"),
+        # attach SQS message ID to track reprocssing in dagster
+        "imap/reprocess_id": message["MessageId"],
+    }
     for partition_key in partition_keys:
         yield RunRequest(
             run_key=f"reprocess-{instrument}-{message_id_hash}-{partition_key}",

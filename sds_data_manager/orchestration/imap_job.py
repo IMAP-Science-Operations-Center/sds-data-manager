@@ -96,6 +96,7 @@ priority_levels = {
 partition_map = {
     "daily": custom_partitions.daily_partitions,
     "repoint": custom_partitions.repoint_partitions,
+    "pointing_attitude": custom_partitions.pointing_attitude_partitions,
     "10d": custom_partitions.idex10_partitions,
 } | custom_partitions.CADENCE_PARTITION_DEFS
 
@@ -128,7 +129,7 @@ class IMAPJobHandler:
         job : ProcessingJobNode
             The job node to process.
         """
-        self.BATCH_JOB_TIMEOUT_SECONDS = 18000  # 5 hours
+        self.BATCH_JOB_TIMEOUT_SECONDS = 54000  # 15 hours
         self.WAIT_TIME_AFTER_BATCH_SECONDS = (
             60  # time to wait after a batch job completes to search for files.
         )
@@ -245,6 +246,7 @@ class IMAPJobHandler:
                 session=session,
                 start_date=target_start,
                 repointing=target_pointing_number,
+                dependency_inputs=dependency_inputs,
             )
             context.log.info(f"Job Versions to Use: {output_versions}")
 
@@ -363,6 +365,14 @@ class IMAPJobHandler:
             context.log.info(
                 "No logStreamName found. "
                 "The job may have failed before the container could start."
+            )
+
+        # If the job failed, log why so we don't have to go to the batch console.
+        if final_status == models.Status.FAILED:
+            context.log.info(
+                f"Batch job status reason: {job_info.get('statusReason')}, "
+                f"container exit code: {container_info.get('exitCode')}, "
+                f"container reason: {container_info.get('reason')}"
             )
 
         # Gather information about start/stop timing
@@ -700,43 +710,9 @@ class IMAPJobHandler:
                     )
                 # Now we loop through each partition that we received new data for, and
                 # determine if we need to start it again.
-                for target_partition in target_partitions:
-                    # Check if this partition has already been run successfully
-                    runs = context.instance.get_runs(
-                        filters=RunsFilter(
-                            job_name=self.dagster_job_name,
-                            statuses=[DagsterRunStatus.SUCCESS],
-                            tags={"dagster/partition": target_partition},
-                        ),
-                        limit=1,  # Limit to 1 since we only care about existence
-                    )
-
-                    # If this has never been run,
-                    # or we always trigger from this dependency
-                    if (dep_name in self.triggering_input_names) or not runs:
-                        run_key = "_".join(
-                            [
-                                self.job_config.to_dagster_name(),
-                                target_partition,
-                                job_suffix,
-                            ]
-                        )
-                        context.log.info(
-                            f"""Yielding a run request with ID:
-                               {run_key} on partition {target_partition}.
-                               """
-                        )
-
-                        # Go to _generic_batch_sumbitter
-                        yield RunRequest(
-                            partition_key=target_partition, run_key=run_key
-                        )
-
-                    elif runs and (dep_name not in self.triggering_input_names):
-                        context.log.info(
-                            """"We have already materialized something like this,
-                            and this dependency does not trigger new processing."""
-                        )
+                yield from self._yield_run_requests_for_partitions(
+                    context, target_partitions, dependency, job_suffix
+                )
 
                 if (time.time() - sensor_start_time) > 30:
                     context.log.info(
@@ -748,6 +724,63 @@ class IMAPJobHandler:
             context.update_cursor(json.dumps(new_cursors))
 
         return _sensor
+
+    def _yield_run_requests_for_partitions(
+        self,
+        context: SensorEvaluationContext,
+        target_partitions: list[str],
+        dependency: DependencyNode,
+        job_suffix: str,
+    ):
+        """Yield a RunRequest for each partition that should be (re)triggered.
+
+        A partition is triggered if either it has never had a successful run
+        of this job, or `dependency` is one of this job's
+        `triggering_input_names` (configured to always cause reprocessing
+        regardless of prior successful runs).
+
+        `job_suffix` should be computed once per sensor tick and reused
+        across every dependency/partition evaluated in that tick, so a
+        partition considered more than once in the same tick collapses to
+        the same `run_key` and Dagster's run-key idempotency check prevents
+        a double-fire.
+        """
+        dep_name = dependency.to_dagster_name()
+        for target_partition in target_partitions:
+            # Check if this partition has already been run successfully
+            runs = context.instance.get_runs(
+                filters=RunsFilter(
+                    job_name=self.dagster_job_name,
+                    statuses=[DagsterRunStatus.SUCCESS],
+                    tags={"dagster/partition": target_partition},
+                ),
+                limit=1,  # Limit to 1 since we only care about existence
+            )
+
+            # If this has never been run,
+            # or we always trigger from this dependency
+            if (dep_name in self.triggering_input_names) or not runs:
+                run_key = "_".join(
+                    [
+                        self.job_config.to_dagster_name(),
+                        target_partition,
+                        job_suffix,
+                    ]
+                )
+                context.log.info(
+                    f"""Yielding a run request with ID:
+                       {run_key} on partition {target_partition}.
+                       """
+                )
+
+                # Go to _generic_batch_sumbitter
+                yield RunRequest(partition_key=target_partition, run_key=run_key)
+
+            elif runs and (dep_name not in self.triggering_input_names):
+                context.log.info(
+                    """"We have already materialized something like this,
+                    and this dependency does not trigger new processing."""
+                )
 
     def trigger_from_new_non_science_inputs(
         self,
@@ -985,14 +1018,28 @@ class IMAPJobHandler:
 
     def get_spice_file_inputs(self, session, target_start, target_end):
         """Return the spice files needed to cover a time range."""
-        spice_files = spice.get_upstream_dependency_inputs_spice(
+        spice_files, missing_kernel_types = spice.get_upstream_dependency_inputs_spice(
             self.job_config.spice_types, target_start, target_end
         )
-        if not spice_files and self.job_config.spice_inputs:
-            # If no SPICE files are returned, but there are SPICE inputs, raise failure
+        if (
+            missing_kernel_types
+            and len(missing_kernel_types) > 0
+            and self.job_config.spice_inputs
+        ):
+            # If there are missing kernels, raise failure
             raise MissingDependenciesError(
-                f"Missing SPICE files ({', '.join(self.job_config.spice_types)}) "
+                f"Missing SPICE kernel types: {', '.join(missing_kernel_types)} "
+                f"Found the following files: {', '.join(spice_files)} "
                 f"between {target_start} and {target_end}"
+            )
+        # spice_files is only None when the metakernel API returned a non-200
+        # response.
+        if spice_files is None:
+            raise MissingDependenciesError(
+                f"The Metakernel API request failed when querying for kernel "
+                f"types: {', '.join(self.job_config.spice_types)} "
+                f"between {target_start} and {target_end}. "
+                f"Check the metakernel api logs."
             )
 
         return spice_files
@@ -1039,11 +1086,11 @@ class IMAPJobHandler:
                     processing_input.ScienceInput(*list(set(renamed_science_files)))
                 )
 
-        if not science_processing_inputs:
-            # Return right away if we have zero science files.
+        if not science_processing_inputs and self.job_config.science_inputs:
+            # Science inputs were configured but none were found.
             raise MissingDependenciesError(
                 f"No science files were discovered between {target_start} and "
-                f"{target_end}. All jobs require at least one science file."
+                f"{target_end}. This job require at least one science file."
             )
 
         return science_processing_inputs
@@ -1104,6 +1151,7 @@ class IMAPJobHandler:
         session: db.Session,
         start_date: datetime,
         repointing: int | None = None,
+        dependency_inputs: processing_input.ProcessingInputCollection | None = None,
     ) -> dict[str, dict[str, int]]:
         """Determine the major and minor version to use for each output product.
 
@@ -1111,8 +1159,8 @@ class IMAPJobHandler:
         config and is not bumped here. The minor version is shared across all
         outputs of a job: it is the maximum of (a) the minor version already
         seen in the processing jobs table for this job, and (b) the largest
-        minor version already seen in the science files table across all of
-        this job's outputs, increased by one.
+        minor version already seen in the science or ancillary files table
+        across all of this job's outputs, increased by one.
 
         Parameters
         ----------
@@ -1123,6 +1171,13 @@ class IMAPJobHandler:
         repointing : int, optional
             Repointing number. Versions are tracked independently per repointing so
             that multiple repoints on the same day each start at minor version 1.
+        dependency_inputs : ProcessingInputCollection, optional
+            This run's already-resolved dependencies, as computed by
+            get_dependencies(). Unused by the base implementation; available so
+            a subclass can version its output off the actual resolved
+            dependency files (e.g. a specific SPICE kernel) rather than a
+            separately-derived value that could disagree with what's really in
+            the dependency JSON.
 
         Returns
         -------
@@ -1135,11 +1190,13 @@ class IMAPJobHandler:
             # Filter conditions for the query
             conditions = [
                 table.instrument == node.source,
-                table.data_level == node.data_type,
                 table.descriptor == node.descriptor,
                 table.start_date == start_date.date(),
                 table.repointing == repointing,
             ]
+            # The ancillary files table has no data_level column
+            if table != models.AncillaryFiles:
+                conditions.append(table.data_level == node.data_type)
             if table == models.ProcessingJob:
                 conditions.append(
                     table.status.in_(
@@ -1183,16 +1240,28 @@ class IMAPJobHandler:
                 f"Bumping minor version number."
             )
 
-        # Step 3: Get the max minor version already seen in the science files
-        # table for each output, and keep the largest across all outputs of
-        # the job.
+        # Step 3: Get the max minor version already seen in the science or
+        # ancillary files table for each output, and keep the largest across
+        # all outputs of the job.
         max_minor_version_science_files = None
         for output in outputs:
-            current_minor_version = (
-                session.query(func.max(models.ScienceFiles.minor_version))
-                .filter(*filter_conditions(models.ScienceFiles, output))
-                .scalar()
-            )
+            if output.data_type == "ancillary":
+                # Ancillary files store the version as a "vXXX" string.
+                # A major version will be passed in anyway, but ignored.
+                max_version = (
+                    session.query(func.max(models.AncillaryFiles.version))
+                    .filter(*filter_conditions(models.AncillaryFiles, output))
+                    .scalar()
+                )
+                current_minor_version = (
+                    Version.from_version(max_version).minor if max_version else None
+                )
+            else:
+                current_minor_version = (
+                    session.query(func.max(models.ScienceFiles.minor_version))
+                    .filter(*filter_conditions(models.ScienceFiles, output))
+                    .scalar()
+                )
             if current_minor_version is not None and (
                 max_minor_version_science_files is None
                 or current_minor_version > max_minor_version_science_files

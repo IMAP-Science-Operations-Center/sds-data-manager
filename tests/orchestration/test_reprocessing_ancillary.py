@@ -1,8 +1,8 @@
-"""Tests for ``find_outputs()`` handling of ancillary outputs.
+"""Tests for ancillary output handling in ``IMAPJobHandler``.
 
-``IMAPJobHandler.find_outputs()`` must route ancillary outputs to the
-``ancillary_files`` table rather than ``science_files``: ``"ancillary"`` is not
-a member of the Postgres ``data_level`` enum, so querying
+``find_outputs()`` and ``_determine_output_versions()`` must route ancillary
+outputs to the ``ancillary_files`` table rather than ``science_files``:
+``"ancillary"`` is not a member of the Postgres ``data_level`` enum, so querying
 ``science_files.data_level == "ancillary"`` raises ``sqlalchemy.exc.DataError``.
 These tests validate that general behavior. A GLOWS job config is used as a
 convenient example of a job with an ancillary output. See issue #1655.
@@ -111,3 +111,21 @@ def test_find_outputs_ancillary_matches_produced_minor_version(mock_db_session):
     assert len(ancillary) == 1
     assert ancillary[0].metadata["file_names"][0] == ARCHIVE_FILE
     assert ancillary[0].metadata["minor_version"] == "2"
+
+
+def test_determine_output_versions_includes_ancillary_output(mock_db_session):
+    """_determine_output_versions() reads ancillary outputs from ancillary_files.
+
+    Querying ``science_files.data_level == "ancillary"`` raises ``DataError``
+    on the Postgres enum; the existing "v002" ancillary file must instead be
+    counted, so the next shared minor version is 3.
+    """
+    _insert_l3b_archive(mock_db_session, version="v002")
+
+    job_handler = IMAPJobHandler(dependency_config._config[JOB_KEY])
+
+    output_versions = job_handler._determine_output_versions(
+        mock_db_session, START_DATE
+    )
+
+    assert output_versions["l3b-archive"] == {"major_version": 2, "minor_version": 3}
