@@ -2,6 +2,9 @@ name: Validate Dependency YAMLs (NON-BLOCKING)
 
 on:
   pull_request:
+    # Only run when the dependency YAMLs change
+    paths:
+      - "sds_data_manager/orchestration/dependencies/**"
 
 jobs:
   run-script:
