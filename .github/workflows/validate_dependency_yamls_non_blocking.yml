@@ -7,7 +7,7 @@ on:
       - "sds_data_manager/orchestration/dependencies/**"
 
 jobs:
-  run-script:
+  validate-dependency-yamls-non-blocking:
     runs-on: ubuntu-latest
     steps:
       # Full history so the base revision is available to check out below
