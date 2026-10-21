@@ -188,7 +188,7 @@ class IMAPJobHandler:
 
         1) Get all dependencies from the dependency tree. If any are missing,
            report an AssetObservation for each output and exit.
-        2) Get the Job version
+        2) Determine major and minor versions of all job outputs.
         3) Try to submit the job. If a job with the same dependencies was
            submitted before, the submission is skipped: report an
            AssetObservation for each output and exit without materializing
