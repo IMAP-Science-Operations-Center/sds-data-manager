@@ -188,11 +188,12 @@ class IMAPJobHandler:
 
         1) Get all dependencies from the dependency tree. If any are missing,
            report an AssetObservation for each output and exit.
-        2) Try to submit the job. If a job with the same dependencies was
+        2) Get the Job version
+        3) Try to submit the job. If a job with the same dependencies was
            submitted before, the submission is skipped: report an
            AssetObservation for each output and exit without materializing
            anything. The run that did the processing owns the materialization.
-        3) Wait for the output files,
+        4) Wait for the output files,
            and materialize them as we see them in the database.
 
         If this run is interrupted before step 4, or the indexer is slow to record
