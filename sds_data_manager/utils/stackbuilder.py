@@ -26,6 +26,7 @@ from sds_data_manager.constructs import (
     ialirt_processing_construct,
     ialirt_realtime_construct,
     ialirt_schedule_fetch_construct,
+    ialirt_ssr_construct,
     indexer_lambda_construct,
     instrument_lambdas,
     lambda_layer_construct,
@@ -334,7 +335,10 @@ def build_sds(
 
     # create EFS
     ialirt_efs_instance = ialirt_efs_construct.IAlirtEFSConstruct(
-        scope=ialirt_stack, construct_id="IAlirtEFSConstruct", vpc=networking.vpc
+        scope=ialirt_stack,
+        construct_id="IAlirtEFSConstruct",
+        vpc=networking.vpc,
+        account_name=account_name,
     )
 
     # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
@@ -436,6 +440,27 @@ def build_sds(
     )
 
     ialirt_noaa_vpn.build_noaa_vpn_tgw(ialirt_stack, networking)
+
+    # I-ALiRT SSR Stack
+    ialirt_ssr_stack = Stack(
+        scope, "IalirtSsrStack", cross_region_references=True, env=env
+    )
+
+    # EFS for the SPICE kernels used by SSR processing
+    ialirt_efs_construct.IAlirtEFSConstruct(
+        scope=ialirt_ssr_stack,
+        construct_id="IAlirtSsrEFSConstruct",
+        vpc=networking.vpc,
+        account_name=account_name,
+        volume_name="IALIRT-SSR-SPICE-EFS",
+        security_group_name="IAlirtSsrEFSSecurityGroup",
+    )
+
+    ialirt_ssr_construct.IalirtSsrConstruct(
+        scope=ialirt_ssr_stack,
+        construct_id="IalirtSsrConstruct",
+        account_name=account_name,
+    )
 
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(
         scope=sdc_stack,

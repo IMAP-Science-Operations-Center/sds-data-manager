@@ -129,7 +129,7 @@ class IMAPJobHandler:
         job : ProcessingJobNode
             The job node to process.
         """
-        self.BATCH_JOB_TIMEOUT_SECONDS = 18000  # 5 hours
+        self.BATCH_JOB_TIMEOUT_SECONDS = 54000  # 15 hours
         self.WAIT_TIME_AFTER_BATCH_SECONDS = (
             60  # time to wait after a batch job completes to search for files.
         )
@@ -361,6 +361,14 @@ class IMAPJobHandler:
             context.log.info(
                 "No logStreamName found. "
                 "The job may have failed before the container could start."
+            )
+
+        # If the job failed, log why so we don't have to go to the batch console.
+        if final_status == models.Status.FAILED:
+            context.log.info(
+                f"Batch job status reason: {job_info.get('statusReason')}, "
+                f"container exit code: {container_info.get('exitCode')}, "
+                f"container reason: {container_info.get('reason')}"
             )
 
         # Gather information about start/stop timing

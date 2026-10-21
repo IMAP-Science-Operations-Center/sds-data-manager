@@ -120,10 +120,37 @@ lo_l2_map_inputs: &lo_l2_map_inputs
 
 # ======== Level L1B ========
 
+(l1b, pivot-ckernel):
+  partition: repoint
+  inputs:
+    - *spice_basic
+    - source: imap_frames
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: repoint
+      data_type: repoint
+      descriptor: historical
+    - source: lo
+      data_type: l1b
+      descriptor: nhk
+  outputs:
+    - source: lo
+      data_type: l1b
+      descriptor: pivot-ckernel
+      major_version: 1
+
 (l1b, all-rates):
   partition: repoint
   inputs:
     - *spice_basic
+    - source: imap_frames
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: lo_pivot_attitude
+      data_type: spice
+      descriptor: historical
     - source: spin
       data_type: spin
       descriptor: historical
@@ -175,6 +202,9 @@ lo_l2_map_inputs: &lo_l2_map_inputs
   partition: repoint
   inputs:
     - *spice_common
+    - source: lo_pivot_attitude
+      data_type: spice
+      descriptor: historical
     - source: spin
       data_type: spin
       descriptor: historical
@@ -234,6 +264,16 @@ lo_l2_map_inputs: &lo_l2_map_inputs
   partition: repoint
   inputs:
     - *spice_basic
+    - source: imap_frames
+      data_type: spice
+      descriptor: historical
+      trigger_job: false
+    - source: spin
+      data_type: spin
+      descriptor: historical
+    - source: lo_pivot_attitude
+      data_type: spice
+      descriptor: historical
     - source: repoint
       data_type: repoint
       descriptor: historical

@@ -64,13 +64,30 @@ def test_add_cadence_map_partitions_open_window():
     )
 
     assert partition_names == [
-        "cadence-3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00",
-        "cadence-3mo_2026-04-18T00:00:00_to_2026-07-18T00:00:00",
-        "cadence-3mo_2026-07-18T00:00:00_to_2026-10-17T00:00:00",
+        "cadence-3mo_2024-12-25T00:00:00_to_2025-03-25T00:00:00",
+        "cadence-3mo_2025-03-25T00:00:00_to_2025-06-25T00:00:00",
+        "cadence-3mo_2025-06-25T00:00:00_to_2025-09-25T00:00:00",
+        "cadence-3mo_2025-09-25T00:00:00_to_2025-12-25T00:00:00",
+        "cadence-3mo_2025-12-25T00:00:00_to_2026-03-25T00:00:00",
+        "cadence-3mo_2026-03-25T00:00:00_to_2026-06-25T00:00:00",
+        "cadence-3mo_2026-06-25T00:00:00_to_2026-09-25T00:00:00",
     ]
 
 
-# ---------------------------------------------------------------------------
+def test_map_partitions_open_window_different_start():
+    start = datetime.datetime(2025, 3, 25, tzinfo=datetime.timezone.utc)
+    current = datetime.datetime(2025, 8, 6, tzinfo=datetime.timezone.utc)
+    partition_names = get_map_partition_names(
+        "3mo", start_time=start, current_time=current, include_open=True
+    )
+    assert partition_names == [
+        "cadence-3mo_2025-03-25T00:00:00_to_2025-06-25T00:00:00",
+        "cadence-3mo_2025-06-25T00:00:00_to_2025-09-25T00:00:00",
+    ]
+
+    # ---------------------------------------------------------------------------
+
+
 # add_pointing_attitude_partitions - helpers
 # ---------------------------------------------------------------------------
 
