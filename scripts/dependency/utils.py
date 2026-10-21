@@ -112,7 +112,7 @@ def get_nodes_to_check(
         nodes_to_check.add((node.source, node.data_type, node.descriptor))
         for output in node.outputs:
             for downstream_node in reader.get_nodes_for_input(output):
-                # Major versions only need to increase within the same source.
+                # Major versions only should increase within the same source.
                 if downstream_node.source != node.source:
                     continue
                 nodes_to_check.add(
