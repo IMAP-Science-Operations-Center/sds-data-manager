@@ -38,7 +38,7 @@ checks = [check() for check in CHECKS.values()]
         (
             checks[1:],
             nullcontext(),
-        ),  # If the check #1 is not "on" it should pass
+        ),  # If check 0 (MajorVersionIncrementCheck) is not "on" it should pass
     ],
 )
 def test_validate_dependency_yaml_versions_invalid(check_objs, expectation):
@@ -115,7 +115,7 @@ def test_validate_dependency_yaml_versions_swe():
         (
             [checks[0], checks[2]],
             nullcontext(),
-        ),  # If the check #2 is not "on" it should pass
+        ),  # If check 1 (IdenticalDescriptorCheck) is not "on" it should pass
     ],
 )
 def test_validate_dependency_yaml_invalid_idex_catlst_products(check_objs, expectation):
@@ -147,7 +147,7 @@ def test_validate_dependency_yaml_invalid_idex_catlst_products(check_objs, expec
         (
             checks[:-1],
             nullcontext(),
-        ),  # If the check #3 is not "on" it should pass
+        ),  # If check 2 (MatchingOutputNodeCheck) is not "on" it should pass
     ],
 )
 def test_validate_dependency_yaml_invalid_data_levels(check_objs, expectation):
