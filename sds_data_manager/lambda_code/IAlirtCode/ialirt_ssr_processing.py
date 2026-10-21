@@ -11,6 +11,7 @@ import shutil
 import time
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from importlib.metadata import version as package_version
 from pathlib import Path
 
 import boto3
@@ -64,6 +65,10 @@ BOUNDARY_BUFFER = timedelta(minutes=10)
 SEQ_CTR_MODULO = 16384
 # How often to store spacecraft status. Matches ialirt-ingest's ~1 per minute.
 STATUS_CADENCE_NS = 60 * 10**9
+SOFTWARE_VERSIONS = {
+    "imap_processing": package_version("imap-processing"),
+    "imap_data_access": package_version("imap-data-access"),
+}
 
 
 class IalirtDataGapError(Exception):
@@ -536,6 +541,7 @@ def ancillary_item(
         "time_utc": kernel_set_key,
         "instrument": "ancillary",
         "ancillary_files": ancillary_files,
+        "software_versions": SOFTWARE_VERSIONS,
         "ttj2000ns": kernel_set_key_ttj2000ns,
     }
 
@@ -584,6 +590,8 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table): 
             spice_item(dependencies, version, kernel_set_key, kernel_set_key_ttj2000ns)
         ]
         if instrument == "spacecraft":
+            # The spacecraft has no ancillary files.
+            ancillary_files = {}
             items += spacecraft_items(day, version, kernel_set_key)
         else:
             combined = parse_packets(query_filenames(day), DOWNLOAD_DIR)
@@ -615,16 +623,15 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table): 
             items += format_items(result, instrument, version, kernel_set_key)
             if instrument == "mag":
                 items += mag_hk_items(result, version, kernel_set_key)
-            # Only add an ancillary item if files were used.
-            if ancillary_files:
-                items.append(
-                    ancillary_item(
-                        ancillary_files,
-                        version,
-                        kernel_set_key,
-                        kernel_set_key_ttj2000ns,
-                    )
-                )
+        # Always add the ancillary item so every run records its software versions.
+        items.append(
+            ancillary_item(
+                ancillary_files,
+                version,
+                kernel_set_key,
+                kernel_set_key_ttj2000ns,
+            )
+        )
 
     with table.batch_writer(
         overwrite_by_pkeys=["instrument_version", "time_utc"]

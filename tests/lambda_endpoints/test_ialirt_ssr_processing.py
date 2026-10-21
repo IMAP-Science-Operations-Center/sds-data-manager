@@ -18,6 +18,7 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils import KERNELS
 sys.modules["ialirt_ssr_utils"] = ialirt_ssr_utils
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing import (
+    SOFTWARE_VERSIONS,
     IalirtDataGapError,
     ancillary_item,
     check_day_coverage,
@@ -150,6 +151,7 @@ def test_ancillary_item():
         "time_utc": "2026-10-19T12:00:00.000001",
         "instrument": "ancillary",
         "ancillary_files": ancillary_files,
+        "software_versions": SOFTWARE_VERSIONS,
         "ttj2000ns": 5,
     }
 
