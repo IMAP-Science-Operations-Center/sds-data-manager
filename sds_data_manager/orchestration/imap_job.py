@@ -746,8 +746,8 @@ class IMAPJobHandler:
     ):
         """Yield a RunRequest for each partition that should be (re)triggered.
 
-        A partition is triggered if either it has never had a successful run
-        of this job, or `dependency` is one of this job's
+        A partition is triggered if either it isn't done yet (see
+        `_partition_done`), or `dependency` is one of this job's
         `triggering_input_names` (configured to always cause reprocessing
         regardless of prior successful runs).
 
@@ -758,41 +758,50 @@ class IMAPJobHandler:
         a double-fire.
         """
         dep_name = dependency.to_dagster_name()
+        always_triggers = dep_name in self.triggering_input_names
         for target_partition in target_partitions:
-            # Check if this partition has already been run successfully
-            runs = context.instance.get_runs(
-                filters=RunsFilter(
-                    job_name=self.dagster_job_name,
-                    statuses=[DagsterRunStatus.SUCCESS],
-                    tags={"dagster/partition": target_partition},
-                ),
-                limit=1,  # Limit to 1 since we only care about existence
-            )
-
-            # If this has never been run,
-            # or we always trigger from this dependency
-            if (dep_name in self.triggering_input_names) or not runs:
-                run_key = "_".join(
-                    [
-                        self.job_config.to_dagster_name(),
-                        target_partition,
-                        job_suffix,
-                    ]
-                )
-                context.log.info(
-                    f"""Yielding a run request with ID:
-                       {run_key} on partition {target_partition}.
-                       """
-                )
-
-                # Go to _generic_batch_sumbitter
-                yield RunRequest(partition_key=target_partition, run_key=run_key)
-
-            elif runs and (dep_name not in self.triggering_input_names):
+            if not always_triggers and self._partition_done(context, target_partition):
                 context.log.info(
                     """"We have already materialized something like this,
                     and this dependency does not trigger new processing."""
                 )
+                continue
+
+            run_key = "_".join(
+                [
+                    self.job_config.to_dagster_name(),
+                    target_partition,
+                    job_suffix,
+                ]
+            )
+            context.log.info(
+                f"""Yielding a run request with ID:
+                   {run_key} on partition {target_partition}.
+                   """
+            )
+
+            # Go to _generic_batch_sumbitter
+            yield RunRequest(partition_key=target_partition, run_key=run_key)
+
+    def _partition_done(self, context: SensorEvaluationContext, partition: str):
+        """Return True if this job has already produced output for a partition.
+
+        Done means a successful run of this job exists for the partition and
+        at least one of its outputs was materialized there. A run that skipped
+        for missing dependencies also ends in SUCCESS but materializes nothing,
+        so it doesn't count, and a non-triggering input can still rerun it.
+        """
+        runs = context.instance.get_runs(
+            filters=RunsFilter(
+                job_name=self.dagster_job_name,
+                statuses=[DagsterRunStatus.SUCCESS],
+                tags={"dagster/partition": partition},
+            ),
+            limit=1,  # Limit to 1 since we only care about existence
+        )
+        return bool(runs) and dagster_utilities.partition_materialized(
+            context.instance, self.job_config.outputs, partition
+        )
 
     def trigger_from_new_non_science_inputs(
         self,
