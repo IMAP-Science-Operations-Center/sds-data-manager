@@ -297,6 +297,7 @@ def _upsert_into_spice_table(
     file_coverage_sclk: list[list[str]],
     latest_sclk: Path,
     latest_lsk: Path,
+    ingestion_date: datetime | None = None,
 ):
     """Insert/Update the spice metadata table with collected data.
 
@@ -316,6 +317,9 @@ def _upsert_into_spice_table(
         The latest clock kernel used for the above calculations
     latest_lsk: Path
         The latest leapsecond kernel used for the above calculations
+    ingestion_date: datetime, optional
+        The ingestion date to record. Defaults to the S3 object's last
+        modified time.
     """
     # Format the data to insert
     filename = str(spice_object.filename.name)
@@ -327,7 +331,7 @@ def _upsert_into_spice_table(
     spice_params = {
         "file_path": s3_key,
         "file_name": filename,
-        "ingestion_date": get_file_ingestion_date(s3_key),
+        "ingestion_date": ingestion_date or get_file_ingestion_date(s3_key),
         "file_root": "".join(filename.rsplit(version, 1)),
         "kernel_type": spice_object.spice_metadata["type"],
         "min_date_j2000": file_coverage_j2000[0][0],
@@ -365,13 +369,16 @@ def _upsert_into_spice_table(
     logger.info(f"Wrote {spice_params} to the SPICEFiles table")
 
 
-def index_spice_file(s3_key: str):
+def index_spice_file(s3_key: str, ingestion_date: datetime | None = None):
     """Insert SPICE file metadata into SPICE database table.
 
     Parameters
     ----------
     s3_key: str
         Path of kernel file in S3 bucket.
+    ingestion_date: datetime, optional
+        The ingestion date to record. Defaults to the S3 object's last
+        modified time.
     """
     latest_lsk = None
     latest_sclk = None
@@ -434,6 +441,7 @@ def index_spice_file(s3_key: str):
         file_coverage_sclk,
         latest_sclk=latest_sclk,
         latest_lsk=latest_lsk,
+        ingestion_date=ingestion_date,
     )
     # NOTE: Only clear the current SPICE file from ephemeral storage.
     # Time kernels (leapseconds and spacecraft clock) are kept in ephemeral

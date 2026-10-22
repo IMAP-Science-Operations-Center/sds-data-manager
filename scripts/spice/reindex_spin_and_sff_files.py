@@ -4,11 +4,12 @@ Spin and small forces (SFF) files used to be indexed only into their own tables
 (spin_files and small_forces_files), with dates taken from their filenames. This
 backfills spice_files with each file's real coverage, read from its contents.
 
-Each row's ingestion_date is the S3 object's last modified time, as it was for the
-file's spin_files / small_forces_files row. Files can't be re-uploaded, so the two
-match, and sensors that track ingestion dates don't see the backfilled rows as new
-files. The script reports any row whose dates don't match. Rows are upserted on
-file name, so the script is safe to re-run.
+Each row keeps the ingestion_date of its spin_files / small_forces_files row, so
+sensors that track ingestion dates don't see the backfilled rows as new files. The
+date is copied rather than read from the S3 object's last modified time, which
+changes if the object is ever rewritten (e.g. copied or restored). Afterwards the
+script reports any row whose dates still don't match. Rows are upserted on file
+name, so the script is safe to re-run, and a re-run repairs any wrong dates.
 
 Run it from a machine that can reach the environment's database, with AWS
 credentials for that environment's account::
@@ -128,18 +129,22 @@ def reindex_files(kernel_type: str, dry_run: bool = False) -> ReindexSummary:
     """
     legacy = LEGACY_TABLES[kernel_type]
     with db.Session() as session:
-        file_paths = session.scalars(
-            select(legacy.file_path).order_by(legacy.file_path)
+        rows = session.execute(
+            select(legacy.file_path, legacy.ingestion_date).order_by(legacy.file_path)
         ).all()
 
-    summary = ReindexSummary(kernel_type, total=len(file_paths))
-    for file_path in file_paths:
+    summary = ReindexSummary(kernel_type, total=len(rows))
+    for file_path, ingestion_date in rows:
         try:
             if dry_run:
                 start, end = _read_coverage(file_path, kernel_type)
                 logger.info(f"Would index {file_path}: {start} to {end}")
             else:
-                spice_indexer.index_spice_file(file_path)
+                # Keep the legacy row's ingestion date rather than reading the
+                # S3 object's last modified time, which changes if the object is
+                # ever rewritten. If the legacy row has none, the indexer falls
+                # back to the S3 time, which is what the legacy indexer recorded.
+                spice_indexer.index_spice_file(file_path, ingestion_date=ingestion_date)
             summary.processed += 1
         except Exception as e:
             logger.exception(f"Failed to re-index {file_path}")

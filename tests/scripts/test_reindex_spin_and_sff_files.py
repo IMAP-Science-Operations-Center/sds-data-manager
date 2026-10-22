@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import boto3
 import pytest
@@ -129,9 +130,16 @@ def _spice_rows(session):
     return session.execute(query).all()
 
 
-def test_reindex_files(session, time_kernels, legacy_rows, capsys):
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.get_file_ingestion_date"
+)
+def test_reindex_files(
+    mock_get_ingestion_date, session, time_kernels, legacy_rows, capsys
+):
     """Files are indexed with their legacy row's ingestion date and real coverage."""
     assert reindex_spin_and_sff_files.main([]) == 0
+    # The S3 last modified time is never read
+    mock_get_ingestion_date.assert_not_called()
 
     rows = _spice_rows(session)
     assert [(row.file_path, row.kernel_type) for row in rows] == [
@@ -188,17 +196,64 @@ def test_reindex_reports_failures(
     assert "thruster: re-indexed 1 of 1 files, 0 failed" in output
 
 
-def test_reindex_reports_date_mismatch(session, time_kernels, legacy_rows, capsys):
-    """A file whose S3 last modified time changed is reported as a mismatch."""
+def _spice_ingestion_date(session, file_path):
+    """Return a file's ingestion date in the SPICE table."""
+    session.expire_all()
+    return session.execute(
+        select(models.SPICEFiles.ingestion_date).where(
+            models.SPICEFiles.file_path == file_path
+        )
+    ).scalar_one()
+
+
+def test_reindex_keeps_date_when_s3_differs(session, time_kernels, legacy_rows):
+    """The legacy row's date is kept when the S3 object's time has changed.
+
+    That happens if the object was rewritten after it was first indexed, e.g.
+    copied or restored.
+    """
     session.get(models.SpinFiles, SPIN_PATH).ingestion_date = INGESTION_DATE
     session.commit()
 
-    assert reindex_spin_and_sff_files.main([]) == 1
+    for _ in range(2):  # a second run keeps it too
+        assert reindex_spin_and_sff_files.main([]) == 0
+        assert _spice_ingestion_date(session, SPIN_PATH) == INGESTION_DATE
 
-    output = capsys.readouterr().out
-    assert "spin: 1 files have a different ingestion_date" in output
-    assert f"DATE MISMATCH {SPIN_PATH}" in output
-    assert "thruster: 0 files have a different ingestion_date" in output
+
+def test_reindex_repairs_wrong_date(session, time_kernels, legacy_rows):
+    """Re-running fixes a SPICE table row written with the wrong date.
+
+    The legacy row's date differs from the S3 object's time, so only copying
+    the legacy date repairs the row.
+    """
+    session.get(models.SpinFiles, SPIN_PATH).ingestion_date = INGESTION_DATE
+    session.commit()
+    assert reindex_spin_and_sff_files.main([]) == 0
+    session.execute(
+        models.SPICEFiles.__table__.update()
+        .where(models.SPICEFiles.file_path == SPIN_PATH)
+        .values(ingestion_date=datetime(2030, 1, 1))
+    )
+    session.commit()
+
+    assert reindex_spin_and_sff_files.main([]) == 0
+    assert _spice_ingestion_date(session, SPIN_PATH) == INGESTION_DATE
+
+
+def test_compare_with_legacy_table(session, time_kernels, legacy_rows):
+    """Missing rows and rows with a different ingestion date are both found."""
+    assert reindex_spin_and_sff_files.main(["--type", "thruster"]) == 0
+    session.get(models.SmallForcesFile, SFF_PATH).ingestion_date = INGESTION_DATE
+    session.commit()
+
+    assert reindex_spin_and_sff_files.compare_with_legacy_table("spin") == (
+        [SPIN_PATH],
+        [],
+    )
+    assert reindex_spin_and_sff_files.compare_with_legacy_table("thruster") == (
+        [],
+        [SFF_PATH],
+    )
 
 
 def test_reindex_requires_environment(monkeypatch):
