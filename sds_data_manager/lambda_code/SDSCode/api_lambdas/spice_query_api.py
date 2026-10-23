@@ -9,10 +9,19 @@ from sqlalchemy import func, select
 
 from ..database import database as db
 from ..database import models
+from . import non_spice_table_api
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+# Map the 'type' param in this API to the rawPath that `non_spice_table_api` expects.
+_NON_SPICE_RAW_PATHS = {
+    "spin": "/spin-table",
+    "repoint": "/repoint-table",
+    "thruster": "/small-forces-table",
+}
 
 
 def lambda_handler(event, context):
@@ -28,8 +37,32 @@ def lambda_handler(event, context):
         information about the invocation, function,
         and runtime environment.
 
+    Notes
+    -----
+    The optional ``type`` query parameter controls which table is queried:
+
+    * ``spin`` - spin files table
+    * ``repoint`` - repoint files table
+    * ``thruster`` - small-forces (thruster) files table
+    * ``kernels`` - All supported SPICE kernels types
+    * ``<other kernel type>`` - Use metakernel API to query requested kernels
     """
     logger.debug("SPICE Query Event: " + json.dumps(event, indent=2))
+
+    # Initialize status_code to 400
+    status_code = 400
+
+    query_params = event.get("queryStringParameters", {})
+    table_type = query_params.get("type", "kernels")
+
+    if table_type in _NON_SPICE_RAW_PATHS:
+        return non_spice_table_api.lambda_handler(
+            {
+                "rawPath": _NON_SPICE_RAW_PATHS[table_type],
+                "queryStringParameters": _remap_to_non_spice_params(query_params),
+            },
+            context,
+        )
 
     # add session, pick model like in indexer and add query to filter_as
     query_params = event["queryStringParameters"]
@@ -52,17 +85,12 @@ def lambda_handler(event, context):
         for param, value in query_params.items():
             # confirm that the query parameter is valid
             if param not in valid_parameters:
-                response = {
-                    "statusCode": 400,
-                    "body": json.dumps(
-                        f"{param} is not a valid query parameter. "
-                        + f"Valid query parameters are: {valid_parameters}"
-                    ),
-                }
-                logger.debug(
-                    f"Received an invalid query parameter [{param}],"
-                    " valid options are: {valid_parameters}"
+                err_msg = (
+                    f"{param} is not a valid query parameter. "
+                    f"Valid query parameters are: {valid_parameters}"
                 )
+                response = non_spice_table_api.get_json_response(status_code, err_msg)
+                logger.debug(err_msg)
                 return response
             try:
                 if param == "start_time":
@@ -73,7 +101,7 @@ def lambda_handler(event, context):
                     query = query.where(
                         models.SPICEFiles.min_date_j2000 <= float(value)
                     )
-                elif param == "type":
+                elif param == "type" and value != "kernels":
                     query = query.where(models.SPICEFiles.kernel_type == value)
                 elif param == "file_name":
                     query = query.where(models.SPICEFiles.file_name == value)
@@ -108,12 +136,13 @@ def lambda_handler(event, context):
                     parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
                     query = query.where(models.SPICEFiles.ingestion_date <= parsed_date)
             except ValueError:
-                response = {
-                    "statusCode": 400,
-                    "body": json.dumps(f"Invalid value for {param}: {value}"),
-                }
-                logger.debug(f"Invalid value for {param}: {value}")
+                err_msg = f"Invalid value for {param}: {value}"
+                response = non_spice_table_api.get_json_response(status_code, err_msg)
+                logger.debug(err_msg)
                 return response
+
+        # If we got this far, reset status_code to 200
+        status_code = 200
 
         search_results = session.execute(query).scalars().all()
 
@@ -126,14 +155,26 @@ def lambda_handler(event, context):
             str(search_results),
         )
 
-        # Format the response
-        response = {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(search_results),  # returns a list of tuples
-        }
+        return non_spice_table_api.get_json_response(status_code, search_results)
 
-        return response
+
+def _remap_to_non_spice_params(query_params: dict) -> dict:
+    """Remap SPICE query parameters to those supported by the non-SPICE tables API.
+
+    The non-SPICE tables API expects human-readable ``yyyymmdd`` dates, so date
+    values are passed through unchanged; only the parameter names are translated.
+    """
+    # `type` is consumed by this API and is not a valid non-SPICE query parameter.
+    query_params.pop("type", None)
+
+    if "file_name" in query_params:
+        query_params["file_path"] = query_params.pop("file_name")
+    if "start_time" in query_params:
+        query_params["start_date"] = query_params.pop("start_time")
+    if "end_time" in query_params:
+        query_params["end_date"] = query_params.pop("end_time")
+
+    return query_params
 
 
 def _convert_spice_metadata_model_to_dict(file: models.SPICEFiles) -> dict:
