@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -24,10 +24,37 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer import 
     MAXIMUM_SCLK_INTERVAL,
     clear_ephemeral_storage,
     get_coverage_dictionary,
+    get_small_forces_file_coverage,
+    get_spin_file_coverage,
     index_pointing_data,
     index_small_forces_file,
+    index_spice_file,
     parse_datetime,
 )
+
+TEST_SPICE_DATA_DIR = Path(__file__).parent.parent / "test-data" / "test_spice_files"
+
+# Real coverage of the spin and small forces test files, from their rows
+SPIN_COVERAGE = {
+    "imap_2026_267_2026_267_01.spin.csv": (
+        datetime(2026, 9, 24, 14, 1, 41),
+        datetime(2026, 9, 24, 16, 41, 2),
+    ),
+}
+SFF_COVERAGE = {
+    "imap_2026_273_2026_273_hist_01.sff": (
+        datetime(2026, 9, 30, 13, 2, 6, 662376),
+        datetime(2026, 9, 30, 19, 11, 25, 643765),
+    ),
+    "imap_2026_273_2026_273_hist_02.sff": (
+        datetime(2026, 9, 30, 13, 2, 7, 662385),
+        datetime(2026, 9, 30, 19, 11, 25, 643780),
+    ),
+    "imap_2026_273_2026_274_hist_01.sff": (
+        datetime(2026, 9, 30, 19, 11, 25, 643780),
+        datetime(2026, 10, 1, 19, 11, 24, 571223),
+    ),
+}
 
 
 def put_local_file_in_bucket(s3_client, path_in_s3, path_local):
@@ -87,6 +114,40 @@ def _insert_test_file(session, filename, s3_path, intervals, upload_time=0):
     } | _irrelevant_data()
     session.add(models.SPICEFiles(**metadata_params))
     session.commit()
+
+
+@pytest.fixture
+def time_kernels(session, s3_client):
+    """Make the leapseconds and spacecraft clock kernels available to furnish."""
+    for filename, s3_path in [
+        ("naif0012.tls", "imap/spice/lsk/naif0012.tls"),
+        ("imap_sclk_0012.tsc", "imap/spice/sclk/imap_sclk_0012.tsc"),
+    ]:
+        put_local_file_in_bucket(s3_client, s3_path, TEST_SPICE_DATA_DIR / filename)
+        _insert_test_file(session, filename, s3_path, [[0, 1000000000]])
+
+
+def _spice_table_rows(session, kernel_type):
+    """Return the SPICE table rows of one kernel type, ordered by file name."""
+    query = (
+        select(models.SPICEFiles)
+        .where(models.SPICEFiles.kernel_type == kernel_type)
+        .order_by(models.SPICEFiles.file_name)
+    )
+    return session.execute(query).scalars().all()
+
+
+def _assert_coverage(row, expected_start, expected_end):
+    """Check a SPICE table row's coverage in datetime and J2000 time."""
+    # SQLite drops the timezone, so compare as naive UTC datetimes
+    assert row.min_date_datetime.replace(tzinfo=None) == expected_start
+    assert row.max_date_datetime.replace(tzinfo=None) == expected_end
+    assert row.min_date_j2000 == pytest.approx(spiceypy.datetime2et(expected_start))
+    assert row.max_date_j2000 == pytest.approx(spiceypy.datetime2et(expected_end))
+    assert row.file_intervals_j2000 == [[row.min_date_j2000, row.max_date_j2000]]
+    # The time kernels used for the conversions are recorded in their own columns
+    assert Path(row.sclk_kernel).name == "imap_sclk_0012.tsc"
+    assert Path(row.lsk_kernel).name == "naif0012.tls"
 
 
 @pytest.mark.parametrize(
@@ -379,22 +440,88 @@ def test_s3_lo_pivot_attitude_file(
     assert result[0]["file_intervals_j2000"] == [[et_start, et_end]]
 
 
-def test_s3_spin_files(session, s3_client, events_client):
+def test_get_spin_file_coverage():
+    """Spin coverage runs from the first spin start to the end of the last spin."""
+    filename = "imap_2026_267_2026_267_01.spin.csv"
+    start, end = get_spin_file_coverage(TEST_SPICE_DATA_DIR / filename)
+    expected_start, expected_end = SPIN_COVERAGE[filename]
+    assert start == expected_start.replace(tzinfo=timezone.utc)
+    assert end == expected_end.replace(tzinfo=timezone.utc)
+
+
+def test_get_spin_file_coverage_skips_comments(tmp_path):
+    """Comment lines are skipped, as imap_processing does when reading spin files."""
+    spin_file = tmp_path / "imap_2026_267_2026_267_01.spin.csv"
+    spin_file.write_text(
+        "# A comment line\n"
+        "spin_number,spin_start_utc,spin_period_sec\n"
+        "1,2026-09-24 14:01:41.000000,15\n"
+        "# Another comment line\n"
+        "2,2026-09-24 14:01:56.000000,15.5\n"
+        # A truncated row with no spin start time is skipped
+        "3\n"
+    )
+    start, end = get_spin_file_coverage(spin_file)
+    assert start == datetime(2026, 9, 24, 14, 1, 41, tzinfo=timezone.utc)
+    assert end == datetime(2026, 9, 24, 14, 2, 11, 500000, tzinfo=timezone.utc)
+
+
+def test_get_spin_file_coverage_no_rows(tmp_path):
+    """A spin file with only a header has no coverage."""
+    spin_file = tmp_path / "imap_2026_267_2026_267_01.spin.csv"
+    spin_file.write_text("spin_number,spin_start_utc,spin_period_sec\n")
+    with pytest.raises(ValueError, match="No spin rows found"):
+        get_spin_file_coverage(spin_file)
+
+
+@pytest.mark.parametrize("filename", SFF_COVERAGE)
+def test_get_small_forces_file_coverage(filename):
+    """SFF coverage runs from the first record's start to the last record's end."""
+    start, end = get_small_forces_file_coverage(TEST_SPICE_DATA_DIR / filename)
+    expected_start, expected_end = SFF_COVERAGE[filename]
+    assert start == expected_start.replace(tzinfo=timezone.utc)
+    assert end == expected_end.replace(tzinfo=timezone.utc)
+
+
+SFF_HEADER = "FILE_TYPE,SFF\nSTARTTIME/ENDTIME_TIMEZONE,UTC\n"
+SFF_COLUMNS = "INDEX,RecType,INBURN,STARTTIME,ENDTIME,DTIME\n"
+SFF_RECORD = (
+    "1, H, 0, 2026 SEP 30 13:02:06.662376, 2026 SEP 30 13:02:07.662375,    1.000\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("contents", "error"),
+    [
+        (SFF_HEADER + SFF_COLUMNS + SFF_RECORD, r"No \$\$EOH line found"),
+        (SFF_HEADER + "$$EOH\n" + SFF_RECORD, "No record column names found"),
+        (
+            SFF_HEADER.replace(",UTC", ",ET") + SFF_COLUMNS + "$$EOH\n" + SFF_RECORD,
+            "Expected UTC record times",
+        ),
+        (SFF_HEADER + SFF_COLUMNS + "$$EOH\n\n", "No records found"),
+    ],
+)
+def test_get_small_forces_file_coverage_invalid(tmp_path, contents, error):
+    """Small forces files that don't match the expected layout raise an error."""
+    sff_file = tmp_path / "imap_2026_273_2026_273_hist_01.sff"
+    sff_file.write_text(contents)
+    with pytest.raises(ValueError, match=error):
+        get_small_forces_file_coverage(sff_file)
+
+
+def test_s3_spin_files(session, s3_client, events_client, time_kernels):
     """Test s3 event.
 
-    The following test mimics a spin file being placed on the SDC.
-    The files are located in the "test_spice_files" directory.
-
+    The following test mimics a spin file being placed on the SDC. Each spin
+    file is indexed into the SPICE table with the coverage from its rows, and
+    into the spin table with the dates from its filename.
     """
-    current_path = os.path.dirname(os.path.abspath(__file__))
-    one_level_up = os.path.abspath(os.path.join(current_path, ".."))
-    test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
-
     # First spin file ingestion
     spin_file1_event = put_local_file_in_bucket(
         s3_client,
         "imap/spice/spin/imap_2026_267_2026_267_01.spin.csv",
-        os.path.join(test_spice_data_dir, "imap_2026_267_2026_267_01.spin.csv"),
+        TEST_SPICE_DATA_DIR / "imap_2026_267_2026_267_01.spin.csv",
     )
     spice_indexer.lambda_handler(spin_file1_event, None)
     query = select(models.SpinFiles.__table__)
@@ -403,12 +530,14 @@ def test_s3_spin_files(session, s3_client, events_client):
     assert spin_table_rows[0].file_path == (
         "imap/spice/spin/imap_2026_267_2026_267_01.spin.csv"
     )
+    assert spin_table_rows[0].start_date == datetime(2026, 9, 24)
+    assert spin_table_rows[0].end_date == datetime(2026, 9, 24)
 
     # Second spin file ingestion
     spin_file2_event = put_local_file_in_bucket(
         s3_client,
         "imap/spice/spin/imap_2026_267_2026_267_02.spin.csv",
-        os.path.join(test_spice_data_dir, "imap_2026_267_2026_267_02.spin.csv"),
+        TEST_SPICE_DATA_DIR / "imap_2026_267_2026_267_02.spin.csv",
     )
     spice_indexer.lambda_handler(spin_file2_event, None)
     query = select(models.SpinFiles.__table__)
@@ -418,6 +547,99 @@ def test_s3_spin_files(session, s3_client, events_client):
         "imap/spice/spin/imap_2026_267_2026_267_02.spin.csv"
     )
     assert spin_table_rows[1].version == "02"
+
+    spice_rows = _spice_table_rows(session, "spin")
+    assert [row.file_name for row in spice_rows] == [
+        "imap_2026_267_2026_267_01.spin.csv",
+        "imap_2026_267_2026_267_02.spin.csv",
+    ]
+    assert [row.version for row in spice_rows] == [1, 2]
+    # Both versions share a file root, so the "latest" query keeps only _02
+    assert {row.file_root for row in spice_rows} == {"imap_2026_267_2026_267_.spin.csv"}
+    _assert_coverage(
+        spice_rows[0], *SPIN_COVERAGE["imap_2026_267_2026_267_01.spin.csv"]
+    )
+    start, end = get_spin_file_coverage(
+        TEST_SPICE_DATA_DIR / "imap_2026_267_2026_267_02.spin.csv"
+    )
+    _assert_coverage(
+        spice_rows[1], start.replace(tzinfo=None), end.replace(tzinfo=None)
+    )
+
+    result = spice_query_api.lambda_handler(
+        {"queryStringParameters": {"type": "spin", "latest": "true"}}, None
+    )
+    result = json.loads(result["body"])
+    assert [row["file_name"] for row in result] == [
+        "spin/imap_2026_267_2026_267_02.spin.csv"
+    ]
+
+
+def test_s3_small_forces_files_spice_table(
+    session, s3_client, events_client, time_kernels
+):
+    """Small forces files are indexed into the SPICE table and their own table."""
+    filenames = [
+        "imap_2026_273_2026_273_hist_01.sff",
+        "imap_2026_273_2026_273_hist_02.sff",
+        "imap_2026_273_2026_274_hist_01.sff",
+    ]
+    for filename in filenames:
+        event = put_local_file_in_bucket(
+            s3_client,
+            f"imap/spice/activities/{filename}",
+            TEST_SPICE_DATA_DIR / filename,
+        )
+        spice_indexer.lambda_handler(event, None)
+
+    small_forces_rows = session.execute(select(models.SmallForcesFile.__table__)).all()
+    assert len(small_forces_rows) == 3
+    # The small forces table keeps the dates from the filename
+    assert small_forces_rows[2].start_date == datetime(2026, 9, 30)
+    assert small_forces_rows[2].end_date == datetime(2026, 10, 1)
+
+    spice_rows = _spice_table_rows(session, "thruster")
+    assert [row.file_name for row in spice_rows] == filenames
+    for row in spice_rows:
+        _assert_coverage(row, *SFF_COVERAGE[row.file_name])
+    # Both versions of the 273_273 file share a file root
+    assert spice_rows[0].file_root == spice_rows[1].file_root
+    assert [row.version for row in spice_rows] == [1, 2, 1]
+    # The latest 273_273 file ends exactly where the 273_274 file starts
+    assert spice_rows[1].max_date_j2000 == spice_rows[2].min_date_j2000
+
+
+def test_index_spice_file_spin_upsert(session, s3_client, time_kernels):
+    """Re-indexing a spin file updates its SPICE table row instead of failing."""
+    s3_path = "imap/spice/spin/imap_2026_267_2026_267_01.spin.csv"
+    put_local_file_in_bucket(
+        s3_client, s3_path, TEST_SPICE_DATA_DIR / "imap_2026_267_2026_267_01.spin.csv"
+    )
+    index_spice_file(s3_path)
+    index_spice_file(s3_path)
+
+    spice_rows = _spice_table_rows(session, "spin")
+    assert len(spice_rows) == 1
+    _assert_coverage(
+        spice_rows[0], *SPIN_COVERAGE["imap_2026_267_2026_267_01.spin.csv"]
+    )
+
+
+def test_s3_spin_file_spice_table_failure(session, s3_client, events_client):
+    """The spin table is still indexed when indexing into the SPICE table fails.
+
+    No leapseconds or spacecraft clock kernels are available, so the SPICE table
+    indexing fails.
+    """
+    event = put_local_file_in_bucket(
+        s3_client,
+        "imap/spice/spin/imap_2026_267_2026_267_01.spin.csv",
+        TEST_SPICE_DATA_DIR / "imap_2026_267_2026_267_01.spin.csv",
+    )
+    spice_indexer.lambda_handler(event, None)
+
+    assert len(session.execute(select(models.SpinFiles.__table__)).all()) == 1
+    assert _spice_table_rows(session, "spin") == []
 
 
 @patch(

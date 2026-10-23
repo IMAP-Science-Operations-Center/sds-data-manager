@@ -35,8 +35,8 @@ def _insert_ck_test_data(session):
             ["1/0512204570:32482", "1/0512204615:32482"],
             ["1/0512206130:32482", "1/0512208477:32482"],
         ],
-        "sclk_kernel": "naif0012.tls",
-        "lsk_kernel": "imap_sclk_0012.tsc",
+        "sclk_kernel": "imap_sclk_0012.tsc",
+        "lsk_kernel": "naif0012.tls",
         "ingestion_date": datetime(2025, 4, 9, 21, 12, 53),
     }
 
@@ -78,8 +78,8 @@ def _insert_many_versions_test_data(session):
                 ["1/0512204570:32482", "1/0512204615:32482"],
                 ["1/0512206130:32482", "1/0512208477:32482"],
             ],
-            "sclk_kernel": "naif0012.tls",
-            "lsk_kernel": "imap_sclk_0012.tsc",
+            "sclk_kernel": "imap_sclk_0012.tsc",
+            "lsk_kernel": "naif0012.tls",
             "ingestion_date": datetime(2025, 4, 9, 21, 12, 53),
         }
 
@@ -122,8 +122,8 @@ def expected_ck_response():
                     ["1/0512204570:32482", "1/0512204615:32482"],
                     ["1/0512206130:32482", "1/0512208477:32482"],
                 ],
-                "sclk_kernel": "naif0012.tls",
-                "lsk_kernel": "imap_sclk_0012.tsc",
+                "sclk_kernel": "imap_sclk_0012.tsc",
+                "lsk_kernel": "naif0012.tls",
                 "ingestion_date": "2025-04-09, 21:12:53",
                 "timestamp": 1744233173.0,
             }

@@ -149,12 +149,11 @@ def lambda_handler(event, context):  # noqa: PLR0915, PLR0912
                 if spice_type == "repoint":
                     spice_indexer.index_pointing_data(filepath)
                     spice_indexer.index_repoint_file(filepath)
-                elif spice_type == "spin":
-                    logger.info(f"Indexing {filepath} spin table")
-                    spice_indexer.index_spin_file(filepath)
-                elif spice_type == "thruster":
-                    logger.info(f"Indexing {filepath} small-forces table")
-                    spice_indexer.index_small_forces_file(filepath)
+                elif spice_type in spice_indexer.LEGACY_TABLE_INDEXERS:
+                    # TODO: Remove this branch in #1737 so the else branch indexes
+                    #  these files.
+                    logger.info(f"Indexing {filepath} to SPICE and {spice_type} tables")
+                    spice_indexer.index_spin_or_small_forces_file(filepath, spice_type)
                 else:
                     # Write SPICE kernels to the SPICE table
                     spice_indexer.index_spice_file(filepath)
