@@ -32,6 +32,7 @@ CDK constructs are defined under `sds_data_manager/constructs/`.
 - **SPICE Files**: Contain geometry info (location, attitude, spacecraft clock, leapseconds). Used primarily for min/max dates and time conversions. Delivered directly by the Mission Operations Center.
 - **Spin Files**: Information about the spacecraft's rotation rate and rotation number.
 - **Repoint Files**: Define repointing maneuvers adjusting the spacecraft axis. Data taken during the maneuver itself is typically discarded.
+- **L1 Constellation Files (`l1const`)**: Not an IMAP instrument. `l1const` is a pseudo-instrument for files containing data from multiple spacecraft at the Sun-Earth L1 point, which the SDC was asked to host so they can be queried and downloaded through the normal data-access APIs. The SDC does not process these files — there are no Dagster jobs or dependency YAML for `l1const` — it only indexes, stores, and serves them.
 
 **Relevant Files/Directories:**
 - `sds_data_manager/lambda_code/SDSCode/spice_utilities.py`
