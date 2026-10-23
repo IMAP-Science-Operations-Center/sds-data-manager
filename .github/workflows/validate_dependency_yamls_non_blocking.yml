@@ -1,0 +1,37 @@
+name: Validate Dependency YAMLs (NON-BLOCKING)
+
+on:
+  pull_request:
+    # Only run when the dependency YAMLs change
+    paths:
+      - "sds_data_manager/orchestration/dependencies/**"
+
+jobs:
+  validate-dependency-yamls-non-blocking:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history so the base revision is available to check out below
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.13"
+      - uses: Gr1N/setup-poetry@v9
+        with:
+          poetry-version: "2.3.4"
+
+      - name: Install dependencies and app
+        run: |
+          poetry install
+
+      # Check out the YAMLs from the current state of the PR's target branch (dev)
+      - name: Check out base dependency YAMLs
+        run: |
+          git worktree add --detach /tmp/base "origin/${{ github.base_ref }}"
+
+      - name: Validate dependency YAMLs
+        run: |
+          poetry run python scripts/dependency/validate_dependency_yamls.py \
+            --previous-yaml-path /tmp/base/sds_data_manager/orchestration \
+            --checks 0
