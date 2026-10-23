@@ -208,6 +208,73 @@ def test_empty_end_date_query(session):
     assert returned_query["body"] == expected_response
 
 
+@pytest.mark.parametrize(
+    "query_params",
+    [
+        # start_time at the file's max and end_time at its min: bounds are inclusive
+        {
+            "time_format": "j2000",
+            "start_time": "799244783.0732579",
+            "end_time": "799240876.0732585",
+        },
+        {"time_format": "datetime", "start_time": "20250429", "end_time": "20250430"},
+    ],
+)
+def test_time_format_query(session, expected_ck_response, query_params):
+    """Test that start and end times can be queried in each time format."""
+    _insert_ck_test_data(session)
+    event = {"queryStringParameters": query_params}
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == expected_ck_response
+
+
+@pytest.mark.parametrize(
+    "query_params",
+    [
+        # The file ends on 2025-04-30
+        {"time_format": "datetime", "start_time": "20250501"},
+        # The file starts after midnight on 2025-04-29
+        {"time_format": "datetime", "end_time": "20250429"},
+    ],
+)
+def test_empty_datetime_query(session, query_params):
+    """Test that a datetime query with no matches returns an empty list."""
+    _insert_ck_test_data(session)
+    event = {"queryStringParameters": query_params}
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 200
+    assert returned_query["body"] == json.dumps([])
+
+
+def test_invalid_datetime_value(session):
+    """Test that a non-YYYYMMDD value with time_format=datetime returns a 400."""
+    _insert_ck_test_data(session)
+    event = {
+        "queryStringParameters": {"time_format": "datetime", "start_time": "0"},
+    }
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 400
+    assert returned_query["body"] == json.dumps("Invalid value for start_time: 0")
+
+
+def test_invalid_time_format(session):
+    """Test that an unsupported time_format returns a 400 status."""
+    _insert_ck_test_data(session)
+    event = {"queryStringParameters": {"time_format": "sclk"}}
+    expected_response = json.dumps(
+        "Invalid value for time_format: sclk. "
+        + "Valid values are: ['j2000', 'datetime']"
+    )
+    returned_query = spice_query_api.lambda_handler(event=event, context={})
+
+    assert returned_query["statusCode"] == 400
+    assert returned_query["body"] == expected_response
+
+
 def test_invalid_query(session):
     """Test that invalid parameters return a 400 status with explanation."""
     _insert_ck_test_data(session)
@@ -216,7 +283,7 @@ def test_invalid_query(session):
         "size is not a valid query parameter. "
         + "Valid query parameters are: "
         + "['file_name', 'start_time', 'end_time', 'type',"
-        + " 'latest', 'start_ingest_date', 'end_ingest_date']"
+        + " 'latest', 'start_ingest_date', 'end_ingest_date', 'time_format']"
     )
     returned_query = spice_query_api.lambda_handler(event=event, context={})
     assert returned_query["statusCode"] == 400
