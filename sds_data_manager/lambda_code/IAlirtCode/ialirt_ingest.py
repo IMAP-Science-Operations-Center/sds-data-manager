@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from importlib.metadata import version
 from pathlib import Path
 
 import boto3
@@ -56,6 +57,10 @@ KERNELS = {
     "planetary_constants",
 }
 EFS_BASE_PATH = Path("/mnt/data")
+SOFTWARE_VERSIONS = {
+    "imap_processing": version("imap-processing"),
+    "imap_data_access": version("imap-data-access"),
+}
 
 
 def get_ancillary(instrument, descriptor):
@@ -395,14 +400,14 @@ def process_algorithms(  # noqa: PLR0915
             # Continue to next instrument
 
     # Insert a single ancillary record keyed to the same time_utc as the SPICE kernels.
-    if all_ancillary_files:
-        ancillary_item = {
-            "instrument": "ancillary",
-            "time_utc": kernel_set_key,
-            "ancillary_files": all_ancillary_files,
-            "ttj2000ns": kernel_set_key_ttj2000ns,
-        }
-        data_table.put_item(Item=ancillary_item)
+    ancillary_item = {
+        "instrument": "ancillary",
+        "time_utc": kernel_set_key,
+        "ancillary_files": all_ancillary_files,
+        "software_versions": SOFTWARE_VERSIONS,
+        "ttj2000ns": kernel_set_key_ttj2000ns,
+    }
+    data_table.put_item(Item=ancillary_item)
 
 
 def reformat_data(data):

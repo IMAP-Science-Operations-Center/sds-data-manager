@@ -17,6 +17,7 @@ from imap_data_access.processing_input import (
 )
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest import (
+    SOFTWARE_VERSIONS,
     download_spice_file,
     get_ancillary,
     get_latest_spice_kernels,
@@ -460,6 +461,13 @@ def test_process_algorithms(
         )
         items = response["Items"]
         assert items[0]["instrument"] == instrument
+
+    response = data_table.query(
+        KeyConditionExpression=Key("instrument").eq("ancillary")
+    )
+    ancillary_item = response["Items"][0]
+    assert ancillary_item["time_utc"] == "2025-05-21T00:00:00"
+    assert ancillary_item["software_versions"] == SOFTWARE_VERSIONS
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ingest.requests.get")
