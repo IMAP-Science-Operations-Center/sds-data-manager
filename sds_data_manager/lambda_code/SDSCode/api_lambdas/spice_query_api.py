@@ -26,11 +26,7 @@ def _parse_datetime(value: str) -> datetime.datetime:
     """
     parsed = datetime.datetime.fromisoformat(value)
     if parsed.tzinfo is not None:
-        try:
-            parsed = parsed.astimezone(datetime.timezone.utc).replace(tzinfo=None)
-        except OverflowError as e:
-            # e.g. "0001-01-01T00:00:00+01:00" falls before datetime.min in UTC
-            raise ValueError(f"{value} is out of range when converted to UTC") from e
+        parsed = parsed.astimezone(datetime.timezone.utc).replace(tzinfo=None)
     return parsed
 
 
@@ -169,7 +165,7 @@ def lambda_handler(event, context):
                 elif param == "end_ingest_date":
                     parsed_date = _parse_datetime(value)
                     query = query.where(models.SPICEFiles.ingestion_date <= parsed_date)
-            except ValueError:
+            except (ValueError, OverflowError):
                 response = {
                     "statusCode": 400,
                     "body": json.dumps(f"Invalid value for {param}: {value}"),
