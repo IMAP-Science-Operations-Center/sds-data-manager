@@ -30,6 +30,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Downgrade schema."""
+    # Postgres does not support removing a value from an enum type,
+    # so there is no downgrade for this migration.
     force = context.get_x_argument(
         as_dictionary=True
     ).get("allow_no_op_downgrades") == "true"
