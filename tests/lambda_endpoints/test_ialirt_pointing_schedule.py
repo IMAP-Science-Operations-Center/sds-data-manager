@@ -15,12 +15,19 @@ ialirt_coverage = types.SimpleNamespace(
 )
 sys.modules["ialirt_coverage"] = ialirt_coverage
 
+import pytest
+
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule import (
+    download_naif_earth_kernel,
     generate_and_upload_schedule,
     lambda_handler,
 )
 
 
+@patch(
+    "sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule."
+    "download_naif_earth_kernel"
+)
 @patch("spiceypy.furnsh")
 @patch("imap_data_access.processing_input.ProcessingInputCollection.download_all_files")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.requests.get")
@@ -39,6 +46,7 @@ def test_lambda_handler(
     mock_requests_get,
     mock_download,
     mock_furnsh,
+    mock_download_naif_earth_kernel,
     s3_client,
 ):
     """Test the lambda_handler function."""
@@ -115,6 +123,40 @@ def test_lambda_handler(
     # Check the naming pattern
     assert keys[0].startswith("pointing_schedules/Kiel/")
     assert keys[1].startswith("pointing_schedules/Korea/")
+
+    mock_download_naif_earth_kernel.assert_called_once()
+
+
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule.spiceypy")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule.requests.get")
+def test_download_naif_earth_kernel(mock_requests_get, mock_spiceypy, tmp_path):
+    """Test the NAIF Earth kernel is saved and furnished."""
+    mock_response = MagicMock()
+    mock_response.content = b"DAF/PCK " + b"\x00" * 8
+    mock_response.headers = {"Content-Length": "16"}
+    mock_requests_get.return_value = mock_response
+
+    kernel_path = download_naif_earth_kernel(tmp_path)
+
+    assert kernel_path.read_bytes() == mock_response.content
+    mock_spiceypy.furnsh.assert_called_once_with(str(kernel_path))
+
+
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule.spiceypy")
+@patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule.requests.get")
+def test_download_naif_earth_kernel_truncated(
+    mock_requests_get, mock_spiceypy, tmp_path
+):
+    """Test a truncated NAIF download is rejected and not furnished."""
+    mock_response = MagicMock()
+    mock_response.content = b"DAF/PCK "
+    mock_response.headers = {"Content-Length": "16"}
+    mock_requests_get.return_value = mock_response
+
+    with pytest.raises(ValueError, match="Truncated download"):
+        download_naif_earth_kernel(tmp_path)
+
+    mock_spiceypy.furnsh.assert_not_called()
 
 
 @patch(

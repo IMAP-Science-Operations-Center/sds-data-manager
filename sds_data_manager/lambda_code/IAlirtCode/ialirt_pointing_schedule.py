@@ -9,6 +9,8 @@ from pathlib import Path
 import boto3
 import imap_data_access
 import imap_processing.ialirt.constants
+import requests
+import spiceypy
 from ialirt_coverage import (
     get_latest_spice_kernels,
     setup_spice_file,
@@ -17,6 +19,48 @@ from imap_processing.ialirt.process_ephemeris import generate_text_files
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+# NAIF's current high-precision Earth orientation kernel. NAIF does not archive
+# the daily files, so this is always the newest one.
+NAIF_EARTH_BPC_URL = (
+    "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc"
+)
+
+
+def download_naif_earth_kernel(download_dir: Path) -> Path:
+    """Download and furnish NAIF's latest Earth orientation kernel.
+
+    Parameters
+    ----------
+    download_dir : Path
+        Directory to save the kernel in.
+
+    Returns
+    -------
+    Path
+        Path to the downloaded kernel.
+
+    Raises
+    ------
+    ValueError
+        If the downloaded file is smaller than NAIF reported (truncated).
+    """
+    response = requests.get(NAIF_EARTH_BPC_URL, timeout=60)
+    response.raise_for_status()
+
+    expected_size = int(response.headers["Content-Length"])
+    if len(response.content) != expected_size:
+        raise ValueError(
+            f"Truncated download of {NAIF_EARTH_BPC_URL}: got "
+            f"{len(response.content)} of {expected_size} bytes."
+        )
+
+    kernel_path = download_dir / "earth_latest_high_prec.bpc"
+    kernel_path.write_bytes(response.content)
+    spiceypy.furnsh(str(kernel_path))
+    logger.info(f"Furnished {kernel_path} ({expected_size} bytes) from NAIF.")
+
+    return kernel_path
 
 
 def generate_and_upload_schedule(bucket: str, region: str, station: str, day: str):
@@ -71,12 +115,14 @@ def lambda_handler(event, context):
             "leapseconds",  # e.g., naif0012.tls
             "ephemeris_predicted",  # e.g., imap_spk_demo.bsp
             "ephemeris_90days",  # e.g., imap_spk_demo.bsp
-            "earth_attitude",  # e.g., earth_latest_high_prec.bpc
         ],
         url,
     )
     logger.info("dependency_inputs: %s", dependency_inputs)
     setup_spice_file(dependency_inputs)
+
+    # Earth orientation comes straight from NAIF rather than the SPICE archive
+    download_naif_earth_kernel(Path("/tmp"))  # noqa: S108
 
     # Generate schedule for the day that is 30 days from now
     day = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y-%m-%d")
