@@ -218,6 +218,23 @@ def test_empty_end_date_query(session):
             "end_time": "799240876.0732585",
         },
         {"time_format": "datetime", "start_time": "20250429", "end_time": "20250430"},
+        # Full ISO 8601 timestamps at the file's exact bounds
+        {
+            "time_format": "datetime",
+            "start_time": "2025-04-30T00:25:13",
+            "end_time": "2025-04-29T23:20:06",
+        },
+        # Timezone-aware values are converted to UTC
+        {
+            "time_format": "datetime",
+            "start_time": "2025-04-30T02:25:13+02:00",
+            "end_time": "2025-04-29T23:20:06Z",
+        },
+        # ISO 8601 ingest dates
+        {
+            "start_ingest_date": "2025-04-09T21:12:53",
+            "end_ingest_date": "2025-04-09T21:12:53Z",
+        },
     ],
 )
 def test_time_format_query(session, expected_ck_response, query_params):
@@ -237,6 +254,10 @@ def test_time_format_query(session, expected_ck_response, query_params):
         {"time_format": "datetime", "start_time": "20250501"},
         # The file starts after midnight on 2025-04-29
         {"time_format": "datetime", "end_time": "20250429"},
+        # One second past the file's bounds
+        {"time_format": "datetime", "start_time": "2025-04-30T00:25:14"},
+        {"time_format": "datetime", "end_time": "2025-04-29T23:20:05"},
+        {"time_format": "datetime", "start_time": "2025-04-30T00:25:13-00:01"},
     ],
 )
 def test_empty_datetime_query(session, query_params):
@@ -249,16 +270,29 @@ def test_empty_datetime_query(session, query_params):
     assert returned_query["body"] == json.dumps([])
 
 
-def test_invalid_datetime_value(session):
-    """Test that a non-YYYYMMDD value with time_format=datetime returns a 400."""
+@pytest.mark.parametrize(
+    "value",
+    [
+        "0",
+        "2025-13-01",
+        "April 29, 2025",
+        # Out of range once converted to UTC
+        "0001-01-01T00:00:00+01:00",
+        "9999-12-31T23:59:59-01:00",
+    ],
+)
+def test_invalid_datetime_value(session, value):
+    """Test that a non-ISO 8601 value with time_format=datetime returns a 400."""
     _insert_ck_test_data(session)
     event = {
-        "queryStringParameters": {"time_format": "datetime", "start_time": "0"},
+        "queryStringParameters": {"time_format": "datetime", "start_time": value},
     }
     returned_query = spice_query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 400
-    assert returned_query["body"] == json.dumps("Invalid value for start_time: 0")
+    assert returned_query["body"] == json.dumps(
+        f"Invalid value for start_time: {value}"
+    )
 
 
 def test_invalid_time_format(session):

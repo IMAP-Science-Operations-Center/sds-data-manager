@@ -18,6 +18,18 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def _parse_datetime(value: str) -> datetime.datetime:
+    """Parse an ISO 8601 string (e.g. "20250429" or "2025-04-29T12:00:00Z").
+
+    Timezone-aware values are converted to UTC and made naive, since naive
+    values are assumed to already be in UTC.
+    """
+    parsed = datetime.datetime.fromisoformat(value)
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
 class TimeFormat(NamedTuple):
     """Columns and value parser used to filter SPICE files by time."""
 
@@ -45,7 +57,7 @@ TIME_FORMATS = {
     "datetime": TimeFormat(
         models.SPICEFiles.min_date_datetime,
         models.SPICEFiles.max_date_datetime,
-        lambda value: datetime.datetime.strptime(value, "%Y%m%d"),
+        _parse_datetime,
     ),
 }
 DEFAULT_TIME_FORMAT = "j2000"
@@ -148,12 +160,12 @@ def lambda_handler(event, context):
                         ),
                     )
                 elif param == "start_ingest_date":
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+                    parsed_date = _parse_datetime(value)
                     query = query.where(models.SPICEFiles.ingestion_date >= parsed_date)
                 elif param == "end_ingest_date":
-                    parsed_date = datetime.datetime.strptime(value, "%Y%m%d")
+                    parsed_date = _parse_datetime(value)
                     query = query.where(models.SPICEFiles.ingestion_date <= parsed_date)
-            except ValueError:
+            except (ValueError, OverflowError):
                 response = {
                     "statusCode": 400,
                     "body": json.dumps(f"Invalid value for {param}: {value}"),
