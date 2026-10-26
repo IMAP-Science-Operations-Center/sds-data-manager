@@ -577,8 +577,20 @@ def test_insert_kernels(
     data_table = setup_data_table["data_table"]
 
     spice_input = MagicMock()
-    spice_input.source = ["leapseconds", "planetary_constants", "imap_frames"]
-    spice_input.filename_list = ["naif0012.tls", "pck00011.tpc", "imap_100.tf"]
+    spice_input.source = [
+        "leapseconds",
+        "planetary_constants",
+        "imap_frames",
+        "ephemeris_predicted",
+        "ephemeris_predicted",
+    ]
+    spice_input.filename_list = [
+        "naif0012.tls",
+        "pck00011.tpc",
+        "imap_100.tf",
+        "imap_pred_20260922_20261020_v01.bsp",
+        "imap_pred_20261020_20261117_v01.bsp",
+    ]
     mock_paths = []
     for kernel_type in spice_input.source:
         mock_path = MagicMock()
@@ -599,8 +611,13 @@ def test_insert_kernels(
     assert items[0]["instrument"] == "spice"
     assert items[0]["time_utc"] == "2025-10-13T22:04:15"
     assert int(items[0]["ttj2000ns"]) == 813665124895612928
+    # Both ephemeris files are kept, in load order.
     assert items[0]["spice_kernels"] == {
-        "leapseconds": "naif0012.tls",
-        "planetary_constants": "pck00011.tpc",
-        "imap_frames": "imap_100.tf",
+        "leapseconds": ["naif0012.tls"],
+        "planetary_constants": ["pck00011.tpc"],
+        "imap_frames": ["imap_100.tf"],
+        "ephemeris_predicted": [
+            "imap_pred_20260922_20261020_v01.bsp",
+            "imap_pred_20261020_20261117_v01.bsp",
+        ],
     }

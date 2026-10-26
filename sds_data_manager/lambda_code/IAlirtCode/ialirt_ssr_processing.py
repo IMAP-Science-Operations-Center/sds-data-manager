@@ -496,13 +496,17 @@ def spice_item(
         The spice item, keyed by kernel type.
     """
     spice_input = dependencies.processing_input[0]
-    spice_kernels = dict(
-        zip(
-            [path.spice_metadata["type"] for path in spice_input.imap_file_paths],
-            spice_input.filename_list,
-            strict=True,
-        )
-    )
+    # All kernels are loaded, and more than one of a type can be returned
+    # (e.g. two ephemeris files each covering part of the window), so keep
+    # every filename per type, in load order.
+    spice_kernels = {}
+    for path, filename in zip(
+        spice_input.imap_file_paths, spice_input.filename_list, strict=True
+    ):
+        kernel_type = path.spice_metadata["type"]
+        if kernel_type not in spice_kernels:
+            spice_kernels[kernel_type] = []
+        spice_kernels[kernel_type].append(filename)
     return {
         "instrument_version": f"spice#{version}",
         "time_utc": kernel_set_key,

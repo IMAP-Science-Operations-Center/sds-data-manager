@@ -127,15 +127,28 @@ def test_mag_hk_items():
 def test_spice_item():
     """Test the DynamoDB item for the SPICE kernels used."""
     dependencies = ProcessingInputCollection()
-    dependencies.add(SPICEInput("naif0012.tls"))
+    dependencies.add(
+        SPICEInput(
+            "naif0012.tls",
+            "imap_pred_20260922_20261020_v01.bsp",
+            "imap_pred_20261020_20261117_v01.bsp",
+        )
+    )
 
     item = spice_item(dependencies, "v001", "2026-10-19T12:00:00.000001", 5)
 
+    # Both ephemeris files are kept, in load order.
     assert item == {
         "instrument_version": "spice#v001",
         "time_utc": "2026-10-19T12:00:00.000001",
         "instrument": "spice",
-        "spice_kernels": {"leapseconds": "naif0012.tls"},
+        "spice_kernels": {
+            "leapseconds": ["naif0012.tls"],
+            "ephemeris_predicted": [
+                "imap_pred_20260922_20261020_v01.bsp",
+                "imap_pred_20261020_20261117_v01.bsp",
+            ],
+        },
         "ttj2000ns": 5,
     }
 
