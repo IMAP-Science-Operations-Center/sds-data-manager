@@ -3,9 +3,12 @@
 import datetime
 import json
 import logging
+from collections.abc import Callable
+from typing import NamedTuple
 
 from imap_data_access import SPICEFilePath
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
+from sqlalchemy.orm import InstrumentedAttribute
 
 from ..database import database as db
 from ..database import models
@@ -13,6 +16,39 @@ from ..database import models
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+class TimeFormat(NamedTuple):
+    """Columns and value parser used to filter SPICE files by time."""
+
+    min_column: InstrumentedAttribute
+    max_column: InstrumentedAttribute
+    parse: Callable[[str], float | datetime.datetime]
+
+    def ends_at_or_after(self, value: str) -> ColumnElement[bool]:
+        """Match files covering times at or after value."""
+        return self.max_column >= self.parse(value)
+
+    def starts_at_or_before(self, value: str) -> ColumnElement[bool]:
+        """Match files covering times at or before value."""
+        return self.min_column <= self.parse(value)
+
+
+# Supported "time_format" query parameter values. Controls how
+# "start_time" and "end_time" are interpreted.
+TIME_FORMATS = {
+    "j2000": TimeFormat(
+        models.SPICEFiles.min_date_j2000,
+        models.SPICEFiles.max_date_j2000,
+        float,
+    ),
+    "datetime": TimeFormat(
+        models.SPICEFiles.min_date_datetime,
+        models.SPICEFiles.max_date_datetime,
+        lambda value: datetime.datetime.strptime(value, "%Y%m%d"),
+    ),
+}
+DEFAULT_TIME_FORMAT = "j2000"
 
 
 def lambda_handler(event, context):
@@ -46,7 +82,21 @@ def lambda_handler(event, context):
             "latest",
             "start_ingest_date",
             "end_ingest_date",
+            "time_format",
         ]
+
+        time_format_name = query_params.get("time_format", DEFAULT_TIME_FORMAT)
+        if time_format_name not in TIME_FORMATS:
+            response = {
+                "statusCode": 400,
+                "body": json.dumps(
+                    f"Invalid value for time_format: {time_format_name}. "
+                    + f"Valid values are: {list(TIME_FORMATS)}"
+                ),
+            }
+            logger.debug(f"Invalid value for time_format: {time_format_name}")
+            return response
+        time_format = TIME_FORMATS[time_format_name]
 
         # go through each query parameter to set up sqlalchemy query conditions
         for param, value in query_params.items():
@@ -66,13 +116,9 @@ def lambda_handler(event, context):
                 return response
             try:
                 if param == "start_time":
-                    query = query.where(
-                        models.SPICEFiles.max_date_j2000 >= float(value)
-                    )
+                    query = query.where(time_format.ends_at_or_after(value))
                 elif param == "end_time":
-                    query = query.where(
-                        models.SPICEFiles.min_date_j2000 <= float(value)
-                    )
+                    query = query.where(time_format.starts_at_or_before(value))
                 elif param == "type":
                     query = query.where(models.SPICEFiles.kernel_type == value)
                 elif param == "file_name":

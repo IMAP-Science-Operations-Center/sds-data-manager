@@ -31,8 +31,34 @@ CDK constructs are defined under `sds_data_manager/constructs/`.
 - **Ancillary Files**: Any format, uploaded by instrument teams, needed for processing.
 - **SPICE Files**: Contain geometry info (location, attitude, spacecraft clock, leapseconds). Used primarily for min/max dates and time conversions. Delivered directly by the Mission Operations Center.
 - **Spin Files**: Information about the spacecraft's rotation rate and rotation number.
+- **Small Forces Files (SFF)**: A continuous history of thruster activity, attitude and delta-V, delivered by the MOC.
+  Their SPICE type is `thruster`.
 - **Repoint Files**: Define repointing maneuvers adjusting the spacecraft axis. Data taken during the maneuver itself is typically discarded.
 - **L1 Constellation Files (`l1const`)**: Not an IMAP instrument. `l1const` is a pseudo-instrument for files containing data from multiple spacecraft at the Sun-Earth L1 point, which the SDC was asked to host so they can be queried and downloaded through the normal data-access APIs. The SDC does not process these files — there are no Dagster jobs or dependency YAML for `l1const` — it only indexes, stores, and serves them.
+
+### SPICE dependency resolution
+
+SPICE dependencies are resolved by the metakernel builder (`metakernel_builder` in `spice_utilities.py`, served by the
+`/metakernel` API). For each requested category it fills the query window with the highest-priority files, and reports
+any time left uncovered as a gap. `require_coverage=true` fails with the gaps when any requested category has one.
+Categories that weren't requested aren't checked.
+
+Only the latest version of each file name is considered. Among files with different names, the latest ingested file has
+the highest priority. Versions can't rank those files, since they restart with each new file name: a growing attitude
+kernel's newest file is often `_001` while older ones are `_002`.
+
+Spin (`spin`) and small forces (`thruster`) files are indexed into `spice_files` too, but they aren't SPICE kernels, so
+their categories are **opt-in**: they're only included when named in `file_types`. A default metakernel never lists
+them. They also have a **seam tolerance**: each file is one piece of a continuous record, and adjacent files can overlap
+or gap by up to 20 ms. Gaps of up to `SEAM_GAP_TOLERANCE` (1 s) between files are ignored. A real spin gap is at least
+one spin, about 15 s. A gap at the start or end of the query window is never ignored, however short, since no file is
+on the other side of it.
+
+Since they aren't kernels, both can only be requested with `list_files=true`, and are never written into a metakernel.
+Dependency resolution always lists files, so a job that needs small forces files can still declare them like any other
+SPICE input, with `data_type: spice` and `source: thruster`. imap_processing then receives the files as a `SPICEInput`
+and has to read them itself; furnishing one is harmless, since SPICE loads it as a text kernel with no data. Spin files
+keep their own `data_type: spin`, and jobs receive them as a `SpinInput`.
 
 **Relevant Files/Directories:**
 - `sds_data_manager/lambda_code/SDSCode/spice_utilities.py`
