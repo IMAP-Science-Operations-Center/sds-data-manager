@@ -270,7 +270,17 @@ def test_empty_datetime_query(session, query_params):
     assert returned_query["body"] == json.dumps([])
 
 
-@pytest.mark.parametrize("value", ["0", "2025-13-01", "April 29, 2025"])
+@pytest.mark.parametrize(
+    "value",
+    [
+        "0",
+        "2025-13-01",
+        "April 29, 2025",
+        # Out of range once converted to UTC
+        "0001-01-01T00:00:00+01:00",
+        "9999-12-31T23:59:59-01:00",
+    ],
+)
 def test_invalid_datetime_value(session, value):
     """Test that a non-ISO 8601 value with time_format=datetime returns a 400."""
     _insert_ck_test_data(session)

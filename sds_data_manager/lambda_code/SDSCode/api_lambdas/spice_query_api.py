@@ -26,7 +26,11 @@ def _parse_datetime(value: str) -> datetime.datetime:
     """
     parsed = datetime.datetime.fromisoformat(value)
     if parsed.tzinfo is not None:
-        parsed = parsed.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        try:
+            parsed = parsed.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        except OverflowError as e:
+            # e.g. "0001-01-01T00:00:00+01:00" falls before datetime.min in UTC
+            raise ValueError(f"{value} is out of range when converted to UTC") from e
     return parsed
 
 
