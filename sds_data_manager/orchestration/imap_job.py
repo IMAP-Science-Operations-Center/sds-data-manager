@@ -566,6 +566,20 @@ class IMAPJobHandler:
             inputs=inputs,
         )
 
+    def _get_job_names_from_assets(self, defs, target_assets):
+        repo = defs.get_repository_def()
+
+        jobs_for_asset = []
+        for job in repo.get_all_jobs():
+            if job.name.startswith("__ASSET_JOB"):
+                continue  # Dagster's implicit job that contains every asset
+            if any(
+                target in job.asset_layer.executable_asset_keys
+                for target in target_assets
+            ):
+                jobs_for_asset.append(job.name)
+        return list(set(jobs_for_asset))
+
     def _check_for_running_dependencies(self, context):
         """Check if anything upstream of this file is currently running."""
         # Imported locally to avoid a circular import
@@ -577,6 +591,8 @@ class IMAPJobHandler:
                 self.job_config.outputs[0].to_dagster_asset()
             )
         )
+        # Get the job names from those assets
+        ancestor_job_names = self._get_job_names_from_assets(defs, input_set)
         in_flight_runs = context.instance.get_runs(
             filters=RunsFilter(
                 statuses=[
@@ -586,16 +602,40 @@ class IMAPJobHandler:
                 ]
             )
         )
+        target_partition = context.partition_key
+        target_start_date, target_end_date = (
+            dagster_utilities.parse_dates_from_partition_key(target_partition)
+        )
         conflict_found = False
         for run in in_flight_runs:
-            if run.asset_selection:
-                overlap = input_set.intersection(run.asset_selection)
-                if overlap:
-                    conflict_found = True
-                    context.log.info(
-                        f"Upstream job in progress {run.run_id}: {overlap}"
-                    )
-                    break
+            partition_key = run.tags.get("dagster/partition", None)
+            if partition_key:
+                # Skip checking any jobs that dont have overlap partitions. E.g. the
+                # start date ends before the current job's start date or begins
+                # after the target end date.
+                start_date, end_date = dagster_utilities.parse_dates_from_partition_key(
+                    partition_key
+                )
+                if end_date <= target_start_date or start_date >= target_end_date:
+                    continue
+            else:
+                # Otherwise if no partition is found don't block jobs from running
+                continue
+            if run.job_name in ancestor_job_names:
+                conflict_found = True
+                context.log.info(
+                    f"Upstream job in progress {run.run_id}: {run.job_name} for "
+                    f"partition {partition_key}"
+                )
+                break
+            # Reprocessing runs use __ASSET_JOB, so match them on asset_selection
+            elif run.asset_selection and input_set.intersection(run.asset_selection):
+                conflict_found = True
+                context.log.info(
+                    f"Upstream job in progress {run.run_id}: "
+                    f"{input_set.intersection(run.asset_selection)}"
+                )
+                break
 
         return conflict_found
 
