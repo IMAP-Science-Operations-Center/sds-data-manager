@@ -9,6 +9,22 @@ from sds_data_manager.orchestration.types import ProcessingJobNode
 logger = logging.getLogger(__name__)
 
 
+def get_old_output(new_output, old_potential_job):
+    """Get the equivalent output from the old job node."""
+    if old_potential_job is None:
+        return None
+    return next(
+        (
+            output
+            for output in old_potential_job.outputs
+            if output.source == new_output.source
+            and output.data_type == new_output.data_type
+            and output.descriptor == new_output.descriptor
+        ),
+        None,
+    )
+
+
 def get_updated_output_dependency_nodes(
     old_reader, new_reader
 ) -> list[ProcessingJobNode]:
@@ -43,16 +59,8 @@ def get_updated_output_dependency_nodes(
             continue
         for new_output in new_potential_job.outputs:
             # find the same output in the old node, if it's there
-            old_output = next(
-                (
-                    output
-                    for output in old_potential_job.outputs
-                    if output.source == new_output.source
-                    and output.data_type == new_output.data_type
-                    and output.descriptor == new_output.descriptor
-                ),
-                None,
-            )
+            old_output = get_old_output(new_output, old_potential_job)
+
             if old_output is None:
                 logger.info(
                     f"New output ({new_output.source},{new_output.data_type},"
@@ -74,13 +82,6 @@ def get_updated_output_dependency_nodes(
                 # major_version got bumped.
                 if new_potential_job not in updated_nodes:
                     updated_nodes.append(new_potential_job)
-            elif new_output.major_version < old_output.major_version:
-                raise ValueError(
-                    f"Output product ({new_output.source},{new_output.data_type},"
-                    f"{new_output.descriptor}) was decreased from major version="
-                    f"{old_output.major_version} to major version="
-                    f"{new_output.major_version}. Major versions should never decrease."
-                )
 
     return updated_nodes
 

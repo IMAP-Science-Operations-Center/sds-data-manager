@@ -22,7 +22,14 @@ jobs:
         run: |
           poetry install
 
+      # Check out the YAMLs from the current state of the PR's target branch (dev)
+      - name: Check out base dependency YAMLs
+        run: |
+          git worktree add --detach /tmp/base "origin/${{ github.base_ref }}"
+
       - name: Validate dependency YAMLs
         run: |
-          poetry run python scripts/dependency/validate_dependency_yamls.py --checks 1 2
+          poetry run python scripts/dependency/validate_dependency_yamls.py \
+          --previous-yaml-path /tmp/base/sds_data_manager/orchestration \
+          --checks 1 2 3 4
 

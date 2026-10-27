@@ -9,6 +9,7 @@ import numpy as np
 
 from scripts.dependency.utils import (
     get_nodes_to_check,
+    get_old_output,
     get_updated_output_dependency_nodes,
 )
 from sds_data_manager.orchestration.dependency import (
@@ -187,6 +188,118 @@ class MatchingOutputNodeCheck(DependencyCheck):
             )
 
 
+class MajorVersionNoDecreaseCheck(DependencyCheck):
+    """Check that major version is never decreased for a single product.
+
+    Parameters
+    ----------
+    updated_nodes : list[ProcessingJobNode] or None
+        Nodes that were updated in the most recent PR.
+    """
+
+    check_id = 3
+    description = (
+        "The major version for a single product should never decrease. E.g. "
+        "(swe, l1a, sci) should never have a lower major version than it had "
+        "in the previous dependency YAML file."
+    )
+
+    def __init__(
+        self,
+        updated_nodes: list[ProcessingJobNode] | None = None,
+        old_reader: DependencyConfigReader | None = None,
+    ):
+        """Initialize the major version increment check."""
+        self.updated_nodes = updated_nodes
+        self.old_reader = old_reader
+
+    def run_check(self, job_node: ProcessingJobNode, prev_major_version: int) -> None:
+        """Raise if any output's major version decreased from the previous YAML.
+
+        Parameters
+        ----------
+        job_node : ProcessingJobNode
+            The job node to validate.
+        prev_major_version : int
+            The major version of the upstream output that feeds this job node,
+            or 0 if this is the root node.
+
+        Raises
+        ------
+        ValueError
+            If an output has a major version lower than ``prev_major_version``.
+        """
+        if self.updated_nodes is None or self.old_reader is None:
+            logger.warning(
+                f"MajorVersionNoDecreaseCheck requires updated_nodes and old_reader to "
+                f"be provided. Skipping check for {job_node.source}."
+            )
+            return
+        # if this job node hasn't been updated, skip checking it.
+        if job_node not in self.updated_nodes:
+            return
+        job_key = (job_node.source, job_node.data_type, job_node.descriptor)
+        old_job_node = self.old_reader.config.get(job_key, None)
+        if old_job_node is None:
+            return
+        # loop through each output of the node and ensure that the major version
+        # did not decrease
+        for output in job_node.outputs:
+            # find the same output in the old node, if it's there
+            old_output = get_old_output(output, old_job_node)
+            if old_output is None:
+                continue
+            if output.major_version < old_output.major_version:
+                raise ValueError(
+                    f"Output ({output.source}, {output.data_type}, "
+                    f"{output.descriptor}) major version has decreased from "
+                    f"{old_output.major_version} to {output.major_version}. Major"
+                    f" versions should never decrease."
+                )
+
+
+class SingleOutputCheck(DependencyCheck):
+    """Check that a single-output job has the same descriptor as its output.
+
+    Parameters
+    ----------
+    updated_nodes : list[ProcessingJobNode] or None
+        Nodes that were updated in the most recent PR.
+    """
+
+    check_id = 4
+    description = (
+        "If a job has only a single output, the job's descriptor should"
+        " match the output's descriptor."
+    )
+
+    def run_check(self, job_node: ProcessingJobNode, prev_major_version: int) -> None:
+        """Raise if a single output jobs descriptor doesn't match the output descriptor.
+
+        Parameters
+        ----------
+        job_node : ProcessingJobNode
+            The job node to validate.
+        prev_major_version : int
+            The major version of the upstream output that feeds this job node,
+            or 0 if this is the root node.
+
+        Raises
+        ------
+        ValueError
+            If a job with a single output does not share the same descriptor as
+             that output.
+        """
+        if len(outputs := job_node.outputs) == 1:
+            if outputs[0].descriptor != job_node.descriptor:
+                raise ValueError(
+                    f"Job ({job_node.source}, {job_node.data_type}, "
+                    f"{job_node.descriptor}) does not match the descriptor of its"
+                    f" single output ({outputs[0].source}, {outputs[0].data_type}, "
+                    f"{outputs[0].descriptor})."
+                )
+
+
 # Map of check ID to check class, used to select checks from the command line.
 CHECKS: dict[int, type[DependencyCheck]] = {
     check.check_id: check
@@ -194,6 +307,8 @@ CHECKS: dict[int, type[DependencyCheck]] = {
         MajorVersionIncrementCheck,
         IdenticalDescriptorCheck,
         MatchingOutputNodeCheck,
+        MajorVersionNoDecreaseCheck,
+        SingleOutputCheck,
     )
 }
 
@@ -288,6 +403,8 @@ def main(argv: list[str] | None = None) -> None:
     # jobs directly downstream of them, since only those can have a new
     # decrease.
     nodes_to_check = None
+    updated_nodes = None
+    old_reader = None
     if args.previous_yaml_path is not None:
         old_reader = DependencyConfigReader(args.previous_yaml_path)
         updated_nodes = get_updated_output_dependency_nodes(old_reader, reader)
@@ -295,6 +412,12 @@ def main(argv: list[str] | None = None) -> None:
 
     checks = []
     for check_id in args.checks:
+        if check_id == MajorVersionNoDecreaseCheck.check_id:
+            checks.append(
+                MajorVersionNoDecreaseCheck(
+                    updated_nodes=updated_nodes, old_reader=old_reader
+                )
+            )
         if check_id == MajorVersionIncrementCheck.check_id:
             checks.append(MajorVersionIncrementCheck(nodes_to_check=nodes_to_check))
         else:
