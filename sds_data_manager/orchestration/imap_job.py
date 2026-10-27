@@ -608,11 +608,11 @@ class IMAPJobHandler:
         )
         conflict_found = False
         for run in in_flight_runs:
-            # Only check runs that are in the same partition as this run
             partition_key = run.tags.get("dagster/partition", None)
             if partition_key:
-                # Skip checking any jobs whos partitions end before the current
-                # jobs start date or begin after the target end date.
+                # Skip checking any jobs that dont have overlap partitions. E.g. the
+                # start date ends before the current job's start date or begins
+                # after the target end date.
                 start_date, end_date = dagster_utilities.parse_dates_from_partition_key(
                     partition_key
                 )
