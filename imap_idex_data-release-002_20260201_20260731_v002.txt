@@ -5,11 +5,3 @@ idex,l1a,all,true
 idex,l1b,all,true
 idex,l2a,sci-10days,true
 idex,l2b,sci-10days, true
-idex,l2c,rectangular-map-10days, false
-
-idex,l2b,sci-1mo,false
-idex,l2c,rectangular-map-1mo,false
-idex,l1a,catlst-10days,false
-idex,l1a,msg-10days,false
-
-idex,ancillary,all,true

@@ -10,5 +10,3 @@ swapi,l3b,combined,true
 swapi,l1a,hk,true
 swapi,l1b,hk,true
 swapi,l3a,pui-he,true
-
-swapi,ancillary,all,true

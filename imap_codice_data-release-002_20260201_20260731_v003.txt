@@ -46,5 +46,3 @@ codice,l3b,lo-hplus-3d-distribution,true
 codice,l3b,lo-heplus-3d-distribution,true
 codice,l3b,lo-heplusplus-3d-distribution,true
 codice,l3b,lo-oplus6-3d-distribution,true
-
-codice,ancillary,all,true
