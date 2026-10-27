@@ -84,6 +84,10 @@ _MAG_VALID_YAML = """
       data_type: l1a
       descriptor: norm-magi
       major_version: 1
+    - source: mag
+      data_type: l1a
+      descriptor: burst-magi
+      major_version: 1
 
 (l2, norm-srf):
   inputs:
@@ -94,6 +98,10 @@ _MAG_VALID_YAML = """
     - source: mag
       data_type: l2
       descriptor: norm-rtn
+      major_version: 1
+    - source: mag
+      data_type: l2
+      descriptor: norm-dsrf
       major_version: 1
 
 """
@@ -141,6 +149,10 @@ _SWE_VALID_YAML = """
       data_type: l1a
       descriptor: sci
       major_version: 1
+    - source: swe
+      data_type: l1a
+      descriptor: cem-raw
+      major_version: 1
 
 (l1b, sci):
   inputs:
@@ -175,6 +187,19 @@ _SWE_VALID_YAML = """
       descriptor: sci
       major_version: 1
 
+"""
+
+_SWE_INVALID_SINGLE_OUTPUT_YAML = """
+(l1a, all):
+  inputs:
+    - source: swe
+      data_type: l0
+      descriptor: raw
+  outputs:
+    - source: swe
+      data_type: l1a
+      descriptor: sci
+      major_version: 1
 """
 
 # Bump each level's major_version by a different, increasing amount to exercise
