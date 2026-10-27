@@ -1,0 +1,4 @@
+instrument,data_level,descriptor,release_flag
+
+swe,all,all,true
+swe,ancillary,all,true

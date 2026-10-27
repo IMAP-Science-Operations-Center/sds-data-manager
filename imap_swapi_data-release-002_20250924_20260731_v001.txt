@@ -1,0 +1,14 @@
+instrument,data_level,descriptor,release_flag
+
+swapi,l0,raw,true
+swapi,l1,sci,true
+swapi,l2,sci,true
+swapi,l3a,alpha-sw,true
+swapi,l3a,proton-sw,true
+swapi,l3b,combined,true
+
+swapi,l1a,hk,true
+swapi,l1b,hk,true
+swapi,l3a,pui-he,true
+
+swapi,ancillary,all,true
