@@ -585,7 +585,6 @@ class IMAPJobHandler:
         # Imported locally to avoid a circular import
         from sds_data_manager.orchestration.imap_dagster import defs  # noqa: PLC0415
 
-        target_partition = context.partition_key
         # Get all ancestral upstream assets.
         input_set = set(
             defs.get_repository_def().asset_graph.get_ancestor_asset_keys(
@@ -603,12 +602,21 @@ class IMAPJobHandler:
                 ]
             )
         )
+        target_partition = context.partition_key
+        target_start_date, target_end_date = (
+            dagster_utilities.parse_dates_from_partition_key(target_partition)
+        )
         conflict_found = False
         for run in in_flight_runs:
             # Only check runs that are in the same partition as this run
             partition_key = run.tags.get("dagster/partition", None)
             if partition_key:
-                if partition_key != target_partition:
+                # Skip checking any jobs whos partitions end before the current
+                # jobs start date or begin after the target end date.
+                start_date, end_date = dagster_utilities.parse_dates_from_partition_key(
+                    partition_key
+                )
+                if end_date <= target_start_date or start_date >= target_end_date:
                     continue
             else:
                 # Otherwise if no partition is found don't block jobs from running
