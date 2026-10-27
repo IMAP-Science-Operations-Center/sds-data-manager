@@ -212,6 +212,11 @@ class MajorVersionNoDecreaseCheck(DependencyCheck):
         """Initialize the major version increment check."""
         self.updated_nodes = updated_nodes
         self.old_reader = old_reader
+        if self.updated_nodes is None or self.old_reader is None:
+            logger.warning(
+                "MajorVersionNoDecreaseCheck requires updated_nodes and old_reader to "
+                "be provided. This check will be skipped."
+            )
 
     def run_check(self, job_node: ProcessingJobNode, prev_major_version: int) -> None:
         """Raise if any output's major version decreased from the previous YAML.
@@ -230,10 +235,6 @@ class MajorVersionNoDecreaseCheck(DependencyCheck):
             If an output has a major version lower than ``prev_major_version``.
         """
         if self.updated_nodes is None or self.old_reader is None:
-            logger.warning(
-                f"MajorVersionNoDecreaseCheck requires updated_nodes and old_reader to "
-                f"be provided. Skipping check for {job_node.source}."
-            )
             return
         # if this job node hasn't been updated, skip checking it.
         if job_node not in self.updated_nodes:
