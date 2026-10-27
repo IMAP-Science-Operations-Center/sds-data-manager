@@ -410,8 +410,9 @@ def main(argv: list[str] | None = None) -> None:
         old_reader = DependencyConfigReader(args.previous_yaml_path)
         updated_nodes = get_updated_output_dependency_nodes(old_reader, reader)
         nodes_to_check = get_nodes_to_check(updated_nodes, reader)
-    print(updated_nodes)
-    print(old_reader)
+    if updated_nodes is None:
+        logger.info("No nodes were updated. Skipping checks.")
+        return
     checks = []
     for check_id in args.checks:
         if check_id == MajorVersionNoDecreaseCheck.check_id:
