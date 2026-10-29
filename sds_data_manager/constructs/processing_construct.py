@@ -143,7 +143,8 @@ class ProcessingConstruct(Construct):
         # GLOWS L3 jobs need a longer timeout
         if "glows-l3" in job_name:
             timeout = cdk.Duration.hours(7)
-        # ULTRA l3 map jobs were merged into one so it needs a longer timeout.
+        # ULTRA l3 map jobs were merged into a single job
+        # so it needs a longer timeout.
         elif "ultra-l3" in job_name:
             timeout = cdk.Duration.hours(8)
         # Mag l1d jobs need a longer timeout
