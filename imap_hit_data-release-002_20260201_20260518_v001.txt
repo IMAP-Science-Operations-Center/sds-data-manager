@@ -1,8 +1,0 @@
-instrument,data_level,descriptor,release_flag
-
-hit,l0,raw,true
-hit,l1a,counts-standard,true
-hit,l1b,standard-rates,true
-hit,l1b,summed-rates,true
-hit,l2,standard-intensity,true
-hit,l2,summed-intensity,true

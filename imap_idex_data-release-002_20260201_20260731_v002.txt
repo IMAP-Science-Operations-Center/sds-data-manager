@@ -1,7 +1,0 @@
-instrument,data_level,descriptor,release_flag
-
-idex,l0,raw,true
-idex,l1a,all,true
-idex,l1b,all,true
-idex,l2a,sci-10days,true
-idex,l2b,sci-10days, true

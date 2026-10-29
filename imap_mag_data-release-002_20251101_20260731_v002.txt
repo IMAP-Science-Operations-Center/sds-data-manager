@@ -1,3 +1,0 @@
-instrument,data_level,descriptor,release_flag
-
-mag,all,all,true
