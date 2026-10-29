@@ -51,7 +51,7 @@ def _upload_science_forbidden(
 ) -> None | dict:
     """Return the forbidden-upload rule matching this file, or None if allowed."""
     if type(file_obj) is not imap_data_access.file_validation.ScienceFilePath:
-        return
+        return None
     file_start_date = datetime.datetime.strptime(file_obj.start_date, "%Y%m%d")
     for forbidden in FORBIDDEN_SCIENCE_UPLOADS:
         if (
