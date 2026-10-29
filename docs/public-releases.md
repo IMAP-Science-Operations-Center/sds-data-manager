@@ -46,6 +46,14 @@ The API backend sets the `released` flag to true on the matching files, which ma
 
 **The release process applies only to science files.** All other files managed by the IMAP SDC, including ancillary and SPICE files, are public as soon as they are ingested.
 
+After a release, copy the newly released files to the public data bucket (`sds-public-data-<account id>`). This bucket makes released data public directly, independent of the SPDF, so the mission meets its public release deadlines. Run [`scripts/release/copy_released_files_to_public_bucket.py`](../scripts/release/copy_released_files_to_public_bucket.py) from a machine that can reach the production database; see its docstring for usage. It copies every released science file that isn't in the bucket yet, and never overwrites or deletes anything.
+
+> [!NOTE]
+> This manual copy is a temporary solution. It stays in place until the team decides on one of:
+>
+> 1. Making the public bucket the nominal workflow, and copying released files automatically as part of the release instead of with this script.
+> 2. Publishing released files another way, such as AWS Open Data or an on-prem SFTP server.
+
 After a release is complete, **notify the SPDF**. The SPDF does not currently have a scheduled job that pulls newly released data, so it will not see the release until someone tells them. See [SPDF Archival](#spdf-archival).
 
 ### Metadata Validation
