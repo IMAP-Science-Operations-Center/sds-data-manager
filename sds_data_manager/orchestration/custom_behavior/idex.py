@@ -114,9 +114,18 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
             For every partition with an update, we kick off a run of the
             "idex_l0_raw" asset.
             """
-            start_date = context.cursor or config.MISSION_START_TIME
-            start_dt = datetime.datetime.fromisoformat(start_date).replace(
-                tzinfo=datetime.timezone.utc
+            if context.cursor:
+                latest_ingestion_date = datetime.datetime.fromisoformat(
+                    context.cursor
+                ).replace(tzinfo=datetime.timezone.utc)
+            else:
+                latest_ingestion_date = datetime.datetime.fromisoformat(
+                    config.MISSION_START_TIME
+                ).replace(tzinfo=datetime.timezone.utc)
+            # Add a small buffer to the latest ingestion date in case a file with
+            # an earlier ingestion date arrives later during back to back uploads.
+            latest_ingestion_date = latest_ingestion_date - datetime.timedelta(
+                minutes=1
             )
             now_dt = datetime.datetime.now(datetime.timezone.utc)
             now_iso = now_dt.isoformat()
@@ -131,7 +140,7 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
             # of a 10 day window and therefore, are the same as partitions.
             stmt = (
                 select(models.IDEXL0Files.start_date)
-                .filter(models.IDEXL0Files.ingestion_date > start_dt)
+                .filter(models.IDEXL0Files.ingestion_date >= latest_ingestion_date)
                 .distinct()
                 .order_by(models.IDEXL0Files.start_date)
             )
@@ -141,6 +150,7 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
                 run_requests = []
                 run_suffix = now_dt.timestamp()
                 for date in recent_db_partitions:
+                    latest_ingestion_date = max(latest_ingestion_date, date)
                     # Query the end_date of the partition.
                     # Find the row where the input start date is equal to
                     # the start date in the df.
