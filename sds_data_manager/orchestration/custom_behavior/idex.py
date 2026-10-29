@@ -122,9 +122,6 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
                 latest_ingestion_date = datetime.datetime.fromisoformat(
                     config.MISSION_START_TIME
                 ).replace(tzinfo=datetime.timezone.utc)
-            # Add a small buffer to the latest ingestion date in case a file with
-            # an earlier ingestion date arrives later during back to back uploads.
-            db_query_start = latest_ingestion_date - datetime.timedelta(minutes=1)
             now_dt = datetime.datetime.now(datetime.timezone.utc)
             idex_10_day_ranges = pd.read_csv(
                 custom_partitions.IDEX_10_DAY_RANGES_PATH, header=0, dtype=str
@@ -140,7 +137,7 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
                     models.IDEXL0Files.start_date,
                     func.max(models.IDEXL0Files.ingestion_date),
                 )
-                .filter(models.IDEXL0Files.ingestion_date >= db_query_start)
+                .filter(models.IDEXL0Files.ingestion_date > latest_ingestion_date)
                 .group_by(models.IDEXL0Files.start_date)
                 .order_by(models.IDEXL0Files.start_date)
             )

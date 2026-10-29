@@ -65,8 +65,20 @@ def test_idex_l0_sensor(mock_db_session):
     sensor = IDEXL0FileHandler(node, idex10_partitions).build_sensor()
     result = sensor(context)
     assert result is not None
-    # Check that the new curser is the latest ingestion date (from the second file)
+    # Check that the new cursor is the latest ingestion date (from the second file)
     assert result.cursor == file_2_ingestion_date.isoformat()
     # Check that there are two runs requested since we inserted 2 new files
     # with ingestion dates greater than the most recent one.
     assert len(result.run_requests) == 2
+
+    # Add no new files and run another sensor tick
+    context = build_sensor_context(
+        instance=instance,
+        repository_def=repo_def,
+        cursor=file_2_ingestion_date.isoformat(),
+    )
+    result = sensor(context)
+    # Check that the cursor did not change.
+    assert result.cursor == file_2_ingestion_date.isoformat()
+    # There should be no new run requests.
+    assert result.run_requests == []
