@@ -34,6 +34,7 @@ CDK constructs are defined under `sds_data_manager/constructs/`.
 - **Small Forces Files (SFF)**: A continuous history of thruster activity, attitude and delta-V, delivered by the MOC.
   Their SPICE type is `thruster`.
 - **Repoint Files**: Define repointing maneuvers adjusting the spacecraft axis. Data taken during the maneuver itself is typically discarded.
+- **L1 Constellation Files (`l1const`)**: Not an IMAP instrument. `l1const` is a pseudo-instrument for files containing data from multiple spacecraft at the Sun-Earth L1 point, which the SDC was asked to host so they can be queried and downloaded through the normal data-access APIs. The SDC does not process these files — there are no Dagster jobs or dependency YAML for `l1const` — it only indexes, stores, and serves them.
 
 ### SPICE dependency resolution
 
