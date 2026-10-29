@@ -16,8 +16,8 @@ def test_idex_l0_sensor(mock_db_session):
     instance.add_dynamic_partitions(
         "idex_10_day_partitions",
         [
-            "daily_2026-01-01T00:00:00_to_2026-01-10T00:00:00",
-            "daily_2026-01-10T00:00:00_to_2026-01-20T00:00:00",
+            "idex10_2026-01-01T00:00:00_to_2026-01-10T00:00:00",
+            "idex10_2026-01-10T00:00:00_to_2026-01-20T00:00:00",
         ],
     )
 
