@@ -313,3 +313,38 @@ class IalirtApiManager(Construct):
             ialirt_db_query_priority,
             restricted_route_prefixes,
         )
+
+        # The SSR table is in IalirtSsrStack, so reference it by its fixed
+        # name instead of passing it between stacks.
+        ssr_table = ddb.Table.from_table_name(
+            self, "IalirtSsrTable", "ialirt-ssr-table"
+        )
+
+        ialirt_ssr_query_handler = lambda_.Function(
+            self,
+            "IAlirtSsrQueryApiHandler",
+            function_name="ialirt-ssr-query-handler",
+            code=code,
+            handler="IAlirtCode.ialirt_ssr_query_api.lambda_handler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(1),
+            # Lambda allocates CPU proportionally to memory,
+            # and DynamoDB queries are often CPU-bound due to
+            # JSON parsing and network serialization.
+            memory_size=2048,
+            environment={
+                "SSR_TABLE": ssr_table.table_name,
+                "REGION": env.region,
+            },
+        )
+
+        # Grant the lambda function read permissions on the DynamoDB table.
+        ssr_table.grant_read_data(ialirt_ssr_query_handler)
+
+        add_stable_route(
+            api,
+            "/space-weather-ssr",
+            "GET",
+            ialirt_ssr_query_handler,
+            auth_route_prefixes,
+        )
