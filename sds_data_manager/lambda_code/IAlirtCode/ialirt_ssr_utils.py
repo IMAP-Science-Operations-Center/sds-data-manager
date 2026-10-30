@@ -28,14 +28,14 @@ KERNELS = {
     "science_frames",
     "planetary_constants",
 }
-EFS_BASE_PATH = Path("/mnt/data")
 
 
 def query_filenames(day: datetime) -> list[str]:
-    """Query the latest I-ALiRT L0 files for a given day and the day after.
+    """Query the latest I-ALiRT L0 files for the day before, the day and the day after.
 
-    Packets for a given day can land in the next day's file, so both days
-    are needed to get a complete day of data.
+    Packets for a given day can land in the next day's file, and products
+    near midnight are built from packets on both sides of it, so all three
+    days are needed to get a complete day of data.
 
     Parameters
     ----------
@@ -50,16 +50,16 @@ def query_filenames(day: datetime) -> list[str]:
     Raises
     ------
     FileNotFoundError
-        If a file is missing for either day.
+        If a file is missing for any of the days.
     """
-    dates = [day.strftime("%Y%m%d"), (day + timedelta(days=1)).strftime("%Y%m%d")]
+    dates = [(day + timedelta(days=i)).strftime("%Y%m%d") for i in (-1, 0, 1)]
     results = imap_data_access.query(
         table="science",
         instrument="ialirt",
         data_level="l0",
         descriptor="raw",
         start_date=dates[0],
-        end_date=dates[1],
+        end_date=dates[-1],
         version="latest",
     )
 
@@ -123,10 +123,13 @@ def parse_packets(
     return combined
 
 
-def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollection:
+def get_latest_spice_kernels(
+    url: str, day: datetime, kernel_types: set[str] = KERNELS
+) -> ProcessingInputCollection:
     """Query the SPICE metakernel API for the latest kernels for a day.
 
-    The time range covers the day and the day after, to match the packet files.
+    The time range covers the day before, the day and the day after, to match
+    the packet files.
 
     Parameters
     ----------
@@ -134,6 +137,8 @@ def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollecti
         The IMAP data access API URL.
     day : datetime
         The day to query.
+    kernel_types : set[str]
+        The kernel types to query. Defaults to all of KERNELS.
 
     Returns
     -------
@@ -141,13 +146,14 @@ def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollecti
         A collection containing a SPICEInput object with the list of kernel
         filenames returned from the metakernel API, in priority order.
     """
-    # The end date is exclusive (midnight), so day + 2 covers day and day + 1.
+    # The end date is exclusive (midnight), so day - 1 to day + 2 covers
+    # day - 1, day and day + 1.
     metakernel_url = url + "/metakernel"
     params = {
-        "start_time": day.strftime("%Y%m%d"),
+        "start_time": (day - timedelta(days=1)).strftime("%Y%m%d"),
         "end_time": (day + timedelta(days=2)).strftime("%Y%m%d"),
         "list_files": "True",
-        "file_types": ",".join(KERNELS),
+        "file_types": ",".join(kernel_types),
     }
 
     logger.info(f"Sending request to {metakernel_url} with params: {params}")
@@ -162,25 +168,29 @@ def get_latest_spice_kernels(url: str, day: datetime) -> ProcessingInputCollecti
     return dependency_inputs
 
 
-def download_spice_files(dependencies: ProcessingInputCollection) -> list[Path]:
-    """Download SPICE kernel files from the IMAP data archive to EFS.
+def download_spice_files(
+    dependencies: ProcessingInputCollection, download_dir: Path
+) -> list[Path]:
+    """Download SPICE kernel files from the IMAP data archive.
 
     Parameters
     ----------
     dependencies : ProcessingInputCollection
         A collection containing a SPICEInput object with the list of kernel
         filenames returned from the metakernel API.
+    download_dir : Path
+        The directory where the files will be downloaded.
 
     Returns
     -------
     spice_files : list[Path]
-        The SPICE files stored in EFS.
+        The downloaded SPICE files.
 
     Notes
     -----
     List is priority ordered so furnishing in order results in correct SPICE priority.
     """
-    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    imap_data_access.config["DATA_DIR"] = download_dir
     dependencies.download_all_files()
 
     spice_files = dependencies.get_file_paths(data_type=SPICESource.SPICE.value)
@@ -189,8 +199,10 @@ def download_spice_files(dependencies: ProcessingInputCollection) -> list[Path]:
     return spice_files
 
 
-def get_ancillary(instrument: str, descriptor: str, day: datetime) -> Path:
-    """Query and download the ancillary file valid for a given day to EFS.
+def get_ancillary(
+    instrument: str, descriptor: str, day: datetime, download_dir: Path
+) -> Path:
+    """Query and download the ancillary file valid for a given day.
 
     This is consistent with how ancillary files are selected for processing
     (ImapJob.get_ancillary_files_inputs in orchestration/imap_job.py):
@@ -212,13 +224,15 @@ def get_ancillary(instrument: str, descriptor: str, day: datetime) -> Path:
         The name of the descriptor.
     day : datetime
         The day being processed.
+    download_dir : Path
+        The directory where the file will be downloaded.
 
     Returns
     -------
     download_path : Path
         Download path of the ancillary file.
     """
-    imap_data_access.config["DATA_DIR"] = EFS_BASE_PATH
+    imap_data_access.config["DATA_DIR"] = download_dir
     date_str = day.strftime("%Y%m%d")
     # end_date filters on the file start_date, so this returns files that
     # start on or before the day.

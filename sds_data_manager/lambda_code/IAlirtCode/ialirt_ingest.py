@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from importlib.metadata import version
 from pathlib import Path
 
 import boto3
@@ -56,6 +57,10 @@ KERNELS = {
     "planetary_constants",
 }
 EFS_BASE_PATH = Path("/mnt/data")
+SOFTWARE_VERSIONS = {
+    "imap_processing": version("imap-processing"),
+    "imap_data_access": version("imap-data-access"),
+}
 
 
 def get_ancillary(instrument, descriptor):
@@ -395,14 +400,14 @@ def process_algorithms(  # noqa: PLR0915
             # Continue to next instrument
 
     # Insert a single ancillary record keyed to the same time_utc as the SPICE kernels.
-    if all_ancillary_files:
-        ancillary_item = {
-            "instrument": "ancillary",
-            "time_utc": kernel_set_key,
-            "ancillary_files": all_ancillary_files,
-            "ttj2000ns": kernel_set_key_ttj2000ns,
-        }
-        data_table.put_item(Item=ancillary_item)
+    ancillary_item = {
+        "instrument": "ancillary",
+        "time_utc": kernel_set_key,
+        "ancillary_files": all_ancillary_files,
+        "software_versions": SOFTWARE_VERSIONS,
+        "ttj2000ns": kernel_set_key_ttj2000ns,
+    }
+    data_table.put_item(Item=ancillary_item)
 
 
 def reformat_data(data):
@@ -525,13 +530,17 @@ def insert_kernels(dependency_inputs, data_table):
     last_modified_for_spice = last_modified.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     met = et_to_met(str_to_et(last_modified_for_spice))
     spice_input = dependency_inputs.processing_input[0]
-    spice_kernels = dict(
-        zip(
-            [path.spice_metadata["type"] for path in spice_input.imap_file_paths],
-            spice_input.filename_list,
-            strict=True,
-        )
-    )
+    # All kernels are loaded, and more than one of a type can be returned
+    # (e.g. two ephemeris files each covering part of the window), so keep
+    # every filename per type, in load order.
+    spice_kernels = {}
+    for path, filename in zip(
+        spice_input.imap_file_paths, spice_input.filename_list, strict=True
+    ):
+        kernel_type = path.spice_metadata["type"]
+        if kernel_type not in spice_kernels:
+            spice_kernels[kernel_type] = []
+        spice_kernels[kernel_type].append(filename)
 
     # Will return the same kernel_set_key for the same set of kernels.
     kernel_set_key = met_to_utc(met).split(".")[0]
