@@ -56,10 +56,16 @@ TIME_KERNELS = {"leapseconds", "spacecraft_clock"}
 SPACECRAFT_CADENCE = timedelta(minutes=1)
 # Packets, SPICE kernels and ancillary files for one invocation.
 DOWNLOAD_DIR = Path("/tmp/ssr")  # noqa: S108
-# How close to midnight the first and last packets of the day must be.
+# The two values below do different jobs:
+# - COVERAGE_TOLERANCE is the pass/fail completeness check in
+#   check_day_coverage. The first packet must be in the first 60 s of the day,
+#   and there must be a packet in the first 60 s of the next day to show the
+#   data continues through the end of the day.
+# - BOUNDARY_BUFFER is used by trim_packets to decide how much data is passed
+#   to the instrument processing. It is larger because some products are built
+#   from packets spread over 4 minutes, so a product near midnight needs
+#   packets from the neighboring day.
 COVERAGE_TOLERANCE = timedelta(seconds=60)
-# Packets kept on each side of the day, so products near midnight still have
-# all of their packets.
 BOUNDARY_BUFFER = timedelta(minutes=10)
 # src_seq_ctr is a 14-bit counter.
 SEQ_CTR_MODULO = 16384
