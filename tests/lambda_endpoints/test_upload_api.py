@@ -1,7 +1,9 @@
 """Tests for the Upload API."""
 
+import datetime
 import json
 import os
+from unittest.mock import patch
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
 
@@ -220,3 +222,55 @@ def test_upload_denied_for_read_scope(s3_client, science_file):
     assert response["body"] == json.dumps(
         "Upload access denied. Please provide a valid API key with upload permissions."
     )
+
+
+def test_upload_denied_for_forbidden_product(s3_client, science_file):
+    """Test that upload is denied for forbidden product."""
+    forbidden_hit_file = "imap/hit/l0/2026/01/imap_hit_l0_raw_20260518_v001.0001.pkts"
+    event = {
+        "version": "2.0",
+        "routeKey": "$default",
+        "rawPath": "/",
+        "pathParameters": {"proxy": forbidden_hit_file},
+        "requestContext": {
+            "authorizer": {"lambda": {"scope": "write", "apiKey": "test-key"}}
+        },
+    }
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 403
+    assert (
+        "error: (hit, l0, raw) files are forbidden from being uploaded"
+    ) in response["body"]
+    # Make sure the allowed hit file can be uploaded successfully
+    event["pathParameters"]["proxy"] = (
+        "imap/hit/l0/2026/01/imap_hit_l0_raw_20260519_v001.0001.pkts"
+    )
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 200
+
+    test_forbidden_upload_products = [
+        {
+            "instrument": "hit",
+            "data_level": "l0",
+            "descriptor": "raw",
+            "start_date": datetime.datetime(2026, 1, 1),
+            "end_date": datetime.datetime(2026, 5, 19),
+        },
+    ]
+    # Patch the Dictionary of Forbidden files to ensure that setting the start_date
+    # and end_date works as expected.
+    with patch(
+        "sds_data_manager.lambda_code.SDSCode.api_lambdas.upload_api.FORBIDDEN_SCIENCE_UPLOADS",
+        test_forbidden_upload_products,
+    ):
+        # Update the file start_date to be out of the forbidden range
+        event["pathParameters"]["proxy"] = (
+            "imap/hit/l0/2026/01/imap_hit_l0_raw_20251220_v001.0001.pkts"
+        )
+        response = upload_api.lambda_handler(event=event, context=None)
+        assert response["statusCode"] == 200
+
+        # Ensure the forbidden file is still blocked.
+        event["pathParameters"]["proxy"] = forbidden_hit_file
+        response = upload_api.lambda_handler(event=event, context=None)
+        assert response["statusCode"] == 403
