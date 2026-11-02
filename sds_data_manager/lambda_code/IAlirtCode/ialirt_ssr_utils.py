@@ -51,6 +51,11 @@ def query_filenames(day: datetime) -> list[str]:
     ------
     FileNotFoundError
         If a file is missing for any of the days.
+
+    Notes
+    -----
+    Realtime reads the last 7 minutes of packet files from S3. SSR
+    reads the daily L0 files from the archive.
     """
     dates = [(day + timedelta(days=i)).strftime("%Y%m%d") for i in (-1, 0, 1)]
     results = imap_data_access.query(
@@ -92,6 +97,11 @@ def parse_packets(
     -------
     combined : xr.Dataset
         Combined dataset.
+
+    Notes
+    -----
+    Realtime drops duplicates by epoch. SSR drops them by epoch and
+    src_seq_ctr, because the daily files overlap.
     """
     imap_data_access.config["DATA_DIR"] = download_dir
     xtce_ialirt_path = (
@@ -145,6 +155,11 @@ def get_latest_spice_kernels(
     dependency_inputs : ProcessingInputCollection
         A collection containing a SPICEInput object with the list of kernel
         filenames returned from the metakernel API, in priority order.
+
+    Notes
+    -----
+    Realtime asks for kernels covering the last week. SSR asks for
+    kernels covering the day being processed, plus one day on each side.
     """
     # The end date is exclusive (midnight), so day - 1 to day + 2 covers
     # day - 1, day and day + 1.
@@ -189,6 +204,9 @@ def download_spice_files(
     Notes
     -----
     List is priority ordered so furnishing in order results in correct SPICE priority.
+
+    Realtime saves kernels to EFS and loads them here. SSR saves them
+    to /tmp and loads them later in process_day.
     """
     imap_data_access.config["DATA_DIR"] = download_dir
     dependencies.download_all_files()
@@ -231,6 +249,11 @@ def get_ancillary(
     -------
     download_path : Path
         Download path of the ancillary file.
+
+    Notes
+    -----
+    Realtime uses the newest file. SSR uses the file that was valid on
+    the day being processed.
     """
     imap_data_access.config["DATA_DIR"] = download_dir
     date_str = day.strftime("%Y%m%d")

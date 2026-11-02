@@ -2,6 +2,10 @@
 
 Each instrument (and the spacecraft) is deployed as its own Lambda from the
 same image. The INSTRUMENT environment variable selects which processor runs.
+
+Realtime (ialirt_ingest.py) processes all instruments over the last 7
+minutes. SSR processes one instrument for one whole day. Where a function
+differs from realtime, its docstring Notes say how.
 """
 
 import json
@@ -181,6 +185,11 @@ def process_mag(
         MAG data products.
     ancillary_files : dict
         Ancillary filenames used, keyed by instrument_descriptor.
+
+    Notes
+    -----
+    Same as realtime, except the ancillary files are chosen for the
+    day being processed.
     """
     ialirt_cal_path = get_ancillary("mag", "ialirt-calibration", day, download_dir)
     l1b_cal_path = get_ancillary("mag", "l1b-calibration", day, download_dir)
@@ -212,6 +221,11 @@ def process_swe_ssr(
         SWE data products.
     ancillary_files : dict
         Ancillary filenames used, keyed by instrument_descriptor.
+
+    Notes
+    -----
+    Same as realtime, except the ancillary file is chosen for the
+    day being processed.
     """
     cal_path = get_ancillary("swe", "l1b-in-flight-cal", day, download_dir)
     result = process_swe(combined, [cal_path])
@@ -241,6 +255,11 @@ def process_codice_lo(
         CoDICE-Lo data products.
     ancillary_files : dict
         Ancillary filenames used, keyed by instrument_descriptor.
+
+    Notes
+    -----
+    Same as realtime, except the ancillary files are chosen for the
+    day being processed.
     """
     lut_path = get_ancillary("codice", "l1a-sci-lut", day, download_dir)
     efficiency_path = get_ancillary("codice", "l2-lo-efficiency", day, download_dir)
@@ -278,6 +297,11 @@ def process_codice_hi(
         CoDICE-Hi data products.
     ancillary_files : dict
         Ancillary filenames used, keyed by instrument_descriptor.
+
+    Notes
+    -----
+    Same as realtime, except the ancillary files are chosen for the
+    day being processed.
     """
     lut_path = get_ancillary("codice", "l1a-sci-lut", day, download_dir)
     efficiency_path = get_ancillary(
@@ -311,6 +335,11 @@ def process_swapi(
         SWAPI data products.
     ancillary_files : dict
         Ancillary filenames used, keyed by instrument_descriptor.
+
+    Notes
+    -----
+    Same as realtime, except the ancillary file is chosen for the
+    day being processed.
     """
     cal_path = get_ancillary("swapi", "esa-unit-conversion", day, download_dir)
     result = process_swapi_ialirt(combined, pd.read_csv(cal_path))
@@ -333,6 +362,11 @@ def process_spacecraft_status(combined: xr.Dataset) -> list[dict]:
     -------
     result : list[dict]
         Spacecraft status data products, one per minute.
+
+    Notes
+    -----
+    Realtime makes one status record per run, about once a minute.
+    SSR makes one record for each minute of the day.
     """
     minute = combined["epoch"] // STATUS_CADENCE_NS
     return [
@@ -387,6 +421,10 @@ def format_items(
     -------
     items : list[dict]
         Items keyed by instrument_version and time_utc.
+
+    Notes
+    -----
+    Same fields as realtime, plus the instrument_version key.
     """
     exclude_keys = {"apid", "met", "met_in_utc", "mag_hk_status"}
     return [
@@ -416,6 +454,10 @@ def mag_hk_items(result: list[dict], version: str, kernel_set_key: str) -> list[
     -------
     items : list[dict]
         Items keyed by instrument_version and time_utc.
+
+    Notes
+    -----
+    Same fields as realtime, plus the instrument_version key.
     """
     return [
         {
@@ -450,6 +492,11 @@ def spacecraft_items(day: datetime, version: str, kernel_set_key: str) -> list[d
     -------
     items : list[dict]
         GSE/GSM position and velocity items at SPACECRAFT_CADENCE.
+
+    Notes
+    -----
+    Realtime stores one position per instrument per run. SSR stores
+    one position for every minute of the day.
     """
     n_steps = int(timedelta(days=1) / SPACECRAFT_CADENCE)
     times = [day + i * SPACECRAFT_CADENCE for i in range(n_steps)]
@@ -500,6 +547,11 @@ def spice_item(
     -------
     item : dict
         The spice item, keyed by kernel type.
+
+    Notes
+    -----
+    Same as realtime, but kernel_set_key is passed in instead of
+    created here.
     """
     spice_input = dependencies.processing_input[0]
     # All kernels are loaded, and more than one of a type can be returned
@@ -545,6 +597,10 @@ def ancillary_item(
     -------
     item : dict
         The ancillary item.
+
+    Notes
+    -----
+    Same fields as realtime, plus the instrument_version key.
     """
     return {
         "instrument_version": f"ancillary#{version}",
