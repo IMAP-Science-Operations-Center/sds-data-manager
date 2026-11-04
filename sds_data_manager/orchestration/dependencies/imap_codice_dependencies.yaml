@@ -420,7 +420,7 @@ lo_l3b_dist_common: &lo_l3b_dist_common
     - source: codice
       data_type: l3a
       descriptor: lo-sw-charge-state-distributions
-      major_version: 2
+      major_version: 1
 
 (l3a, lo-sw-ratios):
   partition: daily
@@ -432,7 +432,7 @@ lo_l3b_dist_common: &lo_l3b_dist_common
     - source: codice
       data_type: l3a
       descriptor: lo-sw-ratios
-      major_version: 2
+      major_version: 1
 
 (l3b, hi-pitch-angle):
   partition: daily
