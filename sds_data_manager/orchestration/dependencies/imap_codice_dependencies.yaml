@@ -88,7 +88,7 @@ lo_l3b_dist_common: &lo_l3b_dist_common
     - source: codice
       data_type: l1a
       descriptor: lo-sw-species
-      major_version: 1
+      major_version: 2
     - source: codice
       data_type: l1a
       descriptor: hskp
@@ -224,7 +224,7 @@ lo_l3b_dist_common: &lo_l3b_dist_common
     - source: codice
       data_type: l1b
       descriptor: lo-sw-species
-      major_version: 1
+      major_version: 2
 
 (l2, hi-direct-events):
   partition: daily
@@ -311,7 +311,7 @@ lo_l3b_dist_common: &lo_l3b_dist_common
     - source: codice
       data_type: l2
       descriptor: lo-sw-species
-      major_version: 1
+      major_version: 2
 
 (l3a, hi-direct-events):
   partition: daily
