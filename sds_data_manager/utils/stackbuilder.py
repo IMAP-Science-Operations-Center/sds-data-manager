@@ -511,9 +511,7 @@ def build_sds(
         "SECRET_NAME": db_secret_name,
         "ACCOUNT": env.account,
         "REGION": env.region,
-        "IMAP_DATA_ACCESS_URL": account_config.get(
-            "imap_data_access_url", "https://api.dev.imap-mission.com"
-        ),
+        "IMAP_DATA_ACCESS_URL": general_data_access_url,
         "SSM_API_KEY_PARAMETER": "/imap-sdc/batch-jobs/api-key",
         "REPROCESSING_SQS_URL": reprocessing_tools_construct.reprocessing_sqs_url,
         "DAGSTER_PG_HOST": dg_host_name,
