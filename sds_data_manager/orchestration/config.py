@@ -19,6 +19,13 @@ BACKUP_MATERIALIZATION_MIN_AGE = datetime.timedelta(hours=1)
 # re-materialization of historical files.
 BACKUP_MATERIALIZATION_MAX_AGE = datetime.timedelta(hours=2)
 
+# A kickoff sensor holds back a new upstream materialization whose partition isn't
+# registered yet (see IMAPJobHandler.trigger_from_new_science_inputs). Partitions
+# are normally registered within minutes; after this long the materialization is
+# processed anyway so a partition that never gets registered cannot block the
+# sensor forever.
+UNREGISTERED_PARTITION_MAX_WAIT = datetime.timedelta(hours=6)
+
 # The L0 data gap filler (data_gap_filler.py) re-checks a month of WebPODA
 # data by spacecraft time, ending DATA_GAP_FILLER_DELAY before each run, so
 # the packet downloader Lambda has already had its chance at that data. Its

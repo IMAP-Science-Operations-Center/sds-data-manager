@@ -624,8 +624,17 @@ class IMAPJobHandler:
             if not down_start or not down_end:
                 continue
 
-            # Math logic for overlapping date intervals
-            if up_start <= down_end and up_end >= down_start:
+            # Partitions are half-open intervals: consecutive partitions share a
+            # boundary (one ends at the exact instant the next begins), so ranges
+            # that merely touch do not overlap. This matches
+            # dagster_utilities.get_affected_partitions.
+            if up_start == up_end:
+                # A zero-length range overlaps the partition that contains it.
+                overlaps = down_start <= up_start < down_end
+            else:
+                overlaps = up_start < down_end and up_end > down_start
+
+            if overlaps:
                 target_keys.append(down_key)
 
         return target_keys
@@ -860,6 +869,37 @@ class IMAPJobHandler:
 
         return list(set(partitions_to_run))
 
+    def _upstream_shares_partitions(
+        self, context: SensorEvaluationContext, dependency: DependencyNode
+    ) -> bool:
+        """Return True if the upstream asset uses this job's partitions definition."""
+        repository_def = context.repository_def
+        if repository_def is None:
+            # Imported locally to avoid a circular import
+            from sds_data_manager.orchestration.imap_dagster import (  # noqa: PLC0415
+                defs,
+            )
+
+            repository_def = defs.get_repository_def()
+
+        asset_graph = repository_def.asset_graph
+        asset_key = dependency.to_dagster_asset()
+        return (
+            asset_graph.has(asset_key)
+            and asset_graph.get(asset_key).partitions_def == self.partitions_def
+        )
+
+    @staticmethod
+    def _waited_too_long_for_partition(record) -> bool:
+        """Return True if a materialization has waited too long for its partition.
+
+        Some partitions are never registered (e.g. a repoint before mission
+        start). Giving up on those keeps one such event from blocking every later
+        event of the dependency forever.
+        """
+        event_age = time.time() - record.event_log_entry.timestamp
+        return event_age > config.UNREGISTERED_PARTITION_MAX_WAIT.total_seconds()
+
     def trigger_from_new_science_inputs(
         self,
         context: AssetExecutionContext,
@@ -882,13 +922,38 @@ class IMAPJobHandler:
             filter, limit=100, ascending=True
         )
 
+        # An upstream asset that is partitioned the same way as this job can report
+        # a materialization before its partition is registered (e.g. a new repoint
+        # is only registered every few minutes by add_repoint_partitions).
+        shares_partitions = self._upstream_shares_partitions(context, dependency)
+        registered_keys = (
+            set(context.instance.get_dynamic_partitions(self.partitions_def.name))
+            if shares_partitions
+            else set()
+        )
+
         partitions_to_run = []
         for record in new_events:
+            upstream_partition_key = record.event_log_entry.dagster_event.partition
+            if (
+                shares_partitions
+                and upstream_partition_key
+                and upstream_partition_key not in registered_keys
+                and not self._waited_too_long_for_partition(record)
+            ):
+                # There is no partition to trigger yet, and matching it by date
+                # would pick the wrong neighbour. Leave this event (and everything
+                # after it) unconsumed so it is retried on the next tick.
+                context.log.info(
+                    f"Partition {upstream_partition_key} of {dep_name} is not "
+                    "registered yet, will retry on the next sensor tick."
+                )
+                break
+
             # Update our new cursor marker to the highest storage ID seen
             last_event_id = max(last_event_id, record.storage_id)
 
             # Get the dates of this new science file
-            upstream_partition_key = record.event_log_entry.dagster_event.partition
             up_start, up_end = dagster_utilities.parse_dates_from_partition_key(
                 upstream_partition_key
             )
