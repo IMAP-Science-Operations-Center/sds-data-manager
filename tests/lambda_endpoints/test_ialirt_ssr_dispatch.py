@@ -51,3 +51,17 @@ def test_lambda_handler_bad_version():
     """Test that an invalid version raises."""
     with pytest.raises(ValueError, match="version"):
         lambda_handler({"detail": {"version": "2"}}, {})
+
+
+def test_get_days_end_before_start():
+    """Test that an end date before the start date raises."""
+    detail = {"start_date": "20261002", "end_date": "20260930"}
+
+    with pytest.raises(ValueError, match="before start_date"):
+        get_days(detail)
+
+
+def test_lambda_handler_unknown_instrument():
+    """Test that an unknown instrument raises."""
+    with pytest.raises(ValueError, match="Unknown instruments"):
+        lambda_handler({"detail": {"instruments": ["mag", "bad"]}}, {})
