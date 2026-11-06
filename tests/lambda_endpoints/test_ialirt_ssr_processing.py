@@ -366,22 +366,51 @@ def mock_get_ancillary(instrument, descriptor, day, download_dir):
     return Path(f"imap_{instrument}_{descriptor}.cdf")
 
 
+def mock_mag_products(packets, l1b_cal, ialirt_cal):
+    """Return a fake MAG product for every packet in a chunk."""
+    return [{"ttj2000ns": int(e)} for e in packets["epoch"].values]
+
+
 @patch(f"{MODULE}.get_ancillary", side_effect=mock_get_ancillary)
 @patch(f"{MODULE}.load_cdf")
 @patch(f"{MODULE}.process_packet")
 def test_process_mag(mock_process_packet, mock_load_cdf, mock_ancillary):
-    """Test that MAG uses the calibration files for the day."""
-    mock_process_packet.return_value = [{"met_in_utc": "2026-10-08T12:00:00"}]
+    """Test that MAG is processed in chunks with the calibration files for the day."""
+    mock_process_packet.side_effect = mock_mag_products
     day = datetime(2026, 10, 8)
+    # 30 minutes of packets, 1 per second.
+    epoch = np.arange(1800) * 10**9
+    combined = xr.Dataset(coords={"epoch": epoch})
 
-    result, ancillary_files = process_mag(MagicMock(), day, Path("/tmp"))  # noqa: S108
+    result, ancillary_files = process_mag(combined, day, Path("/tmp"))  # noqa: S108
 
-    assert result == mock_process_packet.return_value
+    # Five 7 minute chunks, and each product is kept exactly once.
+    assert mock_process_packet.call_count == 5
+    assert [p["ttj2000ns"] for p in result] == list(epoch)
     assert ancillary_files == {
         "mag_ialirt-calibration": "imap_mag_ialirt-calibration.cdf",
         "mag_l1b-calibration": "imap_mag_l1b-calibration.cdf",
     }
     assert all(call.args[2] == day for call in mock_ancillary.call_args_list)
+
+
+@patch(f"{MODULE}.get_ancillary", side_effect=mock_get_ancillary)
+@patch(f"{MODULE}.load_cdf")
+@patch(f"{MODULE}.process_packet")
+def test_process_mag_skips_empty_chunk(
+    mock_process_packet, mock_load_cdf, mock_ancillary
+):
+    """Test that a chunk with no packets is skipped."""
+    mock_process_packet.side_effect = mock_mag_products
+    # 10 minutes of packets, a 30 minute gap, then 10 more minutes.
+    epoch = np.concatenate([np.arange(600), np.arange(2400, 3000)]) * 10**9
+    combined = xr.Dataset(coords={"epoch": epoch})
+
+    result, _ = process_mag(combined, datetime(2026, 10, 8), Path("/tmp"))  # noqa: S108
+
+    # The three chunks in the middle of the gap have no packets.
+    assert mock_process_packet.call_count == 5
+    assert [p["ttj2000ns"] for p in result] == list(epoch)
 
 
 @patch(f"{MODULE}.get_ancillary", side_effect=mock_get_ancillary)
