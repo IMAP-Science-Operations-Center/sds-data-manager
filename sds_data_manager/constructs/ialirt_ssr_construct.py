@@ -198,13 +198,14 @@ class IalirtSsrConstruct(Construct):
 
     def create_event_rules(self) -> None:
         """Create the daily and manual triggers for the dispatch Lambda."""
-        daily_rule = events.Rule(
-            self,
-            "IalirtSsrDailyRule",
-            rule_name="ialirt-ssr-daily",
-            schedule=events.Schedule.cron(minute="0", hour="6"),
-        )
-        daily_rule.add_target(targets.LambdaFunction(self.dispatch_lambda))
+        # TODO: Daily cron disabled for now; re-enable when ready.
+        # daily_rule = events.Rule(
+        #     self,
+        #     "IalirtSsrDailyRule",
+        #     rule_name="ialirt-ssr-daily",
+        #     schedule=events.Schedule.cron(minute="0", hour="6"),
+        # )
+        # daily_rule.add_target(targets.LambdaFunction(self.dispatch_lambda))
 
         # Manual trigger: put a custom event on the default event bus, e.g.
         # Source "imap.ialirt.ssr", DetailType "SSR Processing Request",
