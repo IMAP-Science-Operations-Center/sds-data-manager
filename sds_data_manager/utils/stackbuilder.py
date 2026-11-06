@@ -446,12 +446,15 @@ def build_sds(
         scope, "IalirtSsrStack", cross_region_references=True, env=env
     )
 
+    # SSR always reads prod data, since dev does not have the full history
+    # of L0, ancillary and SPICE files.
+    prod_domain_name = ialirt_ssr_stack.node.get_context("prod")["domain_name"]
     ialirt_ssr_construct.IalirtSsrConstruct(
         scope=ialirt_ssr_stack,
         construct_id="IalirtSsrConstruct",
         account_name=account_name,
         vpc=networking.vpc,
-        data_access_url=general_data_access_url,
+        data_access_url=f"https://api.{prod_domain_name}",
     )
 
     reprocessing_tools_construct = instrument_lambdas.ReprocessingTools(

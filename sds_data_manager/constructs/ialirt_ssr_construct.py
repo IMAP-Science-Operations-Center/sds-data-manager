@@ -22,6 +22,8 @@ SSR_INSTRUMENTS = [
     "spacecraft_status",
     "spacecraft",
 ]
+# Holds a prod API key, since SSR always reads prod data.
+API_KEY_PARAMETER_NAME = "/imap-sdc/ialirt-ssr/api-key"
 
 
 class IalirtSsrConstruct(Construct):
@@ -52,7 +54,8 @@ class IalirtSsrConstruct(Construct):
         docker_path : str
             Path to the Dockerfile.
         data_access_url : str, optional
-            The data access URL, e.g. https://api.dev.imap-mission.com
+            The prod data access URL, https://api.imap-mission.com. SSR reads
+            prod data in every account.
         kwargs : dict
             Keyword arguments.
 
@@ -133,7 +136,7 @@ class IalirtSsrConstruct(Construct):
         api_key_parameter = ssm.StringParameter.from_secure_string_parameter_attributes(
             self,
             "ApiKeyParameter",
-            parameter_name="/imap-sdc/batch-jobs/api-key",
+            parameter_name=API_KEY_PARAMETER_NAME,
         )
         api_key_parameter.grant_read(lambda_role)
 
@@ -166,7 +169,7 @@ class IalirtSsrConstruct(Construct):
                     "INSTRUMENT": instrument,
                     "SSR_TABLE": self.ssr_table.table_name,
                     "IMAP_DATA_ACCESS_URL": data_access_url,
-                    "SSM_API_KEY_PARAMETER": "/imap-sdc/batch-jobs/api-key",
+                    "SSM_API_KEY_PARAMETER": API_KEY_PARAMETER_NAME,
                 },
                 # Limits how many days of one instrument run at once during
                 # a backfill, so SSR does not take concurrency from
