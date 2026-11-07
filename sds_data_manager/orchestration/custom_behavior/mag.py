@@ -72,15 +72,15 @@ class MagL1CJob(imap_job.IMAPJobHandler):
     def _previous_day_l1c_pending(self, context):
         """Return True while the previous day's L1C is in flight or expected."""
         target_start, _ = parse_dates_from_partition_key(context.partition_key)
-        # One day's partition ends at the exact midnight the next day's
-        # begins, and _get_overlapping_target_partitions matches inclusively,
-        # so trim one second from both ends of the previous day: the window
-        # then touches only day N-1's partition, not day N-2's (which ends at
-        # day N-1's midnight) or this run's own (which starts at target_start).
+        # One day's partition ends at the exact midnight the next day's begins.
+        # _get_overlapping_target_partitions treats partitions as half-open
+        # intervals, so the previous day's window overlaps only day N-1's
+        # partition, not day N-2's (which ends at day N-1's midnight) or this
+        # run's own (which starts at target_start).
         previous_day_keys = self._get_overlapping_target_partitions(
             None,
-            target_start - datetime.timedelta(days=1) + datetime.timedelta(seconds=1),
-            target_start - datetime.timedelta(seconds=1),
+            target_start - datetime.timedelta(days=1),
+            target_start,
             context.instance,
         )
         if not previous_day_keys:
