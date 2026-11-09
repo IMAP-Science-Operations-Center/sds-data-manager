@@ -75,6 +75,10 @@ BOUNDARY_BUFFER = timedelta(minutes=10)
 SEQ_CTR_MODULO = 16384
 # How often to store spacecraft status. Matches ialirt-ingest's ~1 per minute.
 STATUS_CADENCE_NS = 60 * 10**9
+# MAG slows down sharply with more packets, so a day is processed in 7 minute
+# chunks like realtime, each with 2 extra minutes of packets on both sides.
+MAG_CHUNK_NS = 7 * 60 * 10**9
+MAG_PAD_NS = 2 * 60 * 10**9
 SOFTWARE_VERSIONS = {
     "imap_processing": package_version("imap-processing"),
     "imap_data_access": package_version("imap-data-access"),
@@ -189,11 +193,25 @@ def process_mag(
     Notes
     -----
     Same as realtime, except the ancillary files are chosen for the
-    day being processed.
+    day being processed, and the packets are processed in chunks.
     """
     ialirt_cal_path = get_ancillary("mag", "ialirt-calibration", day, download_dir)
     l1b_cal_path = get_ancillary("mag", "l1b-calibration", day, download_dir)
-    result = process_packet(combined, load_cdf(l1b_cal_path), load_cdf(ialirt_cal_path))
+    l1b_cal = load_cdf(l1b_cal_path)
+    ialirt_cal = load_cdf(ialirt_cal_path)
+
+    epoch = combined["epoch"].values
+    result = []
+    for start in range(epoch[0], epoch[-1] + 1, MAG_CHUNK_NS):
+        end = start + MAG_CHUNK_NS
+        in_chunk = (epoch >= start - MAG_PAD_NS) & (epoch <= end + MAG_PAD_NS)
+        packets = combined.isel(epoch=in_chunk)
+        if packets["epoch"].size == 0:
+            continue
+        products = process_packet(packets, l1b_cal, ialirt_cal)
+        # Keep only the products in this chunk, so each is kept once.
+        result += [p for p in products if start <= p["ttj2000ns"] < end]
+
     ancillary_files = {
         "mag_ialirt-calibration": ialirt_cal_path.name,
         "mag_l1b-calibration": l1b_cal_path.name,
