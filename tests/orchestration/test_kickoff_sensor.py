@@ -49,9 +49,7 @@ def test_kickoff_sensor_retries_until_matching_repoint_is_registered():
                 asset_key=AssetKey("lo_l0_raw"),
                 partition=REPOINT_417,
                 metadata={
-                    "file_names": [
-                        "imap_lo_l0_raw_20261030-repoint00417_v001.pkts"
-                    ],
+                    "file_names": ["imap_lo_l0_raw_20261030-repoint00417_v001.pkts"],
                     "input_type": "science",
                 },
             )
