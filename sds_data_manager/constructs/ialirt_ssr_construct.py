@@ -72,7 +72,7 @@ class IalirtSsrConstruct(Construct):
         self.ssr_lambdas = self.create_lambda_functions(docker_path, data_access_url)
 
         # Create the Lambda that invokes the instrument Lambdas per day
-        self.dispatch_lambda = self.create_dispatch_lambda(docker_path)
+        self.dispatch_lambda = self.create_dispatch_lambda(docker_path, data_access_url)
 
         # Create the daily and manual triggers
         self.create_event_rules()
@@ -133,12 +133,14 @@ class IalirtSsrConstruct(Construct):
         self.ssr_table.grant_read_write_data(lambda_role)
 
         # Unreleased L0 files are only returned to queries with an API key.
-        api_key_parameter = ssm.StringParameter.from_secure_string_parameter_attributes(
-            self,
-            "ApiKeyParameter",
-            parameter_name=API_KEY_PARAMETER_NAME,
+        self.api_key_parameter = (
+            ssm.StringParameter.from_secure_string_parameter_attributes(
+                self,
+                "ApiKeyParameter",
+                parameter_name=API_KEY_PARAMETER_NAME,
+            )
         )
-        api_key_parameter.grant_read(lambda_role)
+        self.api_key_parameter.grant_read(lambda_role)
 
         code = lambda_.DockerImageCode.from_image_asset(
             docker_path,
@@ -183,17 +185,41 @@ class IalirtSsrConstruct(Construct):
 
         return ssr_lambdas
 
-    def create_dispatch_lambda(self, code_path: str) -> lambda_.Function:
-        """Create the Lambda that invokes the instrument Lambdas per day."""
-        dispatch_lambda = lambda_.Function(
+    def create_dispatch_lambda(
+        self, docker_path: str, data_access_url: str
+    ) -> lambda_.DockerImageFunction:
+        """Create the Lambda that invokes the instrument Lambdas per day.
+
+        It uses the instrument image so it can run the same coverage check
+        before invoking them.
+        """
+        dispatch_lambda = lambda_.DockerImageFunction(
             self,
             "IalirtSsrDispatchLambda",
             function_name="ialirt-ssr-dispatch",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            code=lambda_.Code.from_asset(code_path),
-            handler="IAlirtCode.ialirt_ssr_dispatch.lambda_handler",
+            code=lambda_.DockerImageCode.from_image_asset(
+                docker_path,
+                file="IAlirtCode/Dockerfile.ssr",
+                cmd=["ialirt_ssr_dispatch.lambda_handler"],
+            ),
             timeout=cdk.Duration.minutes(15),
+            # Parses three days of packets at a time for the coverage check.
+            memory_size=3008,
+            ephemeral_storage_size=cdk.Size.gibibytes(2),
+            vpc=self.vpc,
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            ),
+            environment={
+                "SSR_TABLE": self.ssr_table.table_name,
+                "IMAP_DATA_ACCESS_URL": data_access_url,
+                "SSM_API_KEY_PARAMETER": API_KEY_PARAMETER_NAME,
+            },
+            retry_attempts=0,
         )
+        # Read access to skip days that are already processed.
+        self.ssr_table.grant_read_data(dispatch_lambda)
+        self.api_key_parameter.grant_read(dispatch_lambda)
         for ssr_lambda in self.ssr_lambdas.values():
             ssr_lambda.grant_invoke(dispatch_lambda)
         dispatch_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
@@ -201,14 +227,16 @@ class IalirtSsrConstruct(Construct):
 
     def create_event_rules(self) -> None:
         """Create the daily and manual triggers for the dispatch Lambda."""
-        # TODO: Daily cron disabled for now; re-enable when ready.
-        # daily_rule = events.Rule(
-        #     self,
-        #     "IalirtSsrDailyRule",
-        #     rule_name="ialirt-ssr-daily",
-        #     schedule=events.Schedule.cron(minute="0", hour="6"),
-        # )
-        # daily_rule.add_target(targets.LambdaFunction(self.dispatch_lambda))
+        # Daily: process days completed by recently ingested L0 files. Prod
+        # only, since SSR reads prod data and dev processes days manually.
+        if self.account_name == "prod":
+            daily_rule = events.Rule(
+                self,
+                "IalirtSsrDailyRule",
+                rule_name="ialirt-ssr-daily",
+                schedule=events.Schedule.cron(minute="0", hour="6"),
+            )
+            daily_rule.add_target(targets.LambdaFunction(self.dispatch_lambda))
 
         # Manual trigger: put a custom event on the default event bus, e.g.
         # Source "imap.ialirt.ssr", DetailType "SSR Processing Request",
