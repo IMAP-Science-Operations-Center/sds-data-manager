@@ -31,38 +31,6 @@ class AlarmResult:
         return {**asdict(self), "is_stale": self.is_stale()}
 
 
-@dataclass
-class Alarm:
-    """An alarm that fires if no new data arrives within threshold_days."""
-
-    instrument: str
-    descriptor: str
-    data_level: str
-    # How many days since the last file before the alarm triggers
-    threshold_days: int
-
-    def __post_init__(self):
-        """Validate the threshold_days value."""
-        if self.threshold_days <= 0:
-            raise ValueError("threshold_days must be greater than 0.")
-
-    def name(self):
-        """Return the name of the alarm."""
-        return f"{self.instrument}-{self.descriptor}-{self.data_level}"
-
-    def alarm_description(self):
-        """Return the description of the alarm."""
-        return (
-            f"{self.instrument.upper()}, {self.data_level}, {self.descriptor} data "
-            f"is stale: no new files in the last {self.threshold_days} days."
-        )
-
-
-MONITORED_SCIENCE_PRODUCTS = [Alarm("idex", "raw", "l0", 5)] + [
-    Alarm("idex", "sci-10days", level, 8) for level in ["l1a", "l1b", "l2a", "l2b"]
-]
-
-
 def publish_metric(metric_namespace: str, data_name: str, days_old: int):
     """Publish a CloudWatch metric for data freshness.
 
