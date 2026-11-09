@@ -6,5 +6,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY IAlirtCode/ialirt_ssr_utils.py .
 COPY IAlirtCode/ialirt_ssr_processing.py .
+COPY IAlirtCode/ialirt_ssr_dispatch.py .
 
 CMD ["ialirt_ssr_processing.lambda_handler"]
