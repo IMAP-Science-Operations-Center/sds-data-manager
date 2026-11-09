@@ -10,6 +10,7 @@ from dagster import (
     AssetKey,
     AssetMaterialization,
     AssetObservation,
+    DagsterInstance,
     build_asset_context,
     build_sensor_context,
 )
@@ -154,3 +155,35 @@ def test_glows_l1a_end_to_end(
         assert isinstance(event, AssetObservation)
     # Assert only one job has ever been submitted still
     assert len(mock_db_session.query(models.ProcessingJob).all()) == 1
+
+
+def test_lo_l1a_sensor_retries_until_repoint_partition_is_registered(
+    mock_db_session,
+):
+    """A materialization must wait for its dynamic repoint partition to exist."""
+    instance = DagsterInstance.ephemeral()
+    previous_partition = "repoint416_2026-10-29T10:03:26_to_2026-10-30T10:03:28"
+    new_partition = "repoint417_2026-10-30T10:03:28_to_2026-10-31T10:03:22"
+    instance.add_dynamic_partitions("repoint_partitions", [previous_partition])
+    instance.report_runless_asset_event(
+        asset_event=AssetMaterialization(
+            asset_key=AssetKey(["lo_l0_raw"]),
+            partition=new_partition,
+        )
+    )
+
+    lo_l1a_sensor = defs.get_sensor_def("lo_l1a_all_kickoff_sensor")
+    first_context = build_sensor_context(instance=instance)
+    first_requests = list(lo_l1a_sensor(first_context))
+
+    # The adjacent previous partition must not be selected while the new
+    # partition is waiting for add_repoint_partitions to register it.
+    assert first_requests == []
+
+    instance.add_dynamic_partitions("repoint_partitions", [new_partition])
+    second_context = build_sensor_context(
+        instance=instance, cursor=first_context.cursor
+    )
+    second_requests = list(lo_l1a_sensor(second_context))
+
+    assert [request.partition_key for request in second_requests] == [new_partition]

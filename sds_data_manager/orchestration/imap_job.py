@@ -884,9 +884,6 @@ class IMAPJobHandler:
 
         partitions_to_run = []
         for record in new_events:
-            # Update our new cursor marker to the highest storage ID seen
-            last_event_id = max(last_event_id, record.storage_id)
-
             # Get the dates of this new science file
             upstream_partition_key = record.event_log_entry.dagster_event.partition
             up_start, up_end = dagster_utilities.parse_dates_from_partition_key(
@@ -897,7 +894,27 @@ class IMAPJobHandler:
                  {record.event_log_entry.dagster_event.partition}!"""
             )
             if not up_start or not up_end:
+                # This event cannot map to a time-based target partition.
+                last_event_id = max(last_event_id, record.storage_id)
                 continue
+
+            if (
+                self.job_config.partition == "repoint"
+                and upstream_partition_key.startswith("repoint")
+            ):
+                registered_partitions = context.instance.get_dynamic_partitions(
+                    self.partitions_def.name
+                )
+                if upstream_partition_key not in registered_partitions:
+                    context.log.info(
+                        f"Deferring dependency at {upstream_partition_key} until its "
+                        "repoint partition is registered."
+                    )
+                    break
+
+            # Update the cursor only after the event can be evaluated. If its
+            # repoint partition is not registered yet, leave it for the next tick.
+            last_event_id = max(last_event_id, record.storage_id)
 
             # Kick off jobs in a range around the file
             # TODO: This is probably too broad. But for now, this
