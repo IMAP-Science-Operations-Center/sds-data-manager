@@ -20,7 +20,7 @@ from aws_cdk import aws_sns as sns
 from aws_cdk import aws_sns_subscriptions as subs
 from constructs import Construct
 
-from sds_data_manager.lambda_code.SDSCode.utils.monitoring_utils import (
+from sds_data_manager.lambda_code.SDSCode.utils.science_monitoring_config import (
     MONITORED_SCIENCE_PRODUCTS,
     Alarm,
 )
