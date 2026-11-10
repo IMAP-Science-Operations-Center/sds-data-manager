@@ -624,11 +624,27 @@ class IMAPJobHandler:
             if not down_start or not down_end:
                 continue
 
-            # Math logic for overlapping date intervals
-            if up_start <= down_end and up_end >= down_start:
+            # Partition windows that only meet at a boundary are adjacent, not
+            # overlapping. An exact partition-key match was handled above.
+            if up_start < down_end and up_end > down_start:
                 target_keys.append(down_key)
 
         return target_keys
+
+    def _dependency_uses_same_partition_def(self, dependency: DependencyNode) -> bool:
+        """Return whether an input asset uses this job's partition definition."""
+        if self.partitions_def is None:
+            return False
+
+        # Import locally to avoid a circular import while imap_dagster builds defs.
+        from sds_data_manager.orchestration.imap_dagster import defs  # noqa: PLC0415
+
+        dependency_partitions_def = (
+            defs.get_repository_def()
+            .asset_graph.get(dependency.to_dagster_asset())
+            .partitions_def
+        )
+        return dependency_partitions_def == self.partitions_def
 
     def build_sensor(self):
         """Return a Dagster sensor monitoring for new dependencies.
@@ -882,11 +898,17 @@ class IMAPJobHandler:
             filter, limit=100, ascending=True
         )
 
+        dependency_uses_same_partition_def = bool(new_events) and (
+            self._dependency_uses_same_partition_def(dependency)
+        )
+        existing_target_partitions = (
+            set(context.instance.get_dynamic_partitions(self.partitions_def.name))
+            if dependency_uses_same_partition_def
+            else set()
+        )
+
         partitions_to_run = []
         for record in new_events:
-            # Update our new cursor marker to the highest storage ID seen
-            last_event_id = max(last_event_id, record.storage_id)
-
             # Get the dates of this new science file
             upstream_partition_key = record.event_log_entry.dagster_event.partition
             up_start, up_end = dagster_utilities.parse_dates_from_partition_key(
@@ -897,7 +919,27 @@ class IMAPJobHandler:
                  {record.event_log_entry.dagster_event.partition}!"""
             )
             if not up_start or not up_end:
+                # This event cannot map to a time-based partition, so consume it.
+                last_event_id = max(last_event_id, record.storage_id)
                 continue
+
+            if (
+                dependency_uses_same_partition_def
+                and upstream_partition_key not in existing_target_partitions
+            ):
+                # The input and target use the same dynamic partition set, but
+                # this key has not been registered yet. Keep the cursor before
+                # this event so the sensor retries it after the partition sensor
+                # catches up. Falling back to date overlap here can incorrectly
+                # select an adjacent partition at a shared boundary.
+                context.log.info(
+                    f"Deferring dependency partition {upstream_partition_key}; "
+                    "the matching target partition is not registered yet."
+                )
+                break
+
+            # Update our new cursor marker only once this event is processable.
+            last_event_id = max(last_event_id, record.storage_id)
 
             # Kick off jobs in a range around the file
             # TODO: This is probably too broad. But for now, this
