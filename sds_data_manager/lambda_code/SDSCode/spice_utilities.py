@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import tempfile
 from collections.abc import Collection
 from dataclasses import dataclass, field
@@ -358,6 +359,18 @@ def furnish_best_spice_file(kernel_type: str):
     return highest_version_spice_file
 
 
+def _ephemeris_priority(spice_file: dict) -> tuple[int, float, str]:
+    """Rank spacecraft ephemeris by OD solution, then ingestion time.
+
+    Legacy files without an OD number rank below numbered solutions. The file
+    name breaks exact ties so database row order never determines precedence.
+    """
+    filename = Path(spice_file["file_name"]).name
+    od_match = re.search(r"_od(\d+)_", filename, re.IGNORECASE)
+    od_number = int(od_match[1]) if od_match else -1
+    return od_number, spice_file["timestamp"], filename
+
+
 def metakernel_builder(
     start_time: float | None,
     end_time: float | None,
@@ -414,13 +427,19 @@ def metakernel_builder(
                 {"queryStringParameters": query_string_parameters},
                 None,
             )
+            files = json.loads(spice_files["body"])
+            # Versions restart with each new file name. For spacecraft
+            # ephemeris, prefer the newest OD solution even if an older one was
+            # ingested later. Other kernel categories keep timestamp priority.
+            priority_field = "timestamp"
+            if spice_category is SpacecraftEphemerisKernels:
+                files.sort(key=_ephemeris_priority, reverse=True)
+                priority_field = ""
             metakernel.load_spice(
-                json.loads(spice_files["body"]),
+                files,
                 spice_category.spice_category_name(),
                 "file_intervals_j2000",
-                # Versions restart with each new file name, so they can't rank
-                # files with different names. The latest ingested file wins.
-                priority_field="timestamp",
+                priority_field=priority_field,
             )
 
     return metakernel

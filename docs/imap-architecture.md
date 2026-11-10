@@ -43,9 +43,12 @@ SPICE dependencies are resolved by the metakernel builder (`metakernel_builder` 
 any time left uncovered as a gap. `require_coverage=true` fails with the gaps when any requested category has one.
 Categories that weren't requested aren't checked.
 
-Only the latest version of each file name is considered. Among files with different names, the latest ingested file has
-the highest priority. Versions can't rank those files, since they restart with each new file name: a growing attitude
-kernel's newest file is often `_001` while older ones are `_002`.
+Only the latest version of each file name is considered. Among files with different names of the same spacecraft
+ephemeris type, the highest orbit determination (OD) number has priority, followed by ingestion time. Legacy files
+without an OD number rank below numbered solutions, and file name breaks exact OD/time ties deterministically.
+The priority between ephemeris types (reconstructed, nominal, predicted, and so on) is unchanged. Other kernel types
+use ingestion time alone. Versions can't rank files with different names, since they restart with each new file name:
+a growing attitude kernel's newest file is often `_001` while older ones are `_002`.
 
 Spin (`spin`) and small forces (`thruster`) files are indexed into `spice_files` too, but they aren't SPICE kernels, so
 their categories are **opt-in**: they're only included when named in `file_types`. A default metakernel never lists

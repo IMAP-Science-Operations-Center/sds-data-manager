@@ -745,6 +745,30 @@ def _list_files(file_types, start_time, end_time, require_coverage=False):
     )
 
 
+@pytest.mark.parametrize("prefix", ["nom", "pred"])
+def test_metakernel_od_priority_preserves_latest_version_filter(session, prefix):
+    """Use the newest version within an OD, then rank different ODs by number."""
+    older_od = f"imap_{prefix}_od001_20250926_20280606_v02.bsp"
+    older_version = f"imap_{prefix}_od003_20251001_20280606_v01.bsp"
+    latest_version = f"imap_{prefix}_od003_20251001_20280606_v02.bsp"
+    _insert_test_file(session, older_od, [[0, 100]])
+    _insert_test_file(session, older_version, [[0, 100]])
+    _insert_test_file(session, latest_version, [[10, 100]])
+    # Reproduce a batch ingest with exactly equal timestamps.
+    session.query(models.SPICEFiles).update(
+        {models.SPICEFiles.ingestion_date: datetime(2025, 10, 16, 18, 32, 23)}
+    )
+    session.commit()
+
+    kernel_type = "ephemeris_nominal" if prefix == "nom" else "ephemeris_predicted"
+    response = _list_files(kernel_type, 0, 100, require_coverage=True)
+
+    assert response["statusCode"] == 200
+    # The older OD fills [0, 10]; the latest version of OD003 takes precedence
+    # over the overlap. The superseded OD003 v01 must not fill the gap.
+    assert json.loads(response["body"]) == [older_od, latest_version]
+
+
 def test_metakernel_excludes_spin_and_thruster_by_default(session):
     """Spin and small forces files are only listed when requested."""
     _insert_test_file(session, "naif0012.tls", [[0, 300]])
