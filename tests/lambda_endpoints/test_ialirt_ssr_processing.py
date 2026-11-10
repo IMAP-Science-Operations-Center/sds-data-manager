@@ -50,8 +50,8 @@ DAY_NS = 86400 * 10**9
 def test_check_day_coverage(mock_str_to_ttj2000ns):
     """Test that a complete day passes."""
     mock_str_to_ttj2000ns.side_effect = [0, DAY_NS]
-    # A packet every 30 seconds until just after midnight.
-    epoch = np.arange(0, 86430, 30) * 10**9
+    # A packet every 30 seconds from just before to just after the day.
+    epoch = np.arange(-30, 86430, 30) * 10**9
     combined = xr.Dataset(
         {"src_seq_ctr": ("epoch", np.arange(len(epoch)))}, coords={"epoch": epoch}
     )
@@ -66,7 +66,7 @@ def test_check_day_coverage(mock_str_to_ttj2000ns):
 def test_check_day_coverage_gap(mock_str_to_ttj2000ns, mock_to_utc):
     """Test that a missing packet raises."""
     mock_str_to_ttj2000ns.side_effect = [0, DAY_NS]
-    epoch = np.arange(0, 86430, 30) * 10**9
+    epoch = np.arange(-30, 86430, 30) * 10**9
     src_seq_ctr = np.arange(len(epoch))
     src_seq_ctr[100:] += 1
     combined = xr.Dataset(
@@ -324,10 +324,10 @@ def test_ttj2000ns_to_utc(mock_ttj2000ns_to_et, mock_et_to_utc):
     [
         # No packets in the day.
         (np.array([], dtype=np.int64), "no packets"),
-        # First packet 2 minutes after midnight.
-        (np.arange(120, 86430, 30), "first packet"),
+        # No packet before midnight.
+        (np.arange(0, 86430, 30), "first packet"),
         # Last packet 2 minutes before the end of the day.
-        (np.arange(0, 86280, 30), "last packet"),
+        (np.arange(-30, 86280, 30), "last packet"),
     ],
 )
 @patch(f"{MODULE}.ttj2000ns_to_utc")
@@ -343,6 +343,22 @@ def test_check_day_coverage_incomplete_day(
     )
 
     with pytest.raises(IalirtDataGapError, match=match):
+        check_day_coverage(combined, datetime(2026, 10, 8))
+
+
+@patch(f"{MODULE}.ttj2000ns_to_utc")
+@patch(f"{MODULE}.str_yyyymmdd_to_ttj2000ns")
+def test_check_day_coverage_missing_start(mock_str_to_ttj2000ns, mock_to_utc):
+    """Test that packets missing just after midnight raise."""
+    mock_str_to_ttj2000ns.side_effect = [0, DAY_NS]
+    # The packets at 0 and 30 seconds are missing.
+    epoch = np.concatenate([[-30], np.arange(60, 86430, 30)]) * 10**9
+    src_seq_ctr = np.concatenate([[0], np.arange(3, len(epoch) + 2)])
+    combined = xr.Dataset(
+        {"src_seq_ctr": ("epoch", src_seq_ctr)}, coords={"epoch": epoch}
+    )
+
+    with pytest.raises(IalirtDataGapError, match="src_seq_ctr gap"):
         check_day_coverage(combined, datetime(2026, 10, 8))
 
 

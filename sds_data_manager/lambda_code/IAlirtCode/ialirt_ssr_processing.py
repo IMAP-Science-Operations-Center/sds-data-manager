@@ -62,9 +62,9 @@ SPACECRAFT_CADENCE = timedelta(minutes=1)
 DOWNLOAD_DIR = Path("/tmp/ssr")  # noqa: S108
 # The two values below do different jobs:
 # - COVERAGE_TOLERANCE is the pass/fail completeness check in
-#   check_day_coverage. The first packet must be in the first 60 s of the day,
-#   and there must be a packet in the first 60 s of the next day to show the
-#   data continues through the end of the day.
+#   check_day_coverage. There must be a packet in the last 60 s of the day
+#   before and in the first 60 s of the next day, to show the data is
+#   continuous across both midnights.
 # - BOUNDARY_BUFFER is used by trim_packets to decide how much data is passed
 #   to the instrument processing. It is larger because some products are built
 #   from packets spread over 4 minutes, so a product near midnight needs
@@ -111,22 +111,22 @@ def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
     Raises
     ------
     IalirtDataGapError
-        If the first packet is not near the start of the day, the last packet
-        is not at or after the end of the day, or src_seq_ctr skips a value.
+        If there is no packet just before the start of the day or just after
+        the end of the day, or src_seq_ctr skips a value.
     """
     tolerance = int(COVERAGE_TOLERANCE.total_seconds() * 1e9)
     day_start = str_yyyymmdd_to_ttj2000ns(f"{day:%Y%m%d}")
     day_end = str_yyyymmdd_to_ttj2000ns(f"{day + timedelta(days=1):%Y%m%d}")
 
-    # Include packets just after midnight to show the data continues
-    # through the end of the day.
-    packets = combined.sel(epoch=slice(day_start, day_end + tolerance))
+    # Include packets just before and after the day, so src_seq_ctr is
+    # checked across both midnights.
+    packets = combined.sel(epoch=slice(day_start - tolerance, day_end + tolerance))
     epoch = packets["epoch"].values
     src_seq_ctr = packets["src_seq_ctr"].values.astype(np.int64)
 
     if epoch.size == 0:
         raise IalirtDataGapError(f"{day:%Y%m%d}: no packets.")
-    if epoch[0] > day_start + tolerance:
+    if epoch[0] >= day_start:
         raise IalirtDataGapError(
             f"{day:%Y%m%d}: first packet at {ttj2000ns_to_utc(epoch[0])}."
         )
