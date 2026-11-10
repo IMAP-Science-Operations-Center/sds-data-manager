@@ -152,5 +152,13 @@ def test_is_complete(
     mock_check.side_effect = IalirtDataGapError("gap")
     assert not is_complete("20260907")
 
+    # A file with no I-ALiRT packets.
+    mock_check.side_effect = None
+    mock_parse.side_effect = KeyError(478)
+    assert not is_complete("20260907")
+
+    # Kernels are not requested when a file is missing.
+    mock_kernels.reset_mock()
     mock_query.side_effect = FileNotFoundError("missing")
     assert not is_complete("20260907")
+    mock_kernels.assert_not_called()
