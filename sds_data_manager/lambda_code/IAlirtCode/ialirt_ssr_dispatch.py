@@ -168,16 +168,25 @@ def is_complete(day: str) -> bool:
         day has no gaps.
     """
     day_datetime = datetime.strptime(day, "%Y%m%d")
+    # Check the files exist before downloading kernels, since the day after
+    # today is always a candidate and has no files yet.
+    try:
+        filenames = query_filenames(day_datetime)
+    except FileNotFoundError as e:
+        logger.info("%s not ready: %s", day, e)
+        return False
+
     dependencies = get_latest_spice_kernels(
         os.environ["IMAP_DATA_ACCESS_URL"], day_datetime, TIME_KERNELS
     )
     spice_files = download_spice_files(dependencies, DOWNLOAD_DIR)
     with spiceypy.KernelPool([str(path) for path in spice_files]):
         try:
-            combined = parse_packets(query_filenames(day_datetime), DOWNLOAD_DIR)
+            combined = parse_packets(filenames, DOWNLOAD_DIR)
             check_day_coverage(combined, day_datetime)
-        except (FileNotFoundError, IalirtDataGapError) as e:
-            logger.info("%s not ready: %s", day, e)
+        # parse_packets raises KeyError if a file has no I-ALiRT packets.
+        except (KeyError, IalirtDataGapError) as e:
+            logger.info("%s not ready: %s: %s", day, type(e).__name__, e)
             return False
     return True
 
