@@ -13,7 +13,7 @@ from sqlalchemy import func
 
 from ..database import database as db
 from ..database import models
-from ..utils.monitoring_utils import log_results_summary, publish_metric
+from ..utils.monitoring_utils import AlarmResult, log_results_summary, publish_metric
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -157,7 +157,7 @@ def lambda_handler(event, context):
     logger.info(f"Received event: {event}")
     logger.info("Checking SPICE data freshness from database")
 
-    results = {}
+    results = []
 
     for _category, config in MONITORED_DATA.items():
         data_name = config["name"]
@@ -184,11 +184,7 @@ def lambda_handler(event, context):
         publish_metric(METRIC_NAMESPACE, data_name, days_old)
 
         # Store result
-        results[data_name] = {
-            "days_old": days_old,
-            "threshold": threshold,
-            "stale": days_old > threshold,
-        }
+        results.append(AlarmResult(data_name, days_old, threshold))
 
     # Log the results
     log_results_summary(results)
