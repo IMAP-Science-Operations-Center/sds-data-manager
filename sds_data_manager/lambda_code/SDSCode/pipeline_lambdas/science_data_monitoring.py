@@ -31,7 +31,7 @@ logger.setLevel(logging.INFO)
 METRIC_NAMESPACE = os.environ.get("METRIC_NAMESPACE", "IMAP/ScienceDataFreshness")
 
 
-def get_days_since_new_data(alarm: Alarm) -> int | None:
+def get_days_since_new_data(alarm: Alarm, current_time: datetime) -> int | None:
     """Get how many days it has been since new data arrived for a product.
 
     The calculation changes based on what alarm.multi_day_files is. If
@@ -43,6 +43,8 @@ def get_days_since_new_data(alarm: Alarm) -> int | None:
     ----------
     alarm : Alarm
         The product to check.
+    current_time : datetime
+        The current time in UTC.
 
     Returns
     -------
@@ -88,7 +90,7 @@ def get_days_since_new_data(alarm: Alarm) -> int | None:
                 tzinfo=timezone.utc
             )
 
-        age = (datetime.now(timezone.utc) - most_recent_update_date).days
+        age = (current_time - most_recent_update_date).days
         if alarm.multi_day_files:
             date_msg = "newest file last ingested"
         else:
@@ -134,7 +136,8 @@ def lambda_handler(event, context):
             f" with threshold {alarm.threshold_days} days"
         )
 
-        days_old = get_days_since_new_data(alarm)
+        current_time = datetime.now(timezone.utc)
+        days_old = get_days_since_new_data(alarm, current_time)
         if days_old is None:
             # No files found - use a sentinel value
             days_old = 999

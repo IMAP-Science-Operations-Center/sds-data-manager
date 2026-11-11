@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import boto3
 
 # AWS Clients
-CLOUDWATCH_CLIENT = boto3.client("cloudwatch")
+CLOUDWATCH_CLIENT = boto3.client("cloudwatch", region_name="us-west-2")
 
 # Logger setup
 logger = logging.getLogger(__name__)

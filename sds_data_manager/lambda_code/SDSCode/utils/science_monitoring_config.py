@@ -8,8 +8,8 @@ class Alarm:
     """An alarm that fires if no new data arrives within threshold_days."""
 
     instrument: str
-    descriptor: str
     data_level: str
+    descriptor: str
     # How many days since the last file before the alarm triggers
     threshold_days: int
     # Set to True for products where each file covers multiple days
@@ -28,7 +28,7 @@ class Alarm:
 
     def name(self):
         """Return the name of the alarm."""
-        return f"{self.instrument}-{self.descriptor}-{self.data_level}"
+        return f"{self.instrument}_{self.data_level}_{self.descriptor}"
 
     def alarm_description(self):
         """Return the description of the alarm."""
@@ -44,7 +44,7 @@ class Alarm:
         )
 
 
-MONITORED_SCIENCE_PRODUCTS = [Alarm("idex", "raw", "l0", 5)] + [
-    Alarm("idex", "sci-10days", level, 8, multi_day_files=True)
+MONITORED_SCIENCE_PRODUCTS = [Alarm("idex", "l0", "raw", 5)] + [
+    Alarm("idex", level, "sci-10days", 8, multi_day_files=True)
     for level in ["l1a", "l1b", "l2a", "l2b"]
 ]
