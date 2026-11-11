@@ -43,9 +43,17 @@ SPICE dependencies are resolved by the metakernel builder (`metakernel_builder` 
 any time left uncovered as a gap. `require_coverage=true` fails with the gaps when any requested category has one.
 Categories that weren't requested aren't checked.
 
-Only the latest version of each file name is considered. Among files with different names, the latest ingested file has
-the highest priority. Versions can't rank those files, since they restart with each new file name: a growing attitude
+Only the latest version of each file name is considered. Among spacecraft ephemeris files of the same subtype,
+the highest orbit determination (OD) number in the filename has priority, followed by the latest ingestion time.
+An unnumbered ephemeris file ranks below numbered solutions; unnumbered files use ingestion time among themselves.
+Filename order breaks exact OD/time ties deterministically. Subtype precedence (e.g. reconstructed before nominal)
+is unchanged, and lower-priority files still fill uncovered intervals. Other kernel types use ingestion time alone.
+Versions can't rank files with different names, since they restart with each new file name: a growing attitude
 kernel's newest file is often `_001` while older ones are `_002`.
+
+Before deploying changes to ephemeris selection, compare the old and new selections using a read-only snapshot of the
+production `spice_files` metadata for representative mission windows, recording changed files, load order, and gaps.
+Synthetic unit tests do not replace this production-data validation.
 
 Spin (`spin`) and small forces (`thruster`) files are indexed into `spice_files` too, but they aren't SPICE kernels, so
 their categories are **opt-in**: they're only included when named in `file_types`. A default metakernel never lists

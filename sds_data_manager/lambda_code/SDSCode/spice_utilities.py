@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import tempfile
 from collections.abc import Collection
 from dataclasses import dataclass, field
@@ -358,6 +359,18 @@ def furnish_best_spice_file(kernel_type: str):
     return highest_version_spice_file
 
 
+def _ephemeris_priority(file: dict) -> tuple[int, float, str]:
+    """Rank spacecraft ephemeris by OD, ingestion time, then filename.
+
+    Unnumbered kernels rank below numbered solutions, and use ingestion time
+    among themselves. Filename is only a deterministic fallback for exact ties.
+    """
+    filename = file["file_name"]
+    match = re.search(r"_od(\d+)_", Path(filename).name, re.IGNORECASE)
+    od_number = int(match.group(1)) if match else -1
+    return od_number, file["timestamp"], filename
+
+
 def metakernel_builder(
     start_time: float | None,
     end_time: float | None,
@@ -414,13 +427,20 @@ def metakernel_builder(
                 {"queryStringParameters": query_string_parameters},
                 None,
             )
+            files = json.loads(spice_files["body"])
+            # Versions restart with each new file name, so they can't rank
+            # files with different names. Spacecraft ephemeris uses the OD
+            # solution first; other categories keep ingestion-time priority.
+            priority_field = "timestamp"
+            if spice_category is SpacecraftEphemerisKernels:
+                files.sort(key=_ephemeris_priority, reverse=True)
+                # Preserve the composite ordering in the generic gap filler.
+                priority_field = ""
             metakernel.load_spice(
-                json.loads(spice_files["body"]),
+                files,
                 spice_category.spice_category_name(),
                 "file_intervals_j2000",
-                # Versions restart with each new file name, so they can't rank
-                # files with different names. The latest ingested file wins.
-                priority_field="timestamp",
+                priority_field=priority_field,
             )
 
     return metakernel

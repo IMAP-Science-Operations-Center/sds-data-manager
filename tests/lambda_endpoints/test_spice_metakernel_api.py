@@ -16,6 +16,7 @@ from sds_data_manager.lambda_code.SDSCode.api_lambdas.metakernel import MetaKern
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.spice_utilities import (
     MAXIMUM_MISSION_J2000_TIME,
+    _ephemeris_priority,
     metakernel_builder,
 )
 
@@ -35,7 +36,7 @@ def _irrelevant_data():
     return irrelevant_data
 
 
-def _insert_test_file(session, filename, intervals, upload_time=0):
+def _insert_test_file(session, filename, intervals, upload_time=0, ingestion_date=None):
     spice_object = imap_data_access.SPICEFilePath(filename)
     version = spice_object.spice_metadata["version"]
     metadata_params = {
@@ -47,7 +48,11 @@ def _insert_test_file(session, filename, intervals, upload_time=0):
         "file_intervals_j2000": intervals,
         "min_date_j2000": intervals[0][0],
         "max_date_j2000": intervals[-1][1],
-        "ingestion_date": datetime.now() + timedelta(upload_time),
+        "ingestion_date": (
+            ingestion_date
+            if ingestion_date is not None
+            else datetime.now() + timedelta(upload_time)
+        ),
     } | _irrelevant_data()
     session.add(models.SPICEFiles(**metadata_params))
     session.commit()
@@ -228,6 +233,157 @@ def test_metakernel(session):
     assert response["statusCode"] == 200
     assert "KERNELS_TO_LOAD" in response["body"]
     assert "imap_1000_065_1000_090_003.ap.bc" in response["body"]
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected_od"),
+    [
+        ("spk/imap_nom_od9_20251001_20280606_v01.bsp", 9),
+        ("spk/imap_nom_od10_20251001_20280606_v01.bsp", 10),
+        ("spk/imap_nom_OD003_20251001_20280606_v01.bsp", 3),
+        ("od999/imap_nom_20251001_20280606_v01.bsp", -1),
+    ],
+)
+def test_ephemeris_priority_parses_numeric_od(filename, expected_od):
+    """Parse OD as an integer from the basename, including uppercase tokens."""
+    priority = _ephemeris_priority({"file_name": filename, "timestamp": 123.0})
+    assert priority == (expected_od, 123.0, filename)
+
+
+@pytest.mark.parametrize(
+    ("prefix", "kernel_type"),
+    [
+        ("recon", "EPHEMERIS_RECONSTRUCTED"),
+        ("nom", "EPHEMERIS_NOMINAL"),
+        ("pred", "EPHEMERIS_PREDICTED"),
+        ("90days", "EPHEMERIS_90DAYS"),
+        ("long", "EPHEMERIS_LONG"),
+        ("launch", "EPHEMERIS_LAUNCH"),
+    ],
+)
+@pytest.mark.parametrize("reverse_order", [False, True])
+@pytest.mark.parametrize("older_od_upload_delay", [0, 1])
+def test_metakernel_ephemeris_od_priority(
+    session, prefix, kernel_type, reverse_order, older_od_upload_delay
+):
+    """Higher OD wins, even with a lower version or an earlier ingestion time."""
+    ingestion_date = datetime(2025, 10, 16, 18, 32, 23)
+    older = f"imap_{prefix}_od001_20250926_20280606_v02.bsp"
+    newer = f"imap_{prefix}_od003_20251001_20280606_v01.bsp"
+    records = [
+        (older, ingestion_date + timedelta(days=older_od_upload_delay)),
+        (newer, ingestion_date),
+    ]
+    if reverse_order:
+        records.reverse()
+    for filename, uploaded in records:
+        _insert_test_file(session, filename, [[0, 100]], ingestion_date=uploaded)
+
+    metakernel = metakernel_builder(0, 100, file_types={kernel_type})
+    assert metakernel.return_spice_files_in_order(detailed=False) == [f"spk/{newer}"]
+    assert not metakernel.contains_gaps()
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_metakernel_ephemeris_same_od_uses_ingestion_time(session, reverse_order):
+    """Timestamp, not version or filename, ranks different files of the same OD."""
+    ingestion_date = datetime(2025, 10, 16, 18, 32, 23)
+    older = "imap_nom_od003_20251002_20280606_v02.bsp"
+    newer = "imap_nom_od003_20251001_20280606_v01.bsp"
+    records = [(older, ingestion_date), (newer, ingestion_date + timedelta(seconds=1))]
+    if reverse_order:
+        records.reverse()
+    for filename, uploaded in records:
+        _insert_test_file(session, filename, [[0, 100]], ingestion_date=uploaded)
+
+    metakernel = metakernel_builder(0, 100, file_types={"EPHEMERIS_NOMINAL"})
+    assert metakernel.return_spice_files_in_order(detailed=False) == [f"spk/{newer}"]
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_metakernel_ephemeris_equal_priority_is_deterministic(session, reverse_order):
+    """Filename breaks ties when both OD and ingestion time match."""
+    filenames = [
+        "imap_nom_od003_20251001_20280606_v01.bsp",
+        "imap_nom_od003_20251002_20280606_v01.bsp",
+    ]
+    for filename in reversed(filenames) if reverse_order else filenames:
+        _insert_test_file(
+            session,
+            filename,
+            [[0, 100]],
+            ingestion_date=datetime(2025, 10, 16, 18, 32, 23),
+        )
+
+    metakernel = metakernel_builder(0, 100, file_types={"EPHEMERIS_NOMINAL"})
+    assert metakernel.return_spice_files_in_order(detailed=False) == [
+        f"spk/{filenames[-1]}"
+    ]
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_metakernel_ephemeris_lower_od_fills_gaps(session, reverse_order):
+    """Older solutions fill gaps and load before the preferred overlapping file."""
+    older = "imap_nom_od001_20250926_20280606_v02.bsp"
+    newer = "imap_nom_od003_20251001_20280606_v01.bsp"
+    records = [(older, [[0, 100]]), (newer, [[25, 75]])]
+    if reverse_order:
+        records.reverse()
+    for filename, intervals in records:
+        _insert_test_file(
+            session,
+            filename,
+            intervals,
+            ingestion_date=datetime(2025, 10, 16, 18, 32, 23),
+        )
+
+    metakernel = metakernel_builder(0, 100, file_types={"EPHEMERIS_NOMINAL"})
+    assert metakernel.return_spice_files_in_order(detailed=False) == [
+        f"spk/{older}",
+        f"spk/{newer}",
+    ]
+    assert not metakernel.contains_gaps()
+
+
+@pytest.mark.parametrize("include_od", [False, True])
+def test_metakernel_ephemeris_without_od(session, include_od):
+    """Unnumbered files use ingestion time, but rank below numbered solutions."""
+    older = "imap_nom_20250926_20280606_v02.bsp"
+    newer = "imap_nom_20251001_20280606_v01.bsp"
+    _insert_test_file(session, older, [[0, 100]])
+    _insert_test_file(session, newer, [[0, 100]], upload_time=1)
+    if include_od:
+        newer = "imap_nom_od000_20251001_20280606_v01.bsp"
+        _insert_test_file(session, newer, [[0, 100]], upload_time=-1)
+
+    metakernel = metakernel_builder(0, 100, file_types={"EPHEMERIS_NOMINAL"})
+    assert metakernel.return_spice_files_in_order(detailed=False) == [f"spk/{newer}"]
+
+
+def test_metakernel_ephemeris_subtype_priority(session):
+    """OD ranking must not override reconstructed-before-nominal precedence."""
+    reconstructed = "imap_recon_od001_20251001_20280606_v01.bsp"
+    nominal = "imap_nom_od999_20251001_20280606_v01.bsp"
+    _insert_test_file(session, reconstructed, [[0, 100]])
+    _insert_test_file(session, nominal, [[0, 100]], upload_time=1)
+
+    metakernel = metakernel_builder(
+        0, 100, file_types={"EPHEMERIS_RECONSTRUCTED", "EPHEMERIS_NOMINAL"}
+    )
+    assert metakernel.return_spice_files_in_order(detailed=False) == [
+        f"spk/{reconstructed}"
+    ]
+
+
+def test_metakernel_ephemeris_latest_version_per_root(session):
+    """Versions still rank revisions of the same filename before OD selection."""
+    older = "imap_nom_od003_20251001_20280606_v01.bsp"
+    newer = "imap_nom_od003_20251001_20280606_v02.bsp"
+    _insert_test_file(session, newer, [[0, 100]])
+    _insert_test_file(session, older, [[0, 100]], upload_time=1)
+
+    metakernel = metakernel_builder(0, 100, file_types={"EPHEMERIS_NOMINAL"})
+    assert metakernel.return_spice_files_in_order(detailed=False) == [f"spk/{newer}"]
 
 
 def test_metakernel_gaps(session):
