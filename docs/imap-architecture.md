@@ -139,3 +139,14 @@ Note: There is also a static mission website stored in S3 and served through Clo
 - **API Lambdas (Query, Download, Upload)**: `sds_data_manager/lambda_code/SDSCode/api_lambdas/`
 - **API Gateway CDK Constructs**: `sds_data_manager/constructs/api_gateway_construct.py`, `sds_data_manager/constructs/sds_api_manager_construct.py`
 - **Authorization Code**: `sds_data_manager/lambda_code/authorization/lambda_api_key_authorizer.py`, `scripts/authorization/manage_api_keys.py`
+### CoDICE SCI-LUT transition days
+
+The `CodiceL1aJob` custom handler (`orchestration/custom_behavior/codice.py`)
+adds the latest version of the immediately preceding SCI-LUT delivery when the
+selected delivery starts during the daily L1A partition. Ancillary dates have day
+precision, so the previous file may end the preceding day even though its table
+is still used before the onboard update. Other ancillaries and non-transition
+partitions retain the generic selection behavior. Both LUT filenames enter the
+normal dependency manifest/hash and provenance. This requires CoDICE processing
+to resolve all supplied LUTs by packet Table_ID rather than select the first path.
+No instrument-team files are merged or modified by the handler.
