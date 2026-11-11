@@ -785,14 +785,19 @@ def test_send_spice_event_filters_kernel_types(events_client):
             "attitude_history",
             "pointing_attitude",
             "ephemeris_reconstructed",
-            "attitude_predict",
-            "ephemeris_predict",
         ):
             result = spice_indexer.send_spice_event(
                 Mock(spice_metadata={"type": kernel_type}),
                 "imap/spice/test/file",
             )
             assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+        # Predicted ephemeris doesn't trigger processing, so it sends no event.
+        result = spice_indexer.send_spice_event(
+            Mock(spice_metadata={"type": "ephemeris_predicted"}),
+            "imap/spice/test/file",
+        )
+        assert result is None
 
 
 @patch(
