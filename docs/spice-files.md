@@ -5,11 +5,6 @@ much time each covers. Use it when setting staleness alarm thresholds, judging w
 about which file the metakernel builder picks. How the builder ranks files is in
 [imap-architecture.md](imap-architecture.md#spice-dependency-resolution).
 
-The file counts and numbers below come from a snapshot of the production `spice_files` table taken on 2026-11-11,
-covering launch (2025-09-24) to then. Product descriptions and the planned schedule come from two Confluence pages: the
-SDC's SPICE file table, and "MOC Data Products for Science Processing" (written about a year before launch). Sections
-marked **TODO** need someone who knows the source and the agreed schedule.
-
 ## Where SPICE information lives
 
 | What | Where |
@@ -78,9 +73,6 @@ history, the Mission Design Data File, and DSN view periods.
 
 ## Delivery cadence and coverage
 
-Cadence and latency use only files ingested since 2026-03-01, after the early-mission backlog cleared. Files ingested
-within an hour of each other count as one delivery.
-
 | Type | Delivery cadence (median / 90th pct / max gap) | Time covered per file | Ingested how long after coverage ends |
 |---|---|---|---|
 | `ephemeris_reconstructed` | 14 d / 22 d / 28 d | Launch to delivery date (cumulative) | ~0.8 d |
@@ -118,16 +110,12 @@ within an hour of each other count as one delivery.
   **growing files**. A series keeps a fixed start and is re-delivered with a later end date every one or two days. A
   new series starts roughly every three months. The end date is part of the file name, so each re-delivery is a new
   file name with its version restarting at `_001`.
-- 2026-10-08: reprocessed versions `_010`+ were delivered as 90-day files covering 2025-09-24 onward. They replace older
-  files that end slightly later, which is why ingestion time, not coverage, ranks files.
-- The staleness alarm for CK kernels watches the newest file of *either* type, so a gap in one isn't caught while the
-  other keeps arriving (pointing had a 24-day gap on 2026-06-26 and an 18.8-day one on 2026-08-10).
+
 
 ## Spin and small forces
 
 - `spin` (`imap_<YYYY_DOY>_<YYYY_DOY>_<VV>.spin`) and `thruster` (`..._hist_<VV>.sff`) arrive as roughly one-day files,
   usually less than a day after the data ends. Revisions of the same day get a higher version.
-- Bulk reprocessing loads: 117 spin files on 2025-12-19, 376 on 2026-10-08 (versions `_10`+).
 
 ## Clock, Earth attitude and static kernels
 
@@ -142,18 +130,6 @@ within an hour of each other count as one delivery.
 - **`lagrange_point`** (`L1_de431.bsp`): the Sun–Earth L1 point. Indexed but never put in a metakernel.
 - **Lo pivot attitude** (`imap_lopivot-repoint<NNNNN>_...bc`): one file per repoint, so far delivered only as a single
   backfill. **TODO**: expected cadence once routine.
-
-## Irregular deliveries so far
-
-| Date | What happened |
-|---|---|
-| 2025-10-16 | Backlog of the first ODs (od000–od005 predicted, od001/od003 nominal, od002–od005 reconstructed) delivered about a month late, all within seconds. |
-| 2025-12-19 | Spin reprocessing (117 files). |
-| 2026-01-05 | Predicted od014 and od015 arrived together after a 35-day gap over the holidays. |
-| 2026-01-08 | Two reconstructed files ingested two seconds apart in the wrong order. |
-| 2026-08-04, 2026-09-18, 2026-10-19 | Delivery gaps of 8–11 days ending on these dates: attitude, spin and thruster on 08-04 and around 09-18, spin alone on 10-19. **TODO**: cause. |
-| 2026-10-08 | Attitude, pointing and spin reprocessing (versions `_010`/`_10`+). |
-| 2026-10-20 | Lo pivot attitude backfill (323 files). |
 
 ## Staleness alarms
 
