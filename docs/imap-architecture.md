@@ -29,7 +29,7 @@ CDK constructs are defined under `sds_data_manager/constructs/`.
 - **L0 Raw Telemetry**: Arrives broken up by instrument (e.g., `{instrument}_l0_raw`), separated by day (midnight to midnight UTC) or by repoint number.
 - **Science Files**: Generated via AWS Batch jobs based on L0 and other files. Identified by instrument, processing level, and a descriptor (e.g., "glows_l1a_hist"). Divided by day, repoint number, or longer intervals (10 day, 30 day, 3/6 month, 1 year). Includes start date, major and minor version numbers.
 - **Ancillary Files**: Any format, uploaded by instrument teams, needed for processing.
-- **SPICE Files**: Contain geometry info (location, attitude, spacecraft clock, leapseconds). Used primarily for min/max dates and time conversions. Delivered directly by the Mission Operations Center.
+- **SPICE Files**: Contain geometry info (location, attitude, spacecraft clock, leapseconds). Used primarily for min/max dates and time conversions. Delivered directly by the Mission Operations Center. What each type is, and how often it arrives, is in [spice-files.md](spice-files.md).
 - **Spin Files**: Information about the spacecraft's rotation rate and rotation number.
 - **Small Forces Files (SFF)**: A continuous history of thruster activity, attitude and delta-V, delivered by the MOC.
   Their SPICE type is `thruster`.

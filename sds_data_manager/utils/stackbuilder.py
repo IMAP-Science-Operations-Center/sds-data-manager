@@ -239,7 +239,8 @@ def build_sds(
         spin_threshold_days=4,
         sclk_threshold_days=4,
         repoint_threshold_days=4,
-        predicted_ephemeris_threshold_days=4,
+        # Predicted ephemeris arrives about every two weeks.
+        predicted_ephemeris_threshold_days=21,
     )
 
     sds_api_manager_construct.SdsApiManager(
