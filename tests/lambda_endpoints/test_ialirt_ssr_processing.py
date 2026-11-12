@@ -19,6 +19,8 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils import KERNELS
 sys.modules["ialirt_ssr_utils"] = ialirt_ssr_utils
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing import (
+    BOUNDARY_BUFFER,
+    COVERAGE_TOLERANCE,
     SOFTWARE_VERSIONS,
     IalirtDataGapError,
     ancillary_item,
@@ -44,6 +46,11 @@ MODULE = "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing"
 DAY_NS = 86400 * 10**9
 # A packet every 30 seconds over the day plus 10 minutes on each side.
 FULL_RANGE_S = np.arange(-600, 87001, 30)
+
+
+def test_coverage_tolerance_less_than_buffer():
+    """Test that a gap at the start or end of the day can be caught."""
+    assert COVERAGE_TOLERANCE < BOUNDARY_BUFFER
 
 
 @patch(
