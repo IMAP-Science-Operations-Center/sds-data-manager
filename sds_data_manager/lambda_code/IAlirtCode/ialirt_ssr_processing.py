@@ -65,7 +65,8 @@ DOWNLOAD_DIR = Path("/tmp/ssr")  # noqa: S108
 # spread over 4 minutes. check_day_coverage checks the same range, so every
 # packet given to the instruments is checked. COVERAGE_TOLERANCE is the
 # largest time allowed between packets, and between the edges of that range
-# and the first and last packets.
+# and the first and last packets. It must be less than BOUNDARY_BUFFER, or a
+# gap at the start or end of the day would not be caught.
 COVERAGE_TOLERANCE = timedelta(seconds=60)
 BOUNDARY_BUFFER = timedelta(minutes=10)
 # src_seq_ctr is a 14-bit counter.
