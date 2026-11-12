@@ -180,10 +180,14 @@ def is_complete(day: str) -> bool:
         logger.info("%s not ready: %s", day, e)
         return False
 
-    dependencies = get_latest_spice_kernels(
-        os.environ["IMAP_DATA_ACCESS_URL"], day_datetime, TIME_KERNELS
-    )
-    spice_files = download_spice_files(dependencies, DOWNLOAD_DIR)
+    try:
+        dependencies = get_latest_spice_kernels(
+            os.environ["IMAP_DATA_ACCESS_URL"], day_datetime, TIME_KERNELS
+        )
+        spice_files = download_spice_files(dependencies, DOWNLOAD_DIR)
+    except Exception:
+        logger.exception("%s not ready: could not get SPICE kernels", day)
+        return False
     with spiceypy.KernelPool([str(path) for path in spice_files]):
         try:
             combined = parse_packets(filenames, DOWNLOAD_DIR)

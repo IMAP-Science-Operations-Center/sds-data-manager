@@ -157,6 +157,11 @@ def test_is_complete(
     mock_parse.side_effect = KeyError(478)
     assert not is_complete("20260907")
 
+    # The kernels cannot be downloaded.
+    mock_parse.side_effect = None
+    mock_download.side_effect = OSError("download failed")
+    assert not is_complete("20260907")
+
     # Kernels are not requested when a file is missing.
     mock_kernels.reset_mock()
     mock_query.side_effect = FileNotFoundError("missing")
