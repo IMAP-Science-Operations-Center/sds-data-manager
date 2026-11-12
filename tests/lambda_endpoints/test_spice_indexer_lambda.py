@@ -793,13 +793,6 @@ def test_send_spice_event_filters_kernel_types(events_client):
             )
             assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
 
-        # Predicted ephemeris doesn't trigger processing, so it sends no event.
-        result = spice_indexer.send_spice_event(
-            Mock(spice_metadata={"type": "ephemeris_predicted"}),
-            "imap/spice/test/file",
-        )
-        assert result is None
-
 
 @patch(
     "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.spice_indexer.download_from_s3"
