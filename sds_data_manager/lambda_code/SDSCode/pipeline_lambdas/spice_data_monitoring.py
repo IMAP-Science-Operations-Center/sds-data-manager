@@ -192,6 +192,9 @@ def lambda_handler(event, context):
     return {
         "statusCode": 200,
         "body": json.dumps(
-            {"message": "SPICE data check complete", "results": results}
+            {
+                "message": "SPICE data check complete",
+                "results": [r.to_dict() for r in results],
+            }
         ),
     }
