@@ -119,8 +119,12 @@ def get_daily_days() -> dict[str, list[str]]:
             for instrument in SSR_INSTRUMENTS
             if not is_processed(table, instrument, day, DEFAULT_VERSION)
         ]
+        if not missing:
+            logger.info("%s already processed for all instruments, skipping", day)
+            continue
         # Check that all packets required to process are complete
-        if missing and is_complete(day):
+        if is_complete(day):
+            logger.info("%s complete, dispatching %s", day, missing)
             daily_days[day] = missing
     return daily_days
 

@@ -196,7 +196,7 @@ class IalirtSsrConstruct(Construct):
         dispatch_lambda = lambda_.DockerImageFunction(
             self,
             "IalirtSsrDispatchLambda",
-            function_name="ialirt-ssr-dispatch",
+            function_name="ialirt-ssr-dispatcher",
             code=lambda_.DockerImageCode.from_image_asset(
                 docker_path,
                 file="IAlirtCode/Dockerfile.ssr",
