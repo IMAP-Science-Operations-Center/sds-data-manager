@@ -9,14 +9,11 @@ import logging
 import os
 from datetime import datetime, timezone
 
-import boto3
 from sqlalchemy import func
 
 from ..database import database as db
 from ..database import models
-
-# AWS Clients
-CLOUDWATCH_CLIENT = boto3.client("cloudwatch")
+from ..utils.monitoring_utils import AlarmResult, log_results_summary, publish_metric
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -137,34 +134,6 @@ def get_most_recent_ingestion_age(
         return None
 
 
-def publish_metric(data_name: str, days_old: int):
-    """Publish a CloudWatch metric for SPICE data freshness.
-
-    Parameters
-    ----------
-    data_name : str
-        Name of the data source being monitored
-    days_old : int
-        Number of days since the most recent file
-    """
-    try:
-        CLOUDWATCH_CLIENT.put_metric_data(
-            Namespace=METRIC_NAMESPACE,
-            MetricData=[
-                {
-                    "MetricName": "DaysSinceLastFile",
-                    "Value": days_old,
-                    "Unit": "None",
-                    "Dimensions": [{"Name": "Prefix", "Value": data_name}],
-                    "Timestamp": datetime.now(timezone.utc),
-                }
-            ],
-        )
-        logger.info(f"Published metric for {data_name}: {days_old} days old")
-    except Exception as e:
-        logger.error(f"Error publishing metric for {data_name}: {e!s}")
-
-
 def lambda_handler(event, context):
     """Lambda handler to check SPICE data freshness.
 
@@ -188,7 +157,7 @@ def lambda_handler(event, context):
     logger.info(f"Received event: {event}")
     logger.info("Checking SPICE data freshness from database")
 
-    results = {}
+    results = []
 
     for _category, config in MONITORED_DATA.items():
         data_name = config["name"]
@@ -212,25 +181,20 @@ def lambda_handler(event, context):
             )
 
         # Publish the metric regardless of threshold
-        publish_metric(data_name, days_old)
+        publish_metric(METRIC_NAMESPACE, data_name, days_old)
 
         # Store result
-        results[data_name] = {
-            "days_old": days_old,
-            "threshold": threshold,
-            "stale": days_old > threshold,
-        }
+        results.append(AlarmResult(data_name, days_old, threshold))
 
-    # Log summary
-    stale_sources = [name for name, result in results.items() if result["stale"]]
-    if stale_sources:
-        logger.warning(f"Stale data detected in: {', '.join(stale_sources)}")
-    else:
-        logger.info("All monitored data sources are up to date")
+    # Log the results
+    log_results_summary(results)
 
     return {
         "statusCode": 200,
         "body": json.dumps(
-            {"message": "SPICE data check complete", "results": results}
+            {
+                "message": "SPICE data check complete",
+                "results": [r.to_dict() for r in results],
+            }
         ),
     }

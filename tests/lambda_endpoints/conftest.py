@@ -13,6 +13,7 @@ from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     SPICEFiles,
 )
+from sds_data_manager.lambda_code.SDSCode.utils import monitoring_utils
 from sds_data_manager.orchestration import imap_job
 from tests.conftest import in_memory_session
 
@@ -178,6 +179,17 @@ def batch_client():
         patch.object(imap_job, "BATCH_CLIENT", mock_batch_client),
     ):
         yield mock_batch_client
+
+
+@pytest.fixture(autouse=True)
+def cloudwatch_client():
+    """Mock cloudwatch client."""
+    mock_cloudwatch_client = Mock()
+
+    with (
+        patch.object(monitoring_utils, "CLOUDWATCH_CLIENT", mock_cloudwatch_client),
+    ):
+        yield mock_cloudwatch_client
 
 
 @pytest.fixture

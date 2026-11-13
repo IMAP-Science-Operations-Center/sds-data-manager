@@ -36,6 +36,7 @@ from sds_data_manager.constructs import (
     packet_downloader_lambda_construct,
     processing_construct,
     route53_hosted_zone,
+    science_monitoring_construct,
     sds_api_manager_construct,
     spice_monitoring_construct,
     website_hosting,
@@ -222,10 +223,8 @@ def build_sds(
         sns_topic=monitoring.sns_topic_notifications,
     )
 
-    # Set SPICE monitoring email based on environment
-    spice_alarm_email = (
-        "imap-sdc@lists.lasp.colorado.edu" if account_name == "prod" else ""
-    )
+    # Set monitoring email based on environment
+    alarm_email = "imap-sdc@lists.lasp.colorado.edu" if account_name == "prod" else ""
     spice_monitoring_construct.SpiceMonitoringConstruct(
         scope=sdc_stack,
         construct_id="SpiceMonitoringConstruct",
@@ -234,13 +233,24 @@ def build_sds(
         vpc=networking.vpc,
         rds_security_group=rds_construct.rds_security_group,
         layers=[db_lambda_layer, spice_lambda_layer],
-        alarm_email=spice_alarm_email,
+        alarm_email=alarm_email,
         ck_threshold_days=4,
         spin_threshold_days=4,
         sclk_threshold_days=4,
         repoint_threshold_days=4,
         # Predicted ephemeris arrives about every two weeks.
         predicted_ephemeris_threshold_days=21,
+    )
+
+    science_monitoring_construct.ScienceMonitoringConstruct(
+        scope=sdc_stack,
+        construct_id="ScienceMonitoringConstruct",
+        code=lambda_code,
+        db_secret_name=db_secret_name,
+        vpc=networking.vpc,
+        rds_security_group=rds_construct.rds_security_group,
+        layers=[db_lambda_layer, spice_lambda_layer],
+        alarm_email=alarm_email,
     )
 
     sds_api_manager_construct.SdsApiManager(
