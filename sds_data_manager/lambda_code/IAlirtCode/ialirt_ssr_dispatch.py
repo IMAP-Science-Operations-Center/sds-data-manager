@@ -185,8 +185,13 @@ def is_complete(day: str) -> bool:
             os.environ["IMAP_DATA_ACCESS_URL"], day_datetime, TIME_KERNELS
         )
         spice_files = download_spice_files(dependencies, DOWNLOAD_DIR)
-    except Exception:
-        logger.exception("%s not ready: could not get SPICE kernels", day)
+    except Exception as e:
+        logger.exception(
+            "%s not ready: could not get SPICE kernels: %s: %s",
+            day,
+            type(e).__name__,
+            e,
+        )
         return False
     with spiceypy.KernelPool([str(path) for path in spice_files]):
         try:
