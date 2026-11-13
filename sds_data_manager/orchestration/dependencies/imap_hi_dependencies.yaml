@@ -49,7 +49,6 @@ spice_l1b: &spice_l1b
   - source: spin
     data_type: spin
     descriptor: historical
-    trigger_job: false
 
 spice_l1c: &spice_l1c
   - *spice_common
