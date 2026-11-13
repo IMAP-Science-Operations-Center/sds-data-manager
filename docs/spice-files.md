@@ -34,20 +34,13 @@ Each type the SDC has received, with its file name pattern and S3 folder under `
 | `ephemeris_predicted` | Where the spacecraft will be, assuming no maneuvers; used onboard and for timekeeping | MOC (MDNAV) | `imap_pred_odNNN_yyyymmdd_yyyymmdd_v##.bsp` | `spk` | 47 |
 | `ephemeris_nominal` | Designed trajectory for the rest of the mission, updated after maneuvers; for planning | MOC (mission design) | `imap_nom_yyyymmdd_yyyymmdd_v##.bsp` | `spk` | 8 |
 | `spin` | Spin period and phase table (not a SPICE kernel) | MOC | `imap_yyyy_doy_yyyy_doy_##.spin` | `spin` | 1114 |
-| `repoint` | Repoint maneuver start and end times (not a SPICE kernel) | MOC | `imap_yyyy_doy_##.repoint.csv` | `repoint` | Indexed into its own table, not `spice_files`. **TODO**: count |
+| `repoint` | Repoint maneuver start and end times (not a SPICE kernel) | MOC | `imap_yyyy_doy_##.repoint.csv` | `repoint` | 300 |
 | `thruster` | Small forces file: thruster firings at 20 ms resolution (not a SPICE kernel) | MOC | `imap_yyyy_doy_yyyy_doy_hist_##.sff` | `activities` | 646 |
 | `metakernel` | MOC attitude (`a##`) and ephemeris (`e##`) metakernels | MOC | `imap_yyyy_doy_a##.spice.mk`, `imap_yyyy_doy_e##.mk` | `mk` | 2, both in Sep–Oct 2025. The SDC builds its own through `/metakernel` |
 
-Where the Confluence table differs from what's delivered:
-
-- Spin files are named `.spin`, not `.spin.csv`.
-- Earth attitude lands in `pck`, not `bpc`.
-- Small forces files have a single `_hist_`, not `_sff_hist__`.
-- Science frame versions have three digits.
-
 ## Planned but never delivered
 
-These appear in the pre-launch plan or the Confluence table, but no file has ever reached the SDC.
+These appear in the pre-launch plan, but no file has ever reached the SDC.
 
 | Product | File name | Status |
 |---|---|---|
@@ -88,7 +81,6 @@ history, the Mission Design Data File, and DSN view periods.
 | `lo_pivot_attitude` | One backfill so far (2026-10-20, 323 files) | ~1 d (one per repoint) | – |
 | `imap_frames`, `science_frames` | Irregular: 4 deliveries each since launch | Whole mission | – |
 | `leapseconds`, `planetary_constants`, `planetary_ephemeris`, `lagrange_point` | Once | Whole mission | – |
-| Repoint files | **TODO**: in their own table, not in this snapshot | | |
 
 ## Spacecraft ephemeris
 
@@ -140,13 +132,3 @@ history, the Mission Design Data File, and DSN view periods.
 |---|---|---|
 | Predicted ephemeris | 21 d | Normal gaps run up to 21 d when one OD is skipped, so this alarms on the second missed delivery and still leaves ~3 weeks of the latest file's coverage. |
 | CK kernels, spin, SCLK, repoint | 4 d | Normally delivered every one or two days. |
-
-## TODO
-
-- [ ] Who produces each type, and who to contact when one is late.
-- [ ] The agreed delivery schedule for each type, to compare against what's observed above.
-- [ ] Repoint file cadence.
-- [ ] Confirm `ephemeris_90days` is defunct (it's crossed out in Confluence) and remove it from the dependencies.
-- [ ] Whether the metakernel builder should load `lagrange_point`.
-- [ ] Why `attitude_predict` was never delivered.
-- [ ] Who produces the Lo pivot attitude kernels, and how often they'll arrive.
