@@ -444,7 +444,6 @@ lo_l3b_dist_common: &lo_l3b_dist_common
       data_type: l2
       descriptor: norm-dsrf
       required: false
-      trigger_job: false
     - source: codice
       data_type: l2
       descriptor: hi-sectored
