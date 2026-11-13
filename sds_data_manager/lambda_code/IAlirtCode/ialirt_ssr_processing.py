@@ -60,15 +60,13 @@ TIME_KERNELS = {"leapseconds", "spacecraft_clock"}
 SPACECRAFT_CADENCE = timedelta(minutes=1)
 # Packets, SPICE kernels and ancillary files for one invocation.
 DOWNLOAD_DIR = Path("/tmp/ssr")  # noqa: S108
-# The two values below do different jobs:
-# - COVERAGE_TOLERANCE is the pass/fail completeness check in
-#   check_day_coverage. The first packet must be in the first 60 s of the day,
-#   and there must be a packet in the first 60 s of the next day to show the
-#   data continues through the end of the day.
-# - BOUNDARY_BUFFER is used by trim_packets to decide how much data is passed
-#   to the instrument processing. It is larger because some products are built
-#   from packets spread over 4 minutes, so a product near midnight needs
-#   packets from the neighboring day.
+# BOUNDARY_BUFFER is how much of the neighboring days trim_packets passes to
+# the instrument processing, since some products are built from packets
+# spread over 4 minutes. check_day_coverage checks the same range, so every
+# packet given to the instruments is checked. COVERAGE_TOLERANCE is the
+# largest time allowed between packets, and between the edges of that range
+# and the first and last packets. It must be less than BOUNDARY_BUFFER, or a
+# gap at the start or end of the day would not be caught.
 COVERAGE_TOLERANCE = timedelta(seconds=60)
 BOUNDARY_BUFFER = timedelta(minutes=10)
 # src_seq_ctr is a 14-bit counter.
@@ -97,8 +95,9 @@ def ttj2000ns_to_utc(ttj2000ns: int) -> str:
 def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
     """Check that the packets cover the whole day with no missing packets.
 
-    Days that fail are skipped and need to be inspected and processed
-    manually.
+    The day plus BOUNDARY_BUFFER on each side is checked, the same packets
+    trim_packets passes to the instrument processing. Days that fail are
+    skipped and need to be inspected and processed manually.
 
     Parameters
     ----------
@@ -111,28 +110,36 @@ def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
     Raises
     ------
     IalirtDataGapError
-        If the first packet is not near the start of the day, the last packet
-        is not at or after the end of the day, or src_seq_ctr skips a value.
+        If the packets do not reach both ends of the range, two packets are
+        more than COVERAGE_TOLERANCE apart, or src_seq_ctr skips a value.
     """
     tolerance = int(COVERAGE_TOLERANCE.total_seconds() * 1e9)
-    day_start = str_yyyymmdd_to_ttj2000ns(f"{day:%Y%m%d}")
-    day_end = str_yyyymmdd_to_ttj2000ns(f"{day + timedelta(days=1):%Y%m%d}")
+    buffer = int(BOUNDARY_BUFFER.total_seconds() * 1e9)
+    start = str_yyyymmdd_to_ttj2000ns(f"{day:%Y%m%d}") - buffer
+    end = str_yyyymmdd_to_ttj2000ns(f"{day + timedelta(days=1):%Y%m%d}") + buffer
 
-    # Include packets just after midnight to show the data continues
-    # through the end of the day.
-    packets = combined.sel(epoch=slice(day_start, day_end + tolerance))
+    packets = combined.sel(epoch=slice(start, end))
     epoch = packets["epoch"].values
     src_seq_ctr = packets["src_seq_ctr"].values.astype(np.int64)
 
     if epoch.size == 0:
         raise IalirtDataGapError(f"{day:%Y%m%d}: no packets.")
-    if epoch[0] > day_start + tolerance:
+    if epoch[0] > start + tolerance:
         raise IalirtDataGapError(
             f"{day:%Y%m%d}: first packet at {ttj2000ns_to_utc(epoch[0])}."
         )
-    if epoch[-1] < day_end:
+    if epoch[-1] < end - tolerance:
         raise IalirtDataGapError(
             f"{day:%Y%m%d}: last packet at {ttj2000ns_to_utc(epoch[-1])}."
+        )
+
+    # A gap of exactly 16384 packets wraps src_seq_ctr all the way around, so
+    # also check the time between packets.
+    time_gaps = np.flatnonzero(np.diff(epoch) > tolerance)
+    if time_gaps.size:
+        raise IalirtDataGapError(
+            f"{day:%Y%m%d}: {time_gaps.size} time gap(s), "
+            f"first after {ttj2000ns_to_utc(epoch[time_gaps[0]])}."
         )
 
     gaps = np.flatnonzero(np.diff(src_seq_ctr) % SEQ_CTR_MODULO != 1)
