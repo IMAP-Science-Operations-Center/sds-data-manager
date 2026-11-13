@@ -29,7 +29,7 @@ Each type the SDC has received, with its file name pattern and S3 folder under `
 | `science_frames` | Instrument frame definitions | SDC/APL | `imap_science_###.tf` | `fk` | 4 |
 | `attitude_history` | Definitive spacecraft attitude from telemetry: the onboard estimate, not ground-corrected | MOC | `imap_yyyy_doy_yyyy_doy_###.ah.bc` | `ck` | 431 |
 | `pointing_attitude` | Attitude for each pointing (DPS) | SDC | `imap_dps_yyyy_doy_yyyy_doy_###.ah.bc` | `ck` | 335 |
-| `lo_pivot_attitude` | IMAP-Lo pivot platform attitude, one file per repoint | **TODO** | `imap_lopivot-repoint#####_yyyy_doy_yyyy_doy_###.bc` | `ck` | 323 |
+| `lo_pivot_attitude` | IMAP-Lo pivot platform attitude, one file per repoint | SDC | `imap_lopivot-repoint#####_yyyy_doy_yyyy_doy_###.bc` | `ck` | 323 |
 | `ephemeris_reconstructed` | Where the spacecraft was, from orbit determination | MOC (MDNAV) | `imap_recon_yyyymmdd_yyyymmdd_v##.bsp` | `spk` | 33 |
 | `ephemeris_predicted` | Where the spacecraft will be, assuming no maneuvers; used onboard and for timekeeping | MOC (MDNAV) | `imap_pred_odNNN_yyyymmdd_yyyymmdd_v##.bsp` | `spk` | 47 |
 | `ephemeris_nominal` | Designed trajectory for the rest of the mission, updated after maneuvers; for planning | MOC (mission design) | `imap_nom_yyyymmdd_yyyymmdd_v##.bsp` | `spk` | 8 |
