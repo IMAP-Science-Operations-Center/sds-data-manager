@@ -45,7 +45,17 @@ Categories that weren't requested aren't checked.
 
 Only the latest version of each file name is considered. Among files with different names, the latest ingested file has
 the highest priority. Versions can't rank those files, since they restart with each new file name: a growing attitude
-kernel's newest file is often `_001` while older ones are `_002`.
+kernel's newest file is often `_001` while older ones are `_002`. Ingestion time comes from S3 in whole seconds, so a
+batch delivery can tie. Ties go to the file whose coverage starts later, then ends later; for ephemeris, the later start
+is the newer orbit determination (`SPICE_FILE_PRIORITY` in `spice_utilities.py`).
+
+Coverage dates and orbit determination (OD) numbers can't replace ingestion time. Nominal ephemeris end dates don't
+increase with each delivery, OD numbers were dropped from nominal and reconstructed file names early in the mission,
+and a reprocessed attitude kernel can end before the file it replaces. Because ingestion time is the S3 upload time,
+re-copying files into S3 (e.g. when recovering the SDC) would scramble the order; restore the database instead.
+
+Within a category, subtypes are loaded in the order they're listed, and an earlier subtype always wins. Spacecraft
+ephemeris goes reconstructed, then predicted, then nominal.
 
 Spin (`spin`) and small forces (`thruster`) files are indexed into `spice_files` too, but they aren't SPICE kernels, so
 their categories are **opt-in**: they're only included when named in `file_types`. A default metakernel never lists
