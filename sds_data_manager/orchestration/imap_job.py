@@ -762,8 +762,8 @@ class IMAPJobHandler:
         for target_partition in target_partitions:
             if not always_triggers and self._partition_done(context, target_partition):
                 context.log.info(
-                    """"We have already materialized something like this,
-                    and this dependency does not trigger new processing."""
+                    f"Partition {target_partition} already has output, "
+                    f"and {dep_name} does not trigger reprocessing."
                 )
                 continue
 
