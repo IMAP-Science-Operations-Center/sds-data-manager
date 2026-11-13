@@ -90,14 +90,14 @@ class PlanetaryEphemerisKernels(Enum):
 
 
 class SpacecraftEphemerisKernels(Enum):
-    """Container for Spacecraft Ephemeris Kernel Types."""
+    """Container for Spacecraft Ephemeris Kernel Types, highest priority first."""
 
     EPHEMERIS_RECONSTRUCTED = auto()
-    EPHEMERIS_NOMINAL = auto()
+    # Predicted ephemeris comes from each new orbit determination and is
+    # delivered more often than nominal ephemeris, so it is preferred.
     EPHEMERIS_PREDICTED = auto()
+    EPHEMERIS_NOMINAL = auto()
     EPHEMERIS_90DAYS = auto()
-    EPHEMERIS_LONG = auto()
-    EPHEMERIS_LAUNCH = auto()
 
     @staticmethod
     def spice_category_name():
@@ -109,7 +109,6 @@ class SpacecraftAttitudeKernels(Enum):
     """Container for Spacecraft Attitude Kernel Types."""
 
     ATTITUDE_HISTORY = auto()
-    ATTITUDE_PREDICT = auto()
 
     @staticmethod
     def spice_category_name():
@@ -177,6 +176,14 @@ class ThrusterFiles(Enum):
 # files overlap or gap by up to 20 ms, while a real gap is at least one spin
 # (about 15 s).
 SEAM_GAP_TOLERANCE = 1.0
+
+# Fields that rank files of the same type, compared in order. The latest
+# ingested file is the newest solution or reprocessing. Versions can't rank
+# files, since they restart with each new file name. Files delivered in a batch
+# can share an ingestion time (S3 records whole seconds), so the file whose
+# coverage starts, then ends, later wins. For ephemeris, the later start is the
+# newer orbit determination.
+SPICE_FILE_PRIORITY = ("timestamp", "min_date_j2000", "max_date_j2000")
 
 
 @dataclass
@@ -418,9 +425,7 @@ def metakernel_builder(
                 json.loads(spice_files["body"]),
                 spice_category.spice_category_name(),
                 "file_intervals_j2000",
-                # Versions restart with each new file name, so they can't rank
-                # files with different names. The latest ingested file wins.
-                priority_field="timestamp",
+                priority_fields=SPICE_FILE_PRIORITY,
             )
 
     return metakernel
