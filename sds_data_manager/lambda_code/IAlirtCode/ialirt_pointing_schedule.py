@@ -107,6 +107,9 @@ def lambda_handler(event, context):
 
     imap_data_access.config["DATA_DIR"] = Path("/tmp")  # noqa: S108
 
+    # A warm Lambda keeps kernels from the last run, so start with none loaded.
+    spiceypy.kclear()
+
     # Download latest SPICE kernels
     dependency_inputs = get_latest_spice_kernels(
         [

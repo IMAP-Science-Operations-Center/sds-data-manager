@@ -28,6 +28,7 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule import (
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule."
     "download_naif_earth_kernel"
 )
+@patch("spiceypy.kclear")
 @patch("spiceypy.furnsh")
 @patch("imap_data_access.processing_input.ProcessingInputCollection.download_all_files")
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_coverage.requests.get")
@@ -46,6 +47,7 @@ def test_lambda_handler(
     mock_requests_get,
     mock_download,
     mock_furnsh,
+    mock_kclear,
     mock_download_naif_earth_kernel,
     s3_client,
 ):
@@ -125,6 +127,7 @@ def test_lambda_handler(
     assert keys[1].startswith("pointing_schedules/Korea/")
 
     mock_download_naif_earth_kernel.assert_called_once()
+    mock_kclear.assert_called_once()
 
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_pointing_schedule.spiceypy")
