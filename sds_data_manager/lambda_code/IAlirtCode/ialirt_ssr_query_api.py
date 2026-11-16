@@ -31,7 +31,7 @@ DEFAULT_VERSION = "v001"
 
 SCIENCE_INSTRUMENTS = ["hit", "mag", "codice_lo", "codice_hi", "swapi", "swe"]
 
-# Instruments stored in the SSR table.
+# Data types stored in the SSR table.
 SSR_INSTRUMENTS = {
     *SCIENCE_INSTRUMENTS,
     "spacecraft_status",
