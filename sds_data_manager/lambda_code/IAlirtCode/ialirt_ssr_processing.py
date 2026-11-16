@@ -77,6 +77,8 @@ STATUS_CADENCE_NS = 60 * 10**9
 # chunks like realtime, each with 2 extra minutes of packets on both sides.
 MAG_CHUNK_NS = 7 * 60 * 10**9
 MAG_PAD_NS = 2 * 60 * 10**9
+# A MAG day takes too long for one Lambda, so it is processed in two halves.
+HALF_DAY = timedelta(hours=12)
 SOFTWARE_VERSIONS = {
     "imap_processing": package_version("imap-processing"),
     "imap_data_access": package_version("imap-data-access"),
@@ -150,7 +152,9 @@ def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
         )
 
 
-def trim_packets(combined: xr.Dataset, day: datetime) -> xr.Dataset:
+def trim_packets(
+    combined: xr.Dataset, day: datetime, half: int | None = None
+) -> xr.Dataset:
     """Keep only the packets needed to process the day.
 
     combined has the whole day before, the day and the day after. Only the
@@ -164,6 +168,9 @@ def trim_packets(combined: xr.Dataset, day: datetime) -> xr.Dataset:
         sorted by epoch.
     day : datetime
         The day being processed.
+    half : int, optional
+        0 for the first 12 hours of the day, 1 for the last 12 hours,
+        None for the whole day.
 
     Returns
     -------
@@ -173,6 +180,9 @@ def trim_packets(combined: xr.Dataset, day: datetime) -> xr.Dataset:
     buffer = int(BOUNDARY_BUFFER.total_seconds() * 1e9)
     day_start = str_yyyymmdd_to_ttj2000ns(f"{day:%Y%m%d}")
     day_end = str_yyyymmdd_to_ttj2000ns(f"{day + timedelta(days=1):%Y%m%d}")
+    if half is not None:
+        day_start += half * int(HALF_DAY.total_seconds() * 1e9)
+        day_end = day_start + int(HALF_DAY.total_seconds() * 1e9)
     return combined.sel(epoch=slice(day_start - buffer, day_end + buffer))
 
 
@@ -400,7 +410,9 @@ def process_spacecraft_status(combined: xr.Dataset) -> list[dict]:
     ]
 
 
-def trim_to_day(result: list[dict], day: datetime) -> list[dict]:
+def trim_to_day(
+    result: list[dict], day: datetime, half: int | None = None
+) -> list[dict]:
     """Keep only products with met_in_utc within the day.
 
     Trimming happens after processing so that products built from packets
@@ -412,14 +424,21 @@ def trim_to_day(result: list[dict], day: datetime) -> list[dict]:
         Data products with a met_in_utc key.
     day : datetime
         The day being processed.
+    half : int, optional
+        0 for the first 12 hours of the day, 1 for the last 12 hours,
+        None for the whole day.
 
     Returns
     -------
     list[dict]
         Data products within [day, day + 1).
     """
+    day_end = day + timedelta(days=1)
+    if half is not None:
+        day += half * HALF_DAY
+        day_end = day + HALF_DAY
     start = day.strftime("%Y-%m-%dT%H:%M:%S")
-    end = (day + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+    end = day_end.strftime("%Y-%m-%dT%H:%M:%S")
     return [item for item in result if start <= item["met_in_utc"] < end]
 
 
@@ -637,7 +656,14 @@ def ancillary_item(
     }
 
 
-def process_day(instrument: str, day: datetime, version: str, url: str, table):  # noqa: PLR0912
+def process_day(  # noqa: PLR0912
+    instrument: str,
+    day: datetime,
+    version: str,
+    url: str,
+    table,
+    half: int | None = None,
+):
     """Process one day of I-ALiRT SSR data for one instrument.
 
     Parameters
@@ -652,6 +678,9 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table): 
         The IMAP data access API URL.
     table : dynamodb.Table
         The SSR DynamoDB table.
+    half : int, optional
+        0 for the first 12 hours of the day, 1 for the last 12 hours,
+        None for the whole day.
     """
     # /tmp persists between warm invocations. Clear it first in case a
     # previous invocation failed or timed out before cleaning up.
@@ -687,7 +716,7 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table): 
         else:
             combined = parse_packets(query_filenames(day), DOWNLOAD_DIR)
             check_day_coverage(combined, day)
-            combined = trim_packets(combined, day)
+            combined = trim_packets(combined, day, half)
             if instrument == "mag":
                 result, ancillary_files = process_mag(combined, day, DOWNLOAD_DIR)
             elif instrument == "hit":
@@ -709,7 +738,7 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table): 
             if not (any(result) and all(result)):
                 logger.info("No %s products for %s %s", instrument, day, version)
                 return
-            result = trim_to_day(result, day)
+            result = trim_to_day(result, day, half)
             logger.info("[%s] results populated for [%s]", len(result), instrument)
             items += format_items(result, instrument, version, kernel_set_key)
             if instrument == "mag":
@@ -739,7 +768,9 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event : dict
-        {"day": "YYYYMMDD", "version": "v001"}
+        An SQS event with one record. Its body is
+        {"day": "YYYYMMDD", "version": "v001"}, plus "half": 0 or 1 to
+        process only half of the day.
     context : LambdaContext
         This object provides methods and properties that provide
         information about the invocation, function,
@@ -747,27 +778,35 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event))
 
+    record = event["Records"][0]
+    body = json.loads(record["body"])
     instrument = os.environ["INSTRUMENT"]
     url = os.environ["IMAP_DATA_ACCESS_URL"]
     table = boto3.resource("dynamodb").Table(os.environ["SSR_TABLE"])
 
-    day = datetime.strptime(event["day"], "%Y%m%d")
-    version = event["version"]
+    day = datetime.strptime(body["day"], "%Y%m%d")
+    version = body["version"]
+    half = body.get("half")
 
+    # Failures are logged and not raised, so SQS deletes the message instead
+    # of retrying it and holding up the next day.
     try:
+        # If a message is received from SQS multiple times then throw an error.
+        if int(record["attributes"]["ApproximateReceiveCount"]) > 1:
+            raise RuntimeError("previous run did not finish")
         # Unreleased L0 files are only returned to queries with an API key.
         ssm_response = boto3.client("ssm").get_parameter(
             Name=os.environ["SSM_API_KEY_PARAMETER"], WithDecryption=True
         )
         imap_data_access.config["API_KEY"] = ssm_response["Parameter"]["Value"]
-        process_day(instrument, day, version, url, table)
+        process_day(instrument, day, version, url, table, half)
     except Exception as e:
         logger.error(
-            "FAILED %s %s %s: %s: %s",
+            "FAILED %s %s %s half=%s: %s: %s",
             instrument,
-            event["day"],
+            body["day"],
             version,
+            half,
             type(e).__name__,
             e,
         )
-        raise
