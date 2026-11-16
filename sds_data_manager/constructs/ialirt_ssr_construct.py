@@ -190,6 +190,9 @@ class IalirtSsrConstruct(Construct):
                 f"IalirtSsrQueue-{instrument}",
                 queue_name=f"ialirt-ssr-{instrument.replace('_', '-')}.fifo",
                 fifo=True,
+                # Messages with the same body sent within 5 minutes are
+                # dropped as duplicates.
+                content_based_deduplication=True,
                 # Longer than the Lambda timeout, so a message is not
                 # received again while it is still being processed.
                 visibility_timeout=cdk.Duration.minutes(16),
