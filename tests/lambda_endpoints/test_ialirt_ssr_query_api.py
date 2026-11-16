@@ -325,6 +325,21 @@ def test_mag_hk_requires_full_scope(ssr_query_api_module):
     assert body["data"][0]["mag_hk_status"] == {"hk": 1}
 
 
+def test_start_after_end(ssr_query_api_module):
+    """Test a start after the end is rejected with a 400."""
+    status, body = call(
+        ssr_query_api_module,
+        {
+            "instrument": "mag",
+            "time_utc_start": "2026-09-01T11:00:00",
+            "time_utc_end": "2026-09-01T10:00:00",
+        },
+    )
+
+    assert status == 400
+    assert body["message"] == "time_utc_start must not be after time_utc_end"
+
+
 def test_spice_by_kernel_set_key(ssr_query_api_module):
     """Test the spice item for a data item's kernel_set_key is returned."""
     kernel_set_key = "2026-10-20T06:00:01.123456"

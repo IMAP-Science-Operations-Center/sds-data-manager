@@ -138,6 +138,11 @@ def get_time_range(
             return None
         start = format_time(validate_time(end) - timedelta(hours=1), microseconds)
 
+    # DynamoDB rejects a range whose start is after its end. Equal times
+    # are allowed for kernel_set_key lookups.
+    if start > end:
+        raise BadTimeError("time_utc_start must not be after time_utc_end")
+
     if not has_api_key and start < PUBLIC_CUTOFF_UTC:
         raise BadTimeError("API key required for data prior to 2026-02-01T00:00:00")
 
