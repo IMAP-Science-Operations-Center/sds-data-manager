@@ -29,7 +29,7 @@ def ssr_table(setup_ssr_table):
         },
         {
             "instrument_version": "mag#v001",
-            "time_utc": "2026-09-01T10:30:00.500",
+            "time_utc": "2026-09-01T10:30:00",
             "instrument": "mag",
             "data": "mag_latest",
             "value": Decimal("1.23456"),
@@ -153,7 +153,7 @@ def test_start_only(ssr_query_api_module):
     """Test start only returns the hour after start."""
     status, body = call(
         ssr_query_api_module,
-        {"instrument": "mag", "time_utc_start": "2026-09-01T09:30:00"},
+        {"instrument": "mag", "time_utc_start": "2026-09-01T09:29:00"},
     )
 
     assert status == 200
@@ -187,7 +187,7 @@ def test_latest_time_utc_query(ssr_query_api_module):
 # moto applies Limit before sorting, so a descending Limit=1 query does not
 # return the newest item. Patch latest_time_utc to return the newest item.
 LATEST = {
-    "mag#v001": "2026-09-01T10:30:00.500",
+    "mag#v001": "2026-09-01T10:30:00",
     "hit#v001": "2026-09-01T05:00:00",
 }
 
@@ -206,15 +206,46 @@ def test_default_latest_hour(ssr_query_api_module, mock_latest):
     status, body = call(ssr_query_api_module, {"instrument": "mag"})
 
     assert status == 200
-    # Latest item has fractional seconds and must still be included.
     assert [item["data"] for item in body["data"]] == ["mag_mid", "mag_latest"]
 
 
-def test_default_latest_hour_keeps_microseconds(ssr_query_api_module, mock_latest):
-    """Test the default range is exactly 1 hour when time_utc has microseconds."""
-    time_range = ssr_query_api_module.get_time_range({}, "mag#v001", True)
+def test_fractional_bounds_whole_seconds(ssr_query_api_module):
+    """Test fractional bounds still find items stored with whole seconds."""
+    status, body = call(
+        ssr_query_api_module,
+        {
+            "instrument": "mag",
+            "time_utc_start": "2026-09-01T09:59:59.500",
+            "time_utc_end": "2026-09-01T10:00:00.500",
+        },
+    )
 
-    assert time_range == ("2026-09-01T09:30:00.500000", "2026-09-01T10:30:00.500")
+    assert status == 200
+    assert [item["data"] for item in body["data"]] == ["mag_mid"]
+
+
+@pytest.mark.parametrize(
+    ("params", "instrument_version", "expected"),
+    [
+        (
+            {"time_utc_start": "2026-10-20T06:00:01.5"},
+            "spice#v001",
+            ("2026-10-20T06:00:01.500000", "2026-10-20T07:00:01.500000"),
+        ),
+        (
+            {"time_utc_end": "2026-09-01T10:00:00.5"},
+            "mag#v001",
+            ("2026-09-01T09:00:00", "2026-09-01T10:00:00"),
+        ),
+    ],
+)
+def test_calculated_bounds_match_stored_format(
+    ssr_query_api_module, params, instrument_version, expected
+):
+    """Test calculated bounds use the stored time_utc format."""
+    time_range = ssr_query_api_module.get_time_range(params, instrument_version, True)
+
+    assert time_range == expected
 
 
 def test_default_all_instruments(ssr_query_api_module, mock_latest):
@@ -311,13 +342,15 @@ def test_spice_by_kernel_set_key(ssr_query_api_module):
     assert body["data"][0]["spice_kernels"] == {"leapseconds": "naif0012.tls"}
 
 
-def test_spice_by_kernel_set_key_zero_microseconds(ssr_query_api_module):
-    """Test a kernel_set_key with .000000 microseconds is still found."""
-    kernel_set_key = "2026-10-21T06:00:02.000000"
+@pytest.mark.parametrize(
+    "query_time", ["2026-10-21T06:00:02.000000", "2026-10-21T06:00:02"]
+)
+def test_spice_by_kernel_set_key_zero_microseconds(ssr_query_api_module, query_time):
+    """Test a kernel_set_key with .000000 microseconds is found with or without it."""
     ssr_query_api_module.table.put_item(
         Item={
             "instrument_version": "spice#v001",
-            "time_utc": kernel_set_key,
+            "time_utc": "2026-10-21T06:00:02.000000",
             "instrument": "spice",
         }
     )
@@ -326,8 +359,8 @@ def test_spice_by_kernel_set_key_zero_microseconds(ssr_query_api_module):
         ssr_query_api_module,
         {
             "instrument": "spice",
-            "time_utc_start": kernel_set_key,
-            "time_utc_end": kernel_set_key,
+            "time_utc_start": query_time,
+            "time_utc_end": query_time,
         },
     )
 

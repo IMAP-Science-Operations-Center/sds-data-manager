@@ -42,6 +42,9 @@ SSR_INSTRUMENTS = {
     # returned with type "science".
     "ancillary",
 }
+# spice and ancillary items have time_utc = kernel_set_key, which always has
+# microseconds. All other items have whole seconds.
+MICROSECOND_INSTRUMENTS = {"spice", "ancillary"}
 
 
 def latest_time_utc(instrument_version: str) -> str | None:
@@ -70,10 +73,8 @@ def latest_time_utc(instrument_version: str) -> str | None:
 def format_time(dt: datetime, microseconds: bool) -> str:
     """Format a time like time_utc.
 
-    spice and ancillary items have time_utc = kernel_set_key, which always has
-    microseconds, even when they are zero (e.g. 2026-10-20T06:00:01.000000).
-    So microseconds are kept whenever the given time had them, not only when
-    they are non-zero.
+    Query bounds must use the same format as the stored time_utc, since
+    DynamoDB compares them as strings.
 
     Parameters
     ----------
@@ -114,19 +115,18 @@ def get_time_range(
     """
     start = params.get("time_utc_start")
     end = params.get("time_utc_end")
+    instrument = instrument_version.split("#", maxsplit=1)[0]
+    microseconds = instrument in MICROSECOND_INSTRUMENTS
 
-    # A "." means the time has fractional seconds.
     if start and end:
-        start = format_time(validate_time(start), "." in start)
-        end = format_time(validate_time(end), "." in end)
+        start = format_time(validate_time(start), microseconds)
+        end = format_time(validate_time(end), microseconds)
     elif start:
         start_dt = validate_time(start)
-        microseconds = "." in start
         start = format_time(start_dt, microseconds)
         end = format_time(start_dt + timedelta(hours=1), microseconds)
     elif end:
         end_dt = validate_time(end)
-        microseconds = "." in end
         start = format_time(end_dt - timedelta(hours=1), microseconds)
         end = format_time(end_dt, microseconds)
     else:
@@ -136,9 +136,7 @@ def get_time_range(
         end = latest_time_utc(instrument_version)
         if end is None:
             return None
-        # Keep end as stored so the latest item is included even if
-        # time_utc has fractional seconds.
-        start = format_time(validate_time(end) - timedelta(hours=1), "." in end)
+        start = format_time(validate_time(end) - timedelta(hours=1), microseconds)
 
     if not has_api_key and start < PUBLIC_CUTOFF_UTC:
         raise BadTimeError("API key required for data prior to 2026-02-01T00:00:00")
