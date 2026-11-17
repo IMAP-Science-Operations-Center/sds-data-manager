@@ -77,23 +77,37 @@ def test_get_days_manual():
 
 @patch("sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_dispatch.boto3.client")
 def test_lambda_handler(mock_client):
-    """Test that each instrument is invoked for each day."""
+    """Test that each instrument is queued for each day, MAG once per half day."""
     event = {
         "detail": {
             "start_date": "20260930",
             "end_date": "20261001",
-            "instruments": ["mag"],
+            "instruments": ["mag", "hit"],
         }
     }
+    mock_client.return_value.get_queue_url.return_value = {"QueueUrl": "url"}
 
     lambda_handler(event, {})
 
-    mock_invoke = mock_client.return_value.invoke
-    assert mock_invoke.call_count == 2
-    mock_invoke.assert_called_with(
-        FunctionName="ialirt-ssr-mag",
-        InvocationType="Event",
-        Payload='{"day": "20261001", "version": "v001"}',
+    mock_client.return_value.get_queue_url.assert_any_call(
+        QueueName="ialirt-ssr-mag.fifo"
+    )
+    mock_send = mock_client.return_value.send_message
+    assert mock_send.call_count == 6
+    mock_send.assert_any_call(
+        QueueUrl="url",
+        MessageBody='{"day": "20261001", "version": "v001", "half": 0}',
+        MessageGroupId="mag",
+    )
+    mock_send.assert_any_call(
+        QueueUrl="url",
+        MessageBody='{"day": "20261001", "version": "v001", "half": 1}',
+        MessageGroupId="mag",
+    )
+    mock_send.assert_called_with(
+        QueueUrl="url",
+        MessageBody='{"day": "20261001", "version": "v001", "half": null}',
+        MessageGroupId="hit",
     )
 
 

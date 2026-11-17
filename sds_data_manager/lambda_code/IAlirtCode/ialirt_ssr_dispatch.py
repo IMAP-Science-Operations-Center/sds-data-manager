@@ -41,9 +41,9 @@ SSR_INSTRUMENTS = [
 DEFAULT_VERSION = "v001"
 
 
-def function_name(instrument: str) -> str:
-    """Return the Lambda function name for an instrument."""
-    return f"ialirt-ssr-{instrument.replace('_', '-')}"
+def queue_name(instrument: str) -> str:
+    """Return the SQS queue name for an instrument."""
+    return f"ialirt-ssr-{instrument.replace('_', '-')}.fifo"
 
 
 def get_days(detail: dict, instruments: list[str]) -> dict[str, list[str]]:
@@ -205,7 +205,7 @@ def is_complete(day: str) -> bool:
 
 
 def lambda_handler(event, context):
-    """Invoke the instrument Lambdas asynchronously, once per instrument per day.
+    """Queue one instrument Lambda run per instrument per day.
 
     Daily trigger: EventBridge schedule, empty detail.
     Manual trigger: custom EventBridge event with source "imap.ialirt.ssr",
@@ -234,13 +234,19 @@ def lambda_handler(event, context):
     if unknown:
         raise ValueError(f"Unknown instruments: {sorted(unknown)}")
 
-    lambda_client = boto3.client("lambda")
+    sqs_client = boto3.client("sqs")
     for day, day_instruments in get_days(detail, instruments).items():
         for instrument in day_instruments:
-            payload = {"day": day, "version": version}
-            lambda_client.invoke(
-                FunctionName=function_name(instrument),
-                InvocationType="Event",
-                Payload=json.dumps(payload),
-            )
-            logger.info("Invoked %s with %s", function_name(instrument), payload)
+            queue_url = sqs_client.get_queue_url(QueueName=queue_name(instrument))[
+                "QueueUrl"
+            ]
+            # A MAG day takes too long for one Lambda, so it is run per half day.
+            for half in (0, 1) if instrument == "mag" else (None,):
+                payload = {"day": day, "version": version, "half": half}
+                # One message group per queue, so runs happen one at a time.
+                sqs_client.send_message(
+                    QueueUrl=queue_url,
+                    MessageBody=json.dumps(payload),
+                    MessageGroupId=instrument,
+                )
+                logger.info("Queued %s with %s", queue_name(instrument), payload)
