@@ -1,6 +1,7 @@
 """Test the I-ALiRT SSR processing lambda."""
 
 # ruff: noqa: E402
+import json
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,8 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_utils import KERNELS
 sys.modules["ialirt_ssr_utils"] = ialirt_ssr_utils
 
 from sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing import (
+    BOUNDARY_BUFFER,
+    COVERAGE_TOLERANCE,
     SOFTWARE_VERSIONS,
     IalirtDataGapError,
     ancillary_item,
@@ -44,14 +47,34 @@ MODULE = "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing"
 DAY_NS = 86400 * 10**9
 
 
+def sqs_event(body, receive_count="1"):
+    """Return an SQS event with one record."""
+    return {
+        "Records": [
+            {
+                "body": json.dumps(body),
+                "attributes": {"ApproximateReceiveCount": receive_count},
+            }
+        ]
+    }
+
+
+# A packet every 30 seconds over the day plus 10 minutes on each side.
+FULL_RANGE_S = np.arange(-600, 87001, 30)
+
+
+def test_coverage_tolerance_less_than_buffer():
+    """Test that a gap at the start or end of the day can be caught."""
+    assert COVERAGE_TOLERANCE < BOUNDARY_BUFFER
+
+
 @patch(
     "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing.str_yyyymmdd_to_ttj2000ns"
 )
 def test_check_day_coverage(mock_str_to_ttj2000ns):
     """Test that a complete day passes."""
     mock_str_to_ttj2000ns.side_effect = [0, DAY_NS]
-    # A packet every 30 seconds until just after midnight.
-    epoch = np.arange(0, 86430, 30) * 10**9
+    epoch = FULL_RANGE_S * 10**9
     combined = xr.Dataset(
         {"src_seq_ctr": ("epoch", np.arange(len(epoch)))}, coords={"epoch": epoch}
     )
@@ -66,7 +89,7 @@ def test_check_day_coverage(mock_str_to_ttj2000ns):
 def test_check_day_coverage_gap(mock_str_to_ttj2000ns, mock_to_utc):
     """Test that a missing packet raises."""
     mock_str_to_ttj2000ns.side_effect = [0, DAY_NS]
-    epoch = np.arange(0, 86430, 30) * 10**9
+    epoch = FULL_RANGE_S * 10**9
     src_seq_ctr = np.arange(len(epoch))
     src_seq_ctr[100:] += 1
     combined = xr.Dataset(
@@ -88,6 +111,19 @@ def test_trim_to_day():
     assert trim_to_day(result, datetime(2026, 10, 8)) == [
         {"met_in_utc": "2026-10-08T12:00:00"}
     ]
+
+
+def test_trim_to_day_half():
+    """Test that each half day keeps only its own products."""
+    result = [
+        {"met_in_utc": "2026-10-08T00:00:00"},
+        {"met_in_utc": "2026-10-08T11:59:59"},
+        {"met_in_utc": "2026-10-08T12:00:00"},
+        {"met_in_utc": "2026-10-09T00:00:00"},
+    ]
+
+    assert trim_to_day(result, datetime(2026, 10, 8), half=0) == result[:2]
+    assert trim_to_day(result, datetime(2026, 10, 8), half=1) == [result[2]]
 
 
 def test_format_items():
@@ -286,7 +322,7 @@ def test_lambda_handler(
         {"mag_l1b-calibration": "imap_mag_l1b-calibration.cdf"},
     )
 
-    lambda_handler({"day": "20261008", "version": "v001"}, {})
+    lambda_handler(sqs_event({"day": "20261008", "version": "v001"}), {})
 
     # MAG uses SPICE geometry, so it gets all kernel types.
     assert mock_get_kernels.call_args.args[2] == KERNELS
@@ -324,10 +360,10 @@ def test_ttj2000ns_to_utc(mock_ttj2000ns_to_et, mock_et_to_utc):
     [
         # No packets in the day.
         (np.array([], dtype=np.int64), "no packets"),
-        # First packet 2 minutes after midnight.
-        (np.arange(120, 86430, 30), "first packet"),
-        # Last packet 2 minutes before the end of the day.
-        (np.arange(0, 86280, 30), "last packet"),
+        # Packets start 8 minutes before midnight, not 10.
+        (np.arange(-480, 87001, 30), "first packet"),
+        # Packets end 8 minutes after the next midnight, not 10.
+        (np.arange(-600, 86880, 30), "last packet"),
     ],
 )
 @patch(f"{MODULE}.ttj2000ns_to_utc")
@@ -346,6 +382,39 @@ def test_check_day_coverage_incomplete_day(
         check_day_coverage(combined, datetime(2026, 10, 8))
 
 
+@patch(f"{MODULE}.ttj2000ns_to_utc")
+@patch(f"{MODULE}.str_yyyymmdd_to_ttj2000ns")
+def test_check_day_coverage_missing_start(mock_str_to_ttj2000ns, mock_to_utc):
+    """Test that a packet missing at midnight raises."""
+    mock_str_to_ttj2000ns.side_effect = [0, DAY_NS]
+    # The packet at midnight is missing.
+    keep = FULL_RANGE_S != 0
+    epoch = FULL_RANGE_S[keep] * 10**9
+    src_seq_ctr = np.arange(len(FULL_RANGE_S))[keep]
+    combined = xr.Dataset(
+        {"src_seq_ctr": ("epoch", src_seq_ctr)}, coords={"epoch": epoch}
+    )
+
+    with pytest.raises(IalirtDataGapError, match="src_seq_ctr gap"):
+        check_day_coverage(combined, datetime(2026, 10, 8))
+
+
+@patch(f"{MODULE}.ttj2000ns_to_utc")
+@patch(f"{MODULE}.str_yyyymmdd_to_ttj2000ns")
+def test_check_day_coverage_time_gap(mock_str_to_ttj2000ns, mock_to_utc):
+    """Test that a time gap raises even when src_seq_ctr has no gap."""
+    mock_str_to_ttj2000ns.side_effect = [0, DAY_NS]
+    # No packets for an hour, but src_seq_ctr keeps counting by one.
+    epoch_s = FULL_RANGE_S[(FULL_RANGE_S < 3600) | (FULL_RANGE_S >= 7200)]
+    combined = xr.Dataset(
+        {"src_seq_ctr": ("epoch", np.arange(len(epoch_s)))},
+        coords={"epoch": epoch_s * 10**9},
+    )
+
+    with pytest.raises(IalirtDataGapError, match="time gap"):
+        check_day_coverage(combined, datetime(2026, 10, 8))
+
+
 @patch(f"{MODULE}.str_yyyymmdd_to_ttj2000ns")
 def test_trim_packets(mock_str_to_ttj2000ns):
     """Test that only packets within 10 minutes of the day are kept."""
@@ -358,6 +427,21 @@ def test_trim_packets(mock_str_to_ttj2000ns):
 
     np.testing.assert_array_equal(
         result["epoch"].values, np.array([-10, 0, 1440, 1450]) * minute
+    )
+
+
+@patch(f"{MODULE}.str_yyyymmdd_to_ttj2000ns")
+def test_trim_packets_half(mock_str_to_ttj2000ns):
+    """Test that only packets within 10 minutes of the second half day are kept."""
+    mock_str_to_ttj2000ns.side_effect = [0, DAY_NS]
+    minute = 60 * 10**9
+    epoch = np.array([0, 700, 710, 720, 1440, 1450, 1460]) * minute
+    combined = xr.Dataset(coords={"epoch": epoch})
+
+    result = trim_packets(combined, datetime(2026, 10, 8), half=1)
+
+    np.testing.assert_array_equal(
+        result["epoch"].values, np.array([710, 720, 1440, 1450]) * minute
     )
 
 
@@ -560,17 +644,36 @@ def test_process_day_unknown_instrument(mock_process_day_inputs):
 @patch(f"{MODULE}.process_day", side_effect=IalirtDataGapError("gap"))
 @patch(f"{MODULE}.boto3")
 def test_lambda_handler_error(mock_boto3, mock_process_day, monkeypatch, caplog):
-    """Test that a failure is logged and re-raised."""
+    """Test that a failure is logged and not raised, so SQS deletes the message."""
     monkeypatch.setenv("INSTRUMENT", "mag")
     monkeypatch.setenv("SSR_TABLE", "ialirt-ssr-table")
     monkeypatch.setenv("SSM_API_KEY_PARAMETER", "/imap-sdc/batch-jobs/api-key")
     # Restore the global imap_data_access config after the test.
     monkeypatch.setitem(imap_data_access.config, "API_KEY", None)
 
-    with pytest.raises(IalirtDataGapError):
-        lambda_handler({"day": "20261008", "version": "v001"}, {})
+    lambda_handler(sqs_event({"day": "20261008", "version": "v001", "half": 1}), {})
 
-    assert "FAILED mag 20261008 v001: IalirtDataGapError: gap" in caplog.text
+    assert "FAILED mag 20261008 v001 half=1: IalirtDataGapError: gap" in caplog.text
+
+
+@patch(f"{MODULE}.process_day")
+@patch(f"{MODULE}.boto3")
+def test_lambda_handler_received_again(
+    mock_boto3, mock_process_day, monkeypatch, caplog
+):
+    """Test that a message received again after a timeout is skipped."""
+    monkeypatch.setenv("INSTRUMENT", "mag")
+    monkeypatch.setenv("SSR_TABLE", "ialirt-ssr-table")
+
+    lambda_handler(
+        sqs_event({"day": "20261008", "version": "v001"}, receive_count="2"), {}
+    )
+
+    mock_process_day.assert_not_called()
+    assert (
+        "FAILED mag 20261008 v001 half=None: RuntimeError: previous run did not finish"
+        in caplog.text
+    )
 
 
 @patch(f"{MODULE}.spacecraft_items")

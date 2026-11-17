@@ -60,15 +60,13 @@ TIME_KERNELS = {"leapseconds", "spacecraft_clock"}
 SPACECRAFT_CADENCE = timedelta(minutes=1)
 # Packets, SPICE kernels and ancillary files for one invocation.
 DOWNLOAD_DIR = Path("/tmp/ssr")  # noqa: S108
-# The two values below do different jobs:
-# - COVERAGE_TOLERANCE is the pass/fail completeness check in
-#   check_day_coverage. The first packet must be in the first 60 s of the day,
-#   and there must be a packet in the first 60 s of the next day to show the
-#   data continues through the end of the day.
-# - BOUNDARY_BUFFER is used by trim_packets to decide how much data is passed
-#   to the instrument processing. It is larger because some products are built
-#   from packets spread over 4 minutes, so a product near midnight needs
-#   packets from the neighboring day.
+# BOUNDARY_BUFFER is how much of the neighboring days trim_packets passes to
+# the instrument processing, since some products are built from packets
+# spread over 4 minutes. check_day_coverage checks the same range, so every
+# packet given to the instruments is checked. COVERAGE_TOLERANCE is the
+# largest time allowed between packets, and between the edges of that range
+# and the first and last packets. It must be less than BOUNDARY_BUFFER, or a
+# gap at the start or end of the day would not be caught.
 COVERAGE_TOLERANCE = timedelta(seconds=60)
 BOUNDARY_BUFFER = timedelta(minutes=10)
 # src_seq_ctr is a 14-bit counter.
@@ -79,6 +77,8 @@ STATUS_CADENCE_NS = 60 * 10**9
 # chunks like realtime, each with 2 extra minutes of packets on both sides.
 MAG_CHUNK_NS = 7 * 60 * 10**9
 MAG_PAD_NS = 2 * 60 * 10**9
+# A MAG day takes too long for one Lambda, so it is processed in two halves.
+HALF_DAY = timedelta(hours=12)
 SOFTWARE_VERSIONS = {
     "imap_processing": package_version("imap-processing"),
     "imap_data_access": package_version("imap-data-access"),
@@ -97,8 +97,9 @@ def ttj2000ns_to_utc(ttj2000ns: int) -> str:
 def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
     """Check that the packets cover the whole day with no missing packets.
 
-    Days that fail are skipped and need to be inspected and processed
-    manually.
+    The day plus BOUNDARY_BUFFER on each side is checked, the same packets
+    trim_packets passes to the instrument processing. Days that fail are
+    skipped and need to be inspected and processed manually.
 
     Parameters
     ----------
@@ -111,28 +112,36 @@ def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
     Raises
     ------
     IalirtDataGapError
-        If the first packet is not near the start of the day, the last packet
-        is not at or after the end of the day, or src_seq_ctr skips a value.
+        If the packets do not reach both ends of the range, two packets are
+        more than COVERAGE_TOLERANCE apart, or src_seq_ctr skips a value.
     """
     tolerance = int(COVERAGE_TOLERANCE.total_seconds() * 1e9)
-    day_start = str_yyyymmdd_to_ttj2000ns(f"{day:%Y%m%d}")
-    day_end = str_yyyymmdd_to_ttj2000ns(f"{day + timedelta(days=1):%Y%m%d}")
+    buffer = int(BOUNDARY_BUFFER.total_seconds() * 1e9)
+    start = str_yyyymmdd_to_ttj2000ns(f"{day:%Y%m%d}") - buffer
+    end = str_yyyymmdd_to_ttj2000ns(f"{day + timedelta(days=1):%Y%m%d}") + buffer
 
-    # Include packets just after midnight to show the data continues
-    # through the end of the day.
-    packets = combined.sel(epoch=slice(day_start, day_end + tolerance))
+    packets = combined.sel(epoch=slice(start, end))
     epoch = packets["epoch"].values
     src_seq_ctr = packets["src_seq_ctr"].values.astype(np.int64)
 
     if epoch.size == 0:
         raise IalirtDataGapError(f"{day:%Y%m%d}: no packets.")
-    if epoch[0] > day_start + tolerance:
+    if epoch[0] > start + tolerance:
         raise IalirtDataGapError(
             f"{day:%Y%m%d}: first packet at {ttj2000ns_to_utc(epoch[0])}."
         )
-    if epoch[-1] < day_end:
+    if epoch[-1] < end - tolerance:
         raise IalirtDataGapError(
             f"{day:%Y%m%d}: last packet at {ttj2000ns_to_utc(epoch[-1])}."
+        )
+
+    # A gap of exactly 16384 packets wraps src_seq_ctr all the way around, so
+    # also check the time between packets.
+    time_gaps = np.flatnonzero(np.diff(epoch) > tolerance)
+    if time_gaps.size:
+        raise IalirtDataGapError(
+            f"{day:%Y%m%d}: {time_gaps.size} time gap(s), "
+            f"first after {ttj2000ns_to_utc(epoch[time_gaps[0]])}."
         )
 
     gaps = np.flatnonzero(np.diff(src_seq_ctr) % SEQ_CTR_MODULO != 1)
@@ -143,7 +152,9 @@ def check_day_coverage(combined: xr.Dataset, day: datetime) -> None:
         )
 
 
-def trim_packets(combined: xr.Dataset, day: datetime) -> xr.Dataset:
+def trim_packets(
+    combined: xr.Dataset, day: datetime, half: int | None = None
+) -> xr.Dataset:
     """Keep only the packets needed to process the day.
 
     combined has the whole day before, the day and the day after. Only the
@@ -157,6 +168,9 @@ def trim_packets(combined: xr.Dataset, day: datetime) -> xr.Dataset:
         sorted by epoch.
     day : datetime
         The day being processed.
+    half : int, optional
+        0 for the first 12 hours of the day, 1 for the last 12 hours,
+        None for the whole day.
 
     Returns
     -------
@@ -166,6 +180,9 @@ def trim_packets(combined: xr.Dataset, day: datetime) -> xr.Dataset:
     buffer = int(BOUNDARY_BUFFER.total_seconds() * 1e9)
     day_start = str_yyyymmdd_to_ttj2000ns(f"{day:%Y%m%d}")
     day_end = str_yyyymmdd_to_ttj2000ns(f"{day + timedelta(days=1):%Y%m%d}")
+    if half is not None:
+        day_start += half * int(HALF_DAY.total_seconds() * 1e9)
+        day_end = day_start + int(HALF_DAY.total_seconds() * 1e9)
     return combined.sel(epoch=slice(day_start - buffer, day_end + buffer))
 
 
@@ -393,7 +410,9 @@ def process_spacecraft_status(combined: xr.Dataset) -> list[dict]:
     ]
 
 
-def trim_to_day(result: list[dict], day: datetime) -> list[dict]:
+def trim_to_day(
+    result: list[dict], day: datetime, half: int | None = None
+) -> list[dict]:
     """Keep only products with met_in_utc within the day.
 
     Trimming happens after processing so that products built from packets
@@ -405,14 +424,21 @@ def trim_to_day(result: list[dict], day: datetime) -> list[dict]:
         Data products with a met_in_utc key.
     day : datetime
         The day being processed.
+    half : int, optional
+        0 for the first 12 hours of the day, 1 for the last 12 hours,
+        None for the whole day.
 
     Returns
     -------
     list[dict]
         Data products within [day, day + 1).
     """
+    day_end = day + timedelta(days=1)
+    if half is not None:
+        day += half * HALF_DAY
+        day_end = day + HALF_DAY
     start = day.strftime("%Y-%m-%dT%H:%M:%S")
-    end = (day + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+    end = day_end.strftime("%Y-%m-%dT%H:%M:%S")
     return [item for item in result if start <= item["met_in_utc"] < end]
 
 
@@ -630,7 +656,14 @@ def ancillary_item(
     }
 
 
-def process_day(instrument: str, day: datetime, version: str, url: str, table):  # noqa: PLR0912
+def process_day(  # noqa: PLR0912
+    instrument: str,
+    day: datetime,
+    version: str,
+    url: str,
+    table,
+    half: int | None = None,
+):
     """Process one day of I-ALiRT SSR data for one instrument.
 
     Parameters
@@ -645,6 +678,9 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table): 
         The IMAP data access API URL.
     table : dynamodb.Table
         The SSR DynamoDB table.
+    half : int, optional
+        0 for the first 12 hours of the day, 1 for the last 12 hours,
+        None for the whole day.
     """
     # /tmp persists between warm invocations. Clear it first in case a
     # previous invocation failed or timed out before cleaning up.
@@ -680,7 +716,7 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table): 
         else:
             combined = parse_packets(query_filenames(day), DOWNLOAD_DIR)
             check_day_coverage(combined, day)
-            combined = trim_packets(combined, day)
+            combined = trim_packets(combined, day, half)
             if instrument == "mag":
                 result, ancillary_files = process_mag(combined, day, DOWNLOAD_DIR)
             elif instrument == "hit":
@@ -702,7 +738,7 @@ def process_day(instrument: str, day: datetime, version: str, url: str, table): 
             if not (any(result) and all(result)):
                 logger.info("No %s products for %s %s", instrument, day, version)
                 return
-            result = trim_to_day(result, day)
+            result = trim_to_day(result, day, half)
             logger.info("[%s] results populated for [%s]", len(result), instrument)
             items += format_items(result, instrument, version, kernel_set_key)
             if instrument == "mag":
@@ -732,7 +768,9 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event : dict
-        {"day": "YYYYMMDD", "version": "v001"}
+        An SQS event with one record. Its body is
+        {"day": "YYYYMMDD", "version": "v001"}, plus "half": 0 or 1 to
+        process only half of the day.
     context : LambdaContext
         This object provides methods and properties that provide
         information about the invocation, function,
@@ -740,27 +778,43 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event))
 
+    # batch_size=1 should give one record. If not, log the others so they
+    # are not dropped silently when the batch is deleted from the queue.
+    if len(event["Records"]) > 1:
+        logger.error(
+            "Expected 1 record, got %d; only the first is processed. Dropped: %s",
+            len(event["Records"]),
+            [r["body"] for r in event["Records"][1:]],
+        )
+    record = event["Records"][0]
+    body = json.loads(record["body"])
     instrument = os.environ["INSTRUMENT"]
     url = os.environ["IMAP_DATA_ACCESS_URL"]
     table = boto3.resource("dynamodb").Table(os.environ["SSR_TABLE"])
 
-    day = datetime.strptime(event["day"], "%Y%m%d")
-    version = event["version"]
+    day = datetime.strptime(body["day"], "%Y%m%d")
+    version = body["version"]
+    half = body.get("half")
 
+    # Failures are logged and not raised, so SQS deletes the message instead
+    # of retrying it and holding up the next day.
     try:
+        # If a message is received from SQS multiple times then throw an error.
+        if int(record["attributes"]["ApproximateReceiveCount"]) > 1:
+            raise RuntimeError("previous run did not finish")
         # Unreleased L0 files are only returned to queries with an API key.
         ssm_response = boto3.client("ssm").get_parameter(
             Name=os.environ["SSM_API_KEY_PARAMETER"], WithDecryption=True
         )
         imap_data_access.config["API_KEY"] = ssm_response["Parameter"]["Value"]
-        process_day(instrument, day, version, url, table)
+        process_day(instrument, day, version, url, table, half)
     except Exception as e:
         logger.error(
-            "FAILED %s %s %s: %s: %s",
+            "FAILED %s %s %s half=%s: %s: %s",
             instrument,
-            event["day"],
+            body["day"],
             version,
+            half,
             type(e).__name__,
             e,
         )
-        raise
