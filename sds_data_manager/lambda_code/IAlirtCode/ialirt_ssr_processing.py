@@ -778,6 +778,14 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", json.dumps(event))
 
+    # batch_size=1 should give one record. If not, log the others so they
+    # are not dropped silently when the batch is deleted from the queue.
+    if len(event["Records"]) > 1:
+        logger.error(
+            "Expected 1 record, got %d; only the first is processed. Dropped: %s",
+            len(event["Records"]),
+            [r["body"] for r in event["Records"][1:]],
+        )
     record = event["Records"][0]
     body = json.loads(record["body"])
     instrument = os.environ["INSTRUMENT"]
