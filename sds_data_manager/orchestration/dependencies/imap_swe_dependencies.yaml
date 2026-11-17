@@ -99,7 +99,6 @@
       data_type: l2
       descriptor: norm-dsrf
       required: false
-      trigger_job: false
     - source: imap_frames
       data_type: spice
       descriptor: historical

@@ -233,7 +233,6 @@ l0_data: &l0_data
       data_type: l2
       descriptor: norm-dsrf
       required: false
-      trigger_job: false
   outputs:
     - source: hit
       data_type: l3
