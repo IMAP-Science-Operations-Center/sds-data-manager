@@ -15,7 +15,7 @@ from dagster import (
     sensor,
 )
 from imap_data_access.file_validation import Version
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -114,12 +114,15 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
             For every partition with an update, we kick off a run of the
             "idex_l0_raw" asset.
             """
-            start_date = context.cursor or config.MISSION_START_TIME
-            start_dt = datetime.datetime.fromisoformat(start_date).replace(
-                tzinfo=datetime.timezone.utc
-            )
+            if context.cursor:
+                latest_ingestion_date = datetime.datetime.fromisoformat(
+                    context.cursor
+                ).replace(tzinfo=datetime.timezone.utc)
+            else:
+                latest_ingestion_date = datetime.datetime.fromisoformat(
+                    config.MISSION_START_TIME
+                ).replace(tzinfo=datetime.timezone.utc)
             now_dt = datetime.datetime.now(datetime.timezone.utc)
-            now_iso = now_dt.isoformat()
             idex_10_day_ranges = pd.read_csv(
                 custom_partitions.IDEX_10_DAY_RANGES_PATH, header=0, dtype=str
             )
@@ -130,25 +133,30 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
             # In the IDEXL0Files table, the start date corresponds to the start date
             # of a 10 day window and therefore, are the same as partitions.
             stmt = (
-                select(models.IDEXL0Files.start_date)
-                .filter(models.IDEXL0Files.ingestion_date > start_dt)
-                .distinct()
+                select(
+                    models.IDEXL0Files.start_date,
+                    func.max(models.IDEXL0Files.ingestion_date),
+                )
+                .filter(models.IDEXL0Files.ingestion_date > latest_ingestion_date)
+                .group_by(models.IDEXL0Files.start_date)
                 .order_by(models.IDEXL0Files.start_date)
             )
             with db.Session() as session:
-                recent_db_partitions = session.scalars(stmt).all()
+                recent_db_partitions = session.execute(stmt).all()
 
                 run_requests = []
                 run_suffix = now_dt.timestamp()
-                for date in recent_db_partitions:
+                for start_date, ingestion_date in recent_db_partitions:
+                    latest_ingestion_date = max(latest_ingestion_date, ingestion_date)
                     # Query the end_date of the partition.
                     # Find the row where the input start date is equal to
                     # the start date in the df.
                     matching_row = idex_10_day_ranges[
-                        idex_10_day_ranges["start_date"] == date.strftime("%Y%m%d")
+                        idex_10_day_ranges["start_date"]
+                        == start_date.strftime("%Y%m%d")
                     ]
                     if matching_row.empty:
-                        context.log.info(f"No window with start date: {date}")
+                        context.log.info(f"No window with start date: {start_date}")
                         continue
                     window_end_dt = datetime.datetime.strptime(
                         matching_row["end_date"].iloc[0], "%Y%m%d"
@@ -159,7 +167,7 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
                     partition_keys = get_affected_partitions(
                         context,
                         custom_partitions.idex10_partitions,
-                        date,
+                        start_date,
                         window_end_dt,
                     )
 
@@ -174,6 +182,8 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
                             )
                         )
 
-            return SensorResult(run_requests=run_requests, cursor=now_iso)
+            return SensorResult(
+                run_requests=run_requests, cursor=latest_ingestion_date.isoformat()
+            )
 
         return _file_sensor

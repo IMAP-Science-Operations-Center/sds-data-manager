@@ -29,7 +29,7 @@ CDK constructs are defined under `sds_data_manager/constructs/`.
 - **L0 Raw Telemetry**: Arrives broken up by instrument (e.g., `{instrument}_l0_raw`), separated by day (midnight to midnight UTC) or by repoint number.
 - **Science Files**: Generated via AWS Batch jobs based on L0 and other files. Identified by instrument, processing level, and a descriptor (e.g., "glows_l1a_hist"). Divided by day, repoint number, or longer intervals (10 day, 30 day, 3/6 month, 1 year). Includes start date, major and minor version numbers.
 - **Ancillary Files**: Any format, uploaded by instrument teams, needed for processing.
-- **SPICE Files**: Contain geometry info (location, attitude, spacecraft clock, leapseconds). Used primarily for min/max dates and time conversions. Delivered directly by the Mission Operations Center.
+- **SPICE Files**: Contain geometry info (location, attitude, spacecraft clock, leapseconds). Used primarily for min/max dates and time conversions. Delivered directly by the Mission Operations Center. What each type is, and how often it arrives, is in [spice-files.md](spice-files.md).
 - **Spin Files**: Information about the spacecraft's rotation rate and rotation number.
 - **Small Forces Files (SFF)**: A continuous history of thruster activity, attitude and delta-V, delivered by the MOC.
   Their SPICE type is `thruster`.
@@ -45,7 +45,17 @@ Categories that weren't requested aren't checked.
 
 Only the latest version of each file name is considered. Among files with different names, the latest ingested file has
 the highest priority. Versions can't rank those files, since they restart with each new file name: a growing attitude
-kernel's newest file is often `_001` while older ones are `_002`.
+kernel's newest file is often `_001` while older ones are `_002`. Ingestion time comes from S3 in whole seconds, so a
+batch delivery can tie. Ties go to the file whose coverage starts later, then ends later; for ephemeris, the later start
+is the newer orbit determination (`SPICE_FILE_PRIORITY` in `spice_utilities.py`).
+
+Coverage dates and orbit determination (OD) numbers can't replace ingestion time. Nominal ephemeris end dates don't
+increase with each delivery, OD numbers were dropped from nominal and reconstructed file names early in the mission,
+and a reprocessed attitude kernel can end before the file it replaces. Because ingestion time is the S3 upload time,
+re-copying files into S3 (e.g. when recovering the SDC) would scramble the order; restore the database instead.
+
+Within a category, subtypes are loaded in the order they're listed, and an earlier subtype always wins. Spacecraft
+ephemeris goes reconstructed, then predicted, then nominal.
 
 Spin (`spin`) and small forces (`thruster`) files are indexed into `spice_files` too, but they aren't SPICE kernels, so
 their categories are **opt-in**: they're only included when named in `file_types`. A default metakernel never lists
@@ -109,7 +119,7 @@ Jobs and assets are **not** hand-written per data product — they are generated
 
 ### Runtime model
 
-- **Kickoff Sensors & Assets**: Each processing job has a "kickoff" sensor that monitors upstream asset materializations/dependency tables and yields a `RunRequest` when enough new data has arrived to attempt a run. Dependencies are complex, so a run is easily triggered but reports an `AssetObservation` (not a failure) if data actually turns out to be missing.
+- **Kickoff Sensors & Assets**: Each processing job has a "kickoff" sensor that monitors upstream asset materializations/dependency tables and yields a `RunRequest` when enough new data has arrived to attempt a run. Dependencies are complex, so a run is easily triggered but reports an `AssetObservation` (not a failure) if data actually turns out to be missing. When an upstream science asset shares the target's dynamic partition definition, its event stays unconsumed until that exact partition is registered, allowing the partition-maintenance sensor to catch up without losing the kickoff. Interval fallback matching uses strict overlap, so partitions that only meet at a boundary are adjacent, not matches.
 - **Batch Processing**: If sufficient data exists, the asset op submits a job to AWS Batch, writes to the `processing_jobs` table, and monitors the job status. Once the job finishes, the op looks up its outputs in `science_files` (`IMAPJobHandler.find_outputs`) and materializes them with `MaterializeResult`, including the `inputs` that produced them. If the job was skipped because a job with the same dependencies was already submitted, the op materializes nothing and reports an `AssetObservation` with status `Skipped - Duplicated Job` for each output; the run that did the processing owns the materialization. If that run never materializes its outputs, `job_output_backup_materialization_sensor` can recover them, but only within its ingestion-age window and partition rules (see below). It also reports an `AssetObservation` when dependencies are missing and raises `Failure` when the Batch job fails.
 - **Materialization Sensors**: Assets are materialized in three ways. Batch job outputs are materialized by the job's own op (see above), and those are the only materializations that carry `inputs`. The other two ways are sensors that poll the `science_files` table and report runless materializations (`SensorResult(asset_events=...)`) for the matching asset/partition. Every one of these goes through `dagster_utilities.get_materialization`, which skips a file if an equal or newer version is already materialized for that partition. Re-reading rows is therefore harmless.
   - **Per-file sensors** (`imap_file.py::IMAPScienceFileHandler.build_sensor`) are the **primary** path for file-only assets, e.g. raw L0 files with no associated Batch job. `imap_dagster.py` calls `build_sensor()` on every file handler, so each file-only asset gets its own sensor, named `{source}_{data_type}_{descriptor}_sensor` (dashes removed), which runs every 300s. It queries only its own `(instrument, data_level, descriptor)` rows with `ingestion_date >=` the cursor. It keeps the highest version per `(start_date, repointing)` using `DISTINCT ON`, maps each file to its partition, and stores the latest `ingestion_date` seen as a plain ISO-timestamp cursor. Repoint-partitioned assets use the file's `repointing` to find the matching `PointingTable` row, and every other asset uses the partition containing the file's `start_date`. These materializations carry no `materialized_by` tag. To use a different sensor for one product, override `build_sensor` in a `custom_behavior/` subclass. `idex.py` does this for `idex_l0_raw`: its sensor polls `IDEXL0Files` and yields `RunRequest`s for the asset instead of runless materializations.

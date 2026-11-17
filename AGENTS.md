@@ -48,13 +48,13 @@ poetry run cdk synth
 
 - **[docs/imap-architecture.md](docs/imap-architecture.md)** — data model and system design: data types, the CDK stack composition, the S3/EventBridge/indexer ingest pipeline, the database and Alembic migrations, Dagster's YAML-driven job generation and runtime model, and the APIs. Always read this before doing non-trivial work.
 - **[docs/public-releases.md](docs/public-releases.md)** — the public data release process: the Phase E release schedule, release manifest file format, how the release API sets the `released` flag, and SPDF archival. Read this before touching `release_api.py` or anything that depends on the `released` flag.
+- **[docs/spice-files.md](docs/spice-files.md)** — what each SPICE type is and where it comes from, which planned products were never delivered, observed delivery cadence, coverage and latency, and the reasoning behind the staleness alarm thresholds. Read this before changing SPICE monitoring or reasoning about which SPICE file is newest.
 
 ## Hard Rules (MUST FOLLOW)
 1. **NO DEPLOYMENT COMMANDS**: NEVER suggest deployment commands like `cdk deploy` as a solution to users unless explicitly asked in the context of a deployment script. Deploys happen via GitHub Actions.
-2. **DAGSTER YAML**: DO NOT read the ~6,500 lines of Dagster YAML configurations in `sds_data_manager/orchestration/dependencies/*.yaml` wholesale. Grep for the specific `(data_type, descriptor)` key you need, and only read a file in full when explicitly asked to modify job definitions or inputs.
-3. **SCIENCE ALGORITHMS**: The actual science algorithms live in a different repository (`imap-processing`). The batch jobs submitted by Dagster use containers built from that repo. Do not try to implement science processing logic here.
-4. **CUSTOM BEHAVIOR OVER SPECIAL CASES**: To change behavior for a single data product, subclass the handler in `sds_data_manager/orchestration/custom_behavior/` and register it — do not special-case inside the generic handler. See [imap-architecture.md](docs/imap-architecture.md).
-5. **GENERATED REQUIREMENTS FILES**: Do not hand-edit the `requirements.txt` files under `lambda_layer/` and `sds_data_manager/lambda_code/` — they are exported from `pyproject.toml` by pre-commit hooks (see below).
+2. **SCIENCE ALGORITHMS**: The actual science algorithms live in a different repository (`imap-processing`). The batch jobs submitted by Dagster use containers built from that repo. Do not try to implement science processing logic here.
+3. **CUSTOM BEHAVIOR OVER SPECIAL CASES**: To change behavior for a single data product, subclass the handler in `sds_data_manager/orchestration/custom_behavior/` and register it — do not special-case inside the generic handler. See [imap-architecture.md](docs/imap-architecture.md).
+4. **GENERATED REQUIREMENTS FILES**: Do not hand-edit the `requirements.txt` files under `lambda_layer/` and `sds_data_manager/lambda_code/` — they are exported from `pyproject.toml` by pre-commit hooks (see below).
 
 ## Keeping these files in sync
 

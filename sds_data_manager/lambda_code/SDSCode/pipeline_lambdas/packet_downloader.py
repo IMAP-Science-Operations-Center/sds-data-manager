@@ -3,6 +3,7 @@
 import csv
 import logging
 import os
+import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -53,6 +54,30 @@ def setup_environment():
         # Continue without API key - some operations might still work
 
     imap_data_access.config["DATA_DIR"] = Path("/tmp")  # noqa: S108
+
+
+def clear_data_dir(data_dir: Path) -> None:
+    """Remove all files and folders inside the data directory.
+
+    Lambda reuses warm execution environments, so files written to /tmp by a
+    previous invocation are still there. Clearing them on entry makes sure we
+    have the full ephemeral storage available for this run's downloads.
+
+    Parameters
+    ----------
+    data_dir : Path
+        Directory whose contents should be removed. The directory itself is kept.
+    """
+    if not data_dir.exists():
+        return
+    for path in list(data_dir.iterdir()):
+        try:
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+        except OSError as e:
+            logger.warning(f"Could not remove {path}: {e}")
 
 
 def get_latest_repoint_file_and_query_times():
@@ -199,6 +224,8 @@ def lambda_handler(event, context):
         The context object for the lambda function
     """
     setup_environment()
+    # Clear out anything left in /tmp by a previous invocation
+    clear_data_dir(imap_data_access.config["DATA_DIR"])
 
     # If we were triggered by an s3 repointing event, download ENA data
     if "Records" in event:

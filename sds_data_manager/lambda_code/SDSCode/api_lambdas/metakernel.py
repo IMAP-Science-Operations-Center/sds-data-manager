@@ -3,6 +3,7 @@
 import json
 import logging
 import textwrap
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -64,7 +65,7 @@ seconds since J2000.
         files: list[dict],
         spice_type: str,
         file_intervals_field: str,
-        priority_field: str = "",
+        priority_fields: Sequence[str] = (),
     ):
         """Load the best SPICE files of a specific type into the Metakernel.
 
@@ -93,18 +94,20 @@ seconds since J2000.
                 {file_intervals} - A list of lists/tuples of 2 elements. The values
                                    can be anything that can be compared with the
                                    ">" or "<" operators.
-                {priority} - An optionial priority to help resolve conflicts within
-                             a single load_spice() call. This can be anything that can
-                             be sorted.
+                {priority_fields} - Optional fields that rank files within a single
+                                    load_spice() call. Each can be anything that
+                                    can be sorted.
             Other items are allowed in the dictionary and will be returned by the
             other Metakernel function calls.
         spice_type: str
             Tells that metakernel the type of files you are loading.
         file_intervals_field: str
             The field that contains the file intervals to sort on.
-        priority_field: str
-            (Optional) The field in the files dictionary to help this function
-            determine the best file to cover the gap, in case of multiple matches.
+        priority_fields: Sequence[str]
+            (Optional) Fields in the files dictionary that rank the files, so the
+            best file covers a gap when several could. Higher values win. Files
+            are compared on the first field, and each later field only breaks
+            ties in the ones before it.
 
         """
         if spice_type not in self.allowed_spice_types:
@@ -114,8 +117,10 @@ seconds since J2000.
 
         # Sort the files in reverse order of priority
         # The "best" file to check will be at index 0, the "second best" at index 1, etc
-        if priority_field:
-            files.sort(key=lambda x: x[priority_field], reverse=True)
+        if priority_fields:
+            files.sort(
+                key=lambda f: tuple(f[field] for field in priority_fields), reverse=True
+            )
 
         # Check each file individually to determine if it should be added to the MK
         for f in files:

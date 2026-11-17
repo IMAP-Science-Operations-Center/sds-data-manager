@@ -785,8 +785,7 @@ def test_send_spice_event_filters_kernel_types(events_client):
             "attitude_history",
             "pointing_attitude",
             "ephemeris_reconstructed",
-            "attitude_predict",
-            "ephemeris_predict",
+            "ephemeris_predicted",
         ):
             result = spice_indexer.send_spice_event(
                 Mock(spice_metadata={"type": kernel_type}),
