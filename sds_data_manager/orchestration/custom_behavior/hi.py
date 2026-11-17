@@ -48,20 +48,11 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
                 num_future = np.sum(np.array(repoint_list) > target_pointing_number)
                 min_future_repoints = HI_GOODTIMES_NUM_NEAREST_REPOINTS // 2
                 if num_future < min_future_repoints:
-                    # Fewer than half of our nearest window are future
-                    # pointings. That's fine to proceed with if the pointing
-                    # at the edge of our window already exists in
-                    # PointingTable - its existence there without a
-                    # corresponding Hi L1B DE means Hi simply has no data for
-                    # it, not that we haven't waited long enough, so our
-                    # nearest set won't change no matter how long we wait.
-                    # But if that pointing doesn't exist yet, the picture is
-                    # still incomplete: more pointings - and likely more Hi
-                    # L1B DE files - will show up later and change our
-                    # nearest set. Hold off and let the sensor retrigger this
-                    # job once that data has filled in.
+                    # With data every repoint the window is +/- 4, so wait only
+                    # for its future edge. Once that pointing is in
+                    # PointingTable, missing Hi DE means Hi has no data there.
                     required_future_pointing = (
-                        target_pointing_number + HI_GOODTIMES_NUM_NEAREST_REPOINTS
+                        target_pointing_number + min_future_repoints
                     )
                     if not self._check_pointing_exists(
                         session, required_future_pointing

@@ -4,10 +4,10 @@ Hi Goodtimes needs L1B DE data from the N nearest repoints, not just its own
 repoint's DE file. These tests cover the neighbor-repoint gating logic in
 sds_data_manager/orchestration/custom_behavior/hi.py, which should:
   - skip (not crash) when a neighboring repoint's DE job is still INPROGRESS
-  - skip when it doesn't have enough future neighbors and more pointings could
-    still show up
-  - proceed when it doesn't have enough future neighbors, but PointingTable
-    confirms there is nothing more to wait for
+  - skip when it doesn't have enough future neighbors and the pointing at the
+    edge of its nominal window (target+4) is not yet in PointingTable
+  - proceed when it doesn't have enough future neighbors, but the target+4
+    pointing is in PointingTable, so there is nothing more to wait for
 """
 
 import datetime
@@ -27,6 +27,10 @@ TARGET_REPOINT = 3
 TARGET_PARTITION = "repoint3_2026-01-03T00:00:00_to_2026-01-03T23:59:59"
 FORTYFIVE_SENSOR_GOODTIMES_JOB = "hi_l1b_45sensorgoodtimes_processing_job"
 NINETY_SENSOR_GOODTIMES_JOB = "hi_l1b_90sensorgoodtimes_processing_job"
+SENSOR_JOBS = [
+    ("45sensor", FORTYFIVE_SENSOR_GOODTIMES_JOB),
+    ("90sensor", NINETY_SENSOR_GOODTIMES_JOB),
+]
 
 
 def _hi_goodtimes_job(dagster_job_name: str):
@@ -62,11 +66,11 @@ def _materialize(instance, asset_name: str, repoint: int, filename: str):
     )
 
 
-def _de_filename(repoint: int) -> str:
-    return f"imap_hi_l1b_45sensor-de_2026010{repoint}-repoint{repoint:05d}_v001.cdf"
+def _de_filename(repoint: int, sensor: str = "45sensor") -> str:
+    return f"imap_hi_l1b_{sensor}-de_2026010{repoint}-repoint{repoint:05d}_v001.cdf"
 
 
-def _renamed_de_filename(repoint: int) -> str:
+def _renamed_de_filename(repoint: int, sensor: str = "45sensor") -> str:
     """Return the `_de_filename` name after HiGoodtimesJob's version renaming.
 
     HiGoodtimesJob applies the same legacy-version-renaming regex as
@@ -74,11 +78,11 @@ def _renamed_de_filename(repoint: int) -> str:
     legacy single-number `vXXX.cdf` suffix into the `vMMM.mmmm.cdf` form.
     """
     return (
-        f"imap_hi_l1b_45sensor-de_2026010{repoint}-repoint{repoint:05d}_v001.0001.cdf"
+        f"imap_hi_l1b_{sensor}-de_2026010{repoint}-repoint{repoint:05d}_v001.0001.cdf"
     )
 
 
-def _materialize_own_pointing_deps(instance, repoint: int):
+def _materialize_own_pointing_deps(instance, repoint: int, sensor: str = "45sensor"):
     """Materialize the diagfee/DE/hk files the base class needs for its own repoint.
 
     HiGoodtimesJob.get_science_files_inputs() calls super() first, which requires
@@ -87,16 +91,16 @@ def _materialize_own_pointing_deps(instance, repoint: int):
     """
     _materialize(
         instance,
-        "hi_l1a_45sensordiagfee",
+        f"hi_l1a_{sensor}diagfee",
         repoint,
-        f"imap_hi_l1a_45sensor-diagfee_2026010{repoint}-repoint{repoint:05d}_v001.cdf",
+        f"imap_hi_l1a_{sensor}-diagfee_2026010{repoint}-repoint{repoint:05d}_v001.cdf",
     )
-    _materialize(instance, "hi_l1b_45sensorde", repoint, _de_filename(repoint))
+    _materialize(instance, f"hi_l1b_{sensor}de", repoint, _de_filename(repoint, sensor))
     _materialize(
         instance,
-        "hi_l1b_45sensorhk",
+        f"hi_l1b_{sensor}hk",
         repoint,
-        f"imap_hi_l1b_45sensor-hk_2026010{repoint}-repoint{repoint:05d}_v001.cdf",
+        f"imap_hi_l1b_{sensor}-hk_2026010{repoint}-repoint{repoint:05d}_v001.cdf",
     )
 
 
@@ -115,56 +119,77 @@ def test_hi_goodtimes_registered(dagster_job_name):
     assert isinstance(job, HiGoodtimesJob)
 
 
+@pytest.mark.parametrize(("sensor", "dagster_job_name"), SENSOR_JOBS)
 def test_hi_goodtimes_waits_when_future_pointing_unknown(
-    mock_db_session, pointing_table_entries, ephemeral_instance
+    mock_db_session,
+    pointing_table_entries,
+    ephemeral_instance,
+    sensor,
+    dagster_job_name,
 ):
-    """Skip when there aren't enough future neighbors and more may still arrive."""
-    job = _hi_goodtimes_job(FORTYFIVE_SENSOR_GOODTIMES_JOB)
+    """Skip when there aren't enough future neighbors and target+4 is unknown."""
+    job = _hi_goodtimes_job(dagster_job_name)
+    target_repoint = 7
+    partition = _repoint_partition(target_repoint)
 
-    _materialize_own_pointing_deps(ephemeral_instance, TARGET_REPOINT)
+    _materialize_own_pointing_deps(ephemeral_instance, target_repoint, sensor)
     # Only past neighbors have DE so far, so none of the nearest repoints found
     # are future ones.
-    _materialize(ephemeral_instance, "hi_l1b_45sensorde", 1, _de_filename(1))
-    _materialize(ephemeral_instance, "hi_l1b_45sensorde", 2, _de_filename(2))
+    for repoint in (5, 6):
+        _materialize(
+            ephemeral_instance,
+            f"hi_l1b_{sensor}de",
+            repoint,
+            _de_filename(repoint, sensor),
+        )
 
-    context = build_asset_context(
-        partition_key=TARGET_PARTITION, instance=ephemeral_instance
-    )
-    target_start, target_end = parse_dates_from_partition_key(TARGET_PARTITION)
+    context = build_asset_context(partition_key=partition, instance=ephemeral_instance)
+    target_start, target_end = parse_dates_from_partition_key(partition)
 
-    # Pointing 11 (TARGET_REPOINT + 8) was never added to PointingTable (the
-    # `pointing_table_entries` fixture only creates 1-10), so we don't yet know
-    # whether more data is coming. We should wait rather than proceed.
-    with pytest.raises(imap_job.MissingDependenciesError, match="does not exist yet"):
+    # Pointing 11 (target+4) is not in PointingTable (the `pointing_table_entries`
+    # fixture only creates 1-10), so we don't yet know whether more data is
+    # coming. We should wait for it, and only for it.
+    with pytest.raises(
+        imap_job.MissingDependenciesError, match="pointing 11 does not exist yet"
+    ):
         job.get_science_files_inputs(context, target_start, target_end)
 
 
+@pytest.mark.parametrize(("sensor", "dagster_job_name"), SENSOR_JOBS)
 def test_hi_goodtimes_proceeds_when_no_more_data_expected(
-    mock_db_session, pointing_table_entries, ephemeral_instance
+    mock_db_session,
+    pointing_table_entries,
+    ephemeral_instance,
+    sensor,
+    dagster_job_name,
 ):
-    """Proceed once PointingTable confirms Hi has no more future data to add."""
-    job = _hi_goodtimes_job(FORTYFIVE_SENSOR_GOODTIMES_JOB)
+    """Proceed once target+4 is in PointingTable, even if target+5..+8 are not."""
+    job = _hi_goodtimes_job(dagster_job_name)
+    target_repoint = 6
+    partition = _repoint_partition(target_repoint)
 
-    _materialize_own_pointing_deps(ephemeral_instance, TARGET_REPOINT)
-    _materialize(ephemeral_instance, "hi_l1b_45sensorde", 1, _de_filename(1))
-    _materialize(ephemeral_instance, "hi_l1b_45sensorde", 2, _de_filename(2))
-
-    # Pointing 11 has been downlinked (it exists in PointingTable) with no
-    # corresponding Hi L1B DE product -- Hi simply has no more data to add for
-    # it, so we shouldn't keep waiting.
-    mock_db_session.add(
-        models.PointingTable(
-            pointing_id=TARGET_REPOINT + 8,
-            pointing_start_utc=datetime.datetime(2026, 1, 11, 0, 0, 0),
-            pointing_end_utc=datetime.datetime(2026, 1, 11, 23, 59, 59),
+    _materialize_own_pointing_deps(ephemeral_instance, target_repoint, sensor)
+    for repoint in (4, 5):
+        _materialize(
+            ephemeral_instance,
+            f"hi_l1b_{sensor}de",
+            repoint,
+            _de_filename(repoint, sensor),
         )
-    )
-    mock_db_session.commit()
 
-    context = build_asset_context(
-        partition_key=TARGET_PARTITION, instance=ephemeral_instance
-    )
-    target_start, target_end = parse_dates_from_partition_key(TARGET_PARTITION)
+    # Pointing 10 (target+4) has been downlinked (it exists in PointingTable)
+    # with no corresponding Hi L1B DE product -- Hi simply has no more data to
+    # add for it, so we shouldn't keep waiting. Pointings 11-14 (target+5 to
+    # target+8) don't exist yet, and must not hold the job back.
+    existing_pointings = {
+        pointing_id
+        for (pointing_id,) in mock_db_session.query(models.PointingTable.pointing_id)
+    }
+    assert target_repoint + 4 in existing_pointings
+    assert existing_pointings.isdisjoint(range(target_repoint + 5, target_repoint + 9))
+
+    context = build_asset_context(partition_key=partition, instance=ephemeral_instance)
+    target_start, target_end = parse_dates_from_partition_key(partition)
 
     result = job.get_science_files_inputs(context, target_start, target_end)
 
@@ -172,10 +197,10 @@ def test_hi_goodtimes_proceeds_when_no_more_data_expected(
         f
         for science_input in result
         for f in science_input.filename_list
-        if "45sensor-de" in f
+        if f"{sensor}-de" in f
     }
-    assert _renamed_de_filename(1) in neighbor_files
-    assert _renamed_de_filename(2) in neighbor_files
+    assert _renamed_de_filename(4, sensor) in neighbor_files
+    assert _renamed_de_filename(5, sensor) in neighbor_files
 
 
 def test_hi_goodtimes_waits_for_inprogress_neighbor(
