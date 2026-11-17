@@ -4,10 +4,13 @@ import aws_cdk as cdk
 from aws_cdk import RemovalPolicy
 from aws_cdk import aws_dynamodb as ddb
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_ecr_assets as ecr_assets
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_lambda_event_sources as lambda_event_sources
+from aws_cdk import aws_sqs as sqs
 from aws_cdk import aws_ssm as ssm
 from constructs import Construct
 
@@ -68,10 +71,11 @@ class IalirtSsrConstruct(Construct):
         # Create DynamoDB Table
         self.ssr_table = self.create_table()
 
-        # Create one Lambda per instrument
+        # Create one Lambda per instrument, each fed by its own queue
+        self.ssr_queues = {}
         self.ssr_lambdas = self.create_lambda_functions(docker_path, data_access_url)
 
-        # Create the Lambda that invokes the instrument Lambdas per day
+        # Create the Lambda that queues the instrument runs per day
         self.dispatch_lambda = self.create_dispatch_lambda(docker_path, data_access_url)
 
         # Create the daily and manual triggers
@@ -145,6 +149,7 @@ class IalirtSsrConstruct(Construct):
         code = lambda_.DockerImageCode.from_image_asset(
             docker_path,
             file="IAlirtCode/Dockerfile.ssr",
+            platform=ecr_assets.Platform.LINUX_AMD64,
         )
 
         ssr_lambdas = {}
@@ -173,22 +178,37 @@ class IalirtSsrConstruct(Construct):
                     "IMAP_DATA_ACCESS_URL": data_access_url,
                     "SSM_API_KEY_PARAMETER": API_KEY_PARAMETER_NAME,
                 },
-                # Limits how many days of one instrument run at once during
-                # a backfill, so SSR does not take concurrency from
-                # ialirt-ingest and the SDC APIs. 8 x 20 = 160 reserved.
-                # Throttled async invocations are retried for up to 6 hours.
-                reserved_concurrent_executions=20,
-                retry_attempts=0,
             )
             ssr_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
             ssr_lambdas[instrument] = ssr_lambda
+
+            # Every message uses the same message group, so a FIFO queue
+            # runs one day of an instrument at a time. This keeps backfills
+            # from throttling the instrument's partition key.
+            queue = sqs.Queue(
+                self,
+                f"IalirtSsrQueue-{instrument}",
+                queue_name=f"ialirt-ssr-{instrument.replace('_', '-')}.fifo",
+                fifo=True,
+                # Messages with the same body sent within 5 minutes are
+                # dropped as duplicates.
+                content_based_deduplication=True,
+                # Longer than the Lambda timeout, so a message is not
+                # received again while it is still being processed.
+                visibility_timeout=cdk.Duration.minutes(16),
+            )
+            queue.apply_removal_policy(RemovalPolicy.DESTROY)
+            ssr_lambda.add_event_source(
+                lambda_event_sources.SqsEventSource(queue, batch_size=1)
+            )
+            self.ssr_queues[instrument] = queue
 
         return ssr_lambdas
 
     def create_dispatch_lambda(
         self, docker_path: str, data_access_url: str
     ) -> lambda_.DockerImageFunction:
-        """Create the Lambda that invokes the instrument Lambdas per day.
+        """Create the Lambda that queues the instrument runs per day.
 
         It uses the instrument image so it can run the same coverage check
         before invoking them.
@@ -201,6 +221,7 @@ class IalirtSsrConstruct(Construct):
                 docker_path,
                 file="IAlirtCode/Dockerfile.ssr",
                 cmd=["ialirt_ssr_dispatch.lambda_handler"],
+                platform=ecr_assets.Platform.LINUX_AMD64,
             ),
             timeout=cdk.Duration.minutes(15),
             # Parses three days of packets at a time for the coverage check.
@@ -220,8 +241,8 @@ class IalirtSsrConstruct(Construct):
         # Read access to skip days that are already processed.
         self.ssr_table.grant_read_data(dispatch_lambda)
         self.api_key_parameter.grant_read(dispatch_lambda)
-        for ssr_lambda in self.ssr_lambdas.values():
-            ssr_lambda.grant_invoke(dispatch_lambda)
+        for queue in self.ssr_queues.values():
+            queue.grant_send_messages(dispatch_lambda)
         dispatch_lambda.apply_removal_policy(RemovalPolicy.DESTROY)
         return dispatch_lambda
 

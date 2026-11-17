@@ -1,6 +1,7 @@
 """Test the I-ALiRT SSR processing lambda."""
 
 # ruff: noqa: E402
+import json
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -44,6 +45,20 @@ from sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing import (
 
 MODULE = "sds_data_manager.lambda_code.IAlirtCode.ialirt_ssr_processing"
 DAY_NS = 86400 * 10**9
+
+
+def sqs_event(body, receive_count="1"):
+    """Return an SQS event with one record."""
+    return {
+        "Records": [
+            {
+                "body": json.dumps(body),
+                "attributes": {"ApproximateReceiveCount": receive_count},
+            }
+        ]
+    }
+
+
 # A packet every 30 seconds over the day plus 10 minutes on each side.
 FULL_RANGE_S = np.arange(-600, 87001, 30)
 
@@ -96,6 +111,19 @@ def test_trim_to_day():
     assert trim_to_day(result, datetime(2026, 10, 8)) == [
         {"met_in_utc": "2026-10-08T12:00:00"}
     ]
+
+
+def test_trim_to_day_half():
+    """Test that each half day keeps only its own products."""
+    result = [
+        {"met_in_utc": "2026-10-08T00:00:00"},
+        {"met_in_utc": "2026-10-08T11:59:59"},
+        {"met_in_utc": "2026-10-08T12:00:00"},
+        {"met_in_utc": "2026-10-09T00:00:00"},
+    ]
+
+    assert trim_to_day(result, datetime(2026, 10, 8), half=0) == result[:2]
+    assert trim_to_day(result, datetime(2026, 10, 8), half=1) == [result[2]]
 
 
 def test_format_items():
@@ -294,7 +322,7 @@ def test_lambda_handler(
         {"mag_l1b-calibration": "imap_mag_l1b-calibration.cdf"},
     )
 
-    lambda_handler({"day": "20261008", "version": "v001"}, {})
+    lambda_handler(sqs_event({"day": "20261008", "version": "v001"}), {})
 
     # MAG uses SPICE geometry, so it gets all kernel types.
     assert mock_get_kernels.call_args.args[2] == KERNELS
@@ -399,6 +427,21 @@ def test_trim_packets(mock_str_to_ttj2000ns):
 
     np.testing.assert_array_equal(
         result["epoch"].values, np.array([-10, 0, 1440, 1450]) * minute
+    )
+
+
+@patch(f"{MODULE}.str_yyyymmdd_to_ttj2000ns")
+def test_trim_packets_half(mock_str_to_ttj2000ns):
+    """Test that only packets within 10 minutes of the second half day are kept."""
+    mock_str_to_ttj2000ns.side_effect = [0, DAY_NS]
+    minute = 60 * 10**9
+    epoch = np.array([0, 700, 710, 720, 1440, 1450, 1460]) * minute
+    combined = xr.Dataset(coords={"epoch": epoch})
+
+    result = trim_packets(combined, datetime(2026, 10, 8), half=1)
+
+    np.testing.assert_array_equal(
+        result["epoch"].values, np.array([710, 720, 1440, 1450]) * minute
     )
 
 
@@ -601,17 +644,36 @@ def test_process_day_unknown_instrument(mock_process_day_inputs):
 @patch(f"{MODULE}.process_day", side_effect=IalirtDataGapError("gap"))
 @patch(f"{MODULE}.boto3")
 def test_lambda_handler_error(mock_boto3, mock_process_day, monkeypatch, caplog):
-    """Test that a failure is logged and re-raised."""
+    """Test that a failure is logged and not raised, so SQS deletes the message."""
     monkeypatch.setenv("INSTRUMENT", "mag")
     monkeypatch.setenv("SSR_TABLE", "ialirt-ssr-table")
     monkeypatch.setenv("SSM_API_KEY_PARAMETER", "/imap-sdc/batch-jobs/api-key")
     # Restore the global imap_data_access config after the test.
     monkeypatch.setitem(imap_data_access.config, "API_KEY", None)
 
-    with pytest.raises(IalirtDataGapError):
-        lambda_handler({"day": "20261008", "version": "v001"}, {})
+    lambda_handler(sqs_event({"day": "20261008", "version": "v001", "half": 1}), {})
 
-    assert "FAILED mag 20261008 v001: IalirtDataGapError: gap" in caplog.text
+    assert "FAILED mag 20261008 v001 half=1: IalirtDataGapError: gap" in caplog.text
+
+
+@patch(f"{MODULE}.process_day")
+@patch(f"{MODULE}.boto3")
+def test_lambda_handler_received_again(
+    mock_boto3, mock_process_day, monkeypatch, caplog
+):
+    """Test that a message received again after a timeout is skipped."""
+    monkeypatch.setenv("INSTRUMENT", "mag")
+    monkeypatch.setenv("SSR_TABLE", "ialirt-ssr-table")
+
+    lambda_handler(
+        sqs_event({"day": "20261008", "version": "v001"}, receive_count="2"), {}
+    )
+
+    mock_process_day.assert_not_called()
+    assert (
+        "FAILED mag 20261008 v001 half=None: RuntimeError: previous run did not finish"
+        in caplog.text
+    )
 
 
 @patch(f"{MODULE}.spacecraft_items")
