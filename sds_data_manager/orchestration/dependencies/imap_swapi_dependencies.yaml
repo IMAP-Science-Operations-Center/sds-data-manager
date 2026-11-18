@@ -135,7 +135,6 @@ l3a_spice_common: &l3a_spice_common
       data_type: l2
       descriptor: norm-rtn
       required: false
-      trigger_job: false
     - source: swapi
       data_type: ancillary
       descriptor: energy-gf-pui-lut
