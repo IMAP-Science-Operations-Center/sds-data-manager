@@ -626,20 +626,39 @@ def test_index_spice_file_spin_upsert(session, s3_client, time_kernels):
 
 
 def test_s3_spin_file_spice_table_failure(session, s3_client, events_client):
-    """The spin table is still indexed when indexing into the SPICE table fails.
+    """A spin file that fails to index into the SPICE table fails the indexer.
 
     No leapseconds or spacecraft clock kernels are available, so the SPICE table
-    indexing fails.
+    indexing fails. Orchestration reads spin only from the SPICE table, so the
+    failure must not be swallowed.
     """
     event = put_local_file_in_bucket(
         s3_client,
         "imap/spice/spin/imap_2026_267_2026_267_01.spin.csv",
         TEST_SPICE_DATA_DIR / "imap_2026_267_2026_267_01.spin.csv",
     )
+    with pytest.raises(FileNotFoundError):
+        spice_indexer.lambda_handler(event, None)
+
+    assert session.execute(select(models.SpinFiles.__table__)).all() == []
+    assert _spice_table_rows(session, "spin") == []
+
+
+def test_s3_small_forces_file_spice_table_failure(session, s3_client, events_client):
+    """The small forces table is still indexed when the SPICE table fails.
+
+    No leapseconds or spacecraft clock kernels are available, so the SPICE table
+    indexing fails.
+    """
+    event = put_local_file_in_bucket(
+        s3_client,
+        "imap/spice/activities/imap_2026_273_2026_273_hist_01.sff",
+        TEST_SPICE_DATA_DIR / "imap_2026_273_2026_273_hist_01.sff",
+    )
     spice_indexer.lambda_handler(event, None)
 
-    assert len(session.execute(select(models.SpinFiles.__table__)).all()) == 1
-    assert _spice_table_rows(session, "spin") == []
+    assert len(session.execute(select(models.SmallForcesFile.__table__)).all()) == 1
+    assert _spice_table_rows(session, "thruster") == []
 
 
 @patch(

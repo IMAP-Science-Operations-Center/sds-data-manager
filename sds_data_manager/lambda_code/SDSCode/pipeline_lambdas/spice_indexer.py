@@ -558,9 +558,10 @@ LEGACY_TABLE_INDEXERS = {
 def index_spin_or_small_forces_file(s3_key: str, kernel_type: str):
     """Index a spin or small forces file into the SPICE table and its own table.
 
-    The file's own table (spin_files or small_forces_files) is what orchestration
-    reads today, so a failure to index into the SPICE table is logged rather than
-    raised, and the file's own table is still updated.
+    Orchestration reads spin files only from the SPICE table, so a spin file that
+    fails to index there raises, and its own table is not updated. Small forces
+    files are still read from small_forces_files, so for them the failure is
+    logged and their own table is still updated.
 
     Parameters
     ----------
@@ -572,6 +573,8 @@ def index_spin_or_small_forces_file(s3_key: str, kernel_type: str):
     try:
         index_spice_file(s3_key)
     except Exception:
+        if kernel_type == "spin":
+            raise
         logger.exception(f"Failed to index {s3_key} into the SPICE table")
     LEGACY_TABLE_INDEXERS[kernel_type](s3_key)
 

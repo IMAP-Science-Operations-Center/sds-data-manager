@@ -8,7 +8,6 @@ import pytest
 from dagster import build_sensor_context
 
 from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.orchestration import spice
 from sds_data_manager.orchestration.custom_behavior.mag import MagL1DJob
 from sds_data_manager.orchestration.imap_dagster import defs, job_handlers
 from sds_data_manager.orchestration.imap_job import MissingDependenciesError
@@ -263,28 +262,3 @@ def test_sensor_triggers_on_new_spin_rows_only(
     ]
     spin_cursor = json.loads(context.cursor)[spin_dep.to_dagster_name()]
     assert datetime.datetime.fromisoformat(spin_cursor) == new_ingestion
-
-
-def test_wrapper_returns_nothing_when_no_spin_files():
-    """Without require_coverage, no spin files is an empty result, not an error."""
-    with patch.object(
-        spice.spice_metakernel_api,
-        "lambda_handler",
-        return_value={"statusCode": 404, "body": "No files found."},
-    ):
-        assert spice.get_upstream_dependency_inputs_spin(
-            _utc(2026, 1, 1), _utc(2026, 1, 2)
-        ) == ([], [])
-
-
-def test_wrapper_raises_on_unexpected_status():
-    """A failed query is an error, not a skipped job."""
-    with (
-        patch.object(
-            spice.spice_metakernel_api,
-            "lambda_handler",
-            return_value={"statusCode": 400, "body": "Invalid file_types"},
-        ),
-        pytest.raises(RuntimeError, match="400"),
-    ):
-        spice.get_upstream_dependency_inputs_spin(_utc(2026, 1, 1), _utc(2026, 1, 2))

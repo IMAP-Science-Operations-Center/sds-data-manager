@@ -150,3 +150,30 @@ def test_check_requested_kernels_best_ephemeris():
     # should NOT return any missing kernels because the ephemeris_predicted
     # kernel is present
     assert missing_kernels == []
+
+
+def test_spin_lookup_returns_nothing_when_no_spin_files():
+    """Without require_coverage, no spin files is an empty result, not an error."""
+    with patch.object(
+        spice.spice_metakernel_api,
+        "lambda_handler",
+        return_value={"statusCode": 404, "body": "No files found."},
+    ):
+        assert spice.get_upstream_dependency_inputs_spin(
+            datetime.datetime(2026, 1, 1), datetime.datetime(2026, 1, 2)
+        ) == ([], [])
+
+
+def test_spin_lookup_raises_on_unexpected_status():
+    """A failed query is an error, not a skipped job."""
+    with (
+        patch.object(
+            spice.spice_metakernel_api,
+            "lambda_handler",
+            return_value={"statusCode": 400, "body": "Invalid file_types"},
+        ),
+        pytest.raises(RuntimeError, match="400"),
+    ):
+        spice.get_upstream_dependency_inputs_spin(
+            datetime.datetime(2026, 1, 1), datetime.datetime(2026, 1, 2)
+        )
