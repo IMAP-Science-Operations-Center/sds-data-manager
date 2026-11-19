@@ -66,6 +66,15 @@ lo_l2_map_inputs: &lo_l2_map_inputs
     data_type: l1b
     descriptor: bgrates
 
+lo_l3_map_inputs: &lo_l3_map_inputs
+  - *spice_common
+  - source: glows
+    data_type: l3e
+    descriptor: survival-probability-lo
+  - source: lo
+    data_type: l1c
+    descriptor: pset
+
 # ======== Product-Specific Dependencies ========
 
 # ======== Level L1A ========
@@ -862,3 +871,38 @@ lo_l2_map_inputs: &lo_l2_map_inputs
       major_version: 1
 
 # ======== Level L3 ========
+(l3, l075-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *lo_l3_map_inputs
+    - source: lo
+      data_type: l2
+      descriptor: l075-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l090-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *lo_l3_map_inputs
+    - source: lo
+      data_type: l2
+      descriptor: l090-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l105-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *lo_l3_map_inputs
+    - source: lo
+      data_type: l2
+      descriptor: l105-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
