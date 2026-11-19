@@ -1,4 +1,4 @@
-"""Contains all functions needed to calculate SPICE files dependencies."""
+"""Contains all functions needed to calculate SPICE and spin file dependencies."""
 
 import datetime
 import json
@@ -21,19 +21,26 @@ logger.setLevel(logging.INFO)
 # the ephemeral per-job-run compute environment (a fresh container per
 # Dagster run), so furnishing the kernel there would mean an S3 and database
 # round trip on every single job run just to resolve a SPICE dependency time
-# range. Leap seconds added after this epoch (5, as of 2017-01-01) are not
-# accounted for, giving a few seconds of residual error - well within the
-# tolerance needed to identify which SPICE kernels cover a given time range.
+# range.
 _TTJ2000_EPOCH_UTC = datetime.datetime(
     2000, 1, 1, 11, 58, 55, 816000, tzinfo=datetime.timezone.utc
 )
 
+# TAI-UTC was 32 s at the J2000 epoch and has been 37 s since the leap second at
+# the end of 2016, so ET runs 5 s ahead of Python datetime arithmetic, which
+# skips leap seconds. IMAP launched in 2025, so every time converted here is
+# after that leap second. No leap second has been scheduled since; if one ever
+# is, this needs updating.
+_LEAP_SECONDS_SINCE_J2000 = 5
+
 
 def _seconds_since_j2000(dt: datetime.datetime) -> float:
-    """Convert a datetime to SPICE ephemeris time (approx. TDB seconds past J2000).
+    """Convert a UTC datetime to SPICE ephemeris time (TDB seconds past J2000).
 
     Full time-of-day precision is preserved, unlike a `%Y%m%d`-string-based
-    conversion, which would round down to day boundaries.
+    conversion, which would round down to day boundaries. For any time after
+    2016, the result matches `spiceypy.datetime2et` to within the periodic
+    TDB-TT term (under 2 ms) without furnishing a leapseconds kernel.
 
     Parameters
     ----------
@@ -43,11 +50,11 @@ def _seconds_since_j2000(dt: datetime.datetime) -> float:
     Returns
     -------
     float
-        Approximate SPICE ephemeris time: seconds past the J2000 epoch.
+        SPICE ephemeris time: seconds past the J2000 epoch.
     """
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=datetime.timezone.utc)
-    return (dt - _TTJ2000_EPOCH_UTC).total_seconds()
+    return (dt - _TTJ2000_EPOCH_UTC).total_seconds() + _LEAP_SECONDS_SINCE_J2000
 
 
 # These kernels are delivered as append-only time series: newer files either
@@ -146,6 +153,41 @@ def check_for_missing_kernels(combined_kernel_sources, metakernel_files):
     return sorted(list(missing_kernels))
 
 
+def _query_metakernel(
+    file_types: str,
+    start_date: datetime.datetime,
+    end_date: datetime.datetime,
+    require_coverage: bool = False,
+) -> dict:
+    """List the files covering a window by calling the metakernel API in process.
+
+    Parameters
+    ----------
+    file_types : str
+        Comma-separated file types to list.
+    start_date : datetime.datetime
+        Start of the window, UTC.
+    end_date : datetime.datetime
+        End of the window, UTC.
+    require_coverage : bool, optional
+        If True, the API reports coverage gaps (status 422) instead of files.
+
+    Returns
+    -------
+    dict
+        The API response, with ``statusCode`` and ``body``.
+    """
+    query = {
+        "start_time": _seconds_since_j2000(start_date),
+        "end_time": _seconds_since_j2000(end_date),
+        "list_files": "True",
+        "file_types": file_types,
+    }
+    if require_coverage:
+        query["require_coverage"] = "True"
+    return spice_metakernel_api.lambda_handler({"queryStringParameters": query}, None)
+
+
 def get_upstream_dependency_inputs_spice(
     dependencies: list,
     start_date: datetime.datetime,
@@ -177,20 +219,9 @@ def get_upstream_dependency_inputs_spice(
     query_end_date = (
         end_date + datetime.timedelta(hours=24) if end_date == start_date else end_date
     )
-    start_time = _seconds_since_j2000(start_date)
-    end_time = _seconds_since_j2000(query_end_date)
-    metakernel_response = spice_metakernel_api.lambda_handler(
-        {
-            "queryStringParameters": {
-                "start_time": start_time,
-                "end_time": end_time,
-                "list_files": "True",
-                "file_types": ",".join(dependencies),
-                # TODO: revisit this after SIT-4
-                # "require_coverage": "True",
-            }
-        },
-        None,
+    # TODO: revisit require_coverage after SIT-4
+    metakernel_response = _query_metakernel(
+        ",".join(dependencies), start_date, query_end_date
     )
     if metakernel_response["statusCode"] != 200:
         logger.error(f"Metakernel lambda raised error: {metakernel_response['body']}")
@@ -203,6 +234,59 @@ def get_upstream_dependency_inputs_spice(
 
     logger.info(f"Found metakernel files: {metakernel_files}. Adding to collection.")
     return metakernel_files, missing_kernels
+
+
+def get_upstream_dependency_inputs_spin(
+    start_date: datetime.datetime,
+    end_date: datetime.datetime,
+    require_coverage: bool = False,
+) -> tuple[list[str], list[list[float]]]:
+    """Find the spin files that cover a time range.
+
+    Spin files are indexed in the SPICE table (kernel type ``spin``) and ranked
+    like SPICE kernels: by ingestion time, keeping only the files that fill a
+    gap in the window.
+
+    Parameters
+    ----------
+    start_date : datetime.datetime
+        Start of the window, UTC.
+    end_date : datetime.datetime
+        End of the window, UTC.
+    require_coverage : bool, optional
+        If True, any gap in spin coverage longer than the spin seam tolerance,
+        or any gap at either edge of the window, is reported and no files are
+        returned.
+
+    Returns
+    -------
+    tuple[list[str], list[list[float]]]
+        The spin file names in priority order (best last), and the coverage
+        gaps as ``[start, end]`` pairs in seconds past J2000. With
+        ``require_coverage``, a non-empty gap list comes with no files.
+
+    Raises
+    ------
+    RuntimeError
+        If the metakernel query fails for any reason other than missing
+        coverage or missing files.
+    """
+    response = _query_metakernel("spin", start_date, end_date, require_coverage)
+    status = response["statusCode"]
+    if status == 200:
+        spin_files = json.loads(response["body"])
+        logger.info(f"Found spin files: {spin_files}")
+        return spin_files, []
+    if status == 422:
+        gaps = json.loads(response["body"]).get("spin_category", [])
+        logger.info(f"Spin coverage gaps between {start_date} and {end_date}: {gaps}")
+        return [], gaps
+    if status == 404:
+        logger.info(f"No spin files found for {start_date} to {end_date}")
+        return [], []
+    raise RuntimeError(
+        f"Spin metakernel query failed with status {status}: {response['body']}"
+    )
 
 
 def parse_interval_list(

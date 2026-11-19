@@ -43,7 +43,6 @@ from sds_data_manager.orchestration import (
     dagster_utilities,
     repoint_file,
     spice,
-    spin,
 )
 from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
 from sds_data_manager.orchestration.dependency import DependencyConfigReader
@@ -733,8 +732,8 @@ class IMAPJobHandler:
                     target_partitions = self.trigger_from_new_science_inputs(
                         context, dependency, new_cursors, sensor_start_time
                     )
-                if dependency.data_type == "spice":
-                    # New SPICE inputs
+                if dependency.data_type in ("spice", "spin"):
+                    # New SPICE inputs; spin files are indexed in the SPICE table
                     target_partitions = self.trigger_from_new_non_science_inputs(
                         context,
                         dependency,
@@ -744,11 +743,6 @@ class IMAPJobHandler:
                         None,
                         "min_date_datetime",
                         "max_date_datetime",
-                    )
-                elif dependency.data_type == "spin":
-                    # New spin inputs
-                    target_partitions = self.trigger_from_new_non_science_inputs(
-                        context, dependency, new_cursors, models.SpinFiles
                     )
                 elif dependency.data_type == "ancillary":
                     # New ancillary inputs
@@ -1068,15 +1062,32 @@ class IMAPJobHandler:
     def get_spin_files_inputs(
         self, session, target_start: datetime.datetime, target_end: datetime.datetime
     ) -> list[str]:
-        """Return the spin file dependencies needed to cover a time range."""
-        spin_files = spin.get_upstream_dependency_inputs_spin(
-            target_start.replace(hour=0, minute=0, second=0), target_end, False, session
+        """Return the spin files that cover a time range, best last.
+
+        A required spin input must cover the whole range: any gap longer than
+        the spin seam tolerance, or any gap at either edge, skips the job. An
+        optional spin input returns whatever spin files exist.
+        """
+        required = self.job_config.spin_input.required
+        spin_files, gaps = spice.get_upstream_dependency_inputs_spin(
+            target_start, target_end, require_coverage=required
         )
-        if not spin_files and self.job_config.spin_input.required:
+        if required and gaps:
+            # Gaps come back in seconds past J2000; report them as UTC offsets
+            # from the window start so the skip reason is readable.
+            start_et = spice._seconds_since_j2000(target_start)
+            readable_gaps = [
+                tuple(
+                    (
+                        target_start + datetime.timedelta(seconds=et - start_et)
+                    ).isoformat()
+                    for et in gap
+                )
+                for gap in gaps
+            ]
             raise MissingDependenciesError(
-                f"""Missing dependency for
-                {self.job_config.spin_input.to_dagster_name()}
-                between {target_start} and {target_end}"""
+                f"{self.job_config.spin_input.to_dagster_name()} does not cover "
+                f"{target_start} to {target_end}: gaps {readable_gaps}"
             )
         return spin_files
 

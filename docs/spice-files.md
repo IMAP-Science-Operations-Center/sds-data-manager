@@ -108,6 +108,8 @@ history, the Mission Design Data File, and DSN view periods.
 
 - `spin` (`imap_<YYYY_DOY>_<YYYY_DOY>_<VV>.spin`) and `thruster` (`..._hist_<VV>.sff`) arrive as roughly one-day files,
   usually less than a day after the data ends. Revisions of the same day get a higher version.
+- A job with a required spin input waits until spin covers its whole partition, at spin precision (see
+  [imap-architecture.md](imap-architecture.md), "SPICE dependency resolution").
 
 ## Clock, Earth attitude and static kernels
 

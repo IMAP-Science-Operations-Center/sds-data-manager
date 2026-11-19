@@ -8,8 +8,6 @@ import pytest
 import spiceypy
 
 from sds_data_manager.orchestration import spice
-from sds_data_manager.orchestration.spin import get_upstream_dependency_inputs_spin
-from tests.orchestration.conftest import _insert_spin_file
 
 TEST_LSK_PATH = (
     Path(__file__).parent.parent / "test-data" / "test_spice_files" / "naif0012.tls"
@@ -32,15 +30,25 @@ def _query_times(dependencies, start_date, end_date):
     return captured["start_time"], captured["end_time"]
 
 
-def test_seconds_since_j2000_matches_authoritative_spiceypy_conversion():
-    """Our hardcoded-epoch conversion must track spiceypy's own conversion closely.
+@pytest.mark.parametrize(
+    "dt",
+    [
+        # Just after the last leap second
+        datetime.datetime(2017, 1, 1, 0, 0, 0),
+        # Mission-era instants
+        datetime.datetime(2025, 6, 1, 14, 32, 10),
+        datetime.datetime(2026, 9, 10, 13, 47, 0),
+    ],
+)
+def test_seconds_since_j2000_matches_authoritative_spiceypy_conversion(dt):
+    """Our hardcoded conversion must match spiceypy's own conversion.
 
     `_seconds_since_j2000` intentionally avoids spiceypy.datetime2et() (which
     needs a leapseconds kernel furnished) so this function stays free of any
     S3/database dependency at runtime - see the comment above
     `_TTJ2000_EPOCH_UTC` in spice.py. This test furnishes a real leapseconds
-    kernel *only* to independently verify the hardcoded epoch is correct, not
-    because production code needs it.
+    kernel *only* to independently verify the hardcoded epoch and leap-second
+    offset are correct, not because production code needs it.
     """
     # Furnished directly (not via spiceypy.KernelPool), since KernelPool
     # snapshots and later re-furnishes every kernel already in spiceypy's
@@ -52,14 +60,12 @@ def test_seconds_since_j2000_matches_authoritative_spiceypy_conversion():
     # suite handles SPICE kernels.
     # TODO: make a spice furnishig fixture - see imap_processing
     spiceypy.furnsh(str(TEST_LSK_PATH))
-    dt = datetime.datetime(2025, 6, 1, 14, 32, 10, tzinfo=datetime.timezone.utc)
+    dt = dt.replace(tzinfo=datetime.timezone.utc)
 
-    # Tolerance covers the leap seconds added since the J2000 epoch (2000)
-    # that this simplified conversion doesn't account for (5, as of
-    # 2017-01-01) - negligible for identifying which SPICE kernels cover a
-    # given time range.
+    # The remaining difference is the periodic TDB-TT term (under 2 ms), well
+    # below spin precision.
     assert spice._seconds_since_j2000(dt) == pytest.approx(
-        spiceypy.datetime2et(dt), abs=6
+        spiceypy.datetime2et(dt), abs=2e-3
     )
 
 
@@ -91,7 +97,8 @@ def test_j2000_conversion_uses_true_tt_epoch_instant():
 
     Regression test for approximating the J2000 epoch as a nominal
     2000-01-01T12:00:00 UTC instant: the J2000 epoch is actually defined in
-    TT, which was already offset from UTC by 64.184s at that date.
+    TT, which was already offset from UTC by 64.184s at that date. The 5 leap
+    seconds inserted between 2000 and 2025 add to that offset.
     """
     start = datetime.datetime(2025, 6, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
     end = datetime.datetime(2025, 6, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
@@ -101,7 +108,7 @@ def test_j2000_conversion_uses_true_tt_epoch_instant():
     naive_j2000 = datetime.datetime(2000, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
     naive_start_time = (start - naive_j2000).total_seconds()
 
-    assert start_time - naive_start_time == pytest.approx(64.184)
+    assert start_time - naive_start_time == pytest.approx(64.184 + 5)
 
 
 def test_same_start_and_end_extends_query_window_by_24_hours():
@@ -111,262 +118,6 @@ def test_same_start_and_end_extends_query_window_by_24_hours():
     start_time, end_time = _query_times(["attitude_history"], instant, instant)
 
     assert (end_time - start_time) == pytest.approx(24 * 3600, abs=1e-9)
-
-
-def test_get_upstream_dependency_inputs_spin(mock_db_session):
-    """Test get_upstream_dependency_inputs_spin returns files in the correct order."""
-    # Add some test spin file records
-    # The first two files are for the same date range but have different versions.
-    # The v02 should be picked over the v01.
-    _insert_spin_file(
-        mock_db_session,
-        "imap_2026_142_2026_143_01.spin",
-        upload_time=1,
-        start_date=datetime.datetime(2026, 1, 1),
-        end_date=datetime.datetime(2026, 1, 2),
-    )
-    _insert_spin_file(
-        mock_db_session,
-        "imap_2026_142_2026_143_02.spin",
-        upload_time=2,
-        start_date=datetime.datetime(2026, 1, 1),
-        end_date=datetime.datetime(2026, 1, 2),
-    )
-    # The third and fourth files have the same version and overlapping date
-    # ranges. The start date should take precedence over the ingest order when
-    # sorting them, so the later-starting file is listed last even though it was
-    # ingested first (When loading SPICE kernels last one takes precedence).
-    _insert_spin_file(
-        mock_db_session,
-        "imap_2026_126_2026_128_01.spin",
-        upload_time=3,
-        start_date=datetime.datetime(2026, 1, 10),
-        end_date=datetime.datetime(2026, 1, 12),
-    )
-    _insert_spin_file(
-        mock_db_session,
-        "imap_2026_120_2026_127_01.spin",
-        upload_time=4,
-        start_date=datetime.datetime(2026, 1, 2),
-        end_date=datetime.datetime(2026, 1, 11),
-    )
-    # Query for a wide range of spin files.
-    spin_files = get_upstream_dependency_inputs_spin(
-        datetime.datetime(2025, 6, 1),
-        datetime.datetime(2027, 6, 10),
-        False,
-        mock_db_session,
-    )
-    # Check that the returned spin files are in reverse priority order (highest
-    # version last, then latest start date last) and that the correct versions
-    # were selected.
-    assert spin_files == [
-        "imap_2026_120_2026_127_01.spin",
-        "imap_2026_126_2026_128_01.spin",
-        "imap_2026_142_2026_143_02.spin",
-    ]
-
-
-def test_get_upstream_dependency_inputs_spin_superseded_by_new_ranges(
-    mock_db_session,
-):
-    """Test older spin files are dropped when newer versions split days differently.
-
-    Regression test for repoint89 (2025-12-25T10:02:13 to 2025-12-26T10:02:10),
-    which was given imap_2025_360_2025_360_01.spin alongside the _10 files that
-    replace it.
-    """
-
-    def doy(day):
-        return datetime.datetime(2025, 1, 1) + datetime.timedelta(days=day - 1)
-
-    old_files = [
-        ("imap_2025_358_2025_359_01.spin", 358, 359),
-        ("imap_2025_359_2025_360_01.spin", 359, 360),
-        ("imap_2025_360_2025_360_01.spin", 360, 360),
-        # Only partly covered by the _10 files, so it is still needed.
-        ("imap_2025_361_2025_362_01.spin", 361, 362),
-    ]
-    new_files = [
-        ("imap_2025_358_2025_359_10.spin", 358, 359),
-        ("imap_2025_359_2025_360_10.spin", 359, 360),
-        ("imap_2025_360_2025_361_10.spin", 360, 361),
-    ]
-    for upload_time, (filename, start, end) in enumerate(old_files + new_files):
-        _insert_spin_file(
-            mock_db_session,
-            filename,
-            upload_time=upload_time,
-            start_date=doy(start),
-            end_date=doy(end),
-        )
-
-    # The job floors the partition start to midnight before querying.
-    spin_files = get_upstream_dependency_inputs_spin(
-        datetime.datetime(2025, 12, 25),
-        datetime.datetime(2025, 12, 26, 10, 2, 10),
-        False,
-        mock_db_session,
-    )
-    assert spin_files == [
-        "imap_2025_358_2025_359_10.spin",
-        "imap_2025_359_2025_360_10.spin",
-        "imap_2025_360_2025_361_10.spin",
-    ]
-
-    # Day 362 has no _10 coverage, so the _01 file spanning 361-362 is kept.
-    spin_files = get_upstream_dependency_inputs_spin(
-        doy(361),
-        doy(362),
-        False,
-        mock_db_session,
-    )
-    assert spin_files == [
-        "imap_2025_361_2025_362_01.spin",
-        "imap_2025_360_2025_361_10.spin",
-    ]
-
-    # A lower version ingested after the _10 files must not take priority.
-    _insert_spin_file(
-        mock_db_session,
-        "imap_2025_360_2025_360_02.spin",
-        upload_time=10,
-        start_date=doy(360),
-        end_date=doy(360),
-    )
-    spin_files = get_upstream_dependency_inputs_spin(
-        datetime.datetime(2025, 12, 25),
-        datetime.datetime(2025, 12, 26, 10, 2, 10),
-        False,
-        mock_db_session,
-    )
-    assert spin_files == [
-        "imap_2025_358_2025_359_10.spin",
-        "imap_2025_359_2025_360_10.spin",
-        "imap_2025_360_2025_361_10.spin",
-    ]
-
-
-@pytest.mark.parametrize(
-    ("window_start", "window_end", "expected"),
-    [
-        # Window on the first day of the _10 span
-        (358, 358, ["imap_2025_358_2025_359_10.spin"]),
-        # Window on the last day of the _10 span
-        (360, 360, ["imap_2025_359_2025_360_10.spin"]),
-        # Window covering the whole _10 span
-        (
-            358,
-            360,
-            ["imap_2025_358_2025_359_10.spin", "imap_2025_359_2025_360_10.spin"],
-        ),
-    ],
-)
-def test_get_upstream_dependency_inputs_spin_superseded_at_span_edges(
-    mock_db_session, window_start, window_end, expected
-):
-    """Test single-day files on the first or last day of a newer span are dropped.
-
-    The _10 files cover days 358-360, so single-day _01 files on day 358 or
-    day 360 are fully covered and must not be returned. The _01 set is
-    contiguous, like a real delivery, with a middle file sharing a boundary
-    day with each single-day file.
-    """
-
-    def doy(day):
-        return datetime.datetime(2025, 1, 1) + datetime.timedelta(days=day - 1)
-
-    files = [
-        ("imap_2025_358_2025_358_01.spin", 358, 358),
-        ("imap_2025_358_2025_360_01.spin", 358, 360),
-        ("imap_2025_360_2025_360_01.spin", 360, 360),
-        ("imap_2025_358_2025_359_10.spin", 358, 359),
-        ("imap_2025_359_2025_360_10.spin", 359, 360),
-    ]
-    for upload_time, (filename, start, end) in enumerate(files):
-        _insert_spin_file(
-            mock_db_session,
-            filename,
-            upload_time=upload_time,
-            start_date=doy(start),
-            end_date=doy(end),
-        )
-
-    spin_files = get_upstream_dependency_inputs_spin(
-        doy(window_start),
-        doy(window_end) + datetime.timedelta(hours=10),
-        False,
-        mock_db_session,
-    )
-    assert spin_files == expected
-
-
-@pytest.mark.parametrize(
-    ("window_start", "window_end", "expected"),
-    [
-        # Window inside the _10 span: the _01 file extending before it is dropped
-        (
-            359,
-            359,
-            ["imap_2025_358_2025_359_10.spin", "imap_2025_359_2025_360_10.spin"],
-        ),
-        # Window inside the _10 span: the _01 file extending after it is dropped
-        (360, 360, ["imap_2025_359_2025_360_10.spin"]),
-        # Window covering the whole _10 span: both _01 files are dropped
-        (
-            358,
-            360,
-            ["imap_2025_358_2025_359_10.spin", "imap_2025_359_2025_360_10.spin"],
-        ),
-        # Window reaching day 357, which only the _01 file covers: it is kept
-        (
-            357,
-            358,
-            ["imap_2025_357_2025_359_01.spin", "imap_2025_358_2025_359_10.spin"],
-        ),
-        # Window reaching day 361, which only the _01 file covers: it is kept
-        (
-            360,
-            361,
-            ["imap_2025_360_2025_362_01.spin", "imap_2025_359_2025_360_10.spin"],
-        ),
-    ],
-)
-def test_get_upstream_dependency_inputs_spin_superseded_within_window(
-    mock_db_session, window_start, window_end, expected
-):
-    """Test supersession only considers the days inside the query window.
-
-    The _10 files cover days 358-360. The _01 files extend past that span on
-    either side, so higher versions never cover their whole filename range,
-    but they must still be dropped when the window falls inside the _10 span.
-    """
-
-    def doy(day):
-        return datetime.datetime(2025, 1, 1) + datetime.timedelta(days=day - 1)
-
-    files = [
-        ("imap_2025_357_2025_359_01.spin", 357, 359),
-        ("imap_2025_360_2025_362_01.spin", 360, 362),
-        ("imap_2025_358_2025_359_10.spin", 358, 359),
-        ("imap_2025_359_2025_360_10.spin", 359, 360),
-    ]
-    for upload_time, (filename, start, end) in enumerate(files):
-        _insert_spin_file(
-            mock_db_session,
-            filename,
-            upload_time=upload_time,
-            start_date=doy(start),
-            end_date=doy(end),
-        )
-
-    spin_files = get_upstream_dependency_inputs_spin(
-        doy(window_start),
-        doy(window_end) + datetime.timedelta(hours=10),
-        False,
-        mock_db_session,
-    )
-    assert spin_files == expected
 
 
 def test_check_requested_kernels():
