@@ -59,6 +59,40 @@ def _existing_asset(
     return False
 
 
+def partition_materialized(instance, outputs: list, partition: str) -> bool:
+    """Return True if any of a job's outputs has been materialized for a partition.
+
+    A run that skips for missing dependencies also ends in SUCCESS, so a
+    successful run alone doesn't show that the partition produced output.
+
+    Parameters
+    ----------
+    instance : DagsterInstance
+        The Dagster instance to query.
+    outputs : list[DependencyNode]
+        The job's outputs.
+    partition : str
+        The partition key.
+
+    Returns
+    -------
+    bool
+        True if at least one output has a materialization for the partition.
+    """
+    for output in outputs:
+        records = instance.get_event_records(
+            EventRecordsFilter(
+                asset_key=output.to_dagster_asset(),
+                asset_partitions=[partition],
+                event_type=DagsterEventType.ASSET_MATERIALIZATION,
+            ),
+            limit=1,
+        )
+        if records:
+            return True
+    return False
+
+
 def get_materialization(
     context: AssetExecutionContext,
     asset_key: AssetKey,
