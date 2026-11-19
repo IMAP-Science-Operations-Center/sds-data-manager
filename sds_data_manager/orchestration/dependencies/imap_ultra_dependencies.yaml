@@ -107,7 +107,6 @@ spice_l1c_common: &spice_l1c_common
   - source: spin
     data_type: spin
     descriptor: historical
-    trigger_job: false
 
 
 spice_l1c_spacecraft: &spice_l1c_spacecraft
@@ -137,7 +136,6 @@ spice_l1c_spacecraft: &spice_l1c_spacecraft
   - source: spin
     data_type: spin
     descriptor: historical
-    trigger_job: false
   - source: attitude_history
     data_type: spice
     descriptor: historical
