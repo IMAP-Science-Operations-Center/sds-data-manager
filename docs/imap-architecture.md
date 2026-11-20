@@ -111,13 +111,13 @@ Dagster is deployed in one ECS Fargate cluster with separate services for the Da
 Jobs and assets are **not** hand-written per data product — they are generated from configuration:
 
 1. `dependencies/imap_{instrument}_dependencies.yaml` declares each job under a `(data_type, descriptor)` key with `partition`, `inputs`, and `outputs`.
-2. `dependency.py::DependencyConfigReader` loads all of those files into `{(source, data_type, descriptor): ProcessingJobNode}`.
+2. `DependencyConfigReader` loads all of those files into `{(source, data_type, descriptor): ProcessingJobNode}`. The reader and the node types (`Node`, `DependencyNode`, `ProcessingJobNode`) come from `imap_data_access.dependencies`; `dependency.py` only points the reader at this package's `dependencies/` folder by default.
 3. `imap_dagster.py` (the entrypoint that builds `defs`) walks every config key, sends jobs to `JobBuilderRegistry` and unproduced inputs to `FileBuilderRegistry`, then assembles the assets and sensors.
 4. The registries return the default handler — `imap_job.py::IMAPJobHandler` or `imap_file.py::IMAPScienceFileHandler` — unless a subclass in `custom_behavior/` registered itself for that key via `@JobBuilderRegistry.register(source, data_type, descriptor)` (or `register_descriptor_pattern`). `imap_dagster.load_all_builders()` imports every `custom_behavior/` module at import time so those decorators fire.
 
 **To change behavior for one product, subclass the handler in `custom_behavior/` and register it — do not special-case inside the generic handler.** Existing examples: `mag.py`, `hi.py`, `idex.py`, `spacecraft.py`, `l3_jobs.py`, `l2_map_jobs.py`.
 
-**`types.py` and `dependency.py` must not import Dagster or anything under `sds_data_manager.lambda_code`.** They're being moved to `imap-data-access`, which has neither, and `tests/orchestration/test_types.py` fails if either one does. Anything that connects a node to Dagster goes in `dagster_utilities.py` as a function that takes the node: `to_dagster_name(node)`, `to_dagster_asset(node)`, `get_all_files_in_time_range(node, ...)` and `get_all_files_by_repoint_numbers(node, ...)`. `types.SPICE_SOURCES` copies `KernelCollection().file_types`, so a new SPICE type has to be added to both; a test checks that they match.
+**The dependency node types and the YAML reader live in `imap-data-access`, which knows nothing about Dagster.** Changing how nodes are validated or how the YAML is parsed is an `imap-data-access` change. Anything that connects a node to Dagster goes in `dagster_utilities.py` as a function that takes the node: `to_dagster_name(node)`, `to_dagster_asset(node)`, `get_all_files_in_time_range(node, ...)` and `get_all_files_by_repoint_numbers(node, ...)`. `imap_data_access.dependencies.SPICE_SOURCES` copies `KernelCollection().file_types` from `spice_utilities.py`, so a new SPICE type has to be added to both; `tests/orchestration/test_dependency.py` checks that they match.
 
 ### Runtime model
 

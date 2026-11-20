@@ -13,6 +13,7 @@ from dagster import (
     SensorEvaluationContext,
     sensor,
 )
+from imap_data_access.dependencies import Node
 
 from sds_data_manager.orchestration.dagster_utilities import (
     get_affected_partitions,
@@ -23,7 +24,6 @@ from sds_data_manager.orchestration.dependency import (
     get_kickoff_jobs,
 )
 from sds_data_manager.orchestration.imap_job import partition_map, priority_levels
-from sds_data_manager.orchestration.types import Node
 
 SQS_CLIENT = boto3.client("sqs", "us-west-2")
 

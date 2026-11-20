@@ -10,6 +10,7 @@ from dagster import (
     SensorResult,
     sensor,
 )
+from imap_data_access.dependencies import DependencyNode
 from imap_data_access.file_validation import Version
 from sqlalchemy import select
 
@@ -20,7 +21,6 @@ from sds_data_manager.orchestration.dagster_utilities import (
     to_dagster_asset,
     to_dagster_name,
 )
-from sds_data_manager.orchestration.types import DependencyNode
 
 
 class IMAPScienceFileHandler:

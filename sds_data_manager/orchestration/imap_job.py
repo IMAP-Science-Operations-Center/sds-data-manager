@@ -30,6 +30,7 @@ from dagster import (
     sensor,
 )
 from imap_data_access import VALID_DATALEVELS, DependencyFilePath, processing_input
+from imap_data_access.dependencies import DependencyNode, ProcessingJobNode
 from imap_data_access.file_validation import Version
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
@@ -52,7 +53,6 @@ from sds_data_manager.orchestration.dagster_utilities import (
     to_dagster_name,
 )
 from sds_data_manager.orchestration.dependency import DependencyConfigReader
-from sds_data_manager.orchestration.types import DependencyNode, ProcessingJobNode
 
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 # Create an ECR client for getting container image digests
