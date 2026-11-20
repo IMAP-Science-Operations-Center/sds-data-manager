@@ -241,9 +241,9 @@ def test_validate_dependency_yaml_decrease_only_change(
     ):
         new_reader = DependencyConfigReader()
 
-    # Reprocessing (the default) should ignore the decrease...
+    # Should ignore the decrease
     assert get_updated_output_dependency_nodes(old_reader, new_reader) == []
-    # ...but the validator needs to see it.
+    # Should add the decreased node to the update list.
     updated_nodes = get_updated_output_dependency_nodes(
         old_reader, new_reader, include_decreases=True
     )
