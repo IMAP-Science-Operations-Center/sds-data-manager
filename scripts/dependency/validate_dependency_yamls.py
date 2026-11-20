@@ -421,7 +421,7 @@ def main(argv: list[str] | None = None) -> None:
                     updated_nodes=updated_nodes, old_reader=old_reader
                 )
             )
-        if check_id == MajorVersionIncrementCheck.check_id:
+        elif check_id == MajorVersionIncrementCheck.check_id:
             checks.append(MajorVersionIncrementCheck(nodes_to_check=nodes_to_check))
         else:
             checks.append(CHECKS[check_id]())

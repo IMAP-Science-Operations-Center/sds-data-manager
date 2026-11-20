@@ -22,7 +22,7 @@ def reprocess_jobs_for_major_version_bump(
 ) -> list[tuple[str, str, str]]:
     """Determine which jobs need to be reprocessed due to a major_version bump.
 
-    This finds every job whose output major_version increased between old_reader
+    This finds every job whose output major_version changed between old_reader
     and new_reader, and then walks each one back to the furthest upstream job in
     its chain of changes so we only trigger reprocessing once per pipeline
     instead of once per changed job. Takes readers instead of yaml paths so tests

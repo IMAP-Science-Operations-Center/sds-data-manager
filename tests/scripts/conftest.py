@@ -219,6 +219,14 @@ SWE_VALID_YAML_BUMPED = (
     )
 )
 
+# Decrease swe l1b sci from SWE_VALID_YAML_BUMPED's major_version 5 to 4. This is
+# the only change, and the chain is still monotonic (l1a 1 -> l1b 4 -> l2 7), so
+# only the no-decrease check (comparing against the previous yaml) should catch it.
+SWE_VALID_YAML_BUMPED_L1B_DECREASED = SWE_VALID_YAML_BUMPED.replace(
+    "data_type: l1b\n      descriptor: sci\n      major_version: 5",
+    "data_type: l1b\n      descriptor: sci\n      major_version: 4",
+)
+
 
 def mock_yaml(overrides):
     """Build a yaml.safe_load side_effect that swaps in fixture content per instrument.

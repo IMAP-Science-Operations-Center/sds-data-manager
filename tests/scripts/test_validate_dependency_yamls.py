@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from scripts.dependency.utils import get_updated_output_dependency_nodes
 from scripts.dependency.validate_dependency_yamls import (
     CHECKS,
     IdenticalDescriptorCheck,
@@ -27,6 +28,7 @@ from tests.scripts.conftest import (
     SWAPI_INVALID_YAML,
     SWAPI_VALID_YAML,
     SWE_VALID_YAML_BUMPED,
+    SWE_VALID_YAML_BUMPED_L1B_DECREASED,
     mock_yaml,
 )
 
@@ -200,6 +202,59 @@ def test_validate_dependency_yaml_decreased_mv():
 
     with pytest.raises(ValueError, match=r"Major versions should never decrease\."):
         validate_dependency_yaml_versions(new_reader, check, kickoff_job)
+
+
+@pytest.mark.parametrize(
+    ("include_no_decrease_check", "expectation"),
+    [
+        (
+            True,
+            pytest.raises(
+                ValueError,
+                match=r"Output \(swe, l1b, sci\) major version has decreased from "
+                r"5 to 4\. Major versions should never decrease\.",
+            ),
+        ),  # If all the checks are running it should raise a value error
+        (
+            False,
+            nullcontext(),
+        ),  # If check 3 (MajorVersionNoDecreaseCheck) is not "on" it should pass
+    ],
+)
+def test_validate_dependency_yaml_decrease_only_change(
+    include_no_decrease_check, expectation
+):
+    """A major version decrease that is the only yaml change should be caught.
+
+    get_updated_output_dependency_nodes has to flag the decreased job as updated,
+    otherwise MajorVersionNoDecreaseCheck skips it and the decrease is missed.
+    """
+    with patch(
+        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        side_effect=mock_yaml({"swe": SWE_VALID_YAML_BUMPED}),
+    ):
+        old_reader = DependencyConfigReader()
+    clear_config_cache()
+    with patch(
+        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        side_effect=mock_yaml({"swe": SWE_VALID_YAML_BUMPED_L1B_DECREASED}),
+    ):
+        new_reader = DependencyConfigReader()
+
+    updated_nodes = get_updated_output_dependency_nodes(old_reader, new_reader)
+    assert updated_nodes == [new_reader.config[("swe", "l1b", "sci")]]
+
+    # Swap the unconfigured MajorVersionNoDecreaseCheck for one that knows about
+    # the old yaml and the updated nodes, the same way main() does.
+    check_objs = [
+        check for check in checks if not isinstance(check, MajorVersionNoDecreaseCheck)
+    ]
+    if include_no_decrease_check:
+        check_objs.append(MajorVersionNoDecreaseCheck(updated_nodes, old_reader))
+    kickoff_job = new_reader.config[("swe", "l1a", "all")]
+
+    with expectation:
+        validate_dependency_yaml_versions(new_reader, check_objs, kickoff_job)
 
 
 @pytest.mark.parametrize(

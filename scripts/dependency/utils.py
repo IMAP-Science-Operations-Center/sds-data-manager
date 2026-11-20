@@ -28,13 +28,14 @@ def get_old_output(new_output, old_potential_job):
 def get_updated_output_dependency_nodes(
     old_reader, new_reader
 ) -> list[ProcessingJobNode]:
-    """Find the jobs that got an updated major_version.
+    """Find the jobs that got a changed major_version.
 
     This function will loop through every potential job's output in the new
     dependency yaml and compare it against the output of the old potential
     job in the old dependency yaml. If the job is new, or one of its outputs
-    is new, or an output's major_version increased, the potential job's
-    dependency information node is added to the list of jobs that got updated.
+    is new, or an output's major_version changed (increased or decreased), the
+    potential job's dependency information node is added to the list of jobs
+    that got updated.
 
     old_reader: DependencyConfigReader
         Reader built from the previous dependency yaml files.
@@ -44,7 +45,7 @@ def get_updated_output_dependency_nodes(
     Returns
     -------
     list[ProcessingJobNode]
-        Jobs whose output is new or had a major_version bump.
+        Jobs whose output is new or had a major_version change.
     """
     updated_nodes = []
     for job_key, new_potential_job in new_reader.config.items():
@@ -72,14 +73,14 @@ def get_updated_output_dependency_nodes(
                     updated_nodes.append(new_potential_job)
                 continue
 
-            elif new_output.major_version > old_output.major_version:
+            elif new_output.major_version != old_output.major_version:
                 logger.info(
                     f"Output product ({new_output.source},{new_output.data_type},"
-                    f"{new_output.descriptor}) was bumped from major version="
+                    f"{new_output.descriptor}) changed from major version="
                     f"{old_output.major_version} to major version="
                     f"{new_output.major_version}"
                 )
-                # major_version got bumped.
+                # major_version changed.
                 if new_potential_job not in updated_nodes:
                     updated_nodes.append(new_potential_job)
 
@@ -97,7 +98,7 @@ def get_nodes_to_check(
     their outputs as an input.
 
     updated_nodes: list[ProcessingJobNode]
-        Jobs that are new or had a major_version bump, from
+        Jobs that are new or had a major_version change, from
         get_updated_output_dependency_nodes().
     reader: DependencyConfigReader
         Reader built from the current dependency yaml files, used to look up
@@ -142,7 +143,7 @@ def get_updated_root_node(
     node: ProcessingJobNode
         The changed node we're finding the root for.
     nodes: list[ProcessingJobNode]
-        All the jobs that have a major_version bump between the old and new
+        All the jobs that have a major_version change between the old and new
         dependency yaml.
     new_reader: DependencyConfigReader
         Reader built from the current dependency yaml files, used to look up which
