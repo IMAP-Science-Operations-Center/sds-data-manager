@@ -40,9 +40,9 @@ def reprocess_jobs_for_major_version_bump(
     list[tuple[str, str, str]]
         (source, data_type, descriptor) tuples for each job to reprocess.
     """
-    # include_decreases is left False on purpose: a decrease here means either an
-    # invalid yaml or a rollback deploy, and neither should trigger full-mission
-    # reprocessing.
+    # include_decreases is left False on purpose because a decrease should
+    # not trigger full-mission reprocessing. The decrease could have happened
+    # due to a rollback.
     nodes = get_updated_output_dependency_nodes(old_reader, new_reader)
     logger.info(
         f"Found {len(nodes)} updated output nodes: "

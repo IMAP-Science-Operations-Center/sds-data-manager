@@ -44,9 +44,9 @@ def get_updated_output_dependency_nodes(
     include_decreases: bool
         If True, also count a job as updated when an output's major_version
         decreased. The validator sets this so MajorVersionNoDecreaseCheck can
-        catch decreases. Defaults to False for reprocessing: a decrease is
-        either invalid or a rollback deploy, and neither should kick off
-        full-mission reprocessing.
+        catch decreases. When determining which jobs to reprocess, this is
+        set to false because we dont want to trigger full mission reprocessing
+        for decreases.
 
     Returns
     -------
