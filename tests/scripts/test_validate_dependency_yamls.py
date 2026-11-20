@@ -1,14 +1,26 @@
 """Tests for validate_dependency_yamls.py."""
 
+from contextlib import nullcontext
 from unittest.mock import patch
 
 import pytest
 
+from scripts.dependency.utils import get_updated_output_dependency_nodes
 from scripts.dependency.validate_dependency_yamls import (
+    CHECKS,
+    IdenticalDescriptorCheck,
+    MajorVersionIncrementCheck,
+    MajorVersionNoDecreaseCheck,
+    MatchingOutputNodeCheck,
+    SingleOutputCheck,
     validate_dependency_yaml_versions,
 )
-from sds_data_manager.orchestration.dependency import DependencyConfigReader
+from sds_data_manager.orchestration.dependency import (
+    DependencyConfigReader,
+    clear_config_cache,
+)
 from tests.scripts.conftest import (
+    _SWE_INVALID_SINGLE_OUTPUT_YAML,
     IDEX_INVALID_CATLST_YAML,
     IDEX_INVALID_YAML,
     IDEX_VALID_YAML,
@@ -16,11 +28,35 @@ from tests.scripts.conftest import (
     SWAPI_INVALID_YAML,
     SWAPI_VALID_YAML,
     SWE_VALID_YAML_BUMPED,
+    SWE_VALID_YAML_BUMPED_L1B_DECREASED,
     mock_yaml,
 )
 
+checks = [check() for check in CHECKS.values()]
 
-def test_validate_dependency_yaml_versions_invalid(caplog):
+
+@pytest.mark.parametrize(
+    ("check_objs", "expectation"),
+    [
+        (
+            checks,
+            pytest.raises(
+                ValueError,
+                match=r"Output \(idex, l1b, sci-10days\) has major_version 0."
+                r" It should be greater than or equal to 1",
+            ),
+        ),  # If all the checks are running it should raise a value error
+        (
+            [
+                check
+                for check in checks
+                if not isinstance(check, MajorVersionIncrementCheck)
+            ],
+            nullcontext(),
+        ),  # If check 0 (MajorVersionIncrementCheck) is not "on" it should pass
+    ],
+)
+def test_validate_dependency_yaml_versions_invalid(check_objs, expectation):
     """Yaml with one invalid downstream major_version should raise."""
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",
@@ -29,11 +65,8 @@ def test_validate_dependency_yaml_versions_invalid(caplog):
         reader = DependencyConfigReader()
         kickoff_job = reader.config[("idex", "l1a", "all")]
 
-        validate_dependency_yaml_versions(reader, kickoff_job)
-        assert (
-            "Output (idex, l1b, sci-10days) has major_version 0. "
-            "It should be greater than or equal to 1"
-        ) in caplog.text
+        with expectation:
+            validate_dependency_yaml_versions(reader, check_objs, kickoff_job)
 
 
 def test_validate_dependency_yaml_versions_valid():
@@ -46,7 +79,7 @@ def test_validate_dependency_yaml_versions_valid():
         kickoff_job = reader.config[("idex", "l1a", "all")]
 
         # Should not raise.
-        validate_dependency_yaml_versions(reader, kickoff_job)
+        validate_dependency_yaml_versions(reader, checks, kickoff_job)
 
 
 def test_validate_dependency_yaml_versions_mag_l2():
@@ -67,7 +100,7 @@ def test_validate_dependency_yaml_versions_mag_l2():
         kickoff_job = reader.config[("mag", "l1a", "all")]
 
         # Should not raise, per the docstring above.
-        validate_dependency_yaml_versions(reader, kickoff_job)
+        validate_dependency_yaml_versions(reader, checks, kickoff_job)
 
 
 def test_validate_dependency_yaml_versions_swe():
@@ -80,10 +113,31 @@ def test_validate_dependency_yaml_versions_swe():
         kickoff_job = reader.config[("swe", "l1a", "all")]
 
         # Should not raise.
-        validate_dependency_yaml_versions(reader, kickoff_job)
+        validate_dependency_yaml_versions(reader, checks, kickoff_job)
 
 
-def test_validate_dependency_yaml_invalid_idex_catlst_products():
+@pytest.mark.parametrize(
+    ("check_objs", "expectation"),
+    [
+        (
+            checks,
+            pytest.raises(
+                ValueError,
+                match="All outputs with identical descriptors "
+                "should have the same major versions",
+            ),
+        ),  # If all the checks are running it should raise a value error
+        (
+            [
+                check
+                for check in checks
+                if not isinstance(check, IdenticalDescriptorCheck)
+            ],
+            nullcontext(),
+        ),  # If check 1 (IdenticalDescriptorCheck) is not "on" it should pass
+    ],
+)
+def test_validate_dependency_yaml_invalid_idex_catlst_products(check_objs, expectation):
     """Check that outputs sharing a descriptor with different major versions raise."""
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",
@@ -94,14 +148,32 @@ def test_validate_dependency_yaml_invalid_idex_catlst_products():
 
         # IDEX_INVALID_CATLST_YAML is invalid; outputs sharing a descriptor must
         # share the same major_version.
-        error_msg = (
-            "All outputs with identical descriptors should have the same major versions"
-        )
-        with pytest.raises(ValueError, match=error_msg):
-            validate_dependency_yaml_versions(reader, kickoff_job)
+        with expectation:
+            validate_dependency_yaml_versions(reader, check_objs, kickoff_job)
 
 
-def test_validate_dependency_yaml_invalid_data_levels():
+@pytest.mark.parametrize(
+    ("check_objs", "expectation"),
+    [
+        (
+            checks,
+            pytest.raises(
+                ValueError,
+                match="At least one output must have the same"
+                " data level as the job node itself",
+            ),
+        ),  # If all the checks are running it should raise a value error
+        (
+            [
+                check
+                for check in checks
+                if not isinstance(check, MatchingOutputNodeCheck)
+            ],
+            nullcontext(),
+        ),  # If check 2 (MatchingOutputNodeCheck) is not "on" it should pass
+    ],
+)
+def test_validate_dependency_yaml_invalid_data_levels(check_objs, expectation):
     """Check that an error is thrown when no output shares the job node's data level."""
     with patch(
         "sds_data_manager.orchestration.dependency.yaml.safe_load",
@@ -110,6 +182,110 @@ def test_validate_dependency_yaml_invalid_data_levels():
         reader = DependencyConfigReader()
         kickoff_job = reader.config[("swapi", "l3a", "alpha-sw")]
 
-        error_msg = "At least one output must have the same data level as the job node"
-        with pytest.raises(ValueError, match=error_msg):
-            validate_dependency_yaml_versions(reader, kickoff_job)
+        with expectation:
+            validate_dependency_yaml_versions(reader, check_objs, kickoff_job)
+
+
+def test_validate_dependency_yaml_decreased_mv():
+    """Check that an error is thrown when a node has a decreased major version."""
+    # Set up the old and new reader.
+    old_reader = DependencyConfigReader()
+    clear_config_cache()
+    new_reader = DependencyConfigReader()
+    # Update the new reader to have a decreased major version for the output of the
+    # job node ("swe", "l1a", "all").
+    new_reader.config[("swe", "l1a", "all")].outputs[0].major_version -= 1
+    # Add this job node to the list of updated nodes so it gets checked.
+    updated_nodes = [new_reader.config[("swe", "l1a", "all")]]
+    check = [MajorVersionNoDecreaseCheck(updated_nodes, old_reader)]
+    kickoff_job = new_reader.config[("swe", "l1a", "all")]
+
+    with pytest.raises(ValueError, match=r"Major versions should never decrease\."):
+        validate_dependency_yaml_versions(new_reader, check, kickoff_job)
+
+
+@pytest.mark.parametrize(
+    ("include_no_decrease_check", "expectation"),
+    [
+        (
+            True,
+            pytest.raises(
+                ValueError,
+                match=r"Output \(swe, l1b, sci\) major version has decreased from "
+                r"5 to 4\. Major versions should never decrease\.",
+            ),
+        ),  # If all the checks are running it should raise a value error
+        (
+            False,
+            nullcontext(),
+        ),  # If check 3 (MajorVersionNoDecreaseCheck) is not "on" it should pass
+    ],
+)
+def test_validate_dependency_yaml_decrease_only_change(
+    include_no_decrease_check, expectation
+):
+    """A major version decrease that is the only yaml change should be caught.
+
+    get_updated_output_dependency_nodes has to flag the decreased job as updated,
+    otherwise MajorVersionNoDecreaseCheck skips it and the decrease is missed.
+    """
+    with patch(
+        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        side_effect=mock_yaml({"swe": SWE_VALID_YAML_BUMPED}),
+    ):
+        old_reader = DependencyConfigReader()
+    clear_config_cache()
+    with patch(
+        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        side_effect=mock_yaml({"swe": SWE_VALID_YAML_BUMPED_L1B_DECREASED}),
+    ):
+        new_reader = DependencyConfigReader()
+
+    # Should ignore the decrease
+    assert get_updated_output_dependency_nodes(old_reader, new_reader) == []
+    # Should add the decreased node to the update list.
+    updated_nodes = get_updated_output_dependency_nodes(
+        old_reader, new_reader, include_decreases=True
+    )
+    assert updated_nodes == [new_reader.config[("swe", "l1b", "sci")]]
+
+    # Swap the unconfigured MajorVersionNoDecreaseCheck for one that knows about
+    # the old yaml and the updated nodes, the same way main() does.
+    check_objs = [
+        check for check in checks if not isinstance(check, MajorVersionNoDecreaseCheck)
+    ]
+    if include_no_decrease_check:
+        check_objs.append(MajorVersionNoDecreaseCheck(updated_nodes, old_reader))
+    kickoff_job = new_reader.config[("swe", "l1a", "all")]
+
+    with expectation:
+        validate_dependency_yaml_versions(new_reader, check_objs, kickoff_job)
+
+
+@pytest.mark.parametrize(
+    ("check_objs", "expectation"),
+    [
+        (
+            checks,
+            pytest.raises(
+                ValueError,
+                match="does not match the descriptor of its single output",
+            ),
+        ),  # If all the checks are running it should raise a value error
+        (
+            [check for check in checks if not isinstance(check, SingleOutputCheck)],
+            nullcontext(),
+        ),  # If check 4 (SingleOutputCheck) is not "on" it should pass
+    ],
+)
+def test_validate_dependency_yaml_invalid_single_output_job(check_objs, expectation):
+    """Check that an error is thrown when no output shares the job node's data level."""
+    with patch(
+        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        side_effect=mock_yaml({"swe": _SWE_INVALID_SINGLE_OUTPUT_YAML}),
+    ):
+        reader = DependencyConfigReader()
+        kickoff_job = reader.config[("swe", "l1a", "all")]
+
+        with expectation:
+            validate_dependency_yaml_versions(reader, check_objs, kickoff_job)
