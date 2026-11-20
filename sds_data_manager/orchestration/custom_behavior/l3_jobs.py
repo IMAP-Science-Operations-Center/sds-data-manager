@@ -11,6 +11,7 @@ from dagster import (
 )
 
 from sds_data_manager.orchestration import dagster_utilities, imap_job, repoint_file
+from sds_data_manager.orchestration.dagster_utilities import to_dagster_name
 from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 
 
@@ -27,7 +28,7 @@ class L3CronHandler(imap_job.IMAPJobHandler):
 
     def build_sensor(self):
         """Override default sensor behavior."""
-        sensor_name = f"{self.job_config.to_dagster_name()}_kickoff_sensor"
+        sensor_name = f"{to_dagster_name(self.job_config)}_kickoff_sensor"
 
         @sensor(
             name=sensor_name,
@@ -49,7 +50,7 @@ class L3CronHandler(imap_job.IMAPJobHandler):
             target_partition = affected_partitions[0]
 
             run_key = "_".join(
-                [self.job_config.to_dagster_name(), target_partition, job_suffix]
+                [to_dagster_name(self.job_config), target_partition, job_suffix]
             )
             context.log.info(
                 f"""Yielding a run request with ID:

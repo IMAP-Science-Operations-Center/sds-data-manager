@@ -14,7 +14,10 @@ from dagster import (
     sensor,
 )
 
-from sds_data_manager.orchestration.dagster_utilities import get_affected_partitions
+from sds_data_manager.orchestration.dagster_utilities import (
+    get_affected_partitions,
+    to_dagster_name,
+)
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
     get_kickoff_jobs,
@@ -201,7 +204,7 @@ def get_job_assets(
                 return None
     # get the output keys for the job node. If there are no outputs, log a warning and
     # skip.
-    output_keys = [AssetKey(output.to_dagster_name()) for output in job_node.outputs]
+    output_keys = [AssetKey(to_dagster_name(output)) for output in job_node.outputs]
     if not output_keys:
         context.log.warning(
             f"Job node for ({instrument}, {data_level}, {descriptor}) has no outputs."

@@ -11,6 +11,7 @@ from dagster import (
 from sds_data_manager.orchestration import (
     imap_job,
 )
+from sds_data_manager.orchestration.dagster_utilities import to_dagster_name
 from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 from sds_data_manager.orchestration.maps_utils import (
     _CADENCE_TYPES,
@@ -48,7 +49,7 @@ class L2MapJob(imap_job.IMAPJobHandler):
         2) Check for any new partitions since last sensor tick.
         3) Yield a RunRequest for each new partition key.
         """
-        sensor_name = f"{self.job_config.to_dagster_name()}_kickoff_sensor"
+        sensor_name = f"{to_dagster_name(self.job_config)}_kickoff_sensor"
 
         @sensor(
             name=sensor_name,
@@ -95,7 +96,7 @@ class L2MapJob(imap_job.IMAPJobHandler):
             job_suffix = now.strftime("%Y-%m-%d")
             run_key = "_".join(
                 [
-                    self.job_config.to_dagster_name(),
+                    to_dagster_name(self.job_config),
                     partition_name,
                     job_suffix,
                 ]

@@ -9,6 +9,10 @@ from imap_data_access import processing_input
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import imap_job, types
+from sds_data_manager.orchestration.dagster_utilities import (
+    get_all_files_by_repoint_numbers,
+    to_dagster_asset,
+)
 from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 
 HI_GOODTIMES_NUM_NEAREST_REPOINTS = 8
@@ -67,8 +71,8 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
                 if not repoint_list:
                     continue
 
-                metadata_list = input.get_all_files_by_repoint_numbers(
-                    context, repoint_list
+                metadata_list = get_all_files_by_repoint_numbers(
+                    input, context, repoint_list
                 )
                 neighbor_files = []
                 for metadata in metadata_list:
@@ -193,7 +197,7 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
         """
         repoints = []
         materialized_partitions = context.instance.get_materialized_partitions(
-            dependency.to_dagster_asset()
+            to_dagster_asset(dependency)
         )
         for m in materialized_partitions:
             parts = m.split("_")

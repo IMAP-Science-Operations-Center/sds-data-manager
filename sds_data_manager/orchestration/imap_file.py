@@ -16,6 +16,10 @@ from sqlalchemy import select
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import config, dagster_utilities
+from sds_data_manager.orchestration.dagster_utilities import (
+    to_dagster_asset,
+    to_dagster_name,
+)
 from sds_data_manager.orchestration.types import DependencyNode
 
 
@@ -30,12 +34,12 @@ class IMAPScienceFileHandler:
     def build_asset(self):
         """Return an AssetSpec representing the IMAP file."""
         return AssetSpec(
-            key=self.job_config.to_dagster_asset(), partitions_def=self.partitions_def
+            key=to_dagster_asset(self.job_config), partitions_def=self.partitions_def
         )
 
     def build_sensor(self):
         """Create an asset representing an IMAP science file NOT created from Batch."""
-        sensor_name = f"{self.job_config.to_dagster_name()}_sensor"
+        sensor_name = f"{to_dagster_name(self.job_config)}_sensor"
 
         @sensor(
             name=sensor_name,
@@ -126,7 +130,7 @@ class IMAPScienceFileHandler:
                         )
                         materialization = dagster_utilities.get_materialization(
                             context,
-                            self.job_config.to_dagster_asset(),
+                            to_dagster_asset(self.job_config),
                             partition,
                             [os.path.basename(record.file_path)],
                             Version(record.major_version, record.minor_version),

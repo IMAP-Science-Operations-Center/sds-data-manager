@@ -1,23 +1,42 @@
-"""Common types for pipeline lambdas."""
+"""Types describing data products and the dependencies between them.
+
+This module and ``dependency.py`` are being moved to ``imap-data-access``, so they
+must not import Dagster or anything under ``sds_data_manager.lambda_code``. A test
+enforces this. Dagster-specific helpers for these types live in
+``dagster_utilities.py``.
+"""
 
 import datetime
 from dataclasses import asdict, dataclass, field
 from typing import Any, ClassVar
 
 import imap_data_access
-from dagster import (
-    AssetExecutionContext,
-    AssetKey,
-    DagsterEventType,
-    EventRecordsFilter,
-)
-
-from sds_data_manager.lambda_code.SDSCode import spice_utilities
-from sds_data_manager.orchestration import dagster_utilities
 
 # Date range validation constants
 NEAREST_OPTIONS = ("nd", "np")
 DATE_RANGE_OPTIONS = ("p", "h", "d", "l", *NEAREST_OPTIONS)
+
+# SPICE file types that can be a dependency source, in metakernel load order.
+# This must match KernelCollection().file_types in
+# lambda_code/SDSCode/spice_utilities.py; a test checks that they agree.
+SPICE_SOURCES = (
+    "leapseconds",
+    "planetary_constants",
+    "imap_frames",
+    "science_frames",
+    "spacecraft_clock",
+    "earth_attitude",
+    "planetary_ephemeris",
+    "ephemeris_reconstructed",
+    "ephemeris_predicted",
+    "ephemeris_nominal",
+    "ephemeris_90days",
+    "attitude_history",
+    "pointing_attitude",
+    "lo_pivot_attitude",
+    "spin",
+    "thruster",
+)
 
 
 @dataclass
@@ -43,7 +62,7 @@ class DataSource:
             "spin",
             "repoint",
             "spice",
-            *spice_utilities.KernelCollection().file_types,
+            *SPICE_SOURCES,
             *imap_data_access.VALID_INSTRUMENTS,
         ]
 
@@ -217,16 +236,6 @@ class Node:
                 f"Descriptor must be a non-empty string, got '{descriptor}'"
             )
 
-    def to_dagster_name(self) -> str:
-        """Return the dagster asset name."""
-        return (self.source + "_" + self.data_type + "_" + self.descriptor).replace(
-            "-", ""
-        )
-
-    def to_dagster_asset(self) -> AssetKey:
-        """Return the dagster AssetKey."""
-        return AssetKey(self.to_dagster_name())
-
 
 @dataclass
 class DependencyNode(Node):
@@ -350,79 +359,6 @@ class DependencyNode(Node):
                 f"Invalid future '{future}'. Must end with "
                 f"{DATE_RANGE_OPTIONS} and be positive."
             )
-
-    def get_all_files_in_time_range(
-        self,
-        context: AssetExecutionContext,
-        start_dt: datetime.datetime,
-        end_dt: datetime.datetime,
-    ) -> list:
-        """Return the metadata of all assets between start_dt and end_dt."""
-        metadata = []
-
-        # Fetch a list of all partition keys that have EVER been materialized
-        materialized_partitions = context.instance.get_materialized_partitions(
-            self.to_dagster_asset()
-        )
-
-        if not materialized_partitions:
-            context.log.info(
-                f"""Not enought information to process. Missing
-                    {self.to_dagster_name()}
-                    in range {start_dt!s} to {end_dt!s}"""
-            )
-            return []
-
-        # Loop through the partitions to determine if they span the time range
-        for partition in materialized_partitions:
-            partition_start, partition_end = (
-                dagster_utilities.parse_dates_from_partition_key(partition)
-            )
-
-            if not partition_start or not partition_end:
-                continue
-
-            # Apply the overlap logic (StartA < EndB and EndA > StartB)
-            if partition_start < end_dt and partition_end > start_dt:
-                context.log.info(f"This partition matches: {partition}")
-                # Fetch the actual materialization record for this overlapping partition
-                mat_event = context.instance.get_event_records(
-                    event_records_filter=EventRecordsFilter(
-                        event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                        asset_key=self.to_dagster_asset(),
-                        asset_partitions=[partition],
-                    ),
-                    limit=1,  # The most recent event is returned first
-                )
-                if mat_event and mat_event[0].asset_materialization:
-                    metadata.append(mat_event[0].asset_materialization.metadata)
-
-        return metadata
-
-    def get_all_files_by_repoint_numbers(self, context, target_repoints: list[int]):
-        """Return all metadata of materialized assets for the list of repoints."""
-        metadata = []
-        materialized_partitions = context.instance.get_materialized_partitions(
-            self.to_dagster_asset()
-        )
-
-        for partition in materialized_partitions:
-            parts = partition.split("_")
-            if "repoint" in parts[0]:
-                pointing_number = int(parts[0][7:])
-                if pointing_number in target_repoints:
-                    mat_event = context.instance.get_event_records(
-                        event_records_filter=EventRecordsFilter(
-                            event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                            asset_key=self.to_dagster_asset(),
-                            asset_partitions=[partition],
-                        ),
-                        limit=1,  # The most recent event is returned first
-                    )
-                    if mat_event and mat_event[0].asset_materialization:
-                        metadata.append(mat_event[0].asset_materialization.metadata)
-
-        return metadata
 
 
 @dataclass

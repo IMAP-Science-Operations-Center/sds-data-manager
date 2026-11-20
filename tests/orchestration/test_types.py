@@ -1,14 +1,85 @@
 """Tests for classes in types.py."""
 
+import subprocess
+import sys
+import textwrap
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
+from sds_data_manager.lambda_code.SDSCode.spice_utilities import KernelCollection
 from sds_data_manager.orchestration.maps_utils import (
     _CADENCE_TYPES,
     FIRST_MAP_START_DATE,
 )
-from sds_data_manager.orchestration.types import MapWindow
+from sds_data_manager.orchestration.types import SPICE_SOURCES, MapWindow
+
+REPO_ROOT = Path(__file__).parents[2]
+
+# Imports a module with Dagster and the Lambda code blocked, in a fresh process so
+# that modules this test session has already imported don't hide the problem.
+_BLOCKED_IMPORT_CHECK = textwrap.dedent(
+    """
+    import importlib
+    import importlib.abc
+    import sys
+
+    BLOCKED = ("dagster", "sds_data_manager.lambda_code")
+
+
+    class Blocker(importlib.abc.MetaPathFinder):
+        def find_spec(self, name, path=None, target=None):
+            if name.startswith(BLOCKED):
+                raise ImportError(f"blocked import: {name}")
+            return None
+
+
+    sys.meta_path.insert(0, Blocker())
+    importlib.import_module(sys.argv[1])
+    """
+)
+
+
+def _import_without_dagster(module: str) -> subprocess.CompletedProcess:
+    """Import ``module`` in a new interpreter where Dagster can't be imported."""
+    # The command is this interpreter plus constants, so S603 doesn't apply.
+    return subprocess.run(  # noqa: S603
+        [sys.executable, "-c", _BLOCKED_IMPORT_CHECK, module],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        "sds_data_manager.orchestration.types",
+        "sds_data_manager.orchestration.dependency",
+    ],
+)
+def test_dependency_config_is_dagster_free(module):
+    """types.py and dependency.py must import without Dagster or Lambda code.
+
+    They are moving to imap-data-access, which has neither.
+    """
+    result = _import_without_dagster(module)
+    assert result.returncode == 0, result.stderr
+
+
+def test_blocked_import_check_catches_dagster():
+    """The import check fails for a module that does import Dagster."""
+    result = _import_without_dagster("sds_data_manager.orchestration.dagster_utilities")
+    assert result.returncode != 0
+    assert "blocked import: dagster" in result.stderr
+
+
+def test_spice_sources_match_kernel_collection():
+    """types.SPICE_SOURCES must list the same types, in order, as KernelCollection."""
+    assert list(SPICE_SOURCES) == KernelCollection().file_types
+
 
 #### Test for BaseENAMapPartition class #####
 

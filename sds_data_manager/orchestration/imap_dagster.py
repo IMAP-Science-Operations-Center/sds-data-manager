@@ -13,6 +13,7 @@ from sds_data_manager.orchestration import (
     data_gap_filler,
     reprocessing,
 )
+from sds_data_manager.orchestration.dagster_utilities import to_dagster_name
 from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
 )
@@ -46,7 +47,7 @@ all_outputs = []
 for potential_job in all_jobs:
     outputs_list = list(dependency_config.outputs(potential_job))
     for output in outputs_list:
-        name = output.to_dagster_name()
+        name = to_dagster_name(output)
         all_outputs.append(name)
 
 # Next, we'll gather up all the job and file handlers
@@ -58,13 +59,13 @@ for potential_job in all_jobs:
     if data_type in VALID_DATALEVELS:
         job = JobBuilderRegistry.get_builder(dependency_config._config[potential_job])
 
-        if job.job_config.to_dagster_name() not in unique_job_names:
+        if to_dagster_name(job.job_config) not in unique_job_names:
             job_handlers.append(job)
-            unique_job_names.append(job.job_config.to_dagster_name())
+            unique_job_names.append(to_dagster_name(job.job_config))
 
         # Finally, check for inputs that do not have a corresponding output.
         for input in inputs_list:
-            input_name = input.to_dagster_name()
+            input_name = to_dagster_name(input)
             if (input_name not in all_outputs) and (input_name not in unique_job_names):
                 if "_ancillary_" in input_name:
                     continue

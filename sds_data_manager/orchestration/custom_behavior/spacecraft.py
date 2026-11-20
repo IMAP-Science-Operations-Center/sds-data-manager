@@ -20,6 +20,8 @@ from sds_data_manager.orchestration import (
 from sds_data_manager.orchestration.dagster_utilities import (
     get_materialization_result,
     parse_dates_from_partition_key,
+    to_dagster_asset,
+    to_dagster_name,
 )
 from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 
@@ -173,7 +175,7 @@ class SpacecraftPointingAttitudeJob(imap_job.IMAPJobHandler):
         )
         materialization = get_materialization_result(
             context,
-            output.to_dagster_asset(),
+            to_dagster_asset(output),
             context.partition_key,
             [os.path.basename(created_kernel.file_path)],
             Version(output.major_version, created_kernel.version),
@@ -208,7 +210,7 @@ class SpacecraftPointingAttitudeJob(imap_job.IMAPJobHandler):
         spice.get_growing_kernel_trigger_ranges), restricted here to the
         attitude_history dependency only.
         """
-        sensor_name = f"{self.job_config.to_dagster_name()}_kickoff_sensor"
+        sensor_name = f"{to_dagster_name(self.job_config)}_kickoff_sensor"
 
         attitude_history_dependency = next(
             dep
@@ -249,7 +251,7 @@ class SpacecraftPointingAttitudeJob(imap_job.IMAPJobHandler):
             for partition_key in new_partitions:
                 run_key = "_".join(
                     [
-                        self.job_config.to_dagster_name(),
+                        to_dagster_name(self.job_config),
                         partition_key,
                         job_suffix,
                     ]

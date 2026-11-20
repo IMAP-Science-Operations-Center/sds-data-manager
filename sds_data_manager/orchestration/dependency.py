@@ -1,15 +1,12 @@
 """Simple utilities for reading dependency configurations."""
 
 import logging
-import os
 from pathlib import Path
 from typing import ClassVar
 
-import requests
 import yaml
 from imap_data_access import VALID_INSTRUMENTS
 
-from ..lambda_code.SDSCode.api_lambdas import upload_api
 from .types import DependencyNode, ProcessingJobNode
 
 # Logger setup
@@ -406,62 +403,3 @@ def get_kickoff_jobs(
             "No kickoff jobs found. Please check the instrument dependency YAML files."
         )
     return kick_off_jobs
-
-
-def upload_dependency_file(dependency_file_path: Path, serialized_dependencies: str):
-    """Upload a JSON file containing a job's dependencies to S3.
-
-    Parameters
-    ----------
-    dependency_file_path : Path
-        The dependency JSON file to upload.
-    serialized_dependencies : str
-        The serialized upstream dependencies to upload.
-    """
-    # Check if the file already exists
-    if os.path.isfile(dependency_file_path):
-        raise KeyError(
-            f"{dependency_file_path} already exists, cannot create JSON file."
-        )
-    # call the upload API handler directly
-    signed_url = upload_api.lambda_handler(
-        {
-            "pathParameters": {"proxy": dependency_file_path.as_posix()},
-            "requestContext": {
-                "authorizer": {"lambda": {"scope": "write", "apiKey": "batch-starter"}}
-            },
-        },
-        None,
-    )
-    if signed_url["statusCode"] == 409:
-        logger.info(
-            f"Dependency file already exists in S3: {dependency_file_path}. Reusing"
-            f"file."
-        )
-        return {"statusCode": 200, "body": signed_url["body"]}
-    elif signed_url["statusCode"] != 200:
-        logger.error(
-            f"Failed to get S3 pre-signed URL for file: {dependency_file_path}. "
-            f"As a result, failed to kick off job. "
-            f"Error message: {signed_url['body']}, "
-            f"with status code: {signed_url['statusCode']}."
-        )
-        return None
-    try:
-        response = requests.put(
-            signed_url["body"].strip('"'),
-            data=serialized_dependencies,
-            headers={"Content-Type": "application/json"},
-            timeout=60.0,
-        )
-        logger.info(
-            f"Dependency file uploaded successfully to s3 with status code: "
-            f"{response.status_code}"
-        )
-        return response
-    except Exception as e:
-        logger.error(
-            f"Unexpected error during cadence file upload: {e}. "
-            f"Dependency file upload failed and the job did not get kicked off."
-        )
-        return None

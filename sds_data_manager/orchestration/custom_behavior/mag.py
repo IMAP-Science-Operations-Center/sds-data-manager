@@ -8,7 +8,9 @@ from imap_data_access import processing_input
 
 from sds_data_manager.orchestration import imap_job, types
 from sds_data_manager.orchestration.dagster_utilities import (
+    get_all_files_in_time_range,
     parse_dates_from_partition_key,
+    to_dagster_asset,
 )
 from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 
@@ -103,14 +105,14 @@ class MagL1CJob(imap_job.IMAPJobHandler):
         # Nothing in flight does not mean nothing is coming: the kickoff
         # sensor requests day N-1's run only on a tick after its L1B lands.
         # The materializations decide whether an L1C is still expected.
-        own_asset = self.job_config.outputs[0].to_dagster_asset()
+        own_asset = to_dagster_asset(self.job_config.outputs[0])
         materialized_l1c = context.instance.get_materialized_partitions(own_asset)
         if set(materialized_l1c).intersection(previous_day_keys):
             return False  # a previous-day L1C exists; it will be delivered
 
         if not any(
             set(
-                context.instance.get_materialized_partitions(dep.to_dagster_asset())
+                context.instance.get_materialized_partitions(to_dagster_asset(dep))
             ).intersection(previous_day_keys)
             for dep in self.job_config.science_inputs
         ):
@@ -148,7 +150,7 @@ class MagL1CJob(imap_job.IMAPJobHandler):
         carry Dagster's implicit asset job name ("__ASSET_JOB"), so they are
         matched by asset selection, which RunsFilter cannot filter on.
         """
-        own_asset = self.job_config.outputs[0].to_dagster_asset()
+        own_asset = to_dagster_asset(self.job_config.outputs[0])
         return run.job_name == self.dagster_job_name or own_asset in (
             run.asset_selection or ()
         )
@@ -170,8 +172,11 @@ class MagL1CJob(imap_job.IMAPJobHandler):
         # check in get_all_files_in_time_range cannot match the current day's
         # own partition, which starts exactly at target_start. The job never
         # receives its own output as input.
-        metadata_list = previous_day_l1c.get_all_files_in_time_range(
-            context, target_start - datetime.timedelta(days=1), target_start
+        metadata_list = get_all_files_in_time_range(
+            previous_day_l1c,
+            context,
+            target_start - datetime.timedelta(days=1),
+            target_start,
         )
 
         if not metadata_list:

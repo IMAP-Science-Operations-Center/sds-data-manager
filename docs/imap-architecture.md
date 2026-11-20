@@ -117,6 +117,8 @@ Jobs and assets are **not** hand-written per data product — they are generated
 
 **To change behavior for one product, subclass the handler in `custom_behavior/` and register it — do not special-case inside the generic handler.** Existing examples: `mag.py`, `hi.py`, `idex.py`, `spacecraft.py`, `l3_jobs.py`, `l2_map_jobs.py`.
 
+**`types.py` and `dependency.py` must not import Dagster or anything under `sds_data_manager.lambda_code`.** They're being moved to `imap-data-access`, which has neither, and `tests/orchestration/test_types.py` fails if either one does. Anything that connects a node to Dagster goes in `dagster_utilities.py` as a function that takes the node: `to_dagster_name(node)`, `to_dagster_asset(node)`, `get_all_files_in_time_range(node, ...)` and `get_all_files_by_repoint_numbers(node, ...)`. `types.SPICE_SOURCES` copies `KernelCollection().file_types`, so a new SPICE type has to be added to both; a test checks that they match.
+
 ### Runtime model
 
 - **Kickoff Sensors & Assets**: Each processing job has a "kickoff" sensor that monitors upstream asset materializations/dependency tables and yields a `RunRequest` when enough new data has arrived to attempt a run. Dependencies are complex, so a run is easily triggered but reports an `AssetObservation` (not a failure) if data actually turns out to be missing. When an upstream science asset shares the target's dynamic partition definition, its event stays unconsumed until that exact partition is registered, allowing the partition-maintenance sensor to catch up without losing the kickoff. Interval fallback matching uses strict overlap, so partitions that only meet at a boundary are adjacent, not matches.

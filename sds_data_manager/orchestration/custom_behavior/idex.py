@@ -23,6 +23,7 @@ from sds_data_manager.orchestration import config, custom_partitions, imap_file
 from sds_data_manager.orchestration.dagster_utilities import (
     get_affected_partitions,
     get_materialization_result,
+    to_dagster_name,
 )
 from sds_data_manager.orchestration.file_handler_registry import FileBuilderRegistry
 from sds_data_manager.orchestration.types import DependencyNode
@@ -101,7 +102,7 @@ class IDEXL0FileHandler(imap_file.IMAPScienceFileHandler):
 
     def build_sensor(self):
         """Build a sensor for the IDEX L0 table."""
-        sensor_name = f"{self.job_config.to_dagster_name()}_sensor"
+        sensor_name = f"{to_dagster_name(self.job_config)}_sensor"
 
         @sensor(
             name=sensor_name,

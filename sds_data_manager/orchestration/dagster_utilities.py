@@ -13,6 +13,97 @@ from dagster import (
 )
 from imap_data_access.file_validation import Version
 
+from sds_data_manager.orchestration.types import Node
+
+
+def to_dagster_name(node: Node) -> str:
+    """Return the Dagster asset name for a node, e.g. ``swe_l1a_sci``."""
+    return (node.source + "_" + node.data_type + "_" + node.descriptor).replace("-", "")
+
+
+def to_dagster_asset(node: Node) -> AssetKey:
+    """Return the Dagster AssetKey for a node."""
+    return AssetKey(to_dagster_name(node))
+
+
+def get_all_files_in_time_range(
+    node: Node,
+    context: AssetExecutionContext,
+    start_dt: datetime.datetime,
+    end_dt: datetime.datetime,
+) -> list:
+    """Return the materialization metadata of a node's partitions in a time range.
+
+    Every materialized partition of the node's asset that overlaps
+    ``[start_dt, end_dt)`` contributes the metadata of its latest materialization.
+    """
+    metadata = []
+
+    # Fetch a list of all partition keys that have EVER been materialized
+    materialized_partitions = context.instance.get_materialized_partitions(
+        to_dagster_asset(node)
+    )
+
+    if not materialized_partitions:
+        context.log.info(
+            f"""Not enought information to process. Missing
+                {to_dagster_name(node)}
+                in range {start_dt!s} to {end_dt!s}"""
+        )
+        return []
+
+    # Loop through the partitions to determine if they span the time range
+    for partition in materialized_partitions:
+        partition_start, partition_end = parse_dates_from_partition_key(partition)
+
+        if not partition_start or not partition_end:
+            continue
+
+        # Apply the overlap logic (StartA < EndB and EndA > StartB)
+        if partition_start < end_dt and partition_end > start_dt:
+            context.log.info(f"This partition matches: {partition}")
+            # Fetch the actual materialization record for this overlapping partition
+            mat_event = context.instance.get_event_records(
+                event_records_filter=EventRecordsFilter(
+                    event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                    asset_key=to_dagster_asset(node),
+                    asset_partitions=[partition],
+                ),
+                limit=1,  # The most recent event is returned first
+            )
+            if mat_event and mat_event[0].asset_materialization:
+                metadata.append(mat_event[0].asset_materialization.metadata)
+
+    return metadata
+
+
+def get_all_files_by_repoint_numbers(
+    node: Node, context: AssetExecutionContext, target_repoints: list[int]
+) -> list:
+    """Return the materialization metadata of a node's partitions for some repoints."""
+    metadata = []
+    materialized_partitions = context.instance.get_materialized_partitions(
+        to_dagster_asset(node)
+    )
+
+    for partition in materialized_partitions:
+        parts = partition.split("_")
+        if "repoint" in parts[0]:
+            pointing_number = int(parts[0][7:])
+            if pointing_number in target_repoints:
+                mat_event = context.instance.get_event_records(
+                    event_records_filter=EventRecordsFilter(
+                        event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                        asset_key=to_dagster_asset(node),
+                        asset_partitions=[partition],
+                    ),
+                    limit=1,  # The most recent event is returned first
+                )
+                if mat_event and mat_event[0].asset_materialization:
+                    metadata.append(mat_event[0].asset_materialization.metadata)
+
+    return metadata
+
 
 def _existing_asset(
     context: AssetExecutionContext,

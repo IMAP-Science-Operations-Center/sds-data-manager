@@ -45,7 +45,12 @@ from sds_data_manager.orchestration import (
     spice,
     spin,
 )
-from sds_data_manager.orchestration.dagster_utilities import get_materialization_result
+from sds_data_manager.orchestration.dagster_utilities import (
+    get_all_files_in_time_range,
+    get_materialization_result,
+    to_dagster_asset,
+    to_dagster_name,
+)
 from sds_data_manager.orchestration.dependency import DependencyConfigReader
 from sds_data_manager.orchestration.types import DependencyNode, ProcessingJobNode
 
@@ -140,8 +145,8 @@ class IMAPJobHandler:
             self.job_config.data_type, 600
         )
         self.dependency_config_reader = DependencyConfigReader()
-        outputs_for_job = [x.to_dagster_asset() for x in self.job_config.outputs]
-        self.dagster_job_name = f"{self.job_config.to_dagster_name()}_processing_job"
+        outputs_for_job = [to_dagster_asset(x) for x in self.job_config.outputs]
+        self.dagster_job_name = f"{to_dagster_name(self.job_config)}_processing_job"
         self.dagster_job = define_asset_job(
             name=self.dagster_job_name,
             selection=outputs_for_job,
@@ -150,18 +155,18 @@ class IMAPJobHandler:
             },
         )
         self.triggering_input_names = [
-            dep.to_dagster_name() for dep in self.job_config.triggering_deps
+            to_dagster_name(dep) for dep in self.job_config.triggering_deps
         ]
 
     def build_asset(self):
         """Create an Asset in Dagster for a particular data product."""
-        input_keys = [dep.to_dagster_asset() for dep in self.job_config.inputs]
+        input_keys = [to_dagster_asset(dep) for dep in self.job_config.inputs]
         output_assets = {}
         for out in self.job_config.outputs:
-            output_assets[out.to_dagster_name()] = AssetOut(is_required=False)
+            output_assets[to_dagster_name(out)] = AssetOut(is_required=False)
 
         @multi_asset(
-            name=f"{self.job_config.to_dagster_name()}_multi_asset_op",
+            name=f"{to_dagster_name(self.job_config)}_multi_asset_op",
             deps=input_keys,
             partitions_def=self.partitions_def,
             outs=output_assets,
@@ -229,7 +234,7 @@ class IMAPJobHandler:
                 context.log.info(f"Skipping job: {e}")
                 for output in self.job_config.outputs:
                     yield AssetObservation(
-                        asset_key=output.to_dagster_asset(),
+                        asset_key=to_dagster_asset(output),
                         partition=context.partition_key,
                         metadata={
                             "status": "Skipped - Missing Dependencies",
@@ -292,7 +297,7 @@ class IMAPJobHandler:
                 context.log.info("Skipped - Duplicated Job")
                 for output in self.job_config.outputs:
                     yield AssetObservation(
-                        asset_key=output.to_dagster_asset(),
+                        asset_key=to_dagster_asset(output),
                         partition=context.partition_key,
                         metadata={
                             "status": "Skipped - Duplicated Job",
@@ -499,7 +504,7 @@ class IMAPJobHandler:
 
         return get_materialization_result(
             context,
-            output.to_dagster_asset(),
+            to_dagster_asset(output),
             context.partition_key,
             [os.path.basename(created_file.file_path)],
             Version(created_file.major_version, created_file.minor_version),
@@ -558,7 +563,7 @@ class IMAPJobHandler:
         minor_version = Version.from_version(created_file.version).minor
         return get_materialization_result(
             context,
-            output.to_dagster_asset(),
+            to_dagster_asset(output),
             context.partition_key,
             [os.path.basename(created_file.file_path)],
             Version(output.major_version, minor_version),
@@ -588,7 +593,7 @@ class IMAPJobHandler:
         # Get all ancestral upstream assets.
         input_set = set(
             defs.get_repository_def().asset_graph.get_ancestor_asset_keys(
-                self.job_config.outputs[0].to_dagster_asset()
+                to_dagster_asset(self.job_config.outputs[0])
             )
         )
         # Get the job names from those assets
@@ -681,7 +686,7 @@ class IMAPJobHandler:
 
         dependency_partitions_def = (
             defs.get_repository_def()
-            .asset_graph.get(dependency.to_dagster_asset())
+            .asset_graph.get(to_dagster_asset(dependency))
             .partitions_def
         )
         return dependency_partitions_def == self.partitions_def
@@ -703,7 +708,7 @@ class IMAPJobHandler:
         6) Yield a RunRequest for a job to make the asset for the
            partitions that have all dependencies.
         """
-        sensor_name = f"{self.job_config.to_dagster_name()}_kickoff_sensor"
+        sensor_name = f"{to_dagster_name(self.job_config)}_kickoff_sensor"
 
         @sensor(
             name=sensor_name,
@@ -726,7 +731,7 @@ class IMAPJobHandler:
             # after the most recent run
             for dependency in self.job_config.inputs:
                 target_partitions = []  # Partitions to kick off
-                dep_name = dependency.to_dagster_name()
+                dep_name = to_dagster_name(dependency)
                 context.log.info(f"Checking new dependencies for: {dep_name}")
                 if dependency.data_type in VALID_DATALEVELS:
                     # New science inputs
@@ -797,7 +802,7 @@ class IMAPJobHandler:
         the same `run_key` and Dagster's run-key idempotency check prevents
         a double-fire.
         """
-        dep_name = dependency.to_dagster_name()
+        dep_name = to_dagster_name(dependency)
         for target_partition in target_partitions:
             # Check if this partition has already been run successfully
             runs = context.instance.get_runs(
@@ -814,7 +819,7 @@ class IMAPJobHandler:
             if (dep_name in self.triggering_input_names) or not runs:
                 run_key = "_".join(
                     [
-                        self.job_config.to_dagster_name(),
+                        to_dagster_name(self.job_config),
                         target_partition,
                         job_suffix,
                     ]
@@ -858,7 +863,7 @@ class IMAPJobHandler:
             return []
 
         partitions_to_run = []
-        dep_name = dependency.to_dagster_name()
+        dep_name = to_dagster_name(dependency)
         cursor_str = cursors.get(dep_name, config.MISSION_START_TIME)
         latest_ingestion_date = datetime.datetime.fromisoformat(cursor_str).replace(
             tzinfo=datetime.timezone.utc
@@ -924,14 +929,14 @@ class IMAPJobHandler:
         sensor_start_time: float,
     ):
         """Return a list of partitions to trigger from new science files detected."""
-        dep_name = dependency.to_dagster_name()
+        dep_name = to_dagster_name(dependency)
         context.log.info(f"Checking new dependencies for: {dep_name}")
 
         # Fetch the 10 new science materializations from dagster
         last_event_id = cursors.get(dep_name, 0)
         filter = EventRecordsFilter(
             event_type=DagsterEventType.ASSET_MATERIALIZATION,
-            asset_key=dependency.to_dagster_asset(),
+            asset_key=to_dagster_asset(dependency),
             after_cursor=last_event_id,
         )
         new_events = context.instance.get_event_records(
@@ -1056,7 +1061,7 @@ class IMAPJobHandler:
                 if not records and input.required:
                     raise MissingDependenciesError(
                         f"""Missing dependency for
-                        {input.to_dagster_name()}
+                        {to_dagster_name(input)}
                         between {target_start} and {target_end}"""
                     )
                 filenames = [os.path.basename(record.file_path) for record in records]
@@ -1075,7 +1080,7 @@ class IMAPJobHandler:
         if not spin_files and self.job_config.spin_input.required:
             raise MissingDependenciesError(
                 f"""Missing dependency for
-                {self.job_config.spin_input.to_dagster_name()}
+                {to_dagster_name(self.job_config.spin_input)}
                 between {target_start} and {target_end}"""
             )
         return spin_files
@@ -1088,7 +1093,7 @@ class IMAPJobHandler:
         if not file and self.job_config.repoint_input.required:
             raise MissingDependenciesError(
                 f"""Missing dependency for
-                {self.job_config.repoint_input.to_dagster_name()}
+                {to_dagster_name(self.job_config.repoint_input)}
                 between {target_start} and {target_end}"""
             )
 
@@ -1126,10 +1131,10 @@ class IMAPJobHandler:
         """Return the science file dependencies needed to cover a time range."""
         science_processing_inputs = []
         for input in self.job_config.science_inputs:
-            dep_name = input.to_dagster_name()
+            dep_name = to_dagster_name(input)
             found_dep = False
-            metadata_list = input.get_all_files_in_time_range(
-                context, target_start, target_end
+            metadata_list = get_all_files_in_time_range(
+                input, context, target_start, target_end
             )
             science_files = []
             for metadata in metadata_list:

@@ -21,6 +21,7 @@ from dagster import DagsterInstance, build_sensor_context
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import spice
+from sds_data_manager.orchestration.dagster_utilities import to_dagster_name
 from sds_data_manager.orchestration.imap_dagster import dependency_config
 from sds_data_manager.orchestration.imap_job import IMAPJobHandler
 
@@ -294,7 +295,7 @@ class TestTriggerFromNewNonScienceInputsWiring:
         new_file.ingestion_date = datetime.datetime.now(UTC)
 
         session = _session_returning([new_file], predecessor)
-        cursors = {dependency.to_dagster_name(): "2024-01-01T00:00:00"}
+        cursors = {to_dagster_name(dependency): "2024-01-01T00:00:00"}
 
         with patch.object(db, "Session") as mock_cls:
             mock_cls.return_value.__enter__.return_value = session
@@ -356,7 +357,7 @@ class TestTriggerFromNewNonScienceInputsWiring:
         new_file.ingestion_date = datetime.datetime.now(UTC)
 
         session = _session_returning([new_file], predecessor)
-        cursors = {dependency.to_dagster_name(): "2024-01-01T00:00:00"}
+        cursors = {to_dagster_name(dependency): "2024-01-01T00:00:00"}
 
         with patch.object(db, "Session") as mock_cls:
             mock_cls.return_value.__enter__.return_value = session
