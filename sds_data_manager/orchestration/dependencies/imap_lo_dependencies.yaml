@@ -66,6 +66,15 @@ lo_l2_map_inputs: &lo_l2_map_inputs
     data_type: l1b
     descriptor: bgrates
 
+lo_l3_sp_ena_map_inputs: &lo_l3_sp_ena_map_inputs
+  - *spice_common
+  - source: glows
+    data_type: l3e
+    descriptor: survival-probability-lo
+  - source: lo
+    data_type: l1c
+    descriptor: pset
+
 # ======== Product-Specific Dependencies ========
 
 # ======== Level L1A ========
@@ -862,3 +871,389 @@ lo_l2_map_inputs: &lo_l2_map_inputs
       major_version: 1
 
 # ======== Level L3 ========
+
+# "Row" labels below refer to rows in the
+# Updated Lo L3 maps spreadsheet
+
+# Row 12
+(l3, l075-spxnsnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l075-enansnbs-h-sf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-spxnsnbs-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l090-spxnsnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l090-enansnbs-h-sf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spxnsnbs-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l105-spxnsnbs-h-sf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l105-enansnbs-h-sf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-spxnsnbs-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+# Row 13
+(l3, l075-enasbs-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *lo_l3_sp_ena_map_inputs
+    - source: lo
+      data_type: l2
+      descriptor: l075-enasbs-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-enasbs-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l090-enasbs-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *lo_l3_sp_ena_map_inputs
+    - source: lo
+      data_type: l2
+      descriptor: l090-enasbs-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-enasbs-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l105-enasbs-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *lo_l3_sp_ena_map_inputs
+    - source: lo
+      data_type: l2
+      descriptor: l105-enasbs-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-enasbs-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+# Row 14
+(l3, l075-spxsbs-h-hf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l075-enasbs-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-spxsbs-h-hf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l090-spxsbs-h-hf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l090-enasbs-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spxsbs-h-hf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l105-spxsbs-h-hf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l105-enasbs-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-spxsbs-h-hf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+
+# Row 15
+(l3, l075-spxsbs-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l3
+      descriptor: l075-enasbs-h-hf-sp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-spxsbs-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l090-spxsbs-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l3
+      descriptor: l090-enasbs-h-hf-sp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spxsbs-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l105-spxsbs-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l3
+      descriptor: l105-enasbs-h-hf-sp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-spxsbs-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+
+# Row 16
+(l3, l075-spxnsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l075-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-spxnsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l090-spxnsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l090-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spxnsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l105-spxnsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l105-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-spxnsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, ilo-spxnsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: ilo-enansnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: ilo-spxnsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+
+# Row 17
+(l3, ilo-spxsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: ilo-enasnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: ilo-spxsnbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+# Row 18
+(l3, ilo-spxsbsMsk-h-sf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: ilo-enasbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: ilo-spxsbsMsk-h-sf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+
+# Row 19
+(l3, l075-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *lo_l3_sp_ena_map_inputs
+    - source: lo
+      data_type: l2
+      descriptor: l075-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l090-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *lo_l3_sp_ena_map_inputs
+    - source: lo
+      data_type: l2
+      descriptor: l090-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l105-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *lo_l3_sp_ena_map_inputs
+    - source: lo
+      data_type: l2
+      descriptor: l105-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, ilo-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l3
+      descriptor: l075-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+    - source: lo
+      data_type: l3
+      descriptor: l090-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+    - source: lo
+      data_type: l3
+      descriptor: l105-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: ilo-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+# Row 20
+#lXXX-spxsbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+(l3, l075-spxsbsMsk-h-hf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l075-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-spxsbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l090-spxsbsMsk-h-hf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l090-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spxsbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l105-spxsbsMsk-h-hf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: l105-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-spxsbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, ilo-spxsbsMsk-h-hf-nsp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l2
+      descriptor: ilo-enasbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: ilo-spxsbsMsk-h-hf-nsp-ram-hae-6deg-6mo
+      major_version: 1
+
+
+# Row 21
+#lXXX-spxsbsMsk-h-hf-sp-ram-hae-6deg-6mo
+(l3, l075-spxsbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l3
+      descriptor: l075-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l075-spxsbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l090-spxsbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l3
+      descriptor: l090-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l090-spxsbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, l105-spxsbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l3
+      descriptor: l105-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: l105-spxsbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
+
+(l3, ilo-spxsbsMsk-h-hf-sp-ram-hae-6deg-6mo):
+  inputs:
+    - *spice_common
+    - source: lo
+      data_type: l3
+      descriptor: ilo-enasbsMsk-h-hf-sp-ram-hae-6deg-6mo
+  outputs:
+    - source: lo
+      data_type: l3
+      descriptor: ilo-spxsbsMsk-h-hf-sp-ram-hae-6deg-6mo
+      major_version: 1
