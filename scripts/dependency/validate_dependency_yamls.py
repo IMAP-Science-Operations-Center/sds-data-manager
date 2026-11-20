@@ -390,9 +390,10 @@ def main(argv: list[str] | None = None) -> None:
         type=Path,
         default=None,
         help="Directory containing the previous dependency YAML files. Used "
-        f"for check {MajorVersionIncrementCheck.check_id}. If not provided"
+        f"for checks {MajorVersionIncrementCheck.check_id} and "
+        f"{MajorVersionNoDecreaseCheck.check_id}. If not provided"
         f" {MajorVersionIncrementCheck.__name__} will not check the diff and run for"
-        f" every node.",
+        f" every node, and {MajorVersionNoDecreaseCheck.__name__} will be skipped.",
     )
     args = parser.parse_args(argv)
 
@@ -408,7 +409,10 @@ def main(argv: list[str] | None = None) -> None:
     old_reader = None
     if args.previous_yaml_path is not None:
         old_reader = DependencyConfigReader(args.previous_yaml_path)
-        updated_nodes = get_updated_output_dependency_nodes(old_reader, reader)
+        # Include decreases so MajorVersionNoDecreaseCheck sees the decreased jobs.
+        updated_nodes = get_updated_output_dependency_nodes(
+            old_reader, reader, include_decreases=True
+        )
         nodes_to_check = get_nodes_to_check(updated_nodes, reader)
     if updated_nodes == []:
         logger.info("No nodes were updated. Skipping checks.")

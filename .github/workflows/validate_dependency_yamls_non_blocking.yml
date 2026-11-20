@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - uses: Gr1N/setup-poetry@v9
@@ -27,8 +27,10 @@ jobs:
 
       # Check out the YAMLs from the current state of the PR's target branch (dev)
       - name: Check out base dependency YAMLs
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          git worktree add --detach /tmp/base "origin/${{ github.base_ref }}"
+          git worktree add --detach /tmp/base "origin/$BASE_REF"
 
       - name: Validate dependency YAMLs
         run: |

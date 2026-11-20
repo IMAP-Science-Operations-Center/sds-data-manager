@@ -26,26 +26,33 @@ def get_old_output(new_output, old_potential_job):
 
 
 def get_updated_output_dependency_nodes(
-    old_reader, new_reader
+    old_reader, new_reader, include_decreases: bool = False
 ) -> list[ProcessingJobNode]:
-    """Find the jobs that got a changed major_version.
+    """Find the jobs that got an updated major_version.
 
     This function will loop through every potential job's output in the new
     dependency yaml and compare it against the output of the old potential
     job in the old dependency yaml. If the job is new, or one of its outputs
-    is new, or an output's major_version changed (increased or decreased), the
-    potential job's dependency information node is added to the list of jobs
-    that got updated.
+    is new, or an output's major_version increased (or decreased, if
+    include_decreases is True), the potential job's dependency information
+    node is added to the list of jobs that got updated.
 
     old_reader: DependencyConfigReader
         Reader built from the previous dependency yaml files.
     new_reader: DependencyConfigReader
         Reader built from the current dependency yaml files.
+    include_decreases: bool
+        If True, also count a job as updated when an output's major_version
+        decreased. The validator sets this so MajorVersionNoDecreaseCheck can
+        catch decreases. Defaults to False for reprocessing: a decrease is
+        either invalid or a rollback deploy, and neither should kick off
+        full-mission reprocessing.
 
     Returns
     -------
     list[ProcessingJobNode]
-        Jobs whose output is new or had a major_version change.
+        Jobs whose output is new or had a major_version increase (or decrease,
+        if include_decreases is True).
     """
     updated_nodes = []
     for job_key, new_potential_job in new_reader.config.items():
@@ -73,7 +80,10 @@ def get_updated_output_dependency_nodes(
                     updated_nodes.append(new_potential_job)
                 continue
 
-            elif new_output.major_version != old_output.major_version:
+            elif new_output.major_version > old_output.major_version or (
+                include_decreases
+                and new_output.major_version < old_output.major_version
+            ):
                 logger.info(
                     f"Output product ({new_output.source},{new_output.data_type},"
                     f"{new_output.descriptor}) changed from major version="
