@@ -1,6 +1,6 @@
-name: Build and Deploy Dev Container Images
+name: Build/Deploy imap-processing to Dev AWS Account
 
-run-name: "Build and Deploy Dev Containers | Instruments: ${{ inputs.instruments }}"
+run-name: "Build/Deploy imap-processing to Dev AWS Account | Instruments: ${{ inputs.instruments }}"
 
 on:
   workflow_dispatch:
