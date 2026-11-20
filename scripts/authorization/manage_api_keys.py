@@ -9,7 +9,7 @@ Usage:
   python manage_api_keys.py add <owner> <email> <scope>
   python manage_api_keys.py remove <key>
   AWS_PROFILE=imap-sdc-dev AWS_DEFAULT_REGION=us-west-2 \
-    python sds_data_manager/lambda_code/authorization/manage_api_keys.py \
+    python scripts/authorization/manage_api_keys.py \
         add "First Last" "user@example.com" "full"
 
 Requires AWS credentials with DynamoDB permissions.

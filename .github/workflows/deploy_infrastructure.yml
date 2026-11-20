@@ -1,6 +1,6 @@
-name: Deploy
+name: Deploy Infrastructure
 # Encode the target environment in the run name for readability in the Actions UI.
-run-name: "Deploy to ${{ github.event_name == 'push' && 'dev' || inputs.environment }}"
+run-name: "Deploy Infrastructure to ${{ github.event_name == 'push' && 'dev' || inputs.environment }}"
 
 on:
   push:
