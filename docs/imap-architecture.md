@@ -70,11 +70,20 @@ SPICE input, with `data_type: spice` and `source: thruster`. imap_processing the
 and has to read them itself; furnishing one is harmless, since SPICE loads it as a text kernel with no data. Spin files
 keep their own `data_type: spin`, and jobs receive them as a `SpinInput`.
 
+Jobs resolve a spin input through the same metakernel query, in process (`spice.get_upstream_dependency_inputs_spin`),
+over the partition's exact window. A required spin input sets `require_coverage`, so any gap over the seam tolerance, or
+any gap at either edge of the window, skips the job (`MissingDependenciesError`) until a later spin delivery fills it. A
+daily job therefore needs spin past both midnights. An optional spin input gets whatever spin files exist. The kickoff
+sensor triggers spin consumers from new `spice_files` rows with kernel type `spin`.
+
+The query window is converted from UTC to ephemeris time in orchestration (`spice._seconds_since_j2000`) without
+furnishing a leapseconds kernel: it adds a fixed 5 s (`_LEAP_SECONDS_SINCE_J2000`), the leap seconds since J2000, which
+holds for every time after 2016 and would need updating if a new leap second were ever scheduled.
+
 **Relevant Files/Directories:**
 - `sds_data_manager/lambda_code/SDSCode/spice_utilities.py`
 - `sds_data_manager/orchestration/repoint_file.py`
 - `sds_data_manager/orchestration/spice.py`
-- `sds_data_manager/orchestration/spin.py`
 
 ## AWS Pipeline (Ingest & Event Flow)
 
