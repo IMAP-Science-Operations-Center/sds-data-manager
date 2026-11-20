@@ -241,7 +241,7 @@ def build_sds(
         # Predicted ephemeris arrives about every two weeks.
         predicted_ephemeris_threshold_days=21,
     )
-
+    tmp_monitoring_email = "luisa.coakley@lasp.colorado.edu"
     science_monitoring_construct.ScienceMonitoringConstruct(
         scope=sdc_stack,
         construct_id="ScienceMonitoringConstruct",
@@ -250,7 +250,7 @@ def build_sds(
         vpc=networking.vpc,
         rds_security_group=rds_construct.rds_security_group,
         layers=[db_lambda_layer, spice_lambda_layer],
-        alarm_email=alarm_email,
+        alarm_email=tmp_monitoring_email,  # TODO: replace with alarm_email
     )
 
     sds_api_manager_construct.SdsApiManager(
