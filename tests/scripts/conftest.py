@@ -84,6 +84,10 @@ _MAG_VALID_YAML = """
       data_type: l1a
       descriptor: norm-magi
       major_version: 1
+    - source: mag
+      data_type: l1a
+      descriptor: burst-magi
+      major_version: 1
 
 (l2, norm-srf):
   inputs:
@@ -94,6 +98,10 @@ _MAG_VALID_YAML = """
     - source: mag
       data_type: l2
       descriptor: norm-rtn
+      major_version: 1
+    - source: mag
+      data_type: l2
+      descriptor: norm-dsrf
       major_version: 1
 
 """
@@ -141,6 +149,10 @@ _SWE_VALID_YAML = """
       data_type: l1a
       descriptor: sci
       major_version: 1
+    - source: swe
+      data_type: l1a
+      descriptor: cem-raw
+      major_version: 1
 
 (l1b, sci):
   inputs:
@@ -177,6 +189,19 @@ _SWE_VALID_YAML = """
 
 """
 
+_SWE_INVALID_SINGLE_OUTPUT_YAML = """
+(l1a, all):
+  inputs:
+    - source: swe
+      data_type: l0
+      descriptor: raw
+  outputs:
+    - source: swe
+      data_type: l1a
+      descriptor: sci
+      major_version: 1
+"""
+
 # Bump each level's major_version by a different, increasing amount to exercise
 # a real multi-hop monotonic chain.
 SWE_VALID_YAML_BUMPED = (
@@ -192,6 +217,14 @@ SWE_VALID_YAML_BUMPED = (
         "data_type: l3\n      descriptor: sci\n      major_version: 1",
         "data_type: l3\n      descriptor: sci\n      major_version: 10",
     )
+)
+
+# Decrease swe l1b sci from SWE_VALID_YAML_BUMPED's major_version 5 to 4. This is
+# the only change, and the chain is still monotonic (l1a 1 -> l1b 4 -> l2 7), so
+# only the no-decrease check (comparing against the previous yaml) should catch it.
+SWE_VALID_YAML_BUMPED_L1B_DECREASED = SWE_VALID_YAML_BUMPED.replace(
+    "data_type: l1b\n      descriptor: sci\n      major_version: 5",
+    "data_type: l1b\n      descriptor: sci\n      major_version: 4",
 )
 
 
