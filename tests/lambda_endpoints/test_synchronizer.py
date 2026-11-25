@@ -2,6 +2,8 @@
 
 import datetime
 
+import pytest
+
 from sds_data_manager.lambda_code.SDSCode.database import models, synchronizer
 
 
@@ -154,30 +156,21 @@ def test_synchronizer_spice_file_removed(session, s3_client):
     assert nfiles == 0
 
 
-def test_synchronizer_spin_file_added(session, s3_client):
-    """A spin file in S3 but not in the database gets added as expected."""
+def test_synchronizer_spin_file_not_indexed(session, s3_client):
+    """A spin file that cannot be indexed into the SPICE table fails the sync.
+
+    Orchestration reads spin only from the SPICE table, so the spin file is not
+    added to the spin table either. No leapseconds kernel is available here.
+    """
     cleanup_bucket(s3_client)
 
     filepath = "imap/spice/spin/imap_2026_267_2026_267_01.spin.csv"
     s3_client.put_object(Bucket="test-data-bucket", Key=filepath, Body=b"")
 
-    with session.begin():
-        nfiles = session.query(models.SpinFiles).count()
-    assert nfiles == 0
+    with pytest.raises(FileNotFoundError, match="leapseconds"):
+        synchronizer.lambda_handler(event={}, context={})
 
-    synchronizer.lambda_handler(event={}, context={})
-
-    with session.begin():
-        files = session.query(models.SpinFiles).all()
-    assert len(files) == 1
-
-    item = files[0]
-    assert item.file_path == filepath
-    assert item.start_date == datetime.datetime(2026, 9, 24)
-    assert item.end_date == datetime.datetime(2026, 9, 24)
-    assert item.version == "01"
-
-    # The empty file has no coverage, so it is only indexed into the spin table
+    assert session.query(models.SpinFiles).count() == 0
     assert session.query(models.SPICEFiles).count() == 0
 
 

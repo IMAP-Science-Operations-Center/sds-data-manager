@@ -282,26 +282,6 @@ def _insert_spice_file(session, filename, intervals, upload_time=0):
     session.commit()
 
 
-def _insert_spin_file(session, filename, upload_time=0, start_date=None, end_date=None):
-    if not start_date:
-        start_date = datetime.datetime(2026, 1, 1)
-    if not end_date:
-        end_date = datetime.datetime(2026, 1, 2)
-
-    spice_object = imap_data_access.SPICEFilePath(filename)
-    version = spice_object.spice_metadata["version"]
-    metadata_params = {
-        "file_path": f"imap/spice/{filename}",
-        "version": version,
-        "start_date": start_date,
-        "end_date": end_date,
-        "ingestion_date": datetime.datetime.now() + datetime.timedelta(upload_time),
-        "released": True,
-    }
-    session.add(models.SpinFiles(**metadata_params))
-    session.commit()
-
-
 @pytest.fixture
 def insert_test_spice_files(mock_db_session):
     """Put a filepath into the test data."""
@@ -312,8 +292,10 @@ def insert_test_spice_files(mock_db_session):
     _insert_spice_file(mock_db_session, "imap_sclk_0189.tsc", [[1, 10000000000000]])
 
 
-def insert_ah_kernel(session, file_name, start, end, ingestion_date):
-    """Insert an attitude_history SPICEFiles row with a single coverage segment.
+def _insert_spice_row(
+    session, file_name, kernel_type, subdir, start, end, ingestion_date
+):
+    """Insert a SPICEFiles row with a single coverage segment.
 
     Populates every column the metakernel selection logic relies on (file_root
     for latest-version filtering, j2000 intervals for gap filling, ingestion
@@ -325,10 +307,10 @@ def insert_ah_kernel(session, file_name, start, end, ingestion_date):
     end_j2000 = spice._seconds_since_j2000(end)
     session.add(
         models.SPICEFiles(
-            file_path=f"imap/spice/ck/{file_name}",
+            file_path=f"imap/spice/{subdir}/{file_name}",
             file_name=file_name,
             file_root="".join(file_name.rsplit(version, 1)),
-            kernel_type="attitude_history",
+            kernel_type=kernel_type,
             version=int(version),
             min_date_j2000=start_j2000,
             max_date_j2000=end_j2000,
@@ -340,6 +322,18 @@ def insert_ah_kernel(session, file_name, start, end, ingestion_date):
         )
     )
     session.commit()
+
+
+def insert_ah_kernel(session, file_name, start, end, ingestion_date):
+    """Insert an attitude_history SPICEFiles row with a single coverage segment."""
+    _insert_spice_row(
+        session, file_name, "attitude_history", "ck", start, end, ingestion_date
+    )
+
+
+def insert_spin_file(session, file_name, start, end, ingestion_date):
+    """Insert a spin SPICEFiles row covering start to end."""
+    _insert_spice_row(session, file_name, "spin", "spin", start, end, ingestion_date)
 
 
 @pytest.fixture

@@ -1032,6 +1032,90 @@ def test_metakernel_spin_higher_version_different_ranges(
         assert files[0] == "imap_2025_360_2025_360_01.spin.csv"
 
 
+# Each day is 100 s: day 357 is [0, 100], day 358 is [100, 200], and so on. The
+# _01 files are ingested first and the _10 files replace them.
+_SPIN_SPANS_V10 = [
+    ("imap_2025_358_2025_359_10.spin.csv", [[100, 300]]),
+    ("imap_2025_359_2025_360_10.spin.csv", [[200, 400]]),
+]
+# Single-day _01 files on the first and last day of the _10 span, with a
+# middle file sharing a boundary day with each
+_SPIN_V01_INSIDE = [
+    ("imap_2025_358_2025_358_01.spin.csv", [[100, 200]]),
+    ("imap_2025_358_2025_360_01.spin.csv", [[100, 400]]),
+    ("imap_2025_360_2025_360_01.spin.csv", [[300, 400]]),
+]
+# _01 files that reach past the _10 span on either side
+_SPIN_V01_OUTSIDE = [
+    ("imap_2025_357_2025_359_01.spin.csv", [[0, 300]]),
+    ("imap_2025_360_2025_362_01.spin.csv", [[300, 600]]),
+]
+
+
+@pytest.mark.parametrize(
+    ("v01_files", "window", "expected"),
+    [
+        # On the first day of the _10 span
+        (_SPIN_V01_INSIDE, (100, 140), ["imap_2025_358_2025_359_10.spin.csv"]),
+        # On the last day of the _10 span
+        (_SPIN_V01_INSIDE, (300, 340), ["imap_2025_359_2025_360_10.spin.csv"]),
+        # Across the whole _10 span
+        (
+            _SPIN_V01_INSIDE,
+            (100, 340),
+            [
+                "imap_2025_358_2025_359_10.spin.csv",
+                "imap_2025_359_2025_360_10.spin.csv",
+            ],
+        ),
+        # Inside the _10 span, where the best _10 file alone covers the window
+        (_SPIN_V01_OUTSIDE, (200, 240), ["imap_2025_359_2025_360_10.spin.csv"]),
+        (_SPIN_V01_OUTSIDE, (300, 340), ["imap_2025_359_2025_360_10.spin.csv"]),
+        # Across the whole _10 span: both _01 files are dropped
+        (
+            _SPIN_V01_OUTSIDE,
+            (100, 340),
+            [
+                "imap_2025_358_2025_359_10.spin.csv",
+                "imap_2025_359_2025_360_10.spin.csv",
+            ],
+        ),
+        # Reaching day 357, which only an _01 file covers: it is kept
+        (
+            _SPIN_V01_OUTSIDE,
+            (0, 140),
+            [
+                "imap_2025_357_2025_359_01.spin.csv",
+                "imap_2025_358_2025_359_10.spin.csv",
+            ],
+        ),
+        # Reaching day 361, which only an _01 file covers: it is kept
+        (
+            _SPIN_V01_OUTSIDE,
+            (300, 440),
+            [
+                "imap_2025_360_2025_362_01.spin.csv",
+                "imap_2025_359_2025_360_10.spin.csv",
+            ],
+        ),
+    ],
+)
+def test_metakernel_spin_window_within_newer_span(session, v01_files, window, expected):
+    """Replaced spin files are listed only where they cover part of the window.
+
+    The #1708 layout: _10 files cover days 358-360 and replace _01 files that
+    split the days differently.
+    """
+    for filename, intervals in v01_files:
+        _insert_test_file(session, filename, intervals)
+    for filename, intervals in _SPIN_SPANS_V10:
+        _insert_test_file(session, filename, intervals, upload_time=1)
+
+    result = _list_files("spin", *window, require_coverage=True)
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"]) == expected
+
+
 @pytest.mark.parametrize(
     ("second_file_start", "status_code"),
     [
