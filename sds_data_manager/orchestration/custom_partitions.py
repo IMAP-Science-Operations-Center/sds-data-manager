@@ -10,6 +10,7 @@ from dagster import (
     SkipReason,
     sensor,
 )
+from imap_data_access.dependencies import IDEX_10_DAY_RANGES_PATH
 
 from sds_data_manager.lambda_code.SDSCode import spice_utilities
 from sds_data_manager.lambda_code.SDSCode.database import database as db
@@ -17,10 +18,6 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import config, spice
 from sds_data_manager.orchestration.maps_utils import (
     get_map_partition_names,
-)
-
-IDEX_10_DAY_RANGES_PATH = (
-    "sds_data_manager/lambda_code/SDSCode/utils/idex_10_day_CDF_names.csv"
 )
 
 cadence_3mo_partitions = DynamicPartitionsDefinition(name="cadence_3mo_partitions")

@@ -30,7 +30,11 @@ from dagster import (
     sensor,
 )
 from imap_data_access import VALID_DATALEVELS, DependencyFilePath, processing_input
-from imap_data_access.dependencies import DependencyNode, ProcessingJobNode
+from imap_data_access.dependencies import (
+    DependencyConfigReader,
+    DependencyNode,
+    ProcessingJobNode,
+)
 from imap_data_access.file_validation import Version
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
@@ -52,7 +56,6 @@ from sds_data_manager.orchestration.dagster_utilities import (
     to_dagster_asset,
     to_dagster_name,
 )
-from sds_data_manager.orchestration.dependency import DependencyConfigReader
 
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 # Create an ECR client for getting container image digests
@@ -1369,8 +1372,9 @@ class IMAPJobHandler:
 
         # output.descriptor is not necessarily unique across outputs (e.g. a job
         # can produce the same descriptor at two data levels).
-        # validate_dependency_yaml_versions (enforced in a github action)
-        # guarantees that any outputs sharing a descriptor also share the
+        # validate_dependency_yaml_versions (enforced in imap-data-access's CI,
+        # where the YAML lives) guarantees that any outputs sharing a descriptor
+        # also share the
         # same major_version, and minor_version is the same for every output
         # here, so it's safe to key this dict by descriptor alone.
         return {

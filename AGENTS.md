@@ -9,7 +9,7 @@ AWS infrastructure (CDK), Dagster orchestration, and API services for NASA's IMA
 ## High-Level Directory Map
 - `sds_data_manager/constructs/`: AWS CDK infrastructure definitions (Stacks and Constructs).
 - `sds_data_manager/lambda_code/`: Source code for AWS Lambda functions, grouped by domains (`api_lambdas/` for query, download, upload, release, spice, and batch job/logs; `pipeline_lambdas/` for the indexer, packet downloader, monitoring, schema creation, and reprocessing proxy).
-- `sds_data_manager/orchestration/`: Dagster orchestration logic, custom behaviors, and YAML configuration files.
+- `sds_data_manager/orchestration/`: Dagster orchestration logic, custom behaviors, and Dagster configuration. The dependency YAML that Dagster builds jobs from lives in `imap-data-access` (`imap_data_access/dependencies/config_files/`), so a change to a job's dependencies is an `imap-data-access` pull request and release.
 - `sds_data_manager/utils/stackbuilder.py`: Composes every CDK stack; `app.py` delegates to it.
 - `alembic/`: Database migrations for PostgreSQL schema.
 - `scripts/`: Various utility scripts (e.g., `authorization/` for handling API keys).

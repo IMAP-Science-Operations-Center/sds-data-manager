@@ -2,9 +2,8 @@
 
 import re
 
-from imap_data_access.dependencies import ProcessingJobNode
+from imap_data_access.dependencies import DependencyConfigReader, ProcessingJobNode
 
-from sds_data_manager.orchestration.dependency import DependencyConfigReader
 from sds_data_manager.orchestration.imap_job import IMAPJobHandler
 
 

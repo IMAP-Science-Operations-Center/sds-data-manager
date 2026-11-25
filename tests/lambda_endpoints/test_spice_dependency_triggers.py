@@ -5,10 +5,10 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from dagster import DagsterInstance, build_sensor_context
+from imap_data_access.dependencies import DependencyConfigReader
 
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration.dagster_utilities import to_dagster_name
-from sds_data_manager.orchestration.dependency import DependencyConfigReader
 from sds_data_manager.orchestration.imap_job import IMAPJobHandler
 
 

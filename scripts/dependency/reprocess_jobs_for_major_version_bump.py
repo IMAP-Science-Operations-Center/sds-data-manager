@@ -1,22 +1,121 @@
-"""Determine jobs that need reprocessing due to a major version bump."""
+"""Determine jobs that need reprocessing due to a major version bump.
+
+Run at deploy time with a checkout of the last deployed commit. The dependency YAML
+from that commit is compared with the YAML in the installed imap-data-access.
+"""
 
 import argparse
 import json
 import logging
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
+import tomllib
 from imap_data_access import VALID_DATALEVELS
-from imap_data_access.dependencies import ProcessingJobNode
-
-from scripts.dependency.validate_dependency_yamls import (
-    validate_dependency_yaml_versions,
-)
-from sds_data_manager.orchestration.dependency import (
+from imap_data_access.dependencies import (
     DependencyConfigReader,
+    ProcessingJobNode,
     get_kickoff_jobs,
+)
+from imap_data_access.dependencies.validation import (
+    validate_dependency_yaml_versions,
 )
 
 logger = logging.getLogger(__name__)
+
+# Where the dependency YAML lived in this repository before it moved to
+# imap-data-access. Deployed commits from before the move still have it.
+IN_REPO_YAML_DIR = Path("sds_data_manager/orchestration/dependencies")
+# Where the dependency YAML lives inside an installed imap-data-access.
+PACKAGED_YAML_DIR = Path("imap_data_access/dependencies/config_files")
+
+
+def baseline_requirement(lock_file: Path) -> str:
+    """Return a pip requirement for the imap-data-access pinned in a poetry.lock.
+
+    Parameters
+    ----------
+    lock_file : Path
+        The ``poetry.lock`` of the commit to compare against.
+
+    Returns
+    -------
+    str
+        ``imap-data-access==<version>`` for a PyPI release, or
+        ``imap-data-access @ git+<url>@<commit>`` for a git pin.
+    """
+    lock = tomllib.loads(lock_file.read_text())
+    for package in lock.get("package", []):
+        if package["name"] != "imap-data-access":
+            continue
+        source = package.get("source")
+        if source is None:
+            return f"imap-data-access=={package['version']}"
+        if source.get("type") == "git":
+            return (
+                f"imap-data-access @ git+{source['url']}@{source['resolved_reference']}"
+            )
+        raise ValueError(
+            f"imap-data-access comes from an unsupported {source.get('type')!r} "
+            f"source in {lock_file}"
+        )
+    raise ValueError(f"imap-data-access is not in {lock_file}")
+
+
+def _pip_install(requirement: str, target: Path) -> None:
+    """Install one package, without its dependencies, into a folder."""
+    # pip's output goes to stderr: the deploy workflow parses this script's stdout.
+    # The requirement comes from this repository's own poetry.lock.
+    subprocess.run(  # noqa: S603
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--quiet",
+            "--no-deps",
+            "--target",
+            str(target),
+            requirement,
+        ],
+        check=True,
+        stdout=sys.stderr,
+    )
+
+
+def previous_yaml_dir(checkout: Path, work_dir: Path) -> Path:
+    """Return the folder of dependency YAML files a checkout of this repository used.
+
+    Parameters
+    ----------
+    checkout : Path
+        A checkout of the commit to compare against, e.g. the last deployed one.
+    work_dir : Path
+        An empty folder to install that commit's imap-data-access into, if needed.
+
+    Returns
+    -------
+    Path
+        The folder holding that commit's ``imap_<instrument>_dependencies.yaml``
+        files: this repository's own copy for commits from before the YAML moved
+        to imap-data-access, and otherwise the copy packaged with the
+        imap-data-access pinned in that commit's ``poetry.lock``.
+    """
+    in_repo = checkout / IN_REPO_YAML_DIR
+    if in_repo.is_dir():
+        return in_repo
+
+    requirement = baseline_requirement(checkout / "poetry.lock")
+    logger.info(f"Installing {requirement} to read its dependency YAML")
+    _pip_install(requirement, work_dir)
+    yaml_dir = work_dir / PACKAGED_YAML_DIR
+    if not yaml_dir.is_dir():
+        raise FileNotFoundError(
+            f"{requirement} has no packaged dependency YAML at {yaml_dir}"
+        )
+    return yaml_dir
 
 
 def get_updated_output_dependency_nodes(
@@ -209,20 +308,27 @@ def reprocess_jobs_for_major_version_bump(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("previous_yaml_path")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "previous_checkout",
+        type=Path,
+        help="A checkout of the last deployed commit of this repository.",
+    )
     args = parser.parse_args()
-    yaml_path = Path(args.previous_yaml_path)
 
-    # Create a DependencyConfigReader using the previous dependency yaml files
-    old_reader = DependencyConfigReader(yaml_path)
-    # Without specifying the yaml path, DependencyConfigReader will use the default
-    # (in this case the current/new) dependency yamls
+    with tempfile.TemporaryDirectory() as work_dir:
+        old_yaml_dir = previous_yaml_dir(args.previous_checkout, Path(work_dir))
+        logger.info(f"Comparing against the dependency YAML in {old_yaml_dir}")
+        # The reader loads every file when it's created, so the temporary folder
+        # can be removed afterwards.
+        old_reader = DependencyConfigReader(old_yaml_dir)
+    # With no folder given, the reader uses the YAML packaged with the installed
+    # imap-data-access, which is what this deploy will run with.
     new_reader = DependencyConfigReader()
 
-    # First validate new dependency yamls. They should already have been validated
-    # from the github action in the PR creation but just to be sure.
-    for job in get_kickoff_jobs():
+    # First validate the new dependency YAML. imap-data-access's CI already
+    # validates it, but check again before acting on it.
+    for job in get_kickoff_jobs(reader=new_reader):
         validate_dependency_yaml_versions(new_reader, job)
 
     reprocess_jobs = reprocess_jobs_for_major_version_bump(old_reader, new_reader)
