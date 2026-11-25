@@ -1,9 +1,9 @@
 """Contains a registry of file handling information."""
 
 from dagster import DynamicPartitionsDefinition
+from imap_data_access.dependencies import DependencyNode
 
 from sds_data_manager.orchestration.imap_file import IMAPScienceFileHandler
-from sds_data_manager.orchestration.types import DependencyNode
 
 
 class FileBuilderRegistry:

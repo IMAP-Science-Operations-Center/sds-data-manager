@@ -5,9 +5,10 @@ import yaml
 
 from sds_data_manager.orchestration import dependency as dependency_module
 
-# Captured before any patching happens, since dependency.py's "yaml" module is
-# the same module object as the one imported here. Patching
-# "dependency.yaml.safe_load" therefore replaces yaml.safe_load globally, so the
+# Captured before any patching happens, since the "yaml" module that
+# imap_data_access.dependencies.config reads with is the same module object as
+# the one imported here. Patching "imap_data_access.dependencies.config.yaml.safe_load"
+# therefore replaces yaml.safe_load globally, so the
 # side effect below must call this real reference instead of yaml.safe_load
 # directly or it will recurse into the mock and blow the stack.
 _REAL_SAFE_LOAD = yaml.safe_load

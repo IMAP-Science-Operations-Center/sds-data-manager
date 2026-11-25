@@ -3,6 +3,8 @@
 import json
 from datetime import datetime, timedelta, timezone
 
+from imap_data_access.dependencies import DependencyNode
+
 from sds_data_manager.lambda_code.SDSCode.database.models import ScienceFiles
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
     science_data_monitoring,
@@ -12,7 +14,6 @@ from sds_data_manager.lambda_code.SDSCode.utils.science_monitoring_config import
     Alarm,
 )
 from sds_data_manager.orchestration.dependency import DependencyConfigReader
-from sds_data_manager.orchestration.types import DependencyNode
 
 
 def get_put_metric_call_data(mocked_cloudwatch_client):

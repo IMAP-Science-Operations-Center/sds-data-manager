@@ -5,10 +5,11 @@ import re
 import numpy as np
 from dagster import AssetExecutionContext
 from imap_data_access import processing_input
+from imap_data_access.dependencies import DependencyNode
 
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.orchestration import imap_job, types
+from sds_data_manager.orchestration import imap_job
 from sds_data_manager.orchestration.dagster_utilities import (
     get_all_files_by_repoint_numbers,
     to_dagster_asset,
@@ -110,7 +111,7 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
         self,
         context,
         session: db.Session,
-        dependency: types.DependencyNode,
+        dependency: DependencyNode,
         repoint: int,
     ) -> list | None:
         """Get N files nearest to a target repoint.
@@ -124,7 +125,7 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
             The execution context when materializing this Asset in Dagster
         session : db.Session
             Database session.
-        dependency : types.DependencyNode
+        dependency : DependencyNode
             Dataclass containing source, data_type, descriptor.
         repoint : int
             Target repoint number.
@@ -179,7 +180,7 @@ class HiGoodtimesJob(imap_job.IMAPJobHandler):
         return nearest_repoints_list
 
     def _get_available_repoints(
-        self, context: AssetExecutionContext, dependency: types.DependencyNode
+        self, context: AssetExecutionContext, dependency: DependencyNode
     ) -> list[int]:
         """Query distinct repoint values that exist for a dependency.
 

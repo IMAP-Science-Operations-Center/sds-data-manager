@@ -11,9 +11,8 @@ from dagster import (
     EventRecordsFilter,
     MaterializeResult,
 )
+from imap_data_access.dependencies import Node
 from imap_data_access.file_validation import Version
-
-from sds_data_manager.orchestration.types import Node
 
 
 def to_dagster_name(node: Node) -> str:

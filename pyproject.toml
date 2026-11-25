@@ -31,7 +31,9 @@ python = ">=3.11,<3.13"
 # the correct version and hash are used:
 #   poetry export -f requirements.txt -o lambda_layer/database/requirements.txt --with layer-database
 dependencies = [
-    "imap-data-access>=1.3.0",
+    # Pinned exactly: imap_data_access.dependencies is only in pre-releases so far,
+    # and pip skips pre-releases unless a requirement names one.
+    "imap-data-access==1.4.0.dev0",
     "boto3>=1.26.78,<2",
     "SQLAlchemy<=3.0.0",
 ]

@@ -5,8 +5,9 @@ import re
 
 from dagster import DagsterRunStatus, RunsFilter
 from imap_data_access import processing_input
+from imap_data_access.dependencies import DependencyNode
 
-from sds_data_manager.orchestration import imap_job, types
+from sds_data_manager.orchestration import imap_job
 from sds_data_manager.orchestration.dagster_utilities import (
     get_all_files_in_time_range,
     parse_dates_from_partition_key,
@@ -161,7 +162,7 @@ class MagL1CJob(imap_job.IMAPJobHandler):
             context, target_start, target_end
         )
 
-        previous_day_l1c = types.DependencyNode(
+        previous_day_l1c = DependencyNode(
             source="mag",
             data_type="l1c",
             descriptor=self.job_config.descriptor,

@@ -1,12 +1,12 @@
 """Tests for the dependency node helpers in dagster_utilities.py."""
 
 from dagster import AssetKey
+from imap_data_access.dependencies import DependencyNode, ProcessingJobNode
 
 from sds_data_manager.orchestration.dagster_utilities import (
     to_dagster_asset,
     to_dagster_name,
 )
-from sds_data_manager.orchestration.types import DependencyNode, ProcessingJobNode
 
 
 def test_to_dagster_name_removes_dashes():

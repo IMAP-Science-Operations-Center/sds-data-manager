@@ -23,7 +23,7 @@ from tests.scripts.conftest import (
 def test_validate_dependency_yaml_versions_invalid(caplog):
     """Yaml with one invalid downstream major_version should raise."""
     with patch(
-        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        "imap_data_access.dependencies.config.yaml.safe_load",
         side_effect=mock_yaml({"idex": IDEX_INVALID_YAML}),
     ):
         reader = DependencyConfigReader()
@@ -39,7 +39,7 @@ def test_validate_dependency_yaml_versions_invalid(caplog):
 def test_validate_dependency_yaml_versions_valid():
     """Idex yaml content should pass."""
     with patch(
-        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        "imap_data_access.dependencies.config.yaml.safe_load",
         side_effect=mock_yaml({"idex": IDEX_VALID_YAML}),
     ):
         reader = DependencyConfigReader()
@@ -58,7 +58,7 @@ def test_validate_dependency_yaml_versions_mag_l2():
     should never be checked or cause this to raise.
     """
     with patch(
-        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        "imap_data_access.dependencies.config.yaml.safe_load",
         side_effect=mock_yaml(
             {"mag": MAG_VALID_YAML_L2_BUMP, "swapi": SWAPI_VALID_YAML}
         ),
@@ -73,7 +73,7 @@ def test_validate_dependency_yaml_versions_mag_l2():
 def test_validate_dependency_yaml_versions_swe():
     """A static swe chain, with a monotonic version bump per level, should pass."""
     with patch(
-        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        "imap_data_access.dependencies.config.yaml.safe_load",
         side_effect=mock_yaml({"swe": SWE_VALID_YAML_BUMPED}),
     ):
         reader = DependencyConfigReader()
@@ -86,7 +86,7 @@ def test_validate_dependency_yaml_versions_swe():
 def test_validate_dependency_yaml_invalid_idex_catlst_products():
     """Check that outputs sharing a descriptor with different major versions raise."""
     with patch(
-        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        "imap_data_access.dependencies.config.yaml.safe_load",
         side_effect=mock_yaml({"idex": IDEX_INVALID_CATLST_YAML}),
     ):
         reader = DependencyConfigReader()
@@ -104,7 +104,7 @@ def test_validate_dependency_yaml_invalid_idex_catlst_products():
 def test_validate_dependency_yaml_invalid_data_levels():
     """Check that an error is thrown when no output shares the job node's data level."""
     with patch(
-        "sds_data_manager.orchestration.dependency.yaml.safe_load",
+        "imap_data_access.dependencies.config.yaml.safe_load",
         side_effect=mock_yaml({"swapi": SWAPI_INVALID_YAML}),
     ):
         reader = DependencyConfigReader()

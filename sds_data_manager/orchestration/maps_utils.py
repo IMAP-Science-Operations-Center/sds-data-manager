@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sds_data_manager.orchestration.types import (
+from imap_data_access.dependencies import (
     BaseENAMapPartition,
     Map1YrPartition,
     Map3MoPartition,

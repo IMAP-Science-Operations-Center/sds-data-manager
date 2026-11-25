@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 from imap_data_access import VALID_DATALEVELS
+from imap_data_access.dependencies import ProcessingJobNode
 
 from scripts.dependency.validate_dependency_yamls import (
     validate_dependency_yaml_versions,
@@ -14,7 +15,6 @@ from sds_data_manager.orchestration.dependency import (
     DependencyConfigReader,
     get_kickoff_jobs,
 )
-from sds_data_manager.orchestration.types import ProcessingJobNode
 
 logger = logging.getLogger(__name__)
 
