@@ -1640,13 +1640,15 @@ files = [
 
 [[package]]
 name = "imap-data-access"
-version = "1.3.0"
+version = "1.4.0.dev0"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "layer-idex-processing", "layer-processing"]
-files = []
-develop = false
+files = [
+    {file = "imap_data_access-1.4.0.dev0-py3-none-any.whl", hash = "sha256:b22f65d0d05c8bbf3b1bbc08fad31c5cd3365fc87e70afc4102c219dbe908874"},
+    {file = "imap_data_access-1.4.0.dev0.tar.gz", hash = "sha256:30dbec68e6f3a990a0e00cdc8ad5dd73e75d802cc0e56e87363eff2c2b9d4682"},
+]
 
 [package.dependencies]
 pyyaml = ">=6.0"
@@ -1656,12 +1658,6 @@ urllib3 = ">=2.0"
 [package.extras]
 dev = ["imap_data_access[test]", "pre-commit", "ruff"]
 test = ["pytest", "pytest-cov"]
-
-[package.source]
-type = "git"
-url = "https://github.com/IMAP-Science-Operations-Center/imap-data-access.git"
-reference = "v1.4.0dev"
-resolved_reference = "a6e2d37129627fce4f6da37d459c736113e285a2"
 
 [[package]]
 name = "imap-processing"
@@ -4836,4 +4832,4 @@ tool = ["alembic"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "993fb7ee71ece797f27169d2a77bd3d4c5fdc47d3b2c29e95eaa2588071ac015"
+content-hash = "4c447ddc472d7d45d443d7a213f17b75b0b9f0e37f0313500f20554c57091633"

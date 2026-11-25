@@ -31,11 +31,9 @@ python = ">=3.11,<3.13"
 # the correct version and hash are used:
 #   poetry export -f requirements.txt -o lambda_layer/database/requirements.txt --with layer-database
 dependencies = [
-    # TEMPORARY: the dependency-configuration code (imap_data_access.dependencies)
-    # is only in the v1.4.0dev pre-release tag, which isn't on PyPI. Switch back to
-    # a normal version pin once a 1.4.0 release (or a 1.4.0.devN pre-release) is
-    # published; until then the Lambda layer requirements can't be hash-checked.
-    "imap-data-access @ git+https://github.com/IMAP-Science-Operations-Center/imap-data-access.git@v1.4.0dev",
+    # Pinned exactly: imap_data_access.dependencies is only in pre-releases so far,
+    # and pip skips pre-releases unless a requirement names one.
+    "imap-data-access==1.4.0.dev0",
     "boto3>=1.26.78,<2",
     "SQLAlchemy<=3.0.0",
 ]

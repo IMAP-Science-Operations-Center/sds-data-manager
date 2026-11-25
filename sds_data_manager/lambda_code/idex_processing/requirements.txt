@@ -258,7 +258,9 @@ greenlet==3.5.1 ; python_version >= "3.11" and python_version < "3.13" and (plat
 idna==3.18 ; python_version >= "3.11" and python_version < "3.13" \
     --hash=sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2 \
     --hash=sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848
-imap-data-access @ git+https://github.com/IMAP-Science-Operations-Center/imap-data-access.git@a6e2d37129627fce4f6da37d459c736113e285a2 ; python_version >= "3.11" and python_version < "3.13"
+imap-data-access==1.4.0.dev0 ; python_version >= "3.11" and python_version < "3.13" \
+    --hash=sha256:30dbec68e6f3a990a0e00cdc8ad5dd73e75d802cc0e56e87363eff2c2b9d4682 \
+    --hash=sha256:b22f65d0d05c8bbf3b1bbc08fad31c5cd3365fc87e70afc4102c219dbe908874
 imap-processing==1.0.41 ; python_version >= "3.11" and python_version < "3.13" \
     --hash=sha256:4cd5883a5390472e135e26c6f3d6fa66b8ee0204b601531b6f679e1e82cf96d7 \
     --hash=sha256:80b4b556a6dee9c2198d84a95586e4b67764078a541d86197409032c0df7ee72
