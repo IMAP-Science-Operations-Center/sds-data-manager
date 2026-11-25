@@ -214,11 +214,14 @@ l0_data: &l0_data
     - source: hit
       data_type: ancillary
       descriptor: hit-event-type-lookup
+    - source: hit
+      data_type: ancillary
+      descriptor: wincorr
   outputs:
     - source: hit
       data_type: l3
       descriptor: direct-events
-      major_version: 1
+      major_version: 2
 
 (l3, macropixel):
   partition: daily
