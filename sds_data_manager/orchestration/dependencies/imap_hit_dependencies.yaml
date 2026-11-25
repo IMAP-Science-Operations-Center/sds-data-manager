@@ -241,3 +241,18 @@ l0_data: &l0_data
       data_type: l3
       descriptor: macropixel
       major_version: 1
+
+(l3, electron):
+  partition: daily
+  inputs:
+    - source: hit
+      data_type: l1b
+      descriptor: standard-rates
+    - source: hit
+      data_type: ancillary
+      descriptor: electron-intensity-factors
+  outputs:
+    - source: hit
+      data_type: l3
+      descriptor: electron
+      major_version: 1
