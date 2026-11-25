@@ -13,15 +13,15 @@ from dagster import (
     SensorEvaluationContext,
     sensor,
 )
-from imap_data_access.dependencies import Node
+from imap_data_access.dependencies import (
+    DependencyConfigReader,
+    Node,
+    get_kickoff_jobs,
+)
 
 from sds_data_manager.orchestration.dagster_utilities import (
     get_affected_partitions,
     to_dagster_name,
-)
-from sds_data_manager.orchestration.dependency import (
-    DependencyConfigReader,
-    get_kickoff_jobs,
 )
 from sds_data_manager.orchestration.imap_job import partition_map, priority_levels
 

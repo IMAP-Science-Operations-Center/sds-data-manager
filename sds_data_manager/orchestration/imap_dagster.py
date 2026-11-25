@@ -5,6 +5,9 @@ import pkgutil
 
 from dagster import Definitions
 from imap_data_access import VALID_DATALEVELS
+from imap_data_access.dependencies import (
+    DependencyConfigReader,
+)
 
 import sds_data_manager.orchestration.custom_behavior
 from sds_data_manager.orchestration import (
@@ -14,9 +17,6 @@ from sds_data_manager.orchestration import (
     reprocessing,
 )
 from sds_data_manager.orchestration.dagster_utilities import to_dagster_name
-from sds_data_manager.orchestration.dependency import (
-    DependencyConfigReader,
-)
 from sds_data_manager.orchestration.file_handler_registry import FileBuilderRegistry
 from sds_data_manager.orchestration.job_handler_registry import JobBuilderRegistry
 
